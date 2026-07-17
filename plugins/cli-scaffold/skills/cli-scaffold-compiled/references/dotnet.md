@@ -10,18 +10,20 @@ library) — no other parser. Add it to the `<App>.Cli.csproj` host project
 only, never to `<App>.Core.csproj`:
 
 ```bash
-dotnet add <App>.Cli/<App>.Cli.csproj package System.CommandLine --prerelease
+dotnet add <App>.Cli/<App>.Cli.csproj package System.CommandLine
 ```
 
-State explicitly in generated docs that System.CommandLine ships as a
-prerelease (2.0.0-beta5 or later; treat beta7+ as the current baseline) —
-this is Microsoft's own accepted state for the package, not a red flag, but
-pin an exact version in the `.csproj` (`Version="2.0.0-beta..."`, no
-wildcard) so `dotnet restore` is reproducible across machines.
+System.CommandLine reached a stable 2.0.0 GA release in November 2025 (now
+at 2.0.10+) — do not add `--prerelease` or pin a `beta`/`rc` version; that
+guidance is stale as of any check after GA. Pin an exact stable version in
+the `.csproj` (`Version="2.0.10"` or later, no wildcard) so `dotnet restore`
+is reproducible across machines. Verify the current latest stable version
+against `https://api.nuget.org/v3-flatcontainer/system.commandline/index.json`
+before pinning, since this package moves fast.
 
-Minimal `RootCommand`/`Option<T>` shape — current (2.0 beta) API, built on
+Minimal `RootCommand`/`Option<T>` shape — current (2.0 GA) API, built on
 `SetAction` and `Parse(...).Invoke(...)`, not the older handler-builder
-API from beta4 and earlier:
+API from the pre-GA beta series:
 
 ```csharp
 using System.CommandLine;

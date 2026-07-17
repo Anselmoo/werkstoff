@@ -33,10 +33,20 @@ GetOptions(
     'name=s',
     'shout',
     'json',
-    'no-input',
+    'no_input|no-input',
     'help',
 ) or exit(2);
 ```
+
+`Getopt::Long` stores a parsed option under a hash key equal to the
+**first** name in its spec, not an underscore-normalized form of
+whatever flag was typed — a bare `'no-input'` spec stores into
+`$opt{'no-input'}` (hyphen), not `$opt{no_input}`. Since every other
+idiom in this file (and generated code) reads `$opt{no_input}`, the spec
+must list `no_input` first and `no-input` as an alias, exactly as shown
+above, so the CLI-facing flag stays `--no-input` (GNU-style, matching the
+doctrine) while the hash key stays a valid, underscore-only Perl
+identifier.
 
 ## 2. Project layout
 
@@ -101,7 +111,7 @@ USAGE
     return;
 }
 
-GetOptions(\%opt, 'name=s', 'shout', 'json', 'no-input', 'help')
+GetOptions(\%opt, 'name=s', 'shout', 'json', 'no_input|no-input', 'help')
     or do { usage(); exit(2); };
 
 if ($opt{help}) {
@@ -120,25 +130,24 @@ promising Typer/Click-level auto-completion.
 
 ## 4. NO_COLOR-aware output
 
-Perl has no automatic `NO_COLOR` detection built into core or into
-`Term::ANSIColor`. Check `$ENV{NO_COLOR}` explicitly before coloring, and gate
-every colored call through one helper so the check happens exactly once:
+`Term::ANSIColor` (core since Perl 5.x, and specifically since its own
+5.01 release in 2020) already honors `NO_COLOR` automatically — when
+`$ENV{NO_COLOR}` is set (to any value), `colored()` returns its text
+unstyled with no ANSI codes, with no application-code check required.
+Do not add a hand-rolled `NO_COLOR` wrapper around `colored()` calls on
+the assumption that Perl needs one; that would be redundant, not wrong.
 
 ```perl
 use Term::ANSIColor qw(colored);
 
-sub styled {
-    my ($text, @attrs) = @_;
-    return $text if $ENV{NO_COLOR};
-    return colored($text, @attrs);
-}
-
-print styled("done", 'green'), "\n";
+print colored("done", 'green'), "\n";
 ```
 
-Never call `Term::ANSIColor::colored()` directly from application code —
-always go through the `NO_COLOR`-checking wrapper, so a missed call site
-can't leak ANSI codes into piped output.
+If the generated CLI builds its own ANSI escapes directly instead of
+going through `Term::ANSIColor` (e.g. hand-written `\e[32m` sequences),
+`NO_COLOR` awareness is not automatic for that path — gate those specific
+call sites on `$ENV{NO_COLOR}` explicitly, same as any other
+hand-rolled-escape language in this reference set.
 
 ## 5. Exit codes
 
@@ -154,7 +163,7 @@ returns a false value. The script must detect that return value itself and
 exit `2`:
 
 ```perl
-GetOptions(\%opt, 'name=s', 'shout', 'json', 'no-input', 'help')
+GetOptions(\%opt, 'name=s', 'shout', 'json', 'no_input|no-input', 'help')
     or do { usage(); exit(2); };
 
 if (!defined $opt{name} && !$opt{no_input}) {
@@ -251,6 +260,7 @@ on test => sub {
     requires 'Test::More', '0.98';
     requires 'Test::Script';
     requires 'Test::Differences';
+    requires 'Capture::Tiny';
 };
 ```
 
@@ -266,22 +276,27 @@ cpan-upload App-MyTool-0.01.tar.gz
 
 ## 9. Snapshot testing `--help`
 
-Use `Test::Script` to invoke `script/mytool --help` as a subprocess and
-capture stdout, then diff it against a golden file in `t/data/` with
-`Test::Differences::eq_or_diff()` so failures show a readable line-level
-diff instead of a single boolean mismatch:
+`Test::Script::script_runs()` is an assertion function — it checks the
+script's exit status itself but does not return captured output, so it
+cannot be used to diff stdout against a golden file. Use `Capture::Tiny`
+to actually capture stdout/stderr from the subprocess, keep
+`script_compiles` for the syntax check, and diff the captured stdout
+against a golden file in `t/data/` with `Test::Differences::eq_or_diff()`
+so failures show a readable line-level diff instead of a single boolean
+mismatch:
 
 ```perl
 use Test::More;
 use Test::Script;
 use Test::Differences;
+use Capture::Tiny qw(capture);
 
 script_compiles('script/mytool');
 
-my ($stdout, $stderr, $exit) = script_runs(
-    ['script/mytool', '--help'],
-    { exit => 0 },
-);
+my ($stdout, $stderr, $exit) = capture {
+    system($^X, 'script/mytool', '--help');
+};
+is($exit >> 8, 0, 'script/mytool --help exits 0');
 
 my $golden = do {
     local $/;
@@ -331,7 +346,7 @@ use JSON::PP qw(encode_json);
 use App::MyTool::Core;
 
 my %opt = (shout => 0, json => 0, no_input => 0);
-GetOptions(\%opt, 'name=s', 'shout', 'json', 'no-input', 'help')
+GetOptions(\%opt, 'name=s', 'shout', 'json', 'no_input|no-input', 'help')
     or exit(2);
 
 if ($opt{help}) {

@@ -312,8 +312,9 @@ def test_help_snapshot(snapshot) -> None:
     assert result.output == snapshot
 ```
 
-Add `pytest-syrupy` as a dev dependency and generate/update the stored
-snapshot with:
+Add `syrupy` as a dev dependency (the PyPI/`uv add` package name is `syrupy`,
+not `pytest-syrupy` — the latter does not exist as a distribution) and
+generate/update the stored snapshot with:
 
 ```bash
 uv run pytest --snapshot-update

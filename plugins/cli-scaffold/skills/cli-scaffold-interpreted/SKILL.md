@@ -53,11 +53,11 @@ Follow the resolved reference's pinned idioms exactly:
   the core module must be independently importable/requirable with zero
   CLI-framework code loaded, and must contain no argument-parsing logic.
 - **Exit codes**: apply the frozen 0/1/2 contract from `cli-architecture`.
-  Check each reference's Exit codes section for whether the framework
-  auto-emits this contract (Typer/Click and Symfony Console both already
-  do) or needs explicit handling in application code (oclif, Thor, and
-  Perl's Getopt::Long all need explicit handling) — verify per-language,
-  never assume.
+  Every framework in this paradigm needs some explicit handling to fully
+  satisfy the contract — check each reference's own Exit codes section for
+  exactly which part is automatic versus which part must be written by
+  hand; that per-framework detail lives only in the reference, not here,
+  and must not be restated or assumed from memory.
 - **`--json`/`--no-input`, stdout/stderr, NO_COLOR**: apply exactly as
   each reference's corresponding sections specify.
 - **Distribution**: generate the actual packaging metadata as part of the

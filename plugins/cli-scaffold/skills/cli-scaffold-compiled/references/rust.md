@@ -137,7 +137,7 @@ Document the end-user invocation for each shell:
 mytool generate-completions bash > /usr/local/etc/bash_completion.d/mytool
 mytool generate-completions zsh  > "${fpath[1]}/_mytool"
 mytool generate-completions fish > ~/.config/fish/completions/mytool.fish
-mytool generate-completions power-shell > mytool.ps1
+mytool generate-completions powershell > mytool.ps1
 ```
 
 ## 4. NO_COLOR-aware output
