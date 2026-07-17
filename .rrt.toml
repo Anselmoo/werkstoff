@@ -35,3 +35,54 @@ changelog_file = "plugins/compass/CHANGELOG.md"
   [[tool.rrt.version_groups.version_targets]]
   path = "plugins/compass/.claude-plugin/plugin.json"
   kind = "package_json"
+
+# Field-level sync (rrt fields): each plugin's own plugin.json is the
+# single source of truth for its description; the marketplace.json
+# listing entry is a copy that must be kept in sync rather than hand-
+# edited independently. Requires rrt with the `fields` command
+# (anselmoo/repo-release-tools#178 / PR anselmoo/repo-release-tools#179 —
+# not yet published at the time this was added; run from a local branch
+# checkout via `uv run --project <path-to-repo-release-tools> rrt fields`
+# until it ships in a release).
+
+[[tool.rrt.field_targets]]
+source = "plugins/self-assess/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=self-assess].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/quality/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=quality].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/compass/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=compass].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/cupertino/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=cupertino].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/andon/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=andon].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/cli-scaffold/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=cli-scaffold].description" },
+]
