@@ -1,6 +1,6 @@
 [project]
 name = "werkstoff"
-version = "0.1.0"
+version = "1.0.0"
 description = "Install and manage this repo's Claude Code plugins by driving the claude CLI."
 readme = "README.md"
 requires-python = ">=3.12"
