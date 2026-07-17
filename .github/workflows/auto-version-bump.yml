@@ -61,7 +61,15 @@ jobs:
         id: level
         run: |
           FIRST_LINE=$(echo "${{ github.event.head_commit.message }}" | head -1)
-          if echo "${{ github.event.head_commit.message }}" | grep -q "BREAKING CHANGE" \
+          # Anchored to line-start + colon, matching the Conventional Commits
+          # footer format exactly (`BREAKING CHANGE: ...`) -- a bare
+          # substring search over the whole message is a real trap: prose
+          # anywhere in a commit body that merely *mentions* the phrase
+          # "BREAKING CHANGE" (e.g. a commit describing this very feature)
+          # would false-positive into a major bump. Confirmed via a real
+          # incident: this repo's own PR #2, whose squashed commit body
+          # explained this detection logic in prose, triggered exactly that.
+          if echo "${{ github.event.head_commit.message }}" | grep -qE '^BREAKING[ -]CHANGE:' \
              || echo "$FIRST_LINE" | grep -qE '^[a-z]+(\([a-z0-9_-]+\))?!:'; then
             LEVEL=major
           elif echo "$FIRST_LINE" | grep -qE '^feat(\([a-z0-9_-]+\))?:'; then
