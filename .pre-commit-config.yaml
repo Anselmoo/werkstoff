@@ -1,0 +1,8 @@
+default_install_hook_types: [pre-commit]
+
+repos:
+  - repo: https://github.com/Anselmoo/repo-release-tools
+    rev: v1.13.1
+    hooks:
+      - id: rrt-config-validate
+      - id: rrt-doctor

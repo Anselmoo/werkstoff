@@ -1,0 +1,37 @@
+# rrt (repo-release-tools) configuration for werkstoff.
+#
+# werkstoff bundles three independently-versioned Claude Code plugins in one
+# repo (self-assess, quality, compass), each with its own
+# plugins/<name>/.claude-plugin/plugin.json declaring its own "version".
+# `version_groups` lets rrt bump each plugin's version independently
+# (`rrt bump <bump> --group <name>`) rather than forcing one repo-wide
+# version across all three. Requires rrt >= 1.13.1 (see
+# anselmoo/repo-release-tools#175 — fixed in #176 — for why anything older
+# fails with "Multiple version groups configured" on a valid --group).
+
+[[tool.rrt.version_groups]]
+name = "self-assess"
+release_branch = "release/self-assess/v{version}"
+changelog_file = "plugins/self-assess/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/self-assess/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "quality"
+release_branch = "release/quality/v{version}"
+changelog_file = "plugins/quality/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/quality/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "compass"
+release_branch = "release/compass/v{version}"
+changelog_file = "plugins/compass/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/compass/.claude-plugin/plugin.json"
+  kind = "package_json"

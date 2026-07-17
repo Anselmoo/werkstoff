@@ -1,0 +1,149 @@
+/* ============================================================================
+   CUPERTINO COUNCIL — TOKEN SCAFFOLD
+   ----------------------------------------------------------------------------
+   A Hierarchy-compliant starting point: every design decision is a variable, nothing
+   is hardcoded. Replace the values in :root with a palette from palettes.md and
+   fonts from typography.md. Do NOT use values inline — change them here once.
+
+   The four council-enforced systems are all here:
+     1. Color    (Hierarchy: token consistency)
+     2. Type     (Metaphor + Hierarchy: warmth + hierarchy)
+     3. Space    (Craft: proportional system from one base unit)
+     4. Motion   (Usability: feedback timing; Craft: considered curves)
+   ============================================================================ */
+
+:root {
+  /* --- 1. COLOR (swap for a palette from palettes.md) ---------------------- */
+  --bg:          #0B0D10;
+  --surface:     #14171C;
+  --text:        #E8EAED;
+  --text-muted:  #8B919A;
+  --accent:      #3D8BFF;
+  --accent-soft: #1B2D4A;
+  --border:      #23272E;
+
+  /* derive states from the accent — never invent new hues (Reduction's veto) */
+  --success:     #34D399;
+  --warning:     #FBBF24;
+  --danger:      #F87171;
+
+  /* --- 2. TYPE (swap families for a pairing from typography.md) ------------ */
+  --font-display: 'Archivo', system-ui, sans-serif; /* REPLACE */
+  --font-body:    'IBM Plex Sans', system-ui, sans-serif; /* REPLACE */
+
+  /* three-level hierarchy — major third (1.25) scale */
+  --text-xs:   0.8rem;
+  --text-sm:   0.9rem;
+  --text-base: 1rem;
+  --text-lg:   1.25rem;
+  --text-xl:   1.563rem;
+  --text-2xl:  1.953rem;
+  --text-3xl:  2.441rem;
+  --text-4xl:  3.052rem;
+
+  --leading-tight:  1.15;  /* headings */
+  --leading-normal: 1.6;   /* body */
+  --tracking-tight: -0.02em; /* display */
+  --tracking-wide:  0.05em;  /* all-caps labels */
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold:   700;
+
+  /* --- 3. SPACE (Craft: everything derives from --space-unit) ---------------- */
+  --space-unit: 0.25rem;             /* the single source of spatial truth */
+  --space-1:  calc(var(--space-unit) * 1);   /* 4px  */
+  --space-2:  calc(var(--space-unit) * 2);   /* 8px  */
+  --space-3:  calc(var(--space-unit) * 3);   /* 12px */
+  --space-4:  calc(var(--space-unit) * 4);   /* 16px */
+  --space-6:  calc(var(--space-unit) * 6);   /* 24px */
+  --space-8:  calc(var(--space-unit) * 8);   /* 32px */
+  --space-12: calc(var(--space-unit) * 12);  /* 48px */
+  --space-16: calc(var(--space-unit) * 16);  /* 64px */
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+
+  /* elevation — Craft: shadows imply ONE consistent light source from above */
+  --elev-1: 0 1px 2px rgba(0,0,0,0.18);
+  --elev-2: 0 4px 12px rgba(0,0,0,0.22);
+  --elev-3: 0 12px 32px rgba(0,0,0,0.28);
+
+  /* --- 4. MOTION (Usability: feedback timing; Craft: considered easing) ------------ */
+  --ease-out:   cubic-bezier(0.16, 1, 0.3, 1);   /* entrances, reveals */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* state transitions */
+  --dur-fast:   120ms;  /* hover, focus — instant feedback */
+  --dur-base:   220ms;  /* most transitions */
+  --dur-slow:   400ms;  /* page-load orchestration */
+}
+
+/* ----------------------------------------------------------------------------
+   BASELINE — opinionated resets that enforce council principles
+   ---------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
+}
+h1 { font-size: var(--text-3xl); }   /* primary — once per page */
+h2 { font-size: var(--text-2xl); }   /* secondary */
+h3 { font-size: var(--text-xl); }    /* tertiary */
+
+/* Usability: focus is never silent — visible, consistent focus ring everywhere */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Usability: every interactive element gives immediate, perceptible feedback */
+button, a, [role="button"] {
+  transition: background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              opacity var(--dur-fast) var(--ease-out);
+}
+button:active, [role="button"]:active { transform: scale(0.98); }
+
+/* Usability: disabled state must EXPLAIN itself — never just go dim and silent.
+   Pair this with a title/aria-description in markup. */
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Craft + Usability: respect users who asked for less motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   PAGE-LOAD ORCHESTRATION (Usability: one coordinated reveal > scattered animation)
+   Add .reveal to elements and stagger with --i: 0, 1, 2 …
+   ---------------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: reveal var(--dur-slow) var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+@keyframes reveal {
+  to { opacity: 1; transform: none; }
+}

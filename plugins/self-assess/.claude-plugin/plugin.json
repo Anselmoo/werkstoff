@@ -1,0 +1,19 @@
+{
+  "name": "self-assess",
+  "version": "0.1.0",
+  "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, and a multi-repo portfolio dashboard — read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable).",
+  "author": {
+    "name": "Anselm Hahn",
+    "email": "anselm.hahn@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-quality",
+    "architecture",
+    "documentation",
+    "ci-cd",
+    "conventions",
+    "self-assessment",
+    "portfolio"
+  ]
+}

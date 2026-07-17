@@ -1,0 +1,9 @@
+[project]
+name = "two-package-one-manifest-fixture"
+version = "0.1.0"
+description = "Regression fixture: two Python packages (producer, consumer) sharing a single manifest, with a real data-contract boundary between them. A stage detector keyed on nearest-manifest-directory collapses these into one stage and misses the wire; a detector keyed on package boundary (nearest __init__.py) must resolve two stages and one wire."
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

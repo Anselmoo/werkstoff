@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Defense-in-depth: the data island is built from untrusted source (branch
+     names, candidate prompts, reasoning text — LLM- and user-authored
+     content). Allow only inline script/style (the viewer is self-contained)
+     and block network egress, so even a breakout cannot exfiltrate. The
+     injector (references/render_trace.py) also escapes < > & in the data.
+     Mirrors plugins/self-assess/assets/topology-viewer.html's CSP exactly. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Reasoning trace</title>
+<style>
+  /* Same palette/spacing as topology-viewer.html so this reads as a sibling
+     tool, not a stylistically different one. */
+  :root {
+    --bg: #1e1e1e; --panel: #252526; --panel-2: #2d2d2d;
+    --text: #d4d4d4; --muted: #8a8a8a; --accent: #cc785c;
+    --border: #3a3a3a; --blue: #5ba0e0; --green: #6bb85a; --red: #d9695f;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg);
+    color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  #canvas-wrap { position: absolute; inset: 0; cursor: grab; }
+  #canvas-wrap.dragging { cursor: grabbing; }
+  svg#stage { width: 100%; height: 100%; display: block; }
+
+  #hud { position: absolute; top: 12px; left: 12px; width: 300px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 2; }
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; }
+  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
+  .panel .sub { color: var(--muted); font-size: 12px; }
+  #legend { font-size: 12px; }
+  #legend .row { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+  #legend .swatch { width: 14px; height: 3px; border-radius: 2px; flex: none; }
+  #legend .swatch.node { width: 12px; height: 12px; border-radius: 3px; }
+
+  #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
+    width: 340px; overflow-y: auto; z-index: 2; display: none; }
+  #sidebar.open { display: block; }
+  #sidebar h2 { font-size: 16px; word-break: break-word; }
+  #sidebar .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  #sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin: 12px 0 4px; }
+  #sidebar p { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  #sidebar .closebtn { float: right; cursor: pointer; color: var(--muted);
+    font-size: 18px; line-height: 1; }
+  #sidebar .closebtn:hover { color: var(--text); }
+  #sidebar ol, #sidebar ul { padding-left: 20px; }
+  #sidebar ol li, #sidebar ul li { margin: 6px 0; font-size: 13px; }
+  #sidebar .link { color: var(--blue); cursor: pointer; display: block;
+    padding: 2px 0; font-size: 13px; }
+  #sidebar .link:hover { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 9px;
+    font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin: 0 4px 4px 0; }
+  .badge.winner { border-color: var(--accent); color: var(--accent); }
+  .badge.agree { border-color: var(--green); color: var(--green); }
+  .badge.dissent { border-color: var(--red); color: var(--red); }
+  .scorebar-row { display: flex; align-items: center; gap: 6px; font-size: 12px;
+    margin: 3px 0; }
+  .scorebar-label { width: 108px; flex: none; color: var(--muted); }
+  .scorebar-track { flex: 1; height: 6px; background: var(--panel-2);
+    border-radius: 3px; overflow: hidden; }
+  .scorebar-fill { height: 100%; background: var(--blue); }
+  .scorebar-val { width: 24px; flex: none; text-align: right; color: var(--text); }
+
+  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    color: var(--muted); font-size: 12px; z-index: 2; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
+  #err .panel { max-width: 420px; text-align: center; }
+
+  /* ── Diagram element styles (SVG) ────────────────────────────────────── */
+  .node { cursor: pointer; }
+  .node .box { fill: var(--panel-2); stroke: var(--border); stroke-width: 1.2; }
+  .node:hover .box { stroke: var(--accent); }
+  .node.winner .box { stroke: var(--accent); stroke-width: 2.5; }
+  .node.dim { opacity: 0.55; }
+  .node.dim:hover { opacity: 0.85; }
+  .node .label { fill: var(--text); font: 600 13px system-ui, sans-serif; }
+  .node .sub { fill: var(--muted); font: 11px system-ui, sans-serif; }
+  .node .desc { fill: var(--text); font: 12px/1.4 system-ui, sans-serif; }
+  .node .pill { fill: var(--panel); stroke: var(--border); stroke-width: 1; }
+  .node .pill.winner { stroke: var(--accent); }
+  .node .pill-text { fill: var(--text); font: 600 11px system-ui, sans-serif; }
+  .root-node .box { fill: var(--panel); stroke: var(--border); }
+  .root-node .label { fill: var(--accent); font: 600 13px system-ui, sans-serif; }
+  .root-node .sub { fill: var(--muted); font: 11px system-ui, sans-serif; }
+  .edge { fill: none; stroke: rgba(212,212,212,0.25); stroke-width: 1.4; }
+  .edge.agree { stroke: rgba(107,184,90,0.55); }
+  .edge.dissent { stroke: rgba(217,105,95,0.55); stroke-dasharray: 5 4; }
+  .wave-label { fill: var(--muted); font: 600 11px system-ui, sans-serif;
+    text-transform: uppercase; letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<div id="canvas-wrap">
+  <svg id="stage"><g id="viewport"></g></svg>
+</div>
+
+<div id="hud">
+  <div class="panel">
+    <h1 id="title">Reasoning trace</h1>
+    <div class="sub" id="stats"></div>
+  </div>
+  <div class="panel" id="legend"></div>
+</div>
+
+<aside id="sidebar" class="panel"></aside>
+<div id="hint">scroll to zoom &middot; drag to pan &middot; click a node for details</div>
+<div id="err" class="panel"><p>No reasoning-trace data found in this file.<br>
+Re-render it via <code>references/render_trace.py</code>.</p></div>
+
+<script type="module">
+function fail(html) {
+  const err = document.getElementById("err");
+  err.querySelector("p").innerHTML = html;
+  err.style.display = "grid";
+}
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+// Injected by references/render_trace.py: the compass workflow's actual JSON
+// result replaces the null after the marker comment. This viewer never
+// reaches out to a network — it renders exactly this one embedded object.
+const DATA = /*__TRACE_DATA__*/ null;
+
+if (!DATA || typeof DATA !== "object") {
+  fail("No reasoning-trace data found in this file.<br>Re-render it via <code>references/render_trace.py</code>.");
+  throw new Error("no data");
+}
+
+// ── Shape auto-detection ─────────────────────────────────────────────────
+// Each compass workflow returns a distinctly-shaped JSON object; detect
+// which one we were handed from its own structure, most-specific check
+// first (a self-consistency result could in principle also carry stray
+// fields from another shape, so check the field that's unique to it).
+function detectShape(d) {
+  if (Array.isArray(d.attempts) && d.attempts.length) return "convergent"; // reason-verify-scan.js
+  if (Array.isArray(d.stages) && d.stages.length && d.stages.every(s => s && Array.isArray(s.dependsOn))) return "dag"; // compass-decompose-chain (future compass-solve consumer)
+  if (Array.isArray(d.branches) && d.branches.length) return "tree-branches"; // explore-branches-scan.js
+  if (Array.isArray(d.candidates) && d.candidates.length) return "tree-candidates"; // optimize-instruction-scan.js
+  return null;
+}
+const SHAPE = detectShape(DATA);
+if (!SHAPE) {
+  fail("This JSON doesn't match any known compass result shape (expected one of: <code>branches</code>, <code>candidates</code>, <code>attempts</code>, <code>stages</code> with <code>dependsOn</code>).<br>Re-check the workflow result being injected.");
+  throw new Error("unrecognized shape");
+}
+
+// ── Small shared helpers ───────────────────────────────────────────────────
+function el(tag, attrs = {}, cls) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (cls) e.setAttribute("class", cls);
+  return e;
+}
+function truncate(s, n) {
+  s = String(s == null ? "" : s).trim().replace(/\s+/g, " ");
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+// Wraps plain text into up to maxLines lines of roughly maxChars width,
+// ellipsizing the final line if more text remains than fits. Approximate on
+// purpose (no canvas measureText dependency) — node boxes give this a few
+// px of slack, matching topology-viewer's own "close enough" LOD choices.
+function wrapText(str, maxChars, maxLines) {
+  const words = String(str == null ? "" : str).trim().split(/\s+/).filter(Boolean);
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const test = cur ? cur + " " + w : w;
+    if (test.length > maxChars && cur) { lines.push(cur); cur = w; if (lines.length >= maxLines) break; }
+    else cur = test;
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  const consumedWords = lines.join(" ").split(/\s+/).length;
+  if (lines.length >= maxLines && consumedWords < words.length) {
+    let last = lines[maxLines - 1];
+    while (last.length > maxChars - 1) last = last.slice(0, -1);
+    lines[maxLines - 1] = last.replace(/\s+\S*$/, "") + "…";
+  }
+  return lines.length ? lines : [""];
+}
+function svgText(x, y, lines, opts = {}) {
+  const t = el("text", { x, "text-anchor": opts.anchor || "start" }, opts.cls);
+  lines.forEach((line, i) => {
+    const ts = el("tspan", { x, y: y + i * (opts.lineHeight || 15) });
+    ts.textContent = line;
+    t.appendChild(ts);
+  });
+  return t;
+}
+function scoreBar(label, val, max) {
+  const pct = max > 0 ? Math.max(0, Math.min(100, (val / max) * 100)) : 0;
+  const row = document.createElement("div");
+  row.className = "scorebar-row";
+  row.innerHTML = `<span class="scorebar-label">${esc(label)}</span>
+    <span class="scorebar-track"><span class="scorebar-fill" style="width:${pct}%"></span></span>
+    <span class="scorebar-val">${esc(val)}</span>`;
+  return row;
+}
+
+const viewport = document.getElementById("viewport");
+const svg = document.getElementById("stage");
+const wrap = document.getElementById("canvas-wrap");
+const titleEl = document.getElementById("title");
+const statsEl = document.getElementById("stats");
+const legendEl = document.getElementById("legend");
+const sidebar = document.getElementById("sidebar");
+
+let nodesById = new Map();
+let selected = null;
+
+// ── Sidebar ─────────────────────────────────────────────────────────────
+function closeSidebar() { selected = null; sidebar.classList.remove("open"); sidebar.innerHTML = ""; }
+function openSidebar(html) { sidebar.innerHTML = `<span class="closebtn" id="close">×</span>${html}`;
+  sidebar.classList.add("open");
+  sidebar.querySelector("#close").onclick = closeSidebar;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Tree/branch shapes: explore-branches (Tree-of-Thoughts) and
+// optimize-instruction (APE candidates) — same visual metaphor, a root
+// anchor spreading into scored candidate nodes, winner highlighted.
+// ══════════════════════════════════════════════════════════════════════════
+function normalizeTree(d, shape) {
+  if (shape === "tree-branches") {
+    return {
+      rootLabel: "Scoped problem",
+      rootSub: d.scopedProblem ? truncate(d.scopedProblem, 120) : "",
+      nodes: d.branches.map(b => ({
+        id: b.name, label: b.name, sub: b.angle || "",
+        description: b.description || "",
+        total: b.total, totalMax: 30,
+        subScores: [
+          { k: "Feasibility", v: b.scores && b.scores.feasibility },
+          { k: "Impact", v: b.scores && b.scores.impact },
+          { k: "Risk (lower=better)", v: b.scores && b.scores.risk },
+        ],
+        footnote: b.blocker ? `Blocker: ${b.blocker}` : "",
+        isWinner: b.name === d.selected,
+        extraHtml: "",
+      })),
+      note: d.rationale || "",
+      stats: `${d.branches.length} branch(es) scored · winner: ${esc(d.selected || "—")}`,
+      title: "Branch exploration (Tree-of-Thoughts)",
+    };
+  }
+  // tree-candidates (optimize-instruction)
+  const maxScore = Math.max(1, ...d.candidates.map(c => Number(c.score) || 0));
+  const critiqueHtml = Array.isArray(d.critiqueChecklist) && d.critiqueChecklist.length
+    ? `<h3>Critique checklist</h3><ul>${d.critiqueChecklist.map(c =>
+        `<li><span class="badge ${c.pass ? "agree" : "dissent"}">${c.pass ? "pass" : "fail"}</span>${esc(c.criterion)}<div class="meta">${esc(c.note || "")}</div></li>`).join("")}</ul>
+      ${d.finalPrompt ? `<h3>Final prompt</h3><p>${esc(d.finalPrompt)}</p>` : ""}`
+    : "";
+  return {
+    rootLabel: "Instruction candidates",
+    rootSub: "APE generate → score → critique",
+    nodes: d.candidates.map(c => ({
+      id: c.framing, label: c.framing, sub: "APE framing",
+      description: c.prompt || "",
+      total: c.score, totalMax: maxScore,
+      subScores: [],
+      footnote: "",
+      isWinner: !!(d.winner && c.framing === d.winner.framing),
+      extraHtml: (d.winner && c.framing === d.winner.framing) ? critiqueHtml : "",
+    })),
+    note: "",
+    stats: `${d.candidates.length} candidate(s) scored · winner: ${esc(d.winner ? d.winner.framing : "—")}${d.winner ? ` (${d.winner.score}/${maxScore})` : ""}`,
+    title: "Instruction optimization (APE)",
+  };
+}
+
+function renderTree(d, shape) {
+  const scene = normalizeTree(d, shape);
+  titleEl.textContent = scene.title;
+  statsEl.textContent = scene.stats;
+  legendEl.innerHTML = `
+    <div class="row"><span class="swatch node" style="background:var(--panel-2);border:2px solid var(--accent)"></span>Winner (highest total)</div>
+    <div class="row"><span class="swatch node" style="background:var(--panel-2);border:1px solid var(--border);opacity:.6"></span>Other candidate (dimmed, still inspectable)</div>`;
+
+  const NODE_W = 250, NODE_H = 196, GAP_X = 32, ROOT_W = 260, ROOT_H = 64, GAP_Y = 90, PAD = 40;
+  const n = scene.nodes.length;
+  const totalW = n * NODE_W + (n - 1) * GAP_X;
+  const rootX = PAD + totalW / 2 - ROOT_W / 2;
+  const rootY = PAD;
+  const childY = rootY + ROOT_H + GAP_Y;
+
+  // Root anchor node
+  const root = el("g", {}, "node root-node");
+  root.appendChild(el("rect", { x: rootX, y: rootY, width: ROOT_W, height: ROOT_H, rx: 8 }, "box"));
+  root.appendChild(svgText(rootX + 14, rootY + 24, [scene.rootLabel], { cls: "label" }));
+  if (scene.rootSub) root.appendChild(svgText(rootX + 14, rootY + 42, wrapText(scene.rootSub, 40, 1), { cls: "sub" }));
+  viewport.appendChild(root);
+
+  scene.nodes.forEach((node, i) => {
+    const x = PAD + i * (NODE_W + GAP_X);
+    const y = childY;
+    // connector from root bottom-center to node top-center
+    const rcx = rootX + ROOT_W / 2, rcy = rootY + ROOT_H;
+    const ncx = x + NODE_W / 2, ncy = y;
+    const midY = (rcy + ncy) / 2;
+    const path = el("path", { d: `M${rcx},${rcy} C${rcx},${midY} ${ncx},${midY} ${ncx},${ncy}` }, "edge" + (node.isWinner ? " agree" : ""));
+    viewport.appendChild(path);
+
+    const g = el("g", {}, "node" + (node.isWinner ? " winner" : " dim"));
+    g.appendChild(el("rect", { x, y, width: NODE_W, height: NODE_H, rx: 8 }, "box"));
+    let ty = y + 22;
+    g.appendChild(svgText(x + 14, ty, wrapText(node.label, 26, 1), { cls: "label" }));
+    if (node.sub) { ty += 16; g.appendChild(svgText(x + 14, ty, [node.sub], { cls: "sub" })); }
+    ty += 20;
+    const descLines = wrapText(node.description, 32, 3);
+    g.appendChild(svgText(x + 14, ty, descLines, { cls: "desc" }));
+    ty += descLines.length * 15 + 4;
+    if (node.footnote) { g.appendChild(svgText(x + 14, ty, wrapText(node.footnote, 32, 2), { cls: "sub" })); ty += 30; }
+    // score pill, top-right
+    const pillW = 64, pillH = 22;
+    const pillG = el("g", {});
+    pillG.appendChild(el("rect", { x: x + NODE_W - pillW - 10, y: y + 10, width: pillW, height: pillH, rx: 11 }, "pill" + (node.isWinner ? " winner" : "")));
+    const scoreLabel = node.totalMax ? `${node.total}/${node.totalMax}` : String(node.total);
+    const pt = svgText(x + NODE_W - pillW - 10 + pillW / 2, y + 10 + 15, [scoreLabel], { anchor: "middle", cls: "pill-text" });
+    pillG.appendChild(pt);
+    g.appendChild(pillG);
+    if (node.isWinner) {
+      const badgeW = 56;
+      const bg = el("g", {});
+      bg.appendChild(el("rect", { x: x + 10, y: y - 10, width: badgeW, height: 18, rx: 9 }, "pill winner"));
+      bg.appendChild(svgText(x + 10 + badgeW / 2, y - 10 + 13, ["WINNER"], { anchor: "middle", cls: "pill-text" }));
+      g.appendChild(bg);
+    }
+
+    g.addEventListener("click", () => { selected = node.id; showTreeNodeDetail(node); highlightSelected(); });
+    viewport.appendChild(g);
+    nodesById.set(node.id, { kind: "tree", node, els: [g] });
+  });
+
+  fitViewBox(PAD * 2 + totalW, childY + NODE_H + PAD);
+
+  if (scene.note) {
+    // Static rationale panel under the legend, since it applies to the whole
+    // scene rather than one node.
+    const p = document.createElement("div");
+    p.className = "panel";
+    p.style.fontSize = "12px";
+    p.innerHTML = `<div class="sub">Rationale</div><div style="margin-top:4px">${esc(scene.note)}</div>`;
+    document.getElementById("hud").appendChild(p);
+  }
+}
+
+function showTreeNodeDetail(node) {
+  const scoresHtml = node.subScores.length
+    ? `<h3>Scores</h3><div id="scoreBars"></div>` : "";
+  openSidebar(`
+    <h2>${esc(node.label)}${node.isWinner ? ' <span class="badge winner">winner</span>' : ""}</h2>
+    <div class="meta">${esc(node.sub)}</div>
+    <h3>Description</h3><p>${esc(node.description)}</p>
+    ${node.footnote ? `<h3>Blocker</h3><p>${esc(node.footnote.replace(/^Blocker:\s*/, ""))}</p>` : ""}
+    ${scoresHtml}
+    <div class="badge">Total ${esc(node.total)}${node.totalMax ? "/" + esc(node.totalMax) : ""}</div>
+    ${node.extraHtml || ""}
+  `);
+  if (node.subScores.length) {
+    const box = document.getElementById("scoreBars");
+    node.subScores.forEach(s => { if (s.v != null) box.appendChild(scoreBar(s.k, s.v, 10)); });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DAG shape: compass-decompose-chain stages, dependsOn edges. Parallel-safe
+// stages (dependsOn: [] or same wave) drawn side-by-side in a column;
+// sequential dependencies drawn left-to-right as arrows between waves.
+// ══════════════════════════════════════════════════════════════════════════
+function computeWaves(stages) {
+  const byId = new Map(stages.map(s => [s.id, s]));
+  const wave = new Map();
+  const visiting = new Set();
+  function waveOf(s) {
+    if (wave.has(s.id)) return wave.get(s.id);
+    if (visiting.has(s.id)) { wave.set(s.id, 0); return 0; } // defensive: cycle guard, shouldn't happen per SKILL.md validation
+    visiting.add(s.id);
+    const deps = (s.dependsOn || []).filter(id => byId.has(id));
+    const w = deps.length ? 1 + Math.max(...deps.map(id => waveOf(byId.get(id)))) : 0;
+    visiting.delete(s.id);
+    wave.set(s.id, w);
+    return w;
+  }
+  stages.forEach(waveOf);
+  return wave;
+}
+
+function renderDag(d) {
+  const stages = d.stages;
+  titleEl.textContent = "Stage decomposition (DAG)";
+  const waveMap = computeWaves(stages);
+  const maxWave = Math.max(...stages.map(s => waveMap.get(s.id)));
+  statsEl.textContent = `${stages.length} stage(s) · ${maxWave + 1} wave(s)`;
+  legendEl.innerHTML = `
+    <div class="row"><span class="swatch" style="background:var(--blue)"></span>Dependency (dependsOn)</div>
+    <div class="row"><span class="swatch node" style="background:var(--panel-2);border:1px solid var(--accent)"></span>Entry stage (dependsOn: [])</div>`;
+
+  const NODE_W = 230, NODE_H = 140, GAP_X = 70, GAP_Y = 26, PAD = 40, WAVE_HEADER = 26;
+  const cols = [];
+  for (let w = 0; w <= maxWave; w++) cols.push(stages.filter(s => waveMap.get(s.id) === w));
+  const maxRows = Math.max(...cols.map(c => c.length));
+  const totalW = cols.length * NODE_W + (cols.length - 1) * GAP_X;
+  const totalH = WAVE_HEADER + maxRows * NODE_H + (maxRows - 1) * GAP_Y;
+
+  const pos = new Map();
+  cols.forEach((col, ci) => {
+    const x = PAD + ci * (NODE_W + GAP_X);
+    viewport.appendChild(svgText(x + NODE_W / 2, PAD + 14, [`Wave ${ci}`], { anchor: "middle", cls: "wave-label" }));
+    col.forEach((s, ri) => {
+      const y = PAD + WAVE_HEADER + ri * (NODE_H + GAP_Y);
+      pos.set(s.id, { x, y, cx: x + NODE_W, cy: y + NODE_H / 2, lx: x, lcy: y + NODE_H / 2 });
+    });
+  });
+
+  // Edges first (under nodes)
+  for (const s of stages) {
+    const to = pos.get(s.id);
+    for (const dep of s.dependsOn || []) {
+      const from = pos.get(dep);
+      if (!from || !to) continue;
+      const midX = (from.cx + to.lx) / 2;
+      const p = el("path", { d: `M${from.cx},${from.cy} C${midX},${from.cy} ${midX},${to.lcy} ${to.lx},${to.lcy}`,
+        "marker-end": "url(#arrow)" }, "edge");
+      viewport.appendChild(p);
+    }
+  }
+
+  for (const s of stages) {
+    const { x, y } = pos.get(s.id);
+    const isEntry = !(s.dependsOn && s.dependsOn.length);
+    const g = el("g", {}, "node" + (isEntry ? " winner" : ""));
+    g.appendChild(el("rect", { x, y, width: NODE_W, height: NODE_H, rx: 8 }, "box"));
+    let ty = y + 22;
+    g.appendChild(svgText(x + 14, ty, wrapText(s.name || s.id, 26, 1), { cls: "label" }));
+    ty += 16;
+    g.appendChild(svgText(x + 14, ty, [s.id], { cls: "sub" }));
+    ty += 22;
+    g.appendChild(svgText(x + 14, ty, ["IN:", ...wrapText(s.inputContract, 30, 2)], { cls: "desc" }));
+    ty += 3 * 15 + 6;
+    g.appendChild(svgText(x + 14, ty, ["OUT:", ...wrapText(s.outputContract, 30, 2)], { cls: "desc" }));
+
+    g.addEventListener("click", () => { selected = s.id; showDagNodeDetail(s, isEntry); });
+    viewport.appendChild(g);
+    nodesById.set(s.id, { kind: "dag", node: s, els: [g] });
+  }
+
+  fitViewBox(PAD * 2 + totalW, PAD + WAVE_HEADER + totalH);
+}
+
+function showDagNodeDetail(s, isEntry) {
+  openSidebar(`
+    <h2>${esc(s.name || s.id)}${isEntry ? ' <span class="badge winner">entry stage</span>' : ""}</h2>
+    <div class="meta">id: ${esc(s.id)}</div>
+    <h3>Input contract</h3><p>${esc(s.inputContract || "")}</p>
+    <h3>Output contract</h3><p>${esc(s.outputContract || "")}</p>
+    <h3>Depends on</h3>${(s.dependsOn && s.dependsOn.length)
+      ? s.dependsOn.map(id => `<span class="link" data-id="${esc(id)}">${esc(id)}</span>`).join("")
+      : '<div class="meta">none — parallel-safe entry stage</div>'}
+  `);
+  sidebar.querySelectorAll(".link").forEach(l => l.onclick = () => {
+    const entry = nodesById.get(l.dataset.id);
+    if (entry && entry.kind === "dag") { selected = entry.node.id; showDagNodeDetail(entry.node, !(entry.node.dependsOn && entry.node.dependsOn.length)); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Parallel-convergent shape: reason-verify self-consistency. Independent
+// reasoning lanes converge into one majority-answer node; dissenting
+// attempts are visually distinguished from agreeing ones.
+// ══════════════════════════════════════════════════════════════════════════
+function renderConvergent(d) {
+  titleEl.textContent = "Self-consistency check";
+  const dissentSet = new Set((d.dissentingAttempts || []).map(a => a.strategy));
+  const hasMajority = d.majorityAnswer != null;
+  statsEl.textContent = hasMajority
+    ? `${d.agreementCount}/${d.attempts.length} agree · majority: ${truncate(d.majorityAnswer, 60)}`
+    : `No majority — ${d.attempts.length} attempt(s) disagree`;
+  legendEl.innerHTML = `
+    <div class="row"><span class="swatch" style="background:var(--green)"></span>Agrees with majority</div>
+    <div class="row"><span class="swatch" style="background:var(--red)"></span>Dissenting attempt</div>`;
+
+  const LANE_W = 230, LANE_H = 110, GAP_Y = 30, PAD = 40, CONVERGE_GAP = 90, CONVERGE_W = 260, CONVERGE_H = 150;
+  const lanes = d.attempts;
+  const totalH = lanes.length * LANE_H + (lanes.length - 1) * GAP_Y;
+  const laneX = PAD;
+  const convergeX = laneX + LANE_W + CONVERGE_GAP;
+  const convergeY = PAD + totalH / 2 - CONVERGE_H / 2;
+
+  // Majority node (or "no majority" node)
+  const cg = el("g", {}, "node" + (hasMajority ? " winner" : " dim"));
+  cg.appendChild(el("rect", { x: convergeX, y: convergeY, width: CONVERGE_W, height: CONVERGE_H, rx: 8 }, "box"));
+  let cty = convergeY + 22;
+  cg.appendChild(svgText(convergeX + 14, cty, [hasMajority ? "Majority answer" : "No majority"], { cls: "label" }));
+  cty += 20;
+  const answerLines = hasMajority ? wrapText(d.majorityAnswer, 30, 5) : wrapText("All attempts disagree or tied — judge the strongest reasoning chain.", 30, 5);
+  cg.appendChild(svgText(convergeX + 14, cty, answerLines, { cls: "desc" }));
+  cg.addEventListener("click", () => showConvergentSummary(d, hasMajority));
+  viewport.appendChild(cg);
+  nodesById.set("__majority__", { kind: "convergent-summary" });
+
+  lanes.forEach((a, i) => {
+    const y = PAD + i * (LANE_H + GAP_Y);
+    const dissenting = dissentSet.has(a.strategy) || (hasMajority && a.answer && String(a.answer).trim().toLowerCase().replace(/\s+/g, " ") !== String(d.majorityAnswer).trim().toLowerCase().replace(/\s+/g, " "));
+    const agreeing = hasMajority && !dissenting;
+
+    const cx = laneX + LANE_W, cy = y + LANE_H / 2;
+    const midX = (cx + convergeX) / 2;
+    const path = el("path", { d: `M${cx},${cy} C${midX},${cy} ${midX},${convergeY + CONVERGE_H / 2} ${convergeX},${convergeY + CONVERGE_H / 2}` },
+      "edge" + (agreeing ? " agree" : dissenting ? " dissent" : ""));
+    viewport.appendChild(path);
+
+    const g = el("g", {}, "node" + (agreeing ? " winner" : dissenting ? "" : ""));
+    g.appendChild(el("rect", { x: laneX, y, width: LANE_W, height: LANE_H, rx: 8 }, "box"));
+    let ty = y + 22;
+    g.appendChild(svgText(laneX + 14, ty, wrapText(a.strategy, 26, 1), { cls: "label" }));
+    ty += 18;
+    g.appendChild(svgText(laneX + 14, ty, wrapText("Answer: " + (a.answer || ""), 28, 3), { cls: "desc" }));
+    if (dissenting) {
+      const bw = 64;
+      const bg = el("g", {});
+      bg.appendChild(el("rect", { x: laneX + LANE_W - bw - 10, y: y + 10, width: bw, height: 18, rx: 9 }, "pill"));
+      bg.appendChild(svgText(laneX + LANE_W - bw - 10 + bw / 2, y + 10 + 13, ["dissent"], { anchor: "middle", cls: "pill-text" }));
+      bg.querySelector("rect").style.stroke = "var(--red)";
+      g.appendChild(bg);
+    }
+    g.addEventListener("click", () => showLaneDetail(a, dissenting));
+    viewport.appendChild(g);
+    nodesById.set(a.strategy, { kind: "lane", node: a, els: [g] });
+  });
+
+  fitViewBox(convergeX + CONVERGE_W + PAD, Math.max(totalH, CONVERGE_H) + PAD * 2);
+}
+
+function showLaneDetail(a, dissenting) {
+  openSidebar(`
+    <h2>${esc(a.strategy)}${dissenting ? ' <span class="badge dissent">dissent</span>' : ' <span class="badge agree">agrees</span>'}</h2>
+    <h3>Answer</h3><p>${esc(a.answer || "")}</p>
+    <h3>Reasoning</h3><p>${esc(a.reasoning || "")}</p>
+    ${a.usedCodeExecution ? '<div class="badge">used code execution (PAL)</div>' : ""}
+  `);
+}
+function showConvergentSummary(d, hasMajority) {
+  openSidebar(`
+    <h2>${hasMajority ? "Majority answer" : "No majority"}</h2>
+    ${d.reasoningTask ? `<h3>Task</h3><p>${esc(truncate(d.reasoningTask, 600))}</p>` : ""}
+    <h3>Result</h3><p>${esc(hasMajority ? d.majorityAnswer : "All attempts disagree or tied.")}</p>
+    ${hasMajority ? `<div class="badge agree">${esc(d.agreementCount)}/${esc(d.attempts.length)} agree</div>` : ""}
+  `);
+}
+
+// ── Shared: viewBox fit + selection highlight + arrow marker defs ────────
+function fitViewBox(w, h) {
+  // The HUD panel (title/legend) floats over the canvas at top-left, same as
+  // topology-viewer.html's #hud — reserve viewBox space on the left so the
+  // first wave of nodes doesn't load in hidden underneath it. A fixed
+  // reserve (rather than a computed one) is deliberate: these diagrams are
+  // small (a handful of nodes), so a constant offset keeps the fix simple
+  // and the content still pans/zooms freely afterward.
+  const LEFT_RESERVE = 280;
+  svg.setAttribute("viewBox", `${-LEFT_RESERVE} 0 ${w + LEFT_RESERVE} ${h}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+}
+function highlightSelected() {
+  for (const [id, entry] of nodesById) {
+    if (!entry.els) continue;
+    entry.els.forEach(g => g.classList.toggle("selected", id === selected));
+  }
+}
+function addArrowMarker() {
+  const defs = el("defs", {});
+  const marker = el("marker", { id: "arrow", viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+  const path = el("path", { d: "M0,0 L10,5 L0,10 z" });
+  path.style.fill = "var(--blue)";
+  path.style.opacity = "0.6";
+  marker.appendChild(path);
+  defs.appendChild(marker);
+  svg.insertBefore(defs, viewport);
+}
+
+// ── Pan / zoom (plain mouse events, no library) ──────────────────────────
+let vpX = 0, vpY = 0, vpK = 1;
+function applyTransform() { viewport.setAttribute("transform", `translate(${vpX} ${vpY}) scale(${vpK})`); }
+let dragging = false, lastX = 0, lastY = 0;
+wrap.addEventListener("mousedown", e => { dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.classList.add("dragging"); });
+window.addEventListener("mousemove", e => {
+  if (!dragging) return;
+  vpX += e.clientX - lastX; vpY += e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  applyTransform();
+});
+window.addEventListener("mouseup", () => { dragging = false; wrap.classList.remove("dragging"); });
+wrap.addEventListener("wheel", e => {
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.001);
+  const newK = Math.min(4, Math.max(0.25, vpK * factor));
+  // zoom around cursor position within the wrap element
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  vpX = mx - (mx - vpX) * (newK / vpK);
+  vpY = my - (my - vpY) * (newK / vpK);
+  vpK = newK;
+  applyTransform();
+}, { passive: false });
+
+// Click on empty canvas closes the sidebar.
+wrap.addEventListener("click", e => { if (e.target === svg || e.target === wrap) closeSidebar(); });
+
+// ── Render ────────────────────────────────────────────────────────────────
+try {
+  addArrowMarker();
+  if (SHAPE === "tree-branches" || SHAPE === "tree-candidates") renderTree(DATA, SHAPE);
+  else if (SHAPE === "dag") renderDag(DATA);
+  else if (SHAPE === "convergent") renderConvergent(DATA);
+} catch (e) {
+  fail(`Failed to render this trace: ${esc(e.message || String(e))}`);
+  throw e;
+}
+</script>
+</body>
+</html>

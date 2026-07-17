@@ -1,0 +1,19 @@
+{
+  "name": "andon",
+  "version": "0.1.0",
+  "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) — never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
+  "author": {
+    "name": "Anselm Hahn",
+    "email": "anselm.hahn@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "code-quality",
+    "verification",
+    "value-stream",
+    "adversarial-review",
+    "self-assessment",
+    "hardening-loop",
+    "okf"
+  ]
+}

@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Defense-in-depth: the data island is built from untrusted source (category
+     labels, rule names, and other values ultimately derive from analyzed repo
+     content). Allow only inline script/style (this viewer is self-contained)
+     and block network egress, so even a breakout cannot exfiltrate. The
+     injector also escapes <, >, & in the injected JSON text. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Self-assess findings dashboard</title>
+<style>
+  :root {
+    --bg: #1e1e1e; --panel: #252526; --panel-2: #2d2d2d;
+    --text: #d4d4d4; --muted: #8a8a8a; --accent: #cc785c;
+    --border: #3a3a3a; --blue: #5ba0e0; --green: #6bb85a;
+    --high: #e5534b; --medium: #e0a458; --low: #6bb85a;
+    --info: #5ba0e0; --unclass: #7a7a7a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; min-height: 100%; background: var(--bg);
+    color: var(--text); font: 14px/1.5 system-ui, sans-serif; }
+  body { padding: 24px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 20px; color: var(--accent); margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 12px; margin: 0 0 20px; }
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px; margin-bottom: 18px; }
+  .panel h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 0 0 12px; }
+
+  /* ---- empty states ---- */
+  #empty, #clean { display: none; place-items: center; text-align: center;
+    padding: 48px 20px; }
+  #empty p, #clean p { max-width: 460px; color: var(--text); }
+  #empty code, #clean code { background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px; font-size: 13px; }
+  #empty .title, #clean .title { font-size: 16px; color: var(--accent); margin-bottom: 8px; }
+
+  /* ---- stat row ---- */
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { flex: 1 1 140px; background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 12px; }
+  .stat .n { font-size: 22px; font-weight: 600; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .stat.high .n { color: var(--high); }
+  .stat.medium .n { color: var(--medium); }
+  .stat.low .n { color: var(--low); }
+  .stat.info .n { color: var(--info); }
+  .stat.unclass .n { color: var(--unclass); }
+
+  /* ---- donut + legend ---- */
+  #donutWrap { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+  #donut { flex: none; width: 160px; height: 160px; }
+  .legend { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .legend .row { display: flex; align-items: center; gap: 8px; }
+  .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; flex: none; }
+
+  /* ---- per-domain bars ---- */
+  .domain-card { margin-bottom: 14px; }
+  .domain-card:last-child { margin-bottom: 0; }
+  .domain-card h3 { font-size: 13px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .domain-card .badge { font-size: 10px; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1px 7px; font-weight: normal; }
+  .domain-meta { color: var(--muted); font-size: 11px; margin: 0 0 8px; }
+  .bar-row { display: grid; grid-template-columns: 90px 1fr 34px; align-items: center;
+    gap: 8px; margin: 4px 0; font-size: 12px; }
+  .bar-row .label { color: var(--muted); text-align: right; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { background: var(--panel-2); border-radius: 3px; height: 10px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+  .bar-row .count { color: var(--text); }
+  .not-run { color: var(--muted); font-size: 12px; font-style: italic; }
+
+  /* ---- table ---- */
+  #controls { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  #controls label { font-size: 12px; color: var(--muted); }
+  #sevFilter { background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 8px; font: inherit; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: .03em; padding: 6px 10px; cursor: pointer;
+    border-bottom: 1px solid var(--border); user-select: none; white-space: nowrap; }
+  thead th:hover { color: var(--text); }
+  thead th .arrow { opacity: .5; font-size: 10px; margin-left: 3px; }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr:hover { background: var(--panel-2); }
+  .sev-pill { display: inline-block; padding: 1px 8px; border-radius: 9px; font-size: 11px;
+    border: 1px solid var(--border); }
+  .sev-pill.High { color: var(--high); border-color: var(--high); }
+  .sev-pill.Medium { color: var(--medium); border-color: var(--medium); }
+  .sev-pill.Low { color: var(--low); border-color: var(--low); }
+  .sev-pill.Info { color: var(--info); border-color: var(--info); }
+  .sev-pill.Unclassified { color: var(--unclass); }
+  td.evidence { color: var(--muted); font-size: 12px; }
+  #tableEmpty { display: none; color: var(--muted); padding: 16px; text-align: center; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h1 id="title">Self-assess findings dashboard</h1>
+<div class="sub" id="subtitle"></div>
+
+<div id="empty" class="panel">
+  <div>
+    <div class="title">No data yet</div>
+    <p>This dashboard hasn't been populated with a scan yet. Run one or more
+    of the domain skills against your repository, then re-run
+    <code>/self-assess-status</code> to render this file with real results:</p>
+    <p>
+      <code>/self-assess-docs-drift</code><br>
+      <code>/self-assess-ci-topology</code><br>
+      <code>/self-assess-lint-audit</code>
+    </p>
+    <p>Looking for the import/dependency graph instead? See
+    <code>STAGE_MAP.html</code> (from <code>/self-assess-stage-map</code>) —
+    that's a separate viewer, not part of this dashboard.</p>
+  </div>
+</div>
+
+<div id="clean" class="panel">
+  <div>
+    <div class="title">Clean bill of health</div>
+    <p>The domain skills that have run so far reported zero findings.
+    Nothing to triage right now.</p>
+  </div>
+</div>
+
+<div id="body" style="display:none">
+
+  <div class="panel">
+    <h2>Overview</h2>
+    <div class="stats" id="statRow"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Severity distribution (all domains)</h2>
+    <div id="donutWrap">
+      <svg id="donut" width="160" height="160" viewBox="0 0 160 160"></svg>
+      <div class="legend" id="legend"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Per-domain breakdown</h2>
+    <div id="domainCards"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Findings</h2>
+    <div id="controls">
+      <label for="sevFilter">Filter by severity</label>
+      <select id="sevFilter">
+        <option value="">All</option>
+        <option value="High">High</option>
+        <option value="Medium">Medium</option>
+        <option value="Low">Low</option>
+        <option value="Info">Info</option>
+        <option value="Unclassified">Unclassified</option>
+      </select>
+    </div>
+    <table id="findingsTable">
+      <thead>
+        <tr>
+          <th data-key="domain">Domain <span class="arrow"></span></th>
+          <th data-key="severity">Severity <span class="arrow"></span></th>
+          <th data-key="title">Title / Rule <span class="arrow"></span></th>
+          <th data-key="evidence">Evidence <span class="arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div id="tableEmpty">No findings match this filter.</div>
+  </div>
+
+</div>
+
+<script>
+/* The injector (skills/self-assess-status/scripts/render_dashboard.py)
+   replaces the literal comment below with a JSON-safe-escaped payload, or
+   leaves it as `null` for a fresh, un-rendered copy of this template —
+   that's the "no data yet" case. */
+const DATA = /*__SELF_ASSESS_DASHBOARD_DATA__*/ null;
+
+// ---- domain registry: field names below are copied verbatim from each
+// domain skill's own "Also write ... summary.json" section, not invented,
+// and cross-checked against the authoritative return shape of the
+// matching workflows/*.js script:
+//   docs_drift_summary.json  -> self-assess-docs-drift/SKILL.md Step 2
+//     {"docFilesChecked": N, "totalClaimsChecked": N,
+//      "confirmedContradictions": N, "byCategory": {...}}
+//     byCategory keys are the workflow's fixed category enum (Pattern,
+//     Deprecation, Policy, Architecture, Behavior) — this skill has no
+//     severity field, mirroring quality-status's contractDrift handling.
+//   ci_topology_summary.json -> self-assess-ci-topology/SKILL.md Step 2
+//     {"remoteCount": N, "ciConfigFileCount": N, "findingsBySeverity": {...}}
+//     findingsBySeverity keys come from the workflow's severity enum
+//     (High, Medium, Low, Info) — note this domain is the only one of the
+//     three that can report "Info", not just High/Medium/Low.
+//   business_rules_summary.json -> self-assess-extract-rules/SKILL.md Step 2
+//     {"rulesFound": N, "byCategory": {...}, "byPriority": {...},
+//      "needsSme": N, "rejectedCount": N}
+//     byCategory keys are Calculation/Validation/Lifecycle/Policy — this
+//     skill has no severity field either (a mined rule isn't a graded
+//     finding), so it uses the same categoryField+fallbackField shape as
+//     docsDrift, with needsSme (rules a human still has to confirm) as
+//     the fallback count rather than rulesFound (total mined, not itself
+//     a problem signal).
+//   lint_audit_summary.json  -> self-assess-lint-audit/SKILL.md Step 2
+//     {"conventionsSource": "...", "rulesChecked": N,
+//      "violationsBySeverity": {...}}
+//     violationsBySeverity keys are High/Medium/Low (no Info in this
+//     workflow's severity enum). rulesChecked here is a COUNT (the
+//     sidecar's own note: the workflow's rulesChecked is an array of rule
+//     names, this sidecar stores that array's length instead).
+const DOMAINS = [
+  { key: "docsDrift", label: "Docs Drift", file: "docs_drift_summary.json",
+    categoryField: "byCategory", fallbackField: "confirmedContradictions",
+    fallbackLabel: "Confirmed contradictions",
+    metaFields: [
+      { f: "docFilesChecked", label: "doc file(s) checked" },
+      { f: "totalClaimsChecked", label: "claim(s) checked" },
+    ] },
+  { key: "ciTopology", label: "CI Topology", file: "ci_topology_summary.json",
+    severityField: "findingsBySeverity",
+    metaFields: [
+      { f: "remoteCount", label: "remote(s)" },
+      { f: "ciConfigFileCount", label: "CI config file(s)" },
+    ] },
+  { key: "lintAudit", label: "Lint Audit", file: "lint_audit_summary.json",
+    severityField: "violationsBySeverity",
+    metaFields: [
+      { f: "conventionsSource", label: "source" },
+      { f: "rulesChecked", label: "rule(s) checked" },
+    ] },
+  { key: "businessRules", label: "Business Rules", file: "business_rules_summary.json",
+    categoryField: "byCategory", fallbackField: "needsSme",
+    fallbackLabel: "Rule(s) needing SME confirmation",
+    metaFields: [
+      { f: "rulesFound", label: "rule(s) found" },
+    ] },
+];
+const SEV_ORDER = ["High", "Medium", "Low", "Info", "Unclassified"];
+const SEV_COLOR = { High: "var(--high)", Medium: "var(--medium)", Low: "var(--low)",
+  Info: "var(--info)", Unclassified: "var(--unclass)" };
+
+function el(tag, attrs, ...children) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.className = v;
+    else if (k === "style") e.setAttribute("style", v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+// SVG child elements MUST be created with createElementNS, not
+// document.createElement — the latter produces a plain HTMLUnknownElement
+// that accepts attributes (including style) but never lays out or paints
+// as SVG content (getBoundingClientRect stays 0×0 and nothing is drawn).
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs, ...children) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "class") e.setAttribute("class", v);
+    else e.setAttribute(k, v);
+  }
+  for (const c of children) {
+    if (c == null) continue;
+    e.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return e;
+}
+
+function sum(obj) { return Object.values(obj || {}).reduce((a, b) => a + (Number(b) || 0), 0); }
+
+// Combined severity totals across domains that actually track severity.
+// docsDrift has no severity field in its documented summary shape (its
+// byCategory buckets are categories, not severities), so its
+// confirmedContradictions count is folded into "Unclassified" rather than
+// invented as a severity that skill never reports — same treatment
+// quality-status gives contractDrift's confirmedMismatches.
+function combinedSeverity(data) {
+  const totals = { High: 0, Medium: 0, Low: 0, Info: 0, Unclassified: 0 };
+  for (const d of DOMAINS) {
+    const obj = data[d.key];
+    if (!obj) continue;
+    if (d.severityField && obj[d.severityField]) {
+      for (const [sev, n] of Object.entries(obj[d.severityField])) {
+        totals[sev] = (totals[sev] || 0) + (Number(n) || 0);
+      }
+    } else if (d.fallbackField) {
+      totals.Unclassified += Number(obj[d.fallbackField]) || 0;
+    }
+  }
+  return totals;
+}
+
+// Table rows are synthesized from the aggregate bySeverity/byCategory
+// breakdowns each sidecar documents — none of the 3 sidecar shapes carry
+// per-finding title/evidence text, only counts, so a row here represents a
+// bucket ("N findings of severity X" / "N findings in category Y"), not a
+// single literal finding. If a future sidecar version adds a real
+// `findings` array, that is used directly instead (each entry already
+// shaped {severity, title, evidence}).
+function domainRows(d, obj) {
+  if (Array.isArray(obj.findings)) {
+    return obj.findings.map(f => ({
+      domain: d.label, severity: f.severity || "Unclassified",
+      title: f.title || f.rule || "(untitled finding)",
+      evidence: f.evidence || "",
+    }));
+  }
+  const rows = [];
+  if (d.severityField && obj[d.severityField]) {
+    for (const [sev, n] of Object.entries(obj[d.severityField])) {
+      if (!n) continue;
+      rows.push({
+        domain: d.label, severity: sev, title: `${sev} severity findings`,
+        evidence: `${n} finding(s) — ${d.file} → ${d.severityField}.${sev}`,
+      });
+    }
+  }
+  if (d.categoryField && obj[d.categoryField]) {
+    for (const [cat, n] of Object.entries(obj[d.categoryField])) {
+      if (!n) continue;
+      rows.push({
+        domain: d.label, severity: "Unclassified", title: cat,
+        evidence: `${n} finding(s) — ${d.file} → ${d.categoryField}.${cat}`,
+      });
+    }
+  }
+  if (d.fallbackField && !rows.length && Number(obj[d.fallbackField]) > 0) {
+    rows.push({
+      domain: d.label, severity: "Unclassified", title: d.fallbackLabel || d.fallbackField,
+      evidence: `${obj[d.fallbackField]} finding(s) — ${d.file} → ${d.fallbackField}`,
+    });
+  }
+  return rows;
+}
+
+function renderStats(data) {
+  const totals = combinedSeverity(data);
+  const grandTotal = sum(totals);
+  const row = document.getElementById("statRow");
+  row.appendChild(el("div", { class: "stat" },
+    el("div", { class: "n" }, String(grandTotal)),
+    el("div", { class: "l" }, "Total findings")));
+  for (const sev of SEV_ORDER) {
+    row.appendChild(el("div", { class: `stat ${sev.toLowerCase()}` },
+      el("div", { class: "n" }, String(totals[sev] || 0)),
+      el("div", { class: "l" }, sev)));
+  }
+  const ranDomains = DOMAINS.filter(d => data[d.key]).length;
+  row.appendChild(el("div", { class: "stat" },
+    el("div", { class: "n" }, `${ranDomains}/${DOMAINS.length}`),
+    el("div", { class: "l" }, "Domains run")));
+}
+
+function renderDonut(data) {
+  const totals = combinedSeverity(data);
+  const grandTotal = sum(totals);
+  const svg = document.getElementById("donut");
+  const legend = document.getElementById("legend");
+  const cx = 80, cy = 80, r = 60, sw = 22;
+  const circumference = 2 * Math.PI * r;
+
+  // Colors are set via the `style` attribute (not bare SVG presentation
+  // attributes like `stroke="var(--high)"`) because presentation
+  // attributes don't reliably resolve CSS custom properties across
+  // renderers — `style="stroke:var(--high)"` always does.
+  if (!grandTotal) {
+    svg.appendChild(svgEl("circle", {
+      cx, cy, r, fill: "none", style: "stroke:var(--panel-2)", "stroke-width": String(sw),
+    }));
+    legend.appendChild(el("div", { class: "row" },
+      el("span", { class: "swatch", style: "background:var(--panel-2)" }),
+      el("span", {}, "No findings recorded")));
+    return;
+  }
+
+  let offset = 0;
+  for (const sev of SEV_ORDER) {
+    const n = totals[sev] || 0;
+    if (!n) continue;
+    const frac = n / grandTotal;
+    const dash = frac * circumference;
+    const circle = svgEl("circle", {
+      cx, cy, r, fill: "none", style: `stroke:${SEV_COLOR[sev]}`, "stroke-width": String(sw),
+      "stroke-dasharray": `${dash} ${circumference - dash}`,
+      "stroke-dashoffset": String(-offset),
+      transform: `rotate(-90 ${cx} ${cy})`,
+    });
+    svg.appendChild(circle);
+    offset += dash;
+
+    legend.appendChild(el("div", { class: "row" },
+      el("span", { class: "swatch", style: `background:${SEV_COLOR[sev]}` }),
+      el("span", {}, `${sev} — ${n} (${Math.round(frac * 100)}%)`)));
+  }
+  svg.appendChild(svgEl("text", {
+    x: String(cx), y: String(cy - 2), "text-anchor": "middle",
+    style: "fill:var(--text)", "font-size": "22", "font-weight": "600",
+  }, String(grandTotal)));
+  svg.appendChild(svgEl("text", {
+    x: String(cx), y: String(cy + 16), "text-anchor": "middle",
+    style: "fill:var(--muted)", "font-size": "10",
+  }, "findings"));
+}
+
+function renderDomainCards(data) {
+  const wrap = document.getElementById("domainCards");
+  for (const d of DOMAINS) {
+    const obj = data[d.key];
+    const card = el("div", { class: "domain-card" });
+    if (!obj) {
+      card.appendChild(el("h3", {}, d.label, el("span", { class: "badge" }, "not run yet")));
+      card.appendChild(el("div", { class: "not-run" }, `No ${d.file} found under output_dir.`));
+      wrap.appendChild(card);
+      continue;
+    }
+    card.appendChild(el("h3", {}, d.label));
+
+    if (Array.isArray(d.metaFields) && d.metaFields.length) {
+      const parts = d.metaFields
+        .filter(m => obj[m.f] !== undefined && obj[m.f] !== null && obj[m.f] !== "")
+        .map(m => `${obj[m.f]} ${m.label}`);
+      if (parts.length) card.appendChild(el("div", { class: "domain-meta" }, parts.join(" · ")));
+    }
+
+    const buckets = {};
+    if (d.severityField && obj[d.severityField]) Object.assign(buckets, obj[d.severityField]);
+    else if (d.categoryField && obj[d.categoryField]) Object.assign(buckets, obj[d.categoryField]);
+
+    const entries = Object.entries(buckets).filter(([, n]) => n);
+    if (!entries.length) {
+      card.appendChild(el("div", { class: "not-run" }, "0 findings."));
+      wrap.appendChild(card);
+      continue;
+    }
+    const max = Math.max(...entries.map(([, n]) => Number(n) || 0));
+    for (const [label, n] of entries) {
+      const count = Number(n) || 0;
+      const pct = max ? Math.max(4, Math.round((count / max) * 100)) : 0;
+      const color = SEV_COLOR[label] || "var(--blue)";
+      card.appendChild(el("div", { class: "bar-row" },
+        el("div", { class: "label" }, label),
+        el("div", { class: "bar-track" },
+          el("div", { class: "bar-fill", style: `width:${pct}%;background:${color}` })),
+        el("div", { class: "count" }, String(count))));
+    }
+    wrap.appendChild(card);
+  }
+}
+
+let allRows = [];
+let sortKey = "severity";
+let sortDir = 1;
+const SEV_RANK = { High: 0, Medium: 1, Low: 2, Info: 3, Unclassified: 4 };
+
+function renderTable() {
+  const filter = document.getElementById("sevFilter").value;
+  const tbody = document.querySelector("#findingsTable tbody");
+  tbody.innerHTML = "";
+  let rows = filter ? allRows.filter(r => r.severity === filter) : allRows.slice();
+  rows.sort((a, b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === "severity") { av = SEV_RANK[av] ?? 9; bv = SEV_RANK[bv] ?? 9; }
+    if (av < bv) return -1 * sortDir;
+    if (av > bv) return 1 * sortDir;
+    return 0;
+  });
+  document.getElementById("tableEmpty").style.display = rows.length ? "none" : "block";
+  for (const r of rows) {
+    tbody.appendChild(el("tr", {},
+      el("td", {}, r.domain),
+      el("td", {}, el("span", { class: `sev-pill ${r.severity}` }, r.severity)),
+      el("td", {}, r.title),
+      el("td", { class: "evidence" }, r.evidence)));
+  }
+}
+
+function wireControls() {
+  document.getElementById("sevFilter").addEventListener("change", renderTable);
+  document.querySelectorAll("#findingsTable thead th").forEach(th => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = 1; }
+      document.querySelectorAll("#findingsTable thead .arrow").forEach(a => a.textContent = "");
+      th.querySelector(".arrow").textContent = sortDir === 1 ? "▲" : "▼";
+      renderTable();
+    });
+  });
+}
+
+function main() {
+  if (!DATA || typeof DATA !== "object") {
+    document.getElementById("empty").style.display = "grid";
+    return;
+  }
+  const grandTotal = sum(combinedSeverity(DATA));
+  const anyDomainRan = DOMAINS.some(d => DATA[d.key]);
+  if (!anyDomainRan) {
+    document.getElementById("empty").style.display = "grid";
+    return;
+  }
+
+  if (DATA.system) document.getElementById("title").textContent = `Self-assess findings — ${DATA.system}`;
+  document.getElementById("subtitle").textContent = DATA.generatedAt
+    ? `Generated ${DATA.generatedAt}` : "";
+
+  allRows = [];
+  for (const d of DOMAINS) {
+    const obj = DATA[d.key];
+    if (!obj) continue;
+    allRows.push(...domainRows(d, obj));
+  }
+
+  if (!grandTotal && !allRows.length) {
+    document.getElementById("clean").style.display = "grid";
+    document.getElementById("body").style.display = "block";
+    document.getElementById("body").style.opacity = "0.55";
+  }
+
+  document.getElementById("body").style.display = "block";
+  renderStats(DATA);
+  renderDonut(DATA);
+  renderDomainCards(DATA);
+  wireControls();
+  renderTable();
+}
+
+main();
+</script>
+</body>
+</html>

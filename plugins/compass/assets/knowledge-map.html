@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Defense-in-depth, kept for consistency with reasoning-trace-viewer.html even
+     though this file has nothing to defend: the data below is hardcoded, not an
+     untrusted injected payload. Allow only inline script/style (self-contained)
+     and block network egress. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>compass knowledge cross-reference map</title>
+<style>
+  /* Same palette/spacing as reasoning-trace-viewer.html and topology-viewer.html
+     so this reads as a sibling tool, not a stylistically different one. */
+  :root {
+    --bg: #1e1e1e; --panel: #252526; --panel-2: #2d2d2d;
+    --text: #d4d4d4; --muted: #8a8a8a; --accent: #cc785c;
+    --border: #3a3a3a; --blue: #5ba0e0; --green: #6bb85a; --red: #d9695f;
+    /* Extra group colors, used only as technique-node fills (see GROUPS in the
+       script below) — additive to the shared palette above, not replacing it. */
+    --purple: #a78bda; --teal: #4fb8a8; --yellow: #d9b25f; --pink: #d97fa0;
+    --cyan: #6ecbdb; --lime: #9bc46a; --target: #b8b8b8;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg);
+    color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  #canvas-wrap { position: absolute; inset: 0; cursor: grab; }
+  #canvas-wrap.dragging { cursor: grabbing; }
+  svg#stage { width: 100%; height: 100%; display: block; }
+
+  #hud { position: absolute; top: 12px; left: 12px; width: 300px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 2; }
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; }
+  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
+  .panel .sub { color: var(--muted); font-size: 12px; }
+  #legend { font-size: 12px; max-height: 280px; overflow-y: auto; }
+  #legend .row { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
+  #legend .row:hover { color: var(--text); }
+  #legend .row.dim { opacity: 0.45; }
+  #legend .swatch { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  #legend .swatch.diamond { border-radius: 2px; transform: rotate(45deg); background: var(--panel-2); border: 2px solid var(--target); }
+  #legend .hdr { color: var(--muted); font-size: 10px; text-transform: uppercase;
+    letter-spacing: .05em; margin: 6px 0 2px; }
+  #legend .hdr:first-child { margin-top: 0; }
+
+  #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
+    width: 340px; overflow-y: auto; z-index: 2; display: none; }
+  #sidebar.open { display: block; }
+  #sidebar h2 { font-size: 16px; word-break: break-word; }
+  #sidebar .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  #sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin: 12px 0 4px; }
+  #sidebar p { font-size: 13px; white-space: pre-wrap; word-break: break-word; }
+  #sidebar ul { list-style: none; }
+  #sidebar ul li { margin: 8px 0; font-size: 13px; }
+  #sidebar .closebtn { float: right; cursor: pointer; color: var(--muted);
+    font-size: 18px; line-height: 1; }
+  #sidebar .closebtn:hover { color: var(--text); }
+  #sidebar .link { color: var(--blue); cursor: pointer; display: inline-block;
+    font-size: 13px; font-weight: 600; }
+  #sidebar .link:hover { color: var(--accent); }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 9px;
+    font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin: 0 4px 4px 0; }
+
+  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    color: var(--muted); font-size: 12px; z-index: 2; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
+  #err .panel { max-width: 420px; text-align: center; }
+
+  /* ── Diagram element styles (SVG) ────────────────────────────────────── */
+  .chord { fill: none; stroke: var(--border); stroke-width: 1; opacity: 0.35; }
+  .chord.active { opacity: 0.9; stroke-width: 2; }
+  .chord.dim { opacity: 0.06; }
+  .node { cursor: pointer; }
+  .node .marker { stroke: var(--bg); stroke-width: 1.5; }
+  .node .label { fill: var(--text); font: 12px system-ui, sans-serif; }
+  .node:hover .marker { stroke: var(--text); }
+  .node.selected .marker { stroke: var(--text); stroke-width: 2.5; }
+  .node.dim { opacity: 0.25; }
+  .node.dim .label { fill: var(--muted); }
+</style>
+</head>
+<body>
+<div id="canvas-wrap">
+  <svg id="stage"><g id="viewport"></g></svg>
+</div>
+
+<div id="hud">
+  <div class="panel">
+    <h1 id="title">compass knowledge cross-reference map</h1>
+    <div class="sub" id="stats"></div>
+  </div>
+  <div class="panel" id="legend"></div>
+</div>
+
+<aside id="sidebar" class="panel"></aside>
+<div id="hint">hover a node to preview &middot; click to pin &middot; scroll to zoom &middot; drag to pan</div>
+<div id="err" class="panel"><p>No knowledge-map data found in this file.</p></div>
+
+<script type="module">
+function fail(html) {
+  const err = document.getElementById("err");
+  err.querySelector("p").innerHTML = html;
+  err.style.display = "grid";
+}
+
+const SVGNS = "http://www.w3.org/2000/svg";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function el(tag, attrs = {}, cls) {
+  const e = document.createElementNS(SVGNS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (cls) e.setAttribute("class", cls);
+  return e;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Data. Unlike reasoning-trace-viewer.html — whose DATA is injected per-run by
+// references/render_trace.py from a live Workflow result — this diagram has no
+// injection step: nothing runs it per-invocation, so the relationships below
+// are hardcoded directly, extracted by hand from references/knowledge/*.md's
+// `## Examples` -> `### In werkstoff` sections at build time.
+// ══════════════════════════════════════════════════════════════════════════
+
+// One entry per compass-* skill a technique's frontmatter `tags` names as its
+// primary consumer (compass-solve is never a doc's primary tag, so it has no
+// group here). Colors are additive to the shared dark-theme palette.
+const GROUPS = [
+  { id: "compass-reason-verify",          color: "var(--blue)" },
+  { id: "compass-calibrate-format",       color: "var(--green)" },
+  { id: "compass-explore-branches",       color: "var(--red)" },
+  { id: "compass-clarify-scope",          color: "var(--accent)" },
+  { id: "compass-ground-evidence",        color: "var(--purple)" },
+  { id: "compass-draft-revise",           color: "var(--teal)" },
+  { id: "compass-decompose-chain",        color: "var(--yellow)" },
+  { id: "compass-map-relationships",      color: "var(--pink)" },
+  { id: "compass-investigate-dynamically",color: "var(--cyan)" },
+  { id: "compass-optimize-instruction",   color: "var(--lime)" },
+];
+
+// The 21 technique docs, grouped by primary compass skill (index.md's table
+// order within each group). `citations` is every distinct entity named in
+// that doc's `### In werkstoff` section — most docs cite one, a few cite two.
+const TECHNIQUES = [
+  { id: "zero-shot", title: "Zero-shot", file: "zero-shot.md", group: "compass-reason-verify", rung: "rung 0",
+    description: "Direct task instruction without examples or reasoning scaffolding, relying on pre-trained knowledge of the task domain.",
+    citations: [
+      { target: "self-assess-status", note: "A clean zero-shot skill: a direct, single-pass instruction producing a fixed 3-line verdict, no examples, no reasoning chain, no fan-out." },
+    ] },
+  { id: "cot", title: "Chain-of-Thought", file: "cot.md", group: "compass-reason-verify", rung: "rung 2 (default)",
+    description: "Elicit intermediate reasoning steps before the final answer to reduce arithmetic and multi-step logic errors.",
+    citations: [
+      { target: "quality-assertion-audit", note: "The mutation-reasoning step is CoT-shaped in spirit: mutation → test → whether the assertion would fail, an inferential chain a direct yes/no would skip." },
+    ] },
+  { id: "self-consistency", title: "Self-Consistency", file: "self-consistency.md", group: "compass-reason-verify", rung: "rung 3a",
+    description: "Run multiple independent reasoning paths and take the majority answer, catching cases where one path makes an early wrong assumption.",
+    citations: [
+      { target: "self-assess-stage-map", note: "stage-map-scan.js's Verify phase: an independent reviewer re-derives each candidate wire's verdict rather than trusting the Find phase's claim." },
+      { target: "quality-lint-audit", note: "lint-audit-scan.js adds a second, independent re-confirmation tier for High-severity findings." },
+    ] },
+  { id: "pal", title: "Program-Aided Language Models (PAL)", file: "pal.md", group: "compass-reason-verify", rung: "rung 3b",
+    description: "Offload computation to executable code instead of mental arithmetic in language, for guaranteed precision.",
+    citations: [
+      { target: "quality-assertion-audit", note: "When a real mutation tool (mutmut/Stryker/PIT) is on PATH, shells out to it for ground-truth scores instead of LLM-reasoning about mutation coverage." },
+    ] },
+  { id: "multimodal-cot", title: "Multimodal Chain-of-Thought", file: "multimodal-cot.md", group: "compass-reason-verify", rung: "triggered mode",
+    description: "Describe everything visible before reasoning, then reason, then answer — preventing answer-first-justify-later errors on image/diagram input.",
+    citations: [
+      { target: "self-assess-stage-map", note: "No skill takes image input directly (an honest gap); the closest structural analog is the interactive STAGE_MAP.html viewer a human reads before trusting the report." },
+    ] },
+  { id: "few-shot", title: "Few-shot", file: "few-shot.md", group: "compass-calibrate-format", rung: "rung 1",
+    description: "Anchor an ambiguous output format on 2-5 diverse real examples rather than describing it in prose.",
+    citations: [
+      { target: "self-assess-ci-topology-auditor", note: "ci-topology-auditor.md's frontmatter description carries 4 full <example> blocks — few-shot applied to agent triggering itself." },
+    ] },
+  { id: "tree-of-thoughts", title: "Tree-of-Thoughts", file: "tree-of-thoughts.md", group: "compass-explore-branches", rung: null,
+    description: "Generate genuinely distinct branches, score each on explicit dimensions, then select and expand the strongest — rather than anchoring on the first idea.",
+    citations: [
+      { target: "superpowers:brainstorming", note: "“Propose 2-3 different approaches with trade-offs… lead with your recommended option” — Phase 1+2 in prose, applied to every design decision in this repo." },
+    ] },
+  { id: "generate-knowledge", title: "Generate Knowledge", file: "generate-knowledge.md", group: "compass-clarify-scope", rung: null,
+    description: "Generate relevant background facts before answering, forcing explicit surfacing of prior knowledge and its uncertainty.",
+    citations: [
+      { target: "self-assess-preflight", note: "Check 1 generates the facts every downstream skill needs (languages, tool availability, house-rules) before any analysis skill runs." },
+    ] },
+  { id: "active-prompt", title: "Active-Prompt", file: "active-prompt.md", group: "compass-clarify-scope", rung: null,
+    description: "Score confidence explicitly and flag the most uncertain/ambiguous elements rather than silently picking an interpretation.",
+    citations: [
+      { target: "self-assess-docs-drift", note: "CLAIMS_SCHEMA's confidence: High|Medium|Low field — every claim carries an explicit uncertainty score rather than being flatly true or false." },
+    ] },
+  { id: "rag", title: "Retrieval-Augmented Generation (RAG)", file: "rag.md", group: "compass-ground-evidence", rung: null,
+    description: "Answer using only retrieved/provided passages, cite every claim, and explicitly refuse when the sources are insufficient.",
+    citations: [
+      { target: "self-assess-docs-drift", note: "Every contradiction report requires file:line evidence on both the doc side and the code side; unverifiable claims are reported as such, never guessed." },
+    ] },
+  { id: "reflexion", title: "Reflexion", file: "reflexion.md", group: "compass-draft-revise", rung: null,
+    description: "Draft, score against explicit numbered criteria, then revise only what scored below threshold — preventing anchoring on a flawed first draft.",
+    citations: [
+      { target: "this-session-task-8", note: "A live Reflexion cycle: an implementer drafts, a fresh reviewer subagent scores the diff against the brief, and only flagged issues get a fix dispatch — never a wholesale redo." },
+    ] },
+  { id: "dsp", title: "Demonstrate-Search-Predict (DSP)", file: "dsp.md", group: "compass-decompose-chain", rung: null,
+    description: "Decompose a multi-hop question into sub-questions, retrieve a fact per sub-question, then synthesize.",
+    citations: [
+      { target: "self-assess-docs-drift", note: "The Find phase extracts and independently checks each doc file's claims before the overall report synthesizes contradictions — decompose before you can single-shot it." },
+    ] },
+  { id: "prompt-chaining", title: "Prompt Chaining", file: "prompt-chaining.md", group: "compass-decompose-chain", rung: null,
+    description: "Run a task as a sequence of independently-verifiable stages, each stage's output feeding the next as an explicit contract.",
+    citations: [
+      { target: "code-modernization", note: "The 8-command pipeline (assess → map → extract-rules → brief → reimagine → transform → harden) is prompt-chaining at plugin-architecture scale." },
+      { target: "self-assess-preflight", note: "PREFLIGHT.md, read by every downstream skill's Step 0 — each stage's artifact is the only thing the next stage is allowed to depend on." },
+    ] },
+  { id: "graph-prompting", title: "Graph Prompting", file: "graph-prompting.md", group: "compass-map-relationships", rung: null,
+    description: "Structure relationships as indexed triples before reasoning over them, traverse citing triple indices, answer with the full path.",
+    citations: [
+      { target: "self-assess-stage-map", note: "EDGES_SCHEMA: every import edge is a {from, to, kind} triple; the confirmed-wire report cites the exact edges that justified each cross-stage dependency." },
+    ] },
+  { id: "react", title: "ReAct", file: "react.md", group: "compass-investigate-dynamically", rung: null,
+    description: "Interleave Thought/Action/Observation steps, looking things up rather than guessing, when external information is required.",
+    citations: [
+      { target: "this-session", note: "Every Bash/WebFetch/Read call in this session is preceded by an implicit “I need X because Y” and followed by acting on what was actually returned, not assumed." },
+    ] },
+  { id: "art", title: "Automatic Reasoning and Tool-use (ART)", file: "art.md", group: "compass-investigate-dynamically", rung: null,
+    description: "Dynamically select tools from a library at each step, calling only what's genuinely needed, when the task flow can't be predetermined.",
+    citations: [
+      { target: "this-session", note: "Whether to spawn a background Agent, use WebSearch, or read a file directly was decided per-step based on what the prior step's result actually revealed." },
+    ] },
+  { id: "rewoo", title: "ReWOO", file: "rewoo.md", group: "compass-investigate-dynamically", rung: null,
+    description: "Plan every tool call upfront in one pass, execute them all, then synthesize — cheaper than interleaved reasoning when tool calls are expensive or slow.",
+    citations: [
+      { target: "quality-dependency-audit", note: "Step 0: \"the workflow script has no filesystem access, so gather everything first\" — every manifest/registry to check is planned before any call executes, then Step 1 fires all lookups in parallel with no re-planning." },
+    ] },
+  { id: "self-ask", title: "Self-Ask", file: "self-ask.md", group: "compass-investigate-dynamically", rung: null,
+    description: "A minimal \"do I need a follow-up question?\" lookup chain — ReAct's simpler precursor, for a single or short chain of conditional lookups.",
+    citations: [
+      { target: "self-assess-lint-audit", note: "Step 0's house-rules.md -> CLAUDE.md fallback chain: a genuine follow-up lookup, stop rather than guess if neither exists." },
+    ] },
+  { id: "lats", title: "LATS (Language Agent Tree Search)", file: "lats.md", group: "compass-investigate-dynamically", rung: null,
+    description: "ReAct-style reasoning per node combined with tree search — branch, score, and backtrack from low-scoring branches — a harder-problem escalation tier over a single linear trace.",
+    citations: [
+      { target: "compass-explore-branches", note: "Propose+Score is a partial LATS analog — explicitly missing backtracking/iterative re-expansion (one flat round, deterministic Select, per explore-branches-scan.js)." },
+    ] },
+  { id: "ape", title: "Automatic Prompt Engineer (APE)", file: "ape.md", group: "compass-optimize-instruction", rung: null,
+    description: "Generate several candidate prompts with distinct framings, score each against test cases, select the best objectively.",
+    citations: [
+      { target: "compass-explore-branches", note: "explore-branches-scan.js's Score phase generalizes generate-then-score-objectively from prompt candidates to approach candidates — the only doc citing compass itself." },
+    ] },
+  { id: "meta-prompting", title: "Meta-Prompting", file: "meta-prompting.md", group: "compass-optimize-instruction", rung: null,
+    description: "Generate a prompt, critique it against an explicit checklist, then revise — bootstrapping a considered first draft.",
+    citations: [
+      { target: "superpowers:writing-plans", note: "The plan document's own Self-Review step: check for placeholders, contradictions, scope mismatches, ambiguity; fix inline, never a full rewrite." },
+    ] },
+];
+
+// The distinct grounding targets named across all 21 docs' "In werkstoff"
+// sections — mostly self-assess-*/quality-* skills, code-modernization, or
+// this session's own superpowers-skill usage. Grouped loosely by family for
+// the sidebar's family badge; family is not a separate color in this diagram
+// (see the one-line rationale in GROUPS above the technique nodes).
+const TARGETS = [
+  { id: "self-assess-status", label: "self-assess-status", family: "self-assess",
+    description: "self-assess skill — a single-pass 3-line status verdict (furthest completed check / what's stale / next skill)." },
+  { id: "self-assess-lint-audit", label: "self-assess-lint-audit", family: "self-assess",
+    description: "self-assess skill — Step 0's house-rules.md -> CLAUDE.md fallback chain: a genuine \"do I need a follow-up lookup\" decision, stop rather than guess if neither exists." },
+  { id: "quality-dependency-audit", label: "quality-dependency-audit", family: "quality",
+    description: "quality skill — Step 0 gathers every manifest/registry to check in one pass before any tool call, since the workflow script has no filesystem access; Step 1 fires all lookups in parallel with no re-planning." },
+  { id: "self-assess-ci-topology-auditor", label: "ci-topology-auditor.md", family: "self-assess",
+    description: "self-assess agent — its frontmatter description carries 4 worked <example> blocks that drive the agent's own auto-triggering." },
+  { id: "self-assess-stage-map", label: "self-assess-stage-map", family: "self-assess",
+    description: "self-assess skill — cross-stage import-graph mapping (stage-map-scan.js): adversarial Verify phase plus {from,to,kind} EDGES_SCHEMA triples; its report viewer is topology-viewer.html." },
+  { id: "self-assess-preflight", label: "self-assess-preflight", family: "self-assess",
+    description: "self-assess skill — Check 1 surfaces baseline facts (languages, tools, house-rules) before any downstream skill runs; PREFLIGHT.md is read by every downstream skill's Step 0." },
+  { id: "self-assess-docs-drift", label: "self-assess-docs-drift", family: "self-assess",
+    description: "self-assess skill — docs-drift-scan.js's Find phase and CLAIMS_SCHEMA confidence field; every contradiction needs file:line evidence on both the doc and code sides." },
+  { id: "quality-assertion-audit", label: "quality-assertion-audit", family: "quality",
+    description: "quality skill — assertion-audit-scan.js's mutation-reasoning step, optionally offloaded to a real mutation-testing tool when one is on PATH." },
+  { id: "quality-lint-audit", label: "quality-lint-audit", family: "quality",
+    description: "quality skill — lint-audit-scan.js's second, independent re-confirmation tier for High-severity findings." },
+  { id: "superpowers:brainstorming", label: "superpowers:brainstorming", family: "superpowers",
+    description: "superpowers skill — “propose 2-3 distinct approaches with trade-offs, lead with a recommendation,” used for this repo's own design decisions." },
+  { id: "superpowers:writing-plans", label: "superpowers:writing-plans", family: "superpowers",
+    description: "superpowers skill — plan documents' own Self-Review step: checklist critique for placeholders/contradictions/scope mismatches, fixed inline." },
+  { id: "code-modernization", label: "code-modernization", family: "sibling plugin",
+    description: "Sibling plugin — the 8-command assess → map → extract-rules → brief → reimagine → transform → harden pipeline, each stage an independently verifiable artifact." },
+  { id: "compass-explore-branches", label: "compass-explore-branches", family: "compass",
+    description: "compass's own skill — the only doc citing compass itself: explore-branches-scan.js's Score phase, generate-then-score-objectively for approach candidates." },
+  { id: "this-session", label: "this session (tool use)", family: "this session",
+    description: "This conversation's own tool-use pattern — Thought/Action/Observation and dynamic per-step tool selection, not a named skill file." },
+  { id: "this-session-task-8", label: "this session (Task 8)", family: "this session",
+    description: "This conversation's own Task 8 subagent-driven-development loop — draft, independent reviewer score, fix only what's flagged (.superpowers/sdd/sa-task-8-report.md)." },
+];
+
+const groupsById = new Map(GROUPS.map(g => [g.id, g]));
+const targetsById = new Map(TARGETS.map(t => [t.id, t]));
+const techsById = new Map(TECHNIQUES.map(t => [t.id, t]));
+
+// Reverse index: target id -> [{ tech, note }]
+const citedBy = new Map(TARGETS.map(t => [t.id, []]));
+let totalCitations = 0;
+for (const tech of TECHNIQUES) {
+  for (const c of tech.citations) {
+    citedBy.get(c.target).push({ tech: tech.id, note: c.note });
+    totalCitations++;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Layout: a chord diagram with two clusters on one circle — the 21 technique
+// docs along the top arc (grouped by compass skill, index.md's order within
+// each group), the 15 grounding targets along the bottom arc. Chords are
+// quadratic Beziers pulled through the circle's center, the classic
+// chord-diagram curve, connecting a technique to each target its doc cites.
+// ══════════════════════════════════════════════════════════════════════════
+const W = 1360, H = 1180, CX = W / 2, CY = H / 2 + 10, R = 380;
+const LABEL_GAP = 20;
+
+function arcAngles(startDeg, endDeg, n) {
+  if (n === 1) return [(startDeg + endDeg) / 2];
+  const step = (endDeg - startDeg) / (n - 1);
+  return Array.from({ length: n }, (_, i) => startDeg + i * step);
+}
+function polar(r, phiDeg) {
+  const phi = (phiDeg * Math.PI) / 180;
+  return { x: CX + r * Math.cos(phi), y: CY + r * Math.sin(phi) };
+}
+
+const techAngles = arcAngles(200, 340, TECHNIQUES.length);
+const targetAngles = arcAngles(20, 160, TARGETS.length);
+
+const positions = new Map(); // id -> { x, y, phi, kind }
+TECHNIQUES.forEach((t, i) => { const p = polar(R, techAngles[i]); positions.set(t.id, { ...p, phi: techAngles[i], kind: "tech" }); });
+TARGETS.forEach((t, i) => { const p = polar(R, targetAngles[i]); positions.set(t.id, { ...p, phi: targetAngles[i], kind: "target" }); });
+
+function labelAnchor(phiDeg) {
+  // Always anchor by the sign of cos (never "middle") — near-vertical
+  // neighbors (e.g. active-prompt at 265.9deg and rag at 274.1deg, either
+  // side of the top-center 270deg mark) still sit at nearly the same x, and
+  // a shared "middle" anchor stacked their labels directly on top of each
+  // other. Sign-based start/end anchoring flows each one's text to its own
+  // side even when x is nearly identical, which resolves that collision.
+  const rad = (phiDeg * Math.PI) / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const anchor = cos >= 0 ? "start" : "end";
+  const dy = sin >= 0 ? 14 : -6;
+  return { anchor, dy };
+}
+function truncate(s, n) {
+  s = String(s == null ? "" : s).trim();
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────
+const viewport = document.getElementById("viewport");
+const svg = document.getElementById("stage");
+const wrap = document.getElementById("canvas-wrap");
+const statsEl = document.getElementById("stats");
+const legendEl = document.getElementById("legend");
+const sidebar = document.getElementById("sidebar");
+
+statsEl.textContent = `${TECHNIQUES.length} techniques · ${TARGETS.length} grounding targets · ${totalCitations} citations`;
+
+// Legend: one row per compass-skill group, plus one for the grounding-target
+// marker shape. Clicking a group row highlights every technique in it.
+let legendHtml = `<div class="hdr">Technique groups (compass skill)</div>`;
+for (const g of GROUPS) {
+  legendHtml += `<div class="row" data-group="${esc(g.id)}"><span class="swatch" style="background:${g.color}"></span>${esc(g.id.replace(/^compass-/, ""))}</div>`;
+}
+legendHtml += `<div class="hdr">Grounding targets</div>
+  <div class="row" data-group="__targets__"><span class="swatch diamond"></span>cited in werkstoff (15)</div>`;
+legendEl.innerHTML = legendHtml;
+
+// Chord paths, one per (technique, citation) pair.
+const chordEls = [];
+for (const tech of TECHNIQUES) {
+  const from = positions.get(tech.id);
+  for (const c of tech.citations) {
+    const to = positions.get(c.target);
+    if (!to) continue;
+    const path = el("path", { d: `M${from.x},${from.y} Q${CX},${CY} ${to.x},${to.y}`,
+      "data-tech": tech.id, "data-target": c.target }, "chord");
+    path.style.stroke = groupsById.get(tech.group).color;
+    viewport.appendChild(path);
+    chordEls.push(path);
+  }
+}
+
+const nodeEls = new Map(); // id -> { g, kind }
+
+function buildNode(id, kind) {
+  const pos = positions.get(id);
+  const g = el("g", { "data-id": id }, "node " + kind);
+  if (kind === "tech") {
+    const tech = techsById.get(id);
+    const color = groupsById.get(tech.group).color;
+    const c = el("circle", { cx: pos.x, cy: pos.y, r: 7 }, "marker");
+    c.style.fill = color;
+    g.appendChild(c);
+  } else {
+    const size = 8;
+    const rect = el("rect", { x: pos.x - size, y: pos.y - size, width: size * 2, height: size * 2,
+      rx: 2, transform: `rotate(45 ${pos.x} ${pos.y})` }, "marker");
+    rect.style.fill = "var(--panel-2)";
+    rect.style.stroke = "var(--target)";
+    rect.style.strokeWidth = "2";
+    g.appendChild(rect);
+  }
+  const { anchor, dy } = labelAnchor(pos.phi);
+  const labelPos = polar(R + LABEL_GAP, pos.phi);
+  const rawLabel = kind === "tech" ? techsById.get(id).title : targetsById.get(id).label;
+  // Prefer a title's trailing "(ABBR)" — e.g. "Program-Aided Language Models
+  // (PAL)" -> "PAL" — over truncating a long full name mid-word.
+  const abbrev = kind === "tech" && rawLabel.match(/\(([A-Z]{2,6})\)$/);
+  const label = abbrev ? abbrev[1] : rawLabel;
+  const t = el("text", { x: labelPos.x, y: labelPos.y + dy, "text-anchor": anchor }, "label");
+  t.textContent = truncate(label, 34);
+  g.appendChild(t);
+
+  g.addEventListener("mouseenter", () => setHover(id));
+  g.addEventListener("mouseleave", () => setHover(null));
+  g.addEventListener("click", (e) => { e.stopPropagation(); select(id, kind); });
+  viewport.appendChild(g);
+  nodeEls.set(id, { g, kind });
+}
+TECHNIQUES.forEach(t => buildNode(t.id, "tech"));
+TARGETS.forEach(t => buildNode(t.id, "target"));
+
+// ── Highlighting: hover previews, click pins (persists until another click
+// or empty-canvas click clears it). Hover always wins visually while active.
+let selectedId = null, hoverId = null;
+
+function connectedIds(id) {
+  const kind = nodeEls.get(id)?.kind;
+  if (kind === "tech") return new Set(techsById.get(id).citations.map(c => c.target));
+  if (kind === "target") return new Set((citedBy.get(id) || []).map(c => c.tech));
+  return new Set();
+}
+
+function applyHighlight() {
+  const activeId = hoverId ?? selectedId;
+  const connected = activeId ? connectedIds(activeId) : null;
+  for (const [id, { g }] of nodeEls) {
+    const isActive = activeId != null && (id === activeId || connected.has(id));
+    g.classList.toggle("dim", activeId != null && !isActive);
+    g.classList.toggle("selected", id === selectedId);
+  }
+  for (const path of chordEls) {
+    const tech = path.dataset.tech, target = path.dataset.target;
+    const touches = activeId != null && (tech === activeId || target === activeId);
+    path.classList.toggle("active", touches);
+    path.classList.toggle("dim", activeId != null && !touches);
+  }
+  for (const row of legendEl.querySelectorAll(".row[data-group]")) {
+    row.classList.remove("dim");
+  }
+}
+function setHover(id) { hoverId = id; applyHighlight(); }
+
+function select(id, kind) {
+  selectedId = selectedId === id ? null : id;
+  applyHighlight();
+  if (!selectedId) { closeSidebar(); return; }
+  if (kind === "tech") showTechniqueDetail(id); else showTargetDetail(id);
+}
+
+// ── Sidebar ─────────────────────────────────────────────────────────────
+function closeSidebar() { sidebar.classList.remove("open"); sidebar.innerHTML = ""; }
+function openSidebar(html) {
+  sidebar.innerHTML = `<span class="closebtn" id="close">×</span>${html}`;
+  sidebar.classList.add("open");
+  sidebar.querySelector("#close").onclick = () => { selectedId = null; applyHighlight(); closeSidebar(); };
+  sidebar.querySelectorAll("[data-jump]").forEach(elx => elx.onclick = () => {
+    const jid = elx.dataset.jump, jkind = nodeEls.get(jid)?.kind;
+    selectedId = jid; applyHighlight();
+    if (jkind === "tech") showTechniqueDetail(jid); else showTargetDetail(jid);
+  });
+}
+
+function showTechniqueDetail(id) {
+  const tech = techsById.get(id);
+  const color = groupsById.get(tech.group).color;
+  const rows = tech.citations.map(c => {
+    const t = targetsById.get(c.target);
+    return `<li><span class="link" data-jump="${esc(c.target)}">${esc(t.label)}</span>
+      <p style="margin-top:2px">${esc(c.note)}</p></li>`;
+  }).join("");
+  openSidebar(`
+    <h2>${esc(tech.title)}</h2>
+    <div class="meta">${esc(tech.file)}${tech.rung ? " · " + esc(tech.rung) : ""}</div>
+    <span class="badge" style="border-color:${color};color:${color}">${esc(tech.group)}</span>
+    <h3>Description</h3><p>${esc(tech.description)}</p>
+    <h3>Grounds in werkstoff (${tech.citations.length})</h3>
+    <ul>${rows}</ul>
+  `);
+}
+
+function showTargetDetail(id) {
+  const target = targetsById.get(id);
+  const citers = citedBy.get(id) || [];
+  const rows = citers.map(c => {
+    const t = techsById.get(c.tech);
+    const color = groupsById.get(t.group).color;
+    return `<li><span class="link" data-jump="${esc(c.tech)}" style="color:${color}">${esc(t.title)}</span>
+      <p style="margin-top:2px">${esc(c.note)}</p></li>`;
+  }).join("");
+  openSidebar(`
+    <h2>${esc(target.label)}</h2>
+    <div class="meta">grounding target · ${esc(target.family)}</div>
+    <h3>What it is</h3><p>${esc(target.description)}</p>
+    <h3>Cited by (${citers.length})</h3>
+    <ul>${rows}</ul>
+  `);
+}
+
+// Legend row hover/click: preview / pin every technique in that group.
+legendEl.querySelectorAll(".row[data-group]").forEach(row => {
+  const gid = row.dataset.group;
+  row.addEventListener("mouseenter", () => {
+    const ids = gid === "__targets__" ? TARGETS.map(t => t.id) : TECHNIQUES.filter(t => t.group === gid).map(t => t.id);
+    for (const [id, { g }] of nodeEls) g.classList.toggle("dim", !ids.includes(id));
+    for (const path of chordEls) path.classList.toggle("dim", !ids.includes(path.dataset.tech) && !ids.includes(path.dataset.target));
+  });
+  row.addEventListener("mouseleave", () => applyHighlight());
+});
+
+// Click on empty canvas clears selection.
+wrap.addEventListener("click", e => { if (e.target === svg || e.target === wrap) { selectedId = null; applyHighlight(); closeSidebar(); } });
+
+// ── viewBox: reserve left space for the floating HUD, same trick as
+// reasoning-trace-viewer.html's fitViewBox, so the top-arc nodes don't load
+// in hidden underneath it. ──────────────────────────────────────────────
+const LEFT_RESERVE = 300;
+svg.setAttribute("viewBox", `${-LEFT_RESERVE} 0 ${W + LEFT_RESERVE} ${H}`);
+svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+
+// ── Pan / zoom (plain mouse events, no library) ──────────────────────────
+let vpX = 0, vpY = 0, vpK = 1;
+function applyTransform() { viewport.setAttribute("transform", `translate(${vpX} ${vpY}) scale(${vpK})`); }
+let dragging = false, lastX = 0, lastY = 0;
+wrap.addEventListener("mousedown", e => { dragging = true; lastX = e.clientX; lastY = e.clientY; wrap.classList.add("dragging"); });
+window.addEventListener("mousemove", e => {
+  if (!dragging) return;
+  vpX += e.clientX - lastX; vpY += e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  applyTransform();
+});
+window.addEventListener("mouseup", () => { dragging = false; wrap.classList.remove("dragging"); });
+wrap.addEventListener("wheel", e => {
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.001);
+  const newK = Math.min(4, Math.max(0.25, vpK * factor));
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  vpX = mx - (mx - vpX) * (newK / vpK);
+  vpY = my - (my - vpY) * (newK / vpK);
+  vpK = newK;
+  applyTransform();
+}, { passive: false });
+
+applyHighlight();
+</script>
+</body>
+</html>

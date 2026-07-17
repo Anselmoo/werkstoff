@@ -1,0 +1,18 @@
+{
+  "name": "compass",
+  "version": "0.1.0",
+  "contractVersion": "compass-contract-v1",
+  "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 13 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships, negotiate-tradeoffs, verify-assumptions, summarize-trace), composed by compass-solve into an actual workflow rather than exposed as a technique picker.",
+  "author": {
+    "name": "Anselm Hahn",
+    "email": "anselm.hahn@gmail.com"
+  },
+  "license": "MIT",
+  "keywords": [
+    "prompt-engineering",
+    "reasoning",
+    "task-decomposition",
+    "self-assessment",
+    "problem-solving"
+  ]
+}
