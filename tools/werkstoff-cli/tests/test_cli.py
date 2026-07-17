@@ -5,10 +5,22 @@ from typer.testing import CliRunner
 
 from werkstoff.cli import app
 
-# Rich/Typer's --help rendering wraps to the terminal width, which makes
-# the snapshot below flaky across machines/CI unless pinned explicitly —
-# CliRunner(env=...) sets COLUMNS for the duration of each invoke.
-runner = CliRunner(env={"COLUMNS": "80"})
+# Rich/Typer's --help rendering wraps to the terminal width (flaky across
+# machines/CI unless pinned) and, separately, Click's rich_utils forces
+# ANSI color whenever GITHUB_ACTIONS is set — which is unconditionally
+# true on every GitHub Actions runner — even into this non-tty captured
+# buffer, and that forcing wins over NO_COLOR in this code path. Setting
+# NO_COLOR=1 alone is not sufficient; the CI-detection vars must be
+# explicitly cleared too.
+runner = CliRunner(
+    env={
+        "COLUMNS": "80",
+        "NO_COLOR": "1",
+        "GITHUB_ACTIONS": "",
+        "FORCE_COLOR": "",
+        "CLICOLOR_FORCE": "",
+    }
+)
 
 
 def _write_marketplace(tmp_path: Path) -> Path:
