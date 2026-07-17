@@ -1,0 +1,109 @@
+name: 🔢 Auto Version Bump
+
+# Automatically bumps the rrt version group(s) whose paths changed in a push
+# to main, using the conventional-commit type of that push's head commit to
+# pick the bump level (feat -> minor, fix -> patch, "!"/BREAKING CHANGE ->
+# major). Any other commit type (chore, docs, refactor, ...), or a commit
+# whose message doesn't start with a recognized type at all, is skipped
+# entirely -- no bump is a safe default, a wrong bump is not. This means a
+# squash-merge commit/PR title MUST start with a conventional-commit type
+# for its merge to auto-bump anything; a plain-English title (as used by
+# this repo's own PR #1) is silently skipped, by design.
+#
+# rrt bump itself always creates a release/<group>/v<version> branch and
+# commits on it (no in-place-on-current-branch mode) -- this workflow fast-
+# forward-merges that branch onto main and pushes, once per affected group.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-version-bump-main
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: Bump changed version group(s)
+    runs-on: ubuntu-latest
+    # Guard against re-triggering on the bump commit(s) this workflow itself
+    # pushes -- rrt bump's generated commit message is always exactly
+    # "chore: bump version to v<version>".
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install rrt
+        run: uv tool install "repo-release-tools>=1.13.1"
+
+      - name: Determine bump level from the head commit's conventional-commit type
+        id: level
+        run: |
+          FIRST_LINE=$(echo "${{ github.event.head_commit.message }}" | head -1)
+          if echo "${{ github.event.head_commit.message }}" | grep -q "BREAKING CHANGE" \
+             || echo "$FIRST_LINE" | grep -qE '^[a-z]+(\([a-z0-9_-]+\))?!:'; then
+            LEVEL=major
+          elif echo "$FIRST_LINE" | grep -qE '^feat(\([a-z0-9_-]+\))?:'; then
+            LEVEL=minor
+          elif echo "$FIRST_LINE" | grep -qE '^fix(\([a-z0-9_-]+\))?:'; then
+            LEVEL=patch
+          else
+            LEVEL=""
+          fi
+          echo "level=$LEVEL" >> "$GITHUB_OUTPUT"
+          echo "Detected bump level: '${LEVEL:-<none, no recognized conventional-commit type>}'"
+
+      - name: Determine which version groups changed
+        id: groups
+        if: steps.level.outputs.level != ''
+        run: |
+          # NOTE: GROUPS is a bash-reserved special variable (auto-populated
+          # with the current user's OS group IDs) -- naming a plain variable
+          # GROUPS silently collides with it instead of raising an error, so
+          # this uses MATCHED_GROUPS throughout instead.
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          MATCHED_GROUPS=""
+          echo "$CHANGED" | grep -q '^plugins/self-assess/' && MATCHED_GROUPS="$MATCHED_GROUPS self-assess"
+          echo "$CHANGED" | grep -q '^plugins/quality/' && MATCHED_GROUPS="$MATCHED_GROUPS quality"
+          echo "$CHANGED" | grep -q '^plugins/compass/' && MATCHED_GROUPS="$MATCHED_GROUPS compass"
+          echo "$CHANGED" | grep -q '^tools/werkstoff-cli/' && MATCHED_GROUPS="$MATCHED_GROUPS werkstoff-cli"
+          MATCHED_GROUPS="$(echo "$MATCHED_GROUPS" | xargs)"
+          echo "groups=$MATCHED_GROUPS" >> "$GITHUB_OUTPUT"
+          echo "Changed groups: '${MATCHED_GROUPS:-<none>}'"
+
+      - name: Bump and fast-forward-merge each changed group
+        if: steps.level.outputs.level != '' && steps.groups.outputs.groups != ''
+        run: |
+          set -euo pipefail
+          LEVEL="${{ steps.level.outputs.level }}"
+          for GROUP in ${{ steps.groups.outputs.groups }}; do
+            echo "::group::Bumping $GROUP ($LEVEL)"
+            rrt bump "$LEVEL" --group "$GROUP"
+            BRANCH=$(git branch --list "release/$GROUP/v*" --format='%(refname:short)' | tail -1)
+            git checkout main
+            git merge --ff-only "$BRANCH"
+            git branch -D "$BRANCH"
+            echo "::endgroup::"
+          done
+          git push origin main
