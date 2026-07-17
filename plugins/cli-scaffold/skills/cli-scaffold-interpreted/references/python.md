@@ -304,13 +304,23 @@ stdout against a syrupy snapshot:
 from typer.testing import CliRunner
 from mypkg.cli import app
 
-runner = CliRunner()
+# Rich/Typer's --help rendering wraps to the terminal width, which makes
+# the snapshot flaky across machines/CI unless pinned explicitly —
+# CliRunner(env=...) sets COLUMNS for the duration of each invoke.
+runner = CliRunner(env={"COLUMNS": "80"})
 
 def test_help_snapshot(snapshot) -> None:
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
     assert result.output == snapshot
 ```
+
+Never construct `CliRunner()` with no `env=` override for a `--help`
+snapshot test — the recorded snapshot will only match on whatever
+terminal width happened to be active when it was generated, and fail
+non-deterministically (`1 failed` locally, or in CI on a runner with a
+different default width) for anyone else. `COLUMNS=80` is an arbitrary
+but stable choice; any fixed value works as long as it's pinned.
 
 Add `syrupy` as a dev dependency (the PyPI/`uv add` package name is `syrupy`,
 not `pytest-syrupy` — the latter does not exist as a distribution) and

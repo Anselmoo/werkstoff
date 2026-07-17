@@ -5,7 +5,10 @@ from typer.testing import CliRunner
 
 from werkstoff.cli import app
 
-runner = CliRunner()
+# Rich/Typer's --help rendering wraps to the terminal width, which makes
+# the snapshot below flaky across machines/CI unless pinned explicitly —
+# CliRunner(env=...) sets COLUMNS for the duration of each invoke.
+runner = CliRunner(env={"COLUMNS": "80"})
 
 
 def _write_marketplace(tmp_path: Path) -> Path:

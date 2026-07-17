@@ -3,7 +3,7 @@ name = "werkstoff"
 version = "0.1.0"
 description = "Install and manage this repo's Claude Code plugins by driving the claude CLI."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Anselm Hahn", email = "anselm.hahn@gmail.com" }]
 dependencies = [
@@ -27,7 +27,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
