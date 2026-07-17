@@ -17,9 +17,12 @@ Scaffold with the official generator, never by hand:
 npx oclif generate <cli-name>
 ```
 
-Answer the generator's prompt with TypeScript unless the user explicitly
-asked for plain JavaScript, in which case pass `--javascript` or select the
-JS option when prompted.
+`oclif generate` always scaffolds TypeScript — there is no `--javascript`
+flag or JS-selection prompt to answer. If the user explicitly asked for
+plain JavaScript, generate the TypeScript scaffold as normal and then
+either compile it (`tsc`) and ship the `lib/` output, or manually convert
+the generated `src/` sources to plain `.js` — do not invent generator
+flags that don't exist.
 
 Generate each command as a class extending `Command`, with `static flags`,
 `static args`, `static description`, and a `run()` method that only parses
@@ -139,12 +142,20 @@ Map it onto oclif's primitives exactly as follows:
 
 - Let a `run()` that resolves normally exit `0` — do not call `this.exit(0)`
   explicitly, it's the default.
-- For a runtime failure (I/O error, failed operation, caught exception with
-  no more specific code), throw `this.error(message)` or a `new CLIError` —
-  oclif exits `1` by default unless an `exit` option overrides it.
+- `@oclif/core`'s own default exit code for both the parser and an
+  unadorned `this.error(message)` is **`2`**, not `1` — do not assume
+  `this.error()` alone gives you the runtime-error branch of the
+  contract. For a runtime failure (I/O error, failed operation, caught
+  exception with no more specific code), throw `this.error(message,
+  {exit: 1})` or a `new CLIError` **with an explicit `{exit: 1}`** —
+  never call bare `this.error(message)` for this case, since its default
+  would silently misreport a runtime error as a usage error.
 - For a usage/argument failure — a required flag/arg missing after
   oclif's own parser accepted the invocation, or a value that parses but
-  fails a semantic check — call `this.error(message, {exit: 2})` explicitly.
+  fails a semantic check — `this.error(message, {exit: 2})` is correct as
+  written, and also matches `this.error()`'s own default, so the explicit
+  `{exit: 2}` here is for clarity/future-proofing rather than strictly
+  required.
 - oclif's own flag/arg parser already exits `2` on a parsing failure
   (unknown flag, missing required flag, wrong flag type) before `run()`
   is ever entered — do not add a redundant catch for this; it is already
@@ -204,7 +215,8 @@ Route all diagnostics through stderr-bound helpers:
 - `this.warn(message)` for non-fatal warnings — logs to stderr, execution
   continues.
 - `this.error(message, {exit})` for fatal errors — logs to stderr, then
-  exits with the given code (default `1`).
+  exits with the given code (default `2`, not `1` — see §5; pass
+  `{exit: 1}` explicitly for a runtime-error call site).
 - Plain `console.error(...)` only for output that must bypass oclif's
   error-formatting machinery entirely (rare — prefer `this.warn`/
   `this.error` in nearly all cases).

@@ -96,8 +96,10 @@ registered command grouped and described.
 
 For shell completion, add Symfony Console's native `completion` command to
 the `Application` — do not hand-roll a completion script. It ships built in
-(`Symfony\Component\Console\Command\CompletionCommand`) and Console
-auto-registers it; instruct end users to wire it up per-shell with:
+(`Symfony\Component\Console\Command\DumpCompletionCommand`, registered
+under the `completion` command name — the class is *not* named
+`CompletionCommand`) and Console auto-registers it; instruct end users to
+wire it up per-shell with:
 
 ```bash
 <app> completion bash > /etc/bash_completion.d/<app>
@@ -134,11 +136,17 @@ error, `2` usage/argument error. Symfony Console already codes this in:
 - Return `Command::SUCCESS` (`0`) on success and `Command::FAILURE` (`1`) on
   a handled runtime error from `execute()`. Never return a raw int literal —
   use the class constants.
-- Let invalid-argument conditions raise
-  `Symfony\Component\Console\Exception\InvalidArgumentException` (or let
-  Console itself raise it, e.g. missing required argument, unknown option).
-  The `Application`'s exception handler catches these and exits with code
-  `2` automatically — do not catch and remap them to `1`.
+- A missing required argument or unknown option raises
+  `Symfony\Component\Console\Exception\RuntimeException` (or a subclass)
+  before `execute()` ever runs. `Application::run()` catches it and exits
+  with code **`1`**, not `2` — Console does not auto-emit `2` for
+  parse-level usage errors, despite that being a natural assumption. To
+  honor this reference's own `0`/`1`/`2` contract, a usage-error condition
+  that Console's own parser can't catch on its own (e.g. two mutually
+  exclusive options both set, or a value that's syntactically valid but
+  semantically wrong) must be detected and mapped explicitly in
+  `execute()` by `return Command::INVALID;` (`2`) — never left to Console's
+  default exception handling, which stops at `1`.
 - For a domain-level runtime error surfaced from `src/Core/`, catch the Core
   exception in `execute()`, write a message to
   `$output->getErrorOutput()` (see §7), and `return Command::FAILURE`.
@@ -278,10 +286,14 @@ final class GreetCommandTest extends TestCase
 }
 ```
 
-Run with `--update-snapshots` once to record the initial snapshot file under
-`tests/Command/__snapshots__/`; commit it. Regenerate only when a deliberate
-help-text change is made — an unreviewed snapshot diff means the CLI surface
-drifted.
+Run `vendor/bin/update-snapshots` once to record the initial snapshot file
+under `tests/Command/__snapshots__/`; commit it. (`--update-snapshots` is
+not a real PHPUnit/spatie flag — the package ships its own separate
+`update-snapshots` binary for this; alternatively set the
+`UPDATE_SNAPSHOTS=true` environment variable when running
+`vendor/bin/phpunit` directly.) Regenerate only when a deliberate
+help-text change is made — an unreviewed snapshot diff means the CLI
+surface drifted.
 
 ## 10. Minimal worked example
 

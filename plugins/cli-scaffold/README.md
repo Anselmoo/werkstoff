@@ -64,9 +64,10 @@ routes end up loading the same doctrine and generating the same shape.
   remapping).
 - **`cli-scaffold-interpreted`** — Python, TypeScript/JavaScript, Ruby,
   PHP, Perl. Pins Typer (argparse fallback) / oclif / Thor (OptionParser
-  fallback) / Symfony Console / Getopt::Long+Minilla, an importable-core-
-  plus-thin-CLI split, and each ecosystem's idiomatic package registry
-  (pipx/uv, npm, RubyGems, Composer+Box, CPAN).
+  fallback) / Symfony Console / Getopt::Long as the framework per
+  language, an importable-core-plus-thin-CLI split, and each ecosystem's
+  idiomatic package registry and packaging tool (pipx/uv, npm, RubyGems,
+  Composer+Box, CPAN+Minilla).
 - **`cli-scaffold-shell`** — Bash, Zsh, PowerShell, POSIX sh. Pins
   `getopts` / `zparseopts` / native `[CmdletBinding()]` / POSIX `getopts`
   only, a sourced-function-file split (except PowerShell, which is always
@@ -77,11 +78,16 @@ routes end up loading the same doctrine and generating the same shape.
   this dialect exists specifically for minimal server/container
   environments where a full Bash isn't guaranteed.
 
-Each of the three paradigm skills stays under ~1,000 words — every
-per-language mechanic (exact framework calls, project layout, help/
-completion generation, distribution commands, snapshot-test setup, a
-minimal worked example) lives in that skill's own `references/` directory,
-loaded only when a specific language is resolved.
+Each of the three paradigm skills stays under ~1,000 words: a quick-reference
+summary (which framework, which split, which registry, per this file above)
+plus generation steps that name the framework/tool involved so the skill
+reads coherently on its own. The exhaustive, authoritative detail — exact
+framework calls, project layout, help/completion generation, distribution
+commands, snapshot-test setup, a minimal worked example, and any
+framework-specific exit-code nuance — lives only in that skill's own
+`references/` directory, loaded once a specific language is resolved; a
+paradigm SKILL.md should point there rather than restate specifics that
+could drift out of sync with the reference.
 
 ## Agents
 

@@ -1,0 +1,39 @@
+[project]
+name = "werkstoff"
+version = "0.1.0"
+description = "Install and manage this repo's Claude Code plugins by driving the claude CLI."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Anselm Hahn", email = "anselm.hahn@gmail.com" }]
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.scripts]
+werkstoff = "werkstoff.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.11.29,<0.12"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "syrupy>=4.0",
+    "ruff>=0.8",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008: Typer's own idiom is `param: T = typer.Option(...)` / `typer.Argument(...)`
+# in the function signature — that's a call-in-default by design, not a bug.
+ignore = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

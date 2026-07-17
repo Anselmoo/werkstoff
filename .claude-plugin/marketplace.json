@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "self-assess",
-      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, and a multi-repo portfolio dashboard — read-only, writes only to a scoped output directory.",
+      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, and a multi-repo portfolio dashboard — read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable).",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -29,7 +29,7 @@
     },
     {
       "name": "compass",
-      "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 10 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships), composed by compass-solve into an actual workflow rather than exposed as a technique picker.",
+      "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 13 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships, negotiate-tradeoffs, verify-assumptions, summarize-trace), composed by compass-solve into an actual workflow rather than exposed as a technique picker.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"

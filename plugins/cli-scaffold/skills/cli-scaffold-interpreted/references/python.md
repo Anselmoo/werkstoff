@@ -304,7 +304,22 @@ stdout against a syrupy snapshot:
 from typer.testing import CliRunner
 from mypkg.cli import app
 
-runner = CliRunner()
+# Rich/Typer's --help rendering wraps to the terminal width (flaky across
+# machines/CI unless pinned) and, separately, Click's rich_utils forces
+# ANSI color whenever GITHUB_ACTIONS is set — which is unconditionally
+# true on every GitHub Actions runner — even into this non-tty captured
+# buffer, and that forcing wins over NO_COLOR in this code path. Setting
+# NO_COLOR=1 alone is not sufficient; the CI-detection vars must be
+# explicitly cleared too.
+runner = CliRunner(
+    env={
+        "COLUMNS": "80",
+        "NO_COLOR": "1",
+        "GITHUB_ACTIONS": "",
+        "FORCE_COLOR": "",
+        "CLICOLOR_FORCE": "",
+    }
+)
 
 def test_help_snapshot(snapshot) -> None:
     result = runner.invoke(app, ["--help"])
@@ -312,8 +327,32 @@ def test_help_snapshot(snapshot) -> None:
     assert result.output == snapshot
 ```
 
-Add `pytest-syrupy` as a dev dependency and generate/update the stored
-snapshot with:
+Never construct `CliRunner()` with no `env=` override for a `--help`
+snapshot test — two independent sources of flakiness, both confirmed by
+reproducing an actual GitHub Actions failure end-to-end (real pty +
+`GITHUB_ACTIONS=true`, matching the runner's own default environment):
+
+- The recorded snapshot only matches whatever terminal width happened to
+  be active when it was generated, and fails non-deterministically
+  (`1 failed` locally, or in CI on a runner with a different default
+  width) for anyone else — pin `COLUMNS`. Any fixed value works as long
+  as it's stable.
+- Separately, and independently of width: when the *invoking* process
+  (e.g. `uv run pytest` in a CI step) has a real pty attached — which
+  GitHub Actions steps do, for live log rendering — Click's `rich_utils`
+  detects `GITHUB_ACTIONS` in the environment and forces ANSI codes into
+  the help output, even though `CliRunner` itself captures to a plain,
+  non-tty `StringIO`. This happens regardless of the actual sub-buffer's
+  tty-ness, and it is not fixed by `NO_COLOR=1` alone — `GITHUB_ACTIONS`,
+  `FORCE_COLOR`, and `CLICOLOR_FORCE` must all be explicitly overridden
+  to empty in the same `env=` dict. A snapshot recorded locally (no pty,
+  no `GITHUB_ACTIONS`) will otherwise pass locally and fail in CI only,
+  with a diff that looks like every line changed but reads as identical
+  text — the invisible difference is embedded ANSI escape sequences.
+
+Add `syrupy` as a dev dependency (the PyPI/`uv add` package name is `syrupy`,
+not `pytest-syrupy` — the latter does not exist as a distribution) and
+generate/update the stored snapshot with:
 
 ```bash
 uv run pytest --snapshot-update

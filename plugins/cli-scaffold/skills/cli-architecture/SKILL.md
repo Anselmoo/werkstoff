@@ -92,8 +92,11 @@ defines what "satisfied" means at the doctrine level, language-agnostic.
   that captures its own `--help` output and compares it against a stored
   snapshot/golden file, using that language's idiomatic snapshot-testing
   tool (documented per language in the relevant reference — pytest+syrupy,
-  vitest, insta, Verify.Xunit, golden files, Aruba, bats-core, shunit2,
-  Pester+Compare-Object). This is what keeps `--help` output from drifting
+  vitest, insta, Verify.Xunit, PHPUnit+spatie-snapshot-assertions,
+  Test::Script+golden-file, golden files, Aruba, bats-core, shunit2,
+  Pester+Compare-Object — covering all 12 supported languages, though
+  Bash and Zsh both use bats-core). This is what keeps `--help` output
+  from drifting
   silently between regenerations, and it is what proves the generated help
   text actually matches pillar 1's structural requirement rather than
   merely asserting it does.

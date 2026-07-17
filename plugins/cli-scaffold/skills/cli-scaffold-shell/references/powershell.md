@@ -156,19 +156,19 @@ if (-not $env:NO_COLOR) {
 }
 ```
 
-On PowerShell 7.2+, prefer gating through `$PSStyle.OutputRendering`
-instead of branching every call site — set it once near the entry point:
+On PowerShell 7.2+, `$PSStyle.OutputRendering` is already set to
+`PlainText` automatically by the engine itself when `$env:NO_COLOR` is
+set — per Microsoft's `about_ANSI_Terminals` documentation, no manual
+wiring is needed for any output that goes through `$PSStyle`-aware
+rendering (including `Write-Information`/formatted objects). The manual
+`$env:NO_COLOR` branch above is still required regardless, because it
+covers `Write-Host -ForegroundColor`, which is a legacy cmdlet that
+predates `$PSStyle` and was never made `$PSStyle`-aware — that's the one
+call site that still needs hand-rolled NO_COLOR checks on every use.
 
-```powershell
-if ($env:NO_COLOR -and $PSStyle) {
-    $PSStyle.OutputRendering = [System.Management.Automation.OutputRendering]::PlainText
-}
-```
-
-`$PSStyle` does not exist on Windows PowerShell 5.1, so always guard its
-use behind `if ($PSStyle)` (or `$PSVersionTable.PSVersion.Major -ge 7`)
-and keep the manual `$env:NO_COLOR` check on individual `-ForegroundColor`
-calls as the compatibility fallback for 5.1 hosts.
+`$PSStyle` does not exist on Windows PowerShell 5.1 at all (there is no
+automatic NO_COLOR handling on 5.1), so 5.1 hosts depend entirely on the
+manual `$env:NO_COLOR` check on `-ForegroundColor` calls shown above.
 
 ## 5. Exit codes
 
@@ -192,22 +192,33 @@ function Exit-WithCode([int]$Code) {
 }
 ```
 
-PowerShell's own mandatory-parameter validation already produces a
-non-zero terminating error when a required parameter is missing and the
-session is non-interactive — do not silently rely on the default
-uncaught-error exit code (which is `1`, not `2`). Wrap the call in
-`try`/`catch` at the entry point and remap that specific failure to `2`:
+`[Parameter(Mandatory=$true)]` does **not** produce a terminating error when
+the value is missing, even in a non-interactive session — PowerShell instead
+issues a `Read-Host`-style prompt and blocks waiting for input, which hangs
+a CI invocation instead of exiting 2. Do not rely on `Mandatory=$true` to
+give you a parse-time usage error the way clap/argparse do. Instead, make
+the parameter optional in the signature and validate it explicitly in the
+function body — the same pattern pillar 6 already uses for `-NoInput`:
 
 ```powershell
-try {
-    Get-Greeting -Name $Name -ErrorAction Stop
-    Exit-WithCode 0
-} catch [System.Management.Automation.ParameterBindingException] {
-    Write-Error $_
-    Exit-WithCode 2
-} catch {
-    Write-Error $_
-    Exit-WithCode 1
+function Invoke-Greeting {
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [string]$Name
+    )
+    if ([string]::IsNullOrEmpty($Name)) {
+        Write-Error "Name is required"
+        Exit-WithCode 2
+        return
+    }
+    try {
+        Get-Greeting -Name $Name -ErrorAction Stop
+        Exit-WithCode 0
+    } catch {
+        Write-Error $_
+        Exit-WithCode 1
+    }
 }
 ```
 

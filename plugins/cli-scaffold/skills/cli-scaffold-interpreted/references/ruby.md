@@ -112,25 +112,56 @@ Use the frozen cross-paradigm contract everywhere in this plugin:
 - `1` — general/runtime error
 - `2` — usage/argument error
 
-Call `exit(N)` explicitly at the point of failure; never rely on Ruby's
-default of exiting 1 on an uncaught exception, since that conflates
-runtime errors with usage errors. Thor does **not** default its own
-argument errors to exit code 2 the way Click/Cobra do — Thor raises
-`Thor::UndefinedCommandError` or `Thor::InvocationError` and, left
-uncaught, this triggers Ruby's default uncaught-exception exit code (1).
-Rescue those explicitly in the executable and remap them:
+Call `exit(N)` explicitly at the point of failure. Thor does **not**
+default its own argument errors to exit code 2 the way Click/Cobra do,
+and a `begin ... rescue Thor::UndefinedCommandError, Thor::InvocationError
+... end` wrapped around `CLI.start(ARGV)` is dead code and must not be
+generated: Thor's own `start` (`lib/thor/base.rb`) already
+`rescue Thor::Error => e` internally — both `UndefinedCommandError` and
+`InvocationError` are `Thor::Error` subclasses, so they're swallowed
+inside `start` and never reach an outer rescue. Worse, `start` only calls
+`exit(false)` (exit code 1, never 2) when the class's `exit_on_failure?`
+returns true, and Thor's own default `exit_on_failure?` is **false** — so
+an unmodified Thor CLI silently exits **0** on a bad command or bad
+arguments, not 1.
+
+To get the frozen 0/1/2 contract, override two class-level hooks that
+Thor's dispatcher actually calls *before* raising — `handle_no_command_error`
+and `handle_argument_error` — so the usage-error path exits `2` directly
+instead of ever becoming a `Thor::Error` that `start` would otherwise
+swallow or exit-1 on. Also still define `exit_on_failure?` (`true`) as a
+fallback for any other `Thor::Error` Thor itself might raise elsewhere:
 
 ```ruby
-begin
-  <App>::CLI.start(ARGV)
-rescue Thor::UndefinedCommandError, Thor::InvocationError => e
-  warn e.message
-  exit(2)
-rescue <App>::Core::Error => e
-  warn e.message
-  exit(1)
+class CLI < Thor
+  def self.exit_on_failure? = true
+
+  def self.handle_no_command_error(command, has_namespace = $thor_runner)
+    warn "ERROR: unknown command \"#{command}\""
+    exit(2)
+  end
+
+  def self.handle_argument_error(command, error, args, arity)
+    warn "ERROR: \"#{command.name}\" called with the wrong arguments"
+    exit(2)
+  end
+
+  desc "greet NAME", "Print a greeting"
+  def greet(name)
+    puts <App>::Core.build_greeting(name)
+  rescue <App>::Core::Error => e
+    warn e.message
+    exit(1)
+  end
 end
+
+CLI.start(ARGV)
 ```
+
+Domain/runtime errors (`<App>::Core::Error`) are not `Thor::Error`
+subclasses, so they're never touched by Thor's dispatch machinery at
+all — catch them inside each command method (as shown above), not around
+`CLI.start`, and `exit(1)` explicitly there.
 
 ## 6. `--json` output and `--no-input`
 
@@ -250,6 +281,18 @@ require_relative "../lib/<app>/core"
 
 module <App>
   class CLI < Thor
+    def self.exit_on_failure? = true
+
+    def self.handle_no_command_error(command, has_namespace = $thor_runner)
+      warn "ERROR: unknown command \"#{command}\""
+      exit(2)
+    end
+
+    def self.handle_argument_error(command, error, args, arity)
+      warn "ERROR: \"#{command.name}\" called with the wrong arguments"
+      exit(2)
+    end
+
     class_option :json, type: :boolean, default: false
     class_option :no_input, type: :boolean, default: false
 
@@ -269,10 +312,5 @@ module <App>
   end
 end
 
-begin
-  <App>::CLI.start(ARGV)
-rescue Thor::UndefinedCommandError, Thor::InvocationError => e
-  warn e.message
-  exit(2)
-end
+<App>::CLI.start(ARGV)
 ```
