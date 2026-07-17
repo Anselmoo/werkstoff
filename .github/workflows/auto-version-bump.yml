@@ -59,8 +59,21 @@ jobs:
 
       - name: Determine bump level from the head commit's conventional-commit type
         id: level
+        env:
+          # GitHub Actions expression interpolation (${{ ... }}) splices its
+          # value directly into the shell script's TEXT before bash ever
+          # parses it -- it is not passed as a safely-quoted variable. Used
+          # inline inside `run:`, an arbitrary multi-line commit message
+          # containing quotes/backticks/parens/`$()` can break the script's
+          # syntax outright, or worse, inject arbitrary shell commands. This
+          # already broke a real run: PR #3's own commit message (which
+          # itself discusses this exact class of bug) hit exactly this,
+          # aborting with "syntax error near unexpected token '('". Routing
+          # untrusted-shaped values through `env:` and referencing them as
+          # normal `"$VAR"` inside the script is the documented-safe pattern.
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
-          FIRST_LINE=$(echo "${{ github.event.head_commit.message }}" | head -1)
+          FIRST_LINE=$(echo "$HEAD_COMMIT_MESSAGE" | head -1)
           # Anchored to line-start + colon, matching the Conventional Commits
           # footer format exactly (`BREAKING CHANGE: ...`) -- a bare
           # substring search over the whole message is a real trap: prose
@@ -69,7 +82,7 @@ jobs:
           # would false-positive into a major bump. Confirmed via a real
           # incident: this repo's own PR #2, whose squashed commit body
           # explained this detection logic in prose, triggered exactly that.
-          if echo "${{ github.event.head_commit.message }}" | grep -qE '^BREAKING[ -]CHANGE:' \
+          if echo "$HEAD_COMMIT_MESSAGE" | grep -qE '^BREAKING[ -]CHANGE:' \
              || echo "$FIRST_LINE" | grep -qE '^[a-z]+(\([a-z0-9_-]+\))?!:'; then
             LEVEL=major
           elif echo "$FIRST_LINE" | grep -qE '^feat(\([a-z0-9_-]+\))?:'; then
