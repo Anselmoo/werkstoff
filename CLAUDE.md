@@ -59,10 +59,13 @@ subcommands beyond git (`bump`, `release`, `sync`, `doctor`, `drift`, `branch`, 
 Each plugin has its own independently-versioned
 `plugins/<name>/.claude-plugin/plugin.json` + `plugins/<name>/CHANGELOG.md`,
 wired up as a separate `rrt` version group in `.rrt.toml` (`self-assess`,
-`quality`, `compass`). Bump one plugin's version with:
+`quality`, `compass`). The `tools/werkstoff-cli` installer tool is wired up
+the same way, but targets its own `pyproject.toml` (`kind = "pep621"`) +
+`tools/werkstoff-cli/CHANGELOG.md` instead of a `plugin.json`. Bump one
+group's version with:
 
 ```bash
-rrt bump <major|minor|patch> --group <plugin-name>
+rrt bump <major|minor|patch> --group <group-name>
 ```
 
 Requires **rrt >= 1.13.1** — anything older fails with "Multiple version

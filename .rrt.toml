@@ -1,11 +1,12 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# werkstoff bundles three independently-versioned Claude Code plugins in one
-# repo (self-assess, quality, compass), each with its own
-# plugins/<name>/.claude-plugin/plugin.json declaring its own "version".
-# `version_groups` lets rrt bump each plugin's version independently
-# (`rrt bump <bump> --group <name>`) rather than forcing one repo-wide
-# version across all three. Requires rrt >= 1.13.1 (see
+# werkstoff bundles three independently-versioned Claude Code plugins
+# (self-assess, quality, compass), each with its own
+# plugins/<name>/.claude-plugin/plugin.json declaring its own "version",
+# plus the werkstoff-cli installer tool under tools/werkstoff-cli/, versioned
+# via its own pyproject.toml. `version_groups` lets rrt bump each unit's
+# version independently (`rrt bump <bump> --group <name>`) rather than
+# forcing one repo-wide version across all four. Requires rrt >= 1.13.1 (see
 # anselmoo/repo-release-tools#175 — fixed in #176 — for why anything older
 # fails with "Multiple version groups configured" on a valid --group).
 
@@ -35,6 +36,15 @@ changelog_file = "plugins/compass/CHANGELOG.md"
   [[tool.rrt.version_groups.version_targets]]
   path = "plugins/compass/.claude-plugin/plugin.json"
   kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "werkstoff-cli"
+release_branch = "release/werkstoff-cli/v{version}"
+changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "tools/werkstoff-cli/pyproject.toml"
+  kind = "pep621"
 
 # Field-level sync (rrt fields): each plugin's own plugin.json is the
 # single source of truth for its description; the marketplace.json
