@@ -1,0 +1,25 @@
+# serializer version: 1
+# name: test_help_snapshot
+  '''
+                                                                                  
+   Usage: root [OPTIONS] COMMAND [ARGS]...                                        
+                                                                                  
+   Install and manage this repo's Claude Code plugins by driving the claude CLI.  
+                                                                                  
+  ╭─ Options ────────────────────────────────────────────────────────────────────╮
+  │ --install-completion          Install completion for the current shell.      │
+  │ --show-completion             Show completion for the current shell, to copy │
+  │                               it or customize the installation.              │
+  │ --help                        Show this message and exit.                    │
+  ╰──────────────────────────────────────────────────────────────────────────────╯
+  ╭─ Commands ───────────────────────────────────────────────────────────────────╮
+  │ list     List every plugin available in the werkstoff marketplace.           │
+  │ install  Add the werkstoff marketplace (if needed) and install the given     │
+  │          plugins.                                                            │
+  │ update   Refresh the werkstoff marketplace cache so local plugin edits are   │
+  │          picked up.                                                          │
+  ╰──────────────────────────────────────────────────────────────────────────────╯
+  
+  
+  '''
+# ---
