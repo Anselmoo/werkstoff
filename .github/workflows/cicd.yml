@@ -133,7 +133,7 @@ jobs:
         uses: anchore/sbom-action@v0
         with:
           format: spdx-json
-          output-file: sbom.spdx.json
+          output-file: ${{ env.PACKAGE_DIR }}/sbom.spdx.json
           path: ${{ env.PACKAGE_DIR }}
 
       - name: Upload SBOM artifact
