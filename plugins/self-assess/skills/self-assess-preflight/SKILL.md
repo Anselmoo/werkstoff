@@ -130,6 +130,24 @@ downstream skill:
   the repo isn't under git.
 - **`lint-audit`** — Ready-with-gaps if Check 4 found no `house-rules.md`
   (falls back to best-effort from `CLAUDE.md`), Ready if it's present.
+- **`code-idiom`** — needs Check 1 to have detected at least one language;
+  Ready if a language with a hand-tuned idiom catalog is present (Python,
+  Rust, TS/JS, Go, Java, Ruby, PHP), Ready-with-gaps if only
+  generic-fallback languages were detected (still runs, coarser idiom
+  coverage), Not-ready if Check 1 found no languages at all.
+- **`arch-health`** — depends on `self-assess-stage-map` having run first
+  (it reads that skill's `stage_graph.json`, never re-deriving the graph).
+  Ready if a `stage_graph.json` already exists under `output_dir`,
+  Ready-with-gaps otherwise with the fix "run `self-assess-stage-map`
+  first" — never Not-ready, since running stage-map resolves it.
+- **`transform-brief`** — depends on both `self-assess-stage-map`
+  (`stage_graph.json`, for the phase sequence) and `self-assess-arch-health`
+  (`arch_health_summary.json`, for the merge/split/keep decision) having run
+  first. Ready if both exist under `output_dir`, Ready-with-gaps otherwise
+  with the fix naming whichever is missing — never Not-ready, since running
+  the missing skill(s) resolves it. Without `arch_health_summary.json` the
+  brief would have no basis for any Merge/Split decision, so treat it as a
+  hard prerequisite, not an optional enrichment.
 
 Also write `<output_dir>/preflight_summary.json` — a small machine-
 readable sidecar alongside the human-readable report, the same
@@ -146,7 +164,10 @@ multi-repo dashboard without parsing markdown:
     "stageMap": "Ready" | "Ready-with-gaps" | "Not-ready",
     "docsDrift": "Ready" | "Not-ready",
     "ciTopology": "Ready" | "Not-ready",
-    "lintAudit": "Ready" | "Ready-with-gaps"
+    "lintAudit": "Ready" | "Ready-with-gaps",
+    "codeIdiom": "Ready" | "Ready-with-gaps" | "Not-ready",
+    "archHealth": "Ready" | "Ready-with-gaps",
+    "transformBrief": "Ready" | "Ready-with-gaps"
   }
 }
 ```

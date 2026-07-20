@@ -35,9 +35,9 @@ rather than mental multiplication chains.
 
 ### In werkstoff
 
-`quality-assertion-audit`'s optional real-mutation-tool augmentation
-(`plugins/quality/skills/quality-assertion-audit/SKILL.md`) is PAL's
-exact principle: when `quality-preflight` finds `mutmut`/Stryker/PIT on
+`confab-assertion-audit`'s optional real-mutation-tool augmentation
+(`plugins/confab/skills/confab-assertion-audit/SKILL.md`) is PAL's
+exact principle: when `confab-preflight` finds `mutmut`/Stryker/PIT on
 `PATH`, the skill shells out to the real tool for ground-truth mutation
 scores instead of LLM-reasoning about whether a test would catch a
 mutation — offloading precision-sensitive computation to code, falling

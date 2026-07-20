@@ -32,6 +32,9 @@ the artifact's presence and modification time:
 | lint-audit | `LINT_AUDIT.md`, `lint_audit_summary.json` |
 | extract-rules | `BUSINESS_RULES.md`, `DATA_OBJECTS.md`, `business_rules_summary.json` |
 | complexity-score | `COMPLEXITY_SCORE.md`, `complexity_score_summary.json` |
+| code-idiom | `CODE_IDIOM.md`, `code_idiom_summary.json` |
+| arch-health | `ARCH_HEALTH.md`, `arch_health_summary.json` |
+| transform-brief | `MODERNIZATION_BRIEF.md`, `TRANSFORM_SEQUENCE.mmd`, `TRANSFORM_MAPPING.mmd`, `transform_brief_summary.json` |
 
 ## 2 — Staleness
 
@@ -50,7 +53,7 @@ Flag each stale artifact with which skill to re-run.
 
 ## 3 — Render the dashboard
 
-Assemble a combined JSON object from whichever of the three
+Assemble a combined JSON object from whichever of the six
 severity/category-bucketed domain sidecars actually exist under
 `<output_dir>/` — `Read` each one that is present and `JSON.parse` it
 (skip any that are missing; do not invent placeholder data for a skill
@@ -61,11 +64,13 @@ that has never run):
   "docsDrift": <contents of docs_drift_summary.json, if present>,
   "ciTopology": <contents of ci_topology_summary.json, if present>,
   "lintAudit": <contents of lint_audit_summary.json, if present>,
-  "businessRules": <contents of business_rules_summary.json, if present>
+  "businessRules": <contents of business_rules_summary.json, if present>,
+  "codeIdiom": <contents of code_idiom_summary.json, if present>,
+  "archHealth": <contents of arch_health_summary.json, if present>
 }
 ```
 
-This intentionally aggregates only these four domain skills.
+This intentionally aggregates only these six domain skills.
 `self-assess-stage-map` already has its own dedicated interactive viewer
 (`STAGE_MAP.html`, rendered by that skill's own Step 3) and is not
 duplicated here. `self-assess-portfolio` is a separate multi-repo
@@ -76,7 +81,10 @@ for the same reason as `self-assess-stage-map`: it's a different shape of
 data (a ranked complexity index, not severity/category buckets) — it
 gets a row in the artifact-inventory table above, but no key in this
 combined JSON and no entry in `findings-dashboard.html`'s `DOMAINS`
-registry.
+registry. `self-assess-transform-brief` is excluded for the same reason: a
+transformation plan is not a pass/fail finding, so `decisionCounts` and
+`openQuestions` don't fit a severity/category bucket either — it also gets
+an inventory-table row only.
 
 Each domain key is present only if its sidecar file exists — do not add
 a key with an empty object as a stand-in for "not run yet"; the viewer
@@ -89,7 +97,7 @@ plain `Write` call), then run the injection script — same
 render-and-inject pattern `self-assess-stage-map` uses for its own
 viewer (see that skill's "Step 3 — Render the interactive map" and
 `scripts/render_stage_map.py`), and the same pattern the sibling
-`quality` plugin's `quality-status` skill uses for its own dashboard:
+`confab` plugin's `confab-status` skill uses for its own dashboard:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/self-assess-status/scripts/render_dashboard.py" \
@@ -104,7 +112,7 @@ block — the HTML parser closes `<script>` on the literal bytes
 `x</script><script>...` would execute. The script handles the required
 JSON-safe escaping (`<`, `>`, `&`); do not reimplement this inline.
 
-If none of the three sidecars exist yet, still run the injection step —
+If none of the six sidecars exist yet, still run the injection step —
 the template's own "no data yet" empty state (in
 `findings-dashboard.html`) handles an all-missing payload without
 looking broken, so this skill never needs special-case logic for a

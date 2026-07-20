@@ -53,7 +53,7 @@ here assumes a rigid schema beyond `type`.
 self-contained, interactive chord diagram of every technique-to-grounding-target
 relationship extracted from this bundle's 21 `### In werkstoff` sections — the
 21 technique docs on one arc, the 15 distinct entities they cite (mostly
-`self-assess-*`/`quality-*` skills, `code-modernization`, or this repo's own
+`self-assess-*`/`confab-*` skills, `code-modernization`, or this repo's own
 `superpowers` usage) on the other. Click a technique to see its doc description
 and citations; click a grounding target (e.g. `self-assess-stage-map`) to see
 every technique that cites it. Open it directly in a browser — no server, no

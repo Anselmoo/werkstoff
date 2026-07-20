@@ -14,7 +14,7 @@ argument. If the user names a specific path, use that as the repo root
 instead of the working directory.
 
 This is plain skill logic, matching `self-assess-preflight` and
-`quality-preflight`: no agent file, no Workflow script. Every check below
+`confab-preflight`: no agent file, no Workflow script. Every check below
 is a direct, local, read-only operation — there is no fan-out to
 parallelize and nothing that benefits from adversarial verification, the
 two conditions that justify a Workflow-orchestrated skill elsewhere in
@@ -92,8 +92,8 @@ own runtime check be authoritative):
 |---|---|---|
 | `self-assess:stage-mapper` (agent) | `andon-loop` Phase 0 topology detection | Built-in minimal heuristic, confidence flagged reduced |
 | `self-assess:stage-mapper` (agent), Tier 3 | `andon-verify` strategy e (structural) | Tier 3 unavailable too → strategy e reports "cannot verify structurally," other strategies unaffected |
-| `quality:quality-agentic-reliability` (skill) | `andon-verify` strategy d | Strategy d reports unavailable; loop continues with the other six strategies |
-| `quality:quality-contract-drift`, `quality:quality-assertion-audit` (skills) | `andon-verify` strategy g | Strategy g reports unavailable; loop continues with the other six strategies |
+| `confab:confab-agentic-reliability` (skill) | `andon-verify` strategy d | Strategy d reports unavailable; loop continues with the other six strategies |
+| `confab:confab-contract-drift`, `confab:confab-assertion-audit` (skills) | `andon-verify` strategy g | Strategy g reports unavailable; loop continues with the other six strategies |
 | `LSP` tool (deferred Claude Code tool) | `andon-verify` strategy e, Tier 2 | Falls through to Tier 3 |
 | Kythe/SCIP/LSIF index on disk | `andon-verify` strategy e, Tier 1 | Falls through to Tier 2, then Tier 3 |
 | Hypothesis / fast-check / QuickCheck-family | `andon-verify` strategy f | Reports the missing per-language tool and which install command would add it; never fabricates a bespoke property-testing mechanism in its place |

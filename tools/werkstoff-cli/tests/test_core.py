@@ -98,7 +98,7 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
         tmp_path,
         [
             {"name": "self-assess", "description": "d", "source": "./plugins/self-assess"},
-            {"name": "quality", "description": "d", "source": "./plugins/quality"},
+            {"name": "confab", "description": "d", "source": "./plugins/confab"},
         ],
     )
     marketplace = core.load_marketplace(repo)
@@ -106,11 +106,11 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
 
     installed = core.install_plugins(marketplace, (), scope="user", run=run)
 
-    assert installed == ["self-assess", "quality"]
+    assert installed == ["self-assess", "confab"]
     assert calls[0][1:5] == ["plugin", "marketplace", "add", str(repo)]
     assert calls[1][1:5] == ["plugin", "marketplace", "update", "werkstoff"]
     assert calls[2][1:4] == ["plugin", "install", "self-assess@werkstoff"]
-    assert calls[3][1:4] == ["plugin", "install", "quality@werkstoff"]
+    assert calls[3][1:4] == ["plugin", "install", "confab@werkstoff"]
 
 
 def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
@@ -119,16 +119,16 @@ def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
         tmp_path,
         [
             {"name": "self-assess", "description": "d", "source": "./plugins/self-assess"},
-            {"name": "quality", "description": "d", "source": "./plugins/quality"},
+            {"name": "confab", "description": "d", "source": "./plugins/confab"},
         ],
     )
     marketplace = core.load_marketplace(repo)
     run, calls = _fake_run()
 
-    installed = core.install_plugins(marketplace, ("quality",), scope="project", run=run)
+    installed = core.install_plugins(marketplace, ("confab",), scope="project", run=run)
 
-    assert installed == ["quality"]
-    assert calls[2][1:4] == ["plugin", "install", "quality@werkstoff"]
+    assert installed == ["confab"]
+    assert calls[2][1:4] == ["plugin", "install", "confab@werkstoff"]
     assert calls[2][4:6] == ["--scope", "project"]
 
 

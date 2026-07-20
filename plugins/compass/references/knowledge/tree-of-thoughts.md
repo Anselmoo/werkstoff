@@ -40,7 +40,7 @@ specialization vs. distribution partnership vs. price disruption.
 Tree-of-Thoughts instance**: "Propose 2-3 different approaches with
 trade-offs... lead with your recommended option" is Phase 1+2 in prose
 form, applied to every design decision in this repo (e.g. the "Approach
-A/B/C" scope choice for the `quality` plugin, or the
+A/B/C" scope choice for the `confab` plugin, or the
 skill-count/architecture options presented for `compass` itself).
 `compass-explore-branches` (`plugins/compass/workflows/explore-branches-scan.js`)
 formalizes this exact process — parallel branch-proposer agents pinned

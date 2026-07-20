@@ -8,7 +8,7 @@ than restated, so they stay in one place.
 
 Accuracy on a long software-engineering benchmark fell from 29% to 3%
 as context grew from 32K to 256K tokens (the "Spec Growth Engine"
-paper's finding, surfaced during this repo's `quality`-plugin research).
+paper's finding, surfaced during this repo's `confab`-plugin research).
 Models use long contexts unevenly and retrieve worst from the middle —
 adding more examples, more facts, more retrieved passages is not a
 free precision upgrade, and past a point it actively degrades the
@@ -32,7 +32,7 @@ result.
 
 LLM-generated tests systematically achieve reasonable code coverage
 while asserting little — they execute code without verifying behavior
-(the mutation-testing research `quality-assertion-audit` is built on).
+(the mutation-testing research `confab-assertion-audit` is built on).
 The same failure shape applies to prompts and reasoning generally: a
 confident, well-formatted answer is not evidence it is correct.
 

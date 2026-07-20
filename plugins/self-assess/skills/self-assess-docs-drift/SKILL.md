@@ -82,8 +82,20 @@ Create `<output_dir>/DOCS_DRIFT.md`:
 Also write `<output_dir>/docs_drift_summary.json` — a small machine-
 readable sidecar `self-assess-portfolio` reads for its dashboard:
 `{"docFilesChecked": N, "totalClaimsChecked": N, "confirmedContradictions":
-N, "byCategory": {...}}` (the last two copied straight from the
-workflow's `confirmedClaims.length` and `stats.byCategory`).
+N, "byCategory": {...}, "findings": [...]}` (the middle two copied
+straight from the workflow's `confirmedClaims.length` and
+`stats.byCategory`).
+
+`findings` is the workflow's own `confirmedClaims` array (already
+computed — do not re-derive it), reshaped to the shared per-finding
+contract every domain sidecar now uses: `{severity, title, evidence,
+category}` — `title` from `claimText`, `evidence` from `codeEvidence`,
+`category` copied as-is, `severity` from `confidence` (High/Medium/Low).
+Note this is a confidence-in-the-contradiction reading, not a
+severity-of-impact one like the other domains — say so in the report if
+it matters, but the field is still called `severity` for the dashboard's
+sake. Feeds `findings-dashboard.html`'s findings table and
+`self-assess-transform-brief`.
 
 ## Present
 

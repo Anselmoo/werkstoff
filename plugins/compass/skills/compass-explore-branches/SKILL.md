@@ -36,7 +36,7 @@ explicitly asks for more or fewer options, or the scoped problem's own
 complexity clearly warrants it (cap at 6, or `.claude/compass.local.md`'s
 `max_branch_count` if lower — see the workflow's angle pool).
 
-Unlike `self-assess`/`quality`, `compass` has no `output_dir` — every
+Unlike `self-assess`/`confab`, `compass` has no `output_dir` — every
 `compass-*` skill (including this one) returns its result into the
 conversation rather than writing a persistent artifact. An optional
 `.claude/compass.local.md` may still exist for `branch_count`/

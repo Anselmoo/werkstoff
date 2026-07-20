@@ -47,7 +47,7 @@ posture for every request.
 ## Plain sequential logic — no Workflow tool
 
 This is confirmed as **plain sequential skill logic** — no Workflow
-machinery. Unlike `self-assess`/`quality`'s parallel-finder audits, and
+machinery. Unlike `self-assess`/`confab`'s parallel-finder audits, and
 unlike `compass-explore-branches`/`compass-optimize-instruction`'s genuine
 parallel fan-out, every stage of this pipeline is a single-pass judgment
 call applied to the same evolving project context, and most stages

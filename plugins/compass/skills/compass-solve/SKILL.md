@@ -52,7 +52,7 @@ they are not a default posture.
 
 `compass` has no `output_dir` — every `compass-*` skill, including this
 one, still returns its result into the conversation rather than writing
-a persistent artifact, unlike `self-assess`/`quality`. But an optional
+a persistent artifact, unlike `self-assess`/`confab`. But an optional
 `.claude/compass.local.md` may exist in the repo you're working in (copy
 `examples/compass.local.md` there to create one) — check for it before
 proceeding:

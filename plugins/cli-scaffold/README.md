@@ -118,7 +118,7 @@ skills/cli-scaffold-interpreted/references/{python,typescript-js,ruby,php,perl}.
 skills/cli-scaffold-shell/references/{bash,zsh,powershell,posix-sh}.md
 ```
 
-No `test-fixtures/` in this plugin — unlike `self-assess`/`quality`'s
+No `test-fixtures/` in this plugin — unlike `self-assess`/`confab`'s
 audit skills, there is no existing repo state to audit; the generation
 itself is what's being pinned, and `cli-scaffold-verifier`'s runtime
 checks against each freshly generated scaffold are the closest analog.
@@ -133,7 +133,7 @@ checks against each freshly generated scaffold are the closest analog.
 }
 ```
 
-Unlike `self-assess`/`quality`, this plugin's whole purpose is writing new
+Unlike `self-assess`/`confab`, this plugin's whole purpose is writing new
 files into the target repo (the generated CLI's source tree) — there is no
 scoped `output_dir` to narrow permissions to, since the output *is* the
 deliverable, not an analysis artifact. `cli-scaffold-verifier` itself has

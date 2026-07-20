@@ -4,7 +4,7 @@ My personal Claude Code plugin workshop (`.claude-plugin/marketplace.json`
 at root). Three plugins currently:
 
 - `plugins/self-assess/` — docs-vs-code drift and stage/wire mapping for a live repo.
-- `plugins/quality/` — AI-generated-code quality auditing (dependency/assertion/contract/agentic-reliability audits).
+- `plugins/confab/` — catches where AI-authored code confabulates (dependency-hallucination/assertion/contract-drift/agentic-reliability audits).
 - `plugins/compass/` — prompt-engineering technique library + `compass-solve` orchestrator for complex/ambiguous tasks.
 
 See each plugin's own `README.md` for what it does in full.
@@ -16,7 +16,7 @@ edits:
 
 - **Brief**: `.superpowers/sdd/<prefix>-task-N-brief.md` — written via the
   `superpowers:writing-plans` skill. `<prefix>` is short per work-stream
-  (e.g. `sa-` for self-assess, `q-` for quality, `c-` for compass). Format:
+  (e.g. `sa-` for self-assess, `cf-` for confab, `c-` for compass). Format:
   Files / Scope / numbered checkbox Steps / manual-verify / commit.
 - **Report**: `.superpowers/sdd/<prefix>-task-N-report.md` — written after
   a task completes (implementation notes, review outcome).
@@ -59,7 +59,7 @@ subcommands beyond git (`bump`, `release`, `sync`, `doctor`, `drift`, `branch`, 
 Each plugin has its own independently-versioned
 `plugins/<name>/.claude-plugin/plugin.json` + `plugins/<name>/CHANGELOG.md`,
 wired up as a separate `rrt` version group in `.rrt.toml` (`self-assess`,
-`quality`, `compass`). The `tools/werkstoff-cli` installer tool is wired up
+`confab`, `compass`). The `tools/werkstoff-cli` installer tool is wired up
 the same way, but targets its own `pyproject.toml` (`kind = "pep621"`) +
 `tools/werkstoff-cli/CHANGELOG.md` instead of a `plugin.json`. Bump one
 group's version with:

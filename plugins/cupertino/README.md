@@ -11,7 +11,7 @@ into one fixed lifecycle pipeline rather than exposed as a technique
 picker. The thesis: **fewer decisions, made deeply, at the right moment in
 a project's life, produce software that feels intentional and ages well.**
 
-This is `self-assess`'s, `quality`'s, and `compass`'s sibling plugin in this
+This is `self-assess`'s, `confab`'s, and `compass`'s sibling plugin in this
 repo, closest in shape to `compass`: a pure-reasoning plugin, no agents, no
 Workflow scripts, just skills with rich `references/`. Where `compass`
 composes 10 general-purpose reasoning techniques for arbitrary tasks,

@@ -70,11 +70,18 @@ Create `<output_dir>/LINT_AUDIT.md`:
 Also write `<output_dir>/lint_audit_summary.json` — a small machine-
 readable sidecar `self-assess-portfolio` reads for its dashboard:
 `{"conventionsSource": "...", "rulesChecked": N, "violationsBySeverity":
-{...}}`. Note the shape difference from the workflow's own return value:
-the workflow's `rulesChecked` field is an **array of rule names** — this
-sidecar's `rulesChecked` is that array's **length** (a count), and
-`violationsBySeverity` is copied straight from the workflow's
-`stats.bySeverity`.
+{...}, "findings": [...]}`. Note the shape difference from the workflow's
+own return value: the workflow's `rulesChecked` field is an **array of
+rule names** — this sidecar's `rulesChecked` is that array's **length**
+(a count), and `violationsBySeverity` is copied straight from the
+workflow's `stats.bySeverity`.
+
+`findings` is the workflow's own `violations` array (already computed —
+do not re-derive it), reshaped to the shared per-finding contract every
+domain sidecar now uses: `{severity, title, evidence, category}` —
+`title` from `rule`, `evidence` copied as-is, `category` fixed to
+`"lint"`. Feeds `findings-dashboard.html`'s findings table and
+`self-assess-transform-brief`.
 
 ## Present
 

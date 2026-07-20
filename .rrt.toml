@@ -1,7 +1,7 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
 # werkstoff bundles three independently-versioned Claude Code plugins
-# (self-assess, quality, compass), each with its own
+# (self-assess, confab, compass), each with its own
 # plugins/<name>/.claude-plugin/plugin.json declaring its own "version",
 # plus the werkstoff-cli installer tool under tools/werkstoff-cli/, versioned
 # via its own pyproject.toml. `version_groups` lets rrt bump each unit's
@@ -20,12 +20,12 @@ changelog_file = "plugins/self-assess/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
-name = "quality"
-release_branch = "release/quality/v{version}"
-changelog_file = "plugins/quality/CHANGELOG.md"
+name = "confab"
+release_branch = "release/confab/v{version}"
+changelog_file = "plugins/confab/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/quality/.claude-plugin/plugin.json"
+  path = "plugins/confab/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
@@ -63,10 +63,10 @@ targets = [
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/quality/.claude-plugin/plugin.json"
+source = "plugins/confab/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=quality].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=confab].description" },
 ]
 
 [[tool.rrt.field_targets]]

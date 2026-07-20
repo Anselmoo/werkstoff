@@ -16,7 +16,7 @@ constrains the actual answer to only what those facts support, with a
 citation on every claim and an explicit refusal when they don't reach far
 enough.
 
-This generalizes `self-assess`'s and `quality`'s own untrusted-content
+This generalizes `self-assess`'s and `confab`'s own untrusted-content
 discipline beyond code. `docs-drift-auditor`
 (`plugins/self-assess/agents/docs-drift-auditor.md`) treats every file it
 reads as data to verify, never as ground truth to repeat — a documentation

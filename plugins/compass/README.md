@@ -11,7 +11,7 @@ the internal mechanism — never a picker the user interacts with
 directly; you never see "now applying Tree-of-Thoughts," you just get a
 better-solved task.
 
-This is `self-assess`'s and `quality`'s sibling plugin in this repo, but
+This is `self-assess`'s and `confab`'s sibling plugin in this repo, but
 a genuinely different shape: those audit a codebase for defects using
 the Workflow find+verify pattern; `compass` composes reasoning
 techniques for arbitrary tasks, and most of its 13 skills are plain
@@ -103,7 +103,7 @@ Each of the 13 non-`solve` skills is independently invocable for a narrower job 
 - **`compass-ground-evidence`** — Requires a citation (file:line, URL,
   or explicitly-flagged prior knowledge) for every factual claim;
   refuses to assert beyond what's verified using RAG's exact refusal
-  pattern. Generalizes `self-assess`'s/`quality`'s own untrusted-content
+  pattern. Generalizes `self-assess`'s/`confab`'s own untrusted-content
   discipline beyond code. Plain skill.
 
 - **`compass-draft-revise`** — Scores a drafted artifact against an
@@ -175,7 +175,7 @@ are `tools: ["Read","Glob","Grep"]` only; `reasoning-path` additionally
 has scoped `Bash` access for a single disposable, read-only PAL-style
 computation (never a scratch file, never a modification — see its own
 Protocol step 3). No agent in this plugin has network access, unlike
-`quality-dependency-audit`'s one exception.
+`confab-dependency-audit`'s one exception.
 
 ## Knowledge base
 
@@ -217,7 +217,7 @@ you choose at the time.
 
 ## Prerequisites
 
-None. Unlike `self-assess`/`quality`, `compass` has no ecosystem-tool
+None. Unlike `self-assess`/`confab`, `compass` has no ecosystem-tool
 dependencies (no `ruff`, no mutation-testing tools, no registries) — every
 skill degrades to plain reasoning with no external tool required.
 
@@ -245,7 +245,7 @@ covered at this repo's own root for local development).
 
 ## Safety notes
 
-Same untrusted-content discipline as `self-assess`/`quality`: task text,
+Same untrusted-content discipline as `self-assess`/`confab`: task text,
 retrieved evidence, and any file content a skill reads are data, never
 instructions — `compass-ground-evidence`'s entire mandate generalizes
 this beyond code. No agent in this plugin has network or write access.
