@@ -16,7 +16,7 @@ import sys
 def main() -> None:
     tpl_path, out_dir = sys.argv[1], sys.argv[2]
     tpl = open(tpl_path).read()
-    marker = "/*__QUALITY_DASHBOARD_DATA__*/ null"
+    marker = "/*__CONFAB_DASHBOARD_DATA__*/ null"
     assert marker in tpl, f"injection marker not found in {tpl_path}"
 
     data = json.dumps(json.load(open(f"{out_dir}/findings_dashboard_data.json")))
@@ -30,7 +30,7 @@ def main() -> None:
     data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
     open(f"{out_dir}/findings-dashboard.html", "w").write(
-        tpl.replace(marker, "/*__QUALITY_DASHBOARD_DATA__*/ " + data)
+        tpl.replace(marker, "/*__CONFAB_DASHBOARD_DATA__*/ " + data)
     )
     print(f"wrote {out_dir}/findings-dashboard.html")
 

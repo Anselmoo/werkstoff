@@ -1,5 +1,5 @@
 ---
-name: quality-contract-drift
+name: confab-contract-drift
 description: This skill should be used when the user asks to "check for type signature drift", "verify our API schema matches the handler", "audit our function signatures for drift", "find mismatched function contracts", "check if type hints match how functions are actually called", or "audit our OpenAPI/GraphQL schema against the code". Extracts machine-checkable contracts (type hints, function signatures, docstring parameter/return descriptions, API/OpenAPI/GraphQL schemas) from source files and checks each against actual call-site and handler usage, reporting contradictions with file:line evidence on both sides.
 ---
 
@@ -13,9 +13,9 @@ could in principle enforce.
 
 ## Step 0 — Load settings, find contract sources, load house rules
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`) and
+and say so. Note `output_dir` (default `analysis/confab`) and
 `skip_verification` (default `false`).
 
 Glob for likely contract sources based on what the repo actually contains —

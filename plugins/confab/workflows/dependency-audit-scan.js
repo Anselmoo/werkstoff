@@ -1,9 +1,9 @@
 export const meta = {
-  name: 'quality-dependency-audit',
+  name: 'confab-dependency-audit',
   description:
     'Dependency-hallucination audit: one finder per manifest type present (npm/pip/cargo/go/gem), each extracting declared packages and checking them against their real public registry, with adversarial per-finding re-verification to rule out transient registry failures before a package is reported as confirmed-hallucinated',
   whenToUse:
-    'Invoked by quality-dependency-audit when the Workflow tool is available. Requires args {repoPath, manifestFiles: [{path, type}], registries?, timeoutSeconds?, skipVerification?} — the calling skill enumerates manifest files first (workflow scripts have no filesystem access). registries (default []) lets settings override the default public registry per language; timeoutSeconds (default 10) bounds each registry lookup. skipVerification (default false) skips the adversarial re-check pass, trading precision for speed. Returns structured findings — the calling skill writes DEPENDENCY_AUDIT.md from the result. A registry that is unreachable is never reported as a confirmed finding — it is tracked separately in "skipped".',
+    'Invoked by confab-dependency-audit when the Workflow tool is available. Requires args {repoPath, manifestFiles: [{path, type}], registries?, timeoutSeconds?, skipVerification?} — the calling skill enumerates manifest files first (workflow scripts have no filesystem access). registries (default []) lets settings override the default public registry per language; timeoutSeconds (default 10) bounds each registry lookup. skipVerification (default false) skips the adversarial re-check pass, trading precision for speed. Returns structured findings — the calling skill writes DEPENDENCY_AUDIT.md from the result. A registry that is unreachable is never reported as a confirmed finding — it is tracked separately in "skipped".',
   phases: [
     { title: 'Find', detail: 'one finder per manifest type present (npm, pip, cargo, go, gem, ...)' },
     { title: 'Verify', detail: 'one independent re-check per flagged finding, to rule out transient registry failures before a hallucination is confirmed' },
@@ -20,7 +20,7 @@ const skipVerification = !!(ARGS && ARGS.skipVerification)
 
 if (!Array.isArray(manifestFiles) || manifestFiles.length === 0) {
   throw new Error(
-    'quality-dependency-audit workflow requires args: {repoPath: ".", manifestFiles: [{path: "package.json", type: "npm"}, ...], registries?: ["<override>", ...], timeoutSeconds?: 10, skipVerification?: false}',
+    'confab-dependency-audit workflow requires args: {repoPath: ".", manifestFiles: [{path: "package.json", type: "npm"}, ...], registries?: ["<override>", ...], timeoutSeconds?: 10, skipVerification?: false}',
   )
 }
 if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$)/.test(repoPath)) {
@@ -138,7 +138,7 @@ Report a finding ONLY for packages that are: (a) confirmed non-existent by the r
 ${registriesBlock}
 ${UNTRUSTED}`,
       {
-        agentType: 'quality:dependency-auditor',
+        agentType: 'confab:dependency-auditor',
         label: `find:${type}`,
         phase: 'Find',
         schema: FINDINGS_SCHEMA,
@@ -196,7 +196,7 @@ For an exists:true (typosquat/naming) claim: independently assess whether the na
 ${registriesBlock}
 ${UNTRUSTED}`,
         {
-          agentType: 'quality:dependency-auditor',
+          agentType: 'confab:dependency-auditor',
           label: `verify:${f.package}`,
           phase: 'Verify',
           schema: VERDICT_SCHEMA,

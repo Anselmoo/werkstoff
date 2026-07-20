@@ -1,9 +1,9 @@
 export const meta = {
-  name: 'quality-code-change',
+  name: 'confab-code-change',
   description:
-    'Diff-scoped pre-commit variant of the quality plugin: fans out to whichever of the four existing domain workflows actually match the changed files, unchanged, in parallel — no ledger, no fix mode, a single one-shot pass',
+    'Diff-scoped pre-commit variant of the confab plugin: fans out to whichever of the four existing domain workflows actually match the changed files, unchanged, in parallel — no ledger, no fix mode, a single one-shot pass',
   whenToUse:
-    'Invoked by quality-code-change when the Workflow tool is available. Requires args {repoPath, domainArgs}, where domainArgs is a non-empty object whose keys are a subset of [dependency_audit, assertion_audit, contract_drift, agentic_reliability] and whose values are that domain\'s own workflow args, exactly as the calling skill already enumerates for the full-repo skills — only the domains with at least one matched changed file should be present. Returns per-domain results — the calling skill writes CODE_CHANGE_REVIEW.md from it.',
+    'Invoked by confab-code-change when the Workflow tool is available. Requires args {repoPath, domainArgs}, where domainArgs is a non-empty object whose keys are a subset of [dependency_audit, assertion_audit, contract_drift, agentic_reliability] and whose values are that domain\'s own workflow args, exactly as the calling skill already enumerates for the full-repo skills — only the domains with at least one matched changed file should be present. Returns per-domain results — the calling skill writes CODE_CHANGE_REVIEW.md from it.',
   phases: [{ title: 'Scan', detail: 'runs each matched domain\'s existing scan workflow, unchanged, in parallel' }],
 }
 
@@ -17,17 +17,17 @@ if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$
 }
 
 const DOMAIN_WORKFLOWS = {
-  dependency_audit: 'quality-dependency-audit',
-  assertion_audit: 'quality-assertion-audit',
-  contract_drift: 'quality-contract-drift',
-  agentic_reliability: 'quality-agentic-reliability',
+  dependency_audit: 'confab-dependency-audit',
+  assertion_audit: 'confab-assertion-audit',
+  contract_drift: 'confab-contract-drift',
+  agentic_reliability: 'confab-agentic-reliability',
 }
 const ALL_DOMAINS = Object.keys(DOMAIN_WORKFLOWS)
 const requestedDomains = Object.keys(domainArgs)
 
 if (!requestedDomains.length) {
   throw new Error(
-    'quality-code-change workflow requires a non-empty domainArgs — the calling skill should classify the changed files into domains first and only include domains with at least one matched file',
+    'confab-code-change workflow requires a non-empty domainArgs — the calling skill should classify the changed files into domains first and only include domains with at least one matched file',
   )
 }
 for (const d of requestedDomains) {
@@ -36,7 +36,7 @@ for (const d of requestedDomains) {
   }
 }
 
-log(`quality-code-change: ${requestedDomains.length} domain(s) matched the diff — ${requestedDomains.join(', ')}`)
+log(`confab-code-change: ${requestedDomains.length} domain(s) matched the diff — ${requestedDomains.join(', ')}`)
 
 const ran = await parallel(
   requestedDomains.map(domain => async () => {

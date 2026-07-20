@@ -17,7 +17,7 @@ never because a lookup failed to complete.
 
 ## When to invoke
 
-- **Full manifest sweep (Find mode).** A user or the `quality-dependency-audit`
+- **Full manifest sweep (Find mode).** A user or the `confab-dependency-audit`
   skill asks to check every dependency declared in one or more manifest
   files against its real registry. Extract every declared package name
   (and pinned version, if any), query the appropriate registry for each,

@@ -1,21 +1,21 @@
 ---
-name: quality-code-change
-description: This skill should be used before committing, when the user asks to "review my changes before I commit", "check staged files for quality issues", "pre-commit quality check", or "run quality-code-change" — runs the quality plugin's four domain audits against only the currently-staged (or, if nothing is staged, currently-changed) files, for a fast pre-commit check. Never a substitute for the full-repo domain skills or quality-cycle.
+name: confab-code-change
+description: This skill should be used before committing, when the user asks to "review my changes before I commit", "check staged files for quality issues", "pre-commit quality check", or "run confab-code-change" — runs the confab plugin's four domain audits against only the currently-staged (or, if nothing is staged, currently-changed) files, for a fast pre-commit check. Never a substitute for the full-repo domain skills or confab-cycle.
 ---
 
-Run a fast, **diff-scoped** pass of the `quality` plugin's four domain
+Run a fast, **diff-scoped** pass of the `confab` plugin's four domain
 audits against only the files you're about to commit — not the whole
-repo. This is advisory only: the `quality` plugin ships no git hook, so
+repo. This is advisory only: the `confab` plugin ships no git hook, so
 this skill never blocks a commit, it only reports. For a full-repo sweep
 use the four domain skills directly; for a persistent, cross-invocation
-self-optimization loop use `quality-cycle`. This skill is neither — it is
+self-optimization loop use `confab-cycle`. This skill is neither — it is
 a one-shot, non-persisted check scoped to the current diff.
 
 ## Step 0 — Load settings
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`).
+and say so. Note `output_dir` (default `analysis/confab`).
 
 ## Step 1 — Find the changed files
 
@@ -32,16 +32,16 @@ skill's own Step 0 already uses:
 
 | Domain | Matches | Reuse |
 |---|---|---|
-| `dependency_audit` | `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile` | `quality-dependency-audit/SKILL.md` Step 0's manifest table |
-| `contract_drift` | typed source files (`*.py`, `*.ts`/`*.tsx`, `*.go`, `*.rs`, `*.java`) and schema files (`openapi.*`, `**/*.graphql`, `**/*.proto`) | `quality-contract-drift/SKILL.md` Step 0 |
-| `agentic_reliability` | `**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js` | `quality-agentic-reliability/SKILL.md` Step 0 |
-| `assertion_audit` | any changed source file that has an associated test file discoverable via the project's test-naming convention (`**/test_*.py`, `**/*.test.js`, `**/*_test.go`, ...) | `quality-assertion-audit/SKILL.md` Step 1 |
+| `dependency_audit` | `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile` | `confab-dependency-audit/SKILL.md` Step 0's manifest table |
+| `contract_drift` | typed source files (`*.py`, `*.ts`/`*.tsx`, `*.go`, `*.rs`, `*.java`) and schema files (`openapi.*`, `**/*.graphql`, `**/*.proto`) | `confab-contract-drift/SKILL.md` Step 0 |
+| `agentic_reliability` | `**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js` | `confab-agentic-reliability/SKILL.md` Step 0 |
+| `assertion_audit` | any changed source file that has an associated test file discoverable via the project's test-naming convention (`**/test_*.py`, `**/*.test.js`, `**/*_test.go`, ...) | `confab-assertion-audit/SKILL.md` Step 1 |
 
 Build `domainArgs` containing **only** the domains with at least one
 matched file — each value shaped exactly as that domain's own workflow
 expects (`manifestFiles: [{path, type}]`, `contractSources: [path]`,
 `skillFiles`/`agentFiles`/`workflowFiles`, `targetFiles`/`testFiles`).
-Unlike `quality-cycle-scan.js`, do **not** zero-fill an unmatched domain —
+Unlike `confab-cycle-scan.js`, do **not** zero-fill an unmatched domain —
 an empty slice means "not part of this change," not "run it with
 nothing." If zero domains match (e.g. only docs or unrelated config
 changed), report "changed files don't map to any quality domain" and
@@ -82,6 +82,6 @@ Create `<output_dir>/CODE_CHANGE_REVIEW.md`:
 
 Report: domains checked (and which were skipped because nothing matched),
 findings by domain, and the verdict line. If any High-severity finding
-exists, name it first. This never substitutes for `quality-cycle` or the
+exists, name it first. This never substitutes for `confab-cycle` or the
 full-repo domain skills — say so if the user seems to be relying on this
 as their only quality check.

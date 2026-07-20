@@ -1,5 +1,5 @@
 ---
-name: quality-assertion-audit
+name: confab-assertion-audit
 description: This skill should be used when the user asks to "check if our tests actually assert anything", "run a mutation-testing pass", "find assertion-free tests", "check our test suite's assertion strength", or wants to know whether AI-generated tests genuinely catch bugs rather than merely executing code for coverage. Proposes plausible small mutations to a target module's logic and determines — via LLM reasoning or, if a real mutation-testing tool is available, ground-truthed against that tool — whether the existing test suite would actually catch each one.
 ---
 
@@ -11,12 +11,12 @@ open (they reach reasonable coverage while asserting little).
 
 ## Step 0 — Load settings and pick a target
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`).
+and say so. Note `output_dir` (default `analysis/confab`).
 
 This skill has no `skip_verification` fast path, even though the shared
-settings file defines that field for other quality skills — the
+settings file defines that field for other confab skills — the
 independent re-derivation of "would the tests catch this mutation" is
 the finding itself, not an optional precision/speed tradeoff, so it is
 never skippable here. If the user asks to skip it anyway, explain why and
@@ -27,17 +27,17 @@ prefer recently-changed files (`git diff`/`git log`, read-only) over a
 full-repo sweep, and ask before falling back to a full-repo scan.
 
 If `<output_dir>/preflight_summary.json` exists (written by
-`quality-preflight`), read its `mutationToolPresent` field — a
+`confab-preflight`), read its `mutationToolPresent` field — a
 per-ecosystem boolean map (`{"python": bool, "jsTs": bool,
 "javaKotlin": bool}`). Determine the target file's ecosystem from its
 extension (`.py` → `python`; `.js`/`.ts`/`.jsx`/`.tsx` → `jsTs`;
 `.java`/`.kt` → `javaKotlin`) and, if that ecosystem's flag is `true`,
-derive the tool name yourself per `quality-preflight`'s own Check 3
+derive the tool name yourself per `confab-preflight`'s own Check 3
 mapping (`python` → `mutmut`, `jsTs` → `stryker`, `javaKotlin` → `PIT`)
 to pass as `mutationTool`. If the file doesn't exist, the field is
 absent, or the target's ecosystem flag is `false`, proceed in
 LLM-reasoned mode; note in the final report that running
-`quality-preflight` first can sharpen this audit with ground-truth
+`confab-preflight` first can sharpen this audit with ground-truth
 mutation scores where a real tool is available for the target language
 — the same graceful-degradation discipline `self-assess-lint-audit`
 uses for its `ruff` fallback.
@@ -105,5 +105,5 @@ machine-readable sidecar: `{"mode": "llm-reasoned"|"real-tool-augmented",
 Report: mode (never blended), target files checked, findings by
 severity, refuted count. If mode is LLM-reasoned and a real mutation
 tool is available for the target language but wasn't detected, suggest
-running `quality-preflight` first. Suggest:
+running `confab-preflight` first. Suggest:
 `glow -p <output_dir>/ASSERTION_AUDIT.md`

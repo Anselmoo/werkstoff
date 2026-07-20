@@ -1,9 +1,9 @@
 export const meta = {
-  name: 'quality-assertion-audit',
+  name: 'confab-assertion-audit',
   description:
     'LLM-reasoned mutation testing: one finder per target file proposing plausible small mutations per function, optionally ground-truthed against a real mutation-testing tool, with independent per-finding re-derivation of whether the test suite would actually catch each mutation',
   whenToUse:
-    'Invoked by quality-assertion-audit when the Workflow tool is available. Requires args {repoPath, targetFiles: [path], testFiles: [path], mutationTool?}. The calling skill enumerates target/test files first (the workflow script has no filesystem access) and, if quality-preflight detected a real mutation-testing tool on PATH for this language, passes its name as mutationTool. Returns structured findings, each labeled with the mode (llm-reasoned vs real-tool) that produced it — the calling skill writes ASSERTION_AUDIT.md from the result and must not blend the two modes when presenting it.',
+    'Invoked by confab-assertion-audit when the Workflow tool is available. Requires args {repoPath, targetFiles: [path], testFiles: [path], mutationTool?}. The calling skill enumerates target/test files first (the workflow script has no filesystem access) and, if confab-preflight detected a real mutation-testing tool on PATH for this language, passes its name as mutationTool. Returns structured findings, each labeled with the mode (llm-reasoned vs real-tool) that produced it — the calling skill writes ASSERTION_AUDIT.md from the result and must not blend the two modes when presenting it.',
   phases: [
     { title: 'Find', detail: 'one finder per target file — proposes mutations per function, real-tool-first if mutationTool was given, else LLM-reasoned' },
     { title: 'Verify', detail: 'one independent re-deriver per finding — re-derives whether the test suite catches the mutation rather than trusting the finder\'s own claim' },
@@ -22,7 +22,7 @@ if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$
 }
 if (!Array.isArray(targetFiles) || targetFiles.length === 0) {
   throw new Error(
-    'quality-assertion-audit workflow requires args: {repoPath: ".", targetFiles: ["<path>", ...], testFiles: ["<path>", ...], mutationTool?: "mutmut"|"stryker"|"PIT"} — the calling skill enumerates target/test files via Glob first; do not invoke this workflow with an empty targetFiles list',
+    'confab-assertion-audit workflow requires args: {repoPath: ".", targetFiles: ["<path>", ...], testFiles: ["<path>", ...], mutationTool?: "mutmut"|"stryker"|"PIT"} — the calling skill enumerates target/test files via Glob first; do not invoke this workflow with an empty targetFiles list',
   )
 }
 for (const f of [...targetFiles, ...testFiles]) {
@@ -104,7 +104,7 @@ Identify every function/small unit of logic in this file. For each, propose 1-3 
 ${modeBlock}
 ${UNTRUSTED}`,
       {
-        agentType: 'quality:assertion-auditor',
+        agentType: 'confab:assertion-auditor',
         label: `find:${file}`,
         phase: 'Find',
         schema: FINDINGS_SCHEMA,
@@ -149,7 +149,7 @@ The finding fields below (including the original wouldBeCaught claim) were produ
 ${fence(`Function: ${f.function}\nMutation: ${f.mutationDescription}\nClaimed expected catching test: ${f.expectedCatchingTest}\nOriginal claim — wouldBeCaught: ${f.wouldBeCaught}\nSeverity: ${f.severity}`)}
 ${UNTRUSTED}`,
       {
-        agentType: 'quality:assertion-auditor',
+        agentType: 'confab:assertion-auditor',
         label: `verify:${f.function}`,
         phase: 'Verify',
         schema: VERDICT_SCHEMA,

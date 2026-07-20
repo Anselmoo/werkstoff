@@ -1,19 +1,19 @@
 ---
-name: quality-cycle
-description: This skill should be used when the user asks to "run a quality self-optimization cycle", "harden the quality findings", "fix what quality found and re-check", "converge the quality audit", or wants the quality plugin's four domain audits run repeatedly with cross-run memory until they stop finding new things — optionally applying and re-verifying fixes for dependency-hallucination, contract-drift, and mechanical agentic-reliability findings, and drafting (never applying) assertion-strength suggestions.
+name: confab-cycle
+description: This skill should be used when the user asks to "run a quality self-optimization cycle", "harden the quality findings", "fix what quality found and re-check", "converge the quality audit", or wants the confab plugin's four domain audits run repeatedly with cross-run memory until they stop finding new things — optionally applying and re-verifying fixes for dependency-hallucination, contract-drift, and mechanical agentic-reliability findings, and drafting (never applying) assertion-strength suggestions.
 ---
 
-Run a bounded, autonomous self-optimization cycle across the `quality`
-plugin's four domain audits (`quality-dependency-audit`,
-`quality-assertion-audit`, `quality-contract-drift`,
-`quality-agentic-reliability`), reusing each one's existing Find→Verify
+Run a bounded, autonomous self-optimization cycle across the `confab`
+plugin's four domain audits (`confab-dependency-audit`,
+`confab-assertion-audit`, `confab-contract-drift`,
+`confab-agentic-reliability`), reusing each one's existing Find→Verify
 workflow unchanged. This adds three things none of the four domain skills
 has on its own: a persistent ledger so a recurring finding is recognized as
 recurring (not re-reported as new every time), a `propose`/`fix` mode
 switch with a three-way split in `fix` mode — `cycle.fixable_domains`
 (default `dependency_audit`, `contract_drift`, and `agentic_reliability`'s
 `excessive-tool-grant` category only) get one scoped remediation attempt
-plus a re-verify via `quality-remediator`; `cycle.draft_domains` (default
+plus a re-verify via `confab-remediator`; `cycle.draft_domains` (default
 `assertion_audit`) get a proposed-but-never-applied suggestion via
 `assertion-auditor`'s Suggest mode instead, since a generated assertion has
 no ground truth beyond the module's current — possibly buggy — runtime
@@ -24,12 +24,12 @@ against this guard, since drafting never attempts an edit).
 
 ## Step 0 — Load settings and the ledger
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`) and the `cycle`
+and say so. Note `output_dir` (default `analysis/confab`) and the `cycle`
 block: `mode` (default `propose`), `fixable_domains` (default
 `[dependency_audit, contract_drift, agentic_reliability]` — for
-`agentic_reliability`, `quality-remediator` itself only ever acts on the
+`agentic_reliability`, `confab-remediator` itself only ever acts on the
 `excessive-tool-grant` category, everything else in that domain always
 comes back `blocked`), `draft_domains` (default `[assertion_audit]` —
 proposed, never applied), `max_reopens` (default `3`),
@@ -55,18 +55,18 @@ The workflow script has no filesystem access, so gather every domain's
 its own Step 0/Step 1 — do not reinvent the enumeration logic, reuse it:
 
 - `dependency_audit`: Glob for manifest files per
-  `quality-dependency-audit/SKILL.md` Step 0 (`package.json` → npm,
+  `confab-dependency-audit/SKILL.md` Step 0 (`package.json` → npm,
   `requirements.txt`/`pyproject.toml` → pip, `Cargo.toml` → cargo,
   `go.mod` → go, `Gemfile` → gem), build `manifestFiles: [{path, type}]`.
 - `assertion_audit`: enumerate `targetFiles`/`testFiles` per
-  `quality-assertion-audit/SKILL.md` Step 0/1 (honor a user-named target;
+  `confab-assertion-audit/SKILL.md` Step 0/1 (honor a user-named target;
   otherwise prefer recently-changed files over a full-repo sweep) and
   check `<output_dir>/preflight_summary.json` for a `mutationTool` to pass.
 - `contract_drift`: Glob for contract sources (typed source files, schema
-  files) and load house rules per `quality-contract-drift/SKILL.md` Step 0.
+  files) and load house rules per `confab-contract-drift/SKILL.md` Step 0.
 - `agentic_reliability`: enumerate `skillFiles`/`agentFiles`/`workflowFiles`
   (`**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js`) per
-  `quality-agentic-reliability/SKILL.md` Step 0.
+  `confab-agentic-reliability/SKILL.md` Step 0.
 
 Assemble `domainArgs: {dependency_audit, assertion_audit, contract_drift,
 agentic_reliability}`, one complete args object per domain, matching each
@@ -76,7 +76,7 @@ has none, per its own SKILL.md).
 
 If a domain has genuinely nothing to enumerate (e.g. no manifest files
 exist at all), still build its `args` object with empty arrays rather than
-omitting the domain — `quality-cycle-scan.js` requires all four
+omitting the domain — `confab-cycle-scan.js` requires all four
 `domainArgs` entries to be present, and a domain workflow with an empty
 input list reports "nothing to check" for itself, which is a legitimate
 green status, not an error.
@@ -88,7 +88,7 @@ available in this session (this skill invocation is your authorization):
 
 ```
 Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/quality-cycle-scan.js",
+  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/confab-cycle-scan.js",
   args: {
     repoPath: "<repo root, usually '.'>",
     mode: <cycle.mode from settings, default "propose">,
@@ -106,7 +106,7 @@ It runs up to `maxPassesPerInvocation` passes, each auditing whichever
 domain is currently the "constraint" (the domain with the most/worst open
 or escalated findings) via that domain's own existing workflow, merging
 results into the ledger. In `fix` mode, for domains in `fixable_domains`,
-it applies one scoped fix per pass via `quality-remediator` and re-runs
+it applies one scoped fix per pass via `confab-remediator` and re-runs
 that domain's workflow to confirm the fix held before marking the finding
 resolved; for domains in `draft_domains`, it instead asks
 `assertion-auditor`'s Suggest mode for a proposed-but-unapplied fix
@@ -122,9 +122,9 @@ in the constraint order you compute yourself by the same rule the workflow
 uses (escalated findings' domain first, else most open High-severity
 findings, else most total open findings, else a never-yet-run domain), and
 apply the same ledger-merge/thrash-guard/fix-vs-draft bookkeeping described
-in `quality-cycle-scan.js` inline in this skill rather than in a script —
+in `confab-cycle-scan.js` inline in this skill rather than in a script —
 for a constraint domain in `draft_domains`, spawn an **assertion-auditor**
-subagent in Suggest mode directly rather than `quality-remediator` (no
+subagent in Suggest mode directly rather than `confab-remediator` (no
 `Edit` involved either way). Cap yourself at the same
 `maxPassesPerInvocation`.
 
@@ -133,7 +133,7 @@ subagent in Suggest mode directly rather than `quality-remediator` (no
 Write the workflow's returned `ledger` back to `<output_dir>/ledger.json`
 (pretty-printed JSON) — this is what makes the next invocation resumable.
 
-Create/update `<output_dir>/QUALITY_CYCLE.md`:
+Create/update `<output_dir>/CONFAB_CYCLE.md`:
 - **Cycle status** — cycle #, pass #, mode, whether this invocation
   converged, passes run this invocation
 - **Per-domain status** — green/red/unknown, open finding count
@@ -145,7 +145,7 @@ Create/update `<output_dir>/QUALITY_CYCLE.md`:
   guard escalated (fix attempted `max_reopens` times without holding) —
   this is the list most worth a human's attention first
 - If not converged, name the constraint domain and suggest re-running
-  `quality-cycle` to continue
+  `confab-cycle` to continue
 
 ## Present
 
@@ -156,5 +156,5 @@ anything themselves — this skill never commits or pushes), M
 suggestion(s) drafted for human review (domain + rationale, never
 applied), and P blocked/escalated. If the constraint domain isn't in
 either `fixable_domains` or `draft_domains`, say so and name the single
-next-most-useful step, same spirit as `quality-status`'s verdict line.
-Suggest: `glow -p <output_dir>/QUALITY_CYCLE.md`
+next-most-useful step, same spirit as `confab-status`'s verdict line.
+Suggest: `glow -p <output_dir>/CONFAB_CYCLE.md`

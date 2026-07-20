@@ -1,4 +1,4 @@
-"""Deliberately assertion-free test, for quality-assertion-audit's fixture."""
+"""Deliberately assertion-free test, for confab-assertion-audit's fixture."""
 
 from calculator import add
 

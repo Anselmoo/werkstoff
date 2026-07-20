@@ -9,7 +9,7 @@
      egress, so even a breakout cannot exfiltrate. The injector also escapes
      <, >, & in the injected JSON text. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Quality findings dashboard</title>
+<title>Confab findings dashboard</title>
 <style>
   :root {
     --bg: #1e1e1e; --panel: #252526; --panel-2: #2d2d2d;
@@ -94,7 +94,7 @@
 </head>
 <body>
 
-<h1 id="title">Quality findings dashboard</h1>
+<h1 id="title">Confab findings dashboard</h1>
 <div class="sub" id="subtitle"></div>
 
 <div class="panel" id="cyclePanel" style="display:none">
@@ -107,12 +107,12 @@
     <div class="title">No data yet</div>
     <p>This dashboard hasn't been populated with a scan yet. Run one or more
     of the domain skills against your repository, then re-run
-    <code>/quality-status</code> to render this file with real results:</p>
+    <code>/confab-status</code> to render this file with real results:</p>
     <p>
-      <code>/quality-dependency-audit</code><br>
-      <code>/quality-assertion-audit</code><br>
-      <code>/quality-contract-drift</code><br>
-      <code>/quality-agentic-reliability</code>
+      <code>/confab-dependency-audit</code><br>
+      <code>/confab-assertion-audit</code><br>
+      <code>/confab-contract-drift</code><br>
+      <code>/confab-agentic-reliability</code>
     </p>
   </div>
 </div>
@@ -177,14 +177,14 @@
 /* The injector (scripts/render_dashboard.py) replaces the literal comment
    below with a JSON-safe-escaped payload, or leaves it as `null` for a
    fresh, un-rendered copy of this template — that's the "no data yet" case. */
-const DATA = /*__QUALITY_DASHBOARD_DATA__*/ null;
+const DATA = /*__CONFAB_DASHBOARD_DATA__*/ null;
 
 // ---- domain registry: field names below are copied verbatim from each
 // domain skill's own "Also write ... summary.json" section, not invented:
-//   dependency_audit_summary.json  -> quality-dependency-audit/SKILL.md
-//   assertion_audit_summary.json   -> quality-assertion-audit/SKILL.md
-//   contract_drift_summary.json    -> quality-contract-drift/SKILL.md
-//   agentic_reliability_summary.json -> quality-agentic-reliability/SKILL.md
+//   dependency_audit_summary.json  -> confab-dependency-audit/SKILL.md
+//   assertion_audit_summary.json   -> confab-assertion-audit/SKILL.md
+//   contract_drift_summary.json    -> confab-contract-drift/SKILL.md
+//   agentic_reliability_summary.json -> confab-agentic-reliability/SKILL.md
 const DOMAINS = [
   { key: "dependencyAudit", label: "Dependency Audit", file: "dependency_audit_summary.json",
     severityField: "findingsBySeverity" },
@@ -442,8 +442,8 @@ function wireControls() {
   });
 }
 
-// Surfaces quality-cycle's ledger.json state, if present. Absent entirely
-// (no key) for a repo where quality-cycle has never run — same "don't
+// Surfaces confab-cycle's ledger.json state, if present. Absent entirely
+// (no key) for a repo where confab-cycle has never run — same "don't
 // invent a not-run-yet placeholder" rule the four domain keys follow.
 function renderCycle(data) {
   if (!data.cycle) return;
@@ -467,7 +467,7 @@ function main() {
     return;
   }
 
-  if (DATA.system) document.getElementById("title").textContent = `Quality findings — ${DATA.system}`;
+  if (DATA.system) document.getElementById("title").textContent = `Confab findings — ${DATA.system}`;
   document.getElementById("subtitle").textContent = DATA.generatedAt
     ? `Generated ${DATA.generatedAt}` : "";
   renderCycle(DATA);

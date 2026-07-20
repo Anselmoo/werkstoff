@@ -1,14 +1,15 @@
 {
-  "name": "quality",
+  "name": "confab",
   "version": "0.1.0",
-  "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (quality-code-change), and a bounded autonomous self-optimization cycle (quality-cycle) with a persistent ledger and an opt-in propose/fix mode — read-only except a scoped output directory, one skill (quality-dependency-audit) with read-only network egress to public package registries, and one skill (quality-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
+  "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (confab-code-change), and a bounded autonomous self-optimization cycle (confab-cycle) with a persistent ledger and an opt-in propose/fix mode — read-only except a scoped output directory, one skill (confab-dependency-audit) with read-only network egress to public package registries, and one skill (confab-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
   "author": {
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
   },
   "license": "MIT",
   "keywords": [
-    "code-quality",
+    "ai-code-verification",
+    "confabulation-detection",
     "testing",
     "dependency-security",
     "self-assessment",

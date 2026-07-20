@@ -25,8 +25,8 @@ evidence.
   `plugins/self-assess/agents/*.md`, `plugins/self-assess/skills/*/SKILL.md`,
   `plugins/self-assess/workflows/*.js`, `plugins/compass/agents/*.md`,
   `plugins/compass/skills/*/SKILL.md`, `plugins/compass/workflows/*.js`,
-  and this plugin's own `plugins/quality/agents/*.md`,
-  `plugins/quality/skills/*/SKILL.md`, `plugins/quality/workflows/*.js`
+  and this plugin's own `plugins/confab/agents/*.md`,
+  `plugins/confab/skills/*/SKILL.md`, `plugins/confab/workflows/*.js`
   for all four anti-pattern categories below. This is the canonical
   worked example: this very agent file and its sibling
   `agentic-reliability-scan.js` are themselves in scope when the target

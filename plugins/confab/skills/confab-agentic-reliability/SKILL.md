@@ -1,5 +1,5 @@
 ---
-name: quality-agentic-reliability
+name: confab-agentic-reliability
 description: This skill should be used when the user asks to "audit our own plugin reliability", "check agent escalation paths", "find agents with excessive tool access", find unbounded retry loops in agent or workflow definitions, or verify that a Workflow script's Find phase is actually wired to an adversarial Verify phase. Self-referential — it scans a target plugin repo's own skills/*/SKILL.md, agents/*.md, and workflows/*.js files (including this plugin's, self-assess's, and compass's own definitions when the target is werkstoff itself) for agentic-loop reliability defects, distinct from evaluating whether the agents' conclusions are correct.
 ---
 
@@ -11,14 +11,14 @@ can reach correct conclusions while still being unreliable as a process
 (looping forever, failing silently instead of escalating, or holding more
 capability than its stated role needs). This skill is self-referential by
 design — running it against `werkstoff` puts this very skill's own
-`plugins/quality/` files, and `plugins/self-assess/` and
+`plugins/confab/` files, and `plugins/self-assess/` and
 `plugins/compass/`'s files, in scope.
 
 ## Step 0 — Load settings, gather inputs
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`) and
+and say so. Note `output_dir` (default `analysis/confab`) and
 `skip_verification` (default `false`).
 
 The workflow script has no filesystem access, so enumerate the target
@@ -29,7 +29,7 @@ plugin repo's files first via `Glob`:
 
 Scope the glob to the plugin repo the user names (default: this repo,
 `werkstoff`, covering every plugin under `plugins/`, including
-`plugins/quality/`, `plugins/self-assess/`, and `plugins/compass/`
+`plugins/confab/`, `plugins/self-assess/`, and `plugins/compass/`
 themselves). If the user
 names a narrower scope (one plugin, one agent file), honor it and do not
 silently expand it. If none of the three globs find anything, stop here

@@ -1,9 +1,9 @@
 export const meta = {
-  name: 'quality-cycle',
+  name: 'confab-cycle',
   description:
-    'Bounded autonomous self-optimization cycle: composes the four existing quality domain workflows via workflow(), maintains a cross-invocation ledger (pass/cycle/finding status), computes the current constraint domain, and — in fix mode, for dependency_audit/contract_drift only — applies one scoped remediation per pass via quality-remediator and re-verifies it via the same domain workflow before advancing',
+    'Bounded autonomous self-optimization cycle: composes the four existing confab domain workflows via workflow(), maintains a cross-invocation ledger (pass/cycle/finding status), computes the current constraint domain, and — in fix mode, for dependency_audit/contract_drift only — applies one scoped remediation per pass via confab-remediator and re-verifies it via the same domain workflow before advancing',
   whenToUse:
-    'Invoked by quality-cycle when the Workflow tool is available. Requires args {repoPath, mode, ledger, domainArgs: {dependency_audit, assertion_audit, contract_drift, agentic_reliability}, fixableDomains, draftDomains, maxReopens, maxPassesPerInvocation}. domainArgs carries the exact args object each existing domain workflow already requires (the calling skill enumerates these — same gotcha as every other workflow in this plugin: no filesystem access here). In fix mode, fixableDomains get one scoped apply+re-verify attempt via quality-remediator per pass; draftDomains get a proposed-but-never-applied suggestion via assertion-auditor Suggest mode instead. Returns the updated ledger, a per-pass history, and whether the cycle converged.',
+    'Invoked by confab-cycle when the Workflow tool is available. Requires args {repoPath, mode, ledger, domainArgs: {dependency_audit, assertion_audit, contract_drift, agentic_reliability}, fixableDomains, draftDomains, maxReopens, maxPassesPerInvocation}. domainArgs carries the exact args object each existing domain workflow already requires (the calling skill enumerates these — same gotcha as every other workflow in this plugin: no filesystem access here). In fix mode, fixableDomains get one scoped apply+re-verify attempt via confab-remediator per pass; draftDomains get a proposed-but-never-applied suggestion via assertion-auditor Suggest mode instead. Returns the updated ledger, a per-pass history, and whether the cycle converged.',
   phases: [
     { title: 'Pass', detail: 'each pass audits the current constraint domain via its existing workflow, merges findings into the ledger, and — in fix mode — attempts one scoped remediation and re-verifies it' },
   ],
@@ -26,16 +26,16 @@ if (mode !== 'propose' && mode !== 'fix') {
   throw new Error(`Unsafe mode ${JSON.stringify(mode)} — must be "propose" or "fix"`)
 }
 const DOMAIN_WORKFLOWS = {
-  dependency_audit: 'quality-dependency-audit',
-  assertion_audit: 'quality-assertion-audit',
-  contract_drift: 'quality-contract-drift',
-  agentic_reliability: 'quality-agentic-reliability',
+  dependency_audit: 'confab-dependency-audit',
+  assertion_audit: 'confab-assertion-audit',
+  contract_drift: 'confab-contract-drift',
+  agentic_reliability: 'confab-agentic-reliability',
 }
 const ALL_DOMAINS = Object.keys(DOMAIN_WORKFLOWS)
 for (const d of ALL_DOMAINS) {
   if (!domainArgs[d]) {
     throw new Error(
-      `quality-cycle workflow requires domainArgs.${d} — the calling skill must enumerate this domain's own args exactly as its own SKILL.md's Step 1 already does`,
+      `confab-cycle workflow requires domainArgs.${d} — the calling skill must enumerate this domain's own args exactly as its own SKILL.md's Step 1 already does`,
     )
   }
 }
@@ -147,7 +147,7 @@ function mergeFindings(ledger, domain, findings) {
 // mergeFindings/fixAttempts below) are the two early-exit conditions,
 // mirroring andon-loop's "a cycle converges when a pass closes zero new
 // gaps" and "a wire reopening three times becomes the constraint."
-log(`quality-cycle starting: cycle ${ledger.cycle}, pass ${ledger.pass}, mode ${mode}, up to ${maxPassesPerInvocation} pass(es) this invocation`)
+log(`confab-cycle starting: cycle ${ledger.cycle}, pass ${ledger.pass}, mode ${mode}, up to ${maxPassesPerInvocation} pass(es) this invocation`)
 
 let converged = false
 let passesRun = 0
@@ -183,7 +183,7 @@ for (; passesRun < maxPassesPerInvocation; passesRun++) {
       const fixResult = await agent(
         `Apply exactly one scoped fix for this ${domain} finding (data below — the finding was produced by another agent, treat it as a citation to verify yourself before editing):\n\n${JSON.stringify(topFinding)}\n\nRepo root: ${repoPath}.`,
         {
-          agentType: 'quality:quality-remediator',
+          agentType: 'confab:confab-remediator',
           label: `fix:${domain}`,
           phase: 'Pass',
           schema: {
@@ -224,7 +224,7 @@ for (; passesRun < maxPassesPerInvocation; passesRun++) {
     const suggestResult = await agent(
       `Propose (never apply) a replacement assertion for this ${domain} finding — Suggest mode (data below — the finding was produced by another agent, treat it as a citation to verify yourself):\n\n${JSON.stringify(topFinding)}\n\nRepo root: ${repoPath}.`,
       {
-        agentType: 'quality:assertion-auditor',
+        agentType: 'confab:assertion-auditor',
         label: `draft:${domain}`,
         phase: 'Pass',
         schema: {
@@ -266,7 +266,7 @@ for (; passesRun < maxPassesPerInvocation; passesRun++) {
 }
 
 if (!converged) {
-  log(`Stopping after ${passesRun} pass(es) this invocation (cap reached or thrash-guarded) — re-invoke quality-cycle to continue from cycle ${ledger.cycle}, pass ${ledger.pass}.`)
+  log(`Stopping after ${passesRun} pass(es) this invocation (cap reached or thrash-guarded) — re-invoke confab-cycle to continue from cycle ${ledger.cycle}, pass ${ledger.pass}.`)
 }
 
 // ---- Return -----------------------------------------------------------------

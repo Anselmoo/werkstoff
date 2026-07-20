@@ -1,5 +1,5 @@
 ---
-name: quality-dependency-audit
+name: confab-dependency-audit
 description: This skill should be used when the user asks to "check for hallucinated dependencies", "verify our packages actually exist", "audit dependencies for AI-generated code", "does this package actually exist on npm/PyPI", or wants declared dependencies in manifest files (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, Gemfile) cross-checked against their real public registries for non-existent or typosquat-adjacent packages.
 ---
 
@@ -7,14 +7,14 @@ Audit this repository's **declared dependencies** for hallucination —
 package names that appear in a manifest file but do not exist in any real
 public registry, and packages that exist but have a typosquat-adjacent
 name relative to a much more popular package. This is the one skill in
-the `quality` plugin that makes outbound network calls (read-only registry
+the `confab` plugin that makes outbound network calls (read-only registry
 lookups); every other skill is local-file read-only.
 
 ## Step 0 — Load settings, gather inputs
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/quality`),
+and say so. Note `output_dir` (default `analysis/confab`),
 `skip_verification` (default `false`), `dependency_audit.registries`
 (default `[]` — empty means auto-detect the standard public registry per
 detected language) and `dependency_audit.timeout_seconds` (default `10`).

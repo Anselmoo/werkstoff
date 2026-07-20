@@ -1,17 +1,17 @@
 ---
-name: quality-status
-description: This skill should be used when the user asks "where does quality stand", "what's stale in the quality analysis", "what should I run next", "quality status", or "quality-status" for the current repository. Reports which of the quality plugin's own artifacts exist, whether each is stale relative to current repo state, and the single most useful next skill to run.
+name: confab-status
+description: This skill should be used when the user asks "where does quality stand", "what's stale in the quality analysis", "what should I run next", "quality status", or "confab-status" for the current repository. Reports which of the confab plugin's own artifacts exist, whether each is stale relative to current repo state, and the single most useful next skill to run.
 ---
 
-Report where the `quality` plugin's analysis of the current repository
+Report where the `confab` plugin's analysis of the current repository
 stands, in one screen. This is a **read-only** skill — inspect, never
 modify.
 
 This reports staleness of **this plugin's own artifacts** against current
 repo state — it does not audit dependencies, assertions, contracts, or
 agentic reliability itself (that is each domain skill's job), and it does
-not run or drive `quality-cycle` itself, only surfaces its last-written
-ledger state — so `quality-status`'s scope never overlaps with the six
+not run or drive `confab-cycle` itself, only surfaces its last-written
+ledger state — so `confab-status`'s scope never overlaps with the six
 skills it reports on. This also does not report on `self-assess`'s
 artifacts (a sibling plugin in this same repo, with its own
 `self-assess-status` skill for that) — the two plugins' status skills
@@ -19,9 +19,9 @@ never overlap.
 
 ## 1 — Artifact inventory
 
-Read `.claude/quality.local.md` if it exists (see
+Read `.claude/confab.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`) to get `output_dir`
-(default `analysis/quality`) — other skills may be writing somewhere else
+(default `analysis/confab`) — other skills may be writing somewhere else
 if this repo overrides it, and this skill must look in the same place
 they do or every artifact reads as missing.
 
@@ -30,13 +30,13 @@ artifact's presence and modification time:
 
 | Skill | Artifacts |
 |---|---|
-| quality-preflight | `PREFLIGHT.md` |
-| quality-dependency-audit | `DEPENDENCY_AUDIT.md`, `dependency_audit_summary.json` |
-| quality-assertion-audit | `ASSERTION_AUDIT.md` |
-| quality-contract-drift | `CONTRACT_DRIFT.md` |
-| quality-agentic-reliability | `AGENTIC_RELIABILITY.md` |
-| quality-code-change | `CODE_CHANGE_REVIEW.md` |
-| quality-cycle | `QUALITY_CYCLE.md`, `ledger.json` |
+| confab-preflight | `PREFLIGHT.md` |
+| confab-dependency-audit | `DEPENDENCY_AUDIT.md`, `dependency_audit_summary.json` |
+| confab-assertion-audit | `ASSERTION_AUDIT.md` |
+| confab-contract-drift | `CONTRACT_DRIFT.md` |
+| confab-agentic-reliability | `AGENTIC_RELIABILITY.md` |
+| confab-code-change | `CODE_CHANGE_REVIEW.md` |
+| confab-cycle | `CONFAB_CYCLE.md`, `ledger.json` |
 
 ## 2 — Staleness
 
@@ -45,7 +45,7 @@ current repo state:
 
 - If the repo is under git: run `git log -1 --format=%ct` for the whole
   repo (or, for finer signal, for the specific paths a skill actually
-  reads — e.g. `quality-dependency-audit` only cares about manifest files,
+  reads — e.g. `confab-dependency-audit` only cares about manifest files,
   not source code) and compare against the artifact's mtime. An artifact
   older than the latest relevant commit is **stale**.
 - If not under git: compare the artifact's mtime against the newest mtime
@@ -76,12 +76,12 @@ sidecar's fields exactly as written on disk; this skill does not
 reshape or rename them.
 
 Also `Read` `<output_dir>/ledger.json` if present (written by
-`quality-cycle`) and add it as a `cycle` key: `{"cycle": <ledger.cycle>,
+`confab-cycle`) and add it as a `cycle` key: `{"cycle": <ledger.cycle>,
 "pass": <ledger.pass>, "mode": <ledger.mode>, "constraint":
 <ledger.constraint>, "domains": <ledger.domains>}`. Omit the `cycle` key
 entirely if no ledger exists yet — same "don't invent a not-run-yet
 placeholder" rule the four domain keys already follow. This skill still
-never runs `quality-cycle` itself; it only surfaces its last-written
+never runs `confab-cycle` itself; it only surfaces its last-written
 state, same as every other domain key here.
 
 Write this object as `<output_dir>/findings_dashboard_data.json` (a
@@ -91,7 +91,7 @@ viewer (see that skill's "Step 3 — Render the interactive map" and
 `scripts/render_stage_map.py`):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/quality-status/scripts/render_dashboard.py" \
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/confab-status/scripts/render_dashboard.py" \
   "${CLAUDE_PLUGIN_ROOT}/assets/findings-dashboard.html" <output_dir>
 ```
 
@@ -116,12 +116,12 @@ End with three lines:
   recently.
 - **What's stale** — or "nothing".
 - **Next skill** — the single most useful next step, chosen from
-  `quality-preflight`, `quality-dependency-audit`,
-  `quality-assertion-audit`, `quality-contract-drift`, or
-  `quality-agentic-reliability`: the first skill never run, or if all
+  `confab-preflight`, `confab-dependency-audit`,
+  `confab-assertion-audit`, `confab-contract-drift`, or
+  `confab-agentic-reliability`: the first skill never run, or if all
   have run, the stalest one, with a one-line reason. If all four have run
   at least once and `ledger.json` exists but its last-recorded pass did
-  not converge, suggest `quality-cycle` instead, naming its recorded
+  not converge, suggest `confab-cycle` instead, naming its recorded
   `constraint` domain as the reason.
 
 Then tell the user to view the dashboard: "view the dashboard at
