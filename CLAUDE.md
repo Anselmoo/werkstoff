@@ -1,11 +1,14 @@
 # werkstoff
 
 My personal Claude Code plugin workshop (`.claude-plugin/marketplace.json`
-at root). Three plugins currently:
+at root). Six plugins currently:
 
 - `plugins/self-assess/` — docs-vs-code drift and stage/wire mapping for a live repo.
 - `plugins/confab/` — catches where AI-authored code confabulates (dependency-hallucination/assertion/contract-drift/agentic-reliability audits).
 - `plugins/compass/` — prompt-engineering technique library + `compass-solve` orchestrator for complex/ambiguous tasks.
+- `plugins/cupertino/` — Steve-Jobs-grounded design/craft discipline for a project's whole lifecycle.
+- `plugins/andon/` — self-optimizing hardening loop over a project's value stream (services + wires).
+- `plugins/cli-scaffold/` — five-pillar CLI architecture doctrine + per-language scaffold generation.
 
 See each plugin's own `README.md` for what it does in full.
 
@@ -59,10 +62,10 @@ subcommands beyond git (`bump`, `release`, `sync`, `doctor`, `drift`, `branch`, 
 Each plugin has its own independently-versioned
 `plugins/<name>/.claude-plugin/plugin.json` + `plugins/<name>/CHANGELOG.md`,
 wired up as a separate `rrt` version group in `.rrt.toml` (`self-assess`,
-`confab`, `compass`). The `tools/werkstoff-cli` installer tool is wired up
-the same way, but targets its own `pyproject.toml` (`kind = "pep621"`) +
-`tools/werkstoff-cli/CHANGELOG.md` instead of a `plugin.json`. Bump one
-group's version with:
+`confab`, `compass`, `cupertino`, `andon`, `cli-scaffold`). The
+`tools/werkstoff-cli` installer tool is wired up the same way, but targets
+its own `pyproject.toml` (`kind = "pep621"`) + `tools/werkstoff-cli/CHANGELOG.md`
+instead of a `plugin.json`. Bump one group's version with:
 
 ```bash
 rrt bump <major|minor|patch> --group <group-name>
@@ -72,6 +75,30 @@ Requires **rrt >= 1.13.1** — anything older fails with "Multiple version
 groups configured" on a valid `--group` (fixed in
 [anselmoo/repo-release-tools#176](https://github.com/Anselmoo/repo-release-tools/pull/176),
 reported as [#175](https://github.com/Anselmoo/repo-release-tools/issues/175)).
+
+### Tagging & publishing
+
+`.github/workflows/cicd.yml` triggers a full build → TestPyPI → verify →
+PyPI-publish → GitHub-release pipeline on **any** pushed tag matching
+`v*.*.*`, and that pipeline always operates on `tools/werkstoff-cli`
+(hardcoded `working-directory`/`PACKAGE_DIR`) regardless of what the tag was
+actually for — it has no concept of `.rrt.toml`'s version groups. `rrt tag
+create` defaults to a bare `v<version>` tag with no group name embedded, and
+rrt has no per-group tag-prefix config field (confirmed against the
+`repo-release-tools` docs — this is genuinely unsupported, not just unused
+here). So tag naming has to carry the distinction by convention:
+
+- **Plugins** tag as `<group>-v<version>`, e.g. `confab-v0.1.0`:
+  `rrt tag create --group <name> --prefix '<name>-v' --push`. GitHub's tag
+  trigger glob is prefix-anchored, so a `<group>-v...` tag never matches
+  `v*.*.*` and never fires the werkstoff-cli publish pipeline.
+- **`werkstoff-cli`** is the only group that uses the bare `v<version>`
+  scheme (`rrt tag create --group werkstoff-cli --push`), since that's the
+  one tag pattern `cicd.yml` actually reacts to.
+
+Never `rrt tag create` a plugin group without `--prefix`, or its default
+`v<version>` tag will collide with werkstoff-cli's namespace and spuriously
+trigger a PyPI publish.
 
 ## Gotchas
 

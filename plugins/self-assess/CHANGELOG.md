@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`self-assess-code-idiom`** skill + `idiom-auditor` agent — the first
+  skill that judges the application code itself: deprecated/legacy idioms
+  (modernization-in-place, version-aware) and generic code smells that need
+  no house-rules entry to exist. Per-language idiom catalog in
+  `references/language-support.md`.
+- **`self-assess-arch-health`** skill + `arch-health-auditor` agent — a new
+  analysis pass over `self-assess-stage-map`'s graph flagging god-modules,
+  circular dependencies, and layering violations as pass/fail findings
+  (deterministic candidate generation + adversarial confirmation).
+- **`self-assess-ci-topology`** — new commit-signing finder: flags
+  inconsistent commit provenance (the green "Verified" vs grey "Unverified"
+  badge — mixed signed/unsigned history, or `commit.gpgsign` unset).
 - **`self-assess-idiom-fix`** skill + `idiom-remediator` agent — the
   plugin's second Edit exception (alongside `self-assess-transform-execute`).
   Applies exactly the eligible `modernization`-category findings from
@@ -49,23 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dead code waiting for exactly this) and is what `self-assess-transform-brief`
   reads. `self-assess-extract-rules` deliberately excluded — it mines
   business rules (knowledge artifacts), not defects.
-
-## [0.2.0]
-
-### Added
-
-- **`self-assess-code-idiom`** skill + `idiom-auditor` agent — the first
-  skill that judges the application code itself: deprecated/legacy idioms
-  (modernization-in-place, version-aware) and generic code smells that need
-  no house-rules entry to exist. Per-language idiom catalog in
-  `references/language-support.md`.
-- **`self-assess-arch-health`** skill + `arch-health-auditor` agent — a new
-  analysis pass over `self-assess-stage-map`'s graph flagging god-modules,
-  circular dependencies, and layering violations as pass/fail findings
-  (deterministic candidate generation + adversarial confirmation).
-- **`self-assess-ci-topology`** — new commit-signing finder: flags
-  inconsistent commit provenance (the green "Verified" vs grey "Unverified"
-  badge — mixed signed/unsigned history, or `commit.gpgsign` unset).
 
 ### Changed
 

@@ -1,12 +1,12 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# werkstoff bundles three independently-versioned Claude Code plugins
-# (self-assess, confab, compass), each with its own
-# plugins/<name>/.claude-plugin/plugin.json declaring its own "version",
-# plus the werkstoff-cli installer tool under tools/werkstoff-cli/, versioned
-# via its own pyproject.toml. `version_groups` lets rrt bump each unit's
-# version independently (`rrt bump <bump> --group <name>`) rather than
-# forcing one repo-wide version across all four. Requires rrt >= 1.13.1 (see
+# werkstoff bundles six independently-versioned Claude Code plugins
+# (self-assess, confab, compass, cupertino, andon, cli-scaffold), each with
+# its own plugins/<name>/.claude-plugin/plugin.json declaring its own
+# "version", plus the werkstoff-cli installer tool under tools/werkstoff-cli/,
+# versioned via its own pyproject.toml. `version_groups` lets rrt bump each
+# unit's version independently (`rrt bump <bump> --group <name>`) rather than
+# forcing one repo-wide version across all seven. Requires rrt >= 1.13.1 (see
 # anselmoo/repo-release-tools#175 — fixed in #176 — for why anything older
 # fails with "Multiple version groups configured" on a valid --group).
 
@@ -35,6 +35,33 @@ changelog_file = "plugins/compass/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
   path = "plugins/compass/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "cupertino"
+release_branch = "release/cupertino/v{version}"
+changelog_file = "plugins/cupertino/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/cupertino/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "andon"
+release_branch = "release/andon/v{version}"
+changelog_file = "plugins/andon/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/andon/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
+name = "cli-scaffold"
+release_branch = "release/cli-scaffold/v{version}"
+changelog_file = "plugins/cli-scaffold/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/cli-scaffold/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
