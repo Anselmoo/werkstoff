@@ -106,7 +106,7 @@ jobs:
           CHANGED=$(git diff --name-only HEAD~1 HEAD)
           MATCHED_GROUPS=""
           echo "$CHANGED" | grep -q '^plugins/self-assess/' && MATCHED_GROUPS="$MATCHED_GROUPS self-assess"
-          echo "$CHANGED" | grep -q '^plugins/quality/' && MATCHED_GROUPS="$MATCHED_GROUPS quality"
+          echo "$CHANGED" | grep -q '^plugins/confab/' && MATCHED_GROUPS="$MATCHED_GROUPS confab"
           echo "$CHANGED" | grep -q '^plugins/compass/' && MATCHED_GROUPS="$MATCHED_GROUPS compass"
           echo "$CHANGED" | grep -q '^tools/werkstoff-cli/' && MATCHED_GROUPS="$MATCHED_GROUPS werkstoff-cli"
           MATCHED_GROUPS="$(echo "$MATCHED_GROUPS" | xargs)"

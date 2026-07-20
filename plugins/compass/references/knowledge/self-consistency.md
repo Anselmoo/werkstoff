@@ -40,7 +40,7 @@ and quality Workflow script already implements** — e.g.
 `plugins/self-assess/workflows/stage-map-scan.js`'s Verify phase
 dispatches one independent reviewer per candidate wire who must
 re-derive the verdict from the cited code itself rather than trusting
-the Find phase's claim, and `plugins/quality/workflows/lint-audit-scan.js`
+the Find phase's claim, and `plugins/confab/workflows/lint-audit-scan.js`
 adds a *second*, independent re-confirmation tier for High-severity
 findings — the same "don't trust one path, get an independent read"
 principle self-consistency formalizes for open-ended reasoning tasks.

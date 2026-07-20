@@ -38,7 +38,7 @@ front, executed without re-reasoning, then synthesized.
 
 ### In werkstoff
 
-**`quality-dependency-audit`'s Step 0 is ReWOO in spirit**: "The workflow
+**`confab-dependency-audit`'s Step 0 is ReWOO in spirit**: "The workflow
 script has no filesystem access, so gather everything first" — every
 manifest file and registry to check is assembled into one plan before
 any tool call executes, then Step 1 fires all registry lookups in

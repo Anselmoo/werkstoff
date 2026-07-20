@@ -195,7 +195,7 @@ On convergence, append a `## Cycle N converged after P passes` entry to
 | Dependency | Used for | Absent → |
 |---|---|---|
 | `self-assess:stage-mapper` | Phase 0 topology | Built-in heuristic, confidence flagged reduced (never hard-fail) |
-| `quality:quality-agentic-reliability`, `quality:quality-contract-drift`, `quality:quality-assertion-audit` | `andon-verify` strategies d/g | Those strategies report unavailable for the wire; loop continues with applicable remaining strategies |
+| `confab:confab-agentic-reliability`, `confab:confab-contract-drift`, `confab:confab-assertion-audit` | `andon-verify` strategies d/g | Those strategies report unavailable for the wire; loop continues with applicable remaining strategies |
 | Workflow tool | Phase 2 parallel scan, Phase 4 tribunal duel | Direct sequential dispatch via `Skill`/`Agent` tools instead |
 
 None of these ever hard-fail the loop itself — only the specific

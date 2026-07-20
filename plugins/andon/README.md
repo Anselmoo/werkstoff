@@ -36,7 +36,7 @@ sessions only ever invoke `andon-loop` and `andon-status` directly, with
 |---|---|
 | `andon-preflight` | Checks whether the repo has a legible multi-stage value stream and where the OKF ledger should live. Detects stage/wire legibility directly, or via `self-assess:stage-mapper` if the `self-assess` plugin is installed; checks for a house-rules file `andon-propose` can draw defaults from; confirms the output/ledger directory. |
 | `andon-propose` | Proposes a fix for one gap maximally — from the codebase, the ledger's own written artifacts, and domain best-practice — then grills the user one question at a time, only on genuinely load-bearing forks, each paired with a recommended answer. Tags every proposed fix with a blast-radius/reversibility rating (`local+reversible` / `hard-to-reverse` / `shared-state-visible`), feeding `andon-loop`'s stop rule. |
-| `andon-verify` | Proves or refutes one wire using whichever of seven evidence-grounded proof strategies its type calls for: adversarial tribunal (code/artifact, the default), oracle-gap V&V (numerical/scientific), an anonymous falsifiability rubric (epistemic claims — see the NO-PERSONA RULE below), agentic-reliability dispatch (did an autonomous fix stay reliable — dispatches `quality:quality-agentic-reliability`), "verify the verifier" (contract-drift + assertion-strength dispatches to `quality:quality-contract-drift` and `quality:quality-assertion-audit`), property/invariant-based proof (per-language property-based testing), and Kythe-schema structural proof (a 3-tier fallback, the plugin's one hard/non-overridable gate). A shared Detection Ladder cost model spans all seven — climb only as high as the defect class requires. |
+| `andon-verify` | Proves or refutes one wire using whichever of seven evidence-grounded proof strategies its type calls for: adversarial tribunal (code/artifact, the default), oracle-gap V&V (numerical/scientific), an anonymous falsifiability rubric (epistemic claims — see the NO-PERSONA RULE below), agentic-reliability dispatch (did an autonomous fix stay reliable — dispatches `confab:confab-agentic-reliability`), "verify the verifier" (contract-drift + assertion-strength dispatches to `confab:confab-contract-drift` and `confab:confab-assertion-audit`), property/invariant-based proof (per-language property-based testing), and Kythe-schema structural proof (a 3-tier fallback, the plugin's one hard/non-overridable gate). A shared Detection Ladder cost model spans all seven — climb only as high as the defect class requires. |
 | `andon-loop` | The outer 6-phase cycle: detect topology → init/resume the OKF ledger → scan the current stage for gaps → pick one by priority → prove the wire (stop on red) → advance / close the pass into a cycle / self-optimize. Refuses to advance past a broken or unproven wire — the andon rule, now three hard-gate conditions (wire-proof failure, blast-radius over-authorization, and Tier 1/2 structural-graph contradiction — the last one is non-overridable). |
 | `andon-status` | Renders the andon board from the current OKF ledger state without running a new pass — which stages/wires are green, red, or unknown, the current cycle/pass counters, the active constraint, and the single most useful next step. Primary output is a native markdown/text summary; attempts OKF's own `visualize` subcommand as a best-effort extra if that tooling happens to be present, never as a hard dependency. |
 
@@ -55,11 +55,11 @@ identified individual — see the NO-PERSONA RULE below.
 
 Two more strategies dispatch **existing** agents from sibling plugins in
 this marketplace rather than defining new ones: strategy d dispatches
-`quality:quality-agentic-reliability`, strategy g dispatches
-`quality:quality-contract-drift` and `quality:quality-assertion-audit`.
+`confab:confab-agentic-reliability`, strategy g dispatches
+`confab:confab-contract-drift` and `confab:confab-assertion-audit`.
 Topology detection (`andon-loop` Phase 0) dispatches
 `self-assess:stage-mapper` the same way. All three degrade gracefully —
-andon's core loop still works if `self-assess` or `quality` aren't
+andon's core loop still works if `self-assess` or `confab` aren't
 installed; the dependent strategies just report unavailable rather than
 hard-failing.
 
@@ -99,7 +99,7 @@ optional and best-effort only, gated on that tooling proving stable —
 scale: a parallel gap-finder per stage file (Find), then a Defender/
 Challenger/Verifier/Adjudicator panel on the winning candidate's wire
 proof (Verify) — mirroring the parallel-finder + adversarial-verify
-pattern already established in `self-assess`'s and `quality`'s workflow
+pattern already established in `self-assess`'s and `confab`'s workflow
 scripts. Like every Workflow script in this marketplace, it has no
 filesystem access: `andon-loop`'s SKILL.md reads `stageFiles` and
 `houseRules` first and passes them in via `args`.
@@ -135,7 +135,7 @@ check what's available:
 - **`self-assess` plugin** (optional) — sharpens `andon-loop`'s topology
   detection via `self-assess:stage-mapper`. Falls back to a minimal
   built-in heuristic, flagged as reduced confidence, without it.
-- **`quality` plugin** (optional) — required for `andon-verify` strategy
+- **`confab` plugin** (optional) — required for `andon-verify` strategy
   d (agentic-reliability dispatch) and strategy g ("verify the
   verifier"). Those two strategies report unavailable without it; the
   rest of `andon-verify` is unaffected.

@@ -3,18 +3,18 @@
 Closes a real gap the other six strategies leave open: without this
 strategy, a passing wired test = proof, full stop. Strategy g asks "but
 is that test actually asserting anything meaningful" — two cross-plugin
-dispatches to `plugins/quality/` that audit the *proof itself*, not the
+dispatches to `plugins/confab/` that audit the *proof itself*, not the
 code the proof is about.
 
 ## Two dispatch targets
 
-### `quality:quality-contract-drift`
+### `confab:confab-contract-drift`
 
 Checks whether the stage-boundary contract (types/signatures/schemas)
 still matches what's actually consumed on the other side of the wire —
 i.e., did the wired test pin down the *current* contract, or a stale one
 that has since drifted. Confirm invocation shape against
-`plugins/quality/skills/quality-contract-drift/SKILL.md` before
+`plugins/confab/skills/confab-contract-drift/SKILL.md` before
 dispatching (it expects `args: {repoPath, contractSources, houseRules?,
 skipVerification?}` when Workflow-orchestrated — this strategy passes
 the wire's two stage-boundary files as `contractSources`, scoped
@@ -24,13 +24,13 @@ narrowly to this one wire, not a whole-repo sweep).
 between two stages, and the concern is drift since that contract was
 last checked.
 
-### `quality:quality-assertion-audit`
+### `confab:confab-assertion-audit`
 
 Mutation-tests the wired test that "proved" this wire — off-by-one,
 boundary flip, condition negation — to check the test would actually
 catch a regression, not just execute the code path. Confirm invocation
 shape against
-`plugins/quality/skills/quality-assertion-audit/SKILL.md` before
+`plugins/confab/skills/confab-assertion-audit/SKILL.md` before
 dispatching (it expects `args: {repoPath, targetFiles, testFiles,
 mutationTool?}` when Workflow-orchestrated — this strategy passes the
 wire's implementation file(s) as `targetFiles` and the wired test file(s)
@@ -44,10 +44,10 @@ hollow (executes the code, asserts nothing that would catch a mutation).
 
 1. **Identify what kind of proof is being audited.** If the wire's
    existing evidence doc names a contract-shaped proof (types/schemas
-   matching), dispatch `quality-contract-drift`. If it names a test-shaped
-   proof (a wired test that passed), dispatch `quality-assertion-audit`.
+   matching), dispatch `confab-contract-drift`. If it names a test-shaped
+   proof (a wired test that passed), dispatch `confab-assertion-audit`.
    Both, if the wire's proof mixes the two.
-2. **Confirm `quality` is installed.** If neither skill resolves, degrade
+2. **Confirm `confab` is installed.** If neither skill resolves, degrade
    gracefully: report strategy g as unavailable for this wire — never
    hard-fail `andon-verify`'s overall run, and never silently treat the
    original proof as unaudited-but-still-green without saying so.
@@ -55,11 +55,11 @@ hollow (executes the code, asserts nothing that would catch a mutation).
    mutation sweep. Pass only the files the wire's proof actually
    touches.
 4. **Map the result to a verdict on the ORIGINAL wire, not a new one.**
-   - `quality-contract-drift` finds a confirmed mismatch on this wire's
+   - `confab-contract-drift` finds a confirmed mismatch on this wire's
      boundary → the original wire's proof is now suspect; downgrade its
      status to ⚪ (re-proof needed) rather than leaving it 🟢 on stale
      evidence.
-   - `quality-assertion-audit` finds the wired test would not catch a
+   - `confab-assertion-audit` finds the wired test would not catch a
      plausible mutation → same downgrade to ⚪ — a test that executes but
      doesn't assert is not proof, so the wire reverts to unproven, not
      immediately 🔴 (the underlying code might still be correct; only the

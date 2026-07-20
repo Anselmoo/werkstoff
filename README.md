@@ -12,12 +12,14 @@ uses.
   stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit,
   house-rules convention enforcement, and a multi-repo portfolio
   dashboard.
-- **[`quality`](plugins/quality/README.md)** — AI-generated-code
-  quality auditing: dependency-hallucination detection, LLM-reasoned
-  assertion/mutation strength auditing, machine-checkable contract-drift
-  detection, self-referential agentic-loop reliability auditing, and a
-  bounded autonomous self-optimization cycle (`quality-cycle`) with an
-  opt-in propose/fix mode.
+- **[`confab`](plugins/confab/README.md)** — catches where AI-authored
+  code *confabulates* (short for **confabulation** — an LLM confidently
+  filling a gap with plausible-but-false content; not casual chat):
+  declared dependencies that don't exist (hallucination detection), tests
+  that assert nothing (LLM-reasoned assertion/mutation strength), contracts
+  drifted from their call-sites (machine-checkable contract-drift), and
+  unreliable agentic-loop definitions — plus a bounded autonomous
+  self-optimization cycle (`confab-cycle`) with an opt-in propose/fix mode.
 - **[`compass`](plugins/compass/README.md)** — a prompt-engineering
   technique library for complex/vague tasks, composed by `compass-solve`
   into an actual workflow (clarify-scope, explore-branches,
@@ -46,7 +48,7 @@ uses.
 /plugin install self-assess@werkstoff
 ```
 
-Swap `self-assess` for any plugin name above (`quality`, `compass`,
+Swap `self-assess` for any plugin name above (`confab`, `compass`,
 `cupertino`, `andon`, `cli-scaffold`) to install a different one — each
 is independent and can be installed on its own.
 

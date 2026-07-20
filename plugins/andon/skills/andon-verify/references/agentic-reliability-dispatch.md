@@ -8,18 +8,18 @@ This strategy is a direct cross-plugin dispatch, not a reimplementation.
 
 ## Dispatch target — the exact, correct name
 
-Dispatch the skill **`quality:quality-agentic-reliability`** via the
+Dispatch the skill **`confab:confab-agentic-reliability`** via the
 `Skill` tool.
 
-**Do not write `quality:quality-agentic-reliability-auditor`** — that
+**Do not write `confab:confab-agentic-reliability-auditor`** — that
 name does not exist. It was a drafting error caught during this plugin's
 design and is called out here explicitly so it is never reintroduced.
 The underlying **agent** (a separate, lower-level dispatch target) is
-named `quality:agentic-reliability-auditor` (no `quality-` prefix
-repetition, no `quality-agentic-reliability-` compound) — use the agent
+named `confab:agentic-reliability-auditor` (no `quality-` prefix
+repetition, no `confab-agentic-reliability-` compound) — use the agent
 name only if a direct agent dispatch is ever needed in place of the
 skill; the skill is the normal entry point and already orchestrates the
-agent internally per `plugins/quality/skills/quality-agentic-reliability/SKILL.md`.
+agent internally per `plugins/confab/skills/confab-agentic-reliability/SKILL.md`.
 
 ## When this strategy fires
 
@@ -32,14 +32,14 @@ file, or the gap itself is "audit our own plugin reliability."
 
 ## Workflow
 
-1. **Confirm `quality` is installed.** If the `quality:quality-agentic-reliability`
+1. **Confirm `confab` is installed.** If the `confab:confab-agentic-reliability`
    skill does not resolve, degrade gracefully: report strategy d as
    unavailable for this wire, and if a plugin-reliability concern still
    needs checking, fall back to a plain-text description of the four
    anti-pattern categories (unbounded retry loops, no escalation path,
    Find-phase-with-no-Verify-wiring, excessive tool grants) as a manual
    checklist for the user — never silently skip the concern, and never
-   reimplement `quality-agentic-reliability`'s own scan logic here.
+   reimplement `confab-agentic-reliability`'s own scan logic here.
 2. **Dispatch.** Invoke the skill with the scope narrowed to the
    specific skill/agent/workflow file(s) the fix touched — do not trigger
    a whole-repo sweep for a single-wire proof unless the gap itself is

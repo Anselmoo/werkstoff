@@ -23,7 +23,7 @@ werkstoff list                       # show every plugin in the marketplace
 werkstoff list --json                # machine-readable
 
 werkstoff install                    # add the marketplace + install every plugin
-werkstoff install self-assess quality  # install just these two
+werkstoff install self-assess confab  # install just these two
 werkstoff install --no-input         # skip the "install all?" confirmation (CI-safe)
 werkstoff install --scope project    # user | project | local
 

@@ -35,8 +35,8 @@ calculation steps.
 
 ### In werkstoff
 
-`quality-assertion-audit`'s mutation-reasoning step
-(`plugins/quality/workflows/assertion-audit-scan.js`) is CoT-shaped in
+`confab-assertion-audit`'s mutation-reasoning step
+(`plugins/confab/workflows/assertion-audit-scan.js`) is CoT-shaped in
 spirit: the agent must reason from a proposed mutation to whether the
 existing test suite would catch it, an intermediate inferential chain
 (read the mutation → read the test → trace whether the assertion would

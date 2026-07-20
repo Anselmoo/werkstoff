@@ -151,18 +151,18 @@ const TECHNIQUES = [
   { id: "cot", title: "Chain-of-Thought", file: "cot.md", group: "compass-reason-verify", rung: "rung 2 (default)",
     description: "Elicit intermediate reasoning steps before the final answer to reduce arithmetic and multi-step logic errors.",
     citations: [
-      { target: "quality-assertion-audit", note: "The mutation-reasoning step is CoT-shaped in spirit: mutation → test → whether the assertion would fail, an inferential chain a direct yes/no would skip." },
+      { target: "confab-assertion-audit", note: "The mutation-reasoning step is CoT-shaped in spirit: mutation → test → whether the assertion would fail, an inferential chain a direct yes/no would skip." },
     ] },
   { id: "self-consistency", title: "Self-Consistency", file: "self-consistency.md", group: "compass-reason-verify", rung: "rung 3a",
     description: "Run multiple independent reasoning paths and take the majority answer, catching cases where one path makes an early wrong assumption.",
     citations: [
       { target: "self-assess-stage-map", note: "stage-map-scan.js's Verify phase: an independent reviewer re-derives each candidate wire's verdict rather than trusting the Find phase's claim." },
-      { target: "quality-lint-audit", note: "lint-audit-scan.js adds a second, independent re-confirmation tier for High-severity findings." },
+      { target: "confab-lint-audit", note: "lint-audit-scan.js adds a second, independent re-confirmation tier for High-severity findings." },
     ] },
   { id: "pal", title: "Program-Aided Language Models (PAL)", file: "pal.md", group: "compass-reason-verify", rung: "rung 3b",
     description: "Offload computation to executable code instead of mental arithmetic in language, for guaranteed precision.",
     citations: [
-      { target: "quality-assertion-audit", note: "When a real mutation tool (mutmut/Stryker/PIT) is on PATH, shells out to it for ground-truth scores instead of LLM-reasoning about mutation coverage." },
+      { target: "confab-assertion-audit", note: "When a real mutation tool (mutmut/Stryker/PIT) is on PATH, shells out to it for ground-truth scores instead of LLM-reasoning about mutation coverage." },
     ] },
   { id: "multimodal-cot", title: "Multimodal Chain-of-Thought", file: "multimodal-cot.md", group: "compass-reason-verify", rung: "triggered mode",
     description: "Describe everything visible before reasoning, then reason, then answer — preventing answer-first-justify-later errors on image/diagram input.",
@@ -228,7 +228,7 @@ const TECHNIQUES = [
   { id: "rewoo", title: "ReWOO", file: "rewoo.md", group: "compass-investigate-dynamically", rung: null,
     description: "Plan every tool call upfront in one pass, execute them all, then synthesize — cheaper than interleaved reasoning when tool calls are expensive or slow.",
     citations: [
-      { target: "quality-dependency-audit", note: "Step 0: \"the workflow script has no filesystem access, so gather everything first\" — every manifest/registry to check is planned before any call executes, then Step 1 fires all lookups in parallel with no re-planning." },
+      { target: "confab-dependency-audit", note: "Step 0: \"the workflow script has no filesystem access, so gather everything first\" — every manifest/registry to check is planned before any call executes, then Step 1 fires all lookups in parallel with no re-planning." },
     ] },
   { id: "self-ask", title: "Self-Ask", file: "self-ask.md", group: "compass-investigate-dynamically", rung: null,
     description: "A minimal \"do I need a follow-up question?\" lookup chain — ReAct's simpler precursor, for a single or short chain of conditional lookups.",
@@ -253,7 +253,7 @@ const TECHNIQUES = [
 ];
 
 // The distinct grounding targets named across all 21 docs' "In werkstoff"
-// sections — mostly self-assess-*/quality-* skills, code-modernization, or
+// sections — mostly self-assess-*/confab-* skills, code-modernization, or
 // this session's own superpowers-skill usage. Grouped loosely by family for
 // the sidebar's family badge; family is not a separate color in this diagram
 // (see the one-line rationale in GROUPS above the technique nodes).
@@ -262,8 +262,8 @@ const TARGETS = [
     description: "self-assess skill — a single-pass 3-line status verdict (furthest completed check / what's stale / next skill)." },
   { id: "self-assess-lint-audit", label: "self-assess-lint-audit", family: "self-assess",
     description: "self-assess skill — Step 0's house-rules.md -> CLAUDE.md fallback chain: a genuine \"do I need a follow-up lookup\" decision, stop rather than guess if neither exists." },
-  { id: "quality-dependency-audit", label: "quality-dependency-audit", family: "quality",
-    description: "quality skill — Step 0 gathers every manifest/registry to check in one pass before any tool call, since the workflow script has no filesystem access; Step 1 fires all lookups in parallel with no re-planning." },
+  { id: "confab-dependency-audit", label: "confab-dependency-audit", family: "confab",
+    description: "confab skill — Step 0 gathers every manifest/registry to check in one pass before any tool call, since the workflow script has no filesystem access; Step 1 fires all lookups in parallel with no re-planning." },
   { id: "self-assess-ci-topology-auditor", label: "ci-topology-auditor.md", family: "self-assess",
     description: "self-assess agent — its frontmatter description carries 4 worked <example> blocks that drive the agent's own auto-triggering." },
   { id: "self-assess-stage-map", label: "self-assess-stage-map", family: "self-assess",
@@ -272,10 +272,10 @@ const TARGETS = [
     description: "self-assess skill — Check 1 surfaces baseline facts (languages, tools, house-rules) before any downstream skill runs; PREFLIGHT.md is read by every downstream skill's Step 0." },
   { id: "self-assess-docs-drift", label: "self-assess-docs-drift", family: "self-assess",
     description: "self-assess skill — docs-drift-scan.js's Find phase and CLAIMS_SCHEMA confidence field; every contradiction needs file:line evidence on both the doc and code sides." },
-  { id: "quality-assertion-audit", label: "quality-assertion-audit", family: "quality",
-    description: "quality skill — assertion-audit-scan.js's mutation-reasoning step, optionally offloaded to a real mutation-testing tool when one is on PATH." },
-  { id: "quality-lint-audit", label: "quality-lint-audit", family: "quality",
-    description: "quality skill — lint-audit-scan.js's second, independent re-confirmation tier for High-severity findings." },
+  { id: "confab-assertion-audit", label: "confab-assertion-audit", family: "confab",
+    description: "confab skill — assertion-audit-scan.js's mutation-reasoning step, optionally offloaded to a real mutation-testing tool when one is on PATH." },
+  { id: "confab-lint-audit", label: "confab-lint-audit", family: "confab",
+    description: "confab skill — lint-audit-scan.js's second, independent re-confirmation tier for High-severity findings." },
   { id: "superpowers:brainstorming", label: "superpowers:brainstorming", family: "superpowers",
     description: "superpowers skill — “propose 2-3 distinct approaches with trade-offs, lead with a recommendation,” used for this repo's own design decisions." },
   { id: "superpowers:writing-plans", label: "superpowers:writing-plans", family: "superpowers",

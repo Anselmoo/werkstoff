@@ -133,7 +133,7 @@ fast-lane; Rung 3–4 is definitionally slow-lane.
 1. **Route.** Consult `references/wire-classifier.md`. Name the selected
    strategy and why, before doing anything else.
 2. **Check the strategy's prerequisites.** Each strategy doc states what
-   it needs (a real property-testing library, `quality`/`self-assess`
+   it needs (a real property-testing library, `confab`/`self-assess`
    installed, an LSP tool or structural index). If a prerequisite is
    missing, follow that strategy's own documented degradation path —
    never hard-fail the whole `andon-verify` call because one strategy's
