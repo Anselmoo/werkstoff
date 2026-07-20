@@ -27,11 +27,24 @@ errors).
 
 This spec closes the parallel gap on the *other* new skill:
 `self-assess-code-idiom` can find a real, mechanical, single-location
-deprecated-idiom finding (e.g. `Optional[X]` → `X | None`) but has no way to
-apply it — a human has to do so by hand. This is exactly the kind of finding
-a real session is least likely to act on (per the retrospective's own
-evidence), because there's friction between "here's a finding" and "the fix
-is applied."
+deprecated-idiom finding but has no way to apply it — a human has to do so
+by hand. This is exactly the kind of finding a real session is least likely
+to act on (per the retrospective's own evidence), because there's friction
+between "here's a finding" and "the fix is applied."
+
+**Empirical validation (post-design-approval addition):** an independent
+gap-analysis run against a real repo (`spectrafit-core`,
+`docs/superpowers/assets/2026-07-19-code-quality-gap-analysis-design.md`)
+confirms this exact class of finding is real, not hypothetical — its
+canonical example was `Optional[X]` → `X | None` in Python (0 hits for the
+old form vs. 201 for the new one in that repo — migration already
+complete there, but the same idiom-class finding pattern generalizes to any
+repo mid-migration). That same run also validated, independently, that
+`modernization`-class findings and `smell`-class findings (broad-except,
+magic-number) genuinely need different handling — its design went further
+than this one and split them into two separate skills entirely, which is
+stronger evidence for this spec's permanent exclusion of `smell` from
+auto-fix than the reasoning available when this spec was first drafted.
 
 ## Decisions made during brainstorming
 
@@ -161,6 +174,15 @@ idiom_fix:
 dispatches `idiom-remediator` per finding → agent returns a diff description
 → skill reports "unverified — hand off to `andon-verify` now," never a
 self-declared success.
+
+**Zero eligible findings is a valid, expected outcome, not an error path.**
+The same empirical run cited above found 0 hits for its target deprecated
+idiom in one language and a clean pass in another — a fully-migrated repo
+genuinely has nothing to fix. `self-assess-idiom-fix` must report "0
+eligible findings — nothing to do" plainly and stop, the same honest-signal
+principle `self-assess-code-idiom` itself already follows; it must never
+manufacture a finding, lower its own filter criteria, or otherwise "find
+something to justify the run" when the eligible-findings list is empty.
 
 ## Error handling / safety
 
