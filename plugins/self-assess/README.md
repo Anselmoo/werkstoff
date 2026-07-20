@@ -51,12 +51,12 @@ repo in place), just ask in plain language:
 - **self-assess-stage-map** — "map the real import-graph stages/wires" (opens an interactive map)
 - **self-assess-arch-health** — "find god-modules, dependency cycles, layering violations" (over the stage-map graph)
 - **self-assess-transform-brief** — "what's the target architecture and how do we get there" (current→target 1:1/merge/split mapping, phased sequence, Mermaid exports)
-- **self-assess-transform-execute** — "execute phase N of the modernization brief" (off by default — the plugin's one Edit exception, see Safety notes)
+- **self-assess-transform-execute** — "execute phase N of the modernization brief" (off by default — one of the plugin's two Edit exceptions, see Safety notes)
 - **self-assess-docs-drift** — "where do CLAUDE.md/ADRs/README contradict the code?"
 - **self-assess-ci-topology** — "check our git remotes, CI config, mirror scripts, commit signing for drift"
 - **self-assess-lint-audit** — "does the code follow its own house-rules.md?"
 - **self-assess-code-idiom** — "find deprecated idioms + generic code smells in the code itself"
-- **self-assess-idiom-fix** — "apply the modernization findings from code-idiom" (off by default — the plugin's second Edit exception, see Safety notes)
+- **self-assess-idiom-fix** — "apply the modernization findings from code-idiom" (off by default — the other of the plugin's two Edit exceptions, see Safety notes)
 - **self-assess-extract-rules** — "mine the business rules out of this codebase" (Rule Cards, Given/When/Then)
 - **self-assess-complexity-score** — "which module needs attention first?" (COCOMO/CCN tech-debt index)
 - **self-assess-status** — "where am I, what's stale, what's next"
@@ -120,7 +120,8 @@ by default — configurable via `output_dir`, see **Settings** below.
 
 - **`self-assess-transform-execute`** — Applies exactly one already-authorized
   phase from `MODERNIZATION_BRIEF.md` via the `transform-executor` agent —
-  **the only Edit/Write-capable path in this plugin**, off by default
+  **one of the plugin's two Edit/Write-capable paths** (the other is
+  `self-assess-idiom-fix`, below), off by default
   (`transform.mode: plan`) and gated per-phase
   (`transform.authorized_phases`), never a blanket switch. Refuses a phase
   whose Open Question isn't resolved by a human first. Never verifies its

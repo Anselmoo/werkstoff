@@ -32,8 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the phase sequence into the topology viewer's previously-always-empty
   `flows` walkthrough.
 - **`self-assess-transform-execute`** skill + `transform-executor` agent —
-  the plugin's one and only Edit/Write exception (`self-assess` was 100%
-  read-only before this). Applies exactly one already-authorized phase from
+  the first of what are now two Edit/Write exceptions (`self-assess` was
+  100% read-only before this; see the `self-assess-idiom-fix` entry above
+  for the second). Applies exactly one already-authorized phase from
   `MODERNIZATION_BRIEF.md`; off by default (`transform.mode: plan`), gated
   per-phase (`transform.authorized_phases`), refuses a phase whose Open
   Question isn't resolved by a human first, has no `Bash`, never commits or
