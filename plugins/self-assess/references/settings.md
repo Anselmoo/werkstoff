@@ -23,6 +23,10 @@ restart is needed**.
 | `languages` | list of strings | `[]` (auto-detect) | Explicit override for `self-assess-stage-map`'s language list — bypasses `self-assess-preflight` Check 1 / `self-assess-stage-map` Step 0 detection entirely when non-empty. Use this to scope a huge polyglot monorepo down to one or two languages for a cheaper run, or to force-include a language the detection heuristics missed. |
 | `skip_verification` | bool | `false` | Skips each heavy skill's adversarial Verify phase (or independent-referee phase for docs-drift) — trades precision for speed/cost. Candidates are reported directly, each clearly labeled unverified. **Only affects Workflow-orchestrated runs** — the no-Workflow-tool fallback path always verifies, since it's already the lower-throughput path with no separate phase to skip. |
 | `lint_max_rules` | number | `12` | Caps how many extracted convention rules `self-assess-lint-audit` runs a Find-phase finder for. Rules beyond the cap are named as skipped, never silently dropped. |
+| `transform.mode` | string | `plan` | `self-assess-transform-execute`'s mode switch. `plan` means that skill refuses to run at all — `self-assess-transform-brief` is still fully available in this mode, since it's read-only. Only `execute` allows `self-assess-transform-execute` to dispatch `transform-executor` for phases listed in `transform.authorized_phases`. |
+| `transform.authorized_phases` | list of numbers | `[]` | Explicit phase numbers (from the most recently generated `MODERNIZATION_BRIEF.md`) the repo owner has authorized to execute. Empty means nothing executes even with `transform.mode: execute` — this is a per-phase allowlist, not a blanket switch, because a Merge/Split phase is `hard-to-reverse` at minimum. **Re-confirm this list whenever the brief regenerates** — phase numbers can shift if the stage graph or arch-health findings changed. |
+| `transform.require_clean_tree` | bool | `true` | Refuse to execute a phase against a dirty working tree without explicit confirmation first (same discipline `confab-cycle`'s fix mode uses). |
+| `idiom_fix.mode` | string | `propose` | `self-assess-idiom-fix`'s mode switch. `propose` (default) means that skill refuses to run past reporting eligible findings — `self-assess-code-idiom` itself is still fully available in this mode, since it's read-only. Only `fix` allows `self-assess-idiom-fix` to dispatch `idiom-remediator` for eligible `modernization`-category findings. |
 
 ## Example
 
@@ -34,6 +38,12 @@ output_dir: analysis/self-assess
 languages: []
 skip_verification: false
 lint_max_rules: 12
+transform:
+  mode: plan
+  authorized_phases: []
+  require_clean_tree: true
+idiom_fix:
+  mode: propose
 ---
 
 # self-assess configuration
