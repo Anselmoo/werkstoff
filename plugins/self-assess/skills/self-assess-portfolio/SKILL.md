@@ -83,6 +83,9 @@ that don't:
 - `<output_dir>/lint_audit_summary.json`
 - `<output_dir>/business_rules_summary.json`
 - `<output_dir>/complexity_score_summary.json`
+- `<output_dir>/code_idiom_summary.json`
+- `<output_dir>/arch_health_summary.json`
+- `<output_dir>/transform_brief_summary.json`
 
 A repo with **none** of these present is **not yet assessed** — record
 that plainly, do not run any skill against it yourself (that's what
@@ -95,7 +98,8 @@ For each repo that has at least one summary, compute a simple health
 color, worst-signal-wins:
 
 - **Red** — `preflight_summary.json`'s any verdict is `"Not-ready"`, or
-  `ci_topology_summary.json`/`lint_audit_summary.json`'s
+  any of `ci_topology_summary.json`/`lint_audit_summary.json`/
+  `code_idiom_summary.json`/`arch_health_summary.json`'s
   `*BySeverity.High` is non-zero.
 - **Amber** — any confirmed contradiction, finding, or violation exists
   at all (even Medium/Low), or any preflight verdict is
@@ -118,13 +122,19 @@ repos, so it lives at the parent level, not inside any one repo's
 accent, system-ui font, all CSS inline, matching `code-modernization`'s
 topology/portfolio styling convention. One row per repo; columns:
 **Repo · Languages · Stages/Wires · Docs Contradictions · CI Findings ·
-Lint Violations · Complexity Index · Health**. Color-grade the Health cell
-(green→amber→red, gray for not-yet-assessed). The **Complexity Index**
-column is sourced from `complexity_score_summary.json`'s
-`topComplexityStage`/`complexityByStage` if present, blank/dash if the
-sidecar is absent — it is purely informational and never a factor in the
-Health cell's grade (Step 3 above); a high-complexity repo can still be
-Green if nothing else is wrong with it. Below the table, 2-3 sentences:
+Lint Violations · Complexity Index · Transform Plan · Health**.
+Color-grade the Health cell (green→amber→red, gray for not-yet-assessed).
+The **Complexity Index** column is sourced from
+`complexity_score_summary.json`'s `topComplexityStage`/`complexityByStage`
+if present, blank/dash if the sidecar is absent — it is purely
+informational and never a factor in the Health cell's grade (Step 3
+above); a high-complexity repo can still be Green if nothing else is wrong
+with it. The **Transform Plan** column is sourced from
+`transform_brief_summary.json`'s `decisionCounts`/`openQuestions` if
+present (e.g. "2 split, 1 merge, 3 open Qs"), blank/dash if absent — same
+purely-informational treatment, never a Health factor; a repo with a large
+transformation plan can still be Green if nothing it currently has is
+broken. Below the table, 2-3 sentences:
 which repo to prioritize first and why (worst health grade, or the repo
 with the most confirmed findings) — and, separately, which repos are
 still unassessed and worth a `self-assess-preflight` run.

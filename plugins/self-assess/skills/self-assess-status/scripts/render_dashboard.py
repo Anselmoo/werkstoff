@@ -7,7 +7,7 @@ Reads <output dir>/findings_dashboard_data.json, writes
 
 Mirrors self-assess-stage-map/scripts/render_stage_map.py's injection
 mechanism (same marker-replace-plus-JSON-safe-escape approach, applied to
-a different template/marker/payload) and quality-status/scripts/
+a different template/marker/payload) and confab-status/scripts/
 render_dashboard.py's own dashboard-rendering variant of that pattern.
 """
 import json

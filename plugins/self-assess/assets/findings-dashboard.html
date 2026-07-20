@@ -191,7 +191,7 @@ const DATA = /*__SELF_ASSESS_DASHBOARD_DATA__*/ null;
 //      "confirmedContradictions": N, "byCategory": {...}}
 //     byCategory keys are the workflow's fixed category enum (Pattern,
 //     Deprecation, Policy, Architecture, Behavior) — this skill has no
-//     severity field, mirroring quality-status's contractDrift handling.
+//     severity field, mirroring confab-status's contractDrift handling.
 //   ci_topology_summary.json -> self-assess-ci-topology/SKILL.md Step 2
 //     {"remoteCount": N, "ciConfigFileCount": N, "findingsBySeverity": {...}}
 //     findingsBySeverity keys come from the workflow's severity enum
@@ -213,6 +213,17 @@ const DATA = /*__SELF_ASSESS_DASHBOARD_DATA__*/ null;
 //     workflow's severity enum). rulesChecked here is a COUNT (the
 //     sidecar's own note: the workflow's rulesChecked is an array of rule
 //     names, this sidecar stores that array's length instead).
+//   code_idiom_summary.json  -> self-assess-code-idiom/SKILL.md Step 2
+//     {"languagesScanned": [...], "filesScanned": N,
+//      "findingsBySeverity": {...}, "byCategory": {modernization,smell}}
+//     findingsBySeverity keys are High/Medium/Low (same enum as lintAudit).
+//     byCategory here is modernization vs smell — not used for the tile's
+//     bars (severityField wins), but carried for the portfolio view.
+//   arch_health_summary.json -> self-assess-arch-health/SKILL.md Step 2
+//     {"stagesAnalyzed": N, "findingsBySeverity": {...},
+//      "byCategory": {god-module,cycle,layering-violation}}
+//     findingsBySeverity keys are High/Medium/Low. Deficiencies over the
+//     stage/wire graph self-assess-stage-map already built.
 const DOMAINS = [
   { key: "docsDrift", label: "Docs Drift", file: "docs_drift_summary.json",
     categoryField: "byCategory", fallbackField: "confirmedContradictions",
@@ -238,6 +249,16 @@ const DOMAINS = [
     fallbackLabel: "Rule(s) needing SME confirmation",
     metaFields: [
       { f: "rulesFound", label: "rule(s) found" },
+    ] },
+  { key: "codeIdiom", label: "Code Idiom", file: "code_idiom_summary.json",
+    severityField: "findingsBySeverity",
+    metaFields: [
+      { f: "filesScanned", label: "file(s) scanned" },
+    ] },
+  { key: "archHealth", label: "Arch Health", file: "arch_health_summary.json",
+    severityField: "findingsBySeverity",
+    metaFields: [
+      { f: "stagesAnalyzed", label: "stage(s) analyzed" },
     ] },
 ];
 const SEV_ORDER = ["High", "Medium", "Low", "Info", "Unclassified"];
@@ -283,7 +304,7 @@ function sum(obj) { return Object.values(obj || {}).reduce((a, b) => a + (Number
 // byCategory buckets are categories, not severities), so its
 // confirmedContradictions count is folded into "Unclassified" rather than
 // invented as a severity that skill never reports — same treatment
-// quality-status gives contractDrift's confirmedMismatches.
+// confab-status gives contractDrift's confirmedMismatches.
 function combinedSeverity(data) {
   const totals = { High: 0, Medium: 0, Low: 0, Info: 0, Unclassified: 0 };
   for (const d of DOMAINS) {
@@ -300,13 +321,13 @@ function combinedSeverity(data) {
   return totals;
 }
 
-// Table rows are synthesized from the aggregate bySeverity/byCategory
-// breakdowns each sidecar documents — none of the 3 sidecar shapes carry
-// per-finding title/evidence text, only counts, so a row here represents a
-// bucket ("N findings of severity X" / "N findings in category Y"), not a
-// single literal finding. If a future sidecar version adds a real
-// `findings` array, that is used directly instead (each entry already
-// shaped {severity, title, evidence}).
+// Every domain sidecar now writes a real per-finding `findings` array
+// (`{severity, title, evidence, category}`), used directly below. Older
+// sidecars written before that (or a domain that genuinely has none) fall
+// back to synthesizing rows from the aggregate bySeverity/byCategory counts
+// — a bucket ("N findings of severity X" / "N findings in category Y"),
+// not a single literal finding — so a stale sidecar still renders something
+// rather than an empty card.
 function domainRows(d, obj) {
   if (Array.isArray(obj.findings)) {
     return obj.findings.map(f => ({

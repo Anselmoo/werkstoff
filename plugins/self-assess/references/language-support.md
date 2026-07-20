@@ -8,12 +8,17 @@ duplication (three independently-drifting lists, one of them missing
 most real-world languages) is the exact bug an internal audit
 (`rubber-duck-tribunal`, `longevity` rubric) found and this file fixes.
 
-One structural exception: `workflows/stage-map-scan.js`'s `LANG_BRIEFS`
-constant is plain JS with **no filesystem access at runtime** (confirmed
-Workflow-tool constraint), so it cannot `Read` this file — it carries its
-own copy of the extraction idiom column, and a comment there points back
-here as the source it must be kept in sync with by hand. Every other
-consumer (the two SKILL.md files, the agent) reads this file directly.
+Two structural exceptions, both plain-JS Workflow scripts with **no
+filesystem access at runtime** (confirmed Workflow-tool constraint), so
+neither can `Read` this file — each carries its own copy of the relevant
+column and a comment pointing back here as the source it must be kept in
+sync with by hand:
+- `workflows/stage-map-scan.js`'s `LANG_BRIEFS` — the **Extraction idiom**
+  column (the import/use-graph extraction hints).
+- `workflows/code-idiom-scan.js`'s `LANG_BRIEFS` — the **Deprecated-idiom /
+  smell catalog** section below (the modernization-in-place + smell hints).
+
+Every other consumer (the SKILL.md files, the agents) reads this file directly.
 
 Coverage below is the 20 most common general-purpose and scripting
 languages. **This list is illustrative, not exhaustive** — any language
@@ -64,3 +69,40 @@ run this identically:
    skipping it is the exact gap a real-repo test found (a repo with real
    Go code and 4 shell scripts detected zero languages under the old,
    manifest-only, three-language-hardcoded version of this check).
+
+## Deprecated-idiom / smell catalog (`self-assess-code-idiom`)
+
+`self-assess-code-idiom` checks each detected language for **deprecated
+idioms** (modernization-in-place — only ones the version the repo *actually
+targets* supersedes) and **generic smells** (error-swallowing catch/rescue,
+magic numbers, overlong functions, deep nesting, missing type coverage in an
+otherwise-typed module). The version is read from the manifest per language
+(`requires-python`, `Cargo.toml` `edition`/`rust-version`, `tsconfig.json`
+`target`, `go.mod` `go`, …) and passed into the scan; an idiom is only
+"deprecated" if that version offers the replacement.
+
+The per-language hint list lives in `workflows/code-idiom-scan.js`'s
+`LANG_BRIEFS` (which cannot read this file — keep the two in sync by hand,
+per the exception noted at the top). Representative modernization idioms:
+
+| Language | Deprecated idiom → modern replacement (version gate) |
+|---|---|
+| Python | `Optional[X]`/`Union[X,Y]` → `X \| None`/`X \| Y` (≥3.10); `typing.List/Dict` → `list/dict` (≥3.9); `os.path` → `pathlib`; `%`/`.format()` → f-strings; `asyncio.get_event_loop()` deprecated (≥3.10) |
+| Rust | `Python::acquire_gil()` → `Python::with_gil` (pyo3 ≥0.15); `#[pyfn]`/`#[pyproto]` → `#[pymethods]`; `try!()` → `?`; `extern crate` unneeded (2018+); `mem::uninitialized` → `MaybeUninit` |
+| TypeScript | `var` → `let`/`const`; class components / `componentWill*` lifecycles → hooks; `React.FC` discouraged; `require()` → `import`; `enum` → literal unions |
+| JavaScript | `var` → `let`/`const`; ESM `require()` → `import` (`"type":"module"`); `.then()` ladders → `async`/`await`; `Object.assign({})` → spread |
+| Go | `ioutil.*` → `os`/`io` (≥1.16); `interface{}` → `any` (≥1.18); pre-generics duplicated helpers |
+| Java | raw types → generics; `new Integer()` → `valueOf`; anonymous classes → lambdas (≥8); `java.util.Date` → `java.time` |
+
+Smells are language-agnostic and need **no** house-rules entry to be real:
+error-swallowing (`except Exception: pass`, empty `catch {}`, ignored Go
+errors), magic numbers, functions/files past a length or nesting threshold,
+and untyped public functions in an otherwise-typed module. Anything a repo's
+own `house-rules.md` already governs is **out of scope** here — that is
+`self-assess-lint-audit`'s job; `code-idiom` is passed the house-rules content
+precisely so it can avoid double-reporting.
+
+Any language not in the table above still runs, via `code-idiom-scan.js`'s
+generic brief (deprecated idioms the present version supersedes + the
+language-agnostic smells) — the same fallback discipline the extraction column
+uses.
