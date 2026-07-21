@@ -12,12 +12,16 @@ picker. The thesis: **fewer decisions, made deeply, at the right moment in
 a project's life, produce software that feels intentional and ages well.**
 
 This is `self-assess`'s, `confab`'s, and `compass`'s sibling plugin in this
-repo, closest in shape to `compass`: a pure-reasoning plugin, no agents, no
-Workflow scripts, just skills with rich `references/`. Where `compass`
-composes 10 general-purpose reasoning techniques for arbitrary tasks,
-`cupertino` composes 10 design/craft techniques for one specific domain —
-building and maintaining software people actually love — each tied to a
-fixed moment in a project's lifecycle rather than freely combinable.
+repo. Its original 10 lifecycle skills are closest in shape to `compass`:
+pure-reasoning, no agents, no Workflow scripts, just skills with rich
+`references/`. Where `compass` composes 10 general-purpose reasoning
+techniques for arbitrary tasks, `cupertino` composes 10 design/craft
+techniques for one specific domain — building and maintaining software
+people actually love — each tied to a fixed moment in a project's
+lifecycle rather than freely combinable. A second, orthogonal discipline —
+the **handbook lifecycle** (see below) — does use 4 agents and 2 Workflow
+scripts, since it's a genuinely different kind of work: persisting and
+re-checking project conventions rather than one-shot judgment calls.
 
 ## Install
 
@@ -71,11 +75,27 @@ just a label, and the `plugin:skill`-prefixed form (e.g.
 - **cupertino-cannibalize** — "should we replace our own most successful
   thing before a competitor does" (post-ship, ongoing cadence — **only on
   explicit user request, never automatic**)
+- **cupertino-handbook-draft** — "draft a design/code/testing/
+  documentation handbook for this project" (analyzes the project, or
+  scaffolds sensible defaults for an empty one, and writes a persisted
+  conventions artifact for the chosen domain)
+- **cupertino-handbook-apply** — "what does our design handbook say
+  before I build this settings screen" (active pre-flight consult of an
+  existing handbook, before starting new work in a domain)
+- **cupertino-handbook-check** — "check this code against our code
+  handbook" (compares new/changed work against an existing handbook,
+  flags concrete divergence)
+- **cupertino-handbook-fix** — "apply the mechanical findings from the
+  last handbook check" (gated, opt-in fix application with a
+  self-contained blind adversarial verifier — never self-verifies)
 
-Each of the 10 non-`review` skills is independently invocable for a
-narrower job — `cupertino-review` composes them for projects that genuinely
-span several lifecycle moments, not the only sanctioned way into the
-plugin.
+Each of the 10 non-`review` lifecycle skills is independently invocable
+for a narrower job — `cupertino-review` composes them for projects that
+genuinely span several lifecycle moments, not the only sanctioned way
+into the plugin. The 4 handbook skills are a separate, parallel entry
+point: independently invocable always, and only ever consulted
+*optionally* by `cupertino-review` (via `cupertino-handbook-apply`, ahead
+of its Council stage) — never composed into the fixed pipeline itself.
 
 ## The lifecycle pipeline
 
@@ -182,6 +202,42 @@ jointly, not independent analyses to fan out and merge.
   an ongoing cadence — **USER-INVOKED ONLY, never triggered automatically
   per-PR or as part of `cupertino-review`'s automatic pipeline.**
 
+## Handbooks
+
+A second, orthogonal discipline alongside the fixed lifecycle pipeline
+above: persisting a project's actual conventions into a durable artifact
+instead of re-deriving judgment fresh every time. Four skills implement
+one lifecycle — `draft` → `apply` → `check` → `fix` — each
+domain-parameterized across all four domains (**design**, **code**,
+**testing**, **documentation**) rather than duplicated into 16 near-
+identical skills:
+
+```
+cupertino-handbook-draft   analyze (or scaffold) -> write the artifact
+cupertino-handbook-apply   load the artifact -> pre-flight guidance for new work
+cupertino-handbook-check   compare new/changed work against the artifact -> findings
+cupertino-handbook-fix     apply gated, mechanical findings -> blind adversarial verify
+```
+
+The artifact writes to `docs/cupertino/handbooks/<domain>-handbook.md`
+(configurable via `.claude/cupertino.local.md`, see
+`references/handbook-settings.md`) plus a `<domain>-handbook_summary.json`
+sidecar. `cupertino-handbook-fix` is the plugin's only Edit-capable skill,
+off by default (`handbook.fix.mode: propose`) and, when enabled, never
+trusts its own fix — a fresh `handbook-verifier` agent, blind to the
+fixer's own rationale, checks every change before it's accepted (see
+`references/handbook-verification.md`).
+
+**Fully self-contained**: the handbook lifecycle never depends on
+`self-assess` or `andon` being installed, since a `cupertino`-only install
+must work standalone. Where those plugins' skills happen to be present in
+the current session, the handbook skills name them as complementary
+(`self-assess-lint-audit`/`self-assess-code-idiom` for the code domain,
+`self-assess-docs-drift` for documentation, `confab-assertion-audit` for
+testing) — never invoking them. See `references/handbook.md` for the
+shared domain-resolution and soft-detection logic every one of the 4
+skills uses.
+
 ## Knowledge base
 
 `references/` — one grounded markdown doc per technique (10 total, plus 4
@@ -213,7 +269,11 @@ themselves — every skill in this plugin is read-only against any target
 codebase it inspects (`cupertino-longevity`, `cupertino-integrate`,
 `cupertino-council`, `cupertino-reveal` read a target repo's real code/docs
 when applied to an existing project) and writes only the code artifacts a
-technique's own Build step explicitly produces.
+technique's own Build step explicitly produces. The 4 handbook skills are
+also read-only, with one deliberate exception: `cupertino-handbook-fix` is
+the plugin's only Edit-capable skill, gated behind an explicit
+`handbook.fix.mode: fix` setting (default `propose`) and a self-contained
+blind adversarial verifier pair — see `## Handbooks` above.
 
 ## Prerequisites
 
