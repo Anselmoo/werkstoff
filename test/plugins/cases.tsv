@@ -1,0 +1,13 @@
+# Headless plugin behavior-test cases — TAB-separated, one case per line.
+# Columns: id  plugin_dir  fixture_dir  prompt  artifact  regex
+#   id          short unique name (also the run.sh filter arg)
+#   plugin_dir  repo-relative plugin dir passed to `claude --plugin-dir`
+#   fixture_dir repo-relative dir copied into a temp cwd as the "target repo"
+#   prompt      the `claude --print` prompt (should trigger exactly one skill)
+#   artifact    repo-relative-to-cwd file the skill must produce, or - for none
+#               (when -, the regex is matched against claude's stdout instead)
+#   regex       egrep -i pattern proving the seeded defect was caught
+# Lines starting with # and blank lines are ignored. Keep the columns tab-separated.
+ui-audit	plugins/self-assess	plugins/self-assess/test-fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
+stage-map	plugins/self-assess	plugins/self-assess/test-fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
+dep-audit	plugins/confab	plugins/confab/test-fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a

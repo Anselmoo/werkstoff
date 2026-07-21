@@ -26,14 +26,15 @@ the artifact's presence and modification time:
 | Skill | Artifacts |
 |---|---|
 | preflight | `PREFLIGHT.md` |
-| stage-map | `STAGE_MAP.md`, `STAGE_MAP.html`, `stage_map.json` |
+| stage-map | `STAGE_MAP.md`, `STAGE_MAP.html`, `stage_map.json`, `stage_graph.json`, `file_stage_index.json` |
 | docs-drift | `DOCS_DRIFT.md`, `docs_drift_summary.json` |
 | ci-topology | `CI_TOPOLOGY.md`, `ci_topology_summary.json` |
 | lint-audit | `LINT_AUDIT.md`, `lint_audit_summary.json` |
-| extract-rules | `BUSINESS_RULES.md`, `DATA_OBJECTS.md`, `business_rules_summary.json` |
+| extract-rules | `BUSINESS_RULES.md`, `DATA_OBJECTS.md`, `business_rules_summary.json`, `business_rules.json` |
 | complexity-score | `COMPLEXITY_SCORE.md`, `complexity_score_summary.json` |
 | code-idiom | `CODE_IDIOM.md`, `code_idiom_summary.json` |
 | arch-health | `ARCH_HEALTH.md`, `arch_health_summary.json` |
+| ui-audit | `UI_AUDIT.md`, `ui_audit_summary.json` |
 | transform-brief | `MODERNIZATION_BRIEF.md`, `TRANSFORM_SEQUENCE.mmd`, `TRANSFORM_MAPPING.mmd`, `transform_brief_summary.json` |
 
 ## 2 — Staleness
@@ -66,7 +67,8 @@ that has never run):
   "lintAudit": <contents of lint_audit_summary.json, if present>,
   "businessRules": <contents of business_rules_summary.json, if present>,
   "codeIdiom": <contents of code_idiom_summary.json, if present>,
-  "archHealth": <contents of arch_health_summary.json, if present>
+  "archHealth": <contents of arch_health_summary.json, if present>,
+  "uiAudit": <contents of ui_audit_summary.json, if present>
 }
 ```
 
@@ -126,6 +128,14 @@ End with three lines:
 - **What's stale** — or "nothing".
 - **Next skill** — the single most useful next step: the first skill
   never run, or if all have run, the stalest one, with a one-line reason.
+  **One override:** if at least one reporting sidecar exists
+  (`code_idiom_summary.json` / `lint_audit_summary.json` /
+  `docs_drift_summary.json` / `arch_health_summary.json`) **and**
+  `stage_graph.json` exists, but `transform_brief_summary.json` does **not**
+  (or is staler than those inputs), recommend `self-assess-transform-brief`
+  instead — "you have findings but no remediation plan; turn them into a
+  prioritized, phased code-change plan." This is the reporting→plan bridge;
+  surface it once the raw findings are in hand.
 
 Then tell the user to view the dashboard: "view the dashboard at
 `<output_dir>/findings-dashboard.html`" (open directly in a browser, no

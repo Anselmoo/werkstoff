@@ -95,8 +95,22 @@ Create `<output_dir>/DEPENDENCY_AUDIT.md`:
 
 Also write `<output_dir>/dependency_audit_summary.json` — a small
 machine-readable sidecar: `{"packagesChecked": N, "findingsBySeverity":
-{...}, "skippedCount": N}` (`findingsBySeverity` copied straight from the
-workflow's `stats.bySeverity`).
+{...}, "skippedCount": N, "findings": [...]}` (`findingsBySeverity` copied
+straight from the workflow's `stats.bySeverity`).
+
+`findings` is the workflow's confirmed findings reshaped to the **shared
+per-finding contract** `self-assess-transform-brief` reads when it turns
+audit findings into per-phase code-change work items (the same
+`{severity, title, evidence, category}` shape self-assess's own reporting
+sidecars use, **plus** a `fixability` field carrying confab's actionable-vs-
+advisory split): `[{severity, title, evidence, category, fixability}]` —
+`severity` copied as-is; `title` = the hallucinated `package` name (plus its
+`reason` in parentheses if present); `evidence` = `manifestSource` (the
+`file:line` of the offending manifest entry); `category` = the constant
+`"dependency-hallucination"`; `fixability` = `"fixable"` (removing or
+correcting one manifest line is a mechanical, single-location change —
+exactly what `confab-remediator` already applies). Do not re-derive the
+findings; reshape the ones the workflow already returned.
 
 ## Present
 

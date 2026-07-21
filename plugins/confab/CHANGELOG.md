@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Each audit sidecar now carries a per-finding `findings` array.** The four
+  audit summaries (`dependency_audit_summary.json`,
+  `assertion_audit_summary.json`, `contract_drift_summary.json`,
+  `agentic_reliability_summary.json`) were aggregate counts only; they now also
+  emit `findings: [{severity, title, evidence, category, fixability}]` — the
+  same shared per-finding contract self-assess's reporting sidecars use, plus a
+  `fixability` field (`fixable`/`advisory`) carrying confab's own actionable-vs-
+  advisory split. The data was already computed (it renders in each `.md`
+  table); only the sidecar-write step was dropping it. This lets
+  `self-assess-transform-brief` (the reporting→plan bridge) ingest confab
+  findings as per-phase code-change work items — `advisory` findings
+  (weak assertions, agentic redesigns) route to advisory notes, not auto-fixes.
 - **Renamed: plugin `quality` → `confab`** (BREAKING — install target is now
   `confab@werkstoff`, and every skill/agent is renamed `quality-*` → `confab-*`,
   e.g. `confab-dependency-audit`, `confab-cycle`). The `quality` name collided

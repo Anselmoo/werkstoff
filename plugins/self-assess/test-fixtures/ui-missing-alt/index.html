@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+  SEEDED-DEFECT FIXTURE for self-assess-ui-audit's behavior test.
+  Each block below carries exactly one KNOWN accessibility/UI defect the audit
+  must catch. Do not "fix" these — they are the oracle. The expected findings
+  are listed at the bottom of this file. Keep line numbers stable when editing;
+  the harness asserts on the finding text, not on lines.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI audit fixture</title>
+    <style>
+      /* This file uses a design token for one color, so the literal below is
+         genuine token-drift (hardcoded-value), not a token-definition file. */
+      :root { --brand: #2f6fed; }
+      .ok { color: var(--brand); }
+      .drifted { color: #2f6fed; } /* DEFECT: hardcoded-value — should use var(--brand) */
+    </style>
+  </head>
+  <body>
+    <!-- DEFECT: a11y img-no-alt — informational image with no alt text -->
+    <img src="logo.png" width="120" />
+
+    <!-- DEFECT: semantics/a11y div-onclick — clickable div, no role, no keyboard handler -->
+    <div onclick="submitForm()">Submit</div>
+
+    <!-- DEFECT: a11y input-no-label — text input with no associated label/aria-label -->
+    <input type="text" name="email" placeholder="Email" />
+
+    <!-- Correctly labelled control — the audit must NOT flag this one. -->
+    <label for="pw">Password</label>
+    <input id="pw" type="password" name="pw" />
+
+    <!-- Decorative image correctly using alt="" — must NOT be flagged. -->
+    <img src="divider.png" alt="" />
+  </body>
+</html>
+
+<!--
+  EXPECTED FINDINGS (the harness asserts the audit surfaces these):
+    - a11y        img-no-alt         index.html (the logo image)
+    - semantics   div-onclick        index.html (the Submit div)
+    - a11y        input-no-label     index.html (the email input)
+    - hardcoded-value  hardcoded-color  index.html (.drifted color literal)
+  EXPECTED NON-FINDINGS (false-positive guardrails):
+    - the labelled password input
+    - the decorative image with alt=""
+-->

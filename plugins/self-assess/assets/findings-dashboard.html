@@ -110,8 +110,15 @@
     <p>
       <code>/self-assess-docs-drift</code><br>
       <code>/self-assess-ci-topology</code><br>
-      <code>/self-assess-lint-audit</code>
+      <code>/self-assess-lint-audit</code><br>
+      <code>/self-assess-code-idiom</code><br>
+      <code>/self-assess-arch-health</code><br>
+      <code>/self-assess-extract-rules</code>
     </p>
+    <p>Once the reporting skills above have run, turn their findings into a
+    prioritized, phased code-change plan with
+    <code>/self-assess-transform-brief</code> — it attributes each file:line
+    finding to a transformation phase and adds a per-phase behavior contract.</p>
     <p>Looking for the import/dependency graph instead? See
     <code>STAGE_MAP.html</code> (from <code>/self-assess-stage-map</code>) —
     that's a separate viewer, not part of this dashboard.</p>
@@ -259,6 +266,11 @@ const DOMAINS = [
     severityField: "findingsBySeverity",
     metaFields: [
       { f: "stagesAnalyzed", label: "stage(s) analyzed" },
+    ] },
+  { key: "uiAudit", label: "UI Audit", file: "ui_audit_summary.json",
+    severityField: "findingsBySeverity",
+    metaFields: [
+      { f: "frameworksScanned", label: "framework(s) scanned" },
     ] },
 ];
 const SEV_ORDER = ["High", "Medium", "Low", "Info", "Unclassified"];
