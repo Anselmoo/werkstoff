@@ -3,14 +3,22 @@
 My personal Claude Code plugin workshop (`.claude-plugin/marketplace.json`
 at root). Six plugins currently:
 
-- `plugins/self-assess/` — docs-vs-code drift and stage/wire mapping for a live repo.
-- `plugins/confab/` — catches where AI-authored code confabulates (dependency-hallucination/assertion/contract-drift/agentic-reliability audits).
+- `plugins/self-assess/` — docs-vs-code drift and stage/wire mapping for a live repo, plus a reporting→plan bridge (`self-assess-transform-brief` turns file:line findings into a prioritized, phased code-change plan with a per-phase behavior contract), a static UI/accessibility audit (`self-assess-ui-audit`), and a check→plan→fix→validate conductor (`self-assess-autopilot`).
+- `plugins/confab/` — catches where AI-authored code confabulates (dependency-hallucination/assertion/contract-drift/agentic-reliability audits); its audit sidecars publish per-finding arrays the self-assess bridge ingests.
 - `plugins/compass/` — prompt-engineering technique library + `compass-solve` orchestrator for complex/ambiguous tasks.
 - `plugins/cupertino/` — Steve-Jobs-grounded design/craft discipline for a project's whole lifecycle.
-- `plugins/andon/` — self-optimizing hardening loop over a project's value stream (services + wires).
+- `plugins/andon/` — self-optimizing hardening loop over a project's value stream (services + wires); `andon-loop`'s ingest mode (`gap_source: self-assess-brief`) is the auto-pilot's fix+validate half, driving off self-assess's `MODERNIZATION_BRIEF.md`.
 - `plugins/cli-scaffold/` — five-pillar CLI architecture doctrine + per-language scaffold generation.
 
 See each plugin's own `README.md` for what it does in full.
+
+**Cross-plugin auto-pilot (division of labor).** `self-assess-autopilot`
+conducts check → plan → fix → validate without a new loop: self-assess owns
+check+plan (all read-only audits, incl. confab's, → `transform-brief` →
+`MODERNIZATION_BRIEF.md`), and `andon-loop` (ingest mode) owns fix+validate
+(applies gated fixes via the Edit skills, proves each with `andon-verify`'s
+`{wire, contract, fixDiff}` entry point). compass and cli-scaffold are
+orthogonal to this stream.
 
 ## Spec-driven development convention
 
@@ -32,13 +40,49 @@ writing a new one — match their exact structure, don't reinvent it.
 
 ## Verifying plugin changes
 
-No test suite exists (plugin content is markdown/JS skill definitions, not
-application code). Verification used across prior tasks:
+Plugin content is markdown/JS skill definitions, so verification has two tiers.
+
+**Tier 1 — static checks** (fast, no API, run on every change):
 
 ```bash
 node --check plugins/self-assess/workflows/<file>.js   # workflow scripts parse
 python3 -c "import yaml; yaml.safe_load(open('plugins/self-assess/skills/<skill>/SKILL.md').read().split('---')[1])"  # SKILL.md frontmatter parses
 ```
+
+For workflow post-processing logic (clustering, ranking, attribution), a quick
+`node --input-type=module` script exercising the pure functions against
+fixture data catches shape/logic bugs statically — but it can't confirm a skill
+actually *triggers* or produces the right finding.
+
+**Tier 2 — headless behavior tests** (`test/plugins/`): the harness that does.
+
+Key constraint: **Claude Code builds its skill/agent registry once, at session
+start.** A skill or agent you just authored is invisible until a reload — so it
+cannot be exercised in the session that wrote it (you'll get "Unknown skill" /
+"agent type not found"). Workflows are the exception (the Workflow tool reads
+the `.js` from disk at call time), but anything routing to a **new agentType**
+still needs a fresh process. So behavior testing must run in a fresh
+`claude --print` process, which loads the plugin clean:
+
+```bash
+test/plugins/run.sh            # run all cases (each: fresh claude --plugin-dir vs a seeded fixture)
+test/plugins/run.sh ui-audit   # one case by id
+```
+
+Each case in `test/plugins/cases.tsv` copies a **seeded-defect fixture** (under
+`plugins/*/test-fixtures/`) into a temp cwd, runs one plugin against it via
+`claude --plugin-dir plugins/<name> --print "<prompt>"`, and asserts the
+produced artifact contains the finding the plugin is supposed to catch (a
+golden oracle, not a fuzzy match). Needs the Claude Code CLI on PATH; costs
+real tokens (spawns the skill's subagents), so it is not a Tier-1 check.
+
+- **Scaffold a new case:** `/scaffold-plugin-test <plugin>/<skill>` (project
+  slash command) or `test/plugins/scaffold-test.sh <id> <plugin> <fixture>` —
+  creates the fixture skeleton + a `cases.tsv` row to complete.
+- **"Does the change work better?" (A/B):** run the same case against the old
+  plugin (a `git worktree` at the prior commit) and the new one; diff the
+  outputs. Objective "better" = the new one catches a seeded defect the old
+  missed, or emits a section the old couldn't.
 
 ## Git workflow
 

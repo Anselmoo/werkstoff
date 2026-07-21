@@ -91,9 +91,22 @@ Create `<output_dir>/CONTRACT_DRIFT.md`:
 Also write `<output_dir>/contract_drift_summary.json` — a small
 machine-readable sidecar for downstream dashboards:
 `{"contractSourcesChecked": N, "totalContractsChecked": N,
-"confirmedMismatches": N, "byContractType": {...}}` (the last two copied
-straight from the workflow's `confirmedFindings.length` and
+"confirmedMismatches": N, "byContractType": {...}, "findings": [...]}` (the
+middle two copied straight from the workflow's `confirmedFindings.length` and
 `stats.byContractType`).
+
+`findings` is the workflow's **confirmed** mismatches (`contradicted: true`)
+reshaped to the **shared per-finding contract**
+`self-assess-transform-brief` reads (`{severity, title, evidence, category,
+fixability}`): `severity` derived from `confidence` (High/Medium/Low — same
+confidence-as-severity mapping `self-assess-docs-drift` uses); `title` =
+`declaredContract` (the contract that drifted); `evidence` = `declaredSource`
+(the `file:line` of the **declared** contract — that is the fix site
+`confab-remediator` edits, keeping the declaration and the actual usage in
+sync; mention `actualSource` in a `description` field if you keep one);
+`category` = the constant `"contract-drift"`; `fixability` = `"fixable"`
+(correcting one declared type/signature/docstring is the single-location
+change `confab-remediator` already applies).
 
 ## Present
 

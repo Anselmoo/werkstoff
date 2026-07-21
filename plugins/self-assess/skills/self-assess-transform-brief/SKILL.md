@@ -1,6 +1,6 @@
 ---
 name: self-assess-transform-brief
-description: Synthesizes self-assess-stage-map's graph and self-assess-arch-health's deficiency findings into a transformation plan — a current-state → target-state component mapping (explicitly 1:1, merge, or split per stage), a phased leaf-first sequence, and best-practice rationale — plus Mermaid exports and a fed interactive walkthrough on the existing topology viewer. Use this when the user asks for a modernization brief, a transformation plan, whether to merge or split modules before a refactor, a phased migration sequence, or "what's the target architecture and how do we get there" for a live repo. NOT a re-derivation of the import graph (self-assess-stage-map builds that), NOT a deficiency finder (self-assess-arch-health), NOT a complexity ranking (self-assess-complexity-score), and NOT a code-editing tool — this plan is read-only; executing it is a separate, explicitly-authorized step.
+description: Synthesizes self-assess-stage-map's graph, self-assess-arch-health's deficiency findings, the reporting domains' file:line findings (code-idiom/lint-audit/docs-drift), complexity-score's ranking, and extract-rules' P0/P1 rules into an executable transformation plan — a current-state → target-state component mapping (explicitly 1:1, merge, or split per stage), a phased leaf-first sequence, per-phase code-change work items (ranked by severity × complexity), and a per-phase behavior contract of business rules that must stay equivalent — plus Mermaid exports and a fed interactive walkthrough on the existing topology viewer. Use this when the user asks for a modernization brief, a transformation plan, a prioritized refactoring/remediation plan, whether to merge or split modules before a refactor, a phased migration sequence, or "what's the target architecture and how do we get there" for a live repo. NOT a re-derivation of the import graph (self-assess-stage-map builds that), NOT a deficiency finder (self-assess-arch-health), NOT itself a complexity ranking or finding scanner (it consumes those skills' sidecars, never re-derives them), and NOT a code-editing tool — this plan is read-only; executing it is a separate, explicitly-authorized step (self-assess-transform-execute).
 ---
 
 Answer the question every other self-assess skill stops short of: **given
@@ -20,7 +20,16 @@ Scope boundaries, kept sharp:
   skill turns those findings into a *plan* (what to do about them, in what
   order) — it never re-runs the detection itself.
 - **vs `self-assess-complexity-score`** — a complexity index is a ranking
-  signal, not a target-state decision; this skill doesn't consume it.
+  signal, not a target-state decision; this skill consumes it (as the
+  cost-of-fix weight that orders work items within a phase, Step 3a) but
+  never re-computes it.
+- **vs the reporting domains** (`code-idiom`, `lint-audit`, `docs-drift`) —
+  they *find* file:line issues; this skill *attributes* each to a phase (via
+  `self-assess-stage-map`'s `file_stage_index.json`) and *sequences* it as a
+  work item, never re-running the detection.
+- **vs `self-assess-extract-rules`** — it mines the P0/P1 business rules;
+  this skill turns them into a per-phase behavior contract (what must stay
+  equivalent), never re-mining them.
 - **vs `code-modernization`'s `modernize-brief`** — that command targets a
   legacy system under `legacy/$1` slated for a full rewrite (reimagine /
   transform / uplift). This skill targets the **same live repo** every other
@@ -40,26 +49,60 @@ and say so. Note `output_dir` (default `analysis/self-assess`).
 **Ready-with-gaps — run `self-assess-stage-map` first**, and stop. This
 mirrors the degrade path `self-assess-arch-health` uses for the same input.
 
-## Step 1 — Load supporting findings (context only, not the mapping decision)
+Also `Read` `<output_dir>/file_stage_index.json` (the flat
+`{"<file>": "<stage>"}` lookup `self-assess-stage-map` writes alongside the
+graph). If it is **absent** (an older stage-map run predating this sidecar),
+do not fail — proceed, but note in the brief that file:line findings could
+**not** be attributed to phases this run (they all fall to the Unattributed
+bucket, Step 3a), and to re-run `self-assess-stage-map` to enable
+attribution.
+
+## Step 1 — Load supporting findings and rules
 
 `Read` whichever of these sidecars exist under `<output_dir>/`, skipping any
 that don't (do not invent data for a skill that hasn't run):
 `arch_health_summary.json`, `code_idiom_summary.json`,
 `lint_audit_summary.json`, `docs_drift_summary.json`,
-`ci_topology_summary.json`.
+`ci_topology_summary.json`, `complexity_score_summary.json`,
+`business_rules.json`, `ui_audit_summary.json`, and — if the `confab` plugin
+has run in this repo — its four audit sidecars
+`dependency_audit_summary.json`, `assertion_audit_summary.json`,
+`contract_drift_summary.json`, `agentic_reliability_summary.json`.
 
-**Important asymmetry, state it plainly in the brief:** only
-`arch_health_summary.json`'s findings are **stage-scoped by construction**
-(a god-module/cycle finding's evidence names the stage(s) directly; a
-layering finding names the wire). The other four domains' findings are
-file:line-scoped, and this skill does **not** attempt to map an arbitrary
-file:line back to a stage — that would require re-deriving the same
-package-boundary heuristic `self-assess-stage-map` already owns, which this
-skill is explicitly built to avoid duplicating. So: arch-health findings
-drive the mapping decision in Step 2; the other four domains contribute
-**only** an aggregate "current-state health" count in the brief's Objective
-section (e.g. "14 code-idiom findings, 3 High" as supporting context for
-*why now*), never a per-stage or per-phase attribution.
+**Two kinds of input, used differently — state this plainly in the brief:**
+
+- `arch_health_summary.json`'s findings are **stage-scoped by construction**
+  (a god-module/cycle finding's evidence names the stage(s) directly; a
+  layering finding names the wire). These drive the current→target **mapping
+  decision** in Step 2 — Keep/Merge/Split.
+- The **finding domains** each carry a `findings` array whose entries are
+  **file:line-scoped** and share one contract — `{severity, title, evidence,
+  category}` (self-assess's own `code_idiom`/`lint_audit`/`docs_drift`, the
+  new `ui_audit`, and confab's four audits), the last of which additionally
+  carry a `fixability` of `"fixable"` or `"advisory"`. The location lives in
+  `evidence` (or `codeEvidence` for docs-drift) — a repo-relative `path:line`
+  optionally followed by `: snippet`. These do **not** change the mapping
+  decision, but — new in this skill — they are attributed to phases as
+  concrete **work items** (Step 3a) via the `file_stage_index.json` lookup:
+  parse the leading `path` out of the evidence string (everything before the
+  last `:<digits>`), look it up in the index to get its stage, and place the
+  finding in that stage's phase. This is a **lookup, not a re-derivation** —
+  `self-assess-stage-map` already owns the package-boundary heuristic and now
+  publishes its result, so the objection that once kept these findings out of
+  the plan no longer applies. **Fixability routing:** a finding carrying
+  `fixability: "advisory"` (confab's weak-assertion and agentic-redesign
+  findings) is **never** rendered as an auto-actionable work item — it goes
+  into the phase's **Advisory notes** list (Step 3a). Findings with no
+  `fixability` key (self-assess's own domains + `ui_audit`) and confab
+  findings with `fixability: "fixable"` become work items as normal.
+- `complexity_score_summary.json`'s `complexityByStage` is the **ranking
+  signal** (Step 3a): the per-stage relative index that, multiplied by a
+  finding's severity, orders work items within a phase (highest-debt ×
+  highest-severity first). It is not a finding and never appears as a work
+  item itself.
+- `business_rules.json`'s P0/P1 rules become the **Behavior Contract**
+  (Step 3b), attributed to phases through the same index lookup on each
+  rule's `source` location.
 
 ## Step 2 — Derive the current → target mapping (deterministic, from arch-health only)
 
@@ -106,6 +149,68 @@ Each phase gets: the stages in it, its target-mapping decisions (from
 Step 2), and — if any member stage has an unresolved Open Question — a note
 that the phase's entry criteria include resolving it first.
 
+## Step 3a — Attach file:line findings as per-phase work items (the bridge)
+
+This is what turns the plan from a module-reshuffle into an actionable
+code-change plan: the finding domains' file:line findings become concrete
+work items, attributed to the phase whose stage owns their file.
+
+For every finding in each loaded finding domain — self-assess's own
+`code_idiom`, `lint_audit`, `docs_drift`, and `ui_audit`, plus confab's
+`dependency_audit`, `assertion_audit`, `contract_drift`,
+`agentic_reliability` if present:
+
+1. **Extract the file path.** From the finding's location string (`evidence`,
+   or `codeEvidence` for docs-drift), take everything before the **last**
+   `:<digits>` occurrence as the repo-relative `path`, and those digits as
+   `line`. (Format is `path:line` optionally followed by `: snippet`.)
+2. **Route by fixability.** If the finding carries `fixability: "advisory"`
+   (confab's weak-assertion and agentic-redesign findings), it is **not** a
+   work item — attribute it (step 3) and place it in that phase's **Advisory
+   notes** list instead, then skip steps 4–5 for it. All other findings
+   (no `fixability` key, or `fixability: "fixable"`) are work items.
+3. **Look up the stage.** `stage = file_stage_index[path]`. If `path` is not
+   a key (an isolated file with no import edges, or the index was absent),
+   the finding is **Unattributed** — collect it for the Unattributed bucket
+   (Step 4 §Work Items), never silently drop it. (Advisory findings that are
+   unattributed go to an Unattributed advisory note, same principle.)
+4. **Attribute to the phase** that placed `stage` in Step 3.
+5. **Rank within the phase.** Score each work item
+   `severity_weight × complexity_weight`, where `severity_weight` is
+   High=3 / Medium=2 / Low=1 (from the finding's `severity`), and
+   `complexity_weight` is `complexityByStage[stage]` from
+   `complexity_score_summary.json` (default 1 if complexity-score hasn't run
+   or the stage is unscored). Higher score first — the technical-debt
+   prioritization ordering (severity × cost-of-fix). Ties keep input order.
+
+A work item's rendered line is:
+`<severity> · <domain> · <file:line> — <finding title/description> (suggestedFix if present)`.
+Do **not** invent fixes beyond what the finding already states — copy its
+`title`/`description`/`suggestedFix` through; this skill plans, it does not
+design. Tag each work item's `<domain>` with its source (e.g. `code-idiom`,
+`ui-audit`, `confab:contract-drift`) so an executor knows which fix skill
+owns it (`self-assess-idiom-fix`, `self-assess-transform-execute`, or
+`confab`'s `confab-remediator`).
+
+## Step 3b — Derive the per-phase Behavior Contract (from business_rules.json)
+
+If `business_rules.json` was loaded, for each **P0 or P1** rule: extract the
+file `path` from its `source` (same last-`:<digits>` rule as Step 3a), look
+up its stage in `file_stage_index.json`, and attribute the rule to that
+stage's phase. A rule whose file isn't in the index is Unattributed — list
+it in the contract under an explicit "unattributed rules" note (the phase
+that touches that code must still honor it).
+
+For each attributed rule, record its **validation strategy** by category:
+`Calculation` / `Lifecycle` → **characterization tests** (pin the current
+input→output / state-transition behavior before the phase's changes);
+`Validation` / `Policy` → **contract tests** (assert the rule's pass/fail
+condition still holds at its boundary). A **P0 rule with `confidence` below
+High is a phase blocker** — the phase's entry criteria must include a human
+confirming the rule before any code in that phase changes (mirrors
+`code-modernization` Brief §5). This skill only *states* the obligation; the
+proof runs later, in andon-verify (see **Handoff**).
+
 ## Step 4 — Write the brief
 
 Create `<output_dir>/MODERNIZATION_BRIEF.md`, modeled on
@@ -120,24 +225,46 @@ its own `flows`):
 2. **Target mapping** — a table, one row per stage: `Stage | Decision
    (Keep/Merge/Split) | Why (the arch-health finding, or "no deficiency
    found") | Open Question (if any)`.
-3. **Phased sequence** — one subsection per phase: stages in it, entry
-   criteria (upstream phases' stages placed, any Open Question resolved),
-   exit criteria (the specific arch-health finding(s) this phase's decision
-   addresses no longer apply — re-run `self-assess-arch-health` to confirm).
+3. **Phased sequence** — one subsection per phase, each containing:
+   - stages in it, entry criteria (upstream phases' stages placed, any Open
+     Question resolved, **any P0-blocker rule from §5 confirmed**), exit
+     criteria (the specific arch-health finding(s) this phase's decision
+     addresses no longer apply — re-run `self-assess-arch-health` to confirm).
+   - **Work Items** (from Step 3a) — the phase's file:line findings grouped
+     by stage, ranked by severity × complexity, each as the rendered line
+     from Step 3a. If the phase has none, say "no file:line findings
+     attributed." At the end of §3 overall, an explicit **Unattributed
+     findings** bucket lists every finding whose file wasn't in the index
+     (with why: isolated file / index absent) — nothing is silently dropped.
+   - **Advisory notes** (from Step 3a's fixability routing) — the phase's
+     `advisory` findings (confab weak-assertion / agentic-redesign): listed
+     as human-judgment items, explicitly **not** auto-actionable work items.
+     Omit the subsection if the phase has none.
+   - **Behavior Contract** (from Step 3b) — the P0/P1 rules this phase must
+     keep equivalent, each with its validation strategy, P0-blockers marked.
 4. **Best-practice rationale** — name the doctrines actually applied:
-   leaf-first/topological phase ordering, and — only if the graph contains
-   a cycle finding — the specific tradeoff between merge-to-resolve and
-   break-the-cycle (dependency inversion / extract-shared-contract), citing
-   why each is a legitimate option rather than picking one silently.
-5. **Open Questions** — every one flagged in Steps 2–3, collected in one
-   place as an approver checklist (mirrors `code-modernization`'s Brief §7).
+   leaf-first/topological phase ordering, severity × complexity work-item
+   prioritization (technical-debt cost-of-fix ranking), the
+   characterization-vs-contract validation split, and — only if the graph
+   contains a cycle finding — the specific tradeoff between merge-to-resolve
+   and break-the-cycle (dependency inversion / extract-shared-contract),
+   citing why each is a legitimate option rather than picking one silently.
+5. **Open Questions** — every one flagged in Steps 2–3b (including each
+   P0-blocker rule needing human confirmation), collected in one place as an
+   approver checklist (mirrors `code-modernization`'s Brief §7).
 
 This skill produces **no Approval Block and stops no loop itself** — see
 **Handoff**, below, for what happens after the brief is written.
 
 Also write `<output_dir>/transform_brief_summary.json`:
 `{"stagesAnalyzed": N, "phaseCount": N, "decisionCounts": {"keep": N,
-"merge": N, "split": N}, "openQuestions": N}`. Like
+"merge": N, "split": N}, "openQuestions": N, "workItemCount": N,
+"advisoryNoteCount": N, "unattributedFindings": N,
+"behaviorContractRules": N, "p0Blockers": N}`
+(`workItemCount` = attributed fixable file:line findings; `advisoryNoteCount`
+= attributed `advisory`-fixability findings; `unattributedFindings` = those
+with no stage; `behaviorContractRules` = P0/P1 rules attributed; `p0Blockers`
+= P0 rules with confidence below High). Like
 `self-assess-complexity-score`, this is excluded from the graded
 severity/category dashboard (`self-assess-status`'s combined JSON, the
 `findings-dashboard.html` `DOMAINS` registry) — a transformation plan isn't

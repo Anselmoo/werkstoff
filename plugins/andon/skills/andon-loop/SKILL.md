@@ -21,11 +21,35 @@ Read `.claude/andon.local.md` if it exists (see
 `${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`,
 stop and say so. Note `output_dir` (default `analysis/andon`),
 `ledger_dir` (default `analysis/andon/ledger`), `authorization_level`
-(default `local+reversible`), and `skip_verification` (default `false`).
+(default `local+reversible`), `skip_verification` (default `false`),
+`gap_source` (default `self-scan`), and — only when `gap_source` is
+`self-assess-brief` — `self_assess_output_dir` (default
+`analysis/self-assess`).
+
+**Ingest mode (`gap_source: self-assess-brief`).** This is the auto-pilot's
+fix+validate half: `self-assess` owns *check + plan* (its reporting skills →
+`self-assess-transform-brief` writes `MODERNIZATION_BRIEF.md`), and this loop
+owns *fix + validate*, driving off that brief instead of self-scanning. When
+set, Phase 0 takes the stream from the brief and Phase 2 ingests the brief's
+per-phase work items as gaps (see those phases below). Everything from Phase 3
+on — propose, the andon-rule gate, cycles — is **unchanged**; ingest only
+changes where the stream and the gaps come from. Default `self-scan` behavior
+is exactly as before.
 
 ## Phase 0 — Detect topology
 
-Determine the stream's stages and wires:
+**Ingest-mode short-circuit (`gap_source: self-assess-brief`).** `Read`
+`<self_assess_output_dir>/MODERNIZATION_BRIEF.md` (and
+`transform_brief_summary.json`). If it is absent, do **not** silently fall
+back to self-scan — stop and tell the user to run `self-assess-transform-brief`
+first (the ingest source doesn't exist yet). If present, take the stream
+**from the brief**: each of the brief's **phases** is one andon stage, in the
+brief's leaf-first order (the brief already ran its Kahn topological sort over
+the same stage graph, so its phase order *is* the stream order), and the wire
+into each stage is the phase's exit criteria + its Behavior Contract. Confidence
+`self-assess-backed` (the brief was itself built from `stage-mapper`'s graph).
+Skip the detection steps below. Otherwise (`self-scan`, the default) determine
+the stream's stages and wires:
 
 1. **Preferred — `self-assess:stage-mapper` dispatch.** If `self-assess`
    is installed, dispatch the `self-assess:stage-mapper` **agent**
@@ -83,15 +107,36 @@ classify each:
 | `kind` | `bug` (existing behavior broken) · `feature` (behavior absent) · `wire` (handoff broken/unproven) |
 | `on_constraint` | `true` if this gap sits on or feeds the stream's current bottleneck |
 
-Gap sources: failing/missing tests, broken/unproven wires (no evidence
-doc yet, or the linked evidence doc's verdict is 🔴/⚪), `TODO`/`FIXME`/
-`unimplemented!`/`raise NotImplementedError`, schema drift between
-producer and consumer stages, dead or stubbed handoffs.
+Gap sources (default `self-scan`): failing/missing tests, broken/unproven
+wires (no evidence doc yet, or the linked evidence doc's verdict is 🔴/⚪),
+`TODO`/`FIXME`/`unimplemented!`/`raise NotImplementedError`, schema drift
+between producer and consumer stages, dead or stubbed handoffs.
 
-If the **Workflow tool** is available, use `andon-cycle-scan.js`'s Find
-phase for this scan (parallel gap-finding across the stage's files) — see
-`workflows/andon-cycle-scan.js` and its `meta.whenToUse` for the exact
-`args` shape. Otherwise scan directly via `Glob`/`Grep`/`Read`.
+**Ingest mode (`gap_source: self-assess-brief`).** Do **not** self-scan.
+Instead, take this stage's gaps straight from the brief's matching phase:
+
+- Each **Work Item** in the phase becomes one `type: gap` doc, pre-classified:
+  a work item tagged `<domain>` that is a self-assess/confab code finding
+  (`code-idiom`, `lint`, `ui-audit`, `confab:dependency-audit`,
+  `confab:contract-drift`) → `kind: bug`; an arch-health-driven
+  Merge/Split/layering decision for the phase → `kind: wire`; a documented-but-
+  absent behavior → `kind: feature`. Carry the work item's `file:line` and its
+  named fix owner (`self-assess-idiom-fix` / `self-assess-transform-execute` /
+  `confab`'s `confab-remediator`) into the gap doc so Phase 3 routes it.
+- The phase's **Behavior Contract** rules become the wire's verification
+  contract — the exact equivalence obligations Phase 4's `andon-verify` proves
+  (a P0-blocker rule with confidence below High is an entry-criteria gate, per
+  the brief). The phase's **Advisory notes** are recorded on the stage doc as
+  context but are **not** turned into auto-fixable gaps (they need human
+  judgment — same reason `confab-remediator` refuses them).
+- Set `on_constraint` from the brief's ordering (the earliest phase with open
+  work items is the current constraint).
+
+If the **Workflow tool** is available (self-scan only), use
+`andon-cycle-scan.js`'s Find phase for the scan (parallel gap-finding across
+the stage's files) — see `workflows/andon-cycle-scan.js` and its
+`meta.whenToUse` for the exact `args` shape. Otherwise scan directly via
+`Glob`/`Grep`/`Read`.
 
 **Do not fix anything yet.** Write one `type: gap` doc per gap found
 (status `open`), and output the gap list for this stage only.

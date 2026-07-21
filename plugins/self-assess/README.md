@@ -50,14 +50,16 @@ repo in place), just ask in plain language:
 - **self-assess-preflight** — "is my environment ready for self-assess?"
 - **self-assess-stage-map** — "map the real import-graph stages/wires" (opens an interactive map)
 - **self-assess-arch-health** — "find god-modules, dependency cycles, layering violations" (over the stage-map graph)
-- **self-assess-transform-brief** — "what's the target architecture and how do we get there" (current→target 1:1/merge/split mapping, phased sequence, Mermaid exports)
+- **self-assess-transform-brief** — "what's the target architecture and how do we get there" / "turn the findings into a prioritized code-change plan" (current→target 1:1/merge/split mapping, phased sequence with per-phase file:line work items ranked by severity × complexity, a per-phase behavior contract from the mined P0/P1 rules, Mermaid exports)
 - **self-assess-transform-execute** — "execute phase N of the modernization brief" (off by default — one of the plugin's two Edit exceptions, see Safety notes)
 - **self-assess-docs-drift** — "where do CLAUDE.md/ADRs/README contradict the code?"
 - **self-assess-ci-topology** — "check our git remotes, CI config, mirror scripts, commit signing for drift"
 - **self-assess-lint-audit** — "does the code follow its own house-rules.md?"
 - **self-assess-code-idiom** — "find deprecated idioms + generic code smells in the code itself"
+- **self-assess-ui-audit** — "audit the UI/accessibility of the code" (static: a11y, semantic markup, hardcoded design values — no running app)
 - **self-assess-idiom-fix** — "apply the modernization findings from code-idiom" (off by default — the other of the plugin's two Edit exceptions, see Safety notes)
 - **self-assess-extract-rules** — "mine the business rules out of this codebase" (Rule Cards, Given/When/Then)
+- **self-assess-autopilot** — "run the whole check → plan → fix → validate pass" (conducts every check, the transform-brief plan, and andon-loop's gated fix+validate — plan-and-gate, adds no new loop)
 - **self-assess-complexity-score** — "which module needs attention first?" (COCOMO/CCN tech-debt index)
 - **self-assess-status** — "where am I, what's stale, what's next"
 - **self-assess-portfolio** — "heat-map dashboard across many repos" (run from the parent dir)
@@ -109,8 +111,16 @@ by default — configurable via `output_dir`, see **Settings** below.
   or **Split** per stage — merge/split decisions and their rationale are
   flagged as Open Questions, never guessed), a leaf-first phased sequence
   (mirrors `code-modernization`'s "build-graph leaf-first" doctrine), and
-  best-practice rationale. Read-only and plan-only — it does not edit code
-  or enforce anything; executing a phase is a separate, explicitly-
+  best-practice rationale. It is also the **reporting→plan bridge**: each
+  phase carries concrete **code-change work items** — the reporting domains'
+  file:line findings (`code-idiom`/`lint-audit`/`docs-drift`), attributed to
+  a phase by looking their file up in `self-assess-stage-map`'s
+  `file_stage_index.json` and ranked by severity × complexity — plus a
+  **behavior contract** of the P0/P1 rules (`self-assess-extract-rules`) that
+  must stay equivalent, each with a characterization- or contract-test
+  validation strategy. Findings whose file has no stage go to an explicit
+  Unattributed bucket, never dropped. Read-only and plan-only — it does not
+  edit code or enforce anything; executing a phase is a separate, explicitly-
   authorized step (see the skill's own **Handoff** section). Also emits two
   Mermaid `.mmd` exports (`TRANSFORM_SEQUENCE.mmd`, `TRANSFORM_MAPPING.mmd`
   — the first Mermaid this repo has ever shipped) and feeds the phase

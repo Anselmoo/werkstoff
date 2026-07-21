@@ -216,6 +216,20 @@ for (const e of allEdges) {
 const stages = [...stageFiles.keys()].map(name => ({ name, fileCount: stageFiles.get(name).size }))
 log(`Clustered into ${stages.length} stage(s) by package boundary: ${stages.map(s => s.name).join(', ') || '(none)'}`)
 
+// Flat file -> stage lookup: the calling skill persists this as
+// file_stage_index.json so downstream skills (transform-brief) can attribute a
+// file:line finding to its stage by lookup rather than re-deriving the
+// package-boundary heuristic. Coverage note: this contains only files that are
+// an endpoint of some edge AND fall under a detected package boundary (this is
+// exactly the set that populates stageFiles above — note it is unrelated to an
+// edge's `resolved` flag). A file mentioned by no edge, or one under no package
+// boundary, is absent by design; consumers must treat a miss as "unattributed",
+// never as an error.
+const fileStageIndex = {}
+for (const [stage, files] of stageFiles) {
+  for (const f of files) fileStageIndex[f] = stage
+}
+
 // Candidate wires: resolved edges whose endpoints fall in DIFFERENT stages.
 const wireKey = (a, b) => [a, b].sort().join('::')
 const wireCandidates = new Map()
@@ -318,6 +332,7 @@ return {
   repoPath,
   languages,
   stages,
+  fileStageIndex,
   wires,
   refutedWires,
   deadEnds,

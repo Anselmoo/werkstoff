@@ -83,8 +83,24 @@ Create `<output_dir>/AGENTIC_RELIABILITY.md`:
 Also write `<output_dir>/agentic_reliability_summary.json` — a small
 machine-readable sidecar for a future portfolio dashboard:
 `{"filesScanned": {...}, "findingsBySeverity": {...},
-"findingsByCategory": {...}}`, copied straight from the workflow's
-`filesScanned`, `stats.bySeverity`, and `stats.byCategory` fields.
+"findingsByCategory": {...}, "findings": [...]}`, the first three copied
+straight from the workflow's `filesScanned`, `stats.bySeverity`, and
+`stats.byCategory` fields.
+
+`findings` is the workflow's survivors reshaped to the **shared per-finding
+contract** `self-assess-transform-brief` reads (`{severity, title, evidence,
+category, fixability}`): `severity` and `category` copied as-is (the
+category is already one of `unbounded-retry` / `no-escalation-path` /
+`find-no-verify-wiring` / `excessive-tool-grant`); `title` = the finding's
+`description`; `evidence` = `evidence` (the `file:line`, or the frontmatter
+field name for tool-grant findings). `fixability` = `"fixable"` **only** for
+`category === "excessive-tool-grant"` (dropping an unused `Write`/`Edit`
+grant is a single-location frontmatter edit `confab-remediator` applies);
+every other category is `"advisory"` — they require agent redesign
+(add an escalation path, bound a retry loop, wire Find→Verify), which
+`confab-remediator` explicitly returns `blocked` on, so
+`self-assess-transform-brief` routes them into advisory notes, not work
+items.
 
 ## Present
 

@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`self-assess-autopilot`** skill — a one-command conductor for the full
+  **check → plan → fix → validate** value stream, built on the
+  division-of-labor design: self-assess owns check + plan, `andon-loop`
+  (ingest mode) owns fix + validate. It dispatches the read-only checks
+  (stage-map + reporting domains + `ui-audit` + `extract-rules` + confab's
+  audits if installed), runs `self-assess-transform-brief` to produce one
+  phased `MODERNIZATION_BRIEF.md`, gates on human approval, then hands the
+  brief to `andon-loop`. Adds **no** new loop and re-implements no phase —
+  it conducts existing skills. Plan-and-gate throughout.
+- **`self-assess-ui-audit`** skill + `ui-auditor` agent + `ui-audit-scan.js`
+  workflow — the first skill that judges the repo's **UI surface**. A
+  **static, read-only** audit (no running app, no screenshots, no computed
+  contrast) of components/templates/stylesheets for accessibility
+  (missing alt/labels/accessible names, non-interactive controls, positive
+  tabindex), semantic markup (clickable div-where-button-belongs, skipped
+  headings, missing landmarks), and hardcoded design values (literal
+  colors/dimensions where tokens/CSS vars are used elsewhere), plus
+  `contrast-risk` heuristics. Emits `ui_audit_summary.json` in the shared
+  per-finding contract, so `self-assess-transform-brief` and the
+  findings dashboard consume it for free. Now a first-class dashboard domain.
+- **`self-assess-transform-brief`** now also ingests **confab**'s four audit
+  sidecars and the new `ui_audit` sidecar as work items, honoring a
+  `fixability` flag — confab's `advisory` findings (weak assertions, agentic
+  redesigns) become per-phase **Advisory notes** rather than auto-actionable
+  work items. Work items are tagged with their fix owner
+  (`self-assess-idiom-fix` / `self-assess-transform-execute` /
+  `confab-remediator`) so the fix loop routes them.
+
 - **`self-assess-code-idiom`** skill + `idiom-auditor` agent — the first
   skill that judges the application code itself: deprecated/legacy idioms
   (modernization-in-place, version-aware) and generic code smells that need
@@ -42,7 +70,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separate, explicitly-authorized step rather than something this skill
   does itself. Emits this repo's first Mermaid (`.mmd`) artifacts and feeds
   the phase sequence into the topology viewer's previously-always-empty
-  `flows` walkthrough.
+  `flows` walkthrough. **Now also the reporting→plan bridge:** it absorbs the
+  reporting domains' file:line findings (`code-idiom`/`lint-audit`/
+  `docs-drift`) as concrete **per-phase work items** — attributed to a phase
+  by looking each finding's file up in `self-assess-stage-map`'s new
+  `file_stage_index.json`, ranked by severity × complexity (from
+  `complexity-score`) — and derives a **per-phase Behavior Contract** from
+  `self-assess-extract-rules`' P0/P1 rules (each with a characterization- or
+  contract-test validation strategy; a P0 rule below High confidence is a
+  phase blocker). Findings whose file has no stage fall to an explicit
+  Unattributed bucket — never silently dropped. This reverses the skill's
+  former deliberate refusal to map file:line findings to stages: it is now a
+  lookup against a published index, not a re-derivation.
+- **`file_stage_index.json`** (from `self-assess-stage-map`) and
+  **`business_rules.json`** (from `self-assess-extract-rules`) — two new
+  machine-readable sidecars the bridge above consumes. The former is a flat
+  `{file: stage}` lookup serialized from clustering the workflow already did
+  (graph-participating files only; isolated files are absent by design); the
+  latter projects the confirmed P0/P1 rules with their `source` location and
+  priority. Neither is a dashboard domain — both are transform-brief inputs.
 - **`self-assess-transform-execute`** skill + `transform-executor` agent —
   the first of what are now two Edit/Write exceptions (`self-assess` was
   100% read-only before this; see the `self-assess-idiom-fix` entry above

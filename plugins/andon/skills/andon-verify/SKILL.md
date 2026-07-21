@@ -164,3 +164,35 @@ full loop (e.g. "prove this wire", "run the tribunal on this file"). In
 that case, skip the OKF-ledger-write step (nothing to persist without an
 `andon-loop` session managing the ledger) and just report the verdict
 and evidence directly in the session.
+
+### Named entry point: `{wire, contract, fixDiff}` (the self-assess hand-off)
+
+`self-assess`'s two Edit skills — `self-assess-transform-execute` (a
+Merge/Split/layering phase) and `self-assess-idiom-fix` (a mechanical idiom
+rewrite) — and `confab`'s `confab-remediator` all finish by handing their
+change *here* for adversarial proof, never self-reviewing. This is that
+documented entry point. The caller passes three things:
+
+- **`wire`** — the boundary the change touched: for a transform-execute
+  phase, the phase's touched wire (`<stage> → <stage>`); for an idiom-fix or
+  a confab remediation, the file:line the edit landed on and the contract
+  crossing it (a type, a signature, a schema, a rule). If the caller has a
+  `MODERNIZATION_BRIEF.md`, this is the phase's exit-criteria wire.
+- **`contract`** — the equivalence obligation to prove: for a transform
+  phase, "behavior is unchanged across the move" plus the phase's **Behavior
+  Contract** rules from the brief (P0/P1 rules that must stay equivalent,
+  each with its characterization/contract validation strategy); for an
+  idiom/confab fix, "the rewrite is behavior-preserving." A P0 rule with
+  confidence below High is a **blocking** obligation, not advisory.
+- **`fixDiff`** — the applied change (files + diff), so the tribunal verifies
+  what actually shipped, not what was proposed.
+
+Route as usual via `wire-classifier.md` (a code/artifact move → **strategy a**,
+the tribunal; a contract/type change → strategy c/e as the classifier
+decides), run the routed strategy against the `fixDiff` using the `contract`
+as the rubric, and return the verdict (🟢/🔴/⚪) + evidence in-session. The
+andon rule still governs: a 🔴, a Tier-1 structural contradiction (strategy
+e), or an unmet P0 blocker means the change is **not** proven — report that
+plainly so the caller (or `andon-loop` in ingest mode) does not advance. When
+this entry point is reached from `andon-loop` ingest mode, the caller *does*
+manage a ledger, so write the `type: evidence` doc as in the normal Phase 4.

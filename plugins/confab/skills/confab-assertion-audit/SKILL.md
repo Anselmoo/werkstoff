@@ -97,8 +97,20 @@ Create `<output_dir>/ASSERTION_AUDIT.md`:
 Also write `<output_dir>/assertion_audit_summary.json` — a small
 machine-readable sidecar: `{"mode": "llm-reasoned"|"real-tool-augmented",
 "mutationTool": "..."|null, "targetFilesChecked": N, "findingsBySeverity":
-{...}}`. `findingsBySeverity` is copied straight from the workflow's own
-`stats.bySeverity`.
+{...}, "findings": [...]}`. `findingsBySeverity` is copied straight from the
+workflow's own `stats.bySeverity`.
+
+`findings` is the workflow's survivors reshaped to the **shared per-finding
+contract** `self-assess-transform-brief` reads (`{severity, title, evidence,
+category, fixability}`): `severity` as-is; `title` = `mutationDescription`
+(the specific mutation the tests would miss); `evidence` = `function` (the
+mutated function's `file:line`); `category` = the constant
+`"weak-assertion"`; `fixability` = `"advisory"` — **always**, never
+`"fixable"`. A weak-assertion finding must never become an auto-fixable work
+item: a generated assertion has no ground truth beyond the module's current
+(possibly buggy) behavior, which is exactly why `confab-remediator`
+hard-blocks all assertion findings. `self-assess-transform-brief` routes
+`advisory` findings into a phase's advisory-notes list, not its work items.
 
 ## Present
 
