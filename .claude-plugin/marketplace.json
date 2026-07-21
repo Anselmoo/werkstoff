@@ -39,7 +39,7 @@
     },
     {
       "name": "cupertino",
-      "description": "A Steve-Jobs-grounded design and craft discipline for a project's whole lifecycle, not just UI polish: 10 skills, each grounded in a specific, real Jobs/Apple decision (the 1997 return-to-Apple product-line cut, NeXTSTEP-to-Apple-Silicon's unbroken lineage, Alan Kay's whole-widget line, iPhone/iPod foam-core prototyping, Time Machine's transfiguration of backup, iPhone/iPad unboxing-as-theater, the iPhone cannibalizing the iPod), composed by cupertino-review into one fixed lifecycle pipeline rather than exposed as a technique picker.",
+      "description": "A Steve-Jobs-grounded design and craft discipline for a project's whole lifecycle, not just UI polish: 10 skills, each grounded in a specific, real Jobs/Apple decision (the 1997 return-to-Apple product-line cut, NeXTSTEP-to-Apple-Silicon's unbroken lineage, Alan Kay's whole-widget line, iPhone/iPod foam-core prototyping, Time Machine's transfiguration of backup, iPhone/iPad unboxing-as-theater, the iPhone cannibalizing the iPod), composed by cupertino-review into one fixed lifecycle pipeline rather than exposed as a technique picker. A second, self-contained handbook lifecycle (draft/apply/check/fix, domain-parameterized across design/code/testing/documentation) persists a project's actual conventions into a durable artifact and re-checks new work against it, with no dependency on other plugins.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"

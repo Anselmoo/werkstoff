@@ -71,6 +71,17 @@ Workflow-based parallelism.
 | 8 | Reveal | `cupertino-reveal` | Ship-time |
 | 9 | Cannibalize | `cupertino-cannibalize` | Post-ship, ongoing cadence — **cadence-triggered, user-invoked only, never automatic** |
 
+## Optional handbook pre-flight
+
+If a handbook artifact already exists under this project's configured
+`handbook.output_dir` (see `references/handbook-settings.md`) for the
+domain matching the work in scope — most often the `design` domain ahead
+of Step 4 — consider running `cupertino-handbook-apply` for that domain
+before Step 4 (Council) to load house-specific constraints into the brief.
+This is optional enrichment, never a blocking dependency: it does not
+change the 8-stage sequence above or its ordering, and this pipeline runs
+identically whether or not a handbook exists.
+
 ## Step 1 — Backwards
 
 Apply `cupertino-backwards`'s methodology directly (in-conversation
