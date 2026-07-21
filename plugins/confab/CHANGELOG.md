@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-21
 - **Each audit sidecar now carries a per-finding `findings` array.** The four
   audit summaries (`dependency_audit_summary.json`,
   `assertion_audit_summary.json`, `contract_drift_summary.json`,
