@@ -120,6 +120,16 @@ groups configured" on a valid `--group` (fixed in
 [anselmoo/repo-release-tools#176](https://github.com/Anselmoo/repo-release-tools/pull/176),
 reported as [#175](https://github.com/Anselmoo/repo-release-tools/issues/175)).
 
+**There is no aggregate/"general" werkstoff version.** All 7 groups (6
+plugins + `werkstoff-cli`) version, tag, and release fully independently by
+design — `.rrt.toml`'s own comment explains this is deliberate: `rrt`
+"lets rrt bump each unit's version independently... rather than forcing one
+repo-wide version across all seven." A plugin's `<group>-v<version>` tag
+produces its own scoped GitHub Release (via `.github/workflows/plugin-release.yml`)
+with that plugin's `CHANGELOG.md` section as the body, but that release is
+still not tied to any cross-group version number — bumping `confab` says
+nothing about `self-assess`'s or `werkstoff-cli`'s version.
+
 ### Tagging & publishing
 
 `.github/workflows/cicd.yml` triggers a full build → TestPyPI → verify →
@@ -135,7 +145,11 @@ here). So tag naming has to carry the distinction by convention:
 - **Plugins** tag as `<group>-v<version>`, e.g. `confab-v0.1.0`:
   `rrt tag create --group <name> --prefix '<name>-v' --push`. GitHub's tag
   trigger glob is prefix-anchored, so a `<group>-v...` tag never matches
-  `v*.*.*` and never fires the werkstoff-cli publish pipeline.
+  `v*.*.*` and never fires the werkstoff-cli publish pipeline — but it does
+  fire `.github/workflows/plugin-release.yml` (trigger `*-v*.*.*`), which
+  creates a plugin-scoped GitHub Release (no PyPI/SBOM — plugins aren't
+  installable packages) with that plugin's `CHANGELOG.md` section as the
+  body.
 - **`werkstoff-cli`** is the only group that uses the bare `v<version>`
   scheme (`rrt tag create --group werkstoff-cli --push`), since that's the
   one tag pattern `cicd.yml` actually reacts to.
