@@ -1,0 +1,43 @@
+name: 🏷️ Plugin Release
+
+on:
+  push:
+    tags: ["*-v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 🎁 Create plugin GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve plugin group and version from tag
+        id: resolve
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          GROUP="${TAG%-v*}"
+          VERSION="${TAG##*-v}"
+          case "$GROUP" in
+            self-assess|confab|compass|cupertino|andon|cli-scaffold) ;;
+            *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
+          esac
+          echo "group=$GROUP" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog section
+        run: |
+          .github/scripts/extract-changelog-section.sh \
+            "plugins/${{ steps.resolve.outputs.group }}/CHANGELOG.md" \
+            "${{ steps.resolve.outputs.version }}" > release-notes.md
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          name: "${{ steps.resolve.outputs.group }} v${{ steps.resolve.outputs.version }}"
+          body_path: release-notes.md
+          append_body: true
+          generate_release_notes: true
