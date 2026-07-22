@@ -1,6 +1,6 @@
 {
   "name": "self-assess",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, static UI/accessibility auditing, a reporting-to-plan bridge (self-assess-transform-brief) that turns file:line findings into a phased, prioritized code-change plan with a behavior contract, and a check-plan-fix-validate auto-pilot conductor (self-assess-autopilot) — almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
   "author": {
     "name": "Anselm Hahn",
