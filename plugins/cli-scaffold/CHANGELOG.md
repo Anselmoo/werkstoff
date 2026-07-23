@@ -10,13 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2026-07-23
 
 ### Added
-- **ci**: attach CHANGELOG.md section to GitHub releases (#8)
-- **cupertino**: add self-contained handbook lifecycle (design/code/testing/docs) (#7)
-- **self-assess**: reporting→plan bridge + cross-plugin auto-pilot (#6)
-
-### Fixed
-- **self-assess**: list ui-audit in dashboard empty-state hint (#9)
-- **ci**: write the SBOM to tools/werkstoff-cli so the upload step finds it
+- `homepage` and `repository` fields in the plugin manifest, pointing at
+  this plugin's README and subtree in the werkstoff repo.
 
 ## [0.1.0]
 
