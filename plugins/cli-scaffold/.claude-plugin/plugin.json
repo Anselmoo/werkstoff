@@ -1,6 +1,6 @@
 {
   "name": "cli-scaffold",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time — no stored boilerplate — guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
   "author": {
     "name": "Anselm Hahn",
