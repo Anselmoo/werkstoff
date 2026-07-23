@@ -6,6 +6,8 @@
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
   },
+  "homepage": "https://github.com/Anselmoo/werkstoff/blob/main/plugins/self-assess/README.md",
+  "repository": "https://github.com/Anselmoo/werkstoff/tree/main/plugins/self-assess",
   "license": "MIT",
   "keywords": [
     "code-quality",

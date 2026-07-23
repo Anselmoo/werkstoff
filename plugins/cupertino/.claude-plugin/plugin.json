@@ -6,6 +6,8 @@
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
   },
+  "homepage": "https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/README.md",
+  "repository": "https://github.com/Anselmoo/werkstoff/tree/main/plugins/cupertino",
   "license": "MIT",
   "keywords": [
     "design",
