@@ -3,9 +3,11 @@ name: self-assess-idiom-fix
 description: Applies exactly the eligible "modernization"-category findings from self-assess-code-idiom's code_idiom_summary.json -- mechanical, single-location deprecated-idiom rewrites (e.g. Optional[X] to X | None) -- via the idiom-remediator agent, then hands every fix off to andon-verify's adversarial tribunal for proof (never self-verifies, no exception even for trivial rewrites). Use this only when the user explicitly wants to apply code-idiom's modernization findings, not just read them, and has set idiom_fix.mode to "fix" in .claude/self-assess.local.md. This is one of only two skills in self-assess with Edit access to target source (the other is self-assess-transform-execute) -- every other self-assess skill, including self-assess-code-idiom itself, is read-only. Do not use for "smell"-category findings (those are never auto-fixed by this or any self-assess skill), for architectural Merge/Split changes (self-assess-transform-execute), or for house-rules violations (self-assess-lint-audit has no auto-fix path).
 ---
 
-Apply `self-assess-code-idiom`'s eligible `modernization` findings, one at
-a time, via the `idiom-remediator` agent — one of only two Edit-capable
-paths in `self-assess` (the other is `self-assess-transform-execute`).
+Apply `self-assess-code-idiom`'s eligible `modernization` findings,
+clustered by file and kind (Step 1a) and dispatched to the
+`idiom-remediator` agent once per cluster, via one of only two
+Edit-capable paths in `self-assess` (the other is
+`self-assess-transform-execute`).
 `self-assess-code-idiom` itself remains unconditionally read-only; this
 skill is the separate, explicitly-gated place where a subset of its
 findings can actually be applied.

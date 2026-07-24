@@ -140,7 +140,11 @@ Create/update `<output_dir>/CONFAB_CYCLE.md`:
 - **This invocation's passes** — one entry per pass: constraint domain,
   new/reopened count, fix outcome if any (`fixed` / `still-open` /
   `blocked` / `escalated` / `drafted`, with the reason for
-  blocked/escalated or the suggestion for drafted)
+  blocked/escalated or the suggestion for drafted). When a pass batched
+  more than one same-file finding (`fixOutcome.clusterSize > 1`), list
+  every entry in `fixOutcome.clusterOutcomes` individually, not just the
+  first — a single pass can now fix/block several findings at once, and
+  none of them should be silently dropped from the report.
 - **Escalated findings** — a dedicated section for anything the thrash
   guard escalated (fix attempted `max_reopens` times without holding) —
   this is the list most worth a human's attention first

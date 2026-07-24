@@ -4,7 +4,8 @@ description: Applies exactly the eligible mechanical:true findings from cupertin
 ---
 
 Apply `cupertino-handbook-check`'s eligible `mechanical: true` findings,
-one at a time, via the `handbook-remediator` agent — the fourth and final
+clustered by file and rule (Step 1a) and dispatched to the
+`handbook-remediator` agent once per cluster — the fourth and final
 stage of `cupertino`'s handbook lifecycle (`draft` → `apply` → `check` →
 `fix`), and the plugin's only Edit-capable skill.
 `cupertino-handbook-check` itself remains unconditionally read-only; this
@@ -86,8 +87,12 @@ with a broader prompt or a second guess at the fix.
 
 ## Step 4 — Dispatch `handbook-verifier`, blind, once per cluster
 
-Immediately after each cluster `handbook-remediator` returns — before
-moving to the next cluster — dispatch `handbook-verifier`
+If every location in the cluster came back `blocked` in Step 3 (zero
+`applied`), skip this step entirely for that cluster — there is nothing
+to verify, and `handbook-verifier` must never be dispatched with an empty
+locations array. Otherwise, immediately after each cluster
+`handbook-remediator` returns — before moving to the next cluster —
+dispatch `handbook-verifier`
 (`agentType: 'cupertino:handbook-verifier'`) **once for the whole
 cluster**, per the blind construction in
 `references/handbook-verification.md`: pass **only** the shared handbook
