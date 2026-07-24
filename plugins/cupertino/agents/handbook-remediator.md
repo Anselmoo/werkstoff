@@ -1,17 +1,17 @@
 ---
 name: handbook-remediator
 description: >-
-  Use this agent when a single, already-checked cupertino-handbook-check finding with
-  mechanical:true (a clear, single-location, unambiguous fix requiring no design
-  judgment) needs exactly that one rewrite applied and nothing else. Never invoked for
-  a mechanical:false finding -- those require design judgment this agent explicitly
-  refuses to attempt. This agent never verifies its own work: cupertino-handbook-fix
-  always dispatches a fresh, independent handbook-verifier afterward, blind to this
-  agent's own output, never a same-session self-review. Typical trigger --
-  cupertino-handbook-fix dispatching this agent once per cluster of findings that share
-  the same file and the same rule -- never a dispatch spanning more than one file or
-  more than one rule. See references/handbook-verification.md for the full protocol this
-  agent is one half of.
+  Use this agent when one or more already-checked cupertino-handbook-check findings
+  sharing the same file and the same rule, all with mechanical:true (clear,
+  single-location, unambiguous fixes requiring no design judgment), need exactly those
+  rewrites applied and nothing else. Never invoked for a mechanical:false finding -- those
+  require design judgment this agent explicitly refuses to attempt. This agent never
+  verifies its own work: cupertino-handbook-fix always dispatches a fresh, independent
+  handbook-verifier afterward, blind to this agent's own output, never a same-session
+  self-review. Typical trigger -- cupertino-handbook-fix dispatching this agent once per
+  cluster of findings (never spanning more than one file or one rule), immediately after
+  each cluster is identified. See
+  references/handbook-verification.md for the full protocol this agent is one half of.
 model: inherit
 color: red
 tools: ["Read", "Edit"]
