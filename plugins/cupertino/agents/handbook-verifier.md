@@ -84,3 +84,5 @@ file:line plus a 2-4 character preview, never the value.
   repository mutation.
 - Judge only the ONE rule and ONE location you were given — do not expand
   scope to a general review of the file.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `cupertino`.

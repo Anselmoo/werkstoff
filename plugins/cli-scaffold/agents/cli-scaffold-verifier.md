@@ -126,3 +126,5 @@ Return:
   scaffold defect — report it as `needs-human-judgment` with a note that
   the reference itself may need updating, rather than inventing a
   verdict the reference doesn't support.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `cli-scaffold`.

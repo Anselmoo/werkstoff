@@ -82,3 +82,5 @@ No prose outside the JSON.
   that both the Defender and Challenger's claims get weighed against —
   see `skills/andon-verify/references/tribunal-protocol.md` for the full
   workflow.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `andon`.

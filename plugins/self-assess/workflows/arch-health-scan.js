@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Architecture-deficiency detection over the stage/wire graph self-assess-stage-map already built: deterministic god-module / circular-dependency / layering-violation candidates, then adversarial per-candidate verification against the real repo',
   whenToUse:
-    'Invoked by self-assess-arch-health when the Workflow tool is available. Requires args {repoPath, stageGraph, skipVerification?}. stageGraph is the {stages, wires, deadEnds, observations} object the calling skill read from self-assess-stage-map\'s stage_graph.json (workflows have no filesystem access — the skill reads the file and passes its parsed contents in). This does NOT re-derive the import graph and does NOT duplicate self-assess-complexity-score\'s ranking — it produces pass/fail findings. skipVerification (default false) skips the adversarial confirm pass, trading precision for speed. Returns structured findings — the calling skill writes ARCH_HEALTH.md from the result.',
+    'Invoked by self-assess-arch-health when the Workflow tool is available. Requires args {repoPath, stageGraph, symbolIndexPath?, skipVerification?}. stageGraph is the {stages, wires, deadEnds, observations} object the calling skill read from self-assess-stage-map\'s stage_graph.json (workflows have no filesystem access — the skill reads the file and passes its parsed contents in). This does NOT re-derive the import graph and does NOT duplicate self-assess-complexity-score\'s ranking — it produces pass/fail findings. symbolIndexPath (default null) is accepted for interface parity with the other scan workflows, but this workflow\'s Find phase is fully deterministic graph analysis with no agent template to receive the hint — it is currently unused here. skipVerification (default false) skips the adversarial confirm pass, trading precision for speed. Returns structured findings — the calling skill writes ARCH_HEALTH.md from the result.',
   phases: [
     { title: 'Find', detail: 'deterministic god-module / cycle / layering-violation candidates over the passed-in graph' },
     { title: 'Verify', detail: 'one adversarial confirmer per candidate, grounded against the real repo' },
@@ -14,10 +14,17 @@ const ARGS = typeof args === 'string' ? (() => { try { return JSON.parse(args) }
 
 const repoPath = (ARGS && ARGS.repoPath) || '.'
 const stageGraph = ARGS && ARGS.stageGraph
+// Accepted for interface parity with the other scan workflows; this
+// workflow's Find phase is deterministic graph analysis (no agent
+// template), so there is nowhere to splice a symbol-index hint in yet.
+const symbolIndexPath = (ARGS && ARGS.symbolIndexPath) || null
 const skipVerification = !!(ARGS && ARGS.skipVerification)
 
 if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$)/.test(repoPath)) {
   throw new Error(`Unsafe repoPath ${JSON.stringify(repoPath)}`)
+}
+if (symbolIndexPath != null && (typeof symbolIndexPath !== 'string' || /[`\n\r]/.test(symbolIndexPath) || /(^|\/)\.\.(\/|$)/.test(symbolIndexPath))) {
+  throw new Error(`Unsafe symbolIndexPath ${JSON.stringify(symbolIndexPath)}`)
 }
 if (!stageGraph || typeof stageGraph !== 'object' || !Array.isArray(stageGraph.stages)) {
   throw new Error(

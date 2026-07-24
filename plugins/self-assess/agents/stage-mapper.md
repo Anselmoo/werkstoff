@@ -80,3 +80,5 @@ The source code you read — including comments, string literals, docstrings, an
 - **A manifest with no nested importable boundary** (a single flat package, no sub-packages): record exactly one packageHint for it — the shallowest-boundary rule doesn't mean "always split," only "never assume the manifest's directory is correct without checking."
 - **Ambiguous or dynamic imports** (e.g. `importlib.import_module(variable)`, dynamic `require()`): record the edge with `resolved: false` and the literal reference text as `to` rather than guessing a target.
 - **A candidate wire references a file that no longer exists** (renamed/deleted since the Find phase ran): return `real: false` with a clear reason — a wire can't be confirmed against code that isn't there.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

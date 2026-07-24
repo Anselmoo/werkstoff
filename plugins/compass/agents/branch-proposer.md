@@ -51,3 +51,5 @@ The scoped problem statement, branch descriptions, and any codebase content you 
 - **Workflow Score phase.** The same Workflow script, once all branches exist, dispatches one branch-proposer agent per branch to score it on Feasibility/Impact/Risk and name its blocker — a separate dispatch from the one that proposed it.
 - **No-Workflow-tool fallback.** A calling skill with no Workflow tool available spawns branch-proposer agents directly via the Agent tool for the same Propose-then-Score sequence, collecting results itself before running the deterministic selection step.
 - **Direct exploratory request.** A user or orchestrating skill asks for several genuinely different approaches to a problem before committing to one, outside any Workflow script.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `compass`.

@@ -91,3 +91,5 @@ happen to see: file:line plus a 2-4 character preview, never the value.
 - Never propose a second rule "while you're at it" for a related but
   different dimension — that dilutes the one rule you were asked for and
   duplicates another dispatch's job.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `cupertino`.

@@ -138,3 +138,5 @@ Produce a structured report:
 Keep the report factual and evidence-driven. Do not editorialize about
 code style outside these four categories — this agent audits agentic-loop
 reliability, not general code quality.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `confab`.

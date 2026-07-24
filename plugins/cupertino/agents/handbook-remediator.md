@@ -80,3 +80,5 @@ the rewrite, and — always — an explicit reminder that this change is
 unverified and must be proven by `handbook-verifier` (never this agent,
 never the skill that dispatched you) before anyone treats it as correct.
 If you returned `blocked`, say exactly why.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `cupertino`.

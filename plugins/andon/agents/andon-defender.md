@@ -61,3 +61,5 @@ No prose outside the JSON.
   Challenger dispatch and, when available, Verifier evidence — see
   `skills/andon-verify/references/tribunal-protocol.md` for the full
   workflow this agent is one step of.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `andon`.
