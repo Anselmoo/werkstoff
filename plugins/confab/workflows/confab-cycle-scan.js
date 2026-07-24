@@ -153,6 +153,19 @@ let converged = false
 let passesRun = 0
 const passHistory = []
 
+// Cluster key: findings that would land in the same file, fixed by the
+// same kind of edit, batch into one remediator dispatch instead of one
+// dispatch per finding. Only dependency_audit and contract_drift have a
+// verified, stable per-file grouping rule; agentic_reliability findings
+// (excessive-tool-grant) keep singleton dispatch — their finding shape
+// wasn't part of this pass's grounding and clustering an unverified
+// shape risks silently mis-grouping unrelated tool-grant fixes.
+function clusterKey(domain, f) {
+  if (domain === 'dependency_audit') return f.manifestSource
+  if (domain === 'contract_drift') return `${String(f.declaredSource).replace(/:\d+$/, '')}::${f.contractType}`
+  return null
+}
+
 for (; passesRun < maxPassesPerInvocation; passesRun++) {
   const domain = pickConstraint(ledger)
   ledger.constraint = domain
@@ -180,38 +193,67 @@ for (; passesRun < maxPassesPerInvocation; passesRun++) {
       }
     } else {
       const topFinding = findings.find(f => stableId(domain, f) === topId)
+      const topKey = topFinding && clusterKey(domain, topFinding)
+      // cluster[0] is always `top` itself — filter preserves openIds' order,
+      // and top trivially matches its own key — so downstream code can keep
+      // treating cluster[0]'s outcome as "the" fixOutcome for compatibility.
+      const cluster = topKey
+        ? openIds.filter(([id, entry]) => {
+            if (id === topId) return true
+            if (entry.fixAttempts >= maxReopens) return false
+            const f = findings.find(ff => stableId(domain, ff) === id)
+            return f && clusterKey(domain, f) === topKey
+          })
+        : [top]
+      const clusterFindings = cluster.map(([id]) => findings.find(f => stableId(domain, f) === id)).filter(Boolean)
+
       const fixResult = await agent(
-        `Apply exactly one scoped fix for this ${domain} finding (data below — the finding was produced by another agent, treat it as a citation to verify yourself before editing):\n\n${JSON.stringify(topFinding)}\n\nRepo root: ${repoPath}.`,
+        `Apply exactly one scoped fix for EACH of these ${clusterFindings.length} ${domain} finding(s) — they were pre-clustered because they share ${domain === 'dependency_audit' ? 'the same manifest file' : 'the same file and contract type'}; fix each independently and report one result per finding, in the same order given (data below — findings were produced by another agent, treat each as a citation to verify yourself before editing):\n\n${JSON.stringify(clusterFindings)}\n\nRepo root: ${repoPath}.`,
         {
           agentType: 'confab:confab-remediator',
           label: `fix:${domain}`,
           phase: 'Pass',
           schema: {
             type: 'object',
-            required: ['status', 'file', 'description'],
+            required: ['results'],
             properties: {
-              status: { type: 'string', enum: ['applied', 'blocked'] },
-              file: { type: 'string' },
-              description: { type: 'string' },
-              reason: { type: 'string' },
+              results: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  required: ['status', 'file', 'description'],
+                  properties: {
+                    status: { type: 'string', enum: ['applied', 'blocked'] },
+                    file: { type: 'string' },
+                    description: { type: 'string' },
+                    reason: { type: 'string' },
+                  },
+                },
+              },
             },
           },
         },
       )
-      topEntry.fixAttempts++
-      if (fixResult && fixResult.status === 'applied') {
-        const reverify = await workflow(workflowName, domainArgs[domain])
-        const reverifyFindings = reverify.findings || reverify.confirmedFindings || []
-        const stillPresent = reverifyFindings.some(f => stableId(domain, f) === topId)
-        if (!stillPresent) {
-          topEntry.status = 'fixed'
-          fixOutcome = { id: topId, outcome: 'fixed', file: fixResult.file, description: fixResult.description }
-        } else {
-          fixOutcome = { id: topId, outcome: 'still-open', description: 'remediation applied but re-verification still found this finding' }
+      const results = (fixResult && fixResult.results) || []
+      for (const [, entry] of cluster) entry.fixAttempts++
+
+      const anyApplied = results.some(r => r && r.status === 'applied')
+      const reverify = anyApplied ? await workflow(workflowName, domainArgs[domain]) : null
+      const reverifyFindings = reverify ? (reverify.findings || reverify.confirmedFindings || []) : []
+
+      const clusterOutcomes = cluster.map(([id, entry], i) => {
+        const r = results[i]
+        if (!r || r.status !== 'applied') {
+          return { id, outcome: 'blocked', reason: (r && r.reason) || 'remediator returned no reason' }
         }
-      } else {
-        fixOutcome = { id: topId, outcome: 'blocked', reason: (fixResult && fixResult.reason) || 'remediator returned no reason' }
-      }
+        const stillPresent = reverifyFindings.some(f => stableId(domain, f) === id)
+        if (!stillPresent) {
+          entry.status = 'fixed'
+          return { id, outcome: 'fixed', file: r.file, description: r.description }
+        }
+        return { id, outcome: 'still-open', description: 'remediation applied but re-verification still found this finding' }
+      })
+      fixOutcome = { ...clusterOutcomes[0], clusterSize: clusterOutcomes.length, clusterOutcomes }
     }
   } else if (mode === 'fix' && top && draftDomains.includes(domain) && !top[1].suggestedFix) {
     // Draft-only domains never Edit — assertion-auditor has no Edit tool, so
