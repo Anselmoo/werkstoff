@@ -4,6 +4,7 @@ node_modules/
 !**/examples/*.local.md
 .serena/
 .superpowers/
+analysis/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
