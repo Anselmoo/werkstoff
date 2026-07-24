@@ -111,3 +111,5 @@ In a **Find** dispatch, return the structured `findings` array (plus any
 evidence-driven; do not editorialize about code quality beyond the idiom/smell
 classes in scope — this agent audits idiom and smell, not general architecture
 (that is the arch-health auditor) or business correctness.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

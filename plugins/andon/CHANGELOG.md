@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-23
+
+### Added
+- `homepage` and `repository` fields in the plugin manifest, pointing at
+  this plugin's README and subtree in the werkstoff repo.
+
 ## [0.2.0] - 2026-07-21
 ### Added
 

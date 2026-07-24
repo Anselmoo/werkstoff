@@ -75,3 +75,5 @@ job, not this one's.
   the preference order without asking; only report `-1` for CCN fields if
   every option, including the keyword-count fallback, is genuinely
   inapplicable.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

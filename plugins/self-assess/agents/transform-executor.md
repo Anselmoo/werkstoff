@@ -107,3 +107,5 @@ process (`andon-verify`, not this agent, not the skill that dispatched you)
 before anyone treats it as correct. If you returned `blocked`, say exactly
 why and what would need to change (a human decision, a narrower scope, a
 fresh brief) before you could proceed.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

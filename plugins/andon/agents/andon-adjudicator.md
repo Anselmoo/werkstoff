@@ -97,3 +97,5 @@ Phase-1 plan (a few sentences). No prose outside the JSON.
   (when available) Verifier outputs all exist — see
   `skills/andon-verify/references/tribunal-protocol.md` for the full
   workflow this agent completes.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `andon`.

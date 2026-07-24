@@ -3,7 +3,7 @@ export const meta = {
   description:
     'LLM-reasoned mutation testing: one finder per target file proposing plausible small mutations per function, optionally ground-truthed against a real mutation-testing tool, with independent per-finding re-derivation of whether the test suite would actually catch each mutation',
   whenToUse:
-    'Invoked by confab-assertion-audit when the Workflow tool is available. Requires args {repoPath, targetFiles: [path], testFiles: [path], mutationTool?}. The calling skill enumerates target/test files first (the workflow script has no filesystem access) and, if confab-preflight detected a real mutation-testing tool on PATH for this language, passes its name as mutationTool. Returns structured findings, each labeled with the mode (llm-reasoned vs real-tool) that produced it — the calling skill writes ASSERTION_AUDIT.md from the result and must not blend the two modes when presenting it.',
+    'Invoked by confab-assertion-audit when the Workflow tool is available. Requires args {repoPath, targetFiles: [path], testFiles: [path], mutationTool?, symbolIndexPath?}. The calling skill enumerates target/test files first (the workflow script has no filesystem access) and, if confab-preflight detected a real mutation-testing tool on PATH for this language, passes its name as mutationTool. symbolIndexPath (default null) points Find-phase finders at a prebuilt symbol-index snapshot instead of raw Grep when testFiles wasn\'t fully enumerated by the caller; Verify-phase re-derivation already targets a specific cited function/test, so the hint isn\'t spliced there. Returns structured findings, each labeled with the mode (llm-reasoned vs real-tool) that produced it — the calling skill writes ASSERTION_AUDIT.md from the result and must not blend the two modes when presenting it.',
   phases: [
     { title: 'Find', detail: 'one finder per target file — proposes mutations per function, real-tool-first if mutationTool was given, else LLM-reasoned' },
     { title: 'Verify', detail: 'one independent re-deriver per finding — re-derives whether the test suite catches the mutation rather than trusting the finder\'s own claim' },
@@ -16,9 +16,13 @@ const repoPath = (ARGS && ARGS.repoPath) || '.'
 const targetFiles = (ARGS && ARGS.targetFiles) || []
 const testFiles = (ARGS && ARGS.testFiles) || []
 const mutationTool = (ARGS && ARGS.mutationTool) || null
+const symbolIndexPath = (ARGS && ARGS.symbolIndexPath) || null
 
 if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$)/.test(repoPath)) {
   throw new Error(`Unsafe repoPath ${JSON.stringify(repoPath)}`)
+}
+if (symbolIndexPath != null && (typeof symbolIndexPath !== 'string' || /[`\n\r]/.test(symbolIndexPath) || /(^|\/)\.\.(\/|$)/.test(symbolIndexPath))) {
+  throw new Error(`Unsafe symbolIndexPath ${JSON.stringify(symbolIndexPath)}`)
 }
 if (!Array.isArray(targetFiles) || targetFiles.length === 0) {
   throw new Error(
@@ -58,6 +62,10 @@ check/dry-run/report mode only — never its apply/patch mode.`
 const modeBlock = mutationTool
   ? `\nA real mutation-testing tool was detected on PATH for this run: ${mutationTool}. Attempt it first (via Bash, read-only/report mode) against your assigned file; fall back to LLM-reasoned mutation proposals only if it is unavailable, errors, or does not cover this file — and say so explicitly.`
   : `\nNo real mutation-testing tool was detected for this run. Propose and reason about mutations yourself (LLM-reasoned mode) — do not claim tool-verified results.`
+
+const symbolIndexBlock = symbolIndexPath
+  ? `\nA published symbol-index snapshot is available at ${fence(symbolIndexPath)} — prefer querying symbol_index.json/file_catalog.json/search.sqlite there over raw Grep for locating tests when none were provided; fall back to Grep only if the snapshot can't answer the question.`
+  : ''
 
 const FINDINGS_SCHEMA = {
   type: 'object',
@@ -102,6 +110,7 @@ const found = await parallel(
 
 Identify every function/small unit of logic in this file. For each, propose 1-3 plausible small mutations (off-by-one, boundary flip, condition negation, swapped return value, dropped edge-case branch) and determine whether the test suite would catch each. Candidate test files for this repo: ${testFiles.length ? testFiles.join(', ') : '(none provided — search for tests yourself via Grep/Glob, and if none exist for a function, report that plainly)'}. Only report mutations you believe the test suite would NOT catch (or where no test exists) — these are the assertion gaps this audit exists to surface.
 ${modeBlock}
+${symbolIndexBlock}
 ${UNTRUSTED}`,
       {
         agentType: 'confab:assertion-auditor',

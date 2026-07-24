@@ -37,10 +37,18 @@ the settings file) if it exists (pass `null` if absent).
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
 available in this session (this skill invocation is your authorization):
 
+Before dispatching, resolve or build the shared symbol-index snapshot.
+Read `analysis/confab/current.json`; if missing or its
+`source_fingerprint` no longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name confab`
+(single-flight lock makes concurrent callers safe). For a repo well under
+~50 tracked files the build overhead may not be worth it — skip this and
+pass `symbolIndexPath: null`.
+
 ```
 Workflow({
   scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/contract-drift-scan.js",
-  args: { repoPath: "<repo root, usually '.'>", contractSources: [<contract source files found>], houseRules: <content or null>, skipVerification: <from settings, default false> }
+  args: { repoPath: "<repo root, usually '.'>", contractSources: [<contract source files found>], houseRules: <content or null>, symbolIndexPath: <resolved snapshot dir, or null>, skipVerification: <from settings, default false> }
 })
 ```
 

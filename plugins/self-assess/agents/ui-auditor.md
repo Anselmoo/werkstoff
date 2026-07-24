@@ -116,3 +116,5 @@ In a **Find** dispatch, return the structured `findings` array (plus any
 evidence-driven; audit accessibility, semantics, and design-value hygiene only —
 not general architecture (that is the arch-health auditor), language idioms
 (the idiom auditor), or business correctness.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

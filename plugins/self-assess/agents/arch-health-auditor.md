@@ -90,3 +90,5 @@ optional `adjustedSeverity`, optional `injectionSuspects`). In a full fallback
 pass, return the structured findings array. Keep everything factual and
 evidence-driven; audit architecture deficiency only — not idiom/smell (that is
 the idiom-auditor) or business correctness.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

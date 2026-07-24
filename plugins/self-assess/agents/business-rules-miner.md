@@ -153,3 +153,5 @@ list.
   resolved, not silent merging at extraction time.
 - **A "rule" that's actually a technical default (e.g. HTTP timeout)**:
   skip it — it fails the "would be the same in any language" test above.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

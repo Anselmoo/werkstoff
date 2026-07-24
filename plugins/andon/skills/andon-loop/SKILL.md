@@ -173,6 +173,14 @@ strategy a (tribunal) dispatch runs through `andon-cycle-scan.js`'s
 Verify phase for the adversarial duel — see that script's `meta` for the
 exact shape.
 
+Before that dispatch, resolve or build the shared symbol-index snapshot.
+Read `analysis/andon/current.json`; if missing or its `source_fingerprint`
+no longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name andon`
+(single-flight lock makes concurrent callers safe). For a repo well under
+~50 tracked files the build overhead may not be worth it — skip this and
+pass `symbolIndexPath: null` into `andon-cycle-scan.js`'s `args`.
+
 **The andon rule — three hard-gate stop conditions:**
 
 1. **Wire-proof failure** from any `andon-verify` strategy (a red 🔴

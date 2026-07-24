@@ -120,3 +120,5 @@ Structure your final report as:
 - **Monorepo / multiple doc sets**: clarify scope with the audit target given, and if ambiguous, default to the most relevant package/directory implied by the trigger, noting the assumption made.
 - **Docs describe intentionally aspirational/future behavior** (e.g., "Roadmap," "Coming soon" sections): do not flag these as drift; exclude them from claim extraction and note the exclusion.
 - **Conflicting claims across multiple doc files**: report both locations and flag the inconsistency explicitly, even if you cannot determine which one is correct.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `self-assess`.

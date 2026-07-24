@@ -90,3 +90,5 @@ happen to see: file:line plus a 2-4 character preview, never the value.
   else while reading.
 - Never invent a finding to avoid reporting zero — a clean scan is a
   legitimate, valuable result.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `cupertino`.

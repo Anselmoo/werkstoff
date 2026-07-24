@@ -73,3 +73,5 @@ For each contract claim you assess, report:
 - **Dynamically-typed languages with no type hints**: treat docstring contracts and any runtime type-checking/validation code as the declared contract instead; note the absence of static type hints rather than treating it as a violation.
 - **Schema declares more than the handler currently exercises** (e.g. an optional field never read): this is worth noting as a Low-confidence finding, not a High one — an unused-but-consistent optional field is not drift.
 - **Overloaded/generic signatures**: check each concrete usage against the applicable overload rather than flattening all overloads into one contract.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `confab`.

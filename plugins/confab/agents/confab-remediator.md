@@ -105,3 +105,5 @@ Return:
 - **Asked to fix a `no-escalation-path`, `unbounded-retry-loop`, or
   `find-no-verify-wiring` finding**: these require redesigning control
   flow or prose, not a single-line edit — always `blocked`.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `confab`.

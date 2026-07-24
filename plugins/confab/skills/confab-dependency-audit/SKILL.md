@@ -37,6 +37,14 @@ found, stop here and report that this skill has nothing to check.
 
 ## Step 1 — Run the scan
 
+Before dispatching, resolve or build the shared symbol-index snapshot.
+Read `analysis/confab/current.json`; if missing or its
+`source_fingerprint` no longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name
+confab` (single-flight lock makes concurrent callers safe). For a repo
+well under ~50 tracked files the build overhead may not be worth it —
+skip this and pass `symbolIndexPath: null`.
+
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
 available in this session (this skill invocation is your authorization):
 
@@ -48,7 +56,8 @@ Workflow({
     manifestFiles: [<found, as {path, type}>],
     registries: <dependency_audit.registries from settings, default []>,
     timeoutSeconds: <dependency_audit.timeout_seconds from settings, default 10>,
-    skipVerification: <from settings, default false>
+    skipVerification: <from settings, default false>,
+    symbolIndexPath: <resolved snapshot dir, or null>
   }
 })
 ```

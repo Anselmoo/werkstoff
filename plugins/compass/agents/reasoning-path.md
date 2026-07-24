@@ -97,3 +97,5 @@ access, never installing anything.
   explicit constraints becomes "list every implicit requirement, then
   check which candidate satisfies all of them") — never silently substitute
   an unrelated strategy without flagging the substitution.
+
+Follow the Parallel-Safe Research Protocol at `${CLAUDE_PLUGIN_ROOT}/references/parallel-safe-research-protocol.md` — this agent's `--plugin-name` is `compass`.
