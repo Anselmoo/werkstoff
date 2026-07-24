@@ -92,8 +92,9 @@ moving to the next cluster — dispatch `handbook-verifier`
 cluster**, per the blind construction in
 `references/handbook-verification.md`: pass **only** the shared handbook
 rule text + its `detectionSignal`, and the array of **original, pre-fix**
-`evidence`/`title` pairs from the Step 1 findings that made up this
-cluster — do **not** pass `handbook-remediator`'s own output (its
+`evidence`/`title` pairs from the locations in this cluster that
+`handbook-remediator` reported as applied (not `blocked`) in Step 3 — do
+**not** pass `handbook-remediator`'s own output (its
 description of what it changed, its rationale, its confidence) for any
 location, under any circumstance. `handbook-verifier` independently
 judges and returns one verdict per location — it must never infer one
