@@ -51,6 +51,19 @@ with no mechanical violations genuinely has nothing to fix here. Report
 "0 eligible findings — nothing to do" plainly and stop; never lower the
 filter criteria or otherwise manufacture a finding to justify the run.
 
+## Step 1a — Cluster by file and rule
+
+Group the eligible-findings list from Step 1 into clusters, keyed by
+`(file, ruleId)` — `file` is everything before the last `:<digits>` in
+the finding's `evidence` string, `ruleId` is the finding's own `ruleId`
+field. Findings that share both are the same handbook rule violated at
+different lines in the same file — these become one cluster, dispatched
+as a single `handbook-remediator` call in Step 3 and checked as a single
+`handbook-verifier` call in Step 4. A finding that shares its `(file,
+ruleId)` with nothing else is a singleton cluster of size 1. Never
+cluster across files or across different rules, even when the fixes look
+superficially similar.
+
 ## Step 2 — Dirty-tree gate
 
 Run `git status --porcelain`. If it's not clean, **tell the user plainly**
@@ -59,37 +72,42 @@ stash first, or explicitly confirm proceeding anyway — do not proceed
 silently on a dirty tree. Checked once per invocation, before touching
 anything.
 
-## Step 3 — Dispatch `handbook-remediator`, once per eligible finding
+## Step 3 — Dispatch `handbook-remediator`, once per cluster
 
-Loop over the entire eligible-findings list from Step 1 within this one
-invocation. For each finding, dispatch the `handbook-remediator` agent
-(`agentType: 'cupertino:handbook-remediator'`) with **only** that one
-finding's `evidence` (file:line), `title`, and `suggestedFix` — never a
-batch covering multiple findings. If it returns `blocked`, report why
-verbatim and move to the next finding in the list — do not retry with a
-broader prompt or a second guess at the fix.
+Loop over the clusters from Step 1a within this one invocation. For each
+cluster, dispatch the `handbook-remediator` agent
+(`agentType: 'cupertino:handbook-remediator'`) exactly once, passing the
+**entire cluster's** array of `{evidence, title, suggestedFix}` entries —
+never a dispatch spanning more than one cluster. The agent returns one
+result per location (`{file, line, status, description, reason?}`, ...).
+For each location that comes back `blocked`, report why verbatim; a
+`blocked` location never blocks the rest of its cluster. Do not retry
+with a broader prompt or a second guess at the fix.
 
-## Step 4 — Dispatch `handbook-verifier`, blind, immediately after each fix
+## Step 4 — Dispatch `handbook-verifier`, blind, once per cluster
 
-Immediately after each fix `handbook-remediator` applies — before moving
-to the next finding in the loop — dispatch `handbook-verifier`
-(`agentType: 'cupertino:handbook-verifier'`) per the blind construction in
-`references/handbook-verification.md`: pass **only** the handbook rule
-text + its `detectionSignal` (read from the handbook artifact) and the
-**original, pre-fix** `evidence`/`title` from the Step 1 finding — do
-**not** pass `handbook-remediator`'s own output (its description of what
-it changed, its rationale, its confidence) to `handbook-verifier` under
-any circumstance.
+Immediately after each cluster `handbook-remediator` returns — before
+moving to the next cluster — dispatch `handbook-verifier`
+(`agentType: 'cupertino:handbook-verifier'`) **once for the whole
+cluster**, per the blind construction in
+`references/handbook-verification.md`: pass **only** the shared handbook
+rule text + its `detectionSignal`, and the array of **original, pre-fix**
+`evidence`/`title` pairs from the Step 1 findings that made up this
+cluster — do **not** pass `handbook-remediator`'s own output (its
+description of what it changed, its rationale, its confidence) for any
+location, under any circumstance. `handbook-verifier` independently
+judges and returns one verdict per location — it must never infer one
+location's compliance from another's, even within the same cluster.
 
-If `handbook-verifier` returns `compliant: true`, report the fix as
-accepted. If it returns `compliant: false`, report the fix as **failed** —
-name the file:line, the verifier's `reasoning`, and that a human should
-review it. Never silently retry or self-override a `compliant: false`
-verdict.
+For each location whose verdict is `compliant: true`, report the fix as
+accepted. For `compliant: false`, report the fix as **failed** — name the
+file:line, the verifier's `reasoning`, and that a human should review it.
+Never silently retry or self-override a `compliant: false` verdict for
+any location.
 
 Each finding gets its own accept/fail report — N findings fixed this run
-means N separate reports, never one summary claiming the batch as a whole
-is "done."
+means N separate reports, regardless of how many clusters they were
+dispatched in, never one summary claiming the batch as a whole is "done."
 
 Never commit or push, at any point in this skill.
 
