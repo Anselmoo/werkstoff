@@ -123,3 +123,73 @@ source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=cli-scaffold].description" },
 ]
+
+# Generated-copy tracking: build_symbol_index.py and the Parallel-Safe Research
+# Protocol doc are maintained in tools/symbol-indexer/ as the master single
+# source of truth. Each plugin's copy is a tracked artifact_target — regenerate
+# with `rrt artifacts --regenerate` (runs each `command` then re-snapshots the
+# hash lock), verify drift with `rrt artifacts --check`. (Note: there is no
+# `[[tool.rrt.file_sync]]` config key in rrt — confirmed against the
+# repo-release-tools docs; artifact_targets + command is the real mechanism.)
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/self-assess/scripts/build_symbol_index.py"
+description = "self-assess's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/self-assess/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/andon/scripts/build_symbol_index.py"
+description = "andon's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/andon/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/compass/scripts/build_symbol_index.py"
+description = "compass's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/compass/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/confab/scripts/build_symbol_index.py"
+description = "confab's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/confab/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cupertino/scripts/build_symbol_index.py"
+description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/cupertino/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/scripts/build_symbol_index.py"
+description = "cli-scaffold's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = "cp tools/symbol-indexer/build_symbol_index.py plugins/cli-scaffold/scripts/build_symbol_index.py"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/self-assess/references/parallel-safe-research-protocol.md"
+description = "self-assess's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/self-assess/references/parallel-safe-research-protocol.md"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/andon/references/parallel-safe-research-protocol.md"
+description = "andon's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/andon/references/parallel-safe-research-protocol.md"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/compass/references/parallel-safe-research-protocol.md"
+description = "compass's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/compass/references/parallel-safe-research-protocol.md"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/confab/references/parallel-safe-research-protocol.md"
+description = "confab's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/confab/references/parallel-safe-research-protocol.md"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
+description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/cupertino/references/parallel-safe-research-protocol.md"
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/references/parallel-safe-research-protocol.md"
+description = "cli-scaffold's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = "cp tools/symbol-indexer/parallel-safe-research-protocol.md plugins/cli-scaffold/references/parallel-safe-research-protocol.md"
+
+
