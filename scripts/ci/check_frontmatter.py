@@ -15,9 +15,10 @@ REQUIRED_KEYS = {"name", "description"}
 
 
 def check_file(path: str) -> list[str]:
-    text = open(path, encoding="utf-8").read()
+    with open(path, encoding="utf-8") as handle:
+        text = handle.read()
     parts = text.split("---", 2)
-    if len(parts) < 3:
+    if len(parts) < 3 or parts[0].strip() != "":
         return [f"{path}: no YAML frontmatter block found"]
     try:
         frontmatter = yaml.safe_load(parts[1])

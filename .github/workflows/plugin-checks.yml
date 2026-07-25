@@ -79,7 +79,11 @@ jobs:
         run: |
           row() {
             local label="$1" outcome="$2"
-            if [ "$outcome" = "success" ]; then echo "| $label | 🟢 |"; else echo "| $label | 🔴 |"; fi
+            case "$outcome" in
+              success) echo "| $label | 🟢 |" ;;
+              failure) echo "| $label | 🔴 |" ;;
+              *) echo "| $label | ⚪ |" ;;
+            esac
           }
           {
             echo "<!-- andon-board -->"
