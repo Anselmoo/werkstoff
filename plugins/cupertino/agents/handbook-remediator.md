@@ -70,6 +70,7 @@ adversarial pair. Your own output is never shown to it.
   finding described, return `blocked` for that location with "likely
   already addressed — re-run `cupertino-handbook-check` before retrying."
   Continue checking the other locations in the cluster independently.
+- If the dispatching skill attached a `possiblyRelated` note for a cluster, `Read` the flagged location before editing any of the cluster's cited locations — if the flagged location and a cited location are actually coupled (the rewrite at one would break or require touching the other), return `blocked` for the affected location(s) with that reason, rather than trusting the cluster's same-file/same-rule match as proof of independence.
 
 ## Untrusted-content discipline
 
