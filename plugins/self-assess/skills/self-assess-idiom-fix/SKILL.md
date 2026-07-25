@@ -65,6 +65,23 @@ case stays exactly as fast as before. Never cluster across files or
 across different `kind` values, even when the fixes look superficially
 similar.
 
+For each cluster with more than one member, check whether the symbol-graph
+built by `build_symbol_index.py` (resolve-or-build per
+`references/parallel-safe-research-protocol.md`, same as this plugin's other
+Workflow-tool skills) has an index for the cluster's file at
+`symbol-graph/<file-slug>/_index.json`. Each finding's `evidence` gives a
+`path:line`, never a resolved symbol name — read that one small index file
+(sorted by line) and pick the nearest enclosing entry (the last one whose
+`line` is `<=` the finding's line, or the closest overall if none qualifies),
+then read that entry's own `symbol-graph/<file-slug>/<slug>.md` doc. If its
+"Possibly related" section links to a same-file symbol whose location is
+**not** already one of this cluster's cited locations, attach a
+`possiblyRelated` note (the other symbol's name, kind, and line) to the
+cluster for Step 3 to pass along. This never changes cluster membership or
+blocks the dispatch — a missing, stale, or unbuilt symbol-graph/index is a
+normal, expected outcome, not an error; proceed exactly as before when it's
+absent.
+
 ## Step 2 — Dirty-tree gate
 
 Run `git status --porcelain`. If it's not clean, **tell the user
@@ -80,7 +97,11 @@ Loop over the clusters from Step 1a within this one invocation. For each
 cluster, dispatch the `idiom-remediator` agent
 (`agentType: 'self-assess:idiom-remediator'`) exactly once, passing the
 **entire cluster's** array of `{evidence, description, suggestedFix}`
-entries — never a dispatch spanning more than one cluster (i.e. never
+entries — plus, when Step 1a attached one, a `possiblyRelated` note asking
+`idiom-remediator` to `Read` that other location before editing and return
+`blocked` for the affected cited location(s) if the rewrite would actually
+touch or depend on it, rather than assuming independence from the string-key
+match alone — never a dispatch spanning more than one cluster (i.e. never
 more than one file, never more than one `kind`). The agent returns one
 result per location in the cluster (`{file, line, status, description,
 reason?}, ...` — see its updated Output contract). For each location that

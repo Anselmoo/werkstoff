@@ -82,6 +82,7 @@ safety story was chosen over proportionality to blast radius.
 - Never commit or push. That stays a manual, human decision, same as
   every other write-capable agent in this repo.
 - Stale-finding guard: before editing **each** location, `Read` its current content yourself — check every location independently; a stale-guard failure at one location never blocks the others. If it no longer matches what the finding described (someone already fixed it, or the surrounding code changed), return `blocked` with "likely already addressed — re-run `self-assess-code-idiom` before retrying."
+- If the dispatching skill attached a `possiblyRelated` note for a cluster, `Read` the flagged location before editing any of the cluster's cited locations — if the flagged location and a cited location are actually coupled (the rewrite at one would break or require touching the other), return `blocked` for the affected location(s) with that reason, rather than trusting the cluster's same-file/same-kind match as proof of independence.
 
 ## Untrusted-content discipline
 
