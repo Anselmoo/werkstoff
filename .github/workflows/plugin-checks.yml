@@ -1,0 +1,123 @@
+name: Plugin Checks
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "chore/**", "docs/**", "refactor/**", "test/**", "ci/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  checks:
+    name: Validate plugin content
+    runs-on: ubuntu-latest
+    outputs:
+      manifests: ${{ steps.manifests.outcome }}
+      frontmatter: ${{ steps.frontmatter.outcome }}
+      js_syntax: ${{ steps.js_syntax.outcome }}
+      symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Validate plugin/marketplace manifests
+        id: manifests
+        continue-on-error: true
+        run: ./scripts/ci/check-plugin-manifests.sh
+
+      - name: Validate SKILL.md/agent frontmatter
+        id: frontmatter
+        continue-on-error: true
+        run: python3 scripts/ci/check_frontmatter.py
+
+      - name: Check workflow JS syntax
+        id: js_syntax
+        continue-on-error: true
+        run: ./scripts/ci/check-js-syntax.sh
+
+      - name: Run symbol-indexer test suite
+        id: symbol_indexer_tests
+        continue-on-error: true
+        working-directory: tools/symbol-indexer
+        run: python3 -m unittest test_build_symbol_index -v
+
+      - name: Fail the job if any check failed
+        if: |
+          steps.manifests.outcome == 'failure' ||
+          steps.frontmatter.outcome == 'failure' ||
+          steps.js_syntax.outcome == 'failure' ||
+          steps.symbol_indexer_tests.outcome == 'failure'
+        run: exit 1
+
+  board:
+    name: Render Andon Board
+    needs: checks
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Build board markdown
+        id: render
+        run: |
+          row() {
+            local label="$1" outcome="$2"
+            if [ "$outcome" = "success" ]; then echo "| $label | 🟢 |"; else echo "| $label | 🔴 |"; fi
+          }
+          {
+            echo "<!-- andon-board -->"
+            echo "### 🚦 Plugin Andon Board"
+            echo "| Check | Status |"
+            echo "|---|---|"
+            row "Plugin/marketplace manifests" "${{ needs.checks.outputs.manifests }}"
+            row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
+            row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
+            row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
+          } > board.md
+          cat board.md
+
+      - name: Post or update sticky PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs')
+            const body = fs.readFileSync('board.md', 'utf8')
+            const marker = '<!-- andon-board -->'
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const existing = comments.find(c => c.body.includes(marker))
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }
