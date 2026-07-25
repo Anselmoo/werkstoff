@@ -186,6 +186,19 @@ def fingerprint(records: list[FileRecord]) -> str:
     return digest.hexdigest()
 
 
+def slugify(text: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", text).strip("-").lower()
+    return slug or "symbol"
+
+
+def file_slug(relative_path: str) -> str:
+    return slugify(relative_path)
+
+
+def symbol_slug(symbol: Symbol) -> str:
+    return f"{slugify(symbol.name)}-L{symbol.line}"
+
+
 def scan_python_file(path: Path, repo_root: Path, content: str) -> list[Symbol]:
     relative = path.relative_to(repo_root).as_posix()
     try:
@@ -273,6 +286,45 @@ def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], co
     )
 
 
+WORD_BOUNDARY_CACHE: dict[str, re.Pattern[str]] = {}
+
+
+def word_pattern(name: str) -> re.Pattern[str]:
+    pattern = WORD_BOUNDARY_CACHE.get(name)
+    if pattern is None:
+        pattern = re.compile(r"\b" + re.escape(name) + r"\b")
+        WORD_BOUNDARY_CACHE[name] = pattern
+    return pattern
+
+
+def same_file_edges(symbols: list[Symbol], contents: dict[str, str]) -> dict[str, list[Symbol]]:
+    """For each symbol, the other same-file symbols whose name also occurs
+    (whole-word match) anywhere in that file's content. Coarse by design —
+    "name co-occurs in file" is a same-file relatedness signal, not a
+    resolved call/reference graph; see this plan's Open Questions for the
+    precision upgrade path (Serena/LSP, or reusing stage-mapper's per-language
+    ref/ref-call extraction) once this baseline is proven useful in practice."""
+    by_file: dict[str, list[Symbol]] = {}
+    for symbol in symbols:
+        by_file.setdefault(symbol.file, []).append(symbol)
+
+    edges: dict[str, list[Symbol]] = {}
+    for file, file_symbols in by_file.items():
+        content = contents.get(file)
+        if content is None or len(file_symbols) < 2:
+            continue
+        for symbol in file_symbols:
+            related: list[Symbol] = []
+            for other in file_symbols:
+                if other is symbol or other.name == symbol.name:
+                    continue
+                if word_pattern(other.name).search(content):
+                    related.append(other)
+            if related:
+                edges[f"{symbol.file}::{symbol.name}::{symbol.line}"] = related
+    return edges
+
+
 def write_fts(path: Path, contents: dict[str, str]) -> bool:
     try:
         connection = sqlite3.connect(path)
@@ -292,6 +344,60 @@ def write_fts(path: Path, contents: dict[str, str]) -> bool:
         return False
 
 
+def yaml_scalar(value: str) -> str:
+    """Render a string as a YAML double-quoted scalar. JSON string syntax is a
+    valid YAML double-quoted scalar, so `json.dumps` gives correct escaping
+    for free (stdlib only). Needed because Symbol.name/kind/file/language can
+    contain ':' or '[' — e.g. a "section" symbol scraped from a markdown
+    heading like "Task Routing: Propose vs. Score" or a CHANGELOG entry like
+    "[0.1.1] - 2026-07-23" — which break an unquoted YAML flow scalar."""
+    return json.dumps(value)
+
+
+def write_symbol_graph_okf(run_dir: Path, symbols: list[Symbol], contents: dict[str, str]) -> int:
+    """Writes one OKF `type: symbol` doc per Symbol under run_dir/symbol-graph/,
+    with [[wiki-link]] edges to same-file co-occurring symbols. Returns the
+    doc count written. Mirrors okf-ledger-schema.md's conventions: `type` is
+    the only required frontmatter key, [[relative/path/without/extension]]
+    wiki-links for cross-references, atomic writes per doc."""
+    edges = same_file_edges(symbols, contents)
+    graph_root = run_dir / "symbol-graph"
+    written = 0
+    for symbol in symbols:
+        doc_path = graph_root / file_slug(symbol.file) / f"{symbol_slug(symbol)}.md"
+        related = edges.get(f"{symbol.file}::{symbol.name}::{symbol.line}", [])
+        frontmatter = (
+            f"---\ntype: symbol\nname: {yaml_scalar(symbol.name)}\nkind: {yaml_scalar(symbol.kind)}\n"
+            f"file: {yaml_scalar(symbol.file)}\nline: {symbol.line}\nlanguage: {yaml_scalar(symbol.language)}\n---\n"
+        )
+        body_lines = [f"\n## {symbol.name}\n", f"`{symbol.signature}`\n"]
+        if related:
+            body_lines.append("\n### Possibly related (same file, name co-occurs)\n")
+            for other in related:
+                body_lines.append(f"- [[symbol-graph/{file_slug(other.file)}/{symbol_slug(other)}]] — {other.name} ({other.kind}, line {other.line})\n")
+        atomic_write(doc_path, frontmatter + "".join(body_lines))
+        written += 1
+    return written
+
+
+def write_symbol_graph_index(run_dir: Path, symbols: list[Symbol]) -> None:
+    """Per-file index (symbol-graph/<file-slug>/_index.json: [{name, kind,
+    line, slug}]) so a consumer holding only a finding's (file, line) —
+    which is what every finding in self-assess/cupertino/confab actually
+    carries, never a resolved symbol name — can find the nearest enclosing
+    symbol's doc without guessing a name or globbing ambiguous filenames."""
+    graph_root = run_dir / "symbol-graph"
+    by_file: dict[str, list[Symbol]] = {}
+    for symbol in symbols:
+        by_file.setdefault(symbol.file, []).append(symbol)
+    for file, file_symbols in by_file.items():
+        entries = [
+            {"name": s.name, "kind": s.kind, "line": s.line, "slug": symbol_slug(s)}
+            for s in sorted(file_symbols, key=lambda s: s.line)
+        ]
+        atomic_write(graph_root / file_slug(file) / "_index.json", json.dumps(entries, indent=2) + "\n")
+
+
 def query_fts(path: Path, query: str, limit: int) -> list[dict[str, Any]]:
     connection = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     try:
@@ -304,11 +410,12 @@ def query_fts(path: Path, query: str, limit: int) -> list[dict[str, Any]]:
     return [{"file": file, "line": line, "snippet": snippet} for file, line, snippet in rows]
 
 
-def artifact_manifest(plugin_name: str, run_id: str, source_fingerprint: str, fts_available: bool, run_dir: Path) -> dict[str, Any]:
+def artifact_manifest(plugin_name: str, run_id: str, source_fingerprint: str, fts_available: bool, run_dir: Path, symbol_graph_count: int) -> dict[str, Any]:
     artifacts = [
         {"path": "symbol_index.json", "kind": "symbol_index", "format": "json", "producer": "build_symbol_index"},
         {"path": "file_catalog.json", "kind": "file_catalog", "format": "json", "producer": "build_symbol_index"},
         {"path": "evidence_index.json", "kind": "evidence_index", "format": "json", "producer": "build_symbol_index"},
+        {"path": "symbol-graph/", "kind": "symbol_graph_okf", "format": "okf-markdown", "producer": "build_symbol_index"},
     ]
     if fts_available:
         artifacts.append({"path": "search.sqlite", "kind": "lexical_index", "format": "sqlite-fts5", "producer": "build_symbol_index"})
@@ -321,6 +428,7 @@ def artifact_manifest(plugin_name: str, run_id: str, source_fingerprint: str, ft
         "status": "complete",
         "capabilities": {"fts_available": fts_available},
         "artifacts": artifacts,
+        "symbolGraphDocCount": symbol_graph_count,
     }
 
 
@@ -386,7 +494,9 @@ def publish_snapshot(repo_root: Path, plugin_name: str, records: list[FileRecord
             "source_fingerprint": index.source_fingerprint, "evidence": [],
         }, indent=2, sort_keys=True) + "\n")
         fts_available = not no_fts and write_fts(temporary_dir / "search.sqlite", contents)
-        manifest = artifact_manifest(plugin_name, run_id, index.source_fingerprint, fts_available, temporary_dir)
+        symbol_graph_count = write_symbol_graph_okf(temporary_dir, index.symbols, contents)
+        write_symbol_graph_index(temporary_dir, index.symbols)
+        manifest = artifact_manifest(plugin_name, run_id, index.source_fingerprint, fts_available, temporary_dir, symbol_graph_count)
         atomic_write(temporary_dir / "artifact_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         final_records, _ = catalog_files(repo_root)
         if fingerprint(final_records) != index.source_fingerprint:
