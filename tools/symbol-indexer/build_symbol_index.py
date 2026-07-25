@@ -344,6 +344,22 @@ def write_fts(path: Path, contents: dict[str, str]) -> bool:
         return False
 
 
+def write_symbol_graph_snapshot(run_dir: Path, symbols: list[Symbol], contents: dict[str, str]) -> int:
+    """Wraps write_symbol_graph_okf/write_symbol_graph_index the same way
+    write_fts wraps its own sqlite work: the symbol-graph is an advisory,
+    optional artifact (per this plan's "never blocks" constraint) and must
+    never prevent the mandatory symbol_index.json/file_catalog.json/
+    evidence_index.json from publishing. Returns 0 (no docs written) on any
+    failure instead of propagating, mirroring write_fts's degrade-to-False."""
+    try:
+        count = write_symbol_graph_okf(run_dir, symbols, contents)
+        write_symbol_graph_index(run_dir, symbols)
+        return count
+    except Exception:
+        shutil.rmtree(run_dir / "symbol-graph", ignore_errors=True)
+        return 0
+
+
 def yaml_scalar(value: str) -> str:
     """Render a string as a YAML double-quoted scalar. JSON string syntax is a
     valid YAML double-quoted scalar, so `json.dumps` gives correct escaping
@@ -494,8 +510,7 @@ def publish_snapshot(repo_root: Path, plugin_name: str, records: list[FileRecord
             "source_fingerprint": index.source_fingerprint, "evidence": [],
         }, indent=2, sort_keys=True) + "\n")
         fts_available = not no_fts and write_fts(temporary_dir / "search.sqlite", contents)
-        symbol_graph_count = write_symbol_graph_okf(temporary_dir, index.symbols, contents)
-        write_symbol_graph_index(temporary_dir, index.symbols)
+        symbol_graph_count = write_symbol_graph_snapshot(temporary_dir, index.symbols, contents)
         manifest = artifact_manifest(plugin_name, run_id, index.source_fingerprint, fts_available, temporary_dir, symbol_graph_count)
         atomic_write(temporary_dir / "artifact_manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         final_records, _ = catalog_files(repo_root)
