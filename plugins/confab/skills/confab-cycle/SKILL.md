@@ -81,6 +81,51 @@ omitting the domain — `confab-cycle-scan.js` requires all four
 input list reports "nothing to check" for itself, which is a legitimate
 green status, not an error.
 
+## Step 1a — Resolve advisory symbol-graph notes for already-known findings
+
+`confab-cycle-scan.js` computes same-file clusters and dispatches
+`confab-remediator` entirely inside its own bounded pass loop — it has no
+filesystem access and doesn't know which findings a pass will surface
+until that pass's domain workflow actually runs, so this step can only
+ever resolve advisory notes for findings the **loaded ledger already
+knows about** from a prior invocation (a finding first discovered during
+the pass about to run has no ledger entry yet to key off of — it simply
+won't get a note this invocation, which is expected, not a gap to work
+around).
+
+For each entry in the ledger loaded in Step 0 whose key starts with
+`dependency_audit::` or `contract_drift::` (the only two domains
+`confab-cycle-scan.js` clusters) and whose `status` is `open`: recover the
+file path embedded in the stableId itself — for `dependency_audit`,
+everything after the last `::` (the finding's own `manifestSource`); for
+`contract_drift`, everything after the last `::` with any trailing
+`:<line-number>` stripped (the finding's own `declaredSource`, same
+parsing `clusterKey` in `confab-cycle-scan.js` already applies). Reuse the
+`symbolIndexPath` snapshot dir already resolved for that domain while
+assembling `domainArgs` in Step 1 — do not resolve or build it a second
+time; if that domain's `symbolIndexPath` is `null` (small-repo skip),
+there is nothing to resolve for its findings.
+
+For each recovered file with a non-null `symbolIndexPath`, read
+`<symbolIndexPath>/symbol-graph/<file-slug>/_index.json` if it exists.
+For `contract_drift` (which cites a specific line via `declaredSource`),
+pick the nearest enclosing entry (the last one whose `line` is `<=` the
+finding's own line, or the closest overall if none qualifies — same rule
+`self-assess-idiom-fix` Step 1a already uses); for `dependency_audit`
+(manifest files, cited at file granularity only, and not the kind of
+source file `build_symbol_index.py` extracts symbols from in the first
+place) there is usually no index to find, which is expected. Read the
+picked entry's own `<symbolIndexPath>/symbol-graph/<file-slug>/<slug>.md`
+doc; if its "Possibly related (same file, name co-occurs)" section lists
+anything, build a short plain-text note (the other symbol's name, kind,
+and line) and set `symbolGraphSnippets[<the finding's own stableId>] =
+<that note text>`. A missing index, missing doc, or empty "Possibly
+related" section is the normal, expected case — leave that finding's
+entry absent from `symbolGraphSnippets` rather than guessing or erroring.
+
+Pass the resulting `symbolGraphSnippets` object (`{}` if nothing
+resolved) into `confab-cycle-scan.js`'s `args` in Step 2.
+
 ## Step 2 — Run the cycle
 
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
@@ -94,6 +139,7 @@ Workflow({
     mode: <cycle.mode from settings, default "propose">,
     ledger: <parsed ledger.json contents, or null if none exists>,
     domainArgs: <assembled in Step 1>,
+    symbolGraphSnippets: <resolved in Step 1a>,
     fixableDomains: <cycle.fixable_domains from settings>,
     draftDomains: <cycle.draft_domains from settings>,
     maxReopens: <cycle.max_reopens from settings, default 3>,
@@ -140,7 +186,11 @@ Create/update `<output_dir>/CONFAB_CYCLE.md`:
 - **This invocation's passes** — one entry per pass: constraint domain,
   new/reopened count, fix outcome if any (`fixed` / `still-open` /
   `blocked` / `escalated` / `drafted`, with the reason for
-  blocked/escalated or the suggestion for drafted)
+  blocked/escalated or the suggestion for drafted). When a pass batched
+  more than one same-file finding (`fixOutcome.clusterSize > 1`), list
+  every entry in `fixOutcome.clusterOutcomes` individually, not just the
+  first — a single pass can now fix/block several findings at once, and
+  none of them should be silently dropped from the report.
 - **Escalated findings** — a dedicated section for anything the thrash
   guard escalated (fix attempted `max_reopens` times without holding) —
   this is the list most worth a human's attention first

@@ -353,9 +353,9 @@ separation avoids.
 narrower. It only runs when `self-assess-idiom-fix` dispatches it, which
 only happens when the repo owner has explicitly set `idiom_fix.mode: fix`
 (default `propose` refuses outright; see `references/settings.md`), and
-only for one already-verified `code-idiom` `modernization`-category
-finding at a time — never a `smell`-category finding, and never one
-carrying a `severityNote` (code-idiom's own Verify phase already flagged
+only for already-verified `code-idiom` `modernization`-category findings
+— clustered by file and kind, one dispatch per cluster, never a
+`smell`-category finding, and never one carrying a `severityNote` (code-idiom's own Verify phase already flagged
 those as uncertain). It has no `Bash`, `Write`, `Glob`, or `Grep` — only
 `Read` and `Edit` — since every `code-idiom` finding is already an exact
 single file:line, unlike `transform-executor`'s multi-file scope. It

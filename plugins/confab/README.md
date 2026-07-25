@@ -153,9 +153,13 @@ default — configurable via `output_dir`, see **Settings** below.
   domains). In `propose` mode (default) it only recommends. In `fix` mode
   it splits three ways: domains in `cycle.fixable_domains`
   (`dependency_audit`, `contract_drift`, and `agentic_reliability`'s
-  `excessive-tool-grant` category only) get one scoped remediation per
-  pass via `confab-remediator`, then a re-verify via that domain's own
-  workflow before being marked resolved; domains in `cycle.draft_domains`
+  `excessive-tool-grant` category only) get one scoped remediation pass
+  via `confab-remediator` — findings sharing the same manifest file
+  (`dependency_audit`) or the same file *and* contract type
+  (`contract_drift`) are clustered into a single dispatch that applies
+  one fix per finding independently; `agentic_reliability` stays
+  singleton — then a re-verify via that domain's own workflow before
+  being marked resolved; domains in `cycle.draft_domains`
   (`assertion_audit` by default) get a proposed-but-never-applied
   suggestion via `assertion-auditor`'s Suggest mode instead, since a
   generated assertion has no ground truth beyond the module's current —
@@ -188,10 +192,12 @@ default — configurable via `output_dir`, see **Settings** below.
 - **`agentic-reliability-auditor`** (`color: magenta`) — scans
   skill/agent/workflow definition files for the reliability anti-pattern
   categories above; pure static `Read`/`Glob`/`Grep`, no `Bash`.
-- **`confab-remediator`** (`color: red`) — applies exactly one scoped fix
-  per invocation for an already-verified `dependency_audit`,
-  `contract_drift`, or `agentic_reliability` (`excessive-tool-grant`
-  category only) finding, then reports what changed; `Read`/`Edit` only,
+- **`confab-remediator`** (`color: red`) — applies one scoped fix per
+  already-verified finding, independently, for a batch sharing the same
+  manifest file (`dependency_audit`) or the same file *and* contract type
+  (`contract_drift`) (or a single `agentic_reliability`
+  `excessive-tool-grant` finding, always dispatched alone), then reports
+  what changed per finding; `Read`/`Edit` only,
   no `Bash`/`Glob`/`Grep`, and returns `blocked` rather than guessing when
   a fix isn't unambiguous, or when handed any `assertion_audit` finding or
   any other `agentic_reliability` category. **The only agent in this

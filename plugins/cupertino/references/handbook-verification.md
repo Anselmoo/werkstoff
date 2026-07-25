@@ -24,14 +24,15 @@ step is about to edit tracked files and asks them to commit or stash
 first, or explicitly confirm proceeding anyway — never proceed silently on
 a dirty tree.
 
-## One remediator dispatch per finding
+## One remediator dispatch per cluster
 
-`handbook-remediator` is dispatched once per eligible (`mechanical: true`)
-finding from `cupertino-handbook-check`'s sidecar, each dispatch carrying
-only that one finding's `evidence`, `title`, and `suggestedFix` — never a
-batch covering multiple findings. A `blocked` return is reported verbatim
-and the loop moves to the next finding; it is never retried with a
-broader prompt or a second-guessed fix.
+`handbook-remediator` is dispatched once per cluster of same-file,
+same-rule eligible (`mechanical: true`) findings from
+`cupertino-handbook-check`'s sidecar, with each dispatch carrying only
+that cluster's `evidence`, `title`, and `suggestedFix` entries — never a
+batch spanning more than one file or one rule. A `blocked` return for any
+location is reported verbatim and the loop moves to the next cluster; it
+is never retried with a broader prompt or a second-guessed fix.
 
 ## The blind adversarial pair — the load-bearing mechanic
 
@@ -39,7 +40,7 @@ broader prompt or a second-guessed fix.
 tribunal (Defender/Challenger/Verifier, run by a different plugin).
 `cupertino` cannot depend on `andon` being installed, so it internalizes
 the same discipline as a **self-contained pair**: immediately after
-`handbook-remediator` applies a fix — before moving to the next finding —
+`handbook-remediator` applies a fix — before moving to the next cluster —
 `cupertino-handbook-fix` dispatches `handbook-verifier`, a fresh agent
 with no memory of the fix that was just applied.
 

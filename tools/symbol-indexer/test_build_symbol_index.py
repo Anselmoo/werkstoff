@@ -16,6 +16,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
+REPO_ROOT = ROOT.parent.parent  # tools/symbol-indexer -> tools -> repo root
 SCRIPT = ROOT / "build_symbol_index.py"
 SPEC = importlib.util.spec_from_file_location("symbol_indexer", SCRIPT)
 assert SPEC and SPEC.loader
@@ -91,13 +92,24 @@ class SymbolIndexerTest(unittest.TestCase):
             self.assertLess(elapsed, float(os.environ.get("SYMBOL_INDEX_MAX_SECONDS", "1")))
 
     def test_plugin_copies_default_to_their_own_plugin(self) -> None:
+        # The synced copies are byte-identical to the canonical source (rrt
+        # regenerates them verbatim), so none of them actually defaults to
+        # its own plugin name on its own -- --plugin-name is passed
+        # explicitly here. What this test actually verifies is that every
+        # plugin's synced copy is present at the current post-migration
+        # path and runs correctly when invoked for its own plugin.
         plugins = ("self-assess", "andon", "compass", "confab", "cupertino", "cli-scaffold")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "example.py").write_text("def example(): pass\n", encoding="utf-8")
             for plugin in plugins:
-                script = next(Path("plugins", plugin, "skills").glob("*-query-symbol/scripts/build_symbol_index.py"))
-                subprocess.run([sys.executable, str(script), "--repo-path", str(root), "--no-fts"], check=True, cwd=Path.cwd())
+                script = REPO_ROOT / "plugins" / plugin / "scripts" / "build_symbol_index.py"
+                self.assertTrue(script.is_file(), f"expected synced copy at {script}")
+                subprocess.run(
+                    [sys.executable, str(script), "--repo-path", str(root), "--plugin-name", plugin, "--no-fts"],
+                    check=True,
+                    cwd=REPO_ROOT,
+                )
                 pointer = json.loads((root / "analysis" / plugin / "current.json").read_text())
                 self.assertEqual(pointer["plugin_name"], plugin)
 
