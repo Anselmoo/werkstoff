@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
+# -e deliberately omitted: the loop below must keep checking every plugin
+# even after one fails, rather than aborting on the first non-zero exit.
 
 fail=0
 
