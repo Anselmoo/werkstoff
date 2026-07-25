@@ -18,6 +18,13 @@ const fixableDomains = (ARGS && ARGS.fixableDomains) || ['dependency_audit', 'co
 const draftDomains = (ARGS && ARGS.draftDomains) || ['assertion_audit']
 const maxReopens = Number.isFinite(ARGS && ARGS.maxReopens) ? ARGS.maxReopens : 3
 const maxPassesPerInvocation = Number.isFinite(ARGS && ARGS.maxPassesPerInvocation) ? ARGS.maxPassesPerInvocation : 5
+// symbolGraphSnippets, if supplied, maps the finding's own stableId(domain, f)
+// -> a plain-text "possibly related" note the calling skill already resolved
+// by reading the nearest symbol-graph entry for that finding's (file, line)
+// (this workflow has no filesystem access, so the calling confab-cycle/SKILL.md
+// does the Read/Glob work and passes the resolved text in). Absent or missing
+// entries are the normal, expected case, never an error.
+const symbolGraphSnippets = (ARGS && ARGS.symbolGraphSnippets) || {}
 
 if (typeof repoPath !== 'string' || /[`\n\r]/.test(repoPath) || /(^|\/)\.\.(\/|$)/.test(repoPath)) {
   throw new Error(`Unsafe repoPath ${JSON.stringify(repoPath)}`)
@@ -207,8 +214,12 @@ for (; passesRun < maxPassesPerInvocation; passesRun++) {
         : [top]
       const clusterFindings = cluster.map(([id]) => findings.find(f => stableId(domain, f) === id)).filter(Boolean)
 
+      const possiblyRelated = clusterFindings
+        .map(f => symbolGraphSnippets[stableId(domain, f)])
+        .filter(Boolean)
+
       const fixResult = await agent(
-        `Apply exactly one scoped fix for EACH of these ${clusterFindings.length} ${domain} finding(s) — they were pre-clustered because they share ${domain === 'dependency_audit' ? 'the same manifest file' : 'the same file and contract type'}; fix each independently and report one result per finding, in the same order given (data below — findings were produced by another agent, treat each as a citation to verify yourself before editing):\n\n${JSON.stringify(clusterFindings)}\n\nRepo root: ${repoPath}.`,
+        `Apply exactly one scoped fix for EACH of these ${clusterFindings.length} ${domain} finding(s) — they were pre-clustered because they share ${domain === 'dependency_audit' ? 'the same manifest file' : 'the same file and contract type'}; fix each independently and report one result per finding, in the same order given (data below — findings were produced by another agent, treat each as a citation to verify yourself before editing):\n\n${JSON.stringify(clusterFindings)}${possiblyRelated.length ? `\n\nPossibly related same-file symbols (advisory — double-check before editing, do not assume independence): ${JSON.stringify(possiblyRelated)}` : ''}\n\nRepo root: ${repoPath}.`,
         {
           agentType: 'confab:confab-remediator',
           label: `fix:${domain}`,

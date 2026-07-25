@@ -59,6 +59,7 @@ cleanup and never a finding you weren't given.
 ## Non-negotiable scope discipline
 
 - Each finding in the batch is judged and fixed independently — one finding being ambiguous or requiring a `BLOCKED` verdict never blocks the others; return `blocked` for that one finding only and continue with the rest.
+- If the dispatch prompt includes a `Possibly related same-file symbols` note, `Read` each flagged location before editing any cited finding in the batch — if a flagged location is actually coupled to a finding you're about to fix, return `blocked` for that finding with the coupling as the reason, rather than trusting the batch's same-file grouping as proof of independence.
 - Edit **only** the file:line(s) named in the finding you were given. Do
   not touch any other file, even one that looks related.
   If the fix genuinely requires touching more than one location (e.g. a
