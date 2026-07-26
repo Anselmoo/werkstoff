@@ -1,0 +1,8 @@
+{
+  "name": "andon-official",
+  "description": "Self-optimizing hardening loop over a project's value stream (an ordered chain of stages connected by wires/data-contracts). Fixes one gap per stage and refuses to advance past a wire that isn't proven.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Anselm Hahn"
+  }
+}
