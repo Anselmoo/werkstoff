@@ -57,6 +57,12 @@ while IFS=$'\t' read -r id plugin fixture prompt artifact regex; do
   ran=$((ran + 1))
   tmp="$(mktemp -d)"
   cp -R "$REPO_ROOT/$fixture/." "$tmp/"
+  # A fixture dir IS the target repo the plugin reads, so any file in it
+  # describing the seeded defect is an answer key handed straight to the
+  # subject under test — it will cite it and "pass" without detecting
+  # anything. Keep that documentation in _EXPECTED.md and strip it from the
+  # copy, so the plugin has to find the defect from the code/ledger alone.
+  rm -f "$tmp/_EXPECTED.md"
   echo "── [$id] plugin=$plugin  fixture=$fixture"
   ( cd "$tmp" && "$CLAUDE_BIN" --plugin-dir "$REPO_ROOT/$plugin" --print "$prompt" $CLAUDE_PERM_FLAGS ) \
     >"$tmp/.stdout" 2>"$tmp/.stderr"
