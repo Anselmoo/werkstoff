@@ -54,16 +54,19 @@ The workflow script has no filesystem access, so gather every domain's
 `args` object yourself, exactly as that domain's own skill already does in
 its own Step 0/Step 1 — do not reinvent the enumeration logic, reuse it:
 
-- `dependency_audit`: Glob for manifest files per
-  `confab-dependency-audit/SKILL.md` Step 0 (`package.json` → npm,
-  `requirements.txt`/`pyproject.toml` → pip, `Cargo.toml` → cargo,
-  `go.mod` → go, `Gemfile` → gem), build `manifestFiles: [{path, type}]`.
+- `dependency_audit`: use the **Glob tool** (not Bash `find`/`ls`) for
+  manifest files per `confab-dependency-audit/SKILL.md` Step 0
+  (`package.json` → npm, `requirements.txt`/`pyproject.toml` → pip,
+  `Cargo.toml` → cargo, `go.mod` → go, `Gemfile` → gem), build
+  `manifestFiles: [{path, type}]`.
 - `assertion_audit`: enumerate `targetFiles`/`testFiles` per
   `confab-assertion-audit/SKILL.md` Step 0/1 (honor a user-named target;
   otherwise prefer recently-changed files over a full-repo sweep) and
   check `<output_dir>/preflight_summary.json` for a `mutationTool` to pass.
-- `contract_drift`: Glob for contract sources (typed source files, schema
-  files) and load house rules per `confab-contract-drift/SKILL.md` Step 0.
+- `contract_drift`: gather contract sources (typed source files, schema
+  files) and load house rules the same way `confab-contract-drift/SKILL.md`
+  Step 0 does (symbol-index snapshot's `file_catalog.json` first, the
+  **Glob tool** only if no snapshot is available).
 - `agentic_reliability`: enumerate `skillFiles`/`agentFiles`/`workflowFiles`
   (`**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js`) per
   `confab-agentic-reliability/SKILL.md` Step 0.

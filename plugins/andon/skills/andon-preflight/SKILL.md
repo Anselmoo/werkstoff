@@ -44,8 +44,8 @@ Determine how legible this repo's stream is, cheapest signal first:
    `self-assess:stage-mapper` agent resolve), note that `andon-loop`'s
    own Phase 0 will dispatch `self-assess:stage-mapper` directly for
    real topology detection — full confidence available.
-2. If not installed, do a cheap heuristic pass yourself: glob for common
-   multi-package manifests (`package.json` workspaces, a Cargo
+2. If not installed, do a cheap heuristic pass yourself: use the **Glob
+   tool** (not Bash `find`/`ls`) for common multi-package manifests (`package.json` workspaces, a Cargo
    workspace, multiple `pyproject.toml`/`go.mod` files, a monorepo-shaped
    directory layout). Report a rough stage count estimate and flag this
    as **reduced confidence** — `andon-loop` will fall back to the same

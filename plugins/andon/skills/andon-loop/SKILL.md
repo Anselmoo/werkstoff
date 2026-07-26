@@ -62,9 +62,10 @@ the stream's stages and wires:
    `self-assess-backed`.
 2. **Fallback — built-in minimal heuristic.** If `self-assess` is not
    installed (or its agent doesn't resolve), degrade gracefully — never
-   hard-fail: glob for common multi-package manifest shapes (a
-   `package.json` with `workspaces`, a Cargo workspace `Cargo.toml`, a
-   directory with multiple `pyproject.toml`/`go.mod` files) and cluster
+   hard-fail: use the **Glob tool** (not Bash `find`/`ls`) for common
+   multi-package manifest shapes (a `package.json` with `workspaces`, a
+   Cargo workspace `Cargo.toml`, a directory with multiple
+   `pyproject.toml`/`go.mod` files) and cluster
    by the shallowest directory containing each manifest. This is
    deliberately coarser than `stage-mapper`'s package-boundary rule (it
    will not catch the two-packages-one-manifest case `self-assess` exists

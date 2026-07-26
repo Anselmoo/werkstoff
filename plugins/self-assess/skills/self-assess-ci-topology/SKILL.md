@@ -21,12 +21,27 @@ The workflow script has no filesystem access, so gather everything first:
 git remote -v
 ```
 
-Glob for CI config files: `.github/workflows/*`, `.gitlab-ci.yml`,
-`.circleci/config.yml`, `azure-pipelines.yml`, `bitbucket-pipelines.yml`,
-and any `scripts/*mirror*`/`scripts/*publish*`/`scripts/*sync*` files.
-Glob for doc files the same way `self-assess-docs-drift` does
-(`CLAUDE.md`, `README.md`, etc.) — you only need these to check CI-related
-claims specifically, not full claim extraction.
+Use the **Glob tool** (never Bash `find`/`ls`) to find CI config files:
+`.github/workflows/*`, `.circleci/config.yml`, `.gitlab-ci.yml`,
+`azure-pipelines.yml`, `bitbucket-pipelines.yml`, and any
+`scripts/*mirror*`/`scripts/*publish*`/`scripts/*sync*` files. This one
+has to be a real Glob call regardless of the symbol-index snapshot below —
+`.github/` and `.circleci/` are dot-prefixed directories, and the
+indexer's file walk explicitly skips those, so `file_catalog.json` will
+never contain their contents even when fresh.
+
+Gather doc files the same way `self-assess-docs-drift` does. Resolve or
+build the shared symbol-index snapshot now — Step 1 needs it anyway, so
+doing it here avoids a second walk. Read `analysis/self-assess/current.json`;
+if missing or its `source_fingerprint` no longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
+(single-flight lock makes concurrent callers safe). For a repo well under
+~50 tracked files the build overhead may not be worth it — skip the build
+and pass `symbolIndexPath: null`. If a snapshot is available, query its
+`file_catalog.json` for `role: "doc"` entries plus exact-name matches
+(`CLAUDE.md`, `README.md`, etc.) instead of a second Glob sweep — you only
+need these to check CI-related claims specifically, not full claim
+extraction. Otherwise, use the Glob tool for the same patterns.
 
 Read `.claude/house-rules.md` (or the path named by `house_rules_path` in
 the settings file) if it exists (pass `null` if absent). If the repo is
@@ -51,15 +66,9 @@ omit or pass `""` if not under git or history is empty).
 ## Step 1 — Run the scan
 
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/self-assess/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+available in this session (this skill invocation is your authorization),
+reuse the snapshot resolved in Step 0 (`symbolIndexPath`) — do not resolve
+or build it again here:
 
 ```
 Workflow({

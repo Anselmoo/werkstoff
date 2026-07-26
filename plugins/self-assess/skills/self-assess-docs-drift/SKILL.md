@@ -15,9 +15,24 @@ Read `.claude/self-assess.local.md` if it exists (see
 `output_dir` (default `analysis/self-assess`) and `skip_verification`
 (default `false`).
 
-Glob for doc files at the repo root and shallow subdirectories:
-`CLAUDE.md`, `README.md`, `DECISIONS.md`, `ARCHITECTURE.md`, and any
-`docs/adr/*`/`ADR-*.md`/`adr/*` files. Build the `docFiles` list from what
+Resolve or build the shared symbol-index snapshot now (per
+`references/parallel-safe-research-protocol.md`) — Step 1 needs it anyway
+for the code-verification dispatch, so doing it here avoids a second
+filesystem walk. Read `analysis/self-assess/current.json`; if missing or
+its `source_fingerprint` no longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
+(single-flight lock makes concurrent callers safe). For a repo well under
+~50 tracked files the build overhead may not be worth it — skip the build
+and pass `symbolIndexPath: null`, using the **Glob tool** below instead.
+
+If a snapshot is available, query its `file_catalog.json` for `role:
+"doc"` entries plus exact-name matches (`CLAUDE.md`, `README.md`,
+`DECISIONS.md`, `ARCHITECTURE.md`, `ADR-*.md`, `docs/adr/*`, `adr/*`) to
+build `docFiles` — no new filesystem scan needed. Otherwise (no snapshot
+built), use the **Glob tool** (never a Bash `find`/`ls` chain — a missing
+directory fails an `&&`-joined shell chain partway through and silently
+drops whatever comes after it) for the same patterns at the repo root and
+shallow subdirectories. Either way, build the `docFiles` list from what
 actually exists — do not assume all of these are present.
 
 Read `.claude/house-rules.md` (or the path named by `house_rules_path` in
@@ -26,15 +41,9 @@ the settings file) if it exists (pass `null` if absent).
 ## Step 1 — Run the scan
 
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/self-assess/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+available in this session (this skill invocation is your authorization),
+reuse the snapshot resolved in Step 0 (`symbolIndexPath`) — do not
+resolve or build it again here:
 
 ```
 Workflow({

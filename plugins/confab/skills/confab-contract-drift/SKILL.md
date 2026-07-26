@@ -18,12 +18,26 @@ Read `.claude/confab.local.md` if it exists (see
 and say so. Note `output_dir` (default `analysis/confab`) and
 `skip_verification` (default `false`).
 
-Glob for likely contract sources based on what the repo actually contains —
-do not assume all of these are present:
+Resolve or build the shared symbol-index snapshot now (per
+`references/parallel-safe-research-protocol.md`) — Step 1 needs it anyway,
+so doing it here avoids a second filesystem walk. Read
+`analysis/confab/current.json`; if missing or its `source_fingerprint` no
+longer matches, run `python3
+"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name confab`
+(single-flight lock makes concurrent callers safe). For a repo well under
+~50 tracked files the build overhead may not be worth it — skip the build
+and pass `symbolIndexPath: null`, using the **Glob tool** below instead.
+
+If a snapshot is available, query its `file_catalog.json` for likely
+contract sources instead of a fresh scan — no new filesystem walk needed:
 - Typed source files (`*.py` with type hints, `*.ts`/`*.tsx`, `*.go`,
   `*.rs`, `*.java`) where function/method signatures live.
 - Schema files: `openapi.yaml`/`openapi.json`, `swagger.yaml`,
   `**/*.graphql`/`schema.graphql`, `**/*.proto`.
+
+Otherwise (no snapshot built), use the **Glob tool** (never Bash
+`find`/`ls`) for the same patterns based on what the repo actually
+contains — do not assume all of these are present.
 
 If the user named a specific module or file, scope `contractSources` to
 that instead of scanning the whole repo. Build `contractSources` from what
@@ -35,15 +49,9 @@ the settings file) if it exists (pass `null` if absent).
 ## Step 1 — Run the scan
 
 **Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/confab/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name confab`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+available in this session (this skill invocation is your authorization),
+reuse the snapshot resolved in Step 0 (`symbolIndexPath`) — do not resolve
+or build it again here:
 
 ```
 Workflow({
