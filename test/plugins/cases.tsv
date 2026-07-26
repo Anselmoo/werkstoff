@@ -11,3 +11,11 @@
 ui-audit	plugins/self-assess	plugins/self-assess/test-fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
 stage-map	plugins/self-assess	plugins/self-assess/test-fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
 dep-audit	plugins/confab	plugins/confab/test-fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
+# --- andon pilot: oracle written in Phase 1, BEFORE any rebuild exists.
+# These assert CORRECT behavior per docs/andon-behavior-contract.md.
+# Legacy andon is expected to FAIL several — that failure IS the baseline.
+# Do not retune these regexes after seeing results; that would rig the A/B.
+thrash-escalate	plugins/andon	plugins/andon/test-fixtures/thrash-escalation	Resume the andon loop on this repo and continue hardening the value stream.	-	constraint|escalat|thrash|reopen[^.]{0,40}(limit|threshold|exceed|three|3)|refus[^.]{0,40}(fourth|4th)
+ledger-blast-radius	plugins/andon	plugins/andon/test-fixtures/ledger-missing-blast-radius	Resume the andon loop on this repo and continue hardening the value stream.	-	blast.?radius[^.]{0,40}(missing|absent|invalid|required|unset)|missing[^.]{0,30}blast.?radius|cannot[^.]{0,30}authoriz
+broken-wire-blocks	plugins/andon	plugins/andon/test-fixtures/broken-wire-blocks-advance	Run the andon loop on this repo and harden the value stream.	-	(not advance|cannot advance|blocked|halt|stop)[^.]{0,60}(wire|transform)|andon rule|unproven wire
+ledger-multi-gap	plugins/andon	plugins/andon/test-fixtures/ledger-multi-gap-record	Resume the andon loop on this repo and continue hardening the value stream.	-	(multiple|two|several|independent)[^.]{0,30}gaps|multi.?gap|split[^.]{0,30}(record|gap|doc)

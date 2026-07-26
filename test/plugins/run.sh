@@ -18,7 +18,9 @@
 #   test/plugins/run.sh ui-audit     # run one case by id
 # Env:
 #   CLAUDE_BIN        (default: claude)          the CLI to invoke
-#   CLAUDE_PERM_FLAGS (default: --permission-mode bypassPermissions)
+#   CLAUDE_PERM_FLAGS (default: --permission-mode bypassPermissions, or
+#                      --permission-mode acceptEdits when running as root,
+#                      where the CLI rejects bypassPermissions outright)
 #   VERBOSE=1         print the first 40 lines of a failed target
 #   KEEP_TMP=1        keep temp dirs for debugging instead of removing them
 #
@@ -29,7 +31,17 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "$HERE" rev-parse --show-toplevel)"
 CASES="$HERE/cases.tsv"
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
-CLAUDE_PERM_FLAGS="${CLAUDE_PERM_FLAGS:---permission-mode bypassPermissions}"
+# bypassPermissions maps to --dangerously-skip-permissions, which the CLI
+# refuses outright under root/sudo — so the old unconditional default made
+# every case die with an empty stdout and rc=1, which reads as a plugin
+# failure rather than a harness failure. Fall back to acceptEdits when root;
+# each case already runs in a throwaway temp cwd, so the sandboxing that
+# bypassPermissions trades away is not what is containing the run.
+if [[ "${EUID:-$(id -u)}" -eq 0 ]]; then
+  CLAUDE_PERM_FLAGS="${CLAUDE_PERM_FLAGS:---permission-mode acceptEdits}"
+else
+  CLAUDE_PERM_FLAGS="${CLAUDE_PERM_FLAGS:---permission-mode bypassPermissions}"
+fi
 FILTER="${1:-}"
 
 if ! command -v "$CLAUDE_BIN" >/dev/null 2>&1; then
