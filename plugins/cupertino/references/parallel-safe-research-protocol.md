@@ -52,6 +52,19 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --pl
 Skip the build if `current.json`'s `source_fingerprint` already matches — the
 snapshot is still valid.
 
+The build prints a progress heartbeat to stderr (`[<plugin-name>] cataloging
+files: N/total`, then `extracting symbols: N/total`) so a caller watching a
+long build on a large repo can tell it's still working, not hung.
+
+## Run history
+
+Every `build_or_reuse` call — build or reuse alike — appends one line to
+`analysis/<plugin-name>/runs.ndjson`: `{generation_id, source_fingerprint,
+plugin_name, timestamp, file_count, duration_ms, reused}`. It's plain
+append-only NDJSON, not a new index to query through a tool — grep it
+directly for a prior `source_fingerprint` before assuming a rebuild is
+needed, or to see how long past builds took on this repo.
+
 ## Scale guidance
 
 For a repository well under roughly 50 tracked files, the index-build's own
