@@ -36,8 +36,12 @@ right once here doesn't exempt them from checking it too.
 
 ## Check 1 — Detect dependency manifests
 
-Glob the repo for the manifest types `confab-dependency-audit` knows how
-to parse. This is a deliberately narrower table than
+Use the **Glob tool** (never Bash `find`/`ls`) for the manifest types
+`confab-dependency-audit` knows how to parse. This genuinely needs a real
+Glob call, not a symbol-index snapshot lookup — `requirements*.txt`,
+`go.mod`, and `Gemfile` have no extension the indexer's `LANG_EXTENSIONS`
+map recognizes, so they'd be silently absent from `file_catalog.json` even
+on a fresh snapshot. This is a deliberately narrower table than
 `self-assess/references/language-support.md`'s 20-language sweep — it
 covers only the ecosystems that have a real, network-checkable public
 package registry, since that is the one thing this check exists to feed:
@@ -50,7 +54,7 @@ package registry, since that is the one thing this check exists to feed:
 | `go.mod` | Go | proxy.golang.org |
 | `Gemfile` | Ruby (RubyGems) | rubygems.org |
 
-Glob for each pattern from the repo root down (do not stop at the first
+Use the Glob tool for each pattern from the repo root down (do not stop at the first
 match — a monorepo can have several manifests of the same type in
 different packages; count them all). If `dependency_audit.registries` is
 set (non-empty) in the settings file, treat it as an explicit override of
@@ -115,10 +119,16 @@ files) to compare against call sites — it has no network or tool
 dependency, so this check is a presence check, not a tooling check.
 Reuse the manifest detection from Check 1 as a proxy for "source code is
 present" (a repo with at least one dependency manifest almost always has
-source files); additionally glob for common schema file shapes
+source files); additionally check for common schema file shapes
 (`*.proto`, `openapi.y*ml`, `swagger.y*ml`, `schema.graphql`) since those
-can exist without any of Check 1's manifests (e.g. a schema-only repo).
-Report whether any source or schema evidence was found at all.
+can exist without any of Check 1's manifests (e.g. a schema-only repo). If
+a fresh symbol-index snapshot already exists from a prior run this session
+(`analysis/confab/current.json`), query its `file_catalog.json` instead of
+re-globbing — these are all recognized extensions the indexer tracks. This
+check never builds a snapshot itself (it's meant to stay a cheap readiness
+check); use the **Glob tool** (never Bash `find`/`ls`) when no snapshot is
+already available. Report whether any source or schema evidence was found
+at all.
 
 ## Check 5 — Agentic-reliability self-scan readiness
 
@@ -126,8 +136,10 @@ Report whether any source or schema evidence was found at all.
 `**/agents/*.md`, and `**/workflows/*.js` in the target repo (this
 plugin repo included, when run against `werkstoff` itself, where these
 live per-plugin under `plugins/<name>/` rather than at the repo root).
-Glob for those three recursive patterns and report counts found — zero
-of all three means there is nothing for that skill to scan.
+Same rule as Check 4: query an existing `file_catalog.json` if one's
+already fresh, otherwise use the **Glob tool** for those three recursive
+patterns, and report counts found — zero of all three means there is
+nothing for that skill to scan.
 
 ## Report
 

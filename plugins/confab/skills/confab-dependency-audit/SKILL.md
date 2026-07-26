@@ -20,7 +20,11 @@ and say so. Note `output_dir` (default `analysis/confab`),
 detected language) and `dependency_audit.timeout_seconds` (default `10`).
 
 The workflow script has no filesystem access, so gather everything first.
-Glob for manifest files and map each to its type:
+Use the **Glob tool** (never Bash `find`/`ls`) for manifest files and map
+each to its type — this genuinely needs a real Glob call: `go.mod` and
+`Gemfile` have no extension the symbol-index snapshot's `LANG_EXTENSIONS`
+map recognizes, so most of this table would be silently absent from
+`file_catalog.json` even on a fresh snapshot:
 
 | Glob | Type |
 |---|---|

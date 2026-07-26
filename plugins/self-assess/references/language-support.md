@@ -59,16 +59,26 @@ Both `self-assess-preflight` Check 1 and `self-assess-stage-map` Step 0
 run this identically:
 
 1. **Manifest-based.** For each language above (and any other recognizable
-   ecosystem manifest not listed — this table is illustrative), glob for
-   its manifest pattern(s). Any match adds that language to `languages`.
-2. **Extension-frequency fallback**, for manifest-less stacks. Glob by
-   file extension across the repo. Any extension with **≥3 files** whose
-   language was **not already added in pass 1** still adds that language
-   — this is what makes Shell, and any other language without a
-   conventional manifest, actually detectable. Don't skip this pass:
-   skipping it is the exact gap a real-repo test found (a repo with real
-   Go code and 4 shell scripts detected zero languages under the old,
-   manifest-only, three-language-hardcoded version of this check).
+   ecosystem manifest not listed — this table is illustrative), use the
+   **Glob tool** (never Bash `find`/`ls`) for its manifest pattern(s). Any
+   match adds that language to `languages`. This has to be a real Glob
+   call, not a symbol-index snapshot lookup: manifests with no recognized
+   extension (`go.mod`, `Gemfile`, `cpanfile`, `DESCRIPTION`, `*.rockspec`)
+   are silently absent from `file_catalog.json` even on a fresh snapshot,
+   since `build_symbol_index.py` only tracks files whose extension is in
+   its own `LANG_EXTENSIONS` map.
+2. **Extension-frequency fallback**, for manifest-less stacks — this is
+   exactly the per-file `language` tally `build_symbol_index.py` already
+   computes into `file_catalog.json`. If a fresh symbol-index snapshot
+   already exists this session, read that instead of a fresh sweep;
+   otherwise use the Glob tool by file extension across the repo. Any
+   extension with **≥3 files** whose language was **not already added in
+   pass 1** still adds that language — this is what makes Shell, and any
+   other language without a conventional manifest, actually detectable.
+   Don't skip this pass: skipping it is the exact gap a real-repo test
+   found (a repo with real Go code and 4 shell scripts detected zero
+   languages under the old, manifest-only, three-language-hardcoded
+   version of this check).
 
 ## Deprecated-idiom / smell catalog (`self-assess-code-idiom`)
 

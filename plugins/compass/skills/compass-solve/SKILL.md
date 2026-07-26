@@ -145,11 +145,14 @@ asks for the hybrid instead.
 
 ## Step 3-5 — Decompose, Execute, Revise
 
-Before this call, glob `${CLAUDE_PLUGIN_ROOT}/skills/compass-*/SKILL.md` to get
-the actual list of skill ids present on disk (each matched directory name is
-an id). `solve-orchestrate.js` has no filesystem access and cannot confirm
-its own hardcoded `MODE_SKILLS`/`OPTIONAL_MODE_SKILLS` ids still have a
-matching skill (see that file's "RENAME CHECKLIST" comment) — this glob,
+Before this call, use the **Glob tool** (never Bash `find`/`ls`) on
+`${CLAUDE_PLUGIN_ROOT}/skills/compass-*/SKILL.md` to get the actual list of
+skill ids present on disk (each matched directory name is an id). This is
+the plugin's own installed skill files, not the target repo being
+analyzed — unrelated to any per-repo symbol-index snapshot.
+`solve-orchestrate.js` has no filesystem access and cannot confirm its own
+hardcoded `MODE_SKILLS`/`OPTIONAL_MODE_SKILLS` ids still have a matching
+skill (see that file's "RENAME CHECKLIST" comment) — this Glob-tool check,
 passed in as `verifiedSkillIds`, is the verification layer that comment
 calls for.
 

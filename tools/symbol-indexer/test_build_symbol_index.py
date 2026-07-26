@@ -56,6 +56,27 @@ class SymbolIndexerTest(unittest.TestCase):
         self.assertTrue(reused_again)
         self.assertEqual(pointer_again["generation_id"], pointer["generation_id"])
 
+    def test_runs_ndjson_records_each_build_and_reuse(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        pointer, reused = INDEXER.build_or_reuse(root, "fixture", False)
+        self.assertFalse(reused)
+        pointer_again, reused_again = INDEXER.build_or_reuse(root, "fixture", False)
+        self.assertTrue(reused_again)
+        log_path = root / "analysis" / "fixture" / "runs.ndjson"
+        lines = log_path.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(lines), 2, "one line per build_or_reuse call, build and reuse alike")
+        built_entry, reused_entry = (json.loads(line) for line in lines)
+        self.assertFalse(built_entry["reused"])
+        self.assertEqual(built_entry["generation_id"], pointer["generation_id"])
+        self.assertEqual(built_entry["plugin_name"], "fixture")
+        self.assertGreaterEqual(built_entry["file_count"], 1)
+        self.assertGreaterEqual(built_entry["duration_ms"], 0)
+        self.assertTrue(reused_entry["reused"])
+        self.assertEqual(reused_entry["generation_id"], pointer_again["generation_id"])
+        self.assertEqual(built_entry["source_fingerprint"], reused_entry["source_fingerprint"])
+
     def test_concurrent_builders_publish_one_valid_generation(self) -> None:
         temporary = self.make_repo()
         self.addCleanup(temporary.cleanup)

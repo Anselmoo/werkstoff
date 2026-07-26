@@ -36,11 +36,22 @@ Read `${CLAUDE_PLUGIN_ROOT}/references/language-support.md` — it is the
 Step 0 reads the same file rather than maintaining a second list; do not
 hand-roll your own manifest list here). Run its two-pass algorithm:
 
-1. **Manifest-based.** Glob for the manifest pattern(s) in the reference's
-   table (20 common languages covered explicitly; any other recognizable
-   ecosystem manifest counts too — the table is illustrative, not
-   exhaustive).
-2. **Extension-frequency fallback, for manifest-less stacks.** Glob by file
+1. **Manifest-based.** Use the **Glob tool** (never Bash `find`/`ls`) for
+   the manifest pattern(s) in the reference's table (20 common languages
+   covered explicitly; any other recognizable ecosystem manifest counts
+   too — the table is illustrative, not exhaustive). This has to be a real
+   Glob call, not a symbol-index snapshot lookup: several of these
+   manifests (`go.mod`, `Gemfile`, `cpanfile`, `DESCRIPTION`, `*.rockspec`)
+   have no extension the indexer's `LANG_EXTENSIONS` map recognizes, so
+   they'd be silently missing from `file_catalog.json` even on a fresh
+   snapshot.
+2. **Extension-frequency fallback, for manifest-less stacks.** This pass
+   just tallies files per extension — exactly what `build_symbol_index.py`
+   already computes into each `file_catalog.json` record's `language`
+   field. If a fresh symbol-index snapshot already exists this session
+   (`analysis/self-assess/current.json`), read it and tally that instead
+   of a fresh sweep — this check doesn't build one itself, since preflight
+   is meant to stay cheap. Otherwise use the **Glob tool** by file
    extension and count files per extension. Any extension with at least 3
    files and no owning manifest already detected in pass 1 is still a
    detected language (this is what makes Shell — and anything else with no

@@ -130,6 +130,27 @@ def read_json(path: Path) -> dict[str, Any] | None:
         return None
 
 
+def report_progress(plugin_name: str, phase: str, current: int, total: int, *, every: int = 200) -> None:
+    """Heartbeat to stderr so a caller watching a long build (large repos can
+    take minutes) can tell "still scanning" from "hung" -- the only feedback
+    this script gave before was a single summary line printed after the
+    entire build finished. Throttled to every Nth file plus the final one;
+    never blocks on total==0 (an empty phase has nothing to report)."""
+    if total <= 0:
+        return
+    if current % every != 0 and current != total:
+        return
+    print(f"[{plugin_name}] {phase}: {current}/{total}", file=sys.stderr, flush=True)
+
+
+def append_ndjson(path: Path, record: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(record, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
 def role_for(path: Path) -> str:
     parts = {part.lower() for part in path.parts}
     name = path.name.lower()
@@ -155,10 +176,12 @@ def iter_source_files(repo_root: Path) -> list[Path]:
     return sorted(files)
 
 
-def catalog_files(repo_root: Path) -> tuple[list[FileRecord], dict[str, str]]:
+def catalog_files(repo_root: Path, plugin_name: str = "", *, show_progress: bool = False) -> tuple[list[FileRecord], dict[str, str]]:
     records: list[FileRecord] = []
     contents: dict[str, str] = {}
-    for path in iter_source_files(repo_root):
+    paths = iter_source_files(repo_root)
+    total = len(paths)
+    for count, path in enumerate(paths, start=1):
         relative = path.relative_to(repo_root).as_posix()
         try:
             raw = path.read_bytes()
@@ -176,6 +199,8 @@ def catalog_files(repo_root: Path) -> tuple[list[FileRecord], dict[str, str]]:
         ))
         if len(raw) <= TEXT_LIMIT_BYTES:
             contents[relative] = raw.decode("utf-8", errors="ignore")
+        if show_progress:
+            report_progress(plugin_name, "cataloging files", count, total)
     return records, contents
 
 
@@ -263,9 +288,10 @@ def scan_generic_file(path: Path, repo_root: Path, content: str, language: str) 
     return symbols
 
 
-def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], contents: dict[str, str], generation_id: str) -> SymbolIndex:
+def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], contents: dict[str, str], generation_id: str, *, show_progress: bool = False) -> SymbolIndex:
     symbols: list[Symbol] = []
-    for record in records:
+    total = len(records)
+    for count, record in enumerate(records, start=1):
         path = repo_root / record.file
         content = contents.get(record.file)
         if content is None:
@@ -274,6 +300,8 @@ def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], co
             symbols.extend(scan_python_file(path, repo_root, content))
         else:
             symbols.extend(scan_generic_file(path, repo_root, content, record.language))
+        if show_progress:
+            report_progress(plugin_name, "extracting symbols", count, total)
     unique = {(symbol.name, symbol.file, symbol.line): symbol for symbol in symbols}
     return SymbolIndex(
         plugin_name=plugin_name,
@@ -492,14 +520,14 @@ def current_snapshot(cache_root: Path, plugin_name: str) -> dict[str, Any] | Non
     return pointer
 
 
-def publish_snapshot(repo_root: Path, plugin_name: str, records: list[FileRecord], contents: dict[str, str], no_fts: bool) -> dict[str, Any]:
+def publish_snapshot(repo_root: Path, plugin_name: str, records: list[FileRecord], contents: dict[str, str], no_fts: bool, *, show_progress: bool = False) -> dict[str, Any]:
     cache_root = repo_root / "analysis" / plugin_name
     runs_dir = cache_root / "runs"
     runs_dir.mkdir(parents=True, exist_ok=True)
     run_id = str(uuid.uuid4())
     temporary_dir = Path(tempfile.mkdtemp(prefix=".building-", dir=runs_dir))
     try:
-        index = build_index(repo_root, plugin_name, records, contents, run_id)
+        index = build_index(repo_root, plugin_name, records, contents, run_id, show_progress=show_progress)
         atomic_write(temporary_dir / "symbol_index.json", index.to_json())
         atomic_write(temporary_dir / "file_catalog.json", json.dumps({
             "version": SCHEMA_VERSION, "plugin_name": plugin_name, "generation_id": run_id,
@@ -537,14 +565,26 @@ def publish_snapshot(repo_root: Path, plugin_name: str, records: list[FileRecord
 def build_or_reuse(repo_root: Path, plugin_name: str, no_fts: bool) -> tuple[dict[str, Any], bool]:
     cache_root = repo_root / "analysis" / plugin_name
     cache_root.mkdir(parents=True, exist_ok=True)
+    started = time.monotonic()
     with BuildLock(cache_root / ".symbol-index.lock"):
-        records, contents = catalog_files(repo_root)
+        records, contents = catalog_files(repo_root, plugin_name, show_progress=True)
         source_fingerprint = fingerprint(records)
         current = current_snapshot(cache_root, plugin_name)
-        if current and current.get("source_fingerprint") == source_fingerprint:
-            return current, True
-        pointer = publish_snapshot(repo_root, plugin_name, records, contents, no_fts)
-        return pointer, False
+        reused = bool(current and current.get("source_fingerprint") == source_fingerprint)
+        pointer = current if reused else publish_snapshot(repo_root, plugin_name, records, contents, no_fts, show_progress=True)
+        # Appended under the same lock as the build/reuse decision above, so
+        # concurrent callers never interleave partial lines -- append_ndjson's
+        # single write() call is what keeps each line atomic on top of that.
+        append_ndjson(cache_root / "runs.ndjson", {
+            "generation_id": pointer["generation_id"],
+            "source_fingerprint": source_fingerprint,
+            "plugin_name": plugin_name,
+            "timestamp": utc_now(),
+            "file_count": len(records),
+            "duration_ms": int((time.monotonic() - started) * 1000),
+            "reused": reused,
+        })
+        return pointer, reused
 
 
 def main() -> None:
