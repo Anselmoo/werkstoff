@@ -1,0 +1,10 @@
+# Generated scaffolds and verification artifacts (runtime output, not source)
+/generated-clis/
+/.cli-scaffold-reports/
+
+# Plugin-local settings
+.claude/*.local.md
+
+# Python bytecode
+__pycache__/
+*.pyc

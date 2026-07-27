@@ -1,119 +1,70 @@
 ---
 name: self-assess-code-idiom
-description: Scans the codebase's own application code for deprecated/legacy idioms in the languages actually present (checked against the version the repo targets, not a fixed list) and for generic code smells that don't need a house-rules entry to exist first — error-swallowing except/catch blocks, magic numbers, overlong functions, deep nesting, missing type coverage in an otherwise-typed module. Use this when the user asks to modernize idioms in place, find legacy/deprecated language patterns, catch code smells, check code idiom quality, or find anti-patterns. NOT for house-rules compliance (use self-assess-lint-audit — that checks only rules the repo already wrote down); NOT for docs-vs-code accuracy (self-assess-docs-drift); NOT for whether AI-authored dependencies/tests/contracts are trustworthy (the confab plugin).
+description: This skill should be used when the user asks to "find modernization opportunities", "check for deprecated idioms", "find code smells", or as part of self-assess-autopilot's CHECK phase. Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell.
+version: 0.1.0
 ---
 
-Audit the current repository's **own application code** for two things the
-other self-assess skills deliberately don't judge: **deprecated/legacy
-idioms** (modernization-in-place) and **generic code smells**. This is the
-one skill that treats the code itself as the subject, not as ground truth to
-check something else against — but it is still strictly **read-only**: it
-never edits source, even for a "safe" mechanical modernization. It reports;
-the human (or a separate transform tool) changes code.
+# self-assess-code-idiom
 
-Scope boundaries, kept sharp:
-- **vs `self-assess-lint-audit`** — lint-audit checks only rules the repo
-  itself wrote in `house-rules.md`; this skill checks idiom/smell classes that
-  need no house-rules entry to exist. If a house-rules file is present, pass
-  it in so this skill can *avoid* re-reporting what lint-audit already owns.
-- **vs `self-assess-docs-drift`** — that checks docs against code; this
-  ignores docs entirely.
+Find deprecated idioms the repo's own declared language version obsoletes, plus generic code
+smells.
 
-## Step 0 — Load settings and detect languages + versions
-
-Read `.claude/self-assess.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop and
-say so. Note `output_dir` (default `analysis/self-assess`) and
-`skip_verification` (default `false`).
-
-Detect the languages present using the **two-pass detection algorithm** in
-`${CLAUDE_PLUGIN_ROOT}/references/language-support.md` (the same one
-`self-assess-preflight` Check 1 and `self-assess-stage-map` Step 0 use) — or,
-if `languages:` is set in settings, use that override. For each detected
-language, read the target **version** from its manifest so idioms are judged
-against what's actually present, never asserted from a fixed list:
-- Python — `requires-python` in `pyproject.toml` (or classifiers / `python_requires`)
-- Rust — `edition` / `rust-version` in `Cargo.toml`
-- TypeScript — `target` / `lib` in `tsconfig.json`
-- Go — the `go` directive in `go.mod`
-- others — whatever version marker the manifest carries; omit if none.
-
-Also read `.claude/house-rules.md` (or `house_rules_path`) if it exists, to
-pass in as `houseRules` — so the scan skips anything lint-audit already covers.
-
-## Step 1 — Run the scan
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is available
-in this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/self-assess/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+## Step 0: Settings gate
 
 ```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/code-idiom-scan.js",
-  args: { repoPath: "<repo root, usually '.'>", languages: [{ name: "<lang>", version: "<from manifest, omit if unknown>" }, ...], houseRules: "<house-rules.md content, omit if absent>", symbolIndexPath: <resolved snapshot dir, or null>, skipVerification: <from settings, default false> }
-})
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-code-idiom
 ```
 
-It derives the applicable deprecated-idiom + smell catalog per language (from
-its hand-kept `LANG_BRIEFS`, kept in sync with `language-support.md`'s
-idiom/smell column), runs one finder per language, then — unless
-`skip_verification` is set — adversarially refutes every finding (checking it's
-genuinely deprecated *for this repo's version* and not a deliberate exception)
-before reporting, with a second skeptical read for High-severity survivors.
-The finders/refuters are read-only by design; **you** write the artifact below
-from the structured result.
+## Step 1: Detect the actual version per language -- never assume one
 
-**Fallback** (no Workflow tool) — spawn an **idiom-auditor** subagent per
-language: "Find deprecated idioms (for version X) and generic smells in the
-<lang> code, with file:line evidence." Then verify each finding yourself by
-reading the cited code before including it.
+Rule: judge idioms against the version the manifest actually declares, not a fixed list or
+training-data assumption:
 
-## Step 2 — Write the report
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py detect-language-version --repo <repo_root> --language python
+```
 
-Create `<output_dir>/CODE_IDIOM.md`:
-- **Summary** — languages scanned (with target versions), findings by severity,
-  findings by category (modernization / smell), refuted count
-- **Findings table**, sorted by severity: kind, category, evidence, description,
-  suggested fix
-- **Refuted candidates** — brief list
-- If `injectionFlags` is non-empty, a prominent **"⚠ Instruction-shaped
-  content found"** section
+Run once per detected language (reuse `detect-languages` from preflight/stage-map for the
+list). A `null` result means the manifest declares no version constraint -- in that case, only
+flag idioms deprecated in EVERY version the language has ever shipped, never a version-specific
+one, since there is nothing to judge against.
 
-Also write `<output_dir>/code_idiom_summary.json` — the machine-readable
-sidecar `self-assess-status` aggregates and `self-assess-portfolio` reads:
-`{"languagesScanned": [...], "filesScanned": N, "findingsBySeverity": {...},
-"byCategory": {"modernization": N, "smell": N}, "findings": [...]}`.
-`findingsBySeverity` is copied straight from the workflow's
-`stats.bySeverity` (High/Medium/Low); `byCategory` from `stats.byCategory`.
-If you cannot cheaply determine `filesScanned`, omit it rather than guessing.
+## Step 2: Find findings, categorized
 
-`findings` is the workflow's own `findings` array (the survivors, already
-computed — do not re-derive it), reshaped to the shared per-finding
-contract every domain sidecar uses **plus** code-idiom's own additive
-fields: `{severity, title, evidence, category, kind, description,
-suggestedFix, severityNote}` — `title` from `kind` (kept alongside it, not
-replacing it, so a consumer needing the raw slug still has it); `evidence`,
-`category`, `description`, and `suggestedFix` copied as-is; `severityNote`
-included **only** when the underlying finding actually carries one (omit
-the key entirely otherwise — never write it as `null`; its mere presence
-is what `self-assess-idiom-fix` treats as "this finding was flagged
-ambiguous by code-idiom's own Verify phase, do not auto-fix it").
+Dispatch `idiom-auditor` with the detected version per language and (if present)
+`.claude/house-rules.md` for repo-specific style context. Every finding MUST carry
+`category` in `{"modernization", "smell"}`:
 
-This is what lets `findings-dashboard.html`'s findings table (which only
-reads `severity`/`title`/`evidence`), `self-assess-transform-brief`
-(downstream, same four fields), and `self-assess-idiom-fix` (which
-additionally needs `description`, `suggestedFix`, and the `severityNote`
-presence check) all work from this one sidecar without a second,
-fragile read of `CODE_IDIOM.md`'s prose report.
+- `modernization`: a deprecated language/library idiom the detected version actually
+  obsoletes (e.g. `Optional[X]` when the manifest declares Python >=3.10 supports `X | None`).
+  Never flag an idiom the declared version does NOT obsolete.
+- `smell`: a generic quality issue (broad `except`, magic numbers, long functions, deep
+  nesting, missing types in an otherwise-typed module) that requires design judgment, not a
+  mechanical rewrite.
 
-## Present
+Findings ambiguous enough that a mechanical fix could be wrong (e.g. the "modern" idiom would
+change behavior in this codebase's edge case) MUST carry a `severityNote` -- this is the flag
+`self-assess-idiom-fix` uses later to skip auto-applying them.
 
-Report: languages scanned, findings by severity and category, refuted count.
-Suggest: `glow -p <output_dir>/CODE_IDIOM.md`
+## Step 3: Verify
+
+Unless `skip_verification` is set, confirm each finding by re-reading the cited code and
+re-checking it against the detected version -- never trust the first pass.
+
+## Step 4: Validate and write
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kind code_idiom_summary --file <path-or-inline-json>
+```
+
+The validator rejects any finding whose `category` is outside `{modernization, smell}`.
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename CODE_IDIOM.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename code_idiom_summary.json
+```
+
+## Read-only constraint
+
+Never use Write/Edit outside the resolved output paths, and never apply a finding here --
+`self-assess-idiom-fix` is the only skill authorized to act on `code_idiom_summary.json`.

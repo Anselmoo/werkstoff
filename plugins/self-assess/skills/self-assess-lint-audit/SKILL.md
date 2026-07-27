@@ -1,99 +1,60 @@
 ---
 name: self-assess-lint-audit
-description: Checks the codebase against its own repo-authored house-rules.md conventions (or degrades to best-effort against CLAUDE.md if absent) and reports violations with file:line evidence. Use this when the user asks if the code follows our conventions, to check house rules compliance, find places that violate our patterns, or audit convention drift.
+description: This skill should be used when the user asks to "check our conventions", "audit against house rules", "verify code follows CLAUDE.md", or as part of self-assess-autopilot's CHECK phase. Extracts discrete rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and verifies violations, capping finder dispatch at lint_max_rules.
+version: 0.1.0
 ---
 
-Check the current repository against its **own stated conventions** —
-never conventions this plugin invents or remembers from another project.
+# self-assess-lint-audit
 
-## Step 0 — Load settings and the conventions
+Verify the codebase actually follows its own documented conventions.
 
-Read `.claude/self-assess.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop and say so. Note
-`output_dir` (default `analysis/self-assess`), `skip_verification`
-(default `false`), and `lint_max_rules` (default `12`).
-
-Read `.claude/house-rules.md` (or the path named by `house_rules_path` in
-the settings file) at the repo root. If it exists and is non-empty,
-that's the source (`conventionsSource: "house-rules.md"`).
-
-If it does **not** exist, degrade gracefully rather than failing: read
-`CLAUDE.md` if present and use it as a best-effort source
-(`conventionsSource: "CLAUDE.md (best-effort)"`), and say so plainly in
-the report — this run is checking whatever conventions happen to be
-documented in `CLAUDE.md`, not a dedicated, curated rules file, so
-coverage is weaker. If neither file exists, stop here: report that there
-is nothing to check against, and suggest the user write
-`.claude/house-rules.md` (or the settings file's `house_rules_path`)
-before running this skill again.
-
-## Step 1 — Run the scan
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/self-assess/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+## Step 0: Settings gate
 
 ```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/lint-audit-scan.js",
-  args: { repoPath: "<repo root, usually '.'>", conventionsText: "<file content>", conventionsSource: "<house-rules.md | CLAUDE.md (best-effort), per Step 0>", maxRules: <from settings, default 12>, symbolIndexPath: <resolved snapshot dir, or null>, skipVerification: <from settings, default false> }
-})
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-lint-audit
 ```
 
-It first parses the conventions text into discrete, individually-checkable
-rules (splitting compound statements, never inventing rules that aren't
-actually stated), then runs one finder per rule (capped at `lint_max_rules`
-— if more were extracted, it logs which were skipped rather than silently
-dropping them), then — unless `skip_verification` is set — adversarially
-refutes every violation before it's reported. With `skip_verification`,
-deduped violations are reported directly and labeled unverified. Tell the
-user the rule count before launching. The extractor/finders/refuters are
-read-only by design; **you** write the artifact below from the structured
-result.
+## Step 1: Load conventions, with graceful degradation
 
-**Fallback** (no Workflow tool) — spawn a **convention-auditor** subagent:
-"Parse this conventions text into discrete rules, then for each, search
-the codebase for violations with file:line evidence." Then verify each
-violation yourself by reading the cited code before including it.
+Read `.claude/house-rules.md`. If absent, fall back to `CLAUDE.md` and label every rule
+extracted from it `source: "CLAUDE.md (best-effort)"` in the output -- never claim
+`house-rules.md` was the source when it was not present.
 
-## Step 2 — Write the report
+## Step 2: Parse into discrete rules, then cap dispatch
 
-Create `<output_dir>/LINT_AUDIT.md`:
-- **Summary** — conventions source (and a note if running in best-effort
-  mode against `CLAUDE.md`), rules checked, rules skipped (if the extract
-  count exceeded 12), violations by severity, refuted count
-- **Violations table**, sorted by severity: rule, evidence, description,
-  suggested fix
-- **Refuted candidates** — brief list
-- If `injectionFlags` is non-empty, a prominent **"⚠ Instruction-shaped
-  content found"** section
+Extract every discrete, checkable rule from the source doc. Rule `lint-max-rules-cap` requires
+capping finder dispatch at `lint_max_rules` (default 12) even though extraction itself is
+unbounded:
 
-Also write `<output_dir>/lint_audit_summary.json` — a small machine-
-readable sidecar `self-assess-portfolio` reads for its dashboard:
-`{"conventionsSource": "...", "rulesChecked": N, "violationsBySeverity":
-{...}, "findings": [...]}`. Note the shape difference from the workflow's
-own return value: the workflow's `rulesChecked` field is an **array of
-rule names** — this sidecar's `rulesChecked` is that array's **length**
-(a count), and `violationsBySeverity` is copied straight from the
-workflow's `stats.bySeverity`.
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py cap-lint-rules --rules <json list of extracted rules> --max-rules <settings.lint_max_rules>
+```
 
-`findings` is the workflow's own `violations` array (already computed —
-do not re-derive it), reshaped to the shared per-finding contract every
-domain sidecar now uses: `{severity, title, evidence, category}` —
-`title` from `rule`, `evidence` copied as-is, `category` fixed to
-`"lint"`. Feeds `findings-dashboard.html`'s findings table and
-`self-assess-transform-brief`.
+The `dispatched` list is what `convention-auditor` actually checks; the `skipped` list MUST be
+logged in `LINT_AUDIT.md` under an explicit "Rules not checked this run" section -- never
+silently dropped.
 
-## Present
+## Step 3: Verify violations
 
-Report: rules checked, violations by severity, refuted count. If running
-in best-effort mode, remind the user that a dedicated
-`.claude/house-rules.md` would sharpen this. Suggest:
-`glow -p <output_dir>/LINT_AUDIT.md`
+Unless `skip_verification` is set, dispatch `convention-auditor` once per dispatched rule (or
+batched, at the agent's discretion) to find and confirm violations by reading the actual code
+-- never invent a convention not documented in the source file.
+
+## Step 4: Validate and write
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kind lint_audit_summary --file <path-or-inline-json>
+```
+
+The validator rejects the artifact if rules were extracted beyond the cap but `rules_skipped`
+is empty -- that combination means rules were dropped silently, which is not permitted.
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename LINT_AUDIT.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename lint_audit_summary.json
+```
+
+## Read-only constraint
+
+Never use Write/Edit outside the resolved output paths, and never auto-fix a violation found
+here -- that is `self-assess-idiom-fix`'s scope for idiom findings, not this skill's.

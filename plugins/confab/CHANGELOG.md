@@ -1,62 +1,12 @@
 # Changelog
 
-All notable changes to this plugin will be documented in this file.
+All notable changes to the `confab` plugin are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-## [0.3.0] - 2026-07-25
+## [0.1.0] - 2026-07-27
 
 ### Added
-- cluster same-file findings, add symbol-graph safety check, extend CI with plugin checks
-- **ci**: attach CHANGELOG.md section to GitHub releases (#8)
-- **cupertino**: add self-contained handbook lifecycle (design/code/testing/docs) (#7)
-- **self-assess**: reporting→plan bridge + cross-plugin auto-pilot (#6)
 
-### Fixed
-- **self-assess**: list ui-audit in dashboard empty-state hint (#9)
-- **ci**: write the SBOM to tools/werkstoff-cli so the upload step finds it
-
-## [0.2.1] - 2026-07-23
-
-### Added
-- `homepage` and `repository` fields in the plugin manifest, pointing at
-  this plugin's README and subtree in the werkstoff repo.
-
-## [0.2.0] - 2026-07-21
-- **Each audit sidecar now carries a per-finding `findings` array.** The four
-  audit summaries (`dependency_audit_summary.json`,
-  `assertion_audit_summary.json`, `contract_drift_summary.json`,
-  `agentic_reliability_summary.json`) were aggregate counts only; they now also
-  emit `findings: [{severity, title, evidence, category, fixability}]` — the
-  same shared per-finding contract self-assess's reporting sidecars use, plus a
-  `fixability` field (`fixable`/`advisory`) carrying confab's own actionable-vs-
-  advisory split. The data was already computed (it renders in each `.md`
-  table); only the sidecar-write step was dropping it. This lets
-  `self-assess-transform-brief` (the reporting→plan bridge) ingest confab
-  findings as per-phase code-change work items — `advisory` findings
-  (weak assertions, agentic redesigns) route to advisory notes, not auto-fixes.
-- **Renamed: plugin `quality` → `confab`** (BREAKING — install target is now
-  `confab@werkstoff`, and every skill/agent is renamed `quality-*` → `confab-*`,
-  e.g. `confab-dependency-audit`, `confab-cycle`). The `quality` name collided
-  with `self-assess` on the shared `code-quality` marketplace keyword; `confab`
-  (as in *confabulation*) names the plugin's actual scope — catching where
-  AI-authored code makes things up. Cross-plugin references in `andon` were
-  updated to match. Keyword `code-quality` → `ai-code-verification` +
-  `confabulation-detection`.
-- Fixed: `plugin.json` description now mentions `confab-cycle` (was
-  drifted from `marketplace.json`'s copy); README intro corrected from
-  "one deliberate exception" to "two" (network egress + scoped Edit
-  access).
-- Added: `confab-code-change`, a diff-scoped pre-commit variant of the
-  four domain audits.
-- Changed: `confab-cycle` fix mode now also auto-remediates
-  `agentic_reliability` excessive-tool-grant findings, and drafts (never
-  applies) `assertion_audit` suggestions via a new `draft_domains`
-  setting.
-
-## [0.1.0]
-
-- Initial release.
+- Initial release. Generated from a behavior specification extracted from the
+  prior hand-written implementation, via `tools/plugin-serializer/` and the
+  official `/plugin-dev:create-plugin` path — a clean-room rebuild rather than
+  a port, so none of the previous wording carried over.

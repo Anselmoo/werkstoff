@@ -1,187 +1,100 @@
 ---
 name: self-assess-preflight
-description: Checks whether the current repository is ready for self-assess's analysis skills to run well. Detects the language stack, verifies analysis tooling is present, smoke-parses a real file per detected language, checks for a house-rules.md, and checks git-remote/CI-config readability. Use this when the user asks to run self-assess, check whether self-assess can run here, or before running self-assess-stage-map, self-assess-docs-drift, self-assess-ci-topology, or self-assess-lint-audit for the first time in a repo.
+description: This skill should be used when the user asks to "check if this repo is ready for self-assess", "run preflight", "can self-assess analyze this codebase", or before any other self-assess-* skill runs for the first time in a repo. Also invoked at the start of self-assess-autopilot's CHECK phase. Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill.
+version: 0.1.0
 ---
 
-Check whether the current repository (the working directory, or a path the
-user names) is ready for self-assess's analysis skills, and report exactly
-what to fix before they run into it. Run every check even when an earlier
-one fails — the goal is one complete readiness report, not the first error.
+# self-assess-preflight
 
-This operates on the repo root in place — there is no `legacy/$1`-style
-argument. If the user names a specific path, use that as the repo root
-instead of the working directory.
+Determine whether this repository is ready for self-assess's analysis skills, and which
+downstream skills can run at full strength versus degraded.
 
-## Check 0 — Load settings
+## Step 0: Read settings and check the gate
 
-Read `.claude/self-assess.local.md` if it exists at the repo root (`Read`
-tool; not an error if absent — every setting below has a default). See
-`${CLAUDE_PLUGIN_ROOT}/examples/self-assess.local.md` for the template and
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md` for the full field list. If `enabled: false`,
-stop here and tell the user self-assess is disabled for this repo (per
-the settings file) rather than running any check. Otherwise note which
-non-default overrides are active (`house_rules_path`, `output_dir`,
-`languages`, `skip_verification`, `lint_max_rules`) so the report can
-list them — every other skill re-reads this same file independently, so
-getting this right once here doesn't exempt them from checking it too.
+Run, from the plugin root:
 
-## Check 1 — Detect the stack
-
-If `languages` is set (non-empty) in the settings file, skip detection
-entirely and use that list verbatim — it's an explicit override, not a
-hint, and takes precedence over anything below.
-
-Read `${CLAUDE_PLUGIN_ROOT}/references/language-support.md` — it is the
-**canonical, single source of truth** for detection (`self-assess-stage-map`
-Step 0 reads the same file rather than maintaining a second list; do not
-hand-roll your own manifest list here). Run its two-pass algorithm:
-
-1. **Manifest-based.** Use the **Glob tool** (never Bash `find`/`ls`) for
-   the manifest pattern(s) in the reference's table (20 common languages
-   covered explicitly; any other recognizable ecosystem manifest counts
-   too — the table is illustrative, not exhaustive). This has to be a real
-   Glob call, not a symbol-index snapshot lookup: several of these
-   manifests (`go.mod`, `Gemfile`, `cpanfile`, `DESCRIPTION`, `*.rockspec`)
-   have no extension the indexer's `LANG_EXTENSIONS` map recognizes, so
-   they'd be silently missing from `file_catalog.json` even on a fresh
-   snapshot.
-2. **Extension-frequency fallback, for manifest-less stacks.** This pass
-   just tallies files per extension — exactly what `build_symbol_index.py`
-   already computes into each `file_catalog.json` record's `language`
-   field. If a fresh symbol-index snapshot already exists this session
-   (`analysis/self-assess/current.json`), read it and tally that instead
-   of a fresh sweep — this check doesn't build one itself, since preflight
-   is meant to stay cheap. Otherwise use the **Glob tool** by file
-   extension and count files per extension. Any extension with at least 3
-   files and no owning manifest already detected in pass 1 is still a
-   detected language (this is what makes Shell — and anything else with no
-   conventional manifest — actually detectable; do not skip this pass).
-
-Report the rough file split per language found in either pass. This
-drives which of Checks 2–3 apply and which per-language finders
-`self-assess-stage-map` will need to run — a language only reaches
-`self-assess-stage-map`'s per-language finder dispatch if it's detected
-here, so an incomplete Check 1 silently starves that skill regardless of
-how general its own per-language fallback is.
-
-## Check 2 — Analysis tooling
-
-For each detected language, check availability (`command -v`) of the
-tools its stage-map extractor and lint-audit checks lean on, and report
-what degrades without them:
-
-| Language | Tool | Used by | Without it |
-|---|---|---|---|
-| Python | `python3` (with `ast` — stdlib, always present) | stage-map | none — always available |
-| Python | `ruff` | lint-audit | convention checks fall back to grep-based pattern matching, coarser |
-| Rust | `cargo` | stage-map, lint-audit | dependency graph falls back to hand-parsing `Cargo.toml`; no `cargo metadata` cross-check |
-| TS/JS | `node` | stage-map | import extraction falls back to a regex pass instead of a real parse |
-| any | `git` | ci-topology, self-assess-status | remote/staleness checks skipped, reported as a gap |
-
-Include the platform's install one-liner for anything missing.
-
-## Check 3 — Smoke-parse (prove it works on this codebase, not just presence)
-
-For each detected language, pick one representative source file and prove
-the stage-map extractor can actually parse it:
-
-- **Python** — `python3 -c "import ast, sys; ast.parse(open(sys.argv[1]).read())" <file>`
-- **Rust** — a `use`/`mod` grep pass plus confirming `Cargo.toml` parses as
-  valid TOML for the crate the file belongs to
-- **TS/JS** — confirm `node --check <file>` succeeds, or that the file's
-  `import`/`require` statements match the expected syntax if no runtime is
-  available
-
-A failed smoke-parse is the most valuable output of this check — report
-the actual error (syntax the extractor doesn't handle, an unusual module
-layout) rather than letting it surface later, less legibly, inside
-`self-assess-stage-map`.
-
-## Check 4 — House rules
-
-Check for `.claude/house-rules.md` at the repo root, or the path named by
-`house_rules_path` in the settings file if that override is set. If present, report
-its size and confirm it's non-empty prose (not a placeholder). If absent,
-say so plainly: `self-assess-lint-audit` will degrade to best-effort
-checks against `CLAUDE.md` alone, clearly labeled, and full convention
-enforcement is unavailable until the repo owner writes one.
-
-## Check 5 — Git remotes and CI config
-
-If the repo is under git, run `git remote -v` and report what's found —
-this is what `self-assess-ci-topology` needs to be useful, not just
-present. Check for CI config files (`.github/workflows/*`,
-`.gitlab-ci.yml`, `.circleci/config.yml`, etc.) and note how many were
-found. If the repo is not under git, say so — `self-assess-ci-topology`
-has nothing to do.
-
-## Check 6 — Docs present
-
-Check for `CLAUDE.md`, `README.md`, and any ADR-shaped files (`DECISIONS.md`,
-`docs/adr/*`, `ADR-*.md`) — what `self-assess-docs-drift` will mine claims
-from. Report what's found; if nothing is found, say so — docs-drift will
-have nothing to check.
-
-## Report
-
-Write `<output_dir>/PREFLIGHT.md` (`output_dir` defaults to
-`analysis/self-assess`, overridable in the settings file): a status table
-(one row per check, ✅/⚠️/❌, what was found, the fix for anything not
-green), a line listing any active settings overrides from Check 0,
-followed by a **Ready / Ready-with-gaps / Not-ready** verdict per
-downstream skill:
-
-- **`stage-map`** — needs Check 1 (stack detected) and Check 3 green for
-  every detected language. A language whose smoke-parse failed downgrades
-  that language's coverage to Ready-with-gaps, not Not-ready for the whole
-  skill — the other languages still run.
-- **`docs-drift`** — needs Check 6 to have found at least one doc file;
-  otherwise Not-ready (nothing to check).
-- **`ci-topology`** — needs Check 5's git-repo check to pass; Not-ready if
-  the repo isn't under git.
-- **`lint-audit`** — Ready-with-gaps if Check 4 found no `house-rules.md`
-  (falls back to best-effort from `CLAUDE.md`), Ready if it's present.
-- **`code-idiom`** — needs Check 1 to have detected at least one language;
-  Ready if a language with a hand-tuned idiom catalog is present (Python,
-  Rust, TS/JS, Go, Java, Ruby, PHP), Ready-with-gaps if only
-  generic-fallback languages were detected (still runs, coarser idiom
-  coverage), Not-ready if Check 1 found no languages at all.
-- **`arch-health`** — depends on `self-assess-stage-map` having run first
-  (it reads that skill's `stage_graph.json`, never re-deriving the graph).
-  Ready if a `stage_graph.json` already exists under `output_dir`,
-  Ready-with-gaps otherwise with the fix "run `self-assess-stage-map`
-  first" — never Not-ready, since running stage-map resolves it.
-- **`transform-brief`** — depends on both `self-assess-stage-map`
-  (`stage_graph.json`, for the phase sequence) and `self-assess-arch-health`
-  (`arch_health_summary.json`, for the merge/split/keep decision) having run
-  first. Ready if both exist under `output_dir`, Ready-with-gaps otherwise
-  with the fix naming whichever is missing — never Not-ready, since running
-  the missing skill(s) resolves it. Without `arch_health_summary.json` the
-  brief would have no basis for any Merge/Split decision, so treat it as a
-  hard prerequisite, not an optional enrichment.
-
-Also write `<output_dir>/preflight_summary.json` — a small machine-
-readable sidecar alongside the human-readable report, the same
-human/machine split `modernize-map` uses for `topology.json`/
-`TOPOLOGY.html`. This is what `self-assess-portfolio` reads to build a
-multi-repo dashboard without parsing markdown:
-
-```json
-{
-  "languages": [<detected languages from Check 1>],
-  "houseRulesPresent": <bool from Check 4>,
-  "gitRemoteCount": <count from Check 5, or 0 if not under git>,
-  "verdicts": {
-    "stageMap": "Ready" | "Ready-with-gaps" | "Not-ready",
-    "docsDrift": "Ready" | "Not-ready",
-    "ciTopology": "Ready" | "Not-ready",
-    "lintAudit": "Ready" | "Ready-with-gaps",
-    "codeIdiom": "Ready" | "Ready-with-gaps" | "Not-ready",
-    "archHealth": "Ready" | "Ready-with-gaps",
-    "transformBrief": "Ready" | "Ready-with-gaps"
-  }
-}
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-preflight
 ```
 
-Print the table in the session too, and end with the single most
-important fix if anything is red.
+A non-zero exit means the skill is disabled in `.claude/self-assess.local.md` -- stop and tell
+the user plainly, quoting the stderr message. On success, the JSON on stdout carries the
+resolved settings (including `output_dir`, default `analysis/self-assess`). Use that `output_dir` for
+every output path in this skill, resolved through `resolve-output-path` (see Step 6) before
+any write.
+
+## Step 1: Run all 6 checks, unconditionally
+
+Rule `preflight-runs-all-checks` requires every check below to run and report its own status,
+even when an earlier check fails. Do not short-circuit. Wrap each check in isolation (a failed
+`git` invocation, a missing manifest, a parse error) so one check's failure cannot prevent the
+next from running:
+
+1. **languages** -- glob the repo for manifest files (`package.json`, `pyproject.toml`,
+   `go.mod`, `Cargo.toml`, `pom.xml`, etc.) and count files by extension. Call
+   `detect-languages --manifests <json list of manifest basenames found> --extension-counts
+   <json map of extension to count>`. This enforces the language-detection-threshold rule (an
+   extension only counts once >=3 files exist and no manifest already claimed that language in
+   pass 1) -- do not reimplement the threshold by hand.
+2. **tools** -- probe for a language's usual toolchain (e.g. `python3 --version`, `node
+   --version`, `go version`) for each detected language; record found/missing per tool.
+3. **smoke_parse** -- for exactly one file per detected language (the smallest by line count is
+   a reasonable pick), attempt a lightweight parse: Python via `python3 -m py_compile`,
+   JavaScript/TypeScript via `node --check` (or a bare syntax check), Go via `gofmt -l`, etc. Do
+   not smoke-parse more than one file per language -- that is this skill's own scope limit, not
+   a downstream skill's job.
+4. **house_rules** -- check for `.claude/house-rules.md`, falling back to `CLAUDE.md` with a
+   `best-effort` label if absent.
+5. **git_remotes_ci** -- check for a `.git` directory and at least one CI config file
+   (`.github/workflows/*`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`,
+   `azure-pipelines.yml`).
+6. **docs** -- check for `README.md`, `ARCHITECTURE.md`, `DECISIONS.md`, or ADR files.
+
+Record each check's `name` (matching exactly: `languages`, `tools`, `smoke_parse`,
+`house_rules`, `git_remotes_ci`, `docs`) and `status` (`pass`, `partial`, or `fail`) regardless
+of outcome.
+
+## Step 2: Assign per-skill verdicts
+
+Using the check results, assign each downstream skill a verdict in
+`{"Ready", "Ready-with-gaps", "Not-ready"}`:
+
+- `self-assess-ci-topology` is `Not-ready` if `git_remotes_ci`'s git-presence sub-check fails
+  (the skill's own rule refuses to run outside git).
+- `self-assess-ui-audit` is `Ready-with-gaps` (never `Not-ready`) when no UI files are found --
+  it degrades to "Not applicable" itself, this skill just flags the gap in advance.
+- Any skill whose language was detected only via extension count (not manifest) is
+  `Ready-with-gaps`.
+- Everything else with a passing smoke-parse and detected language is `Ready`.
+
+## Step 3: Validate before writing
+
+Build `preflight_summary.json` with top-level `checks` (list of the 6 results above) and
+`verdicts` (map of skill id to verdict), then validate it before writing:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kind preflight_summary --file <path-or-inline-json>
+```
+
+This rejects the artifact if any of the 6 required checks is missing or any verdict is outside
+the three allowed values -- it is not enough to intend to run all 6 checks, the validator
+confirms all 6 are actually present.
+
+## Step 4: Write outputs
+
+Resolve both output paths first:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename PREFLIGHT.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename preflight_summary.json
+```
+
+A non-zero exit here means the configured `output_dir` or filename escapes the plugin's write
+scope -- stop, do not write anywhere else instead. On success, write `PREFLIGHT.md` (a
+human-readable table of the 6 checks and verdicts) and `preflight_summary.json` to the resolved
+paths using the Write tool.
+
+## Read-only constraint
+
+This skill never uses Write/Edit for anything except the two output files above, and never runs
+Bash with a mutating flag. All 6 checks are read-only inspection.

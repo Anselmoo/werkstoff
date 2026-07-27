@@ -1,82 +1,34 @@
 ---
 name: cupertino-backwards
-description: >
-  Starts from the customer's actual experience and works backwards to the
-  technology, before any architecture or design work begins — grounded in
-  Steve Jobs' 1997 internal Apple talk ("start with the customer experience
-  and work backwards to the technology"), with a caveat separating empathy
-  for the customer's problem from literally transcribing their feature
-  request. Use FIRST, before cupertino-focus or any other cupertino
-  technique, whenever a feature or project is being scoped — "what should we
-  build for this", "here's what the user asked for", "start from the user
-  experience", "work backwards from the customer", "what's the actual problem
-  here", or the start of any greenfield design conversation. Also trigger
-  when a stakeholder's literal request is about to be built as-is without
-  separating it from the underlying problem. Do not use mid-build or post-
-  ship — this is a pre-architecture gate, not a retrospective review.
+description: "Use FIRST, before cupertino-focus or any other cupertino technique, whenever customer experience and technology choices are both still undecided for a new feature or project scope. This is a pre-architecture gate: it establishes what experience actually matters before any technology direction is chosen, working backwards from experience to technology rather than forwards from the feature request. Trigger on requests like 'design a way for users to...', 'we need a feature that...', or any new scope where nobody has yet named a database, framework, API, or UI element."
 ---
 
-Start with the customer experience, work backwards to the technology — and
-never confuse that with taking a feature request literally. Full grounding,
-the historical 1997 talk, and the caveat resolution live in
-`../../references/backwards.md`; read it before applying this technique,
-especially the "caveat that keeps this from being self-contradictory"
-section if the customer's stated request and their underlying problem
-haven't yet been separated.
+Work backwards from customer experience to technology. Never accept the literal feature request as the destination — the destination is the experience, and technology is only ever a means to it.
 
-## When to use
+## Steps
 
-First technique in the `cupertino-review` lifecycle — runs before any
-architecture or design work starts on a new feature or project. If the
-conversation has already moved into "which framework" or "what's the data
-model," this technique runs too late to do its job; the customer-experience
-statement it produces should already be settled by then.
+1. **State the literal request** exactly as given, verbatim or near-verbatim.
+2. **State the underlying problem** — the actual friction or desire this request is trying to resolve for a person, independent of any implementation. If the literal request and the underlying problem turn out to be identical (the request already is the problem, with nothing lost in translation), say so explicitly rather than manufacturing a distinction.
+3. **Write the customer experience statement**: exactly one sentence, in plain human language, describing what the experience should feel like. It must contain **zero technology nouns** — no database, framework, API, widget, button, screen, endpoint, component, or similar. If you catch yourself reaching for one, the sentence has already smuggled in a technology answer; rewrite it in terms of what the person does or feels instead.
+4. **Validate mechanically** — do not eyeball this. Run:
+   ```bash
+   echo '{"statement": "<your one-sentence statement>"}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" zero-tech-nouns
+   ```
+   If it exits non-zero, the statement failed and lists which words tripped it — rewrite the sentence, don't argue with the checker.
+5. **Choose a technology direction** only now, after the experience statement passes. Explain concretely how the chosen direction serves that statement — not "these are popular tools" but "this is what makes the felt experience possible."
+6. **Flag drift risk**: name the specific points later in the build where the technology direction might tempt scope to drift away from the experience statement (e.g. "it will be tempting to add a settings screen here — that serves configurability, not the stated experience").
 
-## Process
+## Mark the gate as passed
 
-1. **State the customer experience in one sentence with zero technology
-   nouns.** No database, framework, API shape, or widget name. If any
-   sneak in, the sentence has already smuggled in a technology answer —
-   rewrite until it describes only what the person is trying to accomplish
-   and what "good" feels like when they get there.
-2. **Write the stated request and the underlying problem side by side,
-   explicitly.** These are frequently different. A request for "a button
-   that exports to CSV" might really be "I need to hand this data to
-   someone in a tool I don't control" — and the eventual answer may not be
-   CSV at all. See `../../references/backwards.md` for the full worked
-   reasoning on why this split matters and how Jobs' "people don't know
-   what they want until you show them" quote resolves against it rather
-   than contradicting it.
-3. **Work backwards from the experience to the technology**, willing for
-   the technology answer to differ from the literal original request.
-   Skipping this step — building exactly what was asked for without doing
-   this work — is the backwards-development pattern the source talk was
-   diagnosing.
-4. **Flag when the experience statement and the literal request are
-   identical.** That's not automatically wrong, but it's a signal to check
-   one level deeper before treating the request as fully settled.
+Every technique later in the cupertino pipeline that commits to architecture or design (`cupertino-focus`, `cupertino-longevity`, `cupertino-integrate`, `cupertino-council`) is blocked by a PreToolUse hook until this marker exists for the current repo:
 
-## Output
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" init
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set backwards-done
+```
 
-- The one-sentence customer-experience statement (no technology nouns).
-- The stated request vs. the underlying problem, side by side.
-- The technology direction chosen, with one sentence on how it serves the
-  experience statement — not just "how it fulfills the request."
-- Any point where the technology direction and the experience statement
-  might drift apart later, named explicitly rather than left implicit.
+Run this only after step 4 has actually passed — do not set the marker preemptively or on a failed validation.
 
-## What this is not
+## Output format
 
-Not a mandate to override what users explicitly ask for — their diagnosis
-of the problem is usually the most valuable input in the room. Not a
-license to substitute personal taste for customer empathy. See
-`../../references/backwards.md`'s "What this technique is not" section for
-the full statement.
-
-## Relationship to other cupertino skills
-
-Downstream of nothing — this is the pipeline's entry point. Everything that
-follows in `cupertino-review` (`cupertino-focus`'s scoping,
-`cupertino-longevity`/`cupertino-integrate`'s architecture calls,
-`cupertino-council`'s UI decisions) inherits whatever customer-experience
-statement this step produces.
+Present, in this order: the literal request, the underlying problem (or the explicit "these are the same" flag), the validated experience statement, the chosen technology direction with its justification, and the drift-risk points. Do not skip straight to a technology recommendation.

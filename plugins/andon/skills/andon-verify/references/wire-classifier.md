@@ -1,88 +1,67 @@
-# Wire classifier — routing a wire to one of seven proof strategies
+# Wire classifier
 
-`andon-verify` has seven proof strategies (a–g). Given a wire and the fix
-proposed for it (from `andon-propose`), this is the explicit decision
-procedure for picking which strategy proves it. Routing is a real,
-documented artifact here — never implicit or "pick whichever seems
-right."
+The decision procedure below is **executed**, not just described: it is
+implemented verbatim as `route_wire()` in `scripts/andon_core.py` and invoked
+via `andon_core.py route-wire`. This document explains *why* the order is
+what it is, so you set the `signals`/`availability` flags correctly -- it is
+not a second, competing decision procedure to reason through by hand.
 
-## Inputs to the classifier
+## Check order and what each trigger means
 
-1. **The wire's stated type** — `andon-propose` already names a
-   recommended strategy in its output (Phase 1, step 3). Start there.
-2. **The gap `kind`** (`bug` | `feature` | `wire`, from `andon-loop`'s
-   Phase 2 scan).
-3. **What crosses the wire** — data/types (structural), numbers
-   (numerical), a prose/design claim (epistemic), an autonomous-fix's own
-   process (agentic-reliability), a code-structure claim (connectivity),
-   an invariant over an input space (property), or an already-passing
-   test whose strength is in question (verify-the-verifier).
+1. **e -- structural claim** (`is_structural_claim`): the wire's contract is
+   itself a claim about connectivity or structure -- "function X is called
+   from module Y", "this import edge exists", "no cycle between these two
+   packages". Prerequisite: `available_lsp_or_index` (a real Kythe/SCIP/LSIF
+   index, or an LSP tool that can query one). Checked first because a real
+   index query is the strongest evidence class available and should never be
+   skipped in favor of a weaker strategy when it applies.
 
-## Decision flowchart
+2. **b -- numerical** (`is_numerical`): the wire produces a number without a
+   known correct answer to compare against (a solver, an optimizer, a
+   statistical fit). No external prerequisite -- oracle-gap V&V techniques
+   are self-contained.
 
-```
-                        ┌─────────────────────────────┐
-                        │  What does the fix actually  │
-                        │  need proven?                │
-                        └───────────────┬───────────────┘
-                                        │
-        ┌──────────────┬───────────────┼───────────────┬──────────────────┬───────────────────┬────────────────────┐
-        │              │               │               │                  │                    │
-        ▼              ▼               ▼               ▼                  ▼                    ▼                    ▼
-  "Does this      "Are these      "Is this claim   "Did an        "Does this code-   "Does this fix   "Did a passing
-   code/artifact    numbers        falsifiable /     autonomous     structure claim    hold across an   wired test
-   satisfy the      right?"        does the          fix stay      actually hold —     input space,     actually prove
-   contract?"       (solver,       evidence          reliable?"    e.g. does A's       not just one     anything, or
-                     fit, sim,      earn the                       export get         known example?"  does it just
-                     numerical      claim?"                        referenced by B?"                    execute code?"
-                     kernel)
-        │              │               │               │                  │                    │                    │
-        ▼              ▼               ▼               ▼                  ▼                    ▼                    ▼
-   Strategy a     Strategy b     Strategy c      Strategy d        Strategy e          Strategy f          Strategy g
-   (tribunal)     (oracle-gap    (epistemic       (agentic          (structural/         (property/          ("verify the
-                   V&V)           rubric)          reliability      connectivity,         invariant)          verifier")
-                                                    dispatch)        3-tier)
-```
+3. **f -- property/invariant** (`is_property_invariant`): the wire's contract
+   is naturally expressed as "for all inputs matching X, Y holds" rather than
+   a single example. Prerequisite: `available_property_lib` (Hypothesis,
+   fast-check, or an equivalent already in the repo's dependencies).
 
-## Per-strategy trigger conditions
+4. **g -- verify-the-verifier** (`is_verifier_of_verifier`): the wire under
+   test is itself a test, a check, or a verification harness -- the question
+   is whether *it* would catch a real defect, not whether the code under it
+   is correct. No external prerequisite.
 
-| Strategy | Fires when | Does NOT fire when |
-|---|---|---|
-| **a — Tribunal (default)** | The wire is a code/artifact wire with no more specific match below — this is the fallback default, not a last resort of shame. Most `bug`/`feature` gaps land here. | A more specific trigger below matches — prefer the specific strategy over the generic tribunal whenever one applies. |
-| **b — Oracle-gap V&V** | The wire crosses a numerical/scientific computation: a solver, a fit, a simulation, any kernel where "is this number right" is the question and there may be no known correct answer to test against. | The wire is about whether code compiles/parses/is well-typed (Rung 0, handled inline, no strategy needed) or is a prose claim (→ c). |
-| **c — Epistemic rubric** | The wire is a claim, not code — a design rationale, a research/architecture statement, a "this generalizes" or "this is honest" assertion that needs falsifiability/evidence-grounding, not execution. | The claim is actually a numerical claim with a computable answer (→ b) or a claim about test strength (→ g). |
-| **d — Agentic-reliability dispatch** | The gap or fix concerns an *autonomous fix's own reliability* — did the fix that was just auto-applied introduce an unbounded retry, a missing escalation path, or excessive tool scope in some agent/skill/workflow definition. | The fix is ordinary application code with no agentic-loop shape. |
-| **e — Structural/connectivity, 3-tier** | The wire is a code-structure claim: "stage A's exported symbol is actually referenced by stage B", "this is the only caller", "the rename propagated everywhere". | The wire is about runtime *behavior* rather than static structure (→ a, or b if numerical). |
-| **f — Property/invariant proof** | The wire's contract is expressible as an invariant that must hold across an input space (not one known-answer example, and not LLM judgment) — e.g. "serialize then deserialize is the identity", "sort output is always non-decreasing regardless of input". | The invariant is really about numerical correctness against a scientific model (→ b — b is more specific for that case) or is a single fixed example (→ a is cheaper). |
-| **g — Verify the verifier** | A wire already has a "proof" in the form of a passing test, and the question is whether that test would actually catch a regression — contract drift at the stage boundary, or mutation-testing the wired test itself. | No test exists yet to interrogate — write one first (strategy a or b), then g can audit it later. |
+5. **d -- agentic-reliability** (`is_autonomous_reliability`): the wire's
+   contract concerns the reliability of an autonomous-fix loop itself
+   (retry bounds, escalation paths, tool scope) rather than the fix's
+   output. Prerequisite: `available_confab` (the `confab` plugin's
+   `confab-agentic-reliability` skill).
 
-## Tie-breaking rules
+6. **c -- epistemic rubric** (`is_epistemic_claim`): the wire's contract is a
+   claim about the world rather than about code -- a documented assumption,
+   a design rationale, a "this is faster because..." justification. No
+   external prerequisite.
 
-1. **Specificity beats the default.** Strategy a is the fallback; any of
-   b/c/d/e/f/g that matches wins over a.
-2. **b beats f beats a** for numerical code — b is the most specific
-   (closes the oracle gap with domain-appropriate V&V technique), f is
-   more general (any invariant), a is generic LLM judgment. Use the most
-   specific strategy whose trigger condition is met.
-3. **g is always additive, never a replacement.** If a wire already has a
-   proof under some other strategy and the question is "but is that
-   proof any good", that's g layered on top of whatever strategy produced
-   the original proof — not instead of it. Record both in the wire's
-   evidence chain.
-4. **Multiple strategies can apply to one wire over its lifetime.** A
-   wire proven once by a is not barred from later also getting a g check.
-   The classifier picks the strategy for *this* proof attempt, not a
-   permanent label on the wire.
-5. **When genuinely ambiguous between two non-default strategies**, name
-   both candidates in the proposal (`andon-propose`'s "Verification
-   strategy" field) and let a human confirm — this is exactly the kind
-   of load-bearing fork `andon-propose`'s Phase 2 grill should surface,
-   not something `andon-verify` should silently guess at.
+7. **a -- tribunal** (fallback, no trigger flag): reached only when none of
+   the above six triggers fired. This is the default for ordinary code
+   changes: a Defender/Challenger/Verifier/Adjudicator duel over the diff.
+   No external prerequisite -- this is why it is the safe universal floor
+   for graceful degradation, never a starting assumption.
 
-## Shared cost model applies after routing
+## Graceful degradation (tie-breaking on missing prerequisites)
 
-Once a strategy is picked, the Detection Ladder (Rung 0 type-system →
-Rung 4 visual+LLM, see the strategy docs and `andon-vocabulary.md`)
-governs how expensive a check within that strategy needs to be — climb
-only as high as the defect class requires, regardless of which of the
-seven strategies is running.
+If the trigger-selected strategy's prerequisite is unavailable, `route_wire()`
+walks the same order again, skipping the unavailable one(s), and lands on the
+next strategy whose prerequisite is satisfied (or has none). Because `a` has
+no prerequisite, this walk always terminates in a usable strategy --
+`andon-verify` never hard-fails a wire's proof attempt for lack of tooling;
+it reports the degraded strategy name in the evidence doc instead.
+
+## What NOT to do
+
+- Do not pick strategy `a` because it "seems simplest" -- if `e` or `b`'s
+  trigger is true and its prerequisite is available, use it; tribunal is a
+  fallback, not a preference.
+- Do not invent an eighth strategy for a wire that doesn't fit cleanly --
+  pick whichever of the seven triggers is *closest*, and note the imperfect
+  fit in the evidence doc's body rather than routing around the classifier.

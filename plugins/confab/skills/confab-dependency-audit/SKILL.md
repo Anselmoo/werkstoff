@@ -1,135 +1,60 @@
 ---
 name: confab-dependency-audit
-description: This skill should be used when the user asks to "check for hallucinated dependencies", "verify our packages actually exist", "audit dependencies for AI-generated code", "does this package actually exist on npm/PyPI", or wants declared dependencies in manifest files (package.json, requirements.txt, pyproject.toml, Cargo.toml, go.mod, Gemfile) cross-checked against their real public registries for non-existent or typosquat-adjacent packages.
+description: "Use when the user asks to audit declared dependencies for hallucinated, nonexistent, or typosquat-adjacent packages, wants confab's dependency audit run, or asks whether package.json/requirements.txt/pyproject.toml/Cargo.toml/go.mod/Gemfile entries actually exist. Performs bounded, read-only registry lookups with a mandatory-unless-flagged independent verification pass."
 ---
 
-Audit this repository's **declared dependencies** for hallucination —
-package names that appear in a manifest file but do not exist in any real
-public registry, and packages that exist but have a typosquat-adjacent
-name relative to a much more popular package. This is the one skill in
-the `confab` plugin that makes outbound network calls (read-only registry
-lookups); every other skill is local-file read-only.
+Audit this repository's declared dependencies for hallucination and
+typosquat-adjacent naming. The registry lookups themselves — and their
+timeout bound, and the rule that an unreachable registry is reported as
+`skipped` rather than any kind of verdict — are enforced by
+`scripts/dependency_audit.py` and `scripts/lib/registry.py`, not by these
+instructions. Your job is to orchestrate the agent judgment layer around
+that deterministic core and present the result.
 
-## Step 0 — Load settings, gather inputs
+## Steps
 
-Read `.claude/confab.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/confab`),
-`skip_verification` (default `false`), `dependency_audit.registries`
-(default `[]` — empty means auto-detect the standard public registry per
-detected language) and `dependency_audit.timeout_seconds` (default `10`).
+1. Determine `repo_root`, and `timeout_seconds` (default 10; only override
+   if the user or a `dependency_audit.timeout_seconds` setting says
+   otherwise — never silently raise it past 60).
+2. Determine whether the user explicitly asked to skip verification
+   (`skip_verification: true`). If they did not say so explicitly, treat
+   it as `false` — verification runs by default.
+3. Optionally, for judgment calls the deterministic parser can't make on
+   its own (ambiguous or scoped/private-looking package names, names that
+   look engineered rather than organically typo'd), dispatch the
+   `dependency-auditor` agent in Find mode over the repo's manifest files.
+   Ask it to return `{"findings": [...]}` in the shared finding schema.
+   Write its output to a scratch file, e.g.
+   `${CLAUDE_PLUGIN_ROOT}/../analysis/confab/tmp/agent_findings.json` (or any
+   scratch path — it is only ever read once, by the next step).
+4. Run:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/dependency_audit.py" <repo_root> \
+       --timeout-seconds <N> \
+       [--skip-verification] \
+       [--agent-findings <path-from-step-3>]
+   ```
+   This single invocation performs the manifest parse, the bounded
+   registry lookups, the typosquat heuristic, the mandatory-unless-flagged
+   independent re-check of every finding (including any you supplied via
+   `--agent-findings` — they get the same re-check, never taken on
+   faith), and writes `analysis/confab/reports/DEPENDENCY_AUDIT.md` and
+   `analysis/confab/dependency_audit_summary.json` in the shared finding schema.
+5. Report the finding count and the top few findings to the user, and
+   point them at the report path. If any findings have
+   `category: "registry-unreachable"`, say so explicitly and note they
+   are not evidence of anything — just an unconfirmed lookup — never
+   phrase them as "these might be hallucinated."
 
-The workflow script has no filesystem access, so gather everything first.
-Use the **Glob tool** (never Bash `find`/`ls`) for manifest files and map
-each to its type — this genuinely needs a real Glob call: `go.mod` and
-`Gemfile` have no extension the symbol-index snapshot's `LANG_EXTENSIONS`
-map recognizes, so most of this table would be silently absent from
-`file_catalog.json` even on a fresh snapshot:
+## What NOT to do
 
-| Glob | Type |
-|---|---|
-| `package.json` | `npm` |
-| `requirements.txt`, `pyproject.toml` | `pip` |
-| `Cargo.toml` | `cargo` |
-| `go.mod` | `go` |
-| `Gemfile` | `gem` |
-
-Build `manifestFiles: [{path, type}, ...]` from whatever is actually
-found (skip types with no manifest present — do not report a "gap" for a
-language this repo doesn't use). If no manifest file of any type is
-found, stop here and report that this skill has nothing to check.
-
-## Step 1 — Run the scan
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/confab/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name
-confab` (single-flight lock makes concurrent callers safe). For a repo
-well under ~50 tracked files the build overhead may not be worth it —
-skip this and pass `symbolIndexPath: null`.
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/dependency-audit-scan.js",
-  args: {
-    repoPath: "<repo root, usually '.'>",
-    manifestFiles: [<found, as {path, type}>],
-    registries: <dependency_audit.registries from settings, default []>,
-    timeoutSeconds: <dependency_audit.timeout_seconds from settings, default 10>,
-    skipVerification: <from settings, default false>,
-    symbolIndexPath: <resolved snapshot dir, or null>
-  }
-})
-```
-
-It runs one finder per manifest type found, in parallel, each extracting
-declared packages and checking them against their real registry with a
-bounded per-package timeout. Unless `skip_verification` is set, every
-finding then gets an independent re-check before it reaches the report —
-specifically to rule out a transient registry failure being mistaken for
-a confirmed hallucination. **A registry that is unreachable is never
-treated as "confirmed real" or "confirmed hallucinated" — it is reported
-separately as skipped.** With `skip_verification`, deduped findings are
-reported directly and labeled unverified. The finder/verifier agents are
-read-only except for the registry lookups themselves (never install,
-publish, or otherwise write); **you** write the artifact below from the
-structured result.
-
-**Fallback** (no Workflow tool) — spawn a **dependency-auditor** subagent
-per manifest type found: "Extract every declared dependency from
-`<manifest path(s)>` and check each against its real public `<type>`
-registry using only read-only lookup commands, bounded to
-`<timeoutSeconds>`s per package; report skipped (not a finding) for any
-package whose registry lookup times out." Then independently re-check
-each reported finding yourself — a fresh registry lookup, not trusting
-the subagent's claim — before including it in the report, applying the
-same "unreachable is never a confirmed verdict" rule.
-
-## Step 2 — Write the report
-
-Create `<output_dir>/DEPENDENCY_AUDIT.md`:
-- **Summary** — manifest files found by type, packages checked, findings
-  by severity, skipped count (registries that could not be reached — call
-  out explicitly that these are unchecked, not cleared), refuted count
-  (the false-positive rate the re-check bought)
-- **Findings table**, sorted by severity: package, manifest source,
-  registry checked, exists (true/false), severity, reason
-- **Skipped table** — package, manifest source, registry checked, reason;
-  keep this visually separate from Findings so a reader cannot mistake
-  "unreachable" for "confirmed safe"
-- **Refuted candidates** — brief list
-- If `injectionFlags` is non-empty, a prominent **"⚠ Instruction-shaped
-  content found"** section (a manifest entry or registry-returned
-  description that tried to look like a directive)
-
-Also write `<output_dir>/dependency_audit_summary.json` — a small
-machine-readable sidecar: `{"packagesChecked": N, "findingsBySeverity":
-{...}, "skippedCount": N, "findings": [...]}` (`findingsBySeverity` copied
-straight from the workflow's `stats.bySeverity`).
-
-`findings` is the workflow's confirmed findings reshaped to the **shared
-per-finding contract** `self-assess-transform-brief` reads when it turns
-audit findings into per-phase code-change work items (the same
-`{severity, title, evidence, category}` shape self-assess's own reporting
-sidecars use, **plus** a `fixability` field carrying confab's actionable-vs-
-advisory split): `[{severity, title, evidence, category, fixability}]` —
-`severity` copied as-is; `title` = the hallucinated `package` name (plus its
-`reason` in parentheses if present); `evidence` = `manifestSource` (the
-`file:line` of the offending manifest entry); `category` = the constant
-`"dependency-hallucination"`; `fixability` = `"fixable"` (removing or
-correcting one manifest line is a mechanical, single-location change —
-exactly what `confab-remediator` already applies). Do not re-derive the
-findings; reshape the ones the workflow already returned.
-
-## Present
-
-Report: manifest types covered, findings by severity, skipped count,
-refuted count. If a High finding exists (a package confirmed
-non-existent by its registry), name it first — this is the strongest
-signal of an AI-hallucinated dependency. If anything was skipped, say so
-explicitly and note it as unverified rather than implying it's clean.
-Suggest: `glow -p <output_dir>/DEPENDENCY_AUDIT.md`
+- Do not call a registry yourself with `curl`/`pip index`/`npm view` —
+  always go through the script, which is the only place the timeout bound
+  and the skip-vs-verdict classification are enforced.
+- Do not skip step 4's verification behavior by omitting the script's own
+  re-check — there is no flag for that; `--skip-verification` on this
+  script controls the SAME verification the rule requires, and omitting
+  the flag (the default) is what keeps it mandatory.
+- Do not report a `not_found` lookup outcome as "hallucinated" without
+  noting it survived independent re-verification — that's what makes it
+  a confirmed finding rather than a first-pass guess.

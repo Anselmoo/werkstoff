@@ -1,106 +1,74 @@
 ---
 name: cli-scaffold-shell
-description: This skill should be used when the user asks to "scaffold a Bash CLI", "generate a Zsh command-line tool", "create a PowerShell module CLI", "make a portable POSIX sh script", or names Bash, Zsh, PowerShell, or POSIX sh (sh/dash/ksh) as the target for a new command-line tool — either directly or dispatched from scaffold-cli's language-routing. Generates a freeform, production-grade CLI scaffold for the shell paradigm, following cli-architecture's five-pillar doctrine and this skill's own per-dialect reference idioms — never from stored boilerplate.
+description: Generate a production-grade CLI scaffold in a shell dialect — Bash, Zsh, PowerShell, or POSIX sh. Use when the user requests a CLI in one of those (dispatched here by scaffold-cli). Produces a sourced library with zero side effects at source-time plus a thin entry point, packaging metadata for the dialect's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies. For POSIX sh, the verifier also runs a forbidden-bashisms sweep.
 ---
 
-Generate a production-grade CLI scaffold for one of the shell-paradigm
-dialects — Bash, Zsh, PowerShell, or POSIX sh — freeform, every time,
-guided by `cli-architecture`'s doctrine and this skill's own per-dialect
-reference file. Never copy a stored template; every file this skill
-produces is written fresh from the pinned idioms below.
+# Shell CLI scaffold (Bash / Zsh / PowerShell / POSIX sh)
 
-## Step 1 — Load the doctrine
+You generate a CLI in a shell dialect. All rules come from the
+**`cli-architecture`** doctrine — load it first and follow it; this skill does
+not restate it.
 
-Invoke `cli-architecture` via the Skill tool if it has not already been
-loaded this conversation (e.g. when this skill triggers directly by
-natural language rather than via `scaffold-cli`'s dispatch, which already
-loads it). Every pillar in that doctrine applies to every dialect below —
-this skill's reference files pin how, not whether.
+## Step 1 — Load doctrine
 
-## Step 2 — Resolve the dialect and load its reference
+Load the `cli-architecture` skill. Do not generate anything before it is loaded.
 
-| Requested dialect | Reference file |
-|---|---|
-| Bash | `references/bash.md` |
-| Zsh | `references/zsh.md` |
-| PowerShell, pwsh, ps1 | `references/powershell.md` |
-| POSIX sh, sh, dash, ksh | `references/posix-sh.md` |
+## Step 2 — Read the per-dialect reference
 
-Read the resolved reference file in full before generating anything. Each
-one is structured to map onto the five pillars: argument parsing,
-project layout, help/completions, NO_COLOR-aware output, exit codes,
-`--json`/`--no-input`, stdout/stderr discipline, distribution, snapshot
-testing, and a minimal worked example (`posix-sh.md` additionally has a
-dedicated "forbidden bashisms" section — see below).
+Read the reference for the resolved dialect (each maps 1:1 onto the five pillars):
 
-## Step 3 — Generate the scaffold
+- Bash → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-shell/references/bash.md`
+- Zsh → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-shell/references/zsh.md`
+- PowerShell → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-shell/references/powershell.md`
+- POSIX sh → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-shell/references/posix-sh.md`
 
-Follow the resolved reference's pinned idioms exactly:
+For **POSIX sh**, `references/posix-sh.md` also lists the forbidden bashisms the
+verifier sweeps for. Avoid all of them while generating.
 
-- **Argument parsing**: `getopts` for Bash, `zparseopts` for Zsh (Zsh's
-  own more ergonomic builtin — never substitute getopts for a Zsh
-  target), native `[CmdletBinding()]`/`param()` for PowerShell, POSIX
-  `getopts` only for POSIX sh.
-- **Core/backend separation**: for Bash/Zsh/POSIX sh, generate a sourced
-  function file (`lib/<app>.sh`, `lib/<app>.zsh`, or the POSIX-compliant
-  equivalent) with zero side effects at source-time, plus a thin `bin/
-  <app>` executable that sources it and dispatches. **PowerShell is a
-  structural exception** — always scaffold a formal module (`<App>.psd1`
-  manifest + `<App>.psm1`), never a standalone unwrapped `.ps1` script;
-  the exported module functions ARE simultaneously the importable API
-  and the invokable CLI surface, so do not force an artificial thin-CLI
-  split that fights this ecosystem's own idiom — the reference's Core/
-  backend section states this explicitly, follow it as written.
-- **POSIX sh forbidden bashisms**: when the resolved dialect is POSIX sh,
-  read `posix-sh.md`'s "Forbidden bashisms" section before writing a
-  single line and check every generated line against it — no arrays, no
-  `[[ ]]`, no `function` keyword form, no `==` in `[ ]`, no here-strings,
-  no process substitution. A single bashism silently breaks portability
-  to dash/BusyBox, which is the entire point of generating this dialect
-  instead of Bash — treat a violation here as a generation defect, not a
-  style nit.
-- **Exit codes**: apply the frozen 0/1/2 contract from `cli-architecture`.
-  None of the four shell dialects auto-emit this contract — `getopts`/
-  `zparseopts` set `$?` non-zero on parse failure but do not exit the
-  script themselves, and PowerShell's own parameter-validation failure
-  needs an explicit catch/remap too. Every dialect requires explicit
-  `exit 2`/`exit(2)` handling in the invalid-argument case — verify this
-  is present, never assume a framework default covers it here.
-- **`--json`/`--no-input`, stdout/stderr, NO_COLOR**: apply exactly as
-  each reference's corresponding sections specify — none of the four
-  dialects have automatic NO_COLOR support (PowerShell 7.2+'s `$PSStyle`
-  is the closest, and even that needs an explicit `$env:NO_COLOR` gate
-  per the reference) — hand-roll every one of these per the pinned idiom.
-- **Distribution**: generate the actual packaging metadata as part of the
-  scaffold — a Homebrew formula for Bash/Zsh/POSIX sh (with the honest
-  apt-optional note), and the PowerShell module manifest fields PSGallery
-  publishing requires.
-- **Snapshot testing**: generate the `--help`-snapshot test using each
-  reference's pinned tool (bats-core+golden-file for Bash/Zsh, shunit2+
-  golden-file for POSIX sh — note shunit2 specifically, never bats-core,
-  since bats itself requires bash and would defeat POSIX sh's whole
-  purpose — Pester+`Compare-Object` for PowerShell) as part of the
-  initial scaffold.
+## Step 3 — Resolve the write target (in code)
 
-Use each reference's "Minimal worked example" section as a shape guide,
-not literal text to copy — generated files should match the specific app
-name and functionality the user described, freeform.
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+```
 
-## Step 4 — Verify before presenting
+Write the scaffold **only** under the path it prints. If it exits non-zero, stop
+and ask for a valid app name — never write outside the declared output scope.
 
-Hand the generated scaffold to the `cli-scaffold-verifier` agent (this
-plugin's `agents/cli-scaffold-verifier.md`) for a read-only check against
-`cli-architecture`'s doctrine and this skill's resolved reference file —
-for a POSIX sh target, this check must specifically include a bashism
-sweep against `posix-sh.md`'s forbidden-constructs list, not just the
-general five-pillar check. Fix any reported gap and re-verify, except a
-gap the verifier flags as `needs-human-judgment`, which should be
-surfaced to the user directly instead of silently resolved either way.
+## Step 4 — Generate the scaffold freeform
 
-## Present
+Following the reference idioms (not stored boilerplate), generate:
 
-Report: which dialect and reference were used, the generated file tree,
-and the verifier's summary (pass, or what was fixed, or what needs the
-user's judgment — including any bashism sweep result for POSIX sh
-targets). Note the distribution command the user would run to publish
-it, and the test command to run the generated `--help` snapshot test.
+- a **sourced library** with **zero side effects at source-time** (only
+  definitions; nothing runs on `source`) and a **thin entry point** that only
+  parses, dispatches into the library, formats output, and maps the frozen exit
+  codes;
+- **packaging metadata** for the one idiomatic channel named in the reference;
+- a **snapshot test** for `--help`;
+- the discoverability, NO_COLOR, `--json`, `--no-input`, and stdout/stderr
+  behavior the doctrine requires;
+- completions via the dialect's mechanism, or an honest "no native completion"
+  note where none exists;
+- a root **`cli-scaffold.manifest.json`** declaring the file roles (see the
+  doctrine for the schema) — the verifier reads this.
+
+Identical requests must converge on the same structure.
+
+## Step 5 — Verify before presenting (mandatory)
+
+Hand the scaffold to the **cli-scaffold-verifier** agent for a read-only check
+against the doctrine and reference. The verifier runs:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<dialect>"
+```
+
+(pass `posix-sh` as the dialect for POSIX sh — it triggers the bashism sweep.)
+
+- **Exit 0 (verdict `pass`)** → present the scaffold.
+- **Exit 1 (verdict `gaps`)** → read the JSON report path it prints. For each
+  finding with `disposition: fixable`, fix it and re-run the verifier. Only
+  findings marked `disposition: needs-human-judgment` are surfaced to the user
+  unmodified. The verifier bounds the loop itself: after `MAX_FIX_ITERATIONS`
+  it HALTs — if that happens, surface the remaining gaps instead of looping.
+
+Never present a scaffold that still has fixable gaps.

@@ -1,77 +1,79 @@
 ---
 name: scaffold-cli
-description: This skill should be used when the user runs the /cli-scaffold:scaffold-cli slash command, or asks in plain language to "scaffold a CLI", "generate a production CLI app", "create a new command-line tool", or names a target language and app name together (e.g. "scaffold a CLI in Rust called foo", "make me a Python CLI named deploy-tool"). The plugin's front-door entry point — resolves the requested language to its paradigm, loads the shared architecture doctrine, and dispatches generation to the matching paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, or cli-scaffold-shell). Each paradigm skill also stays independently triggerable by natural language without going through this front door.
-argument-hint: "[language] [app-name]"
+description: Entry point for generating a CLI. Use when the /cli-scaffold command runs or when the user says things like "scaffold a CLI in Rust called foo", "make me a Python command-line tool named bar", or "generate a Bash CLI". Resolves the requested language to its paradigm and dispatches to the matching paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, or cli-scaffold-shell) after loading the cli-architecture doctrine. Asks for clarification when the language is ambiguous or missing, and refuses unsupported languages while listing the 12 supported options.
 ---
 
-Resolve a scaffold request to its paradigm and dispatch generation — this
-skill holds no generation logic of its own, matching this repo's
-`compass-solve` front-door pattern: a thin entry point that composes other
-skills rather than reimplementing what they already do.
+# Scaffold a CLI (dispatcher)
 
-## Step 1 — Parse the request
+You route a scaffold request to the correct paradigm skill. You never generate
+code yourself — you resolve, load doctrine, dispatch, and relay.
 
-If invoked via the slash command, `$ARGUMENTS` holds `<language>
-<app-name>` (the language first, the app name second — e.g.
-`/cli-scaffold:scaffold-cli rust foo`). If invoked via natural language,
-extract the same two values from the request (e.g. "scaffold a CLI in
-Rust called foo" → language `rust`, app name `foo`).
+## Inputs
 
-If either value is missing or ambiguous (no app name given, or the
-language name doesn't match anything in the table below), ask the user to
-clarify rather than guessing — a wrong paradigm dispatch produces a
-scaffold in the wrong ecosystem entirely, not a merely-imperfect one.
+From the user's request, extract:
+- **language or dialect name** (e.g. "rust", "python", "posix sh")
+- **app name**
+- optional **requested functionality**
 
-## Step 2 — Resolve language to paradigm
+## Steps — follow in order
 
-| Language (case-insensitive, common aliases accepted) | Paradigm skill |
-|---|---|
-| python, py | `cli-scaffold-interpreted` |
-| typescript, ts, javascript, js | `cli-scaffold-interpreted` |
-| ruby, rb | `cli-scaffold-interpreted` |
-| php | `cli-scaffold-interpreted` |
-| perl, pl | `cli-scaffold-interpreted` |
-| dotnet, .net, csharp, c# | `cli-scaffold-compiled` |
-| rust, rs | `cli-scaffold-compiled` |
-| go, golang | `cli-scaffold-compiled` |
-| bash | `cli-scaffold-shell` |
-| zsh | `cli-scaffold-shell` |
-| powershell, pwsh, ps1 | `cli-scaffold-shell` |
-| posix sh, posix-sh, sh, dash, ksh | `cli-scaffold-shell` |
+### 1. Resolve the language IN CODE (never guess)
 
-If the requested language isn't in this table, say so plainly and list the
-12 supported languages — never silently fall back to a nearby language.
+Run the router. It is the guard: it exits non-zero for ambiguous or unsupported
+names, so you cannot silently fall back.
 
-## Step 3 — Load doctrine, then dispatch
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lang_router.py" "<language-as-given>"
+```
 
-1. Invoke `cli-architecture` via the Skill tool first — every generation
-   must be grounded in the five-pillars doctrine before any code is
-   written, not applied as an afterthought review pass.
-2. Invoke the paradigm skill resolved in Step 2 via the Skill tool,
-   passing along the exact language name and app name. The paradigm
-   skill owns everything from here: loading its own per-language
-   reference, generating the scaffold, and handing the result to
-   `cli-scaffold-verifier` before presenting it.
+- **Exit 0** → the JSON on stdout has `language`, `paradigm`, and `skill`
+  (the paradigm skill to dispatch to). Continue.
+- **Exit 1, `AMBIGUOUS:`** → do not proceed. Ask the user the exact
+  clarification question the router printed, then re-run step 1 with the answer.
+- **Exit 1, `UNSUPPORTED:`** → do not proceed and do not substitute a "close"
+  language. Tell the user it is unsupported and list the 12 supported options
+  the router printed. Stop.
 
-Never reimplement a paradigm skill's generation logic inline here — this
-skill's only job is correct dispatch, exactly like `compass-solve` never
-reimplements `compass-clarify-scope`'s methodology, only invokes it.
+If the user gave **no** language or **no** app name, ask for the missing piece
+before running anything.
 
-## Present
+### 2. Validate the write target IN CODE
 
-Once the dispatched paradigm skill returns, relay its result and verifier
-report to the user directly — this skill adds no additional commentary of
-its own beyond confirming which language/paradigm was resolved and
-dispatched, so the user can see at a glance that their request was routed
-correctly.
+Before any generation, confirm the app name resolves to a legal target inside the
+plugin's output scope:
 
-## Relationship to the paradigm skills
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+```
 
-`cli-scaffold-compiled`, `cli-scaffold-interpreted`, and
-`cli-scaffold-shell` all stay independently invocable by natural language
-without this front door — a request like "scaffold a CLI in Rust called
-foo" can trigger `cli-scaffold-compiled` directly if its own description
-matches more precisely than this skill's. This skill exists for the
-explicit-slash-command surface and as a language-router for ambiguous or
-generic requests ("scaffold a CLI" with no language stated yet), not as
-the only sanctioned entry point into the plugin.
+If it exits non-zero (traversal, absolute path, illegal name), surface the
+violation and ask the user for a valid app name. The printed path is where the
+scaffold will be written.
+
+### 3. Load the doctrine
+
+Load the `cli-architecture` skill (via the Skill tool). Every scaffold is built
+against that doctrine — the paradigm skills assume it is loaded.
+
+### 4. Dispatch to the paradigm skill
+
+Invoke the `skill` named in the router's JSON output — one of:
+- `cli-scaffold-compiled` (Rust, Go, .NET)
+- `cli-scaffold-interpreted` (Python, TypeScript, JavaScript, Ruby, PHP, Perl)
+- `cli-scaffold-shell` (Bash, Zsh, PowerShell, POSIX sh)
+
+Pass along the resolved `language`, the `app_name`, the validated target path,
+and the requested functionality.
+
+### 5. Relay the result
+
+Relay the paradigm skill's outcome to the user: the generated file tree, the
+verifier's verdict, and any `needs-human-judgment` gaps it surfaced. Do not add,
+re-verify, or reinterpret — just relay.
+
+## Guarantees you uphold
+
+- Language is resolved to the correct paradigm **before** dispatch (step 1).
+- The doctrine is loaded **before** any paradigm skill runs (step 3).
+- Ambiguous/missing language ⇒ clarification, never a guess (step 1).
+- Unsupported language ⇒ refusal listing the 12 options, never a fallback.

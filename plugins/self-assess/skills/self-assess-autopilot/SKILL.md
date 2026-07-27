@@ -1,95 +1,71 @@
 ---
 name: self-assess-autopilot
-description: One-command auto-pilot over a live repo — runs the whole check then plan then fix then validate value stream by conducting the skills that already exist, without adding a new loop. The CHECK phase (read-only, no fixes) runs stage-map plus the reporting skills (docs-drift, ci-topology, lint-audit, code-idiom, arch-health), the UI audit, extract-rules, and — if the confab plugin is installed — its dependency/assertion/contract/agentic audits. The PLAN phase runs self-assess-transform-brief, which synthesizes every finding into one phased MODERNIZATION_BRIEF with ranked work items plus a behavior contract. The FIX-and-VALIDATE phase runs andon-loop in ingest mode, applying one gated fix per phase and proving each with andon-verify's tribunal. Plan-and-gate throughout — nothing is edited without a human approving the phase. Use this when the user asks to "run the auto-pilot", "check, plan, fix and validate", "harden this repo end to end", "do a full self-assess pass and fix what you find", or "auto-pilot mode". This skill conducts; it re-implements none of the phases.
+description: This skill should be used when the user asks to "run the auto-pilot", "check, plan, fix and validate this repo", or wants the full self-assess value stream run end to end. Conducts CHECK (read-only findings) -> PLAN (modernization brief) -> a hard approval gate -> FIX+VALIDATE (handed to andon-loop), halting on any unproven wire or unmet blocker.
+version: 0.1.0
 ---
 
-Conduct the full **check → plan → fix → validate** value stream for the current
-repository by dispatching the skills that already own each phase. This skill is
-a **conductor**: it adds no new analysis, no new loop, and never edits code
-itself — it sequences existing skills and enforces the hand-offs between them.
+# self-assess-autopilot
 
-The division of labor is fixed:
-- **`self-assess` owns check + plan** (this skill runs that half directly).
-- **`andon-loop` owns fix + validate** (this skill hands the plan to it).
-- **Autonomy is plan-and-gate**: the check phase is strictly read-only ("no
-  fix"), and no code changes until a human approves a phase. The existing
-  gates stay in force — self-assess's Edit skills are off by default, and the
-  andon rule halts the loop on any unproven wire.
+Run self-assess's full check -> plan -> fix -> validate value stream.
 
-## Step 0 — Settings and readiness
+## Step 0: Settings gate
 
-Read `.claude/self-assess.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop and
-say so. Note `output_dir` (default `analysis/self-assess`).
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-autopilot
+```
 
-Dispatch **`self-assess-preflight`**. If it returns **Not-ready**, stop and
-report what's missing (do not run a half-blind pass). If **Ready-with-gaps**,
-report the gaps and continue — each downstream skill degrades on its own.
+## Step 1: CHECK phase -- stage-map first, then everything else in parallel
 
-## Step 1 — CHECK (read-only; nothing is fixed here)
+Rule `autopilot-stage-map-first`: invoke `self-assess:self-assess-stage-map` before any other
+finding domain -- it writes `stage_graph.json` and `file_stage_index.json`, which
+`self-assess-arch-health` and `self-assess-transform-brief` both require. Do not parallelize
+stage-map with the rest.
 
-State to the user plainly: this phase only *reads* — it produces findings, it
-changes no code. Run, reusing each skill's own Workflow orchestration:
+Once stage-map has written its outputs, dispatch the remaining finding domains in parallel:
+`self-assess-docs-drift`, `self-assess-ci-topology`, `self-assess-lint-audit`,
+`self-assess-code-idiom`, `self-assess-extract-rules`, `self-assess-arch-health`,
+`self-assess-complexity-score`, `self-assess-ui-audit`.
 
-1. **`self-assess-stage-map` first** — it writes `stage_graph.json` and
-   `file_stage_index.json`, which the plan phase needs to attribute findings to
-   stages. Everything else can follow once this exists.
-2. Then the finding domains (independent — run as your harness allows):
-   `self-assess-docs-drift`, `self-assess-ci-topology`,
-   `self-assess-lint-audit`, `self-assess-code-idiom`,
-   `self-assess-arch-health` (needs `stage_graph.json`),
-   `self-assess-ui-audit`, and `self-assess-extract-rules` (mines the P0/P1
-   rules the behavior contract is built from).
-3. **confab, if installed** — dispatch `confab-dependency-audit`,
-   `confab-assertion-audit`, `confab-contract-drift`,
-   `confab-agentic-reliability`. Each writes a `*_summary.json` whose
-   `findings` array the plan phase ingests. If confab isn't installed, say so
-   and continue (its findings are simply absent from the plan, never faked).
+Rule `autopilot-confab-optional`: attempt to invoke confab's audit skills (e.g.
+`confab:confab-cycle`) only if the confab plugin is actually installed in this session (it
+will appear in the available-skills listing). If it does not appear, report "confab not
+installed" plainly and continue -- never fabricate confab-shaped findings to fill the gap.
 
-Skip any domain that doesn't apply (e.g. `ui-audit` with no UI surface, confab
-if absent) — report it as skipped, never as clean.
+Rule `autopilot-check-phase-read-only`: every skill in this phase only reads and produces
+findings. Do not use Edit, and do not use Write for anything other than each skill's own
+declared output artifacts.
 
-## Step 2 — PLAN
+## Step 2: PLAN phase
 
-Dispatch **`self-assess-transform-brief`**. It reads every sidecar Step 1
-produced, attributes each file:line finding to a phase via
-`file_stage_index.json`, ranks work items by severity × complexity, folds
-confab's `fixable` findings in as work items and its `advisory` findings into
-per-phase advisory notes, and derives the per-phase **Behavior Contract** from
-`extract-rules`' P0/P1 rules. Output: `MODERNIZATION_BRIEF.md` — the single
-plan the fix phase runs against.
+Dispatch `self-assess:self-assess-transform-brief` to synthesize every CHECK-phase artifact
+into `MODERNIZATION_BRIEF.md`.
 
-## Step 3 — GATE (plan-and-gate)
+## Step 3: Gate before FIX -- a persisted approval, not a remembered question
 
-Present the brief to the user before any fix: the phase sequence, the ranked
-work items per phase, the Open Questions, and — critically — any **P0-blocker
-rules** (confidence below High) that must be human-confirmed before their phase
-may change code. Ask the user to approve running the fix phase (all phases, or
-phase-by-phase). Do **not** proceed to Step 4 without approval. If the user
-only wants the plan, stop here — a brief with no execution is a valid outcome.
+Rule `autopilot-gate-before-fix`: present `MODERNIZATION_BRIEF.md` to the user and ask them to
+approve running the fix phase, either for all phases or phase-by-phase. Approval must be
+recorded in `.claude/self-assess.local.md` as `autopilot.fix_approved: true` (optionally
+`autopilot.approved_phases: [...]` to scope it) before proceeding. Check it in code, do not
+rely on remembering the conversation said yes:
 
-## Step 4 — FIX + VALIDATE (gated, per phase)
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py autopilot-fix-gate --repo <repo_root>
+```
 
-Hand the approved brief to **`andon-loop` in ingest mode**: ensure the target
-repo's `.claude/andon.local.md` has `gap_source: self-assess-brief` (and
-`self_assess_output_dir` pointing at this run's `output_dir`), then dispatch
-`andon-loop`. It takes the stream from the brief's phases, turns each phase's
-work items into gaps routed to their named fix skill
-(`self-assess-idiom-fix` / `self-assess-transform-execute` /
-`confab-remediator`), applies **one gated fix per phase**, and proves each
-against the phase's Behavior Contract via **`andon-verify`**'s adversarial
-tribunal (the named `{wire, contract, fixDiff}` entry point). The andon rule
-halts on any unproven wire, blast-radius over the authorization ceiling, or an
-unmet P0 blocker — surface the halt; do not force past it.
+A non-zero exit here means approval is not yet recorded -- stop at Step 3 and wait. Do not
+proceed to Step 4 under any circumstance without a passing gate.
 
-If `andon` is **not** installed, do not fabricate a fix loop: report that the
-plan is ready but the fix+validate half needs the andon plugin, and stop after
-Step 3.
+## Step 4: FIX+VALIDATE -- hand off, do not do it here
 
-## Step 5 — Report
+Rule `autopilot-halt-on-andon-blocker`: once the gate passes, hand FIX+VALIDATE to
+`andon:andon-loop` for the approved phase(s) -- this skill does not itself edit source code. If
+`andon-loop` is not installed, report plainly that the plan is ready (`MODERNIZATION_BRIEF.md`)
+but FIX needs the `andon` plugin, and stop there. If `andon-loop` halts on an unproven wire, a
+blast-radius ceiling, or an unmet P0 blocker, surface that halt to the user verbatim -- never
+force past it, never retry it silently, never treat a halt as success.
 
-Summarize the whole pass: domains checked (and skipped), the plan's phase/work-
-item/behavior-contract counts, what the fix loop advanced vs halted on, and
-what remains for a human — Open Questions, P0 blockers, advisory notes, and
-Unattributed findings. Point the user at `MODERNIZATION_BRIEF.md`, the
-`findings-dashboard.html` (via `self-assess-status`), and the andon ledger.
+## Read-only self-check
+
+This skill's own read/write footprint is limited to invoking other skills and relaying their
+outputs; it never calls Edit directly, and never calls Write outside forwarding a sub-skill's
+own resolved output paths.

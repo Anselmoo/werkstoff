@@ -1,316 +1,74 @@
-# Ruby CLI generation reference
+# Ruby CLI reference
 
-Pin every generated Ruby CLI to this shape. Deviate only when the user's
-explicit request contradicts a specific rule below — never silently blend
-the two framework paths.
+Sections map 1:1 onto the five pillars in `cli-architecture`.
 
-## 1. Framework
+## Framework
+`OptionParser` (stdlib) in the entry point. The core library **requires no CLI
+framework and never reads `ARGV`**.
 
-Default to **Thor**. Switch to stdlib **OptionParser** only when the user
-explicitly asks for zero external dependencies. Pick exactly one path per
-generation; never mix Thor DSL calls with a hand-rolled `OptionParser`
-instance in the same executable.
-
-**Thor path (default).** Add `gem "thor"` to the gemspec's runtime
-dependencies. Define one `Thor` subclass per CLI, with each subcommand as a
-public method preceded by a `desc` call:
-
-```ruby
-require "thor"
-require_relative "../<app>/core"
-
-module <App>
-  class CLI < Thor
-    desc "run NAME", "Run the thing for NAME"
-    def run(name)
-      puts <App>::Core.run(name)
-    end
-  end
-end
-```
-
-**OptionParser path (opt-in, zero-dependency).** Parse `ARGV` by hand with
-`require "optparse"`, build an options `Hash`, then dispatch on
-`ARGV.shift` (the subcommand) inside the executable itself — there is no
-class to subclass. Document this path in a comment at the top of the
-executable (`# Zero-dependency build: stdlib OptionParser, no Thor.`) so a
-future regeneration doesn't quietly reintroduce Thor calls into it.
-
-## 2. Project layout
-
+## Project layout (Pillar 2: core separation)
 ```
 <app>/
-├── exe/
-│   └── <app>              # thin Thor CLI entry point, executable bit set
-├── lib/
-│   └── <app>/
-│       ├── core.rb        # all business logic, zero Thor/CLI imports
-│       └── version.rb     # VERSION constant, required by gemspec + core
-├── spec/
-│   ├── spec_helper.rb
-│   ├── <app>_core_spec.rb
-│   └── cli_spec.rb        # Aruba snapshot spec for --help
-├── <app>.gemspec
-├── Gemfile
-└── README.md
+  <app>.gemspec
+  lib/<app>.rb        # pure logic, zero optparse/ARGV
+  exe/<app>           # thin entry (gem executable)
+  spec/help_snapshot_spec.rb
+  cli-scaffold.manifest.json
 ```
+`core_files: ["lib/<app>.rb"]`, `entry_file: "exe/<app>"`.
 
-Use `exe/`, never `bin/` — modern Bundler convention avoids the PATH
-collision `bin/` causes during `bundle install` (Bundler itself writes
-binstubs to `bin/`).
+## Help & completions (Pillar 1)
+OptionParser renders `--help` (Usage banner, then Options; document positional
+Arguments in the banner). **No first-party completion mechanism** — document the
+limitation honestly, or ship an optional hand-written bash-completion file.
 
-## 3. Help text and completions
+## NO_COLOR (Pillar 3)
+Gate ANSI on `ENV["NO_COLOR"]` being nil/empty.
 
-Let Thor auto-generate help from `desc`/`long_desc`: `desc` supplies the
-one-line summary shown in the command list; `long_desc` supplies the
-extended body shown by `<app> help <command>`. Write both for every
-subcommand — never leave `long_desc` off a command with more than one
-argument or flag. `thor help` and `<app> help` are equivalent entry
-points; document `<app> help <command>` in the README as the per-command
-lookup.
+## Exit codes (Pillar 3)
+`exit(...)` mapped to the frozen contract. `OptionParser::ParseError` (unknown
+flag/missing arg) → rescue and exit the usage code.
 
-State the shell-completion gap honestly: **Ruby and Thor have no
-first-party shell-completion generator.** Do not invent one. Handle it one
-of two ways, and say in the generated README which was chosen:
+## --json / --no-input (Pillar 5)
+`--json` serializes with `require "json"`. `--no-input` (`-n`) disables prompts;
+missing required input then exits the usage code. Use `$stdin.tty?` to fail fast
+when non-interactive.
 
-- **Default fallback**: ship a hand-written `completions/<app>.bash`
-  (plain `complete -W "list of subcommands" <app>`) alongside the gem, and
-  document sourcing it from `.bashrc`. This is static and must be
-  hand-updated when subcommands change — say so in a comment at the top
-  of the file.
-- **Only if the user asks for real completion generation**: point them at
-  the `bashly` project's completion-generation pattern as a separate build
-  tool, not as something Thor itself provides. Do not silently pull
-  `bashly` into a Thor-based project — it is a different, incompatible
-  scaffolding generator.
+## stdout / stderr (Pillar 5)
+Results via `$stdout.puts`; diagnostics via `$stderr.puts` / `warn`.
 
-## 4. NO_COLOR-aware output
+## Distribution (Pillar 4)
+**RubyGems**: a complete `.gemspec` with `spec.executables`, built with
+`gem build` and pushed with `gem push`.
 
-Check `ENV["NO_COLOR"]` explicitly before emitting any ANSI color — Thor's
-`say`/`set_color` helpers do not check it automatically. Compute a single
-`color_enabled?` boolean once, near the top of `core.rb` or a small
-`lib/<app>/output.rb` helper, and gate every colored call on it:
+## Snapshot testing (Pillar 3)
+`rspec` + `rspec-snapshot`: capture `--help` and match the stored snapshot.
 
+## Worked example (sketch)
 ```ruby
-def color_enabled?
-  ENV["NO_COLOR"].nil? || ENV["NO_COLOR"].empty?
-end
-```
-
-Use the `pastel` gem (`Pastel.new(enabled: color_enabled?)`) when adding
-`pastel` as a dependency is acceptable, since `Pastel#enabled` already
-degrades to plain strings when passed `enabled: false`. When staying
-zero-dependency, wrap raw ANSI codes in a helper that returns the plain
-string unchanged when `color_enabled?` is false — never emit raw escape
-codes inline in command methods.
-
-## 5. Exit codes
-
-Use the frozen cross-paradigm contract everywhere in this plugin:
-
-- `0` — success
-- `1` — general/runtime error
-- `2` — usage/argument error
-
-Call `exit(N)` explicitly at the point of failure. Thor does **not**
-default its own argument errors to exit code 2 the way Click/Cobra do,
-and a `begin ... rescue Thor::UndefinedCommandError, Thor::InvocationError
-... end` wrapped around `CLI.start(ARGV)` is dead code and must not be
-generated: Thor's own `start` (`lib/thor/base.rb`) already
-`rescue Thor::Error => e` internally — both `UndefinedCommandError` and
-`InvocationError` are `Thor::Error` subclasses, so they're swallowed
-inside `start` and never reach an outer rescue. Worse, `start` only calls
-`exit(false)` (exit code 1, never 2) when the class's `exit_on_failure?`
-returns true, and Thor's own default `exit_on_failure?` is **false** — so
-an unmodified Thor CLI silently exits **0** on a bad command or bad
-arguments, not 1.
-
-To get the frozen 0/1/2 contract, override two class-level hooks that
-Thor's dispatcher actually calls *before* raising — `handle_no_command_error`
-and `handle_argument_error` — so the usage-error path exits `2` directly
-instead of ever becoming a `Thor::Error` that `start` would otherwise
-swallow or exit-1 on. Also still define `exit_on_failure?` (`true`) as a
-fallback for any other `Thor::Error` Thor itself might raise elsewhere:
-
-```ruby
-class CLI < Thor
-  def self.exit_on_failure? = true
-
-  def self.handle_no_command_error(command, has_namespace = $thor_runner)
-    warn "ERROR: unknown command \"#{command}\""
-    exit(2)
-  end
-
-  def self.handle_argument_error(command, error, args, arity)
-    warn "ERROR: \"#{command.name}\" called with the wrong arguments"
-    exit(2)
-  end
-
-  desc "greet NAME", "Print a greeting"
-  def greet(name)
-    puts <App>::Core.build_greeting(name)
-  rescue <App>::Core::Error => e
-    warn e.message
-    exit(1)
-  end
-end
-
-CLI.start(ARGV)
-```
-
-Domain/runtime errors (`<App>::Core::Error`) are not `Thor::Error`
-subclasses, so they're never touched by Thor's dispatch machinery at
-all — catch them inside each command method (as shown above), not around
-`CLI.start`, and `exit(1)` explicitly there.
-
-## 6. `--json` output and `--no-input`
-
-Declare both as `class_option`s on the `Thor` subclass so every subcommand
-inherits them:
-
-```ruby
-class_option :json, type: :boolean, default: false, desc: "Emit JSON"
-class_option :no_input, type: :boolean, default: false, desc: "Disable prompts"
-```
-
-For `--json`, branch at the point of output: `require "json"` once at the
-top of the executable, and in each command method emit
-`JSON.generate(result)` to stdout when `options[:json]` is true, plain
-`puts`/`say` formatting otherwise. Keep the JSON-vs-plain branch in the
-CLI layer, not in `core.rb` — `core.rb` returns plain Ruby data structures
-(Hash/Array), never pre-serialized strings.
-
-For `--no-input`, guard every `ask`/`yes?` call: when `options[:no_input]`
-is true and a required value was not supplied as an argument or flag,
-skip the prompt and fail immediately with exit code 2 (missing required
-input is a usage error, not a runtime error):
-
-```ruby
-def run(name = nil)
-  if name.nil?
-    if options[:no_input]
-      warn "NAME is required (no-input mode: cannot prompt)"
-      exit(2)
-    end
-    name = ask("Name?")
-  end
-  puts <App>::Core.run(name)
-end
-```
-
-## 7. stdout/stderr discipline
-
-Send results — the data the command exists to produce — to stdout via
-`puts` (or Thor's `say` when a color/style helper is wanted). Send
-diagnostics, progress, and warnings to stderr via `$stderr.puts` or the
-`warn` kernel method. Never let `core.rb` call `puts`/`warn` itself — it
-returns values; only `exe/<app>` and the `CLI` class perform I/O. This
-keeps `core.rb` requirable and testable without capturing stdout.
-
-## 8. Distribution
-
-Ship as a RubyGem. In `<app>.gemspec`:
-
-```ruby
-spec.bindir     = "exe"
-spec.executables = ["<app>"]
-spec.files      = Dir["lib/**/*.rb", "exe/*"]
-spec.add_dependency "thor", "~> 1.3"
-```
-
-Build and publish:
-
-```bash
-gem build <app>.gemspec
-gem push <app>-<version>.gem
-```
-
-For local development, run the executable through Bundler without
-installing the gem: `bundle exec exe/<app>`. Document both paths in the
-generated README — `bundle exec` for contributors, `gem install <app>`
-for end users after publishing.
-
-## 9. Snapshot testing `--help`
-
-Use **Aruba** (RSpec-based) to snapshot-test `--help` output. Add
-`aruba` and `rspec` as development dependencies, configure
-`spec/spec_helper.rb` to `require "aruba/rspec"`, and write the help spec
-against the built executable:
-
-```ruby
-# spec/cli_spec.rb
-require "spec_helper"
-
-RSpec.describe "<app> --help", type: :aruba do
-  it "prints the top-level help banner" do
-    run_command("<app> --help")
-    expect(last_command_started).to have_output(/Commands:/)
-    expect(last_command_started).to have_output(/<app> run NAME/)
+# lib/<app>.rb — no optparse
+module App
+  def self.greet(name)
+    raise ArgumentError, "name required" if name.to_s.empty?
+    "Hello, #{name}"
   end
 end
 ```
-
-Prefer targeted `have_output(/regex/)` assertions over a full literal
-snapshot compare when help text includes anything environment-dependent
-(gem version, terminal width); use a captured-output equality snapshot
-only when the help text is fully static.
-
-## 10. Minimal worked example
-
-Illustrative only — regenerate concrete names, commands, and error
-handling to fit the actual CLI being built, do not copy verbatim.
-
 ```ruby
-# lib/<app>/core.rb
-module <App>
-  class Core
-    class Error < StandardError; end
-
-    def self.run(name)
-      raise Error, "name cannot be blank" if name.to_s.strip.empty?
-      { greeting: "Hello, #{name}!" }
-    end
-  end
-end
-
-# exe/<app>
 #!/usr/bin/env ruby
-require "thor"
-require "json"
-require_relative "../lib/<app>/core"
-
-module <App>
-  class CLI < Thor
-    def self.exit_on_failure? = true
-
-    def self.handle_no_command_error(command, has_namespace = $thor_runner)
-      warn "ERROR: unknown command \"#{command}\""
-      exit(2)
-    end
-
-    def self.handle_argument_error(command, error, args, arity)
-      warn "ERROR: \"#{command.name}\" called with the wrong arguments"
-      exit(2)
-    end
-
-    class_option :json, type: :boolean, default: false
-    class_option :no_input, type: :boolean, default: false
-
-    desc "run NAME", "Greet NAME"
-    long_desc "Prints a greeting for NAME, or exits 2 if NAME is missing."
-    def run(name = nil)
-      if name.nil?
-        exit(2) if options[:no_input]
-        name = ask("Name?")
-      end
-      result = <App>::Core.run(name)
-      options[:json] ? puts(JSON.generate(result)) : puts(result[:greeting])
-    rescue <App>::Core::Error => e
-      warn e.message
-      exit(1)
-    end
-  end
+# exe/<app> — thin
+require "optparse"; require "json"; require_relative "../lib/<app>"
+opts = { json: false, no_input: false }
+parser = OptionParser.new do |o|
+  o.banner = "Usage: <app> [options] [name]"
+  o.on("--json") { opts[:json] = true }
+  o.on("-n", "--no-input") { opts[:no_input] = true }
 end
-
-<App>::CLI.start(ARGV)
+begin; parser.parse!; rescue OptionParser::ParseError => e; warn e.message; exit 2; end
+name = ARGV.shift
+if name.nil? && (opts[:no_input] || !$stdin.tty?); warn "error: name required"; exit 2; end
+begin
+  msg = App.greet(name.to_s)
+  $stdout.puts(opts[:json] ? JSON.generate({ message: msg }) : msg); exit 0
+rescue ArgumentError => e; warn "error: #{e.message}"; exit 1; end
 ```

@@ -1,34 +1,12 @@
 # Changelog
 
-All notable changes to this plugin will be documented in this file.
+All notable changes to the `compass` plugin are documented here.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-## [0.2.0] - 2026-07-25
+## [0.1.0] - 2026-07-27
 
 ### Added
-- cluster same-file findings, add symbol-graph safety check, extend CI with plugin checks
-- **ci**: attach CHANGELOG.md section to GitHub releases (#8)
-- **cupertino**: add self-contained handbook lifecycle (design/code/testing/docs) (#7)
-- **self-assess**: reporting→plan bridge + cross-plugin auto-pilot (#6)
 
-### Fixed
-- **self-assess**: list ui-audit in dashboard empty-state hint (#9)
-- **ci**: write the SBOM to tools/werkstoff-cli so the upload step finds it
-
-## [0.1.1] - 2026-07-23
-
-### Added
-- `homepage` and `repository` fields in the plugin manifest, pointing at
-  this plugin's README and subtree in the werkstoff repo.
-
-### Removed
-- Unrecognized `contractVersion` field from the plugin manifest, flagged by
-  `claude plugin validate --strict`.
-
-## [0.1.0]
-
-- Initial release.
+- Initial release. Generated from a behavior specification extracted from the
+  prior hand-written implementation, via `tools/plugin-serializer/` and the
+  official `/plugin-dev:create-plugin` path — a clean-room rebuild rather than
+  a port, so none of the previous wording carried over.

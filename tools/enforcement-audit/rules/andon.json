@@ -1,0 +1,64 @@
+{
+  "plugin": "andon",
+  "source": "docs/andon-behavior-contract.md",
+  "note": "Hand-extracted rule inventory. Once tools/plugin-serializer emits behavior.json, that file supplies this instead — the shape is deliberately the same so the auditor does not change.",
+  "rules": [
+    {
+      "id": "andon-rule-base",
+      "section": "3",
+      "must": "Given a wire whose status is broken or unknown, the loop MUST NOT advance its cursor past that wire.",
+      "state_terms": ["wire", "cursor", "advance", "unproven", "proven", "wireStatus"],
+      "prose_terms": ["andon rule", "not advance", "advance past", "unproven wire"]
+    },
+    {
+      "id": "stop-1-wire-proof-failure",
+      "section": "3.1",
+      "must": "Given a proof attempt returns a negative/refuted verdict, the loop MUST NOT advance past that wire.",
+      "state_terms": ["verdict", "refuted", "red", "proof", "proven"],
+      "prose_terms": ["verdict", "refuted", "red verdict", "wire-proof"]
+    },
+    {
+      "id": "stop-2-authorization-ceiling",
+      "section": "3.2",
+      "checkpoints": 2,
+      "must": "Given a fix whose blast-radius exceeds the configured authorization ceiling, the loop MUST NOT apply it or prove its wire. Must fire at TWO checkpoints: post-proposal and post-diff.",
+      "state_terms": ["blastRadius", "blast_radius", "authorizationLevel", "authorization_level", "ceiling", "reversib"],
+      "prose_terms": ["blast radius", "blast-radius", "authorization ceiling", "authorization_level"]
+    },
+    {
+      "id": "stop-3-structural-contradiction",
+      "section": "3.3",
+      "must": "Given a queryable structural index contradicts a claim the wire's proof depends on, the loop MUST NOT advance under any circumstance — not overridable.",
+      "state_terms": ["nonOverridable", "non_overridable", "structural", "contradict", "symbolIndex", "symbol_index"],
+      "prose_terms": ["non-overridable", "structural contradiction", "structural evidence"]
+    },
+    {
+      "id": "thrash-escalation-limit",
+      "section": "3",
+      "must": "Given the same wire reopens N times (legacy: 3), the loop MUST stop treating it as a sub-cycle and escalate it as the stream's constraint rather than retrying.",
+      "state_terms": ["reopen", "reopenCount", "fixAttempts", "maxReopens", "backtrack", "subCycle", "sub_cycle", "attempts"],
+      "prose_terms": ["reopen", "three times", "sub-cycle", "backtrack", "thrash"]
+    },
+    {
+      "id": "v2-required-field-integrity",
+      "section": "9.2",
+      "must": "A persisted record missing a field its own type declares required MUST be detectable as invalid rather than silently accepted.",
+      "state_terms": ["validate", "schema", "required", "invalid", "malformed"],
+      "prose_terms": ["required field", "schema", "must be present"]
+    },
+    {
+      "id": "v2-one-record-one-gap",
+      "section": "9.3",
+      "must": "One persisted record MUST represent exactly one gap, so per-gap status and reopen counting are unambiguous.",
+      "state_terms": ["gapId", "gap_id", "records", "oneGap"],
+      "prose_terms": ["one gap", "single gap", "one record"]
+    },
+    {
+      "id": "v2-write-scope-containment",
+      "section": "9",
+      "must": "Write scope MUST be enforced before dispatch, in code — no traversal, no absolute paths, no overlapping targets.",
+      "state_terms": ["writeScope", "write_scope", "traversal", "absolute", "resolve", "relative"],
+      "prose_terms": ["write scope", "traversal", "absolute path"]
+    }
+  ]
+}

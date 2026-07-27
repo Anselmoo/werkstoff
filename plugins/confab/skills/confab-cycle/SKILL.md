@@ -1,213 +1,136 @@
 ---
 name: confab-cycle
-description: This skill should be used when the user asks to "run a quality self-optimization cycle", "harden the quality findings", "fix what quality found and re-check", "converge the quality audit", or wants the confab plugin's four domain audits run repeatedly with cross-run memory until they stop finding new things — optionally applying and re-verifying fixes for dependency-hallucination, contract-drift, and mechanical agentic-reliability findings, and drafting (never applying) assertion-strength suggestions.
+description: "Use when the user asks for a bounded self-optimization loop that re-runs confab's audits until convergence or a pass cap, wants to 'run the confab cycle', 'keep fixing findings until done', or asks for propose-only vs fix-mode passes. Runs at most max_passes_per_invocation (default 5) passes, applies fixes only in fixable domains, and stops early on convergence — every bound is enforced by scripts/cycle_engine.py, not by this file's instructions."
 ---
 
-Run a bounded, autonomous self-optimization cycle across the `confab`
-plugin's four domain audits (`confab-dependency-audit`,
-`confab-assertion-audit`, `confab-contract-drift`,
-`confab-agentic-reliability`), reusing each one's existing Find→Verify
-workflow unchanged. This adds three things none of the four domain skills
-has on its own: a persistent ledger so a recurring finding is recognized as
-recurring (not re-reported as new every time), a `propose`/`fix` mode
-switch with a three-way split in `fix` mode — `cycle.fixable_domains`
-(default `dependency_audit`, `contract_drift`, and `agentic_reliability`'s
-`excessive-tool-grant` category only) get one scoped remediation attempt
-plus a re-verify via `confab-remediator`; `cycle.draft_domains` (default
-`assertion_audit`) get a proposed-but-never-applied suggestion via
-`assertion-auditor`'s Suggest mode instead, since a generated assertion has
-no ground truth beyond the module's current — possibly buggy — runtime
-behavior; everything else is report-only — and a thrash guard (a finding
-that keeps reopening after `cycle.max_reopens` *applied* fix attempts gets
-escalated instead of retried forever; drafted suggestions never count
-against this guard, since drafting never attempts an edit).
+Run confab's bounded self-optimization loop: repeatedly find the
+"constraint" domain (the one with the most urgent open findings), audit
+it, and — in fix mode — apply or draft fixes, until the loop converges or
+hits its pass cap. The pass cap, the reopen thrash-guard, the fixable-
+domain gating, and the convergence check are all enforced by
+`scripts/cycle_engine.py` and `scripts/lib/ledger.py`; this file only
+describes how to drive that engine. If your own count of passes ever
+disagrees with what the engine reports, trust the engine — it is the
+source of truth, not your running tally.
 
-## Step 0 — Load settings and the ledger
+## Setup (once per invocation)
 
-Read `.claude/confab.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/confab`) and the `cycle`
-block: `mode` (default `propose`), `fixable_domains` (default
-`[dependency_audit, contract_drift, agentic_reliability]` — for
-`agentic_reliability`, `confab-remediator` itself only ever acts on the
-`excessive-tool-grant` category, everything else in that domain always
-comes back `blocked`), `draft_domains` (default `[assertion_audit]` —
-proposed, never applied), `max_reopens` (default `3`),
-`max_passes_per_invocation` (default `5`).
+1. Determine `repo_root`, `mode` (`"fix"` or `"propose"` — default
+   `"propose"` unless the user explicitly asked to apply fixes),
+   `max_passes` (default 5, never pass a value above 20 to the engine —
+   it will refuse), and `max_reopens` (default 3, never above 10).
+2. Generate one `invocation_id` for this whole run (e.g.
+   `python3 -c "import uuid; print(uuid.uuid4())"`) and reuse it for every
+   symbol-index build this invocation needs — never build a fresh one per
+   pass or per domain. This is what makes the symbol-index snapshot
+   shared rather than rebuilt (rule: symbol-index-shared-per-invocation).
 
-Read `<output_dir>/ledger.json` if it exists and parse it; otherwise this
-is cycle 1, pass 1 — the workflow initializes a fresh ledger itself when
-none is supplied.
+## Per-pass loop
 
-**If `cycle.mode` resolves to `fix`:** before doing anything else, check
-the target repo's git status (`git status --porcelain`). If it is not
-clean, tell the user plainly that fix mode is about to edit tracked files
-and ask them to confirm proceeding on a dirty tree, or to commit/stash
-first, or to switch to a branch — do not proceed silently. This mirrors
-this repo's own guidance on pausing before hard-to-reverse actions; a code
-edit is git-reversible, but the user should know it's about to happen
-before it does.
+Repeat the following until the engine tells you to stop:
 
-## Step 1 — Enumerate inputs for all four domains
+3. Ask the engine what to do next:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" plan-next-pass <repo_root> \
+       --max-passes <max_passes> --mode <mode>
+   ```
+   If this exits non-zero, the pass cap is already reached — stop the
+   loop immediately and go to "Wrap up" below. Otherwise it prints
+   `{"passNumber": N, "domain": "...", "mode": "..."}`.
+4. Run that domain's audit skill's Find (and, per that domain's own
+   rules, Verify) phase, scoped efficiently since you likely already have
+   recent findings from a prior invocation — reuse `analysis/confab/<domain>_summary.json`
+   if it's fresh, otherwise re-run the audit as that skill's own SKILL.md
+   describes. Do not weaken that domain's own mandatory-verification rules
+   just because you're inside a cycle pass — `assertion_audit` still runs
+   its Verify phase unconditionally, `contract_drift` and
+   `agentic_reliability` still run theirs unless explicitly skipped.
+5. For each open finding in the constraint domain, decide its handling:
+   - **mode is `"propose"`**: never apply anything. For a fixable finding
+     (see below), still just describe the proposed fix in your report —
+     do not dispatch `confab-remediator` at all in propose mode.
+   - **mode is `"fix"` and the finding IS in confab's fixable set**
+     (`dependency_audit` any category, `contract_drift` any category,
+     `agentic_reliability` category `excessive-tool-grant` only — check
+     with the same table `scripts/lib/constants.py FIXABLE_DOMAINS`
+     encodes, don't just guess): open a remediation scope, dispatch the
+     remediator, then close the scope:
+     ```
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" open <repo_root> \
+         --finding-id <id> --domain <domain> --category <category> \
+         --target-file <repo-relative file>
+     ```
+     If this exits 3, the finding is NOT fixable — the script refused to
+     even open a scope for it. Treat it as advisory and do not dispatch
+     `confab-remediator`; this can happen even in fix mode if a finding's
+     category was miscategorized upstream, and the script is the
+     authority here, not your own read of the finding.
+     If it exits 0, dispatch `confab-remediator` with exactly this one
+     finding. A `PreToolUse` hook enforces that its one `Edit` call must
+     target the locked file and that no second edit is possible in this
+     scope — you do not need to police that yourself. After the
+     remediator returns, run:
+     ```
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" close <repo_root>
+     ```
+   - **the finding is in `assertion_audit`, or `agentic_reliability`
+     outside `excessive-tool-grant`**: this is draft-only or advisory —
+     never open a remediation scope for it, never dispatch
+     `confab-remediator`. For `assertion_audit` specifically, you may ask
+     the `assertion-auditor` agent to run in **Suggest mode** to draft a
+     replacement assertion, but that draft is reported, never applied —
+     no `Edit` call happens for it, ever.
+6. Build this pass's outcome record and tell the engine:
+   ```json
+   {"passNumber": N, "domain": "...", "mode": "fix"|"propose",
+    "outcomes": [{"findingId": "...", "category": "...", "evidence": "...",
+                   "severity": "...", "outcome": "fixed"|"drafted"|"blocked"|"reopened",
+                   "blockReason": "... (required when outcome is \"blocked\")"}]}
+   ```
+   Use `"fixed"` only for a finding `confab-remediator` returned
+   `status: "applied"` for. Use `"blocked"` for one it returned
+   `status: "blocked"` for, or one you determined is not fixable — and
+   always copy its `reason` into `blockReason` here; the engine rejects
+   (exit 2) any `"blocked"` outcome with an empty `blockReason` rather
+   than accepting a blocked finding with no explanation on record. Use
+   `"drafted"` for an assertion-audit Suggest-mode draft. Use
+   `"reopened"` for a finding that was closed in a prior pass/invocation
+   but is open again this pass. Write this to a scratch JSON file and run:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" record-pass-result <repo_root> \
+       --pass-json <path> --max-reopens <max_reopens> --max-passes <max_passes>
+   ```
+   This is the ONLY place ledger state changes — do not hand-edit
+   `analysis/confab/ledger.json` yourself. The script rejects (exit 2) any
+   `"fixed"` outcome for a non-fixable domain/category or for a
+   `"propose"`-mode pass; if you see that rejection, you made a mistake
+   in step 5 — fix your outcome record, don't retry with a different
+   claim to force it through.
+   It prints `{"converged": bool, "shouldContinue": bool, ...}`. If
+   `shouldContinue` is `false`, stop the loop — either the pass cap was
+   reached or the pass converged (closed zero findings and produced zero
+   fix/draft outcomes). Do not start another `plan-next-pass` call after
+   `shouldContinue: false`.
 
-The workflow script has no filesystem access, so gather every domain's
-`args` object yourself, exactly as that domain's own skill already does in
-its own Step 0/Step 1 — do not reinvent the enumeration logic, reuse it:
+## Wrap up
 
-- `dependency_audit`: use the **Glob tool** (not Bash `find`/`ls`) for
-  manifest files per `confab-dependency-audit/SKILL.md` Step 0
-  (`package.json` → npm, `requirements.txt`/`pyproject.toml` → pip,
-  `Cargo.toml` → cargo, `go.mod` → go, `Gemfile` → gem), build
-  `manifestFiles: [{path, type}]`.
-- `assertion_audit`: enumerate `targetFiles`/`testFiles` per
-  `confab-assertion-audit/SKILL.md` Step 0/1 (honor a user-named target;
-  otherwise prefer recently-changed files over a full-repo sweep) and
-  check `<output_dir>/preflight_summary.json` for a `mutationTool` to pass.
-- `contract_drift`: gather contract sources (typed source files, schema
-  files) and load house rules the same way `confab-contract-drift/SKILL.md`
-  Step 0 does (symbol-index snapshot's `file_catalog.json` first, the
-  **Glob tool** only if no snapshot is available).
-- `agentic_reliability`: enumerate `skillFiles`/`agentFiles`/`workflowFiles`
-  (`**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js`) per
-  `confab-agentic-reliability/SKILL.md` Step 0.
+7. `analysis/confab/reports/CONFAB_CYCLE.md` already has one line appended per
+   pass by the engine. Summarize it for the user: total passes run,
+   whether it stopped due to convergence or the pass cap, findings closed,
+   findings escalated (reopened past `max_reopens`), and anything left
+   open.
 
-Assemble `domainArgs: {dependency_audit, assertion_audit, contract_drift,
-agentic_reliability}`, one complete args object per domain, matching each
-domain workflow's own documented `args` shape exactly (including that
-domain's own `skipVerification` setting where it has one — `assertion_audit`
-has none, per its own SKILL.md).
+## What NOT to do
 
-If a domain has genuinely nothing to enumerate (e.g. no manifest files
-exist at all), still build its `args` object with empty arrays rather than
-omitting the domain — `confab-cycle-scan.js` requires all four
-`domainArgs` entries to be present, and a domain workflow with an empty
-input list reports "nothing to check" for itself, which is a legitimate
-green status, not an error.
-
-## Step 1a — Resolve advisory symbol-graph notes for already-known findings
-
-`confab-cycle-scan.js` computes same-file clusters and dispatches
-`confab-remediator` entirely inside its own bounded pass loop — it has no
-filesystem access and doesn't know which findings a pass will surface
-until that pass's domain workflow actually runs, so this step can only
-ever resolve advisory notes for findings the **loaded ledger already
-knows about** from a prior invocation (a finding first discovered during
-the pass about to run has no ledger entry yet to key off of — it simply
-won't get a note this invocation, which is expected, not a gap to work
-around).
-
-For each entry in the ledger loaded in Step 0 whose key starts with
-`dependency_audit::` or `contract_drift::` (the only two domains
-`confab-cycle-scan.js` clusters) and whose `status` is `open`: recover the
-file path embedded in the stableId itself — for `dependency_audit`,
-everything after the last `::` (the finding's own `manifestSource`); for
-`contract_drift`, everything after the last `::` with any trailing
-`:<line-number>` stripped (the finding's own `declaredSource`, same
-parsing `clusterKey` in `confab-cycle-scan.js` already applies). Reuse the
-`symbolIndexPath` snapshot dir already resolved for that domain while
-assembling `domainArgs` in Step 1 — do not resolve or build it a second
-time; if that domain's `symbolIndexPath` is `null` (small-repo skip),
-there is nothing to resolve for its findings.
-
-For each recovered file with a non-null `symbolIndexPath`, read
-`<symbolIndexPath>/symbol-graph/<file-slug>/_index.json` if it exists.
-For `contract_drift` (which cites a specific line via `declaredSource`),
-pick the nearest enclosing entry (the last one whose `line` is `<=` the
-finding's own line, or the closest overall if none qualifies — same rule
-`self-assess-idiom-fix` Step 1a already uses); for `dependency_audit`
-(manifest files, cited at file granularity only, and not the kind of
-source file `build_symbol_index.py` extracts symbols from in the first
-place) there is usually no index to find, which is expected. Read the
-picked entry's own `<symbolIndexPath>/symbol-graph/<file-slug>/<slug>.md`
-doc; if its "Possibly related (same file, name co-occurs)" section lists
-anything, build a short plain-text note (the other symbol's name, kind,
-and line) and set `symbolGraphSnippets[<the finding's own stableId>] =
-<that note text>`. A missing index, missing doc, or empty "Possibly
-related" section is the normal, expected case — leave that finding's
-entry absent from `symbolGraphSnippets` rather than guessing or erroring.
-
-Pass the resulting `symbolGraphSnippets` object (`{}` if nothing
-resolved) into `confab-cycle-scan.js`'s `args` in Step 2.
-
-## Step 2 — Run the cycle
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/confab-cycle-scan.js",
-  args: {
-    repoPath: "<repo root, usually '.'>",
-    mode: <cycle.mode from settings, default "propose">,
-    ledger: <parsed ledger.json contents, or null if none exists>,
-    domainArgs: <assembled in Step 1>,
-    symbolGraphSnippets: <resolved in Step 1a>,
-    fixableDomains: <cycle.fixable_domains from settings>,
-    draftDomains: <cycle.draft_domains from settings>,
-    maxReopens: <cycle.max_reopens from settings, default 3>,
-    maxPassesPerInvocation: <cycle.max_passes_per_invocation from settings, default 5>
-  }
-})
-```
-
-It runs up to `maxPassesPerInvocation` passes, each auditing whichever
-domain is currently the "constraint" (the domain with the most/worst open
-or escalated findings) via that domain's own existing workflow, merging
-results into the ledger. In `fix` mode, for domains in `fixable_domains`,
-it applies one scoped fix per pass via `confab-remediator` and re-runs
-that domain's workflow to confirm the fix held before marking the finding
-resolved; for domains in `draft_domains`, it instead asks
-`assertion-auditor`'s Suggest mode for a proposed-but-unapplied fix
-(stored on the ledger entry, never re-drafted once proposed) — every other
-domain is report-only in this pass. It stops early either on convergence
-(a pass that closes zero new/reopened findings across all four domains and
-produces no fix/draft outcome) or when it hits the pass cap — never spins
-indefinitely.
-
-**Fallback** (no Workflow tool) — run each of the four domain skills'
-existing fallback path once per pass (their own SKILL.md Step 1 fallback),
-in the constraint order you compute yourself by the same rule the workflow
-uses (escalated findings' domain first, else most open High-severity
-findings, else most total open findings, else a never-yet-run domain), and
-apply the same ledger-merge/thrash-guard/fix-vs-draft bookkeeping described
-in `confab-cycle-scan.js` inline in this skill rather than in a script —
-for a constraint domain in `draft_domains`, spawn an **assertion-auditor**
-subagent in Suggest mode directly rather than `confab-remediator` (no
-`Edit` involved either way). Cap yourself at the same
-`maxPassesPerInvocation`.
-
-## Step 3 — Persist the ledger and write the cycle report
-
-Write the workflow's returned `ledger` back to `<output_dir>/ledger.json`
-(pretty-printed JSON) — this is what makes the next invocation resumable.
-
-Create/update `<output_dir>/CONFAB_CYCLE.md`:
-- **Cycle status** — cycle #, pass #, mode, whether this invocation
-  converged, passes run this invocation
-- **Per-domain status** — green/red/unknown, open finding count
-- **This invocation's passes** — one entry per pass: constraint domain,
-  new/reopened count, fix outcome if any (`fixed` / `still-open` /
-  `blocked` / `escalated` / `drafted`, with the reason for
-  blocked/escalated or the suggestion for drafted). When a pass batched
-  more than one same-file finding (`fixOutcome.clusterSize > 1`), list
-  every entry in `fixOutcome.clusterOutcomes` individually, not just the
-  first — a single pass can now fix/block several findings at once, and
-  none of them should be silently dropped from the report.
-- **Escalated findings** — a dedicated section for anything the thrash
-  guard escalated (fix attempted `max_reopens` times without holding) —
-  this is the list most worth a human's attention first
-- If not converged, name the constraint domain and suggest re-running
-  `confab-cycle` to continue
-
-## Present
-
-Report: cycle/pass number, mode, converged or not, and — if `fix` mode
-ran — a breakdown of what happened this invocation: N fix(es) applied
-(file + description, so the user can review the diff before committing
-anything themselves — this skill never commits or pushes), M
-suggestion(s) drafted for human review (domain + rationale, never
-applied), and P blocked/escalated. If the constraint domain isn't in
-either `fixable_domains` or `draft_domains`, say so and name the single
-next-most-useful step, same spirit as `confab-status`'s verdict line.
-Suggest: `glow -p <output_dir>/CONFAB_CYCLE.md`
+- Do not run more than `max_passes` passes in one invocation, even if the
+  user asks you to "just keep going" — a fresh invocation (a new call to
+  this skill) is how they get more passes; `plan-next-pass` will refuse
+  once the cap is hit regardless of what you're asked.
+- Do not dispatch `confab-remediator` for an `assertion_audit` finding or
+  a non-`excessive-tool-grant` `agentic_reliability` finding under any
+  framing — the remediation-scope script refuses to open a scope for
+  these, and the `PreToolUse` hook refuses the edit even if you tried to
+  route around the scope step.
+- Do not treat a `"blocked"` remediator outcome as a failure to retry
+  immediately — record it as `"blocked"` and let it surface as an open
+  finding for the next pass or the user's manual attention.

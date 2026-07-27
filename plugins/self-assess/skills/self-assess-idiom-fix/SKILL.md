@@ -1,140 +1,55 @@
 ---
 name: self-assess-idiom-fix
-description: Applies exactly the eligible "modernization"-category findings from self-assess-code-idiom's code_idiom_summary.json -- mechanical, single-location deprecated-idiom rewrites (e.g. Optional[X] to X | None) -- via the idiom-remediator agent, then hands every fix off to andon-verify's adversarial tribunal for proof (never self-verifies, no exception even for trivial rewrites). Use this only when the user explicitly wants to apply code-idiom's modernization findings, not just read them, and has set idiom_fix.mode to "fix" in .claude/self-assess.local.md. This is one of only two skills in self-assess with Edit access to target source (the other is self-assess-transform-execute) -- every other self-assess skill, including self-assess-code-idiom itself, is read-only. Do not use for "smell"-category findings (those are never auto-fixed by this or any self-assess skill), for architectural Merge/Split changes (self-assess-transform-execute), or for house-rules violations (self-assess-lint-audit has no auto-fix path).
+description: This skill should be used when the user explicitly asks to "apply the modernization findings", "fix the idiom findings", or "auto-fix what code-idiom found". Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode="fix", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying.
+version: 0.1.0
 ---
 
-Apply `self-assess-code-idiom`'s eligible `modernization` findings,
-clustered by file and kind (Step 1a) and dispatched to the
-`idiom-remediator` agent once per cluster, via one of only two
-Edit-capable paths in `self-assess` (the other is
-`self-assess-transform-execute`).
-`self-assess-code-idiom` itself remains unconditionally read-only; this
-skill is the separate, explicitly-gated place where a subset of its
-findings can actually be applied.
+# self-assess-idiom-fix
 
-**This skill never verifies its own output.** Its last step, for every
-fix, is always a hand-off to an independent process — never a
-self-review. This applies with zero exceptions, even to the most
-mechanical single-line rewrite, per this plugin's deliberate choice to
-prioritize one consistent safety story over proportionality to blast
-radius.
+Apply single-location modernization idiom rewrites that `self-assess-code-idiom` already found
+and verified. Never touches `smell`-category findings -- those require design judgment this
+skill explicitly refuses to attempt on its own.
 
-## Step 0 — Load settings and check authorization
+## Step 1: The mode gate -- refuse outright in 'propose' mode
 
-Read `.claude/self-assess.local.md` (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`,
-stop. If `idiom_fix.mode` is not `fix` (default `propose`), **stop here
-and say so plainly**: "`self-assess-code-idiom` already reports
-modernization findings; applying any of them requires setting
-`idiom_fix.mode: fix` first — this is a deliberate authorization gate,
-not a bug." Do not proceed in `propose` mode under any circumstance,
-including a direct request to "just do it anyway" — redirect the user to
-the settings file.
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py idiom-fix-mode-gate --repo <repo_root>
+```
 
-## Step 1 — Build the eligible-findings list
+A non-zero exit means `idiom_fix.mode` is not `"fix"` in `.claude/self-assess.local.md` --
+stop and tell the user plainly that applying findings requires setting `idiom_fix.mode: 'fix'`.
 
-Read `<output_dir>/code_idiom_summary.json`. If it doesn't exist, stop
-and say `self-assess-code-idiom` hasn't run yet.
+## Step 2: Filter to eligible findings only
 
-Filter its `findings[]` array to entries where **both** hold:
-- `category === "modernization"` (never `"smell"` — permanently out of
-  scope; fixing a smell requires design judgment a mechanical rewrite
-  can't supply).
-- No `severityNote` field present (its presence means
-  `self-assess-code-idiom`'s own Verify phase already flagged this
-  finding as a split/uncertain verdict — this skill never second-guesses
-  that by attempting a fix anyway).
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py filter-idiom-findings --findings <code_idiom_summary.json's findings list>
+```
 
-This is the **eligible-findings list** for the run. **Zero eligible
-findings is a valid, expected outcome, not an error path** — a
-fully-migrated codebase genuinely has nothing to fix here. Report "0
-eligible findings — nothing to do" plainly and stop; never lower the
-filter criteria or otherwise manufacture a finding to justify the run.
+`eligible` contains only `category: "modernization"` findings with no `severityNote`.
+`skipped` lists every finding excluded and why (`category!=modernization` or `severityNote
+present`) -- report this list to the user rather than silently ignoring it.
 
-## Step 1a — Cluster by file and kind
+## Step 3: Dirty-tree gate
 
-Group the eligible-findings list from Step 1 into clusters, keyed by
-`(file, kind)` — `file` is everything before the last `:<digits>` in the
-finding's `evidence` string, `kind` is the finding's own `kind` field
-(the specific deprecated idiom, e.g. `optional-union-syntax`). Findings
-that share both are the same anti-pattern recurring at different lines
-in the same file — these become one cluster, dispatched as a single
-`idiom-remediator` call in Step 3. A finding that shares its `(file,
-kind)` with nothing else is a singleton cluster of size 1 — the common
-case stays exactly as fast as before. Never cluster across files or
-across different `kind` values, even when the fixes look superficially
-similar.
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py dirty-tree-gate --repo <repo_root>
+```
 
-For each cluster with more than one member, check whether the symbol-graph
-built by `build_symbol_index.py` (resolve-or-build per
-`references/parallel-safe-research-protocol.md`, same as this plugin's other
-Workflow-tool skills) has an index for the cluster's file at
-`symbol-graph/<file-slug>/_index.json`. Each finding's `evidence` gives a
-`path:line`, never a resolved symbol name — read that one small index file
-(sorted by line) and pick the nearest enclosing entry (the last one whose
-`line` is `<=` the finding's line, or the closest overall if none qualifies),
-then read that entry's own `symbol-graph/<file-slug>/<slug>.md` doc. If its
-"Possibly related" section links to a same-file symbol whose location is
-**not** already one of this cluster's cited locations, attach a
-`possiblyRelated` note (the other symbol's name, kind, and line) to the
-cluster for Step 3 to pass along. This never changes cluster membership or
-blocks the dispatch — a missing, stale, or unbuilt symbol-graph/index is a
-normal, expected outcome, not an error; proceed exactly as before when it's
-absent.
+Same behavior as `self-assess-transform-execute`'s Step 4: a dirty tree without an explicit
+`require_clean_tree: false` and user confirmation halts here.
 
-## Step 2 — Dirty-tree gate
+## Step 4: Cluster and dispatch one remediator per cluster
 
-Run `git status --porcelain`. If it's not clean, **tell the user
-plainly** that this step is about to edit tracked files and ask them to
-commit or stash first, or explicitly confirm proceeding anyway — do not
-proceed silently on a dirty tree (same discipline
-`self-assess-transform-execute` and `confab-cycle`'s fix mode use).
-Checked once per invocation, before touching anything.
+Group `eligible` findings by `(file, kind)`. Dispatch one `idiom-remediator` agent per cluster,
+handing it only that cluster's findings -- never a batch spanning multiple files or multiple
+kinds in one dispatch, and never a location not cited in the findings it was given.
 
-## Step 3 — Dispatch `idiom-remediator`, once per cluster
+## Step 5: Hand off to verification -- never self-verify
 
-Loop over the clusters from Step 1a within this one invocation. For each
-cluster, dispatch the `idiom-remediator` agent
-(`agentType: 'self-assess:idiom-remediator'`) exactly once, passing the
-**entire cluster's** array of `{evidence, description, suggestedFix}`
-entries — plus, when Step 1a attached one, a `possiblyRelated` note asking
-`idiom-remediator` to `Read` that other location before editing and return
-`blocked` for the affected cited location(s) if the rewrite would actually
-touch or depend on it, rather than assuming independence from the string-key
-match alone — never a dispatch spanning more than one cluster (i.e. never
-more than one file, never more than one `kind`). The agent returns one
-result per location in the cluster (`{file, line, status, description,
-reason?}, ...` — see its updated Output contract). For each location that
-comes back `blocked`, report why verbatim; for each `applied`, carry it
-into Step 4. Do not retry a `blocked` location with a broader prompt or a
-second guess at the fix — and a `blocked` location never blocks the rest
-of its cluster from being applied.
+Rule `verify-dispatch-handoff`: after the remediators finish, tell the user explicitly this
+change is unverified and hand off to `andon:andon-verify` (or `andon:andon-loop` for an OKF
+ledger). Do not run any self-check of correctness in this skill.
 
-## Step 4 — Hand off for verification (do not skip, do not self-verify)
+## Never commit or push
 
-Immediately after each cluster `idiom-remediator` returns — before moving
-to the next cluster in the loop — report explicitly, once per `applied`
-location in that cluster:
-
-> **This change is unverified.** Do not treat it as correct. Run
-> `andon-verify` (strategy a — the adversarial tribunal: independent
-> Defender, Challenger, and Verifier agents, never a self-review) against
-> this fix, or invoke `andon-loop` if you want this and future fixes
-> proven and recorded inside its OKF ledger. If `andon` is not installed,
-> verify this change by hand before trusting it — this skill does not
-> implement its own verification, on purpose.
-
-Each fix gets its own hand-off message — N findings fixed this run means
-N separate hand-offs, regardless of how many clusters they were
-dispatched in, never one summary claiming the batch as a whole is
-"done."
-
-Never commit or push, at any point in this skill.
-
-## Present
-
-Report: how many eligible findings were found, how many were fixed vs.
-`blocked`, and the verification hand-off message above, once per fix,
-verbatim. If Step 0 or Step 2 stopped early, report that instead —
-clearly, as the actual outcome of this run, not as an error to apologize
-for.
+This skill has no code path that invokes `git commit` or `git push`.

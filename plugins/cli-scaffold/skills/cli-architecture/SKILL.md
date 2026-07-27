@@ -1,173 +1,130 @@
 ---
 name: cli-architecture
-description: Internal doctrine skill for the cli-scaffold plugin, composed silently by scaffold-cli and the three paradigm skills (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) at the start of every generation — not intended for direct end-user invocation. Holds the five pillars every generated CLI must satisfy regardless of language, and the frozen cross-paradigm exit-code contract. Load this before generating any CLI scaffold, in any language.
+description: The single source of truth for what "production-grade" means for every CLI this plugin generates, in any of the 12 supported languages. Load this doctrine BEFORE any paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) generates a scaffold. Defines the five-pillar architecture, the frozen 0/1/2 exit-code contract, and the discoverability, composability, stability, and distribution requirements that the cli-scaffold-verifier checks. Never duplicate this doctrine into paradigm skills — reference it.
 ---
 
-Hold the single source of truth for what "production-grade" means across
-every language this plugin scaffolds. Every paradigm skill loads this
-doctrine before generating anything — it is never duplicated into the
-paradigm skills themselves, only referenced. This skill has no generation
-logic of its own; it is pure doctrine, composed by the skills that do the
-actual generating, the same way `compass-clarify-scope` is composed by
-`compass-solve` as a pipeline stage rather than exposing its own generation
-surface.
+# CLI Architecture Doctrine
 
-## Why doctrine, not templates
+This is the **only** place the plugin defines "production-grade." Every paradigm
+skill loads this before generating anything, and the `cli-scaffold-verifier`
+agent checks generated scaffolds against it. Paradigm skills and per-language
+reference files **reference** these rules; they never restate them. (The repo
+self-check `scripts/check_doctrine_isolation.py` fails the build if a paradigm
+skill duplicates the contract or re-enumerates the pillars.)
 
-This plugin stores no boilerplate files anywhere — no `assets/` templates
-to copy, no scaffolding scripts that stamp out files from a fixed skeleton.
-Every generated CLI is produced freeform, fresh, from the model's own
-writing, guided entirely by this doctrine plus the requesting paradigm
-skill's per-language reference file. This is a deliberate tradeoff: freeform
-generation adapts naturally to unusual requests (an app name with unusual
-casing, an unusual flag set, a codebase-specific integration) in a way a
-rigid template cannot — but it only produces consistent, converging output
-if the doctrine and per-language references are precise enough to leave
-little room for the generation to drift between invocations. Treat every
-pillar below as a hard constraint, not a suggestion, and treat vagueness in
-this file as a bug to flag rather than something to freely interpret.
+The numeric bounds and enumerations below are mirrored in
+`scripts/constants.py`, which asserts them at import time. That module — not this
+prose — is the enforcement. This document explains the intent; the scripts refuse
+violations.
 
-## The five pillars
+## The Five Pillars
 
-Every generated CLI, in every one of the 12 supported languages, must
-satisfy all five. A paradigm skill's per-language reference pins exactly
-how each pillar is satisfied in that language's idiom — this section
-defines what "satisfied" means at the doctrine level, language-agnostic.
+Every generated CLI, regardless of language, must satisfy all five. The
+`cli-scaffold-verifier` maps each finding back to one pillar.
 
-### 1. UX / discoverability
+1. **UX / discoverability.** `--help` prints a structured help block, and the
+   CLI ships shell completions through a first-party mechanism where one exists.
+2. **Backend / core separation.** Business logic lives in a core module/library
+   with **zero** CLI-framework imports; the entry point is a thin wrapper.
+3. **Stability.** A frozen exit-code contract, NO_COLOR support, fail-fast
+   non-interactive behavior, and a snapshot-tested `--help`.
+4. **Idiomatic distribution.** Real packaging metadata for the one idiomatic
+   distribution channel of that ecosystem — never a "zip the files" fallback.
+5. **Unix composability.** Results to stdout, diagnostics to stderr, and a
+   `--json` structured-output mode.
 
-- `--help` (and bare invocation with no required args, where the ecosystem
-  convention favors that) must print a structured usage block: a one-line
-  Usage summary, an Arguments/Positional section if any exist, an Options
-  section listing every flag with its short form (if any), long form, and
-  a one-line description.
-- Shell completions must be generated wherever the ecosystem has a
-  first-party or near-first-party mechanism for it (documented per
-  language in the relevant reference file) — never invented from scratch
-  where no idiomatic mechanism exists; an honest "no native completion
-  support" note is correct in that case, not a fabricated one.
-- All colored/styled output must be `NO_COLOR`-aware: check the `NO_COLOR`
-  environment variable (per the https://no-color.org convention) before
-  emitting ANSI codes, in addition to any TTY detection the ecosystem
-  already does automatically. Never assume automatic `NO_COLOR` support
-  without verifying whether the specific language/framework combination
-  actually provides it — some do natively (Rust/clap, PHP/Symfony
-  Console), some require it hand-rolled (Bash, Zsh, Perl, POSIX sh) — the
-  per-language reference states which.
+## The Frozen Exit-Code Contract
 
-### 2. Backend / core separation
+Identical in all 12 languages, no exceptions. Enforced by
+`EXIT_SUCCESS`/`EXIT_RUNTIME_ERROR`/`EXIT_USAGE_ERROR` in `scripts/constants.py`
+and checked by `verify_scaffold.py`:
 
-- **Compiled and interpreted paradigms**: business logic lives in an
-  importable library/module with zero CLI-framework imports — testable
-  and usable from outside the CLI entirely (a REPL, another program, a
-  test file). The CLI entry point is thin: parse arguments, call into the
-  library, format output, map results to exit codes. Never let business
-  logic leak into the CLI entry file, and never let the library depend on
-  anything CLI-framework-specific.
-- **Shell paradigm**: the equivalent is a sourced function file (Bash,
-  Zsh, POSIX sh) or a module manifest (PowerShell) — a file that can be
-  sourced/imported in isolation with zero side effects, whose functions
-  are independently testable without invoking the CLI entry point at all.
-  PowerShell is a structural exception documented in its own reference:
-  its exported module functions ARE simultaneously the importable API and
-  the invokable CLI surface, so no separate thin-wrapper split applies
-  there the way it does for the other 11 languages — do not force an
-  artificial split that fights the ecosystem's own idiom.
-
-### 3. Stability
-
-- **Frozen exit-code contract, identical across all 12 languages:**
-  - `0` — success
-  - `1` — general/runtime error
-  - `2` — usage/argument error (missing required argument, invalid flag,
-    unparseable input)
-
-  Some frameworks already emit this contract automatically on parse
-  failure (clap, Symfony Console); others emit a different default that
-  must be explicitly remapped (System.CommandLine defaults to 1 on parse
-  errors, cobra defaults to 1 as well) — the per-language reference states
-  which applies and exactly how to remap when needed. Never leave this
-  unverified for a language whose framework default doesn't already match.
-- **Snapshot-tested `--help`**: every generated CLI must include a test
-  that captures its own `--help` output and compares it against a stored
-  snapshot/golden file, using that language's idiomatic snapshot-testing
-  tool (documented per language in the relevant reference — pytest+syrupy,
-  vitest, insta, Verify.Xunit, PHPUnit+spatie-snapshot-assertions,
-  Test::Script+golden-file, golden files, Aruba, bats-core, shunit2,
-  Pester+Compare-Object — covering all 12 supported languages, though
-  Bash and Zsh both use bats-core). This is what keeps `--help` output
-  from drifting
-  silently between regenerations, and it is what proves the generated help
-  text actually matches pillar 1's structural requirement rather than
-  merely asserting it does.
-
-### 4. Idiomatic per-ecosystem distribution
-
-Every generated CLI must be distributable through its ecosystem's real,
-idiomatic channel — never a generic "zip the files up" fallback:
-
-| Language(s) | Channel |
+| Outcome | Code |
 |---|---|
-| Python | pipx / uv |
-| TypeScript/JavaScript | npm + oclif |
-| Ruby | RubyGems |
-| PHP | Composer/Packagist + Box `.phar` |
-| Perl | CPAN (via Minilla) |
-| .NET | `dotnet tool` / NuGet |
-| Rust | `cargo install` / crates.io |
-| Go | `go install` |
-| Bash, Zsh, POSIX sh | Homebrew (primary) / apt (optional, heavier) |
-| PowerShell | PSGallery |
+| Successful invocation with valid arguments | `0` |
+| Runtime error (failed operation, caught exception) | `1` |
+| Usage error (bad flags, missing required arg, type mismatch) | `2` |
 
-Generate the actual packaging metadata (manifest, spec file, project file
-— whatever the ecosystem calls it) as part of every scaffold, not as an
-afterthought the user has to add later.
+`--no-input` set **and** required input missing ⇒ exit `2` rather than blocking.
+Running non-interactively (no TTY / piped / CI) without `--no-input` ⇒ **fail
+fast**, never hang.
 
-### 5. Unix composability
+## Discoverability: the `--help` structure
 
-- **stdout/stderr discipline**: result data goes to stdout; diagnostics,
-  logs, and progress messages go to stderr. Nothing that a downstream
-  pipeline consumer would need to parse as data may land on stderr, and
-  nothing purely diagnostic may land on stdout. PowerShell has an
-  additional nuance documented in its own reference: prefer the
-  success/object output stream over `Write-Host`, which bypasses
-  pipeline composability entirely.
-- **`--json` output**: every generated CLI exposes a `--json` (or
-  ecosystem-idiomatic equivalent, e.g. PowerShell's `-Json` switch)
-  flag that switches result rendering to structured JSON on stdout,
-  using the ecosystem's standard JSON serialization facility — never a
-  hand-rolled serializer when a standard one exists.
-- **`--no-input`**: every generated CLI exposes a flag that disables any
-  interactive prompt the CLI would otherwise show, failing instead with
-  exit code 2 if required input is missing in that mode — the mechanism
-  that makes the CLI safe to run unattended in CI.
+`--help` (and the bare-invocation convention) prints, in order:
 
-## Applying the doctrine
+1. **Usage** summary — always first.
+2. **Arguments** / **Positional** section — when the CLI takes positional args,
+   each with a description.
+3. **Options** section — when the CLI takes flags, every flag with its short
+   form (if any), long form, and a one-line description.
 
-A paradigm skill applying this doctrine to a specific language:
+## Composability & output discipline
 
-1. Loads the requested language's per-language reference file from its own
-   `references/` directory.
-2. Confirms every one of the five pillars above is addressed by that
-   reference's sections — the reference files are written to map 1:1 onto
-   this doctrine's structure (Framework/Project layout/Help+completions/
-   NO_COLOR/Exit codes/`--json`+`--no-input`/stdout-stderr/Distribution/
-   Snapshot testing/Worked example).
-3. Generates the scaffold freeform, following the reference's pinned
-   idioms exactly rather than improvising an alternative even if the
-   alternative seems equally reasonable — consistency across invocations
-   depends on always picking the pinned idiom, not the model's own
-   independent judgment call each time.
-4. Hands the result to `cli-scaffold-verifier` (see the plugin's
-   `agents/cli-scaffold-verifier.md`) for a final read-only check against
-   this doctrine before presenting it to the user.
+- **stdout** carries result data a downstream pipeline consumes. Nothing purely
+  diagnostic may land there.
+- **stderr** carries diagnostics, progress, logs, warnings. Nothing a consumer
+  must parse as data may land there.
+- **`--json`** (or the ecosystem-idiomatic equivalent) switches results to
+  structured JSON via the ecosystem's standard serializer.
+- **`--no-input`** (or `-n` / `--no-interaction`) disables interactive prompts.
+- **NO_COLOR**: when set to any non-empty value, emit no ANSI color/styling
+  (per https://no-color.org).
 
-## Relationship to other cli-scaffold skills
+## Stability: testing & the exit contract
 
-This skill is composed, never invoked standalone by a user request — it
-has no action of its own beyond holding this doctrine. `scaffold-cli` (the
-front-door, slash-invoked skill) and each of the three paradigm skills load
-it as their first step. If asked to explain the plugin's design
-philosophy directly, answer from this file's content rather than treating
-that as an invocation this skill itself handles — there is no separate
-user-facing action here to perform.
+Every scaffold ships a **snapshot test** that captures its own `--help` output
+and compares it to a stored golden file using that language's idiomatic
+snapshot-testing tool.
+
+## Distribution
+
+Every scaffold ships packaging metadata (manifest / spec file / project file)
+configured for the **single** idiomatic distribution channel of that language.
+The per-language reference file names that one channel.
+
+## How generation works (freeform, converging)
+
+Scaffolds are generated **freeform** — from these idioms, never from stored
+boilerplate. Identical requests converge on the same structure because the
+doctrine and per-language reference constrain the shape, not because a template
+is copied.
+
+## The scaffold manifest (gating fields, first-class keys)
+
+Because the verifier decides pass/fail on structured keys — never on prose — each
+generated scaffold includes a `cli-scaffold.manifest.json` at its root declaring
+the file roles the verifier needs:
+
+```json
+{
+  "language": "rust",
+  "app_name": "myapp",
+  "core_files": ["src/lib.rs"],
+  "entry_file": "src/main.rs",
+  "distribution_file": "Cargo.toml",
+  "snapshot_test": "tests/help_snapshot.rs",
+  "help_file": "tests/help.golden",
+  "flags": [
+    {"long": "--json", "short": null, "description": "emit JSON"},
+    {"long": "--no-input", "short": "-n", "description": "disable prompts"}
+  ],
+  "positional_args": [{"name": "target", "description": "thing to process"}],
+  "completion": {"mechanism": "clap_complete", "file": null}
+}
+```
+
+For a language with no native completion mechanism, declare it honestly:
+`"completion": {"supported": false, "note": "Perl has no native completion mechanism"}`.
+
+## The 12 languages and 3 paradigms
+
+- **compiled** → Rust, Go, .NET — handled by `cli-scaffold-compiled`
+- **interpreted** → Python, TypeScript, JavaScript, Ruby, PHP, Perl — handled by
+  `cli-scaffold-interpreted`
+- **shell** → Bash, Zsh, PowerShell, and the POSIX sh dialect — handled by
+  `cli-scaffold-shell`
+
+`scaffold-cli` resolves a language to its paradigm via
+`scripts/lang_router.py`, which refuses unsupported or ambiguous names rather
+than guessing.
