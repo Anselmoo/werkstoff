@@ -284,7 +284,23 @@ def main():
     if os.environ.get("CUPERTINO_DISABLE_GUARD") == "1":
         allow()
 
-    cwd = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    # cwd MUST come from the hook's own stdin payload -- that is how Claude
+    # Code's PreToolUse protocol actually communicates the invoking session's
+    # working directory, and how every other hook in this plugin family reads
+    # it (andon_enforce.py, guard_edit_scope.py, guard_target_edit.py). The
+    # previous version read only CLAUDE_PROJECT_DIR / the hook PROCESS's own
+    # os.getcwd(), which is not the session's cwd in general -- it made the
+    # .cupertino/ check pass or fail based on wherever the hook happened to be
+    # invoked FROM rather than the repo actually being edited, so the guard
+    # was silently checking the wrong directory. Caught by
+    # test/plugins/verify-hooks-deny.py, which showed "allows a violating
+    # edit" for a reason that turned out to be this, not hook logic.
+    try:
+        payload = json.load(sys.stdin)
+    except Exception as e:
+        deny(f"cupertino: could not parse hook payload ({e}); failing closed. {ESCAPE_HATCH}")
+
+    cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
     try:
         cupertino_active = os.path.isdir(state_dir(cwd))
@@ -293,11 +309,6 @@ def main():
 
     if not cupertino_active:
         allow()
-
-    try:
-        payload = json.load(sys.stdin)
-    except Exception as e:
-        deny(f"cupertino: could not parse hook payload ({e}); failing closed. {ESCAPE_HATCH}")
 
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}

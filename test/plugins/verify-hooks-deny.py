@@ -107,12 +107,20 @@ def violating_fixture_for(plugin: Path, override: str) -> Path:
     return Path(override).resolve()
 
 
-def materialize(fixture: Path) -> str:
+def materialize(fixture: Path) -> tuple[str, str | None]:
     """Copy a fixture into a fresh temp dir, optionally git-init it.
 
     A fresh copy every probe: the dirty-tree test in particular MUTATES the
     working tree, so reusing one directory across probes would leak state
     between them.
+
+    Returns (tmp_dir, target_override). An optional `_TARGET` file in the
+    fixture names the relative path to probe instead of the default
+    "src/api.py" -- needed when a hook only gates paths matching a specific
+    shape (cupertino's write-scope check only fires on a cupertino-artifact
+    filename; probing it with a generic path would silently never reach the
+    check being tested, same false-negative shape as the wrong tool_name did
+    for a Bash-matched hook).
     """
     tmp = tempfile.mkdtemp()
     shutil.copytree(fixture, tmp, dirs_exist_ok=True)
@@ -124,7 +132,12 @@ def materialize(fixture: Path) -> str:
         subprocess.run(["git", "config", "user.name", "hook-test"], cwd=tmp, capture_output=True)
         subprocess.run(["git", "add", "-A"], cwd=tmp, capture_output=True)
         subprocess.run(["git", "commit", "-q", "-m", "fixture baseline"], cwd=tmp, capture_output=True)
-    return tmp
+    target_marker = Path(tmp) / "_TARGET"
+    target = None
+    if target_marker.is_file():
+        target = target_marker.read_text().strip()
+        target_marker.unlink()
+    return tmp, target
 
 
 # A mutating shell command, for probing a Bash-matched hook. Deliberately the
@@ -184,9 +197,10 @@ def main(argv: list[str] | None = None) -> int:
                           f"FAIL: declared script does not exist")
                     bad += 1
                     continue
-                violating = materialize(fixture)
+                violating, target_override = materialize(fixture)
                 try:
-                    rc_v, msg = probe(cmd, violating, matcher)
+                    rc_v, msg = probe(cmd, violating, matcher,
+                                      path=target_override or "src/api.py")
                 finally:
                     shutil.rmtree(violating, ignore_errors=True)
                 rc_i, _ = probe(cmd, inert, matcher)
