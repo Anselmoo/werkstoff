@@ -1,93 +1,68 @@
 ---
 name: cli-scaffold-interpreted
-description: This skill should be used when the user asks to "scaffold a CLI in Python", "generate a TypeScript command-line tool", "create a Ruby gem CLI", "make a PHP console app", "build a Perl script with proper argument parsing", or names Python, TypeScript, JavaScript, Ruby, PHP, or Perl as the target language for a new command-line tool — either directly or dispatched from scaffold-cli's language-routing. Generates a freeform, production-grade CLI scaffold for the interpreted paradigm, following cli-architecture's five-pillar doctrine and this skill's own per-language reference idioms — never from stored boilerplate.
+description: Generate a production-grade CLI scaffold in an interpreted language — Python, TypeScript, JavaScript, Ruby, PHP, or Perl. Use when the user requests a CLI in one of those six (dispatched here by scaffold-cli). Produces a core module with zero CLI-framework imports, a thin entry point, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies.
 ---
 
-Generate a production-grade CLI scaffold for one of the interpreted-
-paradigm languages — Python, TypeScript/JavaScript, Ruby, PHP, or Perl —
-freeform, every time, guided by `cli-architecture`'s doctrine and this
-skill's own per-language reference file. Never copy a stored template;
-every file this skill produces is written fresh from the pinned idioms
-below.
+# Interpreted CLI scaffold (Python / TypeScript / JavaScript / Ruby / PHP / Perl)
 
-## Step 1 — Load the doctrine
+You generate a CLI in one of the six interpreted languages. All rules come from
+the **`cli-architecture`** doctrine — load it first and follow it; this skill
+does not restate it.
 
-Invoke `cli-architecture` via the Skill tool if it has not already been
-loaded this conversation (e.g. when this skill triggers directly by
-natural language rather than via `scaffold-cli`'s dispatch, which already
-loads it). Every pillar in that doctrine applies to every language below —
-this skill's reference files pin how, not whether.
+## Step 1 — Load doctrine
 
-## Step 2 — Resolve the language and load its reference
+Load the `cli-architecture` skill. Do not generate anything before it is loaded.
 
-| Requested language | Reference file |
-|---|---|
-| Python, py | `references/python.md` |
-| TypeScript, ts, JavaScript, js | `references/typescript-js.md` |
-| Ruby, rb | `references/ruby.md` |
-| PHP | `references/php.md` |
-| Perl, pl | `references/perl.md` |
+## Step 2 — Read the per-language reference
 
-Read the resolved reference file in full before generating anything. Each
-one is structured to map 1:1 onto the five pillars: Framework, Project
-layout, Help text and completions, NO_COLOR-aware output, Exit codes,
-`--json`/`--no-input`, stdout/stderr discipline, Distribution, Snapshot
-testing, and a minimal worked example.
+Read the reference for the resolved language (each maps 1:1 onto the five pillars):
 
-## Step 3 — Generate the scaffold
+- Python → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/python.md`
+- TypeScript → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/typescript.md`
+- JavaScript → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/javascript.md`
+- Ruby → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/ruby.md`
+- PHP → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/php.md`
+- Perl → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-interpreted/references/perl.md`
 
-Follow the resolved reference's pinned idioms exactly:
+## Step 3 — Resolve the write target (in code)
 
-- **Framework**: use the pinned default framework (Typer for Python,
-  oclif for TypeScript/JavaScript, Thor for Ruby, Symfony Console for
-  PHP, Getopt::Long for Perl) — the two exceptions with a documented
-  zero-dependency fallback are Python (argparse) and Ruby (OptionParser):
-  use the fallback only if the user explicitly asks for zero external
-  dependencies, and always label which mode was used, never blend them
-  silently.
-- **Core/backend separation**: generate the importable-core-plus-thin-CLI
-  split exactly as laid out in the reference's Project layout section
-  (`src/<pkg>/core.py`+`cli.py` for Python, `src/lib/`+`src/commands/`
-  for TS/JS, `lib/<app>/core.rb`+`exe/<app>` for Ruby, `src/Core/`+
-  `bin/<app>` for PHP, `lib/<App>/Core.pm`+the script entry for Perl) —
-  the core module must be independently importable/requirable with zero
-  CLI-framework code loaded, and must contain no argument-parsing logic.
-- **Exit codes**: apply the frozen 0/1/2 contract from `cli-architecture`.
-  Every framework in this paradigm needs some explicit handling to fully
-  satisfy the contract — check each reference's own Exit codes section for
-  exactly which part is automatic versus which part must be written by
-  hand; that per-framework detail lives only in the reference, not here,
-  and must not be restated or assumed from memory.
-- **`--json`/`--no-input`, stdout/stderr, NO_COLOR**: apply exactly as
-  each reference's corresponding sections specify.
-- **Distribution**: generate the actual packaging metadata as part of the
-  scaffold — `pyproject.toml` with `[project.scripts]`, the oclif
-  `package.json` config block, the `.gemspec`, `composer.json` plus a Box
-  config, and the Minilla-scaffolded Perl dist files — never leave
-  packaging as a follow-up.
-- **Snapshot testing**: generate the `--help`-snapshot test using each
-  reference's pinned tool (pytest+syrupy, vitest+`@oclif/test`, Aruba,
-  PHPUnit+spatie-snapshot-assertions, Test::Script+golden-file) as part
-  of the initial scaffold.
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+```
 
-Use each reference's "Minimal worked example" section as a shape guide,
-not literal text to copy — generated files should match the specific app
-name and functionality the user described, freeform.
+Write the scaffold **only** under the path it prints. If it exits non-zero, stop
+and ask for a valid app name — never write outside the declared output scope.
 
-## Step 4 — Verify before presenting
+## Step 4 — Generate the scaffold freeform
 
-Hand the generated scaffold to the `cli-scaffold-verifier` agent (this
-plugin's `agents/cli-scaffold-verifier.md`) for a read-only check against
-`cli-architecture`'s doctrine and this skill's resolved reference file,
-before presenting anything to the user. Fix any reported gap and
-re-verify, except a gap the verifier flags as `needs-human-judgment`,
-which should be surfaced to the user directly instead of silently
-resolved either way.
+Following the reference idioms (not stored boilerplate), generate:
 
-## Present
+- a **core module** with zero CLI-framework imports and a **thin entry point**
+  that only parses, dispatches into the core, formats output, and maps the frozen
+  exit codes;
+- **packaging metadata** for the one idiomatic channel named in the reference;
+- a **snapshot test** for `--help`;
+- the discoverability, NO_COLOR, `--json`, `--no-input`, and stdout/stderr
+  behavior the doctrine requires;
+- a root **`cli-scaffold.manifest.json`** declaring the file roles (see the
+  doctrine for the schema) — the verifier reads this.
 
-Report: which language and reference were used, the generated file tree,
-and the verifier's summary (pass, or what was fixed, or what needs the
-user's judgment). Note the distribution command the user would run to
-publish it, and the test command to run the generated `--help` snapshot
-test.
+Identical requests must converge on the same structure.
+
+## Step 5 — Verify before presenting (mandatory)
+
+Hand the scaffold to the **cli-scaffold-verifier** agent for a read-only check
+against the doctrine and reference. The verifier runs:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<language>"
+```
+
+- **Exit 0 (verdict `pass`)** → present the scaffold.
+- **Exit 1 (verdict `gaps`)** → read the JSON report path it prints. For each
+  finding with `disposition: fixable`, fix it and re-run the verifier. Only
+  findings marked `disposition: needs-human-judgment` are surfaced to the user
+  unmodified. The verifier bounds the loop itself: after `MAX_FIX_ITERATIONS`
+  it HALTs — if that happens, surface the remaining gaps instead of looping.
+
+Never present a scaffold that still has fixable gaps.

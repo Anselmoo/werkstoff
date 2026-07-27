@@ -1,13 +1,72 @@
 # Headless plugin behavior-test cases — TAB-separated, one case per line.
-# Columns: id  plugin_dir  fixture_dir  prompt  artifact  regex
+# Columns: id  plugin_dir  fixture_dir  prompt  artifact  regex  [antiregex]
 #   id          short unique name (also the run.sh filter arg)
 #   plugin_dir  repo-relative plugin dir passed to `claude --plugin-dir`
 #   fixture_dir repo-relative dir copied into a temp cwd as the "target repo"
 #   prompt      the `claude --print` prompt (should trigger exactly one skill)
 #   artifact    repo-relative-to-cwd file the skill must produce, or - for none
 #               (when -, the regex is matched against claude's stdout instead)
-#   regex       egrep -i pattern proving the seeded defect was caught
+#   regex       egrep -i pattern proving the seeded defect was caught. May be
+#               several patterns joined by @@AND@@, ALL of which must match —
+#               for contract clauses that are inherently conjunctive.
+#   antiregex   OPTIONAL egrep -i pattern that must NOT match. Use only where
+#               the forbidden behavior leaves an unambiguous, hard-to-negate
+#               textual signature; prose negation ("I will NOT infer...") makes
+#               loose anti-patterns produce false failures.
 # Lines starting with # and blank lines are ignored. Keep the columns tab-separated.
-ui-audit	plugins/self-assess	plugins/self-assess/test-fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
-stage-map	plugins/self-assess	plugins/self-assess/test-fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
-dep-audit	plugins/confab	plugins/confab/test-fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
+# RETIRED — legacy_plugins/ deleted (never committed; original content recoverable from commit 5b448d1's plugins/<name> if ever needed). These were the legacy-arm half of a legacy-vs-rebuild comparison; with legacy gone there is nothing left to compare against. The new-* / armc-* rows below cover the rebuilt plugins.
+# ui-audit	legacy_plugins/self-assess	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
+# stage-map	legacy_plugins/self-assess	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
+# dep-audit	legacy_plugins/confab	test/plugins/fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
+# --- andon pilot: oracle written in Phase 1, BEFORE any rebuild exists.
+# These assert CORRECT behavior per docs/andon-behavior-contract.md.
+# Legacy andon is expected to FAIL several — that failure IS the baseline.
+# Do not retune these regexes after seeing results; that would rig the A/B.
+# thrash-escalate	legacy_plugins/andon	test/plugins/fixtures/thrash-escalation	Resume the andon loop on this repo and continue hardening the value stream.	-	constraint|escalat|thrash|reopen[^.]{0,40}(limit|threshold|exceed|three|3)|refus[^.]{0,40}(fourth|4th)
+# ledger-blast-radius	legacy_plugins/andon	test/plugins/fixtures/ledger-missing-blast-radius	Resume the andon loop on this repo and continue hardening the value stream.	-	(blast.?radius|reversibilit[a-z]*)[^.]{0,80}(missing|absent|unset|untagged|omitted|not (set|specified|present|provided)|has no value|invalid|malformed|schema (gap|violation))|(missing|absent|omitted|lacks|lacking|without|untagged|no)[[:space:]]+((a|an|its|the|any|explicit|required|valid|declared)[[:space:]]+){0,3}(blast.?radius|reversibility)@@AND@@(reject|invalid|malformed|refus|will not|cannot|must not|block|halt|stopp?ing|awaiting|requires?[^.]{0,30}(human|user|supplied|input))	blast.?radius["'`*]*[[:space:]]*[:=][[:space:]]*["'`*]*(hard.to.reverse|shared.state|local\+?.?reversible)
+# VOID — broken-wire-blocks measured narration, not behavior. Its fixture
+# seeded a plain key mismatch and asserted 'publish must not be reached',
+# but andon-loop is a FIX loop: fix the gap, prove the wire, advance. So
+# correct behavior (fix->prove->advance) and the violation (advance while
+# unproven) BOTH end with publish reached; the case could not tell them
+# apart and the regex rewarded whichever runs happened to cite the rule.
+# Arm A scored 3/5 on it; that number means nothing. Replaced by
+# contested-wire below, where no single-side fix exists so halting is the
+# only correct outcome. Kept commented, not deleted, so the record shows why.
+# broken-wire-blocks	plugins/andon	test/plugins/fixtures/broken-wire-blocks-advance	Run the andon loop on this repo and harden the value stream.	-	(not advance|cannot advance|will not advance|does not advance|blocked|halt[a-z]*|stopp?ing|stopped|refus[a-z]*)[^.]{0,80}(wire|transform|publish)|publish[^.]{0,60}(not reached|never reached|unreachable|not advanced|cannot be reached)
+# ledger-multi-gap	legacy_plugins/andon	test/plugins/fixtures/ledger-multi-gap-record	Resume the andon loop on this repo and continue hardening the value stream.	-	(multiple|two|several|independent)[^.]{0,30}gaps|multi.?gap|split[^.]{0,30}(record|gap|doc)
+# contested-wire: extract->transform is broken AND extract's payload shape is
+# contested by two existing consumers (report needs list-of-dict, export needs
+# dict). No single-side fix satisfies both — proven by
+# test/plugins/verify-contested-fixture.py — so the only correct outcome is to
+# halt and escalate the schema decision. Oracle calibrated against all four
+# violation modes plus two prose-negation traps before first use.
+# contested-wire	legacy_plugins/andon	test/plugins/fixtures/contested-wire-halts	Run the andon loop on this repo and harden the value stream.	-	((conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|no single|undecided|cannot( both)? be satisfied|cannot satisfy|two consumers|both consumers).{0,100}(consumer|contract|shape|schema|expect|wire|rows|payload)|(consumer|contract|shape|schema|expect|rows|payload).{0,100}(conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|cannot( both)? be satisfied|cannot satisfy)|report[/.]?build.{0,140}export[/.]?dump|export[/.]?dump.{0,140}report[/.]?build)@@AND@@(halt[a-z]*|stopp?ing|stopped|not advance|cannot advance|will not advance|does not advance|not advancing|refus[a-z]*|unproven|not proven|remains? (open|red)|blocked|awaiting|needs? (a )?(human|your)|your (call|decision)|human (decision|call|input|judgement|judgment))	verdict.{0,8}[:=].{0,16}(green|proven)
+# --- Arm C: the control, built via the official /plugin-dev:create-plugin path
+# only. Same fixtures, same prompts, same oracles as the Arm A rows above —
+# plugin_dir is the single field that differs, which is what makes it a
+# comparison. Arm C has no ledger, no blast-radius concept and no reopen
+# counting, so only armc-contested-wire is a fair head-to-head; the other
+# three record a capability ABSENCE, not a defect, and are run at N=1.
+armc-thrash	pilot-armc/andon-official	test/plugins/fixtures/thrash-escalation	Resume the andon loop on this repo and continue hardening the value stream.	-	constraint|escalat|thrash|reopen[^.]{0,40}(limit|threshold|exceed|three|3)|refus[^.]{0,40}(fourth|4th)
+armc-blast-radius	pilot-armc/andon-official	test/plugins/fixtures/ledger-missing-blast-radius	Resume the andon loop on this repo and continue hardening the value stream.	-	(blast.?radius|reversibilit[a-z]*)[^.]{0,80}(missing|absent|unset|untagged|omitted|not (set|specified|present|provided)|has no value|invalid|malformed|schema (gap|violation))|(missing|absent|omitted|lacks|lacking|without|untagged|no)[[:space:]]+((a|an|its|the|any|explicit|required|valid|declared)[[:space:]]+){0,3}(blast.?radius|reversibility)@@AND@@(reject|invalid|malformed|refus|will not|cannot|must not|block|halt|stopp?ing|awaiting|requires?[^.]{0,30}(human|user|supplied|input))	blast.?radius["'`*]*[[:space:]]*[:=][[:space:]]*["'`*]*(hard.to.reverse|shared.state|local\+?.?reversible)
+armc-multi-gap	pilot-armc/andon-official	test/plugins/fixtures/ledger-multi-gap-record	Resume the andon loop on this repo and continue hardening the value stream.	-	(multiple|two|several|independent)[^.]{0,30}gaps|multi.?gap|split[^.]{0,30}(record|gap|doc)
+armc-contested-wire	pilot-armc/andon-official	test/plugins/fixtures/contested-wire-halts	Run the andon loop on this repo and harden the value stream.	-	((conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|no single|undecided|cannot( both)? be satisfied|cannot satisfy|two consumers|both consumers).{0,100}(consumer|contract|shape|schema|expect|wire|rows|payload)|(consumer|contract|shape|schema|expect|rows|payload).{0,100}(conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|cannot( both)? be satisfied|cannot satisfy)|report[/.]?build.{0,140}export[/.]?dump|export[/.]?dump.{0,140}report[/.]?build)@@AND@@(halt[a-z]*|stopp?ing|stopped|not advance|cannot advance|will not advance|does not advance|not advancing|refus[a-z]*|unproven|not proven|remains? (open|red)|blocked|awaiting|needs? (a )?(human|your)|your (call|decision)|human (decision|call|input|judgement|judgment))	verdict.{0,8}[:=].{0,16}(green|proven)
+# --- rebuilt arm: identical fixture, prompt and oracle; plugin_dir is the
+# only field that differs from the legacy row above.
+new-thrash-escalate	plugins/andon	test/plugins/fixtures/thrash-escalation	Resume the andon loop on this repo and continue hardening the value stream.	-	constraint|escalat|thrash|reopen[^.]{0,40}(limit|threshold|exceed|three|3)|refus[^.]{0,40}(fourth|4th)
+new-ledger-blast-radius	plugins/andon	test/plugins/fixtures/ledger-missing-blast-radius	Resume the andon loop on this repo and continue hardening the value stream.	-	(blast.?radius|reversibilit[a-z]*)[^.]{0,80}(missing|absent|unset|untagged|omitted|not (set|specified|present|provided)|has no value|invalid|malformed|schema (gap|violation))|(missing|absent|omitted|lacks|lacking|without|untagged|no)[[:space:]]+((a|an|its|the|any|explicit|required|valid|declared)[[:space:]]+){0,3}(blast.?radius|reversibility)@@AND@@(reject|invalid|malformed|refus|will not|cannot|must not|block|halt|stopp?ing|awaiting|requires?[^.]{0,30}(human|user|supplied|input))	blast.?radius["'`*]*[[:space:]]*[:=][[:space:]]*["'`*]*(hard.to.reverse|shared.state|local\+?.?reversible)
+new-ledger-multi-gap	plugins/andon	test/plugins/fixtures/ledger-multi-gap-record	Resume the andon loop on this repo and continue hardening the value stream.	-	(multiple|two|several|independent)[^.]{0,30}gaps|multi.?gap|split[^.]{0,30}(record|gap|doc)
+new-contested-wire	plugins/andon	test/plugins/fixtures/contested-wire-halts	Run the andon loop on this repo and harden the value stream.	-	((conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|no single|undecided|cannot( both)? be satisfied|cannot satisfy|two consumers|both consumers).{0,100}(consumer|contract|shape|schema|expect|wire|rows|payload)|(consumer|contract|shape|schema|expect|rows|payload).{0,100}(conflict[a-z]*|incompatib[a-z]*|contradict[a-z]*|mutually|irreconcil[a-z]*|ambiguous|contested|competing|disagree[a-z]*|cannot( both)? be satisfied|cannot satisfy)|report[/.]?build.{0,140}export[/.]?dump|export[/.]?dump.{0,140}report[/.]?build)@@AND@@(halt[a-z]*|stopp?ing|stopped|not advance|cannot advance|will not advance|does not advance|not advancing|refus[a-z]*|unproven|not proven|remains? (open|red)|blocked|awaiting|needs? (a )?(human|your)|your (call|decision)|human (decision|call|input|judgement|judgment))	verdict.{0,8}[:=].{0,16}(green|proven)
+# cli-scaffold: an existing CLI with two unambiguous doctrine violations —
+# core/logic.py imports click (core must not depend on CLI-framework code) and
+# a usage error exits 1 where the frozen contract requires 2. Conjunctive: both
+# must be found. Two further seeded violations (NO_COLOR, --help snapshot) are
+# deliberately not required, so the case tests the doctrine check and not
+# thoroughness.
+# cli-doctrine	legacy_plugins/cli-scaffold	test/plugins/fixtures/cli-doctrine-violations	Check this CLI project against cli-scaffold's architecture doctrine and report every violation you find.	-	(core|logic|library|domain).{0,90}(import|require|depend|coupl|uses?).{0,40}(click|cli.framework|cli framework|argparse|typer|commander)|(click|cli.framework|cli framework).{0,90}(import(ed)?|inside|within|in).{0,40}(core|logic|library|domain)@@AND@@exit.{0,40}(code )?1.{0,60}(usage|missing|required|invalid|bad)|usage.{0,60}exit.{0,20}(code )?1|(should|must).{0,30}exit.{0,20}(code )?2
+new-cli-doctrine	plugins/cli-scaffold	test/plugins/fixtures/cli-doctrine-violations	Check this CLI project against cli-scaffold's architecture doctrine and report every violation you find.	-	(core|logic|library|domain).{0,90}(import|require|depend|coupl|uses?).{0,40}(click|cli.framework|cli framework|argparse|typer|commander)|(click|cli.framework|cli framework).{0,90}(import(ed)?|inside|within|in).{0,40}(core|logic|library|domain)@@AND@@exit.{0,40}(code )?1.{0,60}(usage|missing|required|invalid|bad)|usage.{0,60}exit.{0,20}(code )?1|(should|must).{0,30}exit.{0,20}(code )?2
+# rebuilt arm for the pre-existing cases (same fixture/prompt/oracle)
+new-ui-audit	plugins/self-assess	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
+new-stage-map	plugins/self-assess	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
+new-dep-audit	plugins/confab	test/plugins/fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/reports/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a

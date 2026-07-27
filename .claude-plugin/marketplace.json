@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "self-assess",
-      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard — almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
+      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard \u2014 almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -19,7 +19,7 @@
     },
     {
       "name": "confab",
-      "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (confab-code-change), and a bounded autonomous self-optimization cycle (confab-cycle) with a persistent ledger and an opt-in propose/fix mode — read-only except a scoped output directory, one skill (confab-dependency-audit) with read-only network egress to public package registries, and one skill (confab-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
+      "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (confab-code-change), and a bounded autonomous self-optimization cycle (confab-cycle) with a persistent ledger and an opt-in propose/fix mode \u2014 read-only except a scoped output directory, one skill (confab-dependency-audit) with read-only network egress to public package registries, and one skill (confab-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -49,7 +49,7 @@
     },
     {
       "name": "andon",
-      "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) — never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
+      "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) \u2014 never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -59,7 +59,7 @@
     },
     {
       "name": "cli-scaffold",
-      "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time — no stored boilerplate — guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
+      "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time \u2014 no stored boilerplate \u2014 guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"

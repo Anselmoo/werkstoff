@@ -112,27 +112,40 @@ class SymbolIndexerTest(unittest.TestCase):
             self.assertEqual(index["files_scanned"], len(INDEXER.LANG_EXTENSIONS))
             self.assertLess(elapsed, float(os.environ.get("SYMBOL_INDEX_MAX_SECONDS", "1")))
 
-    def test_plugin_copies_default_to_their_own_plugin(self) -> None:
-        # The synced copies are byte-identical to the canonical source (rrt
-        # regenerates them verbatim), so none of them actually defaults to
-        # its own plugin name on its own -- --plugin-name is passed
-        # explicitly here. What this test actually verifies is that every
-        # plugin's synced copy is present at the current post-migration
-        # path and runs correctly when invoked for its own plugin.
-        plugins = ("self-assess", "andon", "compass", "confab", "cupertino", "cli-scaffold")
+    def test_canonical_script_runs_standalone_for_an_arbitrary_plugin_name(self) -> None:
+        # Superseded a per-plugin regression test. Until the six plugins were
+        # regenerated from behavior specs (see docs/plugin-rebuild-findings.md),
+        # each vendored a byte-identical synced copy of this script (kept in
+        # sync via `.rrt.toml`'s now-removed artifact_targets), and this test
+        # asserted every copy was present and ran. None of the rebuilt plugins
+        # reference the symbol indexer at all -- each ships its own
+        # purpose-built scripts instead -- so there is no longer a "copy" to
+        # assert on. What's left worth covering: the canonical script itself
+        # still runs correctly standalone for an arbitrary --plugin-name, the
+        # same invocation shape a vendored copy used to be exercised with.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "example.py").write_text("def example(): pass\n", encoding="utf-8")
-            for plugin in plugins:
-                script = REPO_ROOT / "plugins" / plugin / "scripts" / "build_symbol_index.py"
-                self.assertTrue(script.is_file(), f"expected synced copy at {script}")
-                subprocess.run(
-                    [sys.executable, str(script), "--repo-path", str(root), "--plugin-name", plugin, "--no-fts"],
-                    check=True,
-                    cwd=REPO_ROOT,
-                )
-                pointer = json.loads((root / "analysis" / plugin / "current.json").read_text())
-                self.assertEqual(pointer["plugin_name"], plugin)
+            subprocess.run(
+                [sys.executable, str(SCRIPT), "--repo-path", str(root), "--plugin-name", "example-plugin", "--no-fts"],
+                check=True,
+                cwd=REPO_ROOT,
+            )
+            pointer = json.loads((root / "analysis" / "example-plugin" / "current.json").read_text())
+            self.assertEqual(pointer["plugin_name"], "example-plugin")
+
+    def test_no_plugin_vendors_a_stale_copy(self) -> None:
+        # Regression guard for the retired convention above: nothing should
+        # silently reintroduce a per-plugin vendored copy that could drift
+        # from the canonical source without anything noticing.
+        for plugin_dir in sorted((REPO_ROOT / "plugins").iterdir()):
+            stale = plugin_dir / "scripts" / "build_symbol_index.py"
+            self.assertFalse(
+                stale.is_file(),
+                f"{stale} exists, but the vendoring convention was retired -- "
+                f"either this is a real regression or the convention was intentionally "
+                f"reinstated and this test needs updating too",
+            )
 
 
 if __name__ == "__main__":

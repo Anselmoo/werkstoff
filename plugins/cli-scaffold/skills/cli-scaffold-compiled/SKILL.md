@@ -1,93 +1,66 @@
 ---
 name: cli-scaffold-compiled
-description: This skill should be used when the user asks to "scaffold a CLI in Rust", "generate a Go command-line tool", "create a .NET CLI app", "make a production CLI in C#", or names .NET, C#, Rust, or Go as the target language for a new command-line tool — either directly or dispatched from scaffold-cli's language-routing. Generates a freeform, production-grade CLI scaffold for the compiled paradigm (.NET, Rust, Go), following cli-architecture's five-pillar doctrine and this skill's own per-language reference idioms — never from stored boilerplate.
+description: Generate a production-grade CLI scaffold in a compiled language — Rust, Go, or .NET. Use when the user requests a CLI in one of those three (dispatched here by scaffold-cli). Produces a lib+binary split where the core library has zero CLI-framework imports, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies.
 ---
 
-Generate a production-grade CLI scaffold for one of the compiled-paradigm
-languages — .NET, Rust, or Go — freeform, every time, guided by
-`cli-architecture`'s doctrine and this skill's own per-language reference
-file. Never copy a stored template; every file this skill produces is
-written fresh from the pinned idioms below, so the same request converges
-on the same shape without ever being literally identical boilerplate.
+# Compiled CLI scaffold (Rust / Go / .NET)
 
-## Step 1 — Load the doctrine
+You generate a CLI in Rust, Go, or .NET. All rules come from the
+**`cli-architecture`** doctrine — load it first and follow it; this skill does
+not restate it.
 
-Invoke `cli-architecture` via the Skill tool if it has not already been
-loaded this conversation (e.g. when this skill triggers directly by
-natural language rather than via `scaffold-cli`'s dispatch, which already
-loads it). Every pillar in that doctrine applies to every language below —
-this skill's reference files pin how, not whether.
+## Step 1 — Load doctrine
 
-## Step 2 — Resolve the language and load its reference
+Load the `cli-architecture` skill. Do not generate anything before it is loaded.
 
-| Requested language | Reference file |
-|---|---|
-| .NET, C#, dotnet | `references/dotnet.md` |
-| Rust | `references/rust.md` |
-| Go, Golang | `references/go.md` |
+## Step 2 — Read the per-language reference
 
-Read the resolved reference file in full before generating anything. Each
-one is structured to map 1:1 onto the five pillars: Framework, Project
-layout, Help text and completions, NO_COLOR-aware output, Exit codes,
-`--json`/`--no-input`, stdout/stderr discipline, Distribution, Snapshot
-testing, and a minimal worked example.
+Read the reference for the resolved language (each maps 1:1 onto the five pillars):
 
-## Step 3 — Generate the scaffold
+- Rust → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-compiled/references/rust.md`
+- Go → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-compiled/references/go.md`
+- .NET → `${CLAUDE_PLUGIN_ROOT}/skills/cli-scaffold-compiled/references/dotnet.md`
 
-Follow the resolved reference's pinned idioms exactly:
+## Step 3 — Resolve the write target (in code)
 
-- **Framework**: use exactly the framework the reference pins (System.
-  CommandLine for .NET, clap with derive macros for Rust, cobra for Go) —
-  never substitute an equally-reasonable alternative (e.g. `flag` stdlib
-  for Go, or a hand-rolled argument parser) even if it would technically
-  work; consistency across regenerations depends on always picking the
-  pinned choice.
-- **Core/backend separation**: generate the library-plus-thin-binary split
-  exactly as laid out in the reference's Project layout section (`src/
-  lib.rs`+`src/main.rs` for Rust, a class-library-plus-host-project split
-  for .NET, `internal/<app>/`+`cmd/<app>/main.go` for Go) — put zero
-  business logic in the CLI entry file.
-- **Exit codes**: apply the frozen 0/1/2 contract from `cli-architecture`.
-  Check the reference's Exit codes section for whether this language's
-  framework already emits this contract by default on parse failure
-  (clap does) or needs explicit remapping in application code (System.
-  CommandLine and cobra both default to exit code 1 on parse errors and
-  need remapping to 2) — get this right per the reference, do not assume
-  either behavior without checking.
-- **`--json`/`--no-input`, stdout/stderr, NO_COLOR**: apply exactly as
-  the reference's corresponding sections specify — these differ in
-  concrete API shape per language but never in behavior.
-- **Distribution**: generate the actual packaging metadata (`Cargo.toml`'s
-  `[lib]`/`[[bin]]` split, the .csproj `PackAsTool`/`ToolCommandName`
-  properties, `go.mod` plus a tagging note) as part of the scaffold, not
-  as a follow-up the user has to add.
-- **Snapshot testing**: generate the `--help`-snapshot test using the
-  reference's pinned tool (insta+assert_cmd for Rust, Verify.Xunit for
-  .NET, golden files for Go) as part of the initial scaffold, not as an
-  optional extra — this is what pillar 3 (stability) requires, not a
-  nice-to-have.
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+```
 
-Use the reference's "Minimal worked example" section as a shape guide for
-how the pieces fit together, not as literal text to copy — the actual
-generated files should match the specific app name and any functionality
-the user described, freeform.
+Write the scaffold **only** under the path it prints. If it exits non-zero, stop
+and ask for a valid app name — never write outside the declared output scope.
 
-## Step 4 — Verify before presenting
+## Step 4 — Generate the scaffold freeform
 
-Hand the generated scaffold to the `cli-scaffold-verifier` agent (this
-plugin's `agents/cli-scaffold-verifier.md`) for a read-only check against
-`cli-architecture`'s doctrine and this skill's resolved reference file,
-before presenting anything to the user. If the verifier reports a gap,
-fix it and re-verify rather than presenting a known gap — the one
-exception is a gap the verifier itself flags as `needs-human-judgment`
-(e.g. an app-name-specific design choice with no single correct answer),
-which should be surfaced to the user directly instead of silently
-resolved either way.
+Following the reference idioms (not stored boilerplate), generate:
 
-## Present
+- the **lib + binary split**: a core library file with zero CLI-framework
+  imports, and a thin binary entry point that only parses, dispatches into the
+  core, formats output, and maps the frozen exit codes;
+- **packaging metadata** for the one idiomatic channel named in the reference;
+- a **snapshot test** for `--help`;
+- the discoverability, NO_COLOR, `--json`, `--no-input`, and stdout/stderr
+  behavior the doctrine requires;
+- a root **`cli-scaffold.manifest.json`** declaring the file roles (see the
+  doctrine for the schema) — the verifier reads this.
 
-Report: which language and reference were used, the generated file tree,
-and the verifier's summary (pass, or what was fixed, or what needs the
-user's judgment). Note the distribution command the user would run to
-publish it, and the test command to run the generated `--help` snapshot
-test.
+Identical requests must converge on the same structure.
+
+## Step 5 — Verify before presenting (mandatory)
+
+Hand the scaffold to the **cli-scaffold-verifier** agent for a read-only check
+against the doctrine and reference. The verifier runs:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<language>"
+```
+
+- **Exit 0 (verdict `pass`)** → present the scaffold.
+- **Exit 1 (verdict `gaps`)** → read the JSON report path it prints. For each
+  finding with `disposition: fixable`, fix it and re-run the verifier. Only
+  findings marked `disposition: needs-human-judgment` are surfaced to the user
+  unmodified. The verifier bounds the loop itself: after
+  `MAX_FIX_ITERATIONS` it HALTs — if that happens, surface the remaining gaps
+  to the user instead of looping.
+
+Never present a scaffold that still has fixable gaps.

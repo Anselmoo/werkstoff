@@ -1,267 +1,221 @@
 ---
 name: andon-loop
-description: Auto-enforcing loop that walks a project's value stream — its stages and the wires between them — closing one gap per stage and refusing to advance past a broken or unproven wire (the andon rule). Composes andon-propose (pick and design the fix) and andon-verify (prove the wire) over a native OKF ledger. Use this when the user wants to "harden this repo", "run the andon loop", "scan for gaps and fix them in order", "prove this wire is proven", "resume the andon ledger", or any request to iterate a multi-stage codebase closing gaps while keeping each handoff evidence-grounded rather than assumed.
+description: "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on."
+allowed-tools: "Read, Write, Edit, Bash, Glob, Grep, Agent"
+argument-hint: "[stage-or-gap-filter]"
 ---
 
-Walk the current repository's value stream one gap at a time, proving
-each wire before advancing past it. Restructured from the personal
-`andon-loop` skill's six-phase cycle, composing `andon-propose` (Phase
-3) and `andon-verify` (Phase 4) rather than reimplementing their logic
-inline.
+# andon-loop
 
-This is the plugin's orchestrator — the only skill that owns the OKF
-ledger (init, resume, write). `andon-propose` and `andon-verify` return
-structured results; this skill is the one that persists them, the same
-separation self-assess/quality keep between read-only analysis
-agents/skills and the orchestrating skill that writes files.
+Orchestrates Phases 0-6 below over the OKF ledger. This skill is the **sole
+writer** to the ledger. `andon-propose` and `andon-verify` only ever return
+structured results for you (the orchestrator) to persist -- never call them
+expecting them to write files.
 
-## Step 0 — Load settings
+Every phase below names the exact `andon_core.py` subcommand that performs
+the mechanical check. Treat a non-zero exit code or `"allowed": false` in its
+JSON output as a hard stop, not a suggestion: do not re-derive the decision
+in prose, and do not proceed past it without the specific explicit-user-input
+the phase describes.
 
-Read `.claude/andon.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`,
-stop and say so. Note `output_dir` (default `analysis/andon`),
-`ledger_dir` (default `analysis/andon/ledger`), `authorization_level`
-(default `local+reversible`), `skip_verification` (default `false`),
-`gap_source` (default `self-scan`), and — only when `gap_source` is
-`self-assess-brief` — `self_assess_output_dir` (default
-`analysis/self-assess`).
+`SCRIPTS` below means `${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py`.
 
-**Ingest mode (`gap_source: self-assess-brief`).** This is the auto-pilot's
-fix+validate half: `self-assess` owns *check + plan* (its reporting skills →
-`self-assess-transform-brief` writes `MODERNIZATION_BRIEF.md`), and this loop
-owns *fix + validate*, driving off that brief instead of self-scanning. When
-set, Phase 0 takes the stream from the brief and Phase 2 ingests the brief's
-per-phase work items as gaps (see those phases below). Everything from Phase 3
-on — propose, the andon-rule gate, cycles — is **unchanged**; ingest only
-changes where the stream and the gaps come from. Default `self-scan` behavior
-is exactly as before.
+## Phase -1: settings gate (every invocation, before anything else)
 
-## Phase 0 — Detect topology
+```
+python3 SCRIPTS enforce-enabled <repo_root>
+```
 
-**Ingest-mode short-circuit (`gap_source: self-assess-brief`).** `Read`
-`<self_assess_output_dir>/MODERNIZATION_BRIEF.md` (and
-`transform_brief_summary.json`). If it is absent, do **not** silently fall
-back to self-scan — stop and tell the user to run `self-assess-transform-brief`
-first (the ingest source doesn't exist yet). If present, take the stream
-**from the brief**: each of the brief's **phases** is one andon stage, in the
-brief's leaf-first order (the brief already ran its Kahn topological sort over
-the same stage graph, so its phase order *is* the stream order), and the wire
-into each stage is the phase's exit criteria + its Behavior Contract. Confidence
-`self-assess-backed` (the brief was itself built from `stage-mapper`'s graph).
-Skip the detection steps below. Otherwise (`self-scan`, the default) determine
-the stream's stages and wires:
+If this exits non-zero, the settings file has `enabled: false`. Print the
+error message verbatim and **stop** -- do not run Phase 0 or any later phase,
+do not read the repo, do not touch the ledger. This is not a soft suggestion;
+the script raised, so you halt.
 
-1. **Preferred — `self-assess:stage-mapper` dispatch.** If `self-assess`
-   is installed, dispatch the `self-assess:stage-mapper` **agent**
-   directly (cross-plugin reuse — read
-   `plugins/self-assess/agents/stage-mapper.md` for its exact Find-mode
-   invocation shape) once per detected language to build the real
-   import/use graph and package-boundary stage clustering. This reuses
-   `self-assess`'s proven manifest-collapse-bug fix rather than
-   re-deriving stage/wire extraction from scratch. Confidence:
-   `self-assess-backed`.
-2. **Fallback — built-in minimal heuristic.** If `self-assess` is not
-   installed (or its agent doesn't resolve), degrade gracefully — never
-   hard-fail: use the **Glob tool** (not Bash `find`/`ls`) for common
-   multi-package manifest shapes (a `package.json` with `workspaces`, a
-   Cargo workspace `Cargo.toml`, a directory with multiple
-   `pyproject.toml`/`go.mod` files) and cluster
-   by the shallowest directory containing each manifest. This is
-   deliberately coarser than `stage-mapper`'s package-boundary rule (it
-   will not catch the two-packages-one-manifest case `self-assess` exists
-   to fix) — **flag every stage/wire produced this way as reduced
-   confidence** in the topology report and the resulting OKF stage docs
-   (do not let a heuristic-derived stage silently look as trustworthy as
-   a `stage-mapper`-derived one).
-3. **Single-package repo.** If neither pass finds more than one stage,
-   the stream is one stage with no inter-stage wire — still a valid
-   topology; downstream phases operate on that one stage's own
-   contract/wire-equivalent (its public API surface) instead.
+If it succeeds, its JSON `settings` object gives you `output_dir`,
+`ledger_dir`, `authorization_level`, `skip_verification`, `gap_source`, and
+`self_assess_output_dir` for every phase below (defaults documented in
+`${CLAUDE_PLUGIN_ROOT}/references/okf-ledger-schema.md` apply when the
+settings file is absent -- the script already applied them, just use the
+returned values).
 
-Report the detected stream (stages + wires + confidence) before moving
-on. A declared stream from the user always overrides detection — honor
-it verbatim.
+## Phase 0: topology detection
 
-## Phase 1 — Initialize or resume the ledger
+If `gap_source` is `self-assess-brief` (ingest mode), **skip all heuristic
+steps below** and check the prerequisite in code first:
 
-The ledger is an OKF bundle at `<ledger_dir>` (schema:
-`skills/andon-verify/references/okf-ledger-schema.md`). If
-`<ledger_dir>/log.md` already exists, **resume**: read every
-`stages/*.md`/`gaps/*.md`/`evidence/*.md` doc, reconstruct the cursor
-(the stage/wire currently in progress — the last non-closed gap doc, or
-the first stage with no green outgoing wire if none is in progress), and
-report current pass/cycle counts (derived by counting `## Pass N` /
-`## Cycle N converged` entries in `log.md`) plus which wires are
-currently green.
+```
+python3 SCRIPTS check-ingest-prereqs <repo_root> <gap_source> <self_assess_output_dir>
+```
 
-If no ledger exists, **initialize**: `mkdir -p <ledger_dir>/{stages,gaps,evidence}`,
-write one `type: stage` doc per detected stage (Phase 0's output),
-create an empty `log.md`, and set the cursor to the first stage.
+If this exits non-zero, `MODERNIZATION_BRIEF.md` or `transform_brief_summary.json`
+is missing from `self_assess_output_dir`. **Stop** and tell the user to run
+`self-assess:self-assess-transform-brief` first -- never silently fall back to
+self-scan; that silent fallback is exactly the failure mode this check exists
+to prevent. If it succeeds, take the stream from the brief's phases (already
+leaf-first / Kahn-sorted) with confidence `self-assess-backed`, and go straight
+to Phase 1 using those stages.
 
-## Phase 2 — Scan the current stage for gaps
+Otherwise (`gap_source: self-scan`, the default), detect stages and wires:
 
-Scan only the cursor's stage and its outgoing wire. Collect gaps and
-classify each:
+1. Prefer dispatching the `self-assess:stage-mapper` agent if the `self-assess`
+   plugin is installed. Confidence: `self-assess-backed`.
+2. If unavailable, degrade to a built-in heuristic: `Glob` for manifest files
+   (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, ...)
+   and cluster by directory. Confidence: `heuristic` (flag this in the stage
+   docs you write in Phase 1 -- the `confidence` field is a required,
+   first-class key on every stage doc, never a prose caveat).
+3. A repo with exactly one package is valid as a single stage with no
+   inter-stage wire. Confidence: `single-package`.
+4. If the user declared an explicit stream (stage list) in their request,
+   that overrides detection entirely.
 
-| Field | Values |
-|---|---|
-| `kind` | `bug` (existing behavior broken) · `feature` (behavior absent) · `wire` (handoff broken/unproven) |
-| `on_constraint` | `true` if this gap sits on or feeds the stream's current bottleneck |
+## Phase 1: ledger init or resume
 
-Gap sources (default `self-scan`): failing/missing tests, broken/unproven
-wires (no evidence doc yet, or the linked evidence doc's verdict is 🔴/⚪),
-`TODO`/`FIXME`/`unimplemented!`/`raise NotImplementedError`, schema drift
-between producer and consumer stages, dead or stubbed handoffs.
+```
+python3 SCRIPTS init-or-resume <repo_root> <ledger_dir>
+```
 
-**Ingest mode (`gap_source: self-assess-brief`).** Do **not** self-scan.
-Instead, take this stage's gaps straight from the brief's matching phase:
+If `resumed: false`, this already created `ledger_dir/{stages,gaps,evidence}`
+and an empty `log.md`. Immediately write one `type: stage` doc per detected
+stage using `write-doc` (below) -- `order` and `confidence` are required
+fields, not optional metadata.
 
-- Each **Work Item** in the phase becomes one `type: gap` doc, pre-classified:
-  a work item tagged `<domain>` that is a self-assess/confab code finding
-  (`code-idiom`, `lint`, `ui-audit`, `confab:dependency-audit`,
-  `confab:contract-drift`) → `kind: bug`; an arch-health-driven
-  Merge/Split/layering decision for the phase → `kind: wire`; a documented-but-
-  absent behavior → `kind: feature`. Carry the work item's `file:line` and its
-  named fix owner (`self-assess-idiom-fix` / `self-assess-transform-execute` /
-  `confab`'s `confab-remediator`) into the gap doc so Phase 3 routes it.
-- The phase's **Behavior Contract** rules become the wire's verification
-  contract — the exact equivalence obligations Phase 4's `andon-verify` proves
-  (a P0-blocker rule with confidence below High is an entry-criteria gate, per
-  the brief). The phase's **Advisory notes** are recorded on the stage doc as
-  context but are **not** turned into auto-fixable gaps (they need human
-  judgment — same reason `confab-remediator` refuses them).
-- Set `on_constraint` from the brief's ordering (the earliest phase with open
-  work items is the current constraint).
+If `resumed: true`, its JSON gives you `stages`, `gaps`, `evidence`, and a
+reconstructed `cursor` -- derived from the first `status:open` gap doc in
+stage order, or `{"state": "converged, no open gaps"}`. **Never guess the
+cursor yourself**; this script's reconstruction is the only source of truth
+(`ledger-cursor-reconstruction-from-gaps`).
 
-If the **Workflow tool** is available (self-scan only), use
-`andon-cycle-scan.js`'s Find phase for the scan (parallel gap-finding across
-the stage's files) — see `workflows/andon-cycle-scan.js` and its
-`meta.whenToUse` for the exact `args` shape. Otherwise scan directly via
-`Glob`/`Grep`/`Read`.
+To write any OKF doc (stage, gap, or evidence), always go through:
 
-**Do not fix anything yet.** Write one `type: gap` doc per gap found
-(status `open`), and output the gap list for this stage only.
+```
+python3 SCRIPTS write-doc <repo_root> <ledger_dir> <relative_path> '<fields_json>' [--body TEXT]
+```
 
-## Phase 3 — Pick one gap, propose the fix
+`<relative_path>` is relative to `<ledger_dir>` itself, e.g. `stages/s1.md`,
+`gaps/g1.md`, `evidence/ev1.md` -- the script joins it onto `ledger_dir`
+before validating, matching the on-disk layout
+`ledger_dir/{stages,gaps,evidence}/*.md`.
 
-Pick **one** gap using this priority order (Theory of Constraints):
+This validates write-scope (rejects traversal/absolute/outside-ledger paths)
+and the OKF schema (rejects a doc missing a gating field) **before** touching
+disk. If it exits non-zero, the doc was not written -- fix the fields, don't
+retry with a workaround.
 
-1. Anything `on_constraint: true`.
-2. `wire` gaps before `bug` gaps before `feature` gaps.
-3. Within a tie, smallest expected blast radius first (a genuine
-   pre-proposal guess — `andon-propose` assigns the authoritative tag).
+## Phase 2: scan the cursor's stage for gaps
 
-Dispatch **`andon-propose`** with the chosen gap and its ledger context
-(the gap's own doc, the stage's doc, any linked evidence docs). It
-returns a fix description, files touched, a recommended `andon-verify`
-strategy, and a blast-radius tag. Update the gap's OKF doc with the
-proposal and the blast-radius tag (`tags: [..., "blast-radius:<tag>"]`).
+Scan **only** the cursor's current stage -- never re-scan completed stages
+every pass. In self-scan mode look for: failing tests, wires with no
+evidence doc or a red/unknown one, TODOs, schema drift, dead handoffs. In
+ingest mode, gaps come from the brief's Work Items for this phase instead
+(pre-classified: code-idiom/lint/ui-audit/confab findings become `kind:bug`,
+architectural Merge/Split/layering decisions become `kind:wire`,
+documented-absent behavior becomes `kind:feature`; carry `file:line` and the
+fix-owner agent name into the gap doc; the phase's Behavior Contract becomes
+the wire's verification contract; Advisory notes go on the stage doc's body,
+never converted into auto-fixable gaps).
 
-**Stop-rule check, condition 2 (pre-emptive):** if the returned
-blast-radius tag exceeds the current `authorization_level` (ordering:
-`local+reversible` < `hard-to-reverse` < `shared-state-visible`), **halt
-here** — do not apply the fix or proceed to Phase 4. Report the proposal
-and ask for explicit confirmation to raise authorization for this one
-fix, or to skip it and return to Phase 2 for a different gap.
+Classify each gap with exactly one `kind` (`bug`, `feature`, or `wire`) and
+write it with `status: open` via `write-doc`. `select-next-gap` enforces
+priority when more than one gap is found:
 
-## Phase 4 — Prove the wire (the enforcement gate)
+```
+python3 SCRIPTS select-next-gap '<json array of {kind, on_constraint, blast_radius, slug}>'
+```
 
-Dispatch **`andon-verify`** with the proposed fix (strategy already
-recommended by `andon-propose`; `andon-verify` re-confirms routing via
-its own `wire-classifier.md` rather than blindly trusting the
-recommendation). If the **Workflow tool** is available, `andon-verify`'s
-strategy a (tribunal) dispatch runs through `andon-cycle-scan.js`'s
-Verify phase for the adversarial duel — see that script's `meta` for the
-exact shape.
+Priority is fixed in code: `on_constraint:true` first, then wire before bug
+before feature, then smallest blast radius as tiebreak. Do not eyeball a
+"more important-looking" gap instead.
 
-Before that dispatch, resolve or build the shared symbol-index snapshot.
-Read `analysis/andon/current.json`; if missing or its `source_fingerprint`
-no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name andon`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null` into `andon-cycle-scan.js`'s `args`.
+## Phase 3: propose
 
-**The andon rule — three hard-gate stop conditions:**
+Dispatch the `andon-propose` skill with the selected gap, the stage doc, and
+any linked gap/evidence docs. It returns a proposal (fix description, files
+touched, chosen `andon-verify` strategy + rationale, and **exactly one**
+blast-radius tag). Record the proposal onto the gap doc via `write-doc`
+(this re-validates the blast-radius tag as part of schema validation -- a
+proposal with zero, two, or an undefined tag is rejected, not coerced).
 
-1. **Wire-proof failure** from any `andon-verify` strategy (a red 🔴
-   verdict). Overridable only by a human explicitly re-running
-   `andon-verify` with new evidence, or explicitly overriding this gap's
-   priority to defer it — never by the loop silently advancing anyway.
-2. **Blast-radius tag exceeding the loop's current authorization
-   level** (already checked pre-emptively in Phase 3, re-checked here in
-   case the fix's actual diff turned out broader than proposed).
-3. **Kythe-family structural evidence at Tier 1/2 (`andon-verify`
-   strategy e) contradicting the claimed wire.** *This is the only one
-   of the three conditions that is non-overridable by adjudication* — not
-   even the strategy a Adjudicator can waive a Tier 1 contradiction (see
-   `skills/andon-verify/references/structural-graph-tiers.md`). A Tier 2
-   contradiction is still blocking by default but may be overridden by an
-   Adjudicator review with a specific, stated reason to doubt the LSP
-   result.
+**Stop condition 2 check**, before doing anything else with this proposal:
 
-On any stop condition firing: write the `type: evidence` doc (verdict
-🔴, or the blast-radius/structural note), leave the gap `open`, **do not
-advance**, and return to Phase 2 on the *same* stage. Report which
-condition fired and why, in plain language.
+```
+python3 SCRIPTS check-stop-conditions --verdict unknown \
+  --blast-radius <tag> --authorization-level <settings.authorization_level>
+```
 
-On 🟢: write the `type: evidence` doc, link it from the gap doc
-(`resolved by: [[evidence/<id>]]`), close the gap (`tags: [...,
-"status:closed"]`), and advance.
+If this exits non-zero, the blast radius exceeds the configured
+authorization level. Halt and ask the user to either explicitly confirm
+raising authorization (`--confirm-authorization-raise` on the recheck) or
+explicitly skip this gap. Do not apply the fix in the meantime.
 
-**Sub-cycle backtrack.** If the fix touched a contract an upstream wire
-depends on (a shared type, a schema field both sides read), mark the
-affected upstream wires' evidence docs `status: unknown` (down to N−2
-stages back, no further) and re-run Phase 4 on each before continuing
-forward. Record a `## Sub-cycle` entry in `log.md`. If the same wire
-reopens three times, stop treating it as a sub-cycle — it is now the
-stream's constraint; escalate rather than keep backtracking.
+## Phase 4: verify
 
-## Phase 5 — Advance, close passes into a cycle
+Dispatch the `andon-verify` skill with the wire, its contract, and the
+proposed fix. It returns a verdict (`green`/`red`/`unknown`) plus evidence
+content -- **you** persist it via `write-doc` into `evidence/`, never
+`andon-verify` itself.
 
-Move the cursor to the next stage, repeat Phases 2–4. When the cursor
-wraps past the last stage, the **pass** is done. Append a `## Pass N
-(cycle M)` entry to `log.md` (per the format in
-`okf-ledger-schema.md`).
+Run the full stop-condition check now that you have a real verdict and tier:
 
-**Convergence.** A cycle is complete only when a pass closes zero new
-gaps and every wire is green. If not, wrap the cursor back to the first
-stage and run another pass — same cycle, next pass. `cycle` increments
-only when a converged run ends and a fresh scan begins. Budget for 2–3+
-passes; one is rarely enough.
+```
+python3 SCRIPTS check-stop-conditions --verdict <verdict> \
+  --blast-radius <tag> --authorization-level <settings.authorization_level> \
+  [--tier <1|2|3>] [--non-overridable]
+```
 
-On convergence, append a `## Cycle N converged after P passes` entry to
-`log.md` (the OKF-native cycle report) and report it to the user.
+- Non-zero + `condition_1_red_verdict`: halt. Do not advance past this wire.
+  It may only advance later on an explicit user re-run with new evidence, or
+  an explicit user override/defer of the gap.
+- Non-zero + `condition_3_tier1_non_overridable`: halt, **permanently, for
+  this evidence**. There is no flag on this script that waives it, by
+  construction -- do not attempt to route around it by re-running with
+  different arguments or asking the adjudicator to reconsider.
+- Success: close the gap (`status: closed`, `resolved_by: [[evidence/<slug>]]`)
+  via `write-doc`.
 
-## Phase 6 — Self-optimize between cycles
+**Sub-cycle backtracking**: if the fix touched a contract an upstream wire
+depends on,
 
-1. **Recompute the constraint** — the stage/wire most often reopened
-   (sub-cycle thrash signal) or slowest to prove.
-2. **Decide the next cycle's intent**: harden (wires unstable) vs.
-   feature (wires green, budget intact) vs. split (fast/slow lanes have
-   diverged enough to warrant different cadences).
-3. **Stop condition.** If a full cycle converges in a single pass with
-   zero gaps closed, the stream is hardened — hand back to the user
-   rather than spinning.
+```
+python3 SCRIPTS track-subcycle <repo_root> <ledger_dir> <wire_id> <requested_upstream_depth>
+```
 
-## Cross-plugin degradation summary
+`effective_upstream_depth` is clamped to at most 2 stages back, regardless of
+what you requested -- never re-verify further upstream than that. If
+`escalate: true` (this wire has now reopened 3+ times), **stop sub-cycling
+it**: record the escalation as the active constraint in `log.md` instead of
+looping again. Every sub-cycle attempt gets its own `log.md` entry
+(`append-log ... sub-cycle ...`), win or lose.
 
-| Dependency | Used for | Absent → |
-|---|---|---|
-| `self-assess:stage-mapper` | Phase 0 topology | Built-in heuristic, confidence flagged reduced (never hard-fail) |
-| `confab:confab-agentic-reliability`, `confab:confab-contract-drift`, `confab:confab-assertion-audit` | `andon-verify` strategies d/g | Those strategies report unavailable for the wire; loop continues with applicable remaining strategies |
-| Workflow tool | Phase 2 parallel scan, Phase 4 tribunal duel | Direct sequential dispatch via `Skill`/`Agent` tools instead |
+## Phase 5: advance cursor, log the pass
 
-None of these ever hard-fail the loop itself — only the specific
-capability they back degrades, clearly labeled.
+```
+python3 SCRIPTS append-log <repo_root> <ledger_dir> pass '<fields_json>'
+```
 
-## Output format
+Required fields: `stage`, `wire`, `gap`, `strategy`, `verdict`, `next_cursor`,
+`cycle`, `pass_number`. This appends -- it never rewrites `log.md`; the hook
+in `hooks/` will independently refuse a `Write` that would overwrite an
+existing `log.md`, so there is no path to "fixing" a bad entry by rewriting
+the file. Advance the cursor to the next stage; wrap to the first stage past
+the last one.
 
-Per working session, deliver in this order:
+## Phase 6: convergence check
 
-1. **Stream map** (once, or when it changes) — stages, wires, confidence.
-2. **Ledger delta** — cycle/pass counters, wire statuses since last run.
-3. **This step** — the gap picked, why, the proposed fix, the wire-proof
-   result, and the andon verdict (advanced / halted, and which stop
-   condition if halted).
-4. **At cycle close** — the cycle report and the next constraint.
+At each pass boundary (cursor wraps to the first stage):
+
+```
+python3 SCRIPTS check-convergence <gaps_closed_this_pass> '<json array of wire statuses>'
+```
+
+Only when `converged: true` (zero gaps closed this pass AND every inter-stage
+wire is green) do you declare "Cycle N converged" and append a
+`cycle-converged` log entry (`passes`, `cycle` fields required). Otherwise,
+start the next pass in the same cycle.
+
+## Reference
+
+See `${CLAUDE_PLUGIN_ROOT}/references/okf-ledger-schema.md` for the doc schema
+and settings defaults, and `${CLAUDE_PLUGIN_ROOT}/references/andon-rule.md`
+for the three stop conditions in full. Do not duplicate that content here --
+read it when a decision needs it.

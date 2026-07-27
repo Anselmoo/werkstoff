@@ -1,0 +1,9 @@
+# Per-project compass configuration (copy the template, keep yours local)
+.claude/*.local.md
+
+# compass run state / persisted artifacts
+.compass/
+
+# Python
+__pycache__/
+*.pyc

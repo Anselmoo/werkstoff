@@ -4,7 +4,10 @@ node_modules/
 !**/examples/*.local.md
 .serena/
 .superpowers/
-analysis/
+# Anchored to the repo root: this is generated plugin output. Unanchored it
+# also swallowed plugins/*/test-fixtures/**/analysis/, which is seeded test
+# data the behavior tests need committed.
+/analysis/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

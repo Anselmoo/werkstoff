@@ -1,0 +1,16 @@
+{
+  "description": "Denies an Edit/Write/MultiEdit into target-repo source unless idiom_fix.mode or transform.mode explicitly authorizes it, and the tree is clean (or require_clean_tree is off). type:command, never type:prompt.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_target_edit.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

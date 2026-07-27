@@ -1,0 +1,8 @@
+{
+  "allowedFile": "src/correct_file.py",
+  "category": "c",
+  "consumed": false,
+  "domain": "dependency_audit",
+  "findingId": "F1",
+  "openedAt": 1785183063.007712
+}

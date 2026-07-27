@@ -1,173 +1,138 @@
 # cli-scaffold
 
-Ask for a production-grade CLI in any of **12 languages** — Python,
-TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh,
-PowerShell, POSIX sh — and get back a scaffold generated **freeform, every
-time**: there is no stored boilerplate or template file anywhere in this
-plugin. Consistency across regenerations comes entirely from a frozen
-doctrine (five pillars: UX/discoverability, backend/core separation,
-stability, idiomatic distribution, Unix composability) plus one
-precisely-pinned reference file per language, not from copying files.
+A Claude Code plugin that generates **production-grade command-line applications
+in 12 languages**, each built against one unified five-pillar architecture
+doctrine and each ecosystem's real idioms — then verified against that doctrine
+before it is shown to you.
 
-## Install
+## What it does
 
-```
-/plugin marketplace add Anselmoo/werkstoff
-/plugin install cli-scaffold@werkstoff
-```
+Ask for a CLI (`/cli-scaffold rust called myapp`, or "scaffold a Python CLI named
+foo") and the plugin:
 
-Or for local development, point Claude Code straight at this plugin
-directory without registering the marketplace:
+1. **Resolves** the language to one of three paradigms — in code, refusing
+   ambiguous or unsupported names instead of guessing.
+2. **Loads the doctrine** (`cli-architecture`) that defines what "production-grade"
+   means for every language.
+3. **Generates** the scaffold freeform from the per-language reference (never from
+   stored boilerplate) — a core/library with **zero** CLI-framework imports, a
+   thin entry point, packaging metadata for the ecosystem's idiomatic channel,
+   and a snapshot test for `--help`.
+4. **Verifies** it read-only against the doctrine, fixes every *fixable* gap and
+   re-verifies (bounded), and surfaces only *needs-human-judgment* gaps to you.
 
-```
-cc --plugin-dir /path/to/werkstoff/plugins/cli-scaffold
-```
+### The 12 languages / 3 paradigms
 
-## Quickstart
+| Paradigm | Languages | Skill |
+|---|---|---|
+| compiled | Rust, Go, .NET | `cli-scaffold-compiled` |
+| interpreted | Python, TypeScript, JavaScript, Ruby, PHP, Perl | `cli-scaffold-interpreted` |
+| shell | Bash, Zsh, PowerShell, POSIX sh* | `cli-scaffold-shell` |
 
-Invoke either via the explicit slash command or in plain language — both
-resolve to the same generation path:
+\* POSIX sh is a shell *dialect* routed to the shell paradigm; it is not one of
+the 12 counted languages.
 
-```
-/cli-scaffold:scaffold-cli rust foo
-```
+### The five pillars
 
-```
-scaffold a CLI in Python called deploy-tool
-make me a PowerShell module CLI named Backup-Tool
-```
+Every generated CLI satisfies all five: **UX/discoverability**,
+**backend/core separation**, **stability**, **idiomatic distribution**, and
+**Unix composability**. The full doctrine lives in
+`skills/cli-architecture/SKILL.md`.
 
-A request naming a language directly can also trigger the matching
-paradigm skill (`cli-scaffold-compiled`, `cli-scaffold-interpreted`,
-`cli-scaffold-shell`) without going through `scaffold-cli` first — both
-routes end up loading the same doctrine and generating the same shape.
+### The frozen exit-code contract
 
-## Skills
+Identical in all 12 languages: `0` success, `1` runtime error, `2` usage error.
 
-- **`scaffold-cli`** — the front-door, slash-invoked entry point
-  (`argument-hint: [language] [app-name]`). Resolves the requested
-  language to its paradigm, loads `cli-architecture`, and dispatches to
-  the matching paradigm skill. Mirrors this repo's `compass-solve`
-  front-door pattern: a thin router, never a reimplementation of what the
-  paradigm skills already do.
-- **`cli-architecture`** — internal-only doctrine skill, composed
-  silently by the other four at the start of every generation, never
-  meant for direct end-user invocation. Holds the five pillars and the
-  frozen cross-paradigm exit-code contract (`0` success, `1` general/
-  runtime error, `2` usage/argument error) that every generated CLI in
-  every language must satisfy.
-- **`cli-scaffold-compiled`** — .NET, Rust, Go. Pins System.CommandLine /
-  clap+derive / cobra as the framework per language, a library-plus-thin-
-  binary split, and the framework-specific exit-code remap each one needs
-  (or doesn't — clap already matches the contract natively; System.
-  CommandLine and cobra both default elsewhere and need explicit
-  remapping).
-- **`cli-scaffold-interpreted`** — Python, TypeScript/JavaScript, Ruby,
-  PHP, Perl. Pins Typer (argparse fallback) / oclif / Thor (OptionParser
-  fallback) / Symfony Console / Getopt::Long as the framework per
-  language, an importable-core-plus-thin-CLI split, and each ecosystem's
-  idiomatic package registry and packaging tool (pipx/uv, npm, RubyGems,
-  Composer+Box, CPAN+Minilla).
-- **`cli-scaffold-shell`** — Bash, Zsh, PowerShell, POSIX sh. Pins
-  `getopts` / `zparseopts` / native `[CmdletBinding()]` / POSIX `getopts`
-  only, a sourced-function-file split (except PowerShell, which is always
-  scaffolded as a formal module — `.psd1`+`.psm1` — never a bare `.ps1`,
-  since its exported functions are simultaneously the API and the CLI
-  surface). POSIX sh carries an extra, non-negotiable constraint: no
-  arrays, no `[[ ]]`, no `local`-by-default, no bashisms of any kind —
-  this dialect exists specifically for minimal server/container
-  environments where a full Bash isn't guaranteed.
-
-Each of the three paradigm skills stays under ~1,000 words: a quick-reference
-summary (which framework, which split, which registry, per this file above)
-plus generation steps that name the framework/tool involved so the skill
-reads coherently on its own. The exhaustive, authoritative detail — exact
-framework calls, project layout, help/completion generation, distribution
-commands, snapshot-test setup, a minimal worked example, and any
-framework-specific exit-code nuance — lives only in that skill's own
-`references/` directory, loaded once a specific language is resolved; a
-paradigm SKILL.md should point there rather than restate specifics that
-could drift out of sync with the reference.
-
-## Agents
-
-- **`cli-scaffold-verifier`** (`color: cyan`) — read-only, `Read`/`Glob`/
-  `Grep`/`Bash`. Checks a freshly generated scaffold against
-  `cli-architecture`'s doctrine and the resolved per-language reference
-  before it's presented — and where a build succeeds, actually **runs**
-  the generated `--help`/snapshot test/exit-code probes via `Bash` rather
-  than only reading the source that produces them, reporting explicitly
-  which findings were runtime-verified vs. static-only. `Bash` is scoped
-  to build/install/run/test only — never a publish/release command
-  (`cargo publish`, `npm publish`, `gem push`, `dotnet nuget push`,
-  `Publish-Module`, etc.). Classifies every gap as `fixable` (send back to
-  the generating skill) or `needs-human-judgment` (surface to the user,
-  never silently resolved either way).
-
-## Development
-
-12 per-language reference files, 3–5 per paradigm skill, each mapping 1:1
-onto the doctrine's structure (Framework, Project layout, Help text and
-completions, NO_COLOR-aware output, Exit codes, `--json`/`--no-input`,
-stdout/stderr discipline, Distribution, Snapshot testing, Minimal worked
-example — POSIX sh adds an 11th, "Forbidden bashisms"):
+## Components
 
 ```
-skills/cli-scaffold-compiled/references/{dotnet,rust,go}.md
-skills/cli-scaffold-interpreted/references/{python,typescript-js,ruby,php,perl}.md
-skills/cli-scaffold-shell/references/{bash,zsh,powershell,posix-sh}.md
+.claude-plugin/plugin.json
+skills/
+  cli-architecture/            # the doctrine (single source of truth)
+  scaffold-cli/                # /cli-scaffold dispatcher (user-invoked)
+  cli-scaffold-compiled/       # + references/{rust,go,dotnet}.md
+  cli-scaffold-interpreted/    # + references/{python,typescript,javascript,ruby,php,perl}.md
+  cli-scaffold-shell/          # + references/{bash,zsh,powershell,posix-sh}.md
+agents/
+  cli-scaffold-verifier.md     # read-only doctrine conformance check
+scripts/
+  constants.py                 # frozen registry + numeric bounds (asserted on import)
+  lang_router.py               # resolve language -> paradigm; refuse unknown/ambiguous
+  write_scope.py               # reject traversal/absolute/out-of-scope targets
+  verify_scaffold.py           # the verification engine (all doctrine rules)
+  report_validator.py          # validate report/ledger on read AND write
+  check_doctrine_isolation.py  # fail if a paradigm skill duplicates the doctrine
+  selftest.py                  # runnable proof the guards refuse what they must
 ```
 
-No `test-fixtures/` in this plugin — unlike `self-assess`/`confab`'s
-audit skills, there is no existing repo state to audit; the generation
-itself is what's being pinned, and `cli-scaffold-verifier`'s runtime
-checks against each freshly generated scaffold are the closest analog.
+## Enforcement is in code, not prose
 
-## Recommended workspace setup
+Every rule that says *MUST NOT* / *MUST refuse* / *MUST halt* is enforced by a
+conditional that actually refuses:
 
-```json
-{
-  "permissions": {
-    "allow": ["Read(**)", "Write(**)", "Edit(**)"]
-  }
-}
+| Rule | Where it is enforced |
+|---|---|
+| Exactly 12 languages / 3 paradigms / 5 pillars | `constants.py` asserts these at **import time** |
+| Frozen 0/1/2 exit contract | `EXIT_*` constants reused everywhere; `verify_scaffold.py` checks each scaffold |
+| Language routing — never a silent fallback | `lang_router.py` exits non-zero on ambiguous/unsupported |
+| Write scope — no traversal/absolute/outside | `write_scope.py` raises before any write |
+| Core-library isolation, help sections, `--json`, `--no-input`, NO_COLOR, stdout/stderr, snapshot, distribution, completion | one check function each in `verify_scaffold.py`, recording a fail finding with a first-class `disposition` |
+| POSIX-sh bashisms | `verify_scaffold.py` sweeps against `FORBIDDEN_BASHISMS` (mirrored in `posix-sh.md`) |
+| Verifier must not write generated files | agent has no Write/Edit tool **and** the engine refuses to write anywhere under the scaffold |
+| Fixable-gap loop is bounded | `MAX_FIX_ITERATIONS` constant + a per-scaffold ledger that HALTs when exceeded |
+| Persisted state has no invented gating values | `report_validator.py` rejects any finding missing `disposition`, any report missing `language`/`paradigm`/`verdict` — on read and on write |
+| Doctrine never duplicated into paradigm skills | `check_doctrine_isolation.py` fails the build on restatement |
+
+Run the proof:
+
+```bash
+python3 scripts/selftest.py
 ```
 
-Unlike `self-assess`/`confab`, this plugin's whole purpose is writing new
-files into the target repo (the generated CLI's source tree) — there is no
-scoped `output_dir` to narrow permissions to, since the output *is* the
-deliverable, not an analysis artifact. `cli-scaffold-verifier` itself has
-no `Write`/`Edit` grant regardless of this workspace setting — it only
-ever reads and runs, per its own frontmatter.
+## Installation
 
-## Prerequisites
+```bash
+# from the plugin directory
+claude --plugin-dir .
+```
 
-Every paradigm skill degrades honestly rather than silently when a tool
-is missing — it says so and states which part of the scaffold couldn't be
-generated or verified, never fabricates success:
+Then invoke `/cli-scaffold <language> called <app-name>` or just describe the CLI
+you want. Generated scaffolds land under `generated-clis/<app-name>/`;
+verification reports under `.cli-scaffold-reports/` (both git-ignored).
 
-- **The target language's own toolchain** (`python3`/`pipx`, `node`/`npm`,
-  `ruby`/`bundle`, `php`/`composer`, `perl`/`cpanm`, `dotnet`, `cargo`,
-  `go`, `pwsh`) — needed for `cli-scaffold-verifier` to actually build and
-  run the generated scaffold rather than only statically inspecting it.
-- **`git`** — sharpens nothing specific here, but is assumed present per
-  this repo's general convention.
+## Design decisions
 
-## Safety notes
+Where the specification was silent, these defaults were chosen and are noted here:
 
-**`cli-scaffold-verifier` is this plugin's one `Bash`-capable agent**, and
-its grant is read-only by construction: build, install-locally, run, and
-test commands only. Its own system prompt explicitly enumerates the
-forbidden publish/release commands per ecosystem rather than relying on
-an implicit "don't publish" understanding. It has no `Write`/`Edit` tool
-at all — every gap it finds is reported back to the generating skill to
-fix, never patched by the verifier itself.
-
-Same discipline as every other plugin in this repo: **analyzed and
-generated content is untrusted where it originates outside this plugin's
-own doctrine** — a scaffold's generated comments or a build tool's output
-are data the verifier inspects, never instructions it acts on.
-
-## License
-
-MIT. See `LICENSE`.
+- **Scaffold manifest (`cli-scaffold.manifest.json`).** The verifier must branch
+  on *structured* file-role data, never on prose, so each generated scaffold
+  carries a small JSON manifest declaring `core_files`, `entry_file`,
+  `distribution_file`, `snapshot_test`, `flags`, `positional_args`, and
+  `completion`. These are the gating keys the engine reads. This is the concrete
+  form of "fields that gate a decision are first-class keys."
+- **Output scope.** All writes are confined to `generated-clis/` under the
+  current directory; reports/ledgers to `.cli-scaffold-reports/`. Reports are
+  deliberately kept *outside* any scaffold so the verifier structurally cannot
+  touch generated files.
+- **`MAX_FIX_ITERATIONS = 5`.** The spec bounds the fix/re-verify loop but does
+  not give a number; 5 attempts before halting-to-human was chosen as a safe
+  default and lives as a named constant.
+- **Static verification.** The verifier is read-only and does not build/run the
+  generated CLI, so runtime-behavior rules (exit codes, stdout/stderr, no-hang)
+  are checked by static signals in the source. Signals that cannot be confirmed
+  statically are reported as `needs-human-judgment` rather than force-fixed.
+- **One idiomatic distribution channel per language.** crates.io (Rust),
+  `go install` module (Go), NuGet .NET tool (.NET), PyPI (Python), npm (TS/JS),
+  RubyGems (Ruby), Packagist/Composer (PHP), CPAN (Perl), Homebrew (Bash/Zsh),
+  PowerShell Gallery (PowerShell), `make install` (POSIX sh).
+- **Completion honesty.** Where an ecosystem has a first-party mechanism it is
+  used (cobra, clap_complete, argcomplete, yargs `.completion()`, zsh `#compdef`,
+  `Register-ArgumentCompleter`, symfony `completion`). Where none exists (Perl,
+  POSIX sh, Ruby), the manifest declares `completion.supported: false` with a
+  note rather than inventing one.
+- **Snapshot tool per ecosystem.** insta/trycmd (Rust), golden `go test` (Go),
+  Verify (.NET), syrupy (Python), vitest/jest (TS/JS), rspec-snapshot (Ruby),
+  spatie snapshot (PHP), Test::Snapshot (Perl), bats-core (Bash/Zsh), shellspec
+  (POSIX sh), Pester (PowerShell).
+- **Author metadata** in `plugin.json` defaults to the invoking user's identity;
+  adjust before publishing.

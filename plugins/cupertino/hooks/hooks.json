@@ -1,0 +1,17 @@
+{
+  "description": "cupertino: enforces MUST-NOT rules (ordering gates, one-item-per-dispatch, write-scope, persisted-state schema, no-commit-during-audit) at the tool-call layer, regardless of whether a skill is followed. Inert until a repo has a .cupertino/ state directory.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Task|Agent|Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

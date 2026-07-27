@@ -1,0 +1,7 @@
+[project]
+name = "widget"
+version = "0.1.0"
+dependencies = ["click>=8.1"]
+
+[project.scripts]
+widget = "widget.cli:main"

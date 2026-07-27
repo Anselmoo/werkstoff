@@ -1,87 +1,69 @@
 ---
 name: confab-code-change
-description: This skill should be used before committing, when the user asks to "review my changes before I commit", "check staged files for quality issues", "pre-commit quality check", or "run confab-code-change" — runs the confab plugin's four domain audits against only the currently-staged (or, if nothing is staged, currently-changed) files, for a fast pre-commit check. Never a substitute for the full-repo domain skills or confab-cycle.
+description: "Use when the user asks for a pre-commit quality check on staged or uncommitted changes, wants a quick confab pass over 'what I just changed' before committing, or asks 'is this diff okay to commit'. Only runs the domains whose file patterns match the changed files, and always produces an advisory verdict that never blocks the commit."
 ---
 
-Run a fast, **diff-scoped** pass of the `confab` plugin's four domain
-audits against only the files you're about to commit — not the whole
-repo. This is advisory only: the `confab` plugin ships no git hook, so
-this skill never blocks a commit, it only reports. For a full-repo sweep
-use the four domain skills directly; for a persistent, cross-invocation
-self-optimization loop use `confab-cycle`. This skill is neither — it is
-a one-shot, non-persisted check scoped to the current diff.
+Run a fast, changed-files-scoped confab pass across whichever domains are
+actually relevant to what changed. This is a lighter-weight sibling of the
+four full domain-audit skills — each Find-phase pass here is a single,
+un-verified check (the code-change verdict is advisory by construction,
+so it does not carry the same mandatory-verification guarantees the full
+audits do). If the user wants a fully verified audit, tell them to run
+the specific `confab-*-audit` skill instead.
 
-## Step 0 — Load settings
+## Steps
 
-Read `.claude/confab.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop
-and say so. Note `output_dir` (default `analysis/confab`).
+1. Determine `repo_root`. Get the changed-file list:
+   ```
+   git -C <repo_root> diff --staged --name-only
+   ```
+   (or `git diff HEAD --name-only` if the user means uncommitted rather
+   than staged changes — ask if ambiguous). Write the list to a scratch
+   JSON file as a plain array of repo-relative paths.
+2. Run:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
+       --changed-files-json <path-from-step-1>
+   ```
+   with NO `--domain-findings` yet, just to see which domains matched. If
+   it exits 1, it printed "zero domains matched" to stderr — relay that
+   to the user verbatim and stop; there is nothing to review.
+3. For each matched domain printed in step 2's `matchedDomains`, produce a
+   lightweight findings JSON scoped to only the matched files:
+   - `dependency_audit`: only if a manifest file changed. Dispatch the
+     `dependency-auditor` agent (or, more simply, run
+     `scripts/dependency_audit.py <repo_root>` — it's fast enough for a
+     pre-commit check and already does the full bounded-timeout lookup).
+   - `assertion_audit`: dispatch `assertion-auditor` in Find mode only,
+     scoped to the changed source/test files.
+   - `contract_drift`: dispatch `contract-auditor` in Find mode only,
+     scoped to the changed files.
+   - `agentic_reliability`: dispatch `agentic-reliability-auditor` in Find
+     mode only, scoped to the changed skill/agent/workflow files.
+   Write each domain's findings to its own scratch JSON file.
+4. Re-run the script, now passing every matched domain's findings:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
+       --changed-files-json <path-from-step-1> \
+       --domain-findings dependency_audit=<path> \
+       --domain-findings assertion_audit=<path> \
+       ...
+   ```
+   (only pass `--domain-findings` for domains that actually matched).
+   This writes `analysis/confab/reports/CODE_CHANGE_REVIEW.md` with one section
+   per matched domain (unmatched domains are omitted entirely — never
+   zero-filled) and a verdict line that always reads `ADVISORY: ...` and
+   never suggests blocking anything.
+5. Report the verdict line and per-domain finding counts to the user.
+   Always phrase the summary as advisory — e.g. "N findings worth a look
+   before you commit, but nothing here blocks you."
 
-## Step 1 — Find the changed files
+## What NOT to do
 
-Run `git diff --staged --name-only`. If that's empty, fall back to
-`git diff --name-only HEAD` and say plainly which one was used ("nothing
-staged — checking all uncommitted changes instead"). If both are empty,
-report "no changes found, nothing to check" and stop.
-
-## Step 2 — Classify changed files into domains
-
-Match each changed path against each domain's own known file shape — do
-not invent new classification rules, reuse exactly what each domain
-skill's own Step 0 already uses:
-
-| Domain | Matches | Reuse |
-|---|---|---|
-| `dependency_audit` | `package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile` | `confab-dependency-audit/SKILL.md` Step 0's manifest table |
-| `contract_drift` | typed source files (`*.py`, `*.ts`/`*.tsx`, `*.go`, `*.rs`, `*.java`) and schema files (`openapi.*`, `**/*.graphql`, `**/*.proto`) | `confab-contract-drift/SKILL.md` Step 0 |
-| `agentic_reliability` | `**/skills/*/SKILL.md`, `**/agents/*.md`, `**/workflows/*.js` | `confab-agentic-reliability/SKILL.md` Step 0 |
-| `assertion_audit` | any changed source file that has an associated test file discoverable via the project's test-naming convention (`**/test_*.py`, `**/*.test.js`, `**/*_test.go`, ...) | `confab-assertion-audit/SKILL.md` Step 1 |
-
-Build `domainArgs` containing **only** the domains with at least one
-matched file — each value shaped exactly as that domain's own workflow
-expects (`manifestFiles: [{path, type}]`, `contractSources: [path]`,
-`skillFiles`/`agentFiles`/`workflowFiles`, `targetFiles`/`testFiles`).
-Unlike `confab-cycle-scan.js`, do **not** zero-fill an unmatched domain —
-an empty slice means "not part of this change," not "run it with
-nothing." If zero domains match (e.g. only docs or unrelated config
-changed), report "changed files don't map to any quality domain" and
-stop here.
-
-## Step 3 — Run the scan
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is
-available in this session (this skill invocation is your authorization):
-
-```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/code-change-scan.js",
-  args: { repoPath: "<repo root, usually '.'>", domainArgs: <assembled in Step 2> }
-})
-```
-
-It runs each matched domain's existing scan workflow, unchanged, in
-parallel, and returns per-domain results — no ledger, no fix mode, this
-is a single one-shot pass.
-
-**Fallback** (no Workflow tool) — run each matched domain's own skill
-fallback path (its own SKILL.md Step 1 fallback) sequentially, one per
-matched domain.
-
-## Step 4 — Write the report
-
-Create `<output_dir>/CODE_CHANGE_REVIEW.md`:
-- **Summary** — which of `git diff --staged` / `git diff HEAD` was used,
-  files changed, domains matched, total findings
-- One section per domain that actually ran, findings table in that
-  domain's own format
-- **Verdict** — `Ready to commit` (zero findings across every matched
-  domain) or `N finding(s) to review` — stated plainly as advisory, not a
-  block: this skill never prevents a commit
-
-## Present
-
-Report: domains checked (and which were skipped because nothing matched),
-findings by domain, and the verdict line. If any High-severity finding
-exists, name it first. This never substitutes for `confab-cycle` or the
-full-repo domain skills — say so if the user seems to be relying on this
-as their only quality check.
+- Do not tell the user their commit is "blocked" or "failing" — this
+  skill has no gate, only advice. If the user wants a hard gate, that's a
+  git hook they'd configure themselves, not something this skill does.
+- Do not run a domain that didn't match — e.g. don't dispatch
+  `assertion-auditor` if no source or test file changed.
+- Do not invent a zero-finding section for a domain that didn't match,
+  either in the report or in your summary to the user.

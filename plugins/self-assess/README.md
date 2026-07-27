@@ -1,394 +1,170 @@
 # self-assess
 
-Point Claude at a **live, actively-maintained codebase** — not a legacy
-system being archaeologically rebuilt — and get back: an import-graph-based
-map of its real architectural boundaries, a report of where its own docs
-(CLAUDE.md, ADRs, DECISIONS.md, README) have drifted from what the code
-actually does, an audit of its git/CI topology, and a check against its own
-stated conventions. Almost everything is read-only except a single scoped
-output directory — with two deliberate, tightly-gated exceptions
-(`self-assess-transform-execute`'s and `self-assess-idiom-fix`'s
-narrowly-scoped Edit access, both off by default), see **Safety notes**
-below.
+Comprehensive self-assessment of live codebases: architecture, documentation drift, CI/CD
+topology, conventions, code idioms, business rules, and UI/accessibility — with findings
+carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
+(only when explicitly authorized) one gated transformation phase applied to source.
 
-Where [`code-modernization`](https://github.com/anthropics/claude-plugins-official)
-assumes `legacy/<system>/` is being discovered and rebuilt into
-`modernized/<system>/`, this plugin assumes the opposite: the repo owner
-already knows their system, the docs are evidence rather than a discovery
-target, and there is nothing to migrate — only drift to catch. It reuses
-`code-modernization`'s proven mechanics (Ready/Ready-with-gaps/Not-ready
-preflight, staleness-comparison status, parallel-finder + adversarial-verify
-Workflow scripts, ecosystem-tool detection discipline) retargeted onto that
-different shape.
+## Why this plugin is structured the way it is
 
-## Install
+Every skill in this plugin is a thin markdown workflow that calls into one shared Python
+library (`scripts/lib/`) through a single CLI entry point (`scripts/self_assess_cli.py`) for
+every rule that has to actually *refuse* something: a disabled skill, a dirty tree, an
+unauthorized transform phase, a missing gating field in a persisted artifact, a write path that
+escapes the plugin's output directory, a numeric threshold. The SKILL.md files describe
+*workflow*; the CLI enforces *rules*. A skill that gets a non-zero exit from the CLI is
+required to stop and surface the message — that is the refusal, not a suggestion the model can
+talk itself out of.
 
 ```
-/plugin marketplace add Anselmoo/werkstoff
-/plugin install self-assess@werkstoff
+self-assess/
+├── .claude-plugin/plugin.json
+├── scripts/
+│   ├── self_assess_cli.py     # single entry point, one subcommand per enforced rule
+│   └── lib/                   # the actual logic: settings, gates, validators, formulas, graph...
+├── skills/self-assess-*/SKILL.md   # 16 skills, one per spec entry
+└── agents/*.md                     # 11 agents, one per spec entry
 ```
 
-Or for local development, point Claude Code straight at this plugin
-directory without registering the marketplace:
+## Settings: `.claude/self-assess.local.md`
 
-```
-cc --plugin-dir /path/to/werkstoff/plugins/self-assess
-```
+All settings live in YAML frontmatter in this file, read fresh by every skill invocation via
+`self_assess_cli.py get-settings`. Absence of the file is a fully valid, fully-defaulted
+configuration — nothing is required to exist.
 
-## Quickstart
-
-These are Skills, not slash commands — Claude activates each one
-automatically when your request matches its description. You'll see two
-name forms in the wild — the bare name below (e.g.
-`self-assess-stage-map`) is just a label, and the
-`plugin:skill`-prefixed form (e.g. `self-assess:self-assess-stage-map`)
-is Claude's own internal identifier for the `Skill` tool — neither is
-something you type. From the root of the repo you want assessed (no
-`legacy/` symlink, no system-dir argument — it operates on the current
-repo in place), just ask in plain language:
-
-- **self-assess-preflight** — "is my environment ready for self-assess?"
-- **self-assess-stage-map** — "map the real import-graph stages/wires" (opens an interactive map)
-- **self-assess-arch-health** — "find god-modules, dependency cycles, layering violations" (over the stage-map graph)
-- **self-assess-transform-brief** — "what's the target architecture and how do we get there" / "turn the findings into a prioritized code-change plan" (current→target 1:1/merge/split mapping, phased sequence with per-phase file:line work items ranked by severity × complexity, a per-phase behavior contract from the mined P0/P1 rules, Mermaid exports)
-- **self-assess-transform-execute** — "execute phase N of the modernization brief" (off by default — one of the plugin's two Edit exceptions, see Safety notes)
-- **self-assess-docs-drift** — "where do CLAUDE.md/ADRs/README contradict the code?"
-- **self-assess-ci-topology** — "check our git remotes, CI config, mirror scripts, commit signing for drift"
-- **self-assess-lint-audit** — "does the code follow its own house-rules.md?"
-- **self-assess-code-idiom** — "find deprecated idioms + generic code smells in the code itself"
-- **self-assess-ui-audit** — "audit the UI/accessibility of the code" (static: a11y, semantic markup, hardcoded design values — no running app)
-- **self-assess-idiom-fix** — "apply the modernization findings from code-idiom" (off by default — the other of the plugin's two Edit exceptions, see Safety notes)
-- **self-assess-extract-rules** — "mine the business rules out of this codebase" (Rule Cards, Given/When/Then)
-- **self-assess-autopilot** — "run the whole check → plan → fix → validate pass" (conducts every check, the transform-brief plan, and andon-loop's gated fix+validate — plan-and-gate, adds no new loop)
-- **self-assess-complexity-score** — "which module needs attention first?" (COCOMO/CCN tech-debt index)
-- **self-assess-status** — "where am I, what's stale, what's next"
-- **self-assess-portfolio** — "heat-map dashboard across many repos" (run from the parent dir)
-
-Every skill writes only under `analysis/self-assess/` in the target repo
-by default — configurable via `output_dir`, see **Settings** below.
-
-## Skills
-
-- **`self-assess-preflight`** — Environment readiness: detects the stack
-  (languages present), checks analysis-tool availability, smoke-parses one
-  representative file per detected language (proves the stage-map
-  extractor will actually run), checks for `house-rules.md`, and checks
-  git-remote/CI-config readability. Produces `PREFLIGHT.md` with a
-  Ready/Ready-with-gaps/Not-ready verdict per downstream skill.
-
-- **`self-assess-stage-map`** — Builds a real per-language import/use
-  graph and clusters it into stages by **package boundary**, not manifest
-  directory — the fix for the bug where two packages sharing one
-  `pyproject.toml` collapse into a single stage. Detection and extraction
-  are driven by [`references/language-support.md`](references/language-support.md),
-  a single canonical table covering the 20 most common languages
-  (Python, JS, TS, Java, C#, C++, C, Go, Rust, PHP, Ruby, Swift, Kotlin,
-  Shell/Bash, PowerShell, R, Scala, Perl, Lua, Dart) with a
-  manifest-based pass plus an extension-frequency fallback for
-  manifest-less stacks (shell scripts and similar) — any other language
-  still runs via a generic fallback rather than being silently skipped.
-  Edge vocabulary borrows Kythe/LSIF's node-edge terms (`defines`, `ref`,
-  `ref/call`, `childof`) for portability, without depending on Kythe/LSIF
-  tooling itself. Produces `STAGE_MAP.md` and an interactive
-  `STAGE_MAP.html` (reusing `code-modernization`'s topology viewer). Also
-  persists the full graph as `stage_graph.json` for `self-assess-arch-health`.
-
-- **`self-assess-arch-health`** — A new analysis pass over the stage/wire
-  graph `self-assess-stage-map` already built (reads its `stage_graph.json`,
-  never re-deriving the import graph), flagging **architecture deficiencies**
-  as pass/fail findings: god-modules (a stage most others depend on — a
-  bottleneck), circular dependencies between stages (a strongly-connected
-  component that blocks independent build/test/release), and layering
-  violations (a production stage importing a test-only/benchmark/fixture
-  stage). Candidates are computed deterministically (degree thresholds,
-  Tarjan SCC, production→test edges) then confirmed adversarially against the
-  real code. Distinct from `self-assess-complexity-score`, which ranks stages
-  by size and deliberately emits no findings. Produces `ARCH_HEALTH.md`.
-
-- **`self-assess-transform-brief`** — Synthesizes `self-assess-stage-map`'s
-  graph and `self-assess-arch-health`'s findings into a transformation plan:
-  a current→target component mapping (explicitly **Keep (1:1)**, **Merge**,
-  or **Split** per stage — merge/split decisions and their rationale are
-  flagged as Open Questions, never guessed), a leaf-first phased sequence
-  (mirrors `code-modernization`'s "build-graph leaf-first" doctrine), and
-  best-practice rationale. It is also the **reporting→plan bridge**: each
-  phase carries concrete **code-change work items** — the reporting domains'
-  file:line findings (`code-idiom`/`lint-audit`/`docs-drift`), attributed to
-  a phase by looking their file up in `self-assess-stage-map`'s
-  `file_stage_index.json` and ranked by severity × complexity — plus a
-  **behavior contract** of the P0/P1 rules (`self-assess-extract-rules`) that
-  must stay equivalent, each with a characterization- or contract-test
-  validation strategy. Findings whose file has no stage go to an explicit
-  Unattributed bucket, never dropped. Read-only and plan-only — it does not
-  edit code or enforce anything; executing a phase is a separate, explicitly-
-  authorized step (see the skill's own **Handoff** section). Also emits two
-  Mermaid `.mmd` exports (`TRANSFORM_SEQUENCE.mmd`, `TRANSFORM_MAPPING.mmd`
-  — the first Mermaid this repo has ever shipped) and feeds the phase
-  sequence into `self-assess-stage-map`'s topology viewer as a selectable
-  walkthrough (the viewer's `flows` feature, previously always empty).
-  Produces `MODERNIZATION_BRIEF.md`.
-
-- **`self-assess-transform-execute`** — Applies exactly one already-authorized
-  phase from `MODERNIZATION_BRIEF.md` via the `transform-executor` agent —
-  **one of the plugin's two Edit/Write-capable paths** (the other is
-  `self-assess-idiom-fix`, below), off by default
-  (`transform.mode: plan`) and gated per-phase
-  (`transform.authorized_phases`), never a blanket switch. Refuses a phase
-  whose Open Question isn't resolved by a human first. Never verifies its
-  own output — always hands off to `andon-verify`'s adversarial tribunal (or
-  `andon-loop`) rather than self-reviewing, and never commits or pushes. See
-  **Safety notes** below before enabling this.
-
-- **`self-assess-docs-drift`** — Parses claims out of `CLAUDE.md` /
-  `DECISIONS.md` / ADRs / `README.md` and verifies each against the actual
-  code, reusing `version-delta-analyst`'s Delta Card format (category /
-  claim / reality / confidence, `file:line` both sides). Produces
-  `DOCS_DRIFT.md`.
-
-- **`self-assess-ci-topology`** — Reads `git remote -v`, every CI config
-  file, any publish/mirror scripts, and the repo's commit-signing state
-  (`commit.gpgsign` + a `git log --pretty=%G?` signature tally); flags
-  redundant remotes, doc-vs-reality drift about CI, one-directional
-  force-push mirrors with no reverse-sync path, and inconsistent commit
-  signing (the green "Verified" vs grey "Unverified" badge — history mixing
-  signed and unsigned commits, or `commit.gpgsign` left unset). Produces
-  `CI_TOPOLOGY.md`.
-
-- **`self-assess-lint-audit`** — Checks the codebase against
-  `<repo>/.claude/house-rules.md` (repo-authored, like `CLAUDE.md` — never
-  invented by this plugin). Degrades gracefully, clearly labeled, if the
-  file is absent. Produces `LINT_AUDIT.md`.
-
-- **`self-assess-code-idiom`** — The one skill that judges the code *itself*
-  rather than checking it against docs/config/house-rules: **deprecated
-  language/library idioms** (modernization-in-place — only ones the version
-  the repo actually targets supersedes, e.g. `Optional[X]` → `X | None` in
-  Python 3.10+, `Python::acquire_gil()` → `with_gil` in pyo3, class components
-  → hooks in React) and **generic code smells** that need no house-rules entry
-  to exist (error-swallowing except/catch, magic numbers, overlong functions,
-  deep nesting, missing type coverage). Per-language idiom catalog lives in
-  `references/language-support.md`; anything a repo's own `house-rules.md`
-  already governs is skipped (that's `self-assess-lint-audit`'s job).
-  Read-only — it reports, never rewrites. Produces `CODE_IDIOM.md`.
-
-- **`self-assess-idiom-fix`** — Applies exactly the eligible
-  `modernization`-category findings from `code_idiom_summary.json` via the
-  `idiom-remediator` agent — **one of only two Edit-capable paths in this
-  plugin** (the other is `self-assess-transform-execute`), off by default
-  (`idiom_fix.mode: propose`). Never touches `smell`-category findings or
-  findings carrying a `severityNote`. Never verifies its own output —
-  every fix, with zero exceptions, gets its own explicit hand-off to
-  `andon-verify`'s adversarial tribunal rather than self-reviewing, and
-  never commits or pushes. See **Safety notes** below before enabling
-  this.
-
-- **`self-assess-extract-rules`** — Mines business/domain logic
-  (calculations, validations, eligibility, state transitions) out of the
-  current repo into testable Rule Cards (Given/When/Then, P0/P1/P2
-  priority, `file:line` citation, confidence). Mirrors
-  `code-modernization`'s `modernize-extract-rules` mechanics
-  (loop-until-dry extraction, per-rule citation referee, a two-judge P0
-  confirmation panel), retargeted at a live repo instead of a legacy
-  system slated for rewrite. Produces `BUSINESS_RULES.md` and
-  `DATA_OBJECTS.md`.
-
-- **`self-assess-complexity-score`** — Computes a COCOMO/cyclomatic-
-  complexity tech-debt index per stage (reusing `self-assess-stage-map`'s
-  already-solved boundaries, falling back to a coarser per-language
-  grouping if no stage map exists), to answer "which module first" with a
-  number instead of a guess. Pure quantitative metric — no adversarial
-  Verify phase, and deliberately excluded from graded health/severity
-  views (see `self-assess-portfolio`/`self-assess-status`): a complexity
-  index is a ranking signal, not a pass/fail finding. Produces
-  `COMPLEXITY_SCORE.md`.
-
-- **`self-assess-status`** — Read-only: staleness of *this plugin's own
-  artifacts* against current repo state (not docs-vs-code drift itself —
-  that's `docs-drift`'s job). Produces a 3-line verdict: furthest completed
-  check, what's stale, single next skill to run.
-
-- **`self-assess-portfolio`** — Sweeps every repo under a parent
-  directory and renders a heat-map dashboard from each repo's *existing*
-  self-assess artifacts (via the `*_summary.json` sidecars every other
-  skill writes) — languages, stage/wire counts, docs-drift
-  contradictions, CI findings, lint violations, and an honest "not yet
-  assessed" marker rather than fabricated data for repos self-assess
-  hasn't touched yet. Mirrors `code-modernization`'s
-  `modernize-assess --portfolio` heat-map, adapted from legacy-system
-  sizing to live-repo health. Pure read-only aggregation — no workflow,
-  no agents, no re-analysis. Produces `<parentDir>/self-assess-portfolio.html`.
-
-## Agents
-
-- **`stage-mapper`** — read-only per-language import/use graph extraction.
-- **`docs-drift-auditor`** — read-only claim-vs-code verification.
-- **`ci-topology-auditor`** — read-only git/CI topology analysis.
-- **`convention-auditor`** — read-only house-rules conformance checking.
-- **`business-rules-miner`** — read-only business-rule mining and citation refereeing.
-- **`complexity-surveyor`** — read-only size/complexity measurement, no judgment.
-- **`idiom-auditor`** — read-only deprecated-idiom + code-smell detection (version-aware).
-- **`arch-health-auditor`** — read-only architecture-deficiency detection over the stage/wire graph.
-- **`transform-executor`** — **one of the plugin's two Edit/Write-capable agents** — applies exactly one already-authorized, already-human-resolved transformation phase; never verifies its own work. See **Safety notes** below.
-- **`idiom-remediator`** — **the plugin's other Edit-capable agent** (Read+Edit only, no Write/Bash/Glob/Grep) — applies exactly one already-verified `code-idiom` modernization-category rewrite; never verifies its own work. See **Safety notes** below.
-
-Eight of these ten are read-only (`Read`, `Glob`, `Grep`, `Bash` —
-`complexity-surveyor` omits `Grep`, it has no untrusted-claim
-cross-referencing to do) — this plugin writes target-repo source in
-exactly two narrowly-gated paths (`transform-executor` and
-`idiom-remediator`, both off by default; see **Safety notes**), and
-otherwise only to the configured `output_dir` (default
-`analysis/self-assess/**`, see **Settings** below), done by the
-orchestrating skill from each workflow's structured return value, never by
-an agent directly (the same separation `code-modernization` uses: analysis
-agents are untrusted-input readers, never file writers — `transform-executor`
-and `idiom-remediator` are the plugin's sole, deliberate departures from
-that rule).
-
-## Development
-
-`test-fixtures/` contains regression fixtures used while developing this
-plugin's skills — `two-package-one-manifest/` reproduces the andon-loop
-stage-collapse bug `self-assess-stage-map` exists to fix, so a run against
-it should always resolve 2 stages and 1 wire. Not needed to use the
-plugin; kept in the bundle for anyone extending `self-assess-stage-map`.
-
-## Recommended workspace setup
-
-```json
-{
-  "permissions": {
-    "allow": ["Read(**)", "Write(analysis/self-assess/**)", "Edit(analysis/self-assess/**)"]
-  }
-}
-```
-
-**If you override `output_dir` in `.claude/self-assess.local.md` (see
-**Settings** below), update this block to match** — the paths must be
-literal, not read from the settings file, so a mismatch here silently
-blocks every write rather than erroring loudly. No `deny` block is
-needed either way — unlike `code-modernization`'s `legacy/` protection,
-this plugin never proposes writing outside the configured `output_dir`
-in the first place.
-
-## The house-rules file
-
-`self-assess-lint-audit` (and, for convention-awareness, every other heavy
-skill) reads `<repo>/.claude/house-rules.md` if present — a file you write
-yourself, describing your repo's actual conventions (e.g. "Pydantic
-models, not dataclasses", "match over if/elif chains", "one source of
-truth per config value"). This plugin never generates or guesses this file
-on your behalf.
-
-## Settings
-
-Optional per-project overrides live in `.claude/self-assess.local.md` in
-the repo being assessed — copy `examples/self-assess.local.md` there and
-edit it:
-
-```yaml
+```markdown
 ---
-enabled: true
-house_rules_path: .claude/house-rules.md
-output_dir: analysis/self-assess
-languages: []            # non-empty = explicit override, skips auto-detection
-skip_verification: false # faster, lower-precision runs (Workflow-orchestrated skills only)
-lint_max_rules: 12
+enabled: true                 # global off-switch; per-skill overrides supported (see below)
+output_dir: analysis/self-assess  # every artifact this plugin writes lands here
+skip_verification: false      # true = label findings unverified instead of adversarially refuting
+lint_max_rules: 12            # cap on self-assess-lint-audit's finder dispatch
+require_clean_tree: true      # dirty-tree gate for the two write-capable skills
+transform:
+  mode: plan                  # "execute" required to run self-assess-transform-execute
+  authorized_phases: []       # phase numbers explicitly authorized for execution
+idiom_fix:
+  mode: propose                # "fix" required to run self-assess-idiom-fix
+extract_rules:
+  maxRounds: 4                 # hard-capped at 4 in code; this can only lower it, never raise it
+autopilot:
+  fix_approved: false          # persisted approval gate for autopilot's FIX phase
+  approved_phases: []
 ---
 ```
 
-Every skill reads this file independently at the start of its own run —
-there are no hooks in this plugin, so unlike some plugin-settings uses of
-this pattern, **no Claude Code restart is needed** after editing it. Add
-`.claude/*.local.md` to the target repo's `.gitignore`. Full field
-reference: `references/settings.md`.
+Per-skill overrides: nest a block under the skill's id (e.g. `self-assess-ui-audit:\n  enabled:
+false`) to disable just that skill.
 
-## Prerequisites
+## Design decisions (spec was silent here)
 
-Every skill degrades gracefully without these — run `self-assess-preflight`
-to check all at once:
+The behavioral spec states obligations, not implementation details. Where it left a concrete
+choice unstated, this is what was chosen and why:
 
-- **A parser/toolchain per detected language** — `python3` (stdlib `ast`,
-  always present), `node`, `cargo`, or the relevant tool for whatever
-  `references/language-support.md` maps your stack to. Without one,
-  `self-assess-stage-map` falls back to a regex/grep pass for that
-  language instead of a real parse.
-- **`ruff`** (Python repos) — sharpens `self-assess-lint-audit`'s
-  convention checks; falls back to grep-based pattern matching without it.
-- **`git`** — required for `self-assess-ci-topology` (nothing to audit
-  without it) and for `self-assess-status`'s commit-based staleness
-  signal (falls back to file mtimes without it).
-- **`glow`** — renders the markdown artifacts nicely in-terminal; plain
-  text without it.
+- **`output_dir` default is `analysis/self-assess`**, matching the prior implementation's
+  documented output location.
+- **Settings parser is a small dependency-free YAML subset**, not PyYAML. The plugin ships zero
+  third-party Python dependencies; `scripts/lib/frontmatter.py` handles flat scalars, one level
+  of nested mapping, and simple scalar lists — everything every settings field in this plugin
+  actually needs. It will not parse arbitrary YAML.
+- **God-module fan-in threshold.** The spec says "high fan-in/fan-out" with no number. This
+  plugin flags a stage once its fan-in reaches `max(3, 0.5 × other_stage_count)` — see
+  `GOD_MODULE_FANIN_RATIO` / `GOD_MODULE_MIN_FANIN` in `scripts/lib/graph.py`. `arch-health-
+  auditor` still confirms or refutes every mechanically-flagged candidate against actual code
+  before it becomes a finding, so this threshold only decides what gets a second look, not what
+  gets reported.
+- **Autopilot's "gate before FIX" is a persisted flag, not a remembered conversational yes.**
+  The spec says the skill "MUST ask the user to approve" — to make that mechanically checkable
+  rather than trusting the model to recall it asked, approval must be recorded as
+  `autopilot.fix_approved: true` (and optionally `autopilot.approved_phases`) in
+  `.claude/self-assess.local.md` before `self_assess_cli.py autopilot-fix-gate` will pass.
+- **Confab-installed detection is best-effort.** There is no API a plugin script can call to
+  query "is plugin X installed" from inside this session. `self-assess-autopilot` checks
+  whether a `confab:`-prefixed skill appears in the current session's available-skills listing;
+  if it does not, it reports "confab not installed" and continues. This cannot be made fully
+  mechanical without a host-level plugin registry API.
+- **Portfolio report location.** `self-assess-portfolio` is the one skill whose output is not
+  scoped to a single repo's `output_dir` — its `self-assess-portfolio.html` lands in the
+  portfolio directory itself, since it summarizes many repos at once.
+- **`self-assess-code-idiom`'s version detection** covers Python (`pyproject.toml` /
+  `setup.py`), JavaScript/TypeScript (`package.json` engines.node), Go (`go.mod`), and Java
+  (`pom.xml`) out of the box (`scripts/lib/version_detect.py`). A language outside this list
+  gets `version: null`, in which case the skill's own instructions require flagging only idioms
+  deprecated across every version the language has shipped, never a version-specific one.
+- **Credential preview length** is clamped to 2–4 characters (`scripts/lib/credentials.py`),
+  matching the spec's "2-4 character preview" exactly rather than picking one fixed number.
+- **CI-scope claim exclusion** (`docs-drift-not-ci-specific`) is a fixed set of path/keyword
+  patterns (`.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`,
+  `azure-pipelines.yml`, plus "git remote"/"mirror script"/"pipeline config" keywords) rather
+  than a judgment call each run — see `scripts/lib/scope.py`.
 
-## Safety notes
+## How enforcement actually works (mapping rules to code)
 
-**This plugin has two deliberate Edit exceptions — `transform-executor`
-and `idiom-remediator` — each independently gated, neither overlapping
-the other's scope.** Every other self-assess skill and agent — including
-`self-assess-transform-brief` and `self-assess-code-idiom`, which plan/find
-the very things these two apply — is 100% read-only; do not assume that's
-still universally true without checking this section, the same caution
-`confab`'s own README asks of its two exceptions.
+| Rule (spec id) | Enforced by |
+|---|---|
+| `skill-reads-own-settings-before-running` | `settings.require_enabled()` — `check-enabled` subcommand |
+| `lint-max-rules-cap` | `lint_cap.cap_rules()` — hard `DEFAULT_MAX_RULES = 12`, always returns a `skipped` list |
+| `complexity-score-formula` | `formulas.complexity_index()` — `2.94 × KSLOC^1.10`, and `validators.validate_complexity_score_summary` recomputes it and rejects a mismatch |
+| `language-detection-threshold` | `language_detect.detect_languages()` — `MIN_FILES_FOR_DETECTION = 3` |
+| `cycle-definition-in-graph` | `graph.find_cycles()` — Tarjan SCC, `MIN_CYCLE_SIZE = 2` |
+| `p0-rule-panel-confirmation` | `p0_panel.confirm_p0_rule()` plus `validators.validate_business_rules_summary` refusing any P0 rule without `panel_confirmed: true` |
+| `extract-rules-loop-convergence` | `rules_loop.RuleLoopController` — hard `MAX_ROUNDS_HARD_CAP = 4`, 2 consecutive dry rounds to converge |
+| `stage-graph-vs-stage-map-json` | `validators.validate_stage_graph` rejects the artifact unless `edgeCount == len(wires)` |
+| `file-stage-index-partial-coverage` | `attribution.attribute()` returns `"Unattributed"` on any miss, never an error |
+| `skip-verification-behavior` | `skip_verification.label_findings()` — refuses a finding missing `verified` when `skip_verification` is false |
+| `credential-masking-in-output` | `credentials.mask_url()` / `mask_text()`; `validators.validate_ci_topology_summary` refuses any finding carrying `raw_remote_url` |
+| `docs-drift-not-ci-specific` | `scope.exclude_ci_claims()` |
+| `idiom-fix-modernization-only` | `gates.filter_eligible_idiom_findings()` |
+| `transform-brief-gate-on-stage-graph` | skill-level file-existence check, degrades to a short brief |
+| `transform-brief-attributes-findings-via-lookup` | `attribution.attribute()` |
+| `transform-brief-work-item-ranking` | `formulas.work_item_rank()` — fixed `SEVERITY_WEIGHT` map |
+| `transform-brief-confab-routing` | `transform_routing.route_confab_finding()` |
+| `transform-execute-gate-transform-mode` | `gates.check_transform_mode()` / `check_phase_authorized()` |
+| `transform-execute-open-question-resolution` | `gates.check_open_questions_resolved()` |
+| `portfolio-grade-worst-signal-wins` | `portfolio.grade_repo()` — `Gray` branch checked first, unconditionally |
+| `portfolio-cwd-git-repo-check` | `gates.check_portfolio_scope()` |
+| `read-only-skills-no-mutation` | tool restrictions in each SKILL.md / agent frontmatter (`Read, Glob, Grep, Bash` only) |
+| `dirty-tree-gate` | `gates.check_dirty_tree()` |
+| `no-commit-or-push` | no code path in any skill or agent invokes `git commit`/`git push` |
+| `ui-audit-static-only` | `validators.validate_ui_audit_summary` refuses a `contrast` finding without `heuristic: true` |
+| `autopilot-gate-before-fix` | `gates.check_autopilot_fix_approved()` |
+| `status-no-fabrication` | `status.build_present_artifacts()` — only includes a key when its sidecar file exists on disk |
+| write-scope enforcement | `write_guard.resolve_output_path()` — rejects traversal, absolute paths, and any escape of `output_dir` before any write |
 
-**`self-assess-transform-execute`'s `transform-executor` agent** is the
-first. `transform-executor`
-only runs when `self-assess-transform-execute` dispatches it, which only
-happens when the repo owner has explicitly set `transform.mode: execute`
-**and** listed the specific phase number in `transform.authorized_phases`
-(default `plan` mode refuses outright; see `references/settings.md`), and
-only for one already-authorized phase at a time, scoped to that phase's
-declared stage(s) — never a general "improve this" mandate. It returns
-`blocked` rather than guessing whenever a phase's Open Question isn't
-resolved by a human first, or when a change would need to touch a file
-outside the phase's scope. It has no `Bash` and never commits or pushes.
-Critically, **it never verifies its own work** — `self-assess-transform-execute`
-always ends with an explicit hand-off to `andon-verify`'s adversarial
-tribunal (independent agents, never a same-session self-review) rather than
-self-assess declaring its own edit correct; research on LLM-assisted code
-modernization found that a model reviewing its own change misses roughly a
-third of its own semantic errors, which is exactly the failure mode this
-separation avoids.
+## Testing performed
 
-**`self-assess-idiom-fix`'s `idiom-remediator` agent** is the second, and
-narrower. It only runs when `self-assess-idiom-fix` dispatches it, which
-only happens when the repo owner has explicitly set `idiom_fix.mode: fix`
-(default `propose` refuses outright; see `references/settings.md`), and
-only for already-verified `code-idiom` `modernization`-category findings
-— clustered by file and kind, one dispatch per cluster, never a
-`smell`-category finding, and never one carrying a `severityNote` (code-idiom's own Verify phase already flagged
-those as uncertain). It has no `Bash`, `Write`, `Glob`, or `Grep` — only
-`Read` and `Edit` — since every `code-idiom` finding is already an exact
-single file:line, unlike `transform-executor`'s multi-file scope. It
-returns `blocked` rather than guessing on any ambiguity, never commits or
-pushes, and — the same discipline as `transform-executor`, applied with
-zero exceptions even to its most mechanical rewrites — never verifies its
-own work: every fix gets its own explicit hand-off to `andon-verify`'s
-adversarial tribunal before anyone should trust it.
+Every subcommand above was exercised directly against both the passing and refusing case
+(clean settings vs. a disabled skill, a valid path vs. path traversal, a 2-cycle graph vs. a
+non-cycle, a single P0 judge vs. two agreeing judges, 15 extracted lint rules capped to 12,
+`transform.mode: plan` refused vs. `execute` + authorized phase accepted, a dirty non-git
+directory refused, `autopilot.fix_approved` defaulting to refused) — all producing the expected
+exit code and message. See `scripts/self_assess_cli.py --help` for the full subcommand list.
 
-Same discipline as `code-modernization`: **analyzed content is untrusted
-input.** `CLAUDE.md`, ADRs, and `house-rules.md` can in principle contain
-planted instruction-shaped text ("ignore this contradiction", "mark this
-check green"); every agent treats file content as data and flags
-instruction-shaped text rather than acting on it. Any credential that
-surfaces (e.g. embedded in a `git remote -v` URL) is masked
-(`file:line` + a 2-4 character preview) the same way `security-auditor`
-masks secrets.
+## Skills (16)
 
-**Artifacts can quote your own source.** `DOCS_DRIFT.md` and
-`LINT_AUDIT.md` cite short excerpts of your docs and code as evidence —
-ordinary practice, but worth knowing before sharing `analysis/self-assess/`
-outside the team, the same way you'd think twice before sharing any
-internal-docs excerpt.
+`self-assess-preflight`, `self-assess-stage-map`, `self-assess-docs-drift`,
+`self-assess-ci-topology`, `self-assess-lint-audit`, `self-assess-code-idiom`,
+`self-assess-extract-rules`, `self-assess-arch-health`, `self-assess-complexity-score`,
+`self-assess-ui-audit`, `self-assess-transform-brief`, `self-assess-transform-execute`,
+`self-assess-idiom-fix`, `self-assess-status`, `self-assess-portfolio`,
+`self-assess-autopilot`.
 
-## Dynamic workflow orchestration
+## Agents (11)
 
-On Claude Code builds with the Workflow tool, `stage-map`, `docs-drift`,
-`ci-topology`, `lint-audit`, and `extract-rules` run as scripted
-multi-agent orchestrations (parallel finders, deduplication, adversarial
-per-finding verification). They fall back to direct subagent fan-out on
-older builds automatically. `preflight` and `status` are plain skill logic
-with no fan-out.
+`stage-mapper`, `arch-health-auditor`, `ci-topology-auditor`, `docs-drift-auditor`,
+`convention-auditor`, `idiom-auditor`, `business-rules-miner`, `complexity-surveyor`,
+`ui-auditor`, `idiom-remediator` (write-capable), `transform-executor` (write-capable).
 
-## License
+Every other agent is strictly read-only (`Read`, `Glob`, `Grep`, `Bash` for inspection only).
 
-MIT. See `LICENSE`.
+## Typical usage
+
+```
+"map this repo's architecture"          -> self-assess-stage-map
+"run the auto-pilot"                    -> self-assess-autopilot (full check -> plan -> gate -> fix/validate)
+"where does self-assess stand"          -> self-assess-status
+"sweep our whole portfolio of repos"    -> self-assess-portfolio
+```
+
+Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode: fix`, in
+`.claude/self-assess.local.md` only when ready to apply a change — both default to a
+plan/propose-only mode that refuses to touch source.

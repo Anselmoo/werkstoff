@@ -1,110 +1,88 @@
 ---
 name: andon-propose
-description: Proposes a fix for one gap maximally — from the codebase, the ledger's written artifacts, and domain best-practice — then grills the user one question at a time, only on genuinely load-bearing forks, each question paired with a recommended answer and a blast-radius/reversibility tag. Use this when andon-loop needs to decide what to fix next, or directly when the user asks "what should I fix here", "propose a fix for this gap", "grill me on this decision", or "what's the load-bearing question here".
+description: "Proposes a fix for one gap by reading the ledger and codebase first, then grilling the user one question at a time only on genuinely load-bearing forks. Use when andon-loop dispatches it to propose a fix, or when the user directly asks what to fix for a named gap, or asks to be grilled on a decision."
+allowed-tools: "Read, Grep, Glob, Bash"
+argument-hint: "<gap-description-or-slug>"
 ---
 
-Propose a fix for exactly one gap, maximally, before asking the user
-anything — then interview the user only on the residual forks that
-genuinely can't be resolved alone. This is `andon-loop`'s Phase 3 ("pick
-one gap by priority" already having happened upstream — this skill
-proposes *how* to fix the one gap handed to it) — restructured from the
-personal `autonomous-grilling` skill's propose-then-grill discipline,
-plus one output field that discipline didn't have: every proposed fix is
-tagged with a blast-radius/reversibility rating that feeds `andon-loop`'s
-stop rule.
+# andon-propose
 
-Full checklist and red-flag table: `${CLAUDE_PLUGIN_ROOT}/skills/andon-verify/references/grilling-protocol.md`
-(shared location — `andon-verify`'s references directory is this
-plugin's single reference library, not a strategy-specific one; see that
-file's own header for why it lives there rather than being duplicated).
+Two phases, strictly in order. Never skip to Phase 2 without finishing
+Phase 1's concrete draft first -- interviewing before proposing turns this
+into busywork for the user instead of a real proposal to react to.
 
-## Input
+## Phase 1: propose maximally, then stop drafting
 
-Called with one gap (from `andon-loop`'s Phase 2 scan, or named directly
-by the user): its `kind` (`bug` | `feature` | `wire`), which stage/wire
-it's on, and any ledger context (prior gap docs, evidence docs already
-linked to this stage). If called standalone (no `andon-loop` context),
-treat the user's description as the gap.
+1. Read the gap's stage doc and any docs it links to (prior gap/evidence
+   docs in the same stage or wire).
+2. Read `.claude/house-rules.md` (or the path in `house_rules_path`
+   settings) if `andon-preflight` reported it present. Ground every default
+   choice in it -- **never invent a convention the repo already wrote down**,
+   and never ask the user something the house-rules file already answers.
+   If absent, fall back to codebase-only defaults (read real symbols/patterns
+   in the touched stage) without inventing or generating a house-rules file
+   yourself.
+3. Explore the codebase enough to draft a concrete fix: what changes, which
+   files, and why this approach over the obvious alternatives.
+4. Choose the `andon-verify` strategy letter this fix should be proven with,
+   and write down the rationale in one sentence -- do not leave strategy
+   selection to `andon-verify` to guess; you have the most context on the
+   gap right now.
+5. Assign **exactly one** blast-radius tag. This is mandatory and mechanically
+   checked downstream (the ledger schema validator and the PreToolUse hook
+   both reject a gap doc with zero, multiple, or an undefined tag) -- do not
+   leave it blank meaning to fill it in later.
 
-## Phase 1 — Propose (autonomous, do this first)
+   - `local+reversible`: confined to one stage, trivially undoable.
+   - `hard-to-reverse`: crosses a stage boundary or touches a public signature.
+   - `shared-state-visible`: touches persisted data or a published artifact.
 
-Before asking anything:
+   Sanity-check your own tag choice before moving on:
 
-1. **Read the written record.** The ledger's stage doc and any linked
-   gap/evidence docs for this stage (see
-   `andon-verify/references/okf-ledger-schema.md` for the frontmatter
-   shape), `.claude/house-rules.md` if `andon-preflight` found one, and
-   `CLAUDE.md`/ADRs. Do not ask the user what is already written down.
-2. **Explore the codebase.** Read the stage(s) either side of the
-   affected wire — symbols, files, patterns, conventions actually in use
-   nearby. Anything answerable by reading code is *not* a question.
-3. **Draft one concrete fix.** State: the proposed change, why, the
-   files it touches, and which `andon-verify` strategy will prove it
-   (name the strategy and one-line why — this is decided here, not left
-   for `andon-verify` to guess; see that skill's
-   `references/wire-classifier.md` for the routing logic this proposal
-   should already anticipate).
-4. **Tag blast radius** — exactly one of:
-   - `local+reversible` — confined to one stage, trivially undoable.
-   - `hard-to-reverse` — crosses a stage boundary, touches a public
-     signature/schema, or would be costly (not impossible) to undo.
-   - `shared-state-visible` — touches persisted data, a migration, a
-     published artifact, or anything another party could already depend
-     on before a revert lands.
+   ```
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-doc \
+     '{"type":"gap","title":"...","stage":"...","kind":"...","status":"open","blast_radius":"<tag>","proposal":{}}'
+   ```
 
-   This directly extends the standard Claude Code harness doctrine
-   ("Executing actions with care": reversible/local actions proceed
-   freely; hard-to-reverse or shared-state-visible actions require
-   explicit confirmation) into this loop's decision output. It is read
-   downstream by `andon-loop`'s stop rule condition 2 — a tag exceeding
-   the loop's configured `authorization_level` (see
-   `references/settings.md`) halts the loop rather than auto-advancing,
-   regardless of how confident the fix looks otherwise.
+   If this exits non-zero, your tag (or another gating field) is wrong --
+   fix it before presenting the proposal, don't present a proposal you know
+   will be rejected at write time.
 
-Output of Phase 1: a draft fix where the approach, verification
-strategy, and blast-radius tag are already decided and justified — not a
-menu of options.
+## Phase 2: grill only what Phase 1 left load-bearing
 
-## Phase 2 — Grill (relentless, but only the residue)
+Use the blast-radius tag from Phase 1 to decide whether to grill at all:
 
-Interview the user only on what Phase 1 could not resolve alone:
+- `local+reversible`: **never grill.** You already decided in Phase 1;
+  present the proposal as done.
+- `hard-to-reverse` or `shared-state-visible`: **always** require explicit
+  confirmation before the fix is applied. This is not a style preference --
+  `andon-loop`'s stop-condition check will independently block advance on
+  these tags until the user confirms, so skipping the grill here just moves
+  the same halt one step later with less context for the user.
 
-- Walk open forks one at a time, resolving the fork that unblocks the
-  most downstream decisions first.
-- For each question, **give your recommended answer** and a one-line
-  rationale — never a bare option list.
-- One question per turn. Wait for the answer before asking the next.
-- **A `hard-to-reverse` or `shared-state-visible` tag is always a
-  load-bearing fork**, even when the fix itself looks obvious — confirm
-  the scope of authorization, not the fix's correctness. A
-  `local+reversible` tag is never itself a reason to grill.
-- If a question can be answered by reading more code, go read more code
-  instead of asking.
-- Default to your recommendation on "proceed" / "your call" / silence.
+When grilling is required, ask about residual forks only -- the places where
+Phase 1's draft genuinely could have gone two ways and the choice matters.
+One question per turn:
+
+1. State the fork plainly.
+2. Give your recommended answer and the one-sentence reason for it.
+3. Wait for the user's answer before asking the next question.
+
+Do not batch multiple questions into one message, and do not ask about
+anything Phase 1 already settled from the house-rules file or an unambiguous
+codebase convention.
 
 ## Output
 
-Return (to `andon-loop`, or print directly if standalone):
+Return (never write to the ledger yourself -- `andon-loop` persists this):
 
+```json
+{
+  "fix_description": "...",
+  "files_touched": ["..."],
+  "verify_strategy": "a",
+  "verify_strategy_rationale": "...",
+  "blast_radius": "hard-to-reverse"
+}
 ```
-Fix: <one paragraph — what, where, why>
-Touches: <file list>
-Verification strategy: <andon-verify strategy letter + name>
-Blast radius: local+reversible | hard-to-reverse | shared-state-visible
-Open forks resolved: <question → answer, one line each, or "none — fully
-  resolved from codebase + best-practice">
-```
 
-`andon-loop` passes this straight to `andon-verify` as the wire-proof
-input, and records the blast-radius tag in the gap's OKF doc frontmatter
-(`references/okf-ledger-schema.md`) before evaluating the stop rule.
-
-## Red flags (you're doing it wrong)
-
-See the full table in `grilling-protocol.md`; the two specific to this
-skill's new field:
-
-| Symptom | Fix |
-|---|---|
-| Proposing a fix with no blast-radius tag | Every proposal gets exactly one tag — never optional. |
-| Treating `hard-to-reverse` as "ask if it feels risky" | It is not a vibe check — cross-stage-boundary or public-signature changes are always `hard-to-reverse` at minimum, regardless of how simple they look. |

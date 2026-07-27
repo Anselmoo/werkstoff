@@ -1,0 +1,16 @@
+{
+  "description": "Denies source edits while the andon ledger holds a stop condition. type:command, never type:prompt — a prompt hook asks a model to decide, which is the model-mediated path this exists to replace.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/andon_enforce.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

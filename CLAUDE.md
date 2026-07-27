@@ -1,177 +1,178 @@
 # werkstoff
 
-My personal Claude Code plugin workshop (`.claude-plugin/marketplace.json`
-at root). Six plugins currently:
+Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
-- `plugins/self-assess/` — docs-vs-code drift and stage/wire mapping for a live repo, plus a reporting→plan bridge (`self-assess-transform-brief` turns file:line findings into a prioritized, phased code-change plan with a per-phase behavior contract), a static UI/accessibility audit (`self-assess-ui-audit`), and a check→plan→fix→validate conductor (`self-assess-autopilot`).
-- `plugins/confab/` — catches where AI-authored code confabulates (dependency-hallucination/assertion/contract-drift/agentic-reliability audits); its audit sidecars publish per-finding arrays the self-assess bridge ingests.
-- `plugins/compass/` — prompt-engineering technique library + `compass-solve` orchestrator for complex/ambiguous tasks.
-- `plugins/cupertino/` — Steve-Jobs-grounded design/craft discipline for a project's whole lifecycle.
-- `plugins/andon/` — self-optimizing hardening loop over a project's value stream (services + wires); `andon-loop`'s ingest mode (`gap_source: self-assess-brief`) is the auto-pilot's fix+validate half, driving off self-assess's `MODERNIZATION_BRIEF.md`.
-- `plugins/cli-scaffold/` — five-pillar CLI architecture doctrine + per-language scaffold generation.
+## Layout
 
-See each plugin's own `README.md` for what it does in full.
+`plugins/<name>/` — six plugins: `andon`, `cli-scaffold`, `compass`, `confab`,
+`cupertino`, `self-assess`. Each is independently versioned; `marketplace.json`
+and `.rrt.toml` both point here.
 
-**Cross-plugin auto-pilot (division of labor).** `self-assess-autopilot`
-conducts check → plan → fix → validate without a new loop: self-assess owns
-check+plan (all read-only audits, incl. confab's, → `transform-brief` →
-`MODERNIZATION_BRIEF.md`), and `andon-loop` (ingest mode) owns fix+validate
-(applies gated fixes via the Edit skills, proves each with `andon-verify`'s
-`{wire, contract, fixDiff}` entry point). compass and cli-scaffold are
-orthogonal to this stream.
+All six were regenerated from behavior specifications rather than hand-edited —
+see `docs/plugin-rebuild-findings.md` for what that measured, including which
+rebuilds gained enforcement and which lost rules.
 
-## Spec-driven development convention
+## Use the MCPs — they are faster and more accurate than grep
 
-Non-trivial changes to a plugin go through `.superpowers/sdd/`, not ad hoc
-edits:
+**serena** (connected) — symbol-level navigation. Prefer it over grep whenever
+the question is about code structure:
+- `find_symbol` / `get_symbols_overview` — locate a function without reading files
+- `find_referencing_symbols` — "who actually calls this guard?" This repo has
+  been burned repeatedly by guards that exist and are never called; a grep for
+  the name finds prose mentions, `find_referencing_symbols` finds call sites.
+- `replace_symbol_body` — edit one function without rewriting a file
 
-- **Brief**: `.superpowers/sdd/<prefix>-task-N-brief.md` — written via the
-  `superpowers:writing-plans` skill. `<prefix>` is short per work-stream
-  (e.g. `sa-` for self-assess, `cf-` for confab, `c-` for compass). Format:
-  Files / Scope / numbered checkbox Steps / manual-verify / commit.
-- **Report**: `.superpowers/sdd/<prefix>-task-N-report.md` — written after
-  a task completes (implementation notes, review outcome).
-- **Log**: `.superpowers/sdd/progress.md` — one line per completed task,
-  append-only, e.g. `Task 8: complete (commits abc..def, review clean - approved)`.
+**mcp-server-analyzer** (connected) — `ruff-check`, `ty-check`, `biome-check`,
+`vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
-Read the existing `<prefix>-task-*-brief.md` files for a work-stream before
-writing a new one — match their exact structure, don't reinvent it.
-`.superpowers/sdd/` is untracked scratch, not committed to git.
+**rrt** (global) — `rrt_version_overview`,
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the seven-version-group
+setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
+`rrt --help` will not mention MCP.
+
+**context7** — for any library/CLI question including rrt's own command surface
+(`/anselmoo/repo-release-tools`). Do not answer from memory.
+
+## Think before deciding — this repo punishes assumption
+
+Six defects in one session all had the same shape: **code that looks correct and
+silently does nothing.** None raised an error.
+
+| defect | how it hid |
+|---|---|
+| `[^.]{0,80}` in a regex | cannot span `report/build.py` — filenames contain dots |
+| `[^\n]` in a bracket expression | means "not backslash, not the letter **n**" |
+| `\b!==\b` | no word character is adjacent to `!` |
+| `Path.glob()` on an unreadable dir | swallows `PermissionError` → "nothing found" |
+| hook JSON without `hookEventName` | runtime discards the decision; hook runs, is ignored |
+| `PROMPT % (...)` with a literal `%` in the text | `TypeError`; stale output then read as a fresh result |
+
+Consequences that follow, and are not optional here:
+
+- **A failed run leaves the previous output in place.** Re-running a check
+  after a failed generation measures the *old* files. Always confirm the thing
+  you are grading was actually produced by the run you think produced it.
+- **Verify the instrument before trusting its verdict.** Every tool here
+  asserts itself: the enforcement auditor is hand-checked against three known
+  answers, oracles are calibrated against fabricated transcripts before first
+  use, `lint-oracles.sh` bans the regex forms that fail silently.
+- **A tally cannot tell a real pass from a lucky one.** Read the transcript of
+  any single-pass result before believing it.
 
 ## Verifying plugin changes
 
-Plugin content is markdown/JS skill definitions, so verification has two tiers.
-
-**Tier 1 — static checks** (fast, no API, run on every change):
+**Static (instant, free) — run all of these on every change:**
 
 ```bash
-node --check plugins/self-assess/workflows/<file>.js   # workflow scripts parse
-python3 -c "import yaml; yaml.safe_load(open('plugins/self-assess/skills/<skill>/SKILL.md').read().split('---')[1])"  # SKILL.md frontmatter parses
+python3 test/plugins/lint-frontmatter.py plugins/<name>   # YAML that would load with EMPTY metadata
+claude plugin validate plugins/<name> --strict            # manifest + structure
+python3 tools/enforcement-audit/audit_enforcement.py --rules analysis/rebuild/<name>.behavior.json plugins/<name>
+bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
+node --check plugins/<name>/workflows/<file>.js
 ```
 
-For workflow post-processing logic (clustering, ranking, attribution), a quick
-`node --input-type=module` script exercising the pure functions against
-fixture data catches shape/logic bugs statically — but it can't confirm a skill
-actually *triggers* or produces the right finding.
+`lint-frontmatter.py` matters more than it looks: frontmatter that fails to
+parse still **loads, with no description and no tools**, so the skill never
+triggers and nothing reports an error.
 
-**Tier 2 — headless behavior tests** (`test/plugins/`): the harness that does.
-
-Key constraint: **Claude Code builds its skill/agent registry once, at session
-start.** A skill or agent you just authored is invisible until a reload — so it
-cannot be exercised in the session that wrote it (you'll get "Unknown skill" /
-"agent type not found"). Workflows are the exception (the Workflow tool reads
-the `.js` from disk at call time), but anything routing to a **new agentType**
-still needs a fresh process. So behavior testing must run in a fresh
-`claude --print` process, which loads the plugin clean:
+**Behavioral (`test/plugins/`, 3–4 min per run, real tokens):**
 
 ```bash
-test/plugins/run.sh            # run all cases (each: fresh claude --plugin-dir vs a seeded fixture)
-test/plugins/run.sh ui-audit   # one case by id
+bash test/plugins/verify-clean-box.sh          # ALWAYS first — see below
+bash test/plugins/run.sh <case-id>
+N=5 bash test/plugins/determinism.sh <case-id> # a pass rate, not a verdict
 ```
 
-Each case in `test/plugins/cases.tsv` copies a **seeded-defect fixture** (under
-`plugins/*/test-fixtures/`) into a temp cwd, runs one plugin against it via
-`claude --plugin-dir plugins/<name> --print "<prompt>"`, and asserts the
-produced artifact contains the finding the plugin is supposed to catch (a
-golden oracle, not a fuzzy match). Needs the Claude Code CLI on PATH; costs
-real tokens (spawns the skill's subagents), so it is not a Tier-1 check.
+- **The clean box is mandatory.** `--plugin-dir X` *adds* a plugin; it removes
+  nothing already installed. Without `make-clean-box.py`'s settings, 33
+  installed plugins and 43 personal skills leak into every "isolated" run —
+  including a copy of the plugin under test, which will pass cases its own
+  source cannot satisfy.
+- **`ERROR` ≠ `FAIL`.** A rate-limit banner, empty stdout, or a sub-200-byte
+  reply means the run never happened. `run.sh` scores these separately; a case
+  with any errors has no rate, only missing data.
+- Fixtures live in `test/plugins/fixtures/` (arm-independent — deliberately
+  *not* under any plugin, so moving a plugin does not break the tests).
+- Cases are `test/plugins/cases.tsv`. `regex` may be several patterns joined by
+  `@@AND@@` (all must match); an optional 7th column is a must-NOT-match.
+- **Never retune an oracle after the thing it grades exists.** Calibrate against
+  fabricated transcripts first.
 
-- **Scaffold a new case:** `/scaffold-plugin-test <plugin>/<skill>` (project
-  slash command) or `test/plugins/scaffold-test.sh <id> <plugin> <fixture>` —
-  creates the fixture skeleton + a `cases.tsv` row to complete.
-- **"Does the change work better?" (A/B):** run the same case against the old
-  plugin (a `git worktree` at the prior commit) and the new one; diff the
-  outputs. Objective "better" = the new one catches a seeded defect the old
-  missed, or emits a section the old couldn't.
+## Rebuild pipeline (`tools/plugin-serializer/`)
 
-## Git workflow
+```
+<source plugin>/ --[haiku]--> <p>.behavior.json   obligations only, no source wording
+                 --[python]-> <p>.inventory.json  ids+counts, GATE INPUT ONLY
+                 --[sonnet]-> plugins/<p>/        via /plugin-dev:create-plugin
+```
 
-Prefer `rrt` (repo-release-tools, this user's own CLI — `/Users/hahn/.local/bin/rrt`)
-over raw git for repo-level operations. Check context7 (`/anselmoo/repo-release-tools`)
-for its current command surface rather than assuming from memory — it has many
-subcommands beyond git (`bump`, `release`, `sync`, `doctor`, `drift`, `branch`, ...).
+Specs for the current six are in `analysis/rebuild/*.behavior.json` — they are
+what the enforcement audit grades against, so a rule missing from a spec is a
+rule no gate will look for.
 
-- **Reinitializing to a single "Initial commit"** (this repo's own established
-  pattern, used twice): `rrt git rebootstrap --yes-i-know-this-destroys-history
-  --allow-remote --branch main --message "<msg>"` — backs up the old `.git`
-  (moved aside, not deleted) before reinitializing, unlike a manual `rm -rf .git
-  && git init`. Still requires a manual `git push` (`--force` if history was
-  actually rewritten) afterward — rebootstrap doesn't push.
-- For an ordinary incremental fix (untracking a file, adding a `.gitignore`,
-  etc.) on top of existing history, use plain `git add`/`commit`/`push` — don't
-  reach for `rebootstrap` unless history genuinely needs to be destroyed again.
+- The inventory is computed from the filesystem, never by an LLM, and is
+  withheld from the generator — otherwise the same model could drop a skill in
+  both the rebuild and the checklist and the gate would pass it.
+- **sonnet is sufficient.** Its only failures were YAML frontmatter traps, now
+  named in the generator prompt and verified. opus bought nothing.
+- Artifacts land in `analysis/rebuild/` (gitignored).
 
-### Plugin versioning (`.rrt.toml`)
+## Enforcement: only hooks actually enforce
 
-Each plugin has its own independently-versioned
-`plugins/<name>/.claude-plugin/plugin.json` + `plugins/<name>/CHANGELOG.md`,
-wired up as a separate `rrt` version group in `.rrt.toml` (`self-assess`,
-`confab`, `compass`, `cupertino`, `andon`, `cli-scaffold`). The
-`tools/werkstoff-cli` installer tool is wired up the same way, but targets
-its own `pyproject.toml` (`kind = "pep621"`) + `tools/werkstoff-cli/CHANGELOG.md`
-instead of a `plugin.json`. Bump one group's version with:
+Measured over ~40 runs, asking "does the guard *run*", not "does it exist":
+
+| layer | invocation |
+|---|---|
+| prose in a SKILL.md | baseline |
+| a fenced `python3 ...` command in a skill | 1 run in 3 |
+| a guard inside the Workflow script | workflow dispatched 1 run in 14 |
+| **PreToolUse hook, `type: "command"`** | **blocks, first attempt** |
+
+So a rule that must hold regardless of model cooperation belongs in
+`hooks/hooks.json`. `plugins/andon/hooks/andon_enforce.py` is the reference.
+Non-negotiables: `type: "command"` (a `"prompt"` hook asks a model to decide);
+deny must emit **both** exit 2 with the reason on stderr **and** stdout JSON
+with `hookEventName` + `permissionDecisionReason`; the hook must be inert unless
+the repo actually uses the plugin; fail **closed** with a named escape hatch.
+
+This only helps plugins whose rules gate *actions*. `compass` and `cupertino`
+are advisory — there is no tool call to deny for "explore branches before
+scoring" — which is why their rebuilds gained nothing.
+
+## Git & release
+
+Prefer `rrt` over raw git for repo-level operations; check context7
+(`/anselmoo/repo-release-tools`) for its current surface rather than memory.
+
+Seven independent version groups in `.rrt.toml` (6 plugins + `tools/werkstoff-cli`).
+There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash
-rrt bump <major|minor|patch> --group <group-name>
+rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1
+rrt tag create --group <name> --prefix '<name>-v' --push   # plugins
+rrt tag create --group werkstoff-cli --push                # ONLY this one uses bare v<version>
 ```
 
-Requires **rrt >= 1.13.1** — anything older fails with "Multiple version
-groups configured" on a valid `--group` (fixed in
-[anselmoo/repo-release-tools#176](https://github.com/Anselmoo/repo-release-tools/pull/176),
-reported as [#175](https://github.com/Anselmoo/repo-release-tools/issues/175)).
-
-**There is no aggregate/"general" werkstoff version.** All 7 groups (6
-plugins + `werkstoff-cli`) version, tag, and release fully independently by
-design — `.rrt.toml`'s own comment explains this is deliberate: `rrt`
-"lets rrt bump each unit's version independently... rather than forcing one
-repo-wide version across all seven." A plugin's `<group>-v<version>` tag
-produces its own scoped GitHub Release (via `.github/workflows/plugin-release.yml`)
-with that plugin's `CHANGELOG.md` section as the body, but that release is
-still not tied to any cross-group version number — bumping `confab` says
-nothing about `self-assess`'s or `werkstoff-cli`'s version.
-
-### Tagging & publishing
-
-`.github/workflows/cicd.yml` triggers a full build → TestPyPI → verify →
-PyPI-publish → GitHub-release pipeline on **any** pushed tag matching
-`v*.*.*`, and that pipeline always operates on `tools/werkstoff-cli`
-(hardcoded `working-directory`/`PACKAGE_DIR`) regardless of what the tag was
-actually for — it has no concept of `.rrt.toml`'s version groups. `rrt tag
-create` defaults to a bare `v<version>` tag with no group name embedded, and
-rrt has no per-group tag-prefix config field (confirmed against the
-`repo-release-tools` docs — this is genuinely unsupported, not just unused
-here). So tag naming has to carry the distinction by convention:
-
-- **Plugins** tag as `<group>-v<version>`, e.g. `confab-v0.1.0`:
-  `rrt tag create --group <name> --prefix '<name>-v' --push`. GitHub's tag
-  trigger glob is prefix-anchored, so a `<group>-v...` tag never matches
-  `v*.*.*` and never fires the werkstoff-cli publish pipeline — but it does
-  fire `.github/workflows/plugin-release.yml` (trigger `*-v*.*.*`), which
-  creates a plugin-scoped GitHub Release (no PyPI/SBOM — plugins aren't
-  installable packages) with that plugin's `CHANGELOG.md` section as the
-  body.
-- **`werkstoff-cli`** is the only group that uses the bare `v<version>`
-  scheme (`rrt tag create --group werkstoff-cli --push`), since that's the
-  one tag pattern `cicd.yml` actually reacts to.
-
-Never `rrt tag create` a plugin group without `--prefix`, or its default
-`v<version>` tag will collide with werkstoff-cli's namespace and spuriously
-trigger a PyPI publish.
+**Never tag a plugin group without `--prefix`.** `.github/workflows/cicd.yml`
+fires on any `v*.*.*` tag and always publishes `tools/werkstoff-cli` regardless
+of intent, so a bare tag on a plugin triggers a spurious PyPI publish.
+`<group>-v...` tags instead fire `plugin-release.yml` (a scoped GitHub Release).
 
 ## Gotchas
 
-- Workflow scripts (`plugins/self-assess/workflows/*.js`) run in the
-  Workflow tool's sandbox and have **no filesystem access** — any data a
-  workflow needs (settings, house-rules content, file lists) must be
-  passed in via `args` by the calling `SKILL.md`, never read directly.
-- `plugins/self-assess/` explicitly models itself on
-  `anthropics/claude-plugins-official`'s `code-modernization` plugin
-  (Ready/Ready-with-gaps/Not-ready preflight taxonomy, parallel-finder +
-  adversarial-verify Workflow pattern, `fence()`/`UNTRUSTED` untrusted-data
-  wrapping). When extending self-assess, check code-modernization's actual
-  source first rather than assuming — a prior pass found self-assess's
-  docs claimed more mirroring than the code actually did (missing
-  code-modernization's second-tier "independent confirm" pass for
-  High-severity findings; since fixed in `docs-drift-scan.js` and
-  `lint-audit-scan.js`, deliberately not in `ci-topology-scan.js` or
-  `stage-map-scan.js` — see the rationale comments in those two files).
+- **Workflow scripts have no filesystem access.** Anything a workflow needs
+  (settings, file lists, ledger state) must arrive via `args` from the calling
+  `SKILL.md`.
+- **A guard predicated on its own input existing is not a guard.**
+  `if (gap.blastRadius) assertWithinAuthorization(...)` skips exactly when the
+  field is missing — the case it was written for.
+- **Never infer a missing gating value.** Reject and surface it. A halt that
+  depends on a value the code invented is not a halt.
+- **The rebuilt andon ledger schema is not backward compatible.** It wants
+  `(type, id, stage, status, kind)` as frontmatter keys; every real ledger,
+  including 101 production records, encodes them in `tags: ["kind:wire", ...]`.
+  Read tolerantly: frontmatter key, then the tags array, then absent.
+- `self-assess` models itself on `anthropics/claude-plugins-official`'s
+  `code-modernization`. Check that plugin's actual source before extending, not
+  its description — a prior pass found the docs claimed more mirroring than the
+  code did.

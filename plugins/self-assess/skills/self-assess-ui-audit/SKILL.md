@@ -1,114 +1,59 @@
 ---
 name: self-assess-ui-audit
-description: Statically audits the codebase's own UI surface — components, templates, and stylesheets (JSX/TSX, Vue/Svelte SFCs, HTML templates, CSS/SCSS) — for accessibility problems (missing alt text, form labels, accessible names; non-interactive elements used as controls; positive tabindex), semantic-markup problems (a clickable div where a button belongs, skipped heading levels, missing landmarks), and hardcoded design values (literal colors/dimensions where a design-token or CSS-variable system is used elsewhere), plus plausibly low-contrast literal color pairs as a static heuristic. Use this when the user asks to audit the UI/UX or accessibility of the code, check a11y, find hardcoded colors/spacing, or catch non-semantic markup. This is a STATIC, read-only source read — it never runs or builds the app, renders a DOM, takes screenshots, or computes a real WCAG contrast ratio. NOT language idioms/smells (self-assess-code-idiom), NOT module architecture (self-assess-arch-health), NOT house-rules compliance (self-assess-lint-audit).
+description: This skill should be used when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", or as part of self-assess-autopilot's CHECK phase. Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app.
+version: 0.1.0
 ---
 
-Audit the current repository's **own UI surface** — components, templates, and
-stylesheets — for three classes of problem the other self-assess skills don't
-judge: **accessibility**, **semantic markup**, and **hardcoded design values**.
-Like every other self-assess reporting skill it is strictly **read-only**: it
-reports; a human (or `self-assess-transform-brief`'s plan → the gated fix
-skills) changes code.
+# self-assess-ui-audit
 
-**Static-only, stated plainly (the v1 boundary):** this reads markup/style
-*source*. It does **not** run or build the app, render a DOM, drive a browser,
-take screenshots, or compute a rendered WCAG contrast ratio. Contrast findings
-are `contrast-risk` heuristics on literal color pairs, for a human (or a real
-contrast tool) to confirm — never asserted as a computed ratio. Runtime-only
-accessibility (focus management, live regions in flight) is out of scope for a
-static pass.
+Statically audit UI source for accessibility, semantic markup, and hardcoded design values.
 
-Scope boundaries, kept sharp:
-- **vs `self-assess-code-idiom`** — that judges language idioms/smells in
-  program logic; this judges the UI/markup/style surface only.
-- **vs `self-assess-lint-audit`** — lint-audit checks only rules the repo wrote
-  in `house-rules.md`; pass that file in so this skill can *avoid* re-reporting
-  what it already governs.
-
-## Step 0 — Load settings and detect the UI framework(s)
-
-Read `.claude/self-assess.local.md` if it exists (see
-`${CLAUDE_PLUGIN_ROOT}/references/settings.md`). If `enabled: false`, stop and
-say so. Note `output_dir` (default `analysis/self-assess`) and
-`skip_verification` (default `false`).
-
-Detect the UI stack present by file extension (Glob), building a `frameworks`
-list from what's actually there — never hardcode it:
-- `react` — `*.jsx`, `*.tsx` (or `*.js`/`*.ts` with JSX)
-- `vue` — `*.vue`
-- `svelte` — `*.svelte`
-- `html` — `*.html`, `*.hbs`, `*.ejs`, `*.njk` and similar server templates
-- `css` — `*.css`, `*.scss`, `*.less`
-
-If **no** UI files are present, do not invent a scan: write a short
-`UI_AUDIT.md` noting **Not applicable — no UI surface detected** and an empty
-`ui_audit_summary.json` (`{"frameworksScanned": [], "findings": []}`), and stop.
-
-Also read `.claude/house-rules.md` (or `house_rules_path`) if it exists, to pass
-in as `houseRules` — so the scan skips anything lint-audit already covers.
-
-## Step 1 — Run the scan
-
-**Preferred — Workflow orchestration.** If the **Workflow tool** is available in
-this session (this skill invocation is your authorization):
-
-Before dispatching, resolve or build the shared symbol-index snapshot.
-Read `analysis/self-assess/current.json`; if missing or its
-`source_fingerprint` no longer matches, run `python3
-"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name self-assess`
-(single-flight lock makes concurrent callers safe). For a repo well under
-~50 tracked files the build overhead may not be worth it — skip this and
-pass `symbolIndexPath: null`.
+## Step 0: Settings gate
 
 ```
-Workflow({
-  scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/ui-audit-scan.js",
-  args: { repoPath: "<repo root, usually '.'>", frameworks: [{ name: "<react|vue|svelte|html|css>" }, ...], houseRules: "<house-rules.md content, omit if absent>", symbolIndexPath: <resolved snapshot dir, or null>, skipVerification: <from settings, default false> }
-})
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-ui-audit
 ```
 
-It derives the applicable a11y/semantics/hardcoded-value catalog per framework
-(from its hand-kept `FRAMEWORK_BRIEFS`), runs one finder per framework, then —
-unless `skip_verification` is set — adversarially refutes every finding (checking
-it isn't a decorative `alt=""`, an accessible name supplied on an ancestor, a
-token-definition file, or generated code) before reporting, with a second
-skeptical read for High-severity survivors. The finders/refuters are read-only
-by design; **you** write the artifacts below from the structured result.
+## Step 1: Detect UI files, degrade if none found
 
-**Fallback** (no Workflow tool) — spawn a **ui-auditor** subagent per detected
-framework: "Statically find a11y / semantic-markup / hardcoded-design-value
-issues in the `<framework>` UI, with file:line evidence." Then verify each
-finding yourself by reading the cited markup before including it.
+Glob for `*.jsx`, `*.tsx`, `*.vue`, `*.svelte`, `*.html`, `*.css`, `*.scss`. If none are found,
+write `UI_AUDIT.md` and `ui_audit_summary.json` with `applicable: false` and a one-line reason,
+then stop -- this is a degrade to "Not applicable," never an error.
 
-## Step 2 — Write the report
+## Step 2: Static audit only
 
-Create `<output_dir>/UI_AUDIT.md`:
-- **Summary** — frameworks scanned, findings by severity, findings by category
-  (a11y / semantics / hardcoded-value / contrast-risk), refuted count, and a
-  one-line restatement that contrast findings are static heuristics.
-- **Findings table**, sorted by severity: category, kind, evidence (`file:line`),
-  description, suggested fix.
-- **Refuted candidates** — brief list (what looked like an issue but wasn't).
-- If `injectionFlags` is non-empty, a prominent **"⚠ Instruction-shaped content
-  found"** section.
+Dispatch `ui-auditor` against the detected files. The agent never runs or builds the app, never
+renders a DOM, and never drives a browser -- it reads source only. Look for:
 
-Also write `<output_dir>/ui_audit_summary.json` — the machine-readable sidecar
-`self-assess-status` aggregates and `self-assess-transform-brief` consumes:
-`{"frameworksScanned": [...], "findingsBySeverity": {...}, "byCategory": {...},
-"findings": [...]}`. `findingsBySeverity` is copied straight from the workflow's
-`stats.bySeverity`; `byCategory` from `stats.byCategory`.
+- Accessibility: missing `alt` text, missing form labels/accessible names, non-interactive
+  elements used as controls (`<div onClick>`), positive `tabindex`.
+- Semantic markup: a clickable `<div>` where `<button>` belongs, skipped heading levels,
+  missing landmark elements.
+- Hardcoded design values: literal colors/dimensions where the codebase otherwise uses a
+  design-token or CSS-variable system.
+- Contrast: plausibly low-contrast literal color pairs. This MUST be flagged as a static
+  heuristic only -- never compute or assert a real WCAG contrast ratio, since no renderer is
+  running to measure actual rendered contrast.
 
-`findings` is the workflow's survivors reshaped to the **shared per-finding
-contract** every self-assess reporting sidecar uses (`{severity, title,
-evidence, category}`): `severity`, `evidence` (`file:line`), and `category`
-copied as-is; `title` = the finding's `kind` slug (keep `description` and
-`suggestedFix` as additional fields if you like — a consumer needing more than
-the four shared fields still has them). Do **not** add a `fixability` key: a UI
-finding is a mechanical, single-location fix (add an alt/label, replace a
-literal with a token), so `self-assess-transform-brief` treats it as a normal
-work item. Reshape what the workflow returned — do not re-derive it.
+## Step 3: Verify
 
-## Present
+Unless `skip_verification` is set, re-read each cited location to confirm the finding before it
+is reported.
 
-Report: frameworks scanned, findings by severity and category, refuted count,
-and the static-only caveat for contrast. Suggest: `glow -p <output_dir>/UI_AUDIT.md`.
+## Step 4: Validate and write
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kind ui_audit_summary --file <path-or-inline-json>
+```
+
+The validator rejects any `contrast`-kind finding that does not carry `heuristic: true`.
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename UI_AUDIT.md
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename ui_audit_summary.json
+```
+
+## Read-only constraint
+
+Never use Write/Edit outside the resolved output paths, never run a dev server, build command,
+or browser automation tool.
