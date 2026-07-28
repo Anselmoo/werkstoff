@@ -1,19 +1,16 @@
 # Changelog
 
+All notable changes to the `cli-scaffold` plugin are documented here.
+
 ## [Unreleased]
 
-## [0.1.1] - 2026-07-28
-
-### Added
-- cluster same-file findings, add symbol-graph safety check, extend CI with plugin checks
-- **ci**: attach CHANGELOG.md section to GitHub releases (#8)
-- **cupertino**: add self-contained handbook lifecycle (design/code/testing/docs) (#7)
-- **self-assess**: reporting→plan bridge + cross-plugin auto-pilot (#6)
+## [0.2.0] - 2026-07-28
 
 ### Fixed
-- **self-assess**: list ui-audit in dashboard empty-state hint (#9)
-- **ci**: write the SBOM to tools/werkstoff-cli so the upload step finds it
-
+- Corrected `plugin.json`'s version, which had regressed to `0.1.0` when this
+  plugin was rebuilt from its behavior specification (repo commit `0c10fa0`),
+  silently overwriting the real version already published as
+  `cli-scaffold-v0.2.0` on 2026-07-25. No functional or content change.
 
 ## [0.1.0] - 2026-07-27
 
