@@ -1,6 +1,6 @@
 {
   "name": "self-assess",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
   "author": {
     "name": "self-assess contributors"
