@@ -26,13 +26,75 @@ or copy it into a project's `.claude-plugin/` for project-scoped use. No environ
 variables or external services are required — everything the plugin needs is either
 in this repo or written under `.cupertino/` in the target project.
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Run the full review
+
+````prompt
+"run the full cupertino review on this feature"
+````
+
+> Triggers `cupertino-review` — runs all eight lifecycle stages end-to-end,
+> backwards-compatibility check through reveal.
+
+##### Convene the council
+
+````prompt
+"convene the cupertino council on this design"
+````
+
+> Triggers `cupertino-council` — five-lens review (Reduction, Craft, Hierarchy,
+> Usability, Metaphor), tensions resolved in a fixed precedence order.
+
+##### Check against the handbook
+
+````prompt
+"check this codebase against our design handbook"
+````
+
+> Triggers `cupertino-handbook-check` — flags drift from an already-drafted
+> handbook rule, with file:line evidence.
+
+`cupertino-backwards` always runs first; the other lifecycle stages stay locked
+until it has.
+
+## Skills (15)
+
+| Skill | Purpose |
+|---|---|
+| `cupertino-backwards` | Establishes what customer experience actually matters before any technology decision — the pre-architecture gate. Always runs first. |
+| `cupertino-focus` | Reduces a sprawling portfolio of products/features/variants to the smallest focused set, right after backwards. |
+| `cupertino-longevity` | Evaluates whether an architecture or API surface can evolve incrementally or will force a future rewrite (paired with integrate). |
+| `cupertino-integrate` | Decides whether one specific seam is worth owning tightly versus delegating to a vendor or framework (paired with longevity). |
+| `cupertino-council` | Five-lens design review (Reduction, Craft, Hierarchy, Usability, Metaphor) before writing any UI code. |
+| `cupertino-prototype` | Settles an empirical uncertainty by actually building and running a throwaway spike, in parallel with council. |
+| `cupertino-elevate` | Transfigures a low-status commodity feature already in scope (error messages, empty states, onboarding, ...) into something beloved. |
+| `cupertino-unbox` | Redesigns the actual first-run, onboarding, or install flow after core feature work is done. |
+| `cupertino-reveal` | Delivers exactly one non-obvious, high-leverage "and one more thing" addition at ship-time. |
+| `cupertino-review` | Orchestrator — runs all eight lifecycle stages end-to-end in one pass. |
+| `cupertino-cannibalize` | User-invoked-only ninth technique: considers replacing a currently-successful thing with a better successor, on a deliberate post-ship cadence. Never automatic. |
+| `cupertino-handbook-draft` | Creates and persists a durable, checkable handbook for one domain (code / design / testing / documentation). |
+| `cupertino-handbook-apply` | Pulls in only the handbook constraints and exceptions relevant to upcoming work, rather than the whole document. |
+| `cupertino-handbook-check` | Compares new or changed work against an existing handbook to find divergence, with file:line evidence. Read-only. |
+| `cupertino-handbook-fix` | Applies a prior handbook-check pass's mechanical findings — only when the user has explicitly enabled fix mode. |
+
+## Agents (4)
+
+| Agent | Purpose |
+|---|---|
+| `handbook-dimension-analyst` | Dispatched by `cupertino-handbook-draft` to analyze exactly one named handbook dimension and propose a single enforceable rule with real file:line evidence. |
+| `handbook-drift-auditor` | Dispatched by `cupertino-handbook-check` to check target files against exactly one named handbook rule, reporting every divergence with file:line evidence. |
+| `handbook-remediator` | Dispatched by `cupertino-handbook-fix` to apply one already-verified mechanical finding's exact rewrite at its cited file:line, and nothing else. |
+| `handbook-verifier` | Dispatched immediately after `handbook-remediator`, deliberately blind to its output, to independently judge whether the file now satisfies the handbook rule. |
+
 ## Components
 
-- **15 skills** (`skills/`) — one per technique in the spec, plus `cupertino-review` (the
-  orchestrator) and the four `cupertino-handbook-*` skills.
-- **4 agents** (`agents/`) — `handbook-dimension-analyst`, `handbook-drift-auditor`,
-  `handbook-remediator`, `handbook-verifier`, dispatched by the handbook skills, one
-  narrow job each.
 - **3 workflows** (`workflows/`) — `handbook-draft.js`, `handbook-check.js`,
   `handbook-fix.js`. These use the Workflow tool's `pipeline()`/`parallel()` primitives
   so that "one dimension per dispatch," "one rule per dispatch," and "remediate then

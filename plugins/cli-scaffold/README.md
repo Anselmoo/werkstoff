@@ -5,6 +5,56 @@ in 12 languages**, each built against one unified five-pillar architecture
 doctrine and each ecosystem's real idioms — then verified against that doctrine
 before it is shown to you.
 
+## Install
+
+```bash
+# from the plugin directory
+claude --plugin-dir .
+```
+
+Then invoke `/cli-scaffold <language> called <app-name>` or just describe the CLI
+you want. Generated scaffolds land under `generated-clis/<app-name>/`;
+verification reports under `.cli-scaffold-reports/` (both git-ignored).
+
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Use the slash command directly
+
+````prompt
+/cli-scaffold rust called myapp
+````
+
+> The slash command itself — skips straight to generation for a named language and
+> app name.
+
+##### Ask in plain language
+
+````prompt
+"scaffold a Python CLI named foo that fetches weather data"
+````
+
+> Triggers `scaffold-cli` (interpreted paradigm) — natural-language equivalent of
+> the slash command: resolves the language, loads the doctrine, generates, then
+> verifies.
+
+##### Scaffold a shell CLI
+
+````prompt
+"scaffold a bash CLI called backup-tool"
+````
+
+> Triggers `scaffold-cli` (shell paradigm, `cli-scaffold-shell`) — same five-pillar
+> doctrine, plus POSIX-sh bashism checks.
+
+Ambiguous or unsupported language names are refused outright, never guessed — see
+`## What it does` below for the full generate-then-verify sequence.
+
 ## What it does
 
 Ask for a CLI (`/cli-scaffold rust called myapp`, or "scaffold a Python CLI named
@@ -42,6 +92,22 @@ Every generated CLI satisfies all five: **UX/discoverability**,
 ### The frozen exit-code contract
 
 Identical in all 12 languages: `0` success, `1` runtime error, `2` usage error.
+
+## Skills (5)
+
+| Skill | Purpose |
+|---|---|
+| `scaffold-cli` | `/cli-scaffold` dispatcher — the user-invoked entry point. |
+| `cli-architecture` | The doctrine (single source of truth); not invoked directly, loaded by the three paradigm skills below. |
+| `cli-scaffold-compiled` | Rust, Go, .NET — plus `references/{rust,go,dotnet}.md`. |
+| `cli-scaffold-interpreted` | Python, TypeScript, JavaScript, Ruby, PHP, Perl — plus per-language references. |
+| `cli-scaffold-shell` | Bash, Zsh, PowerShell, POSIX sh — plus per-language references. |
+
+## Agents (1)
+
+`cli-scaffold-verifier` — read-only doctrine conformance check; has no Write/Edit
+tool and the verification engine itself refuses to write anywhere under the
+scaffold.
 
 ## Components
 
@@ -89,18 +155,7 @@ Run the proof:
 python3 scripts/selftest.py
 ```
 
-## Installation
-
-```bash
-# from the plugin directory
-claude --plugin-dir .
-```
-
-Then invoke `/cli-scaffold <language> called <app-name>` or just describe the CLI
-you want. Generated scaffolds land under `generated-clis/<app-name>/`;
-verification reports under `.cli-scaffold-reports/` (both git-ignored).
-
-## Design decisions
+## Design decisions (spec was silent here)
 
 Where the specification was silent, these defaults were chosen and are noted here:
 

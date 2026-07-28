@@ -14,9 +14,65 @@ cc --plugin-dir /path/to/andon
 Or copy this directory under a project's `.claude-plugin/` for project-scoped
 testing.
 
-## Components
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
 
-### Skills
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Check readiness first
+
+````prompt
+"run andon-preflight against this repo"
+````
+
+> Triggers `andon-preflight` — read-only readiness report (stage legibility, ledger
+> writability, house-rules presence); never creates the ledger.
+
+##### Start hardening
+
+````prompt
+"harden this repo, one gap at a time"
+````
+
+> Triggers `andon-loop` — detects the value stream, proposes and verifies a fix for
+> the current stage's gap, and halts rather than advancing past a broken or
+> unproven wire.
+
+##### Check the board
+
+````prompt
+"what does the andon board look like right now"
+````
+
+> Triggers `andon-status` — read-only: stream table, cursor, pass/cycle counters,
+> open gap counts; nothing advances.
+
+##### Propose a fix
+
+````prompt
+"propose a fix for this gap, only ask where it actually matters"
+````
+
+> Triggers `andon-propose` — proposes maximally from the ledger/codebase/house-rules,
+> then grills you one question at a time, only on genuinely load-bearing forks.
+
+##### Prove a wire
+
+````prompt
+"prove this wire is actually proven"
+````
+
+> Triggers `andon-verify` — routes the wire to one of seven evidence-grounded
+> strategies and returns a structured green/red verdict.
+
+Run `andon-preflight` first in any repo — it's read-only and never creates the
+ledger — then `andon-loop` to start a pass, and `andon-status` at any point to see
+the board without advancing anything.
+
+## Skills (5)
 
 | Skill | Purpose |
 |---|---|
@@ -26,14 +82,14 @@ testing.
 | `andon-verify` | Routes a wire to one of seven evidence-grounded strategies via a deterministic classifier, runs the matching reference doc, and returns a structured verdict. Never writes to the ledger. |
 | `andon-status` | Read-only board: stream table, cursor, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix, non-overridable holds. |
 
-### Agents (tribunal strategy, dispatched by `andon-verify`)
+## Agents (4, tribunal strategy, dispatched by `andon-verify`)
 
 `andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator` --
 see `agents/*.md` for their exact refusal contracts. All four are read-only
 except `andon-verifier`, which may execute deterministic checks (tests,
 greps) but never modifies the artifact under review.
 
-### Scripts
+## Scripts
 
 `scripts/andon_core.py` is the single enforcement library + CLI. Every
 mechanical guarantee in the spec is implemented here as a real conditional
@@ -43,7 +99,7 @@ sub-cycle bounds, the wire classifier, the Detection Ladder, the NO-PERSONA
 check, and untrusted-content fencing/masking. Skills invoke it as a CLI;
 the hook imports it as a library. No third-party dependencies.
 
-### Hooks
+## Hooks
 
 `hooks/hooks.json` registers a `PreToolUse` hook (`hooks/pre_tool_use.py`) on
 `Write`/`Edit` that holds regardless of model cooperation:
@@ -88,7 +144,7 @@ Three non-negotiable stop conditions enforced in code
    anyone, under any circumstance -- there is no parameter in the enforcing
    function that can waive it.
 
-## Design decisions
+## Design decisions (spec was silent here)
 
 The behavioral spec states obligations, not implementations. Where it was
 silent on a mechanical detail, these choices were made:
@@ -147,7 +203,3 @@ python3 scripts/andon_core.py check-stop-conditions --verdict red --authorizatio
 # Preflight against this repo (read-only)
 python3 scripts/andon_core.py preflight .
 ```
-
-For the skills/agents themselves, run `andon-preflight` first in a target
-repo, then `andon-loop` to start a pass, and `andon-status` at any point to
-see the board without advancing anything.

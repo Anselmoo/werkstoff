@@ -28,7 +28,54 @@ direction.
 or, for local development, point Claude Code at this directory as a
 plugin source.
 
-## Skills
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Check for hallucinated dependencies
+
+````prompt
+"check if any of our dependencies are hallucinated"
+````
+
+> Triggers `confab-dependency-audit` — flags package names that don't exist in the
+> real registry, independently re-verified before being reported.
+
+##### Check test strength
+
+````prompt
+"would our tests actually catch a bug here?"
+````
+
+> Triggers `confab-assertion-audit` — mutation-testing pass checking whether tests
+> assert anything meaningful, not just execute the code.
+
+##### Run the full cycle
+
+````prompt
+"run the confab cycle on this repo"
+````
+
+> Triggers `confab-cycle` — bounded self-optimization loop: re-runs all four audits
+> pass by pass, optionally applying fixes, until convergence.
+
+##### Check status
+
+````prompt
+"where does confab stand on this repo"
+````
+
+> Triggers `confab-status` — read-only dashboard: what's run, what's stale, what to
+> run next.
+
+Run `confab-preflight` first if you're not sure the plugin's checks can even run in
+this repo — it's read-only and never blocks the other four.
+
+## Skills (8)
 
 | Skill | What it does |
 |---|---|
@@ -41,7 +88,7 @@ plugin source.
 | `confab-cycle` | Bounded self-optimization loop: re-runs audits pass by pass, optionally applying fixes, until convergence or a pass cap. |
 | `confab-status` | Read-only dashboard: what's run, what's stale, what to run next. |
 
-## Agents
+## Agents (5)
 
 `dependency-auditor`, `assertion-auditor`, `contract-auditor`,
 `agentic-reliability-auditor` each do the Find/Verify judgment work for
@@ -83,7 +130,7 @@ reads and might still violate:
   closed on any internal error, naming an explicit escape hatch in the
   denial message.
 
-## Design decisions (spec was silent on these)
+## Design decisions (spec was silent here)
 
 The behavioral spec stated obligations, not implementation details. Where
 it didn't specify something, these are the choices made and why:

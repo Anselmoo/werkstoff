@@ -5,6 +5,67 @@ topology, conventions, code idioms, business rules, and UI/accessibility — wit
 carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
 (only when explicitly authorized) one gated transformation phase applied to source.
 
+## Install
+
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install self-assess@werkstoff
+```
+
+Or for local development, point Claude Code straight at the plugin directory
+without registering the marketplace:
+
+```bash
+cc --plugin-dir /path/to/werkstoff/plugins/self-assess
+```
+
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Map the architecture
+
+````prompt
+"map this repo's architecture"
+````
+
+> Triggers `self-assess-stage-map` — import-graph-based stage/wire detection, not
+> naive directory guessing.
+
+##### Run the auto-pilot
+
+````prompt
+"run the auto-pilot"
+````
+
+> Triggers `self-assess-autopilot` — full check → plan → gate → fix/validate, gated
+> behind explicit settings before anything is written.
+
+##### Check status
+
+````prompt
+"where does self-assess stand"
+````
+
+> Triggers `self-assess-status` — read-only board of what's been run and what's
+> stale.
+
+##### Sweep a portfolio
+
+````prompt
+"sweep our whole portfolio of repos"
+````
+
+> Triggers `self-assess-portfolio` — multi-repo dashboard, graded worst-signal-wins.
+
+Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode:
+fix`, in `.claude/self-assess.local.md` only when ready to apply a change — both
+default to a plan/propose-only mode that refuses to touch source.
+
 ## Why this plugin is structured the way it is
 
 Every skill in this plugin is a thin markdown workflow that calls into one shared Python
@@ -155,15 +216,6 @@ exit code and message. See `scripts/self_assess_cli.py --help` for the full subc
 `ui-auditor`, `idiom-remediator` (write-capable), `transform-executor` (write-capable).
 
 Every other agent is strictly read-only (`Read`, `Glob`, `Grep`, `Bash` for inspection only).
-
-## Typical usage
-
-```
-"map this repo's architecture"          -> self-assess-stage-map
-"run the auto-pilot"                    -> self-assess-autopilot (full check -> plan -> gate -> fix/validate)
-"where does self-assess stand"          -> self-assess-status
-"sweep our whole portfolio of repos"    -> self-assess-portfolio
-```
 
 Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode: fix`, in
 `.claude/self-assess.local.md` only when ready to apply a change — both default to a

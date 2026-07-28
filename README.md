@@ -7,6 +7,9 @@ uses.
 
 ## Plugins
 
+Each plugin's own README has an **Example Prompts** section showing what to actually
+say to Claude Code to trigger it.
+
 - **[`self-assess`](plugins/self-assess/README.md)** — codebase
   self-assessment for live, actively-maintained repos: import-graph-based
   stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit,

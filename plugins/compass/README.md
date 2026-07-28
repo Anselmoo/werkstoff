@@ -14,9 +14,59 @@ executable code, not by prose.** Every numeric bound is a named constant, every
 and every persisted artifact is validated on read and write. A skill cannot
 quietly skip a rule — the guard's non-zero exit is observable.
 
-## Components
+## Install
 
-### Skills (14)
+```bash
+# Try locally
+cc --plugin-dir /path/to/compass
+
+# Run the enforcement test suite
+python3 scripts/test_compass.py    # -> "46 passed, 0 failed"
+```
+
+Requires Python 3 (standard library only). Workflow scripts require the Workflow
+tool; without it, every skill has a manual path that calls the same Python guards.
+
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+##### Run the full pipeline
+
+````prompt
+"help me think through this, it's complex and I'm not sure of the right approach"
+````
+
+> Triggers `compass-solve` — runs the full Clarify → Explore → Decompose → Execute
+> → Revise pipeline.
+
+##### Explore before committing
+
+````prompt
+"before we commit to an approach, explore a few different ones"
+````
+
+> Triggers `compass-explore-branches` — proposes and scores multiple viable
+> approaches instead of anchoring on the first.
+
+##### Clarify a fuzzy scope
+
+````prompt
+"the scope of this request is fuzzy, help me pin it down first"
+````
+
+> Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated
+> success criteria before any work starts.
+
+`compass-solve` composes the rest of the pipeline automatically — you rarely need
+to name one of the other 13 technique skills directly unless you want just that one
+step (see the full table below).
+
+## Skills (14)
 
 | Skill | Use it when |
 |-------|-------------|
@@ -35,7 +85,7 @@ quietly skip a rule — the guard's non-zero exit is observable.
 | `compass-summarize-trace` | Capture a finished `compass-solve` run as a fixed 7-section record. |
 | `compass-verify-assumptions` | Check exactly one named assumption in ≤3 steps. |
 
-### Agents (3)
+## Agents (3)
 
 - **branch-proposer** — proposes one branch under an assigned angle, or scores one
   branch in isolation (used by `compass-explore-branches`).
@@ -44,7 +94,7 @@ quietly skip a rule — the guard's non-zero exit is observable.
 - **reasoning-path** — one isolated reasoning attempt under one strategy (used by
   `compass-reason-verify`'s self-consistency tier).
 
-### Enforcement layer
+## Enforcement layer
 
 - `scripts/compass_lib.py` — the guard library: all numeric bounds as named
   constants, all rules as functions that raise `GuardError`.
@@ -94,26 +144,13 @@ Rules enforced in code (non-exhaustive):
 - Write scope: path traversal, absolute paths, and out-of-dir targets rejected
   *before* any write.
 
-## Installation & testing
-
-```bash
-# Try locally
-cc --plugin-dir /path/to/compass
-
-# Run the enforcement test suite
-python3 scripts/test_compass.py    # -> "46 passed, 0 failed"
-```
-
-Requires Python 3 (standard library only). Workflow scripts require the Workflow
-tool; without it, every skill has a manual path that calls the same Python guards.
-
 ## Configuration
 
 Copy `.claude/compass.local.md` into your project and set `max_branch_count` in its
 frontmatter to lower the Explore ceiling. The effective cap is always
 **min(6, max_branch_count)**.
 
-## Design decisions
+## Design decisions (spec was silent here)
 
 Where the spec was silent, these choices were made and are noted here:
 

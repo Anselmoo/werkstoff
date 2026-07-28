@@ -69,11 +69,20 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules analysis/rebuild/<name>.behavior.json plugins/<name>
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
 node --check plugins/<name>/workflows/<file>.js
+rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 ```
 
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never
 triggers and nothing reports an error.
+
+Every plugin README's `## Example Prompts` heading and framing sentence is a
+`[[tool.rrt.docs.shared_blocks]]` entry in `.rrt.toml` (`anchor_id =
+"example-prompts-intro"`), injected into the `<!-- rrt:auto:start:... -->` /
+`<!-- rrt:auto:end:... -->` markers by `rrt docs inject` — only that frame is
+enforced identical across the six; the example bullets below each anchor stay
+plugin-specific and hand-written. Never hand-edit text between those markers —
+the next `rrt docs inject` overwrites it silently.
 
 **Behavioral (`test/plugins/`, 3–4 min per run, real tokens):**
 

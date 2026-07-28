@@ -126,3 +126,19 @@ source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=cli-scaffold].description" },
 ]
+
+# Partially-standardized README section: the "## Example Prompts" heading and its
+# framing sentence are enforced identically across all six plugin READMEs via
+# `rrt docs inject` (see CLAUDE.md). The example bullets under the anchor stay
+# plugin-specific and hand-written — only the frame is synced, never the content.
+[[tool.rrt.docs.shared_blocks]]
+anchor_id = "example-prompts-intro"
+content = """## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+"""
+before_blank_lines = 0
+after_blank_lines = 1
+targets = ["plugins/*/README.md"]
