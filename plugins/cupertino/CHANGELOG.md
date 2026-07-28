@@ -2,6 +2,24 @@
 
 All notable changes to the `cupertino` plugin are documented here.
 
+## [Unreleased]
+
+## [0.3.1] - 2026-07-28
+
+### Fixed
+- Corrected `plugin.json`'s version, which had regressed to `0.1.0` when this
+  plugin was rebuilt from its behavior specification (repo commit `0c10fa0`),
+  silently overwriting the real version already published as
+  `cupertino-v0.3.0` on 2026-07-25. No functional or content change beyond
+  this correction.
+
+### Added
+- README: new `## Example Prompts` section with real, verified prompt-to-skill
+  examples; new `## Skills`/`## Agents` top-level headings (previously only
+  prose bullets under `## Components`), with descriptions pulled from each
+  skill/agent's own frontmatter; `## Design decisions` heading wording
+  unified with the other five plugins (#14).
+
 ## [0.1.0] - 2026-07-27
 
 ### Added
