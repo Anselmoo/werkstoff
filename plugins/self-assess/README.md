@@ -13,15 +13,44 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **"map this repo's architecture"** — triggers `self-assess-stage-map`.
-  Import-graph-based stage/wire detection, not naive directory guessing.
-- **"run the auto-pilot"** — triggers `self-assess-autopilot`. Full
-  check → plan → gate → fix/validate, gated behind explicit settings before anything
-  is written.
-- **"where does self-assess stand"** — triggers `self-assess-status`. Read-only board
-  of what's been run and what's stale.
-- **"sweep our whole portfolio of repos"** — triggers `self-assess-portfolio`.
-  Multi-repo dashboard, graded worst-signal-wins.
+##### Map the architecture
+
+````prompt
+"map this repo's architecture"
+````
+
+> Triggers `self-assess-stage-map` — import-graph-based stage/wire detection, not
+> naive directory guessing.
+
+##### Run the auto-pilot
+
+````prompt
+"run the auto-pilot"
+````
+
+> Triggers `self-assess-autopilot` — full check → plan → gate → fix/validate, gated
+> behind explicit settings before anything is written.
+
+##### Check status
+
+````prompt
+"where does self-assess stand"
+````
+
+> Triggers `self-assess-status` — read-only board of what's been run and what's
+> stale.
+
+##### Sweep a portfolio
+
+````prompt
+"sweep our whole portfolio of repos"
+````
+
+> Triggers `self-assess-portfolio` — multi-repo dashboard, graded worst-signal-wins.
+
+Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode:
+fix`, in `.claude/self-assess.local.md` only when ready to apply a change — both
+default to a plan/propose-only mode that refuses to touch source.
 
 ## Why this plugin is structured the way it is
 

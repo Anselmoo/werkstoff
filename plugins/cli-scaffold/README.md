@@ -108,14 +108,36 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **`/cli-scaffold rust called myapp`** — the slash command. Skips straight to
-  generation for a named language and app name.
-- **"scaffold a Python CLI named foo that fetches weather data"** — triggers
-  `scaffold-cli` (interpreted paradigm). Natural-language equivalent of the slash
-  command: resolves the language, loads the doctrine, generates, then verifies.
-- **"scaffold a bash CLI called backup-tool"** — triggers `scaffold-cli` (shell
-  paradigm, `cli-scaffold-shell`). Same five-pillar doctrine, plus POSIX-sh bashism
-  checks.
+##### Use the slash command directly
+
+````prompt
+/cli-scaffold rust called myapp
+````
+
+> The slash command itself — skips straight to generation for a named language and
+> app name.
+
+##### Ask in plain language
+
+````prompt
+"scaffold a Python CLI named foo that fetches weather data"
+````
+
+> Triggers `scaffold-cli` (interpreted paradigm) — natural-language equivalent of
+> the slash command: resolves the language, loads the doctrine, generates, then
+> verifies.
+
+##### Scaffold a shell CLI
+
+````prompt
+"scaffold a bash CLI called backup-tool"
+````
+
+> Triggers `scaffold-cli` (shell paradigm, `cli-scaffold-shell`) — same five-pillar
+> doctrine, plus POSIX-sh bashism checks.
+
+Ambiguous or unsupported language names are refused outright, never guessed — see
+`## What it does` above for the full generate-then-verify sequence.
 
 ## Design decisions
 

@@ -115,15 +115,36 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **"help me think through this — it's complex and I'm not sure of the right
-  approach"** — triggers `compass-solve`. Runs the full Clarify → Explore →
-  Decompose → Execute → Revise pipeline.
-- **"before we commit to an approach, explore a few different ones"** — triggers
-  `compass-explore-branches`. Proposes and scores multiple viable approaches instead
-  of anchoring on the first.
-- **"the scope of this request is fuzzy, help me pin it down first"** — triggers
-  `compass-clarify-scope`. Surfaces ambiguous phrasing and unstated success criteria
-  before any work starts.
+##### Run the full pipeline
+
+````prompt
+"help me think through this, it's complex and I'm not sure of the right approach"
+````
+
+> Triggers `compass-solve` — runs the full Clarify → Explore → Decompose → Execute
+> → Revise pipeline.
+
+##### Explore before committing
+
+````prompt
+"before we commit to an approach, explore a few different ones"
+````
+
+> Triggers `compass-explore-branches` — proposes and scores multiple viable
+> approaches instead of anchoring on the first.
+
+##### Clarify a fuzzy scope
+
+````prompt
+"the scope of this request is fuzzy, help me pin it down first"
+````
+
+> Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated
+> success criteria before any work starts.
+
+`compass-solve` composes the rest of the pipeline automatically — you rarely need
+to name one of the other 13 technique skills directly unless you want just that one
+step (see the full table above).
 
 ## Configuration
 

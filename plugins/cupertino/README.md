@@ -34,16 +34,35 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **"run the full cupertino review on this feature"** — triggers `cupertino-review`.
-  Runs all eight lifecycle stages end-to-end, backwards-compatibility check through
-  reveal.
-- **"convene the cupertino council on this design"** — triggers `cupertino-council`.
-  Five-lens review — Reduction, Craft, Hierarchy, Usability, Metaphor — with tensions
-  resolved in a fixed precedence order (Usability > Reduction > Craft > Hierarchy >
-  Metaphor).
-- **"check this codebase against our design handbook"** — triggers
-  `cupertino-handbook-check`. Flags drift from an already-drafted handbook rule, with
-  file:line evidence.
+##### Run the full review
+
+````prompt
+"run the full cupertino review on this feature"
+````
+
+> Triggers `cupertino-review` — runs all eight lifecycle stages end-to-end,
+> backwards-compatibility check through reveal.
+
+##### Convene the council
+
+````prompt
+"convene the cupertino council on this design"
+````
+
+> Triggers `cupertino-council` — five-lens review (Reduction, Craft, Hierarchy,
+> Usability, Metaphor), tensions resolved in a fixed precedence order.
+
+##### Check against the handbook
+
+````prompt
+"check this codebase against our design handbook"
+````
+
+> Triggers `cupertino-handbook-check` — flags drift from an already-drafted
+> handbook rule, with file:line evidence.
+
+`cupertino-backwards` always runs first; the other lifecycle stages stay locked
+until it has.
 
 ## Components
 

@@ -22,25 +22,59 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **"run andon-preflight against this repo"** — triggers `andon-preflight`. Read-only
-  readiness report (stage legibility, ledger writability, house-rules presence) —
-  never creates the ledger.
-- **"harden this repo, one gap at a time"** / **"start the andon loop"** — triggers
-  `andon-loop`. Detects the value stream, proposes and verifies a fix for the current
-  stage's gap, and halts rather than advancing past a broken or unproven wire.
-- **"what does the andon board look like right now"** — triggers `andon-status`.
-  Read-only: stream table, cursor, pass/cycle counters, open gap counts — nothing
-  advances.
-- **"propose a fix for this gap, and only ask me where it actually matters"** —
-  triggers `andon-propose`. Proposes maximally from the ledger/codebase/house-rules,
-  then grills you one question at a time, only on genuinely load-bearing forks.
-- **"prove this wire is actually proven"** — triggers `andon-verify`. Routes the wire
-  to one of seven evidence-grounded strategies and returns a structured green/red
-  verdict.
+##### Check readiness first
+
+````prompt
+"run andon-preflight against this repo"
+````
+
+> Triggers `andon-preflight` — read-only readiness report (stage legibility, ledger
+> writability, house-rules presence); never creates the ledger.
+
+##### Start hardening
+
+````prompt
+"harden this repo, one gap at a time"
+````
+
+> Triggers `andon-loop` — detects the value stream, proposes and verifies a fix for
+> the current stage's gap, and halts rather than advancing past a broken or
+> unproven wire.
+
+##### Check the board
+
+````prompt
+"what does the andon board look like right now"
+````
+
+> Triggers `andon-status` — read-only: stream table, cursor, pass/cycle counters,
+> open gap counts; nothing advances.
+
+##### Propose a fix
+
+````prompt
+"propose a fix for this gap, only ask where it actually matters"
+````
+
+> Triggers `andon-propose` — proposes maximally from the ledger/codebase/house-rules,
+> then grills you one question at a time, only on genuinely load-bearing forks.
+
+##### Prove a wire
+
+````prompt
+"prove this wire is actually proven"
+````
+
+> Triggers `andon-verify` — routes the wire to one of seven evidence-grounded
+> strategies and returns a structured green/red verdict.
+
+Run `andon-preflight` first in any repo — it's read-only and never creates the
+ledger — then `andon-loop` to start a pass, and `andon-status` at any point to see
+the board without advancing anything.
 
 ## Components
 
-### Skills
+### Skills (5)
 
 | Skill | Purpose |
 |---|---|
@@ -50,7 +84,7 @@ by intent.
 | `andon-verify` | Routes a wire to one of seven evidence-grounded strategies via a deterministic classifier, runs the matching reference doc, and returns a structured verdict. Never writes to the ledger. |
 | `andon-status` | Read-only board: stream table, cursor, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix, non-overridable holds. |
 
-### Agents (tribunal strategy, dispatched by `andon-verify`)
+### Agents (4, tribunal strategy, dispatched by `andon-verify`)
 
 `andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator` --
 see `agents/*.md` for their exact refusal contracts. All four are read-only
@@ -171,7 +205,3 @@ python3 scripts/andon_core.py check-stop-conditions --verdict red --authorizatio
 # Preflight against this repo (read-only)
 python3 scripts/andon_core.py preflight .
 ```
-
-For the skills/agents themselves, run `andon-preflight` first in a target
-repo, then `andon-loop` to start a pass, and `andon-status` at any point to
-see the board without advancing anything.

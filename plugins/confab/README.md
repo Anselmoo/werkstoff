@@ -36,19 +36,46 @@ prompts, not exact phrasing Claude has to match. Claude routes them to the skill
 by intent.
 <!-- rrt:auto:end:example-prompts-intro -->
 
-- **"check if any of our dependencies are hallucinated"** — triggers
-  `confab-dependency-audit`. Flags package names that don't exist in the real
-  registry, independently re-verified before being reported.
-- **"would our tests actually catch a bug here?"** — triggers
-  `confab-assertion-audit`. Mutation-testing pass checking whether tests assert
-  anything meaningful, not just execute the code.
-- **"run the confab cycle on this repo"** — triggers `confab-cycle`. Bounded
-  self-optimization loop: re-runs all four audits pass by pass, optionally applying
-  fixes, until convergence.
-- **"where does confab stand on this repo"** — triggers `confab-status`. Read-only
-  dashboard: what's run, what's stale, what to run next.
+##### Check for hallucinated dependencies
 
-## Skills
+````prompt
+"check if any of our dependencies are hallucinated"
+````
+
+> Triggers `confab-dependency-audit` — flags package names that don't exist in the
+> real registry, independently re-verified before being reported.
+
+##### Check test strength
+
+````prompt
+"would our tests actually catch a bug here?"
+````
+
+> Triggers `confab-assertion-audit` — mutation-testing pass checking whether tests
+> assert anything meaningful, not just execute the code.
+
+##### Run the full cycle
+
+````prompt
+"run the confab cycle on this repo"
+````
+
+> Triggers `confab-cycle` — bounded self-optimization loop: re-runs all four audits
+> pass by pass, optionally applying fixes, until convergence.
+
+##### Check status
+
+````prompt
+"where does confab stand on this repo"
+````
+
+> Triggers `confab-status` — read-only dashboard: what's run, what's stale, what to
+> run next.
+
+Run `confab-preflight` first if you're not sure the plugin's checks can even run in
+this repo — it's read-only and never blocks the other four.
+
+## Skills (8)
 
 | Skill | What it does |
 |---|---|
@@ -61,7 +88,7 @@ by intent.
 | `confab-cycle` | Bounded self-optimization loop: re-runs audits pass by pass, optionally applying fixes, until convergence or a pass cap. |
 | `confab-status` | Read-only dashboard: what's run, what's stale, what to run next. |
 
-## Agents
+## Agents (5)
 
 `dependency-auditor`, `assertion-auditor`, `contract-auditor`,
 `agentic-reliability-auditor` each do the Find/Verify judgment work for
