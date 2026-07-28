@@ -1,6 +1,6 @@
 {
   "name": "andon",
-  "version": "0.1.1",
+  "version": "0.3.1",
   "description": "Walks a repository's value stream stage-by-stage, proposing fixes for discovered gaps, proving each wire before advancing via seven evidence-grounded strategies, and halting rather than passing broken or unproven handoffs.",
   "author": {
     "name": "andon plugin",
