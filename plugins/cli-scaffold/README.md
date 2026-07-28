@@ -5,91 +5,7 @@ in 12 languages**, each built against one unified five-pillar architecture
 doctrine and each ecosystem's real idioms — then verified against that doctrine
 before it is shown to you.
 
-## What it does
-
-Ask for a CLI (`/cli-scaffold rust called myapp`, or "scaffold a Python CLI named
-foo") and the plugin:
-
-1. **Resolves** the language to one of three paradigms — in code, refusing
-   ambiguous or unsupported names instead of guessing.
-2. **Loads the doctrine** (`cli-architecture`) that defines what "production-grade"
-   means for every language.
-3. **Generates** the scaffold freeform from the per-language reference (never from
-   stored boilerplate) — a core/library with **zero** CLI-framework imports, a
-   thin entry point, packaging metadata for the ecosystem's idiomatic channel,
-   and a snapshot test for `--help`.
-4. **Verifies** it read-only against the doctrine, fixes every *fixable* gap and
-   re-verifies (bounded), and surfaces only *needs-human-judgment* gaps to you.
-
-### The 12 languages / 3 paradigms
-
-| Paradigm | Languages | Skill |
-|---|---|---|
-| compiled | Rust, Go, .NET | `cli-scaffold-compiled` |
-| interpreted | Python, TypeScript, JavaScript, Ruby, PHP, Perl | `cli-scaffold-interpreted` |
-| shell | Bash, Zsh, PowerShell, POSIX sh* | `cli-scaffold-shell` |
-
-\* POSIX sh is a shell *dialect* routed to the shell paradigm; it is not one of
-the 12 counted languages.
-
-### The five pillars
-
-Every generated CLI satisfies all five: **UX/discoverability**,
-**backend/core separation**, **stability**, **idiomatic distribution**, and
-**Unix composability**. The full doctrine lives in
-`skills/cli-architecture/SKILL.md`.
-
-### The frozen exit-code contract
-
-Identical in all 12 languages: `0` success, `1` runtime error, `2` usage error.
-
-## Components
-
-```
-.claude-plugin/plugin.json
-skills/
-  cli-architecture/            # the doctrine (single source of truth)
-  scaffold-cli/                # /cli-scaffold dispatcher (user-invoked)
-  cli-scaffold-compiled/       # + references/{rust,go,dotnet}.md
-  cli-scaffold-interpreted/    # + references/{python,typescript,javascript,ruby,php,perl}.md
-  cli-scaffold-shell/          # + references/{bash,zsh,powershell,posix-sh}.md
-agents/
-  cli-scaffold-verifier.md     # read-only doctrine conformance check
-scripts/
-  constants.py                 # frozen registry + numeric bounds (asserted on import)
-  lang_router.py               # resolve language -> paradigm; refuse unknown/ambiguous
-  write_scope.py               # reject traversal/absolute/out-of-scope targets
-  verify_scaffold.py           # the verification engine (all doctrine rules)
-  report_validator.py          # validate report/ledger on read AND write
-  check_doctrine_isolation.py  # fail if a paradigm skill duplicates the doctrine
-  selftest.py                  # runnable proof the guards refuse what they must
-```
-
-## Enforcement is in code, not prose
-
-Every rule that says *MUST NOT* / *MUST refuse* / *MUST halt* is enforced by a
-conditional that actually refuses:
-
-| Rule | Where it is enforced |
-|---|---|
-| Exactly 12 languages / 3 paradigms / 5 pillars | `constants.py` asserts these at **import time** |
-| Frozen 0/1/2 exit contract | `EXIT_*` constants reused everywhere; `verify_scaffold.py` checks each scaffold |
-| Language routing — never a silent fallback | `lang_router.py` exits non-zero on ambiguous/unsupported |
-| Write scope — no traversal/absolute/outside | `write_scope.py` raises before any write |
-| Core-library isolation, help sections, `--json`, `--no-input`, NO_COLOR, stdout/stderr, snapshot, distribution, completion | one check function each in `verify_scaffold.py`, recording a fail finding with a first-class `disposition` |
-| POSIX-sh bashisms | `verify_scaffold.py` sweeps against `FORBIDDEN_BASHISMS` (mirrored in `posix-sh.md`) |
-| Verifier must not write generated files | agent has no Write/Edit tool **and** the engine refuses to write anywhere under the scaffold |
-| Fixable-gap loop is bounded | `MAX_FIX_ITERATIONS` constant + a per-scaffold ledger that HALTs when exceeded |
-| Persisted state has no invented gating values | `report_validator.py` rejects any finding missing `disposition`, any report missing `language`/`paradigm`/`verdict` — on read and on write |
-| Doctrine never duplicated into paradigm skills | `check_doctrine_isolation.py` fails the build on restatement |
-
-Run the proof:
-
-```bash
-python3 scripts/selftest.py
-```
-
-## Installation
+## Install
 
 ```bash
 # from the plugin directory
@@ -137,9 +53,109 @@ by intent.
 > doctrine, plus POSIX-sh bashism checks.
 
 Ambiguous or unsupported language names are refused outright, never guessed — see
-`## What it does` above for the full generate-then-verify sequence.
+`## What it does` below for the full generate-then-verify sequence.
 
-## Design decisions
+## What it does
+
+Ask for a CLI (`/cli-scaffold rust called myapp`, or "scaffold a Python CLI named
+foo") and the plugin:
+
+1. **Resolves** the language to one of three paradigms — in code, refusing
+   ambiguous or unsupported names instead of guessing.
+2. **Loads the doctrine** (`cli-architecture`) that defines what "production-grade"
+   means for every language.
+3. **Generates** the scaffold freeform from the per-language reference (never from
+   stored boilerplate) — a core/library with **zero** CLI-framework imports, a
+   thin entry point, packaging metadata for the ecosystem's idiomatic channel,
+   and a snapshot test for `--help`.
+4. **Verifies** it read-only against the doctrine, fixes every *fixable* gap and
+   re-verifies (bounded), and surfaces only *needs-human-judgment* gaps to you.
+
+### The 12 languages / 3 paradigms
+
+| Paradigm | Languages | Skill |
+|---|---|---|
+| compiled | Rust, Go, .NET | `cli-scaffold-compiled` |
+| interpreted | Python, TypeScript, JavaScript, Ruby, PHP, Perl | `cli-scaffold-interpreted` |
+| shell | Bash, Zsh, PowerShell, POSIX sh* | `cli-scaffold-shell` |
+
+\* POSIX sh is a shell *dialect* routed to the shell paradigm; it is not one of
+the 12 counted languages.
+
+### The five pillars
+
+Every generated CLI satisfies all five: **UX/discoverability**,
+**backend/core separation**, **stability**, **idiomatic distribution**, and
+**Unix composability**. The full doctrine lives in
+`skills/cli-architecture/SKILL.md`.
+
+### The frozen exit-code contract
+
+Identical in all 12 languages: `0` success, `1` runtime error, `2` usage error.
+
+## Skills (5)
+
+| Skill | Purpose |
+|---|---|
+| `scaffold-cli` | `/cli-scaffold` dispatcher — the user-invoked entry point. |
+| `cli-architecture` | The doctrine (single source of truth); not invoked directly, loaded by the three paradigm skills below. |
+| `cli-scaffold-compiled` | Rust, Go, .NET — plus `references/{rust,go,dotnet}.md`. |
+| `cli-scaffold-interpreted` | Python, TypeScript, JavaScript, Ruby, PHP, Perl — plus per-language references. |
+| `cli-scaffold-shell` | Bash, Zsh, PowerShell, POSIX sh — plus per-language references. |
+
+## Agents (1)
+
+`cli-scaffold-verifier` — read-only doctrine conformance check; has no Write/Edit
+tool and the verification engine itself refuses to write anywhere under the
+scaffold.
+
+## Components
+
+```
+.claude-plugin/plugin.json
+skills/
+  cli-architecture/            # the doctrine (single source of truth)
+  scaffold-cli/                # /cli-scaffold dispatcher (user-invoked)
+  cli-scaffold-compiled/       # + references/{rust,go,dotnet}.md
+  cli-scaffold-interpreted/    # + references/{python,typescript,javascript,ruby,php,perl}.md
+  cli-scaffold-shell/          # + references/{bash,zsh,powershell,posix-sh}.md
+agents/
+  cli-scaffold-verifier.md     # read-only doctrine conformance check
+scripts/
+  constants.py                 # frozen registry + numeric bounds (asserted on import)
+  lang_router.py               # resolve language -> paradigm; refuse unknown/ambiguous
+  write_scope.py               # reject traversal/absolute/out-of-scope targets
+  verify_scaffold.py           # the verification engine (all doctrine rules)
+  report_validator.py          # validate report/ledger on read AND write
+  check_doctrine_isolation.py  # fail if a paradigm skill duplicates the doctrine
+  selftest.py                  # runnable proof the guards refuse what they must
+```
+
+## Enforcement is in code, not prose
+
+Every rule that says *MUST NOT* / *MUST refuse* / *MUST halt* is enforced by a
+conditional that actually refuses:
+
+| Rule | Where it is enforced |
+|---|---|
+| Exactly 12 languages / 3 paradigms / 5 pillars | `constants.py` asserts these at **import time** |
+| Frozen 0/1/2 exit contract | `EXIT_*` constants reused everywhere; `verify_scaffold.py` checks each scaffold |
+| Language routing — never a silent fallback | `lang_router.py` exits non-zero on ambiguous/unsupported |
+| Write scope — no traversal/absolute/outside | `write_scope.py` raises before any write |
+| Core-library isolation, help sections, `--json`, `--no-input`, NO_COLOR, stdout/stderr, snapshot, distribution, completion | one check function each in `verify_scaffold.py`, recording a fail finding with a first-class `disposition` |
+| POSIX-sh bashisms | `verify_scaffold.py` sweeps against `FORBIDDEN_BASHISMS` (mirrored in `posix-sh.md`) |
+| Verifier must not write generated files | agent has no Write/Edit tool **and** the engine refuses to write anywhere under the scaffold |
+| Fixable-gap loop is bounded | `MAX_FIX_ITERATIONS` constant + a per-scaffold ledger that HALTs when exceeded |
+| Persisted state has no invented gating values | `report_validator.py` rejects any finding missing `disposition`, any report missing `language`/`paradigm`/`verdict` — on read and on write |
+| Doctrine never duplicated into paradigm skills | `check_doctrine_isolation.py` fails the build on restatement |
+
+Run the proof:
+
+```bash
+python3 scripts/selftest.py
+```
+
+## Design decisions (spec was silent here)
 
 Where the specification was silent, these defaults were chosen and are noted here:
 

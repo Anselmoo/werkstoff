@@ -130,7 +130,7 @@ reads and might still violate:
   closed on any internal error, naming an explicit escape hatch in the
   denial message.
 
-## Design decisions (spec was silent on these)
+## Design decisions (spec was silent here)
 
 The behavioral spec stated obligations, not implementation details. Where
 it didn't specify something, these are the choices made and why:

@@ -5,6 +5,20 @@ topology, conventions, code idioms, business rules, and UI/accessibility — wit
 carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
 (only when explicitly authorized) one gated transformation phase applied to source.
 
+## Install
+
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install self-assess@werkstoff
+```
+
+Or for local development, point Claude Code straight at the plugin directory
+without registering the marketplace:
+
+```bash
+cc --plugin-dir /path/to/werkstoff/plugins/self-assess
+```
+
 <!-- rrt:auto:start:example-prompts-intro -->
 ## Example Prompts
 
