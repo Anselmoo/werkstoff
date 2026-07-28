@@ -4,6 +4,14 @@ All notable changes to the `cli-scaffold` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-28
+
+### Added
+- README: new `## Example Prompts` section with real, verified prompt-to-skill
+  examples, moved to right after `## Install`; `## Skills`/`## Agents` added
+  as top-level headings with counts (previously only a directory tree);
+  `## Design decisions` heading wording unified with the other five plugins (#14).
+
 ## [0.2.0] - 2026-07-28
 
 ### Fixed
