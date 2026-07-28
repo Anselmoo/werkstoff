@@ -6,16 +6,14 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [0.3.2] - 2026-07-28
 
-### Added
-- cluster same-file findings, add symbol-graph safety check, extend CI with plugin checks
-- **ci**: attach CHANGELOG.md section to GitHub releases (#8)
-- **cupertino**: add self-contained handbook lifecycle (design/code/testing/docs) (#7)
-- **self-assess**: reporting→plan bridge + cross-plugin auto-pilot (#6)
-
 ### Fixed
-- **andon**: correct version drift and bump to v0.3.1 (#17)
-- **self-assess**: list ui-audit in dashboard empty-state hint (#9)
-- **ci**: write the SBOM to tools/werkstoff-cli so the upload step finds it
+- Auto-triggered by this repo's `auto-version-bump.yml` workflow, which fires
+  on any push to `main` whose head commit uses a `fix:`/`feat:` conventional-commit
+  prefix touching this plugin's path — in this case PR #17's own "fix(andon):
+  correct version drift..." merge subject. No further content change beyond
+  #17; this entry replaces the workflow's auto-generated one, which
+  (like #17's own predecessor) pulled in unrelated repo-wide commits due to a
+  known changelog-scoping limitation in `rrt bump`.
 
 ## [0.3.1] - 2026-07-28
 
