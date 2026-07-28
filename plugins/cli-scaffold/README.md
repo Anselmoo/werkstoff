@@ -100,6 +100,23 @@ Then invoke `/cli-scaffold <language> called <app-name>` or just describe the CL
 you want. Generated scaffolds land under `generated-clis/<app-name>/`;
 verification reports under `.cli-scaffold-reports/` (both git-ignored).
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+- **`/cli-scaffold rust called myapp`** — the slash command. Skips straight to
+  generation for a named language and app name.
+- **"scaffold a Python CLI named foo that fetches weather data"** — triggers
+  `scaffold-cli` (interpreted paradigm). Natural-language equivalent of the slash
+  command: resolves the language, loads the doctrine, generates, then verifies.
+- **"scaffold a bash CLI called backup-tool"** — triggers `scaffold-cli` (shell
+  paradigm, `cli-scaffold-shell`). Same five-pillar doctrine, plus POSIX-sh bashism
+  checks.
+
 ## Design decisions
 
 Where the specification was silent, these defaults were chosen and are noted here:

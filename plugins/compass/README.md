@@ -107,6 +107,24 @@ python3 scripts/test_compass.py    # -> "46 passed, 0 failed"
 Requires Python 3 (standard library only). Workflow scripts require the Workflow
 tool; without it, every skill has a manual path that calls the same Python guards.
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+- **"help me think through this — it's complex and I'm not sure of the right
+  approach"** — triggers `compass-solve`. Runs the full Clarify → Explore →
+  Decompose → Execute → Revise pipeline.
+- **"before we commit to an approach, explore a few different ones"** — triggers
+  `compass-explore-branches`. Proposes and scores multiple viable approaches instead
+  of anchoring on the first.
+- **"the scope of this request is fuzzy, help me pin it down first"** — triggers
+  `compass-clarify-scope`. Surfaces ambiguous phrasing and unstated success criteria
+  before any work starts.
+
 ## Configuration
 
 Copy `.claude/compass.local.md` into your project and set `max_branch_count` in its

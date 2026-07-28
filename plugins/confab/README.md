@@ -28,6 +28,26 @@ direction.
 or, for local development, point Claude Code at this directory as a
 plugin source.
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+- **"check if any of our dependencies are hallucinated"** — triggers
+  `confab-dependency-audit`. Flags package names that don't exist in the real
+  registry, independently re-verified before being reported.
+- **"would our tests actually catch a bug here?"** — triggers
+  `confab-assertion-audit`. Mutation-testing pass checking whether tests assert
+  anything meaningful, not just execute the code.
+- **"run the confab cycle on this repo"** — triggers `confab-cycle`. Bounded
+  self-optimization loop: re-runs all four audits pass by pass, optionally applying
+  fixes, until convergence.
+- **"where does confab stand on this repo"** — triggers `confab-status`. Read-only
+  dashboard: what's run, what's stale, what to run next.
+
 ## Skills
 
 | Skill | What it does |

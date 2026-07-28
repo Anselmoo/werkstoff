@@ -14,6 +14,30 @@ cc --plugin-dir /path/to/andon
 Or copy this directory under a project's `.claude-plugin/` for project-scoped
 testing.
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+- **"run andon-preflight against this repo"** — triggers `andon-preflight`. Read-only
+  readiness report (stage legibility, ledger writability, house-rules presence) —
+  never creates the ledger.
+- **"harden this repo, one gap at a time"** / **"start the andon loop"** — triggers
+  `andon-loop`. Detects the value stream, proposes and verifies a fix for the current
+  stage's gap, and halts rather than advancing past a broken or unproven wire.
+- **"what does the andon board look like right now"** — triggers `andon-status`.
+  Read-only: stream table, cursor, pass/cycle counters, open gap counts — nothing
+  advances.
+- **"propose a fix for this gap, and only ask me where it actually matters"** —
+  triggers `andon-propose`. Proposes maximally from the ledger/codebase/house-rules,
+  then grills you one question at a time, only on genuinely load-bearing forks.
+- **"prove this wire is actually proven"** — triggers `andon-verify`. Routes the wire
+  to one of seven evidence-grounded strategies and returns a structured green/red
+  verdict.
+
 ## Components
 
 ### Skills

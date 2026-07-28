@@ -26,6 +26,25 @@ or copy it into a project's `.claude-plugin/` for project-scoped use. No environ
 variables or external services are required — everything the plugin needs is either
 in this repo or written under `.cupertino/` in the target project.
 
+<!-- rrt:auto:start:example-prompts-intro -->
+## Example Prompts
+
+Say any of these to Claude Code once the plugin is installed — they're plain-language
+prompts, not exact phrasing Claude has to match. Claude routes them to the skill below
+by intent.
+<!-- rrt:auto:end:example-prompts-intro -->
+
+- **"run the full cupertino review on this feature"** — triggers `cupertino-review`.
+  Runs all eight lifecycle stages end-to-end, backwards-compatibility check through
+  reveal.
+- **"convene the cupertino council on this design"** — triggers `cupertino-council`.
+  Five-lens review — Reduction, Craft, Hierarchy, Usability, Metaphor — with tensions
+  resolved in a fixed precedence order (Usability > Reduction > Craft > Hierarchy >
+  Metaphor).
+- **"check this codebase against our design handbook"** — triggers
+  `cupertino-handbook-check`. Flags drift from an already-drafted handbook rule, with
+  file:line evidence.
+
 ## Components
 
 - **15 skills** (`skills/`) — one per technique in the spec, plus `cupertino-review` (the
