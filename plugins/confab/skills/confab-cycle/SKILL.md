@@ -24,6 +24,15 @@ source of truth, not your running tally.
    symbol-index build this invocation needs — never build a fresh one per
    pass or per domain. This is what makes the symbol-index snapshot
    shared rather than rebuilt (rule: symbol-index-shared-per-invocation).
+   Resolve it now:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/symbol_index_cli.py" resolve <repo_root> --invocation-id <invocation_id>
+   ```
+   This is the "CLI wrapper the cycle skill points you at" that
+   `confab-assertion-audit` and `confab-contract-drift`'s "Shared symbol
+   index" sections already reference — tell those domain skills this same
+   `invocation_id` when dispatching them so they hit the cache instead of
+   rebuilding.
 
 ## Per-pass loop
 

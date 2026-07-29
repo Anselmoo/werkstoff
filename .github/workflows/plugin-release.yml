@@ -34,6 +34,19 @@ jobs:
             "plugins/${{ steps.resolve.outputs.group }}/CHANGELOG.md" \
             "${{ steps.resolve.outputs.version }}" > release-notes.md
 
+      - name: Build plugin zip
+        run: |
+          GROUP="${{ steps.resolve.outputs.group }}"
+          VERSION="${{ steps.resolve.outputs.version }}"
+          cd plugins && zip -r "../${GROUP}-v${VERSION}.zip" "$GROUP"
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          format: spdx-json
+          output-file: "${{ steps.resolve.outputs.group }}-v${{ steps.resolve.outputs.version }}-sbom.spdx.json"
+          path: "plugins/${{ steps.resolve.outputs.group }}"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
@@ -41,3 +54,6 @@ jobs:
           body_path: release-notes.md
           append_body: true
           generate_release_notes: true
+          files: |
+            ${{ steps.resolve.outputs.group }}-v${{ steps.resolve.outputs.version }}.zip
+            ${{ steps.resolve.outputs.group }}-v${{ steps.resolve.outputs.version }}-sbom.spdx.json

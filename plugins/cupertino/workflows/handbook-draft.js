@@ -95,6 +95,7 @@ function fence(label, value) {
 
 const NORMALIZED_ARGS = normalizeArgs(args)
 const domain = NORMALIZED_ARGS && NORMALIZED_ARGS.domain
+const symbolIndexPath = NORMALIZED_ARGS && NORMALIZED_ARGS.symbolIndexPath
 const dimensions = DIMENSION_CATALOG[domain]
 if (!dimensions) {
   throw new Error(
@@ -106,6 +107,10 @@ function proposePrompt(dim) {
   return (
     `DIMENSION: ${dim}\n\n` +
     `Analyze this project for the "${dim}" handbook dimension in the ${domain} domain. ` +
+    (symbolIndexPath
+      ? `A symbol-index snapshot is available at ${fence('SYMBOL_INDEX_PATH', symbolIndexPath)} -- ` +
+        `use it to locate real definitions/call sites faster; still cite actual file:line evidence. `
+      : '') +
     `Propose exactly one concrete, enforceable rule. Cite real file:line evidence if the ` +
     `project has an established convention; otherwise set sourceMode to "scaffolded" and ` +
     `explain plainly in "note" that no convention exists. Never invent evidence.`

@@ -1,0 +1,31 @@
+name: 🔢🏷️ Batch Release (manual drift correction)
+
+# Manual entry point for the case auto-version-bump.yml deliberately does
+# NOT handle: a "chore: correct version drift" bump across one or more
+# plugins, worded to avoid re-triggering the push-based auto-bump. Before
+# this workflow existed, that meant one hand-authored PR/branch per plugin,
+# each needing its own separate manual `rrt tag create --push` afterward
+# (see PRs #20-#23: four sequential single-plugin releases, ~3 minutes
+# apart). This collapses that into one operator-triggered run covering
+# every group that needs correcting, reusing auto-version-bump.yml's
+# bump+tag+merge+push loop via workflow_call instead of duplicating it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      groups_and_levels:
+        description: "Comma-separated group:level pairs, e.g. 'self-assess:patch,cupertino:patch,confab:patch,compass:patch'"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump-and-tag:
+    name: Bump and tag every listed group
+    uses: ./.github/workflows/auto-version-bump.yml
+    with:
+      groups_and_levels: ${{ inputs.groups_and_levels }}
+    permissions:
+      contents: write

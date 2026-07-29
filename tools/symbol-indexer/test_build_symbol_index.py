@@ -113,16 +113,16 @@ class SymbolIndexerTest(unittest.TestCase):
             self.assertLess(elapsed, float(os.environ.get("SYMBOL_INDEX_MAX_SECONDS", "1")))
 
     def test_canonical_script_runs_standalone_for_an_arbitrary_plugin_name(self) -> None:
-        # Superseded a per-plugin regression test. Until the six plugins were
-        # regenerated from behavior specs (see docs/plugin-rebuild-findings.md),
-        # each vendored a byte-identical synced copy of this script (kept in
-        # sync via `.rrt.toml`'s now-removed artifact_targets), and this test
-        # asserted every copy was present and ran. None of the rebuilt plugins
-        # reference the symbol indexer at all -- each ships its own
-        # purpose-built scripts instead -- so there is no longer a "copy" to
-        # assert on. What's left worth covering: the canonical script itself
-        # still runs correctly standalone for an arbitrary --plugin-name, the
-        # same invocation shape a vendored copy used to be exercised with.
+        # The vendoring convention this test's history refers to (each plugin
+        # carrying a byte-identical synced copy of this script) was briefly
+        # retired in commit 0c10fa0, then reinstated via `.rrt.toml`'s
+        # artifact_targets once self-assess and confab's own behavior specs
+        # turned out to still require it. See
+        # test_every_vendored_copy_matches_the_canonical_source below for the
+        # per-plugin drift guard. What's covered here: the canonical script
+        # itself still runs correctly standalone for an arbitrary
+        # --plugin-name, the same invocation shape a vendored copy is
+        # exercised with.
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "example.py").write_text("def example(): pass\n", encoding="utf-8")
@@ -134,17 +134,28 @@ class SymbolIndexerTest(unittest.TestCase):
             pointer = json.loads((root / "analysis" / "example-plugin" / "current.json").read_text())
             self.assertEqual(pointer["plugin_name"], "example-plugin")
 
-    def test_no_plugin_vendors_a_stale_copy(self) -> None:
-        # Regression guard for the retired convention above: nothing should
-        # silently reintroduce a per-plugin vendored copy that could drift
-        # from the canonical source without anything noticing.
+    def test_every_vendored_copy_matches_the_canonical_source(self) -> None:
+        # The vendoring convention (retired in commit 0c10fa0, reinstated via
+        # .rrt.toml's artifact_targets) is back: build_symbol_index.py and
+        # parallel-safe-research-protocol.md are synced into all six plugins'
+        # scripts/ and references/ directories via `rrt artifacts --regenerate`.
+        # This is a second, rrt-independent guard against silent drift -- if a
+        # vendored copy is hand-edited without re-running rrt, this catches it
+        # even in a CI job that never invokes rrt.
+        canonical_script = SCRIPT.read_bytes()
+        canonical_protocol = (ROOT / "parallel-safe-research-protocol.md").read_bytes()
         for plugin_dir in sorted((REPO_ROOT / "plugins").iterdir()):
-            stale = plugin_dir / "scripts" / "build_symbol_index.py"
-            self.assertFalse(
-                stale.is_file(),
-                f"{stale} exists, but the vendoring convention was retired -- "
-                f"either this is a real regression or the convention was intentionally "
-                f"reinstated and this test needs updating too",
+            vendored_script = plugin_dir / "scripts" / "build_symbol_index.py"
+            vendored_protocol = plugin_dir / "references" / "parallel-safe-research-protocol.md"
+            self.assertTrue(vendored_script.is_file(), f"{vendored_script} missing -- run `rrt artifacts --regenerate`")
+            self.assertEqual(
+                vendored_script.read_bytes(), canonical_script,
+                f"{vendored_script} has drifted from the canonical source -- run `rrt artifacts --regenerate`",
+            )
+            self.assertTrue(vendored_protocol.is_file(), f"{vendored_protocol} missing -- run `rrt artifacts --regenerate`")
+            self.assertEqual(
+                vendored_protocol.read_bytes(), canonical_protocol,
+                f"{vendored_protocol} has drifted from the canonical source -- run `rrt artifacts --regenerate`",
             )
 
 

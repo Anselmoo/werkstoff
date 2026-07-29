@@ -12,11 +12,32 @@ name: 🔢 Auto Version Bump
 #
 # rrt bump itself always creates a release/<group>/v<version> branch and
 # commits on it (no in-place-on-current-branch mode) -- this workflow fast-
-# forward-merges that branch onto main and pushes, once per affected group.
+# forward-merges that branch onto main, tags each bumped group
+# (`rrt tag create --group <g> --prefix '<g>-v' --push`), and pushes once,
+# per push event -- so a single push touching N groups produces N tags in
+# one CI run, each of which independently fans out to plugin-release.yml.
+#
+# Also callable as a reusable workflow (workflow_call) with an explicit
+# `groups_and_levels` input ("group:level,group:level", e.g. for a manual
+# drift-correction batch that deliberately uses chore: commits to avoid
+# double-bumping -- see .github/workflows/batch-release.yml) instead of
+# sniffing the trigger commit. Both paths converge on the same
+# "Normalize groups_and_levels for this run" step below, so the bump/tag
+# loop itself never needs to know which trigger fired it.
 
 on:
   push:
     branches: [main]
+  workflow_call:
+    inputs:
+      groups_and_levels:
+        description: "Comma-separated group:level pairs, e.g. 'confab:patch,compass:patch'"
+        required: true
+        type: string
+    outputs:
+      bumped_groups:
+        description: "Space-separated list of groups that were bumped"
+        value: ${{ jobs.bump.outputs.bumped_groups }}
 
 permissions:
   contents: write
@@ -29,10 +50,14 @@ jobs:
   bump:
     name: Bump changed version group(s)
     runs-on: ubuntu-latest
+    outputs:
+      bumped_groups: ${{ steps.bump.outputs.bumped_groups }}
     # Guard against re-triggering on the bump commit(s) this workflow itself
     # pushes -- rrt bump's generated commit message is always exactly
-    # "chore: bump version to v<version>".
-    if: "${{ !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
+    # "chore: bump version to v<version>". Only applies to the push trigger;
+    # a workflow_call invocation (the manual batch-release path) has no
+    # head_commit to sniff and is never self-triggered this way.
+    if: "${{ github.event_name == 'workflow_call' || !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -59,6 +84,7 @@ jobs:
 
       - name: Determine bump level from the head commit's conventional-commit type
         id: level
+        if: github.event_name != 'workflow_call'
         env:
           # GitHub Actions expression interpolation (${{ ... }}) splices its
           # value directly into the shell script's TEXT before bash ever
@@ -97,7 +123,7 @@ jobs:
 
       - name: Determine which version groups changed
         id: groups
-        if: steps.level.outputs.level != ''
+        if: github.event_name != 'workflow_call' && steps.level.outputs.level != ''
         run: |
           # NOTE: GROUPS is a bash-reserved special variable (auto-populated
           # with the current user's OS group IDs) -- naming a plain variable
@@ -116,12 +142,43 @@ jobs:
           echo "groups=$MATCHED_GROUPS" >> "$GITHUB_OUTPUT"
           echo "Changed groups: '${MATCHED_GROUPS:-<none>}'"
 
-      - name: Bump and fast-forward-merge each changed group
-        if: steps.level.outputs.level != '' && steps.groups.outputs.groups != ''
+      - name: Normalize groups_and_levels for this run
+        id: pairs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          CALL_INPUT: ${{ inputs.groups_and_levels }}
+          PUSH_LEVEL: ${{ steps.level.outputs.level }}
+          PUSH_GROUPS: ${{ steps.groups.outputs.groups }}
+        run: |
+          # Unifies both trigger shapes into one "group:level,group:level"
+          # format so the bump/tag step below never needs to know which
+          # trigger fired it. workflow_call already arrives in exactly that
+          # shape; the push trigger applies its single detected LEVEL to
+          # every changed GROUP to build the same shape.
+          if [ "$EVENT_NAME" = "workflow_call" ]; then
+            PAIRS="$CALL_INPUT"
+          elif [ -n "$PUSH_LEVEL" ] && [ -n "$PUSH_GROUPS" ]; then
+            PAIRS=""
+            for GROUP in $PUSH_GROUPS; do
+              PAIRS="$PAIRS,$GROUP:$PUSH_LEVEL"
+            done
+            PAIRS="${PAIRS#,}"
+          else
+            PAIRS=""
+          fi
+          echo "pairs=$PAIRS" >> "$GITHUB_OUTPUT"
+          echo "Resolved pairs: '${PAIRS:-<none>}'"
+
+      - name: Bump, tag, and fast-forward-merge each group
+        id: bump
+        if: steps.pairs.outputs.pairs != ''
         run: |
           set -euo pipefail
-          LEVEL="${{ steps.level.outputs.level }}"
-          for GROUP in ${{ steps.groups.outputs.groups }}; do
+          BUMPED=""
+          IFS=',' read -ra GROUP_LEVEL_PAIRS <<< "${{ steps.pairs.outputs.pairs }}"
+          for PAIR in "${GROUP_LEVEL_PAIRS[@]}"; do
+            GROUP="${PAIR%%:*}"
+            LEVEL="${PAIR##*:}"
             echo "::group::Bumping $GROUP ($LEVEL)"
             rrt bump "$LEVEL" --group "$GROUP"
             BRANCH=$(git branch --list "release/$GROUP/v*" --format='%(refname:short)' | tail -1)
@@ -129,5 +186,20 @@ jobs:
             git merge --ff-only "$BRANCH"
             git branch -D "$BRANCH"
             echo "::endgroup::"
+            echo "::group::Tagging $GROUP"
+            # werkstoff-cli is the one group that MUST use the bare v<version>
+            # scheme (see .rrt.toml's header comment): a bare tag is what
+            # cicd.yml's `tags: ["v*.*.*"]` trigger listens for, and it does
+            # NOT match plugin-release.yml's `*-v*.*.*` pattern. Every other
+            # group must stay prefixed, or a bare tag here would wrongly fire
+            # cicd.yml's PyPI publish job for a plugin bump.
+            if [ "$GROUP" = "werkstoff-cli" ]; then
+              rrt tag create --group "$GROUP" --push
+            else
+              rrt tag create --group "$GROUP" --prefix "$GROUP-v" --push
+            fi
+            echo "::endgroup::"
+            BUMPED="$BUMPED $GROUP"
           done
           git push origin main
+          echo "bumped_groups=$(echo "$BUMPED" | xargs)" >> "$GITHUB_OUTPUT"

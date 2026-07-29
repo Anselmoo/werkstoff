@@ -40,10 +40,22 @@ flags stages whose fan-in crosses the documented ratio-of-other-stages threshold
 "Design decisions" for the exact constant, since the spec leaves the numeric cutoff to this
 plugin's judgment).
 
+Before dispatching `arch-health-auditor`, resolve the shared symbol-index snapshot the same way
+`self-assess-lint-audit` does: read `analysis/self-assess/current.json`; if missing or its
+`source_fingerprint` no longer matches, run
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py --repo-path . --plugin-name self-assess
+```
+
+(single-flight lock makes concurrent callers safe). For a repo well under ~50 tracked files the
+build overhead may not be worth it -- skip this and dispatch without it.
+
 Dispatch `arch-health-auditor` to confirm each mechanically-flagged candidate against the
 actual source before it becomes a finding -- a high-fan-in stage that is a legitimate shared
 kernel (e.g. a `types`/`errors` package everything imports) is not a god-module, and the agent's
-own refusal list covers exactly this case. Layering violations (a production stage importing a
+own refusal list covers exactly this case. When the snapshot is available, pass its path to the
+agent as additional evidence. Layering violations (a production stage importing a
 test-only/fixture/example stage) have no purely structural signature in the graph alone --
 confirm each one by reading the importing stage's actual role.
 
