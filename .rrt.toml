@@ -210,3 +210,20 @@ command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plu
 path = "plugins/cli-scaffold/references/parallel-safe-research-protocol.md"
 description = "cli-scaffold's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/cli-scaffold/references/parallel-safe-research-protocol.md"]
+
+# lib/ canary (issue #24): a real, committed file at the root of every
+# plugin's scripts/lib/ package, so a `.gitignore` regression that swallows
+# that directory again makes `rrt artifacts --check --strict` fail on the
+# next fresh checkout instead of shipping silently for months. Add one more
+# entry here (copy either of these two) when a new plugin gains its own
+# scripts/lib/ package.
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/self-assess/scripts/lib/README.md"
+description = "self-assess's synced copy of tools/plugin-lib-canary/README.md"
+command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/self-assess/scripts/lib/README.md"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/confab/scripts/lib/README.md"
+description = "confab's synced copy of tools/plugin-lib-canary/README.md"
+command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/confab/scripts/lib/README.md"]

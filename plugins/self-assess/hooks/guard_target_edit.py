@@ -33,7 +33,13 @@ a way that makes the target ambiguous only if the target cannot be resolved
 at all (fails closed in that case, see below).
 
 Fails CLOSED: any unexpected exception denies rather than allows. The deny
-message always names the escape hatch (the setting to change).
+message always names the escape hatch (the setting to change). The one
+exception: a missing/broken scripts/lib/ package (ModuleNotFoundError at
+import time) degrades to a single stderr warning + allow, not a deny --
+see the try/except around the `from lib...` imports below. A packaging
+defect is not evidence the edit violates a rule, and every future edit in
+every repo being blocked is a strictly worse failure than one missed
+enforcement check (issue #24).
 """
 
 import json
@@ -91,26 +97,40 @@ def run() -> int:
         return allow()  # no single target (e.g. some MultiEdit shapes) -- nothing to scope-check
 
     # Inert unless this repo shows evidence of being self-assess-managed:
-    # settings file present, or the plugin has already written its output dir
-    # here before. Without this, the hook would deny target-repo edits in
-    # EVERY repository on the machine, self-assess-enabled or not -- the same
-    # class of mistake andon's ledger-existence check and confab's
-    # remediation-scope-existence check both exist specifically to prevent.
+    # settings file present, or the plugin's default output dir already
+    # exists here. Computed with stdlib only, BEFORE importing lib, so a
+    # missing/broken lib package can never turn "this repo doesn't even use
+    # self-assess" into a deny -- without this, the hook would deny
+    # target-repo edits in EVERY repository on the machine, self-assess-
+    # enabled or not, the same class of mistake andon's ledger-existence
+    # check and confab's remediation-scope-existence check both exist
+    # specifically to prevent. A settings file with a customized output_dir
+    # is still caught by has_settings alone; you can't have a non-default
+    # output_dir without a settings file that set it.
     settings_path = os.path.join(cwd, ".claude", "self-assess.local.md")
     has_settings = os.path.isfile(settings_path)
+    has_default_output_dir = os.path.isdir(os.path.join(cwd, "analysis", "self-assess"))
 
-    from lib.settings import load_settings  # noqa: E402
-    from lib.gates import check_dirty_tree, check_idiom_fix_mode, check_transform_mode  # noqa: E402
-    from lib.errors import SelfAssessError  # noqa: E402
-    from lib.write_guard import resolve_output_path  # noqa: E402
-    from lib.errors import WriteScopeError  # noqa: E402
+    if not (has_settings or has_default_output_dir):
+        return allow()
+
+    try:
+        from lib.settings import load_settings  # noqa: E402
+        from lib.gates import check_dirty_tree, check_idiom_fix_mode, check_transform_mode  # noqa: E402
+        from lib.errors import SelfAssessError, WriteScopeError  # noqa: E402
+        from lib.write_guard import resolve_output_path  # noqa: E402
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"guard_target_edit: internal error ({type(exc).__name__}: {exc}); "
+            "self-assess's lib package is missing or broken. Allowing this edit "
+            "rather than denying every future edit in this repo -- this is a "
+            "packaging defect, not evidence the edit violates a rule.",
+            file=sys.stderr,
+        )
+        return allow()
 
     settings = load_settings(cwd)
     output_dir = settings.get("output_dir", "analysis/self-assess")
-    has_output_dir = os.path.isdir(os.path.join(cwd, output_dir))
-
-    if not (has_settings or has_output_dir):
-        return allow()
 
     # A write self-assess makes to its OWN report directory is never what
     # idiom-fix-mode-fix-gate or dirty-tree-gate are about -- only a write

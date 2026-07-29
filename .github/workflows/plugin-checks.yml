@@ -20,6 +20,7 @@ jobs:
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
+      rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +37,14 @@ jobs:
 
       - name: Install Claude Code CLI
         run: npm install -g @anthropic-ai/claude-code
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install rrt
+        run: uv tool install "repo-release-tools>=1.13.1"
 
       - name: Validate plugin/marketplace manifests
         id: manifests
@@ -58,12 +67,23 @@ jobs:
         working-directory: tools/symbol-indexer
         run: python3 -m unittest test_build_symbol_index -v
 
+      - name: Verify vendored artifacts match their committed lock
+        id: rrt_artifacts
+        continue-on-error: true
+        # Catches issue #24's exact failure mode on the next fresh checkout:
+        # a .gitignore regression that silently drops a vendored file (e.g.
+        # a plugin's scripts/lib/ canary) leaves the lock expecting a file
+        # that no longer exists, which --strict turns into a hard failure
+        # here instead of a hook denying every edit months later.
+        run: rrt artifacts --check --strict
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
-          steps.symbol_indexer_tests.outcome == 'failure'
+          steps.symbol_indexer_tests.outcome == 'failure' ||
+          steps.rrt_artifacts.outcome == 'failure'
         run: exit 1
 
   board:
@@ -94,6 +114,7 @@ jobs:
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
+            row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
           } > board.md
           cat board.md
 

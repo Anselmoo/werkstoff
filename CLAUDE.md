@@ -70,7 +70,20 @@ python3 tools/enforcement-audit/audit_enforcement.py --rules analysis/rebuild/<n
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
 node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
+rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 ```
+
+`rrt artifacts --check` matters for the same reason as everything else in
+this section: it's the only thing that would have caught issue #24 on the
+next fresh checkout. `plugins/{self-assess,confab}/scripts/lib/` -- real,
+hand-written source packages, not build output -- were silently excluded
+from every commit by an unanchored `lib/` line in the root `.gitignore`
+(same failure shape as `/analysis/`'s existing anchoring comment already
+warns about), invisible to `git status` on any machine that already had
+the uncommitted files sitting locally. Every plugin with a `scripts/lib/`
+package now vendors a canary `README.md` there via `.rrt.toml`'s
+`artifact_targets` (`tools/plugin-lib-canary/README.md`); add a matching
+entry when a new plugin gains one of its own.
 
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never

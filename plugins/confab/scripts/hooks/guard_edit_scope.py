@@ -31,7 +31,12 @@ while a specific finding's remediation is in flight.
 Fails CLOSED: any unexpected exception denies rather than allows, because
 an enforcement hook that fails open on its own bug is not an enforcement
 hook. The deny message always names the escape hatch (delete the lock
-file, or run without --fix).
+file, or run without --fix). The one exception: a missing/broken
+scripts/lib/ package (ModuleNotFoundError at import time) degrades to a
+single stderr warning + allow, not a deny -- see the try/except around the
+`from lib...` imports below. A packaging defect is not evidence the edit
+violates a rule, and every future edit in every repo being blocked is a
+strictly worse failure than one missed enforcement check (issue #24).
 """
 
 import json
@@ -80,11 +85,25 @@ def run() -> int:
     tool_input = event.get("tool_input") or {}
     target = tool_input.get("file_path")
 
-    from lib.paths import UnsafeWritePathError, confab_dir, safe_repo_path  # noqa: E402
-    from lib.remediation_scope import read_scope, mark_consumed  # noqa: E402
+    # Inert unless this repo shows evidence of using confab (analysis/confab/
+    # exists). Computed with stdlib only, BEFORE importing lib, so a
+    # missing/broken lib package can never turn "this repo doesn't even use
+    # confab" into a deny -- req #6 bullet: inert when this repo doesn't use
+    # the plugin.
+    if not os.path.isdir(os.path.join(cwd, "analysis", "confab")):
+        return allow()
 
-    if not os.path.isdir(confab_dir(cwd)):
-        # req #6 bullet: inert when this repo doesn't use the plugin.
+    try:
+        from lib.paths import UnsafeWritePathError, safe_repo_path  # noqa: E402
+        from lib.remediation_scope import read_scope, mark_consumed  # noqa: E402
+    except (ImportError, ModuleNotFoundError) as exc:
+        print(
+            f"guard_edit_scope: internal error ({type(exc).__name__}: {exc}); "
+            "confab's lib package is missing or broken. Allowing this edit "
+            "rather than denying every future edit in this repo -- this is a "
+            "packaging defect, not evidence the edit violates a rule.",
+            file=sys.stderr,
+        )
         return allow()
 
     scope = read_scope(cwd)
