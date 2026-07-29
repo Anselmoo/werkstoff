@@ -1,75 +1,87 @@
 [meta]
-generated_at = "2026-07-29T05:52:31+00:00"
+generated_at = "2026-07-29T07:33:45+00:00"
 rrt_version = "1.14.0"
 
 [files."plugins/self-assess/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "self-assess's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/andon/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "andon's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/compass/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "compass's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/confab/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "confab's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/cupertino/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/cli-scaffold/scripts/build_symbol_index.py"]
 hash = "sha256:a573b289903677719c561fe0aacfafcb4a866aa057e5de12cf0ccba60919f757"
 size = 27709
 description = "cli-scaffold's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/self-assess/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "self-assess's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/andon/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "andon's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/compass/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "compass's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/confab/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "confab's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/cupertino/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
 
 [files."plugins/cli-scaffold/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "cli-scaffold's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-07-29T05:52:31+00:00"
+updated_at = "2026-07-29T07:33:45+00:00"
+
+[files."plugins/self-assess/scripts/lib/README.md"]
+hash = "sha256:175c20b838f80e3705c2be26450c59b73190a3de9fc642d7328c3f355f227d4e"
+size = 1946
+description = "self-assess's synced copy of tools/plugin-lib-canary/README.md"
+updated_at = "2026-07-29T07:33:45+00:00"
+
+[files."plugins/confab/scripts/lib/README.md"]
+hash = "sha256:175c20b838f80e3705c2be26450c59b73190a3de9fc642d7328c3f355f227d4e"
+size = 1946
+description = "confab's synced copy of tools/plugin-lib-canary/README.md"
+updated_at = "2026-07-29T07:33:45+00:00"

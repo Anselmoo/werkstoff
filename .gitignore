@@ -2,6 +2,12 @@
 node_modules/
 *.local.md
 !**/examples/*.local.md
+# Same class of bug as /analysis/ and /lib/ below: unanchored *.local.md
+# also swallowed test/plugins/fixtures/hook-violation-self-assess/.claude/
+# self-assess.local.md, seeded test data verify-hooks-deny.py needs
+# committed (see issue #24) -- carve out fixtures the same way examples/
+# already is.
+!test/plugins/fixtures/**/*.local.md
 .serena/
 .superpowers/
 # Anchored to the repo root: this is generated plugin output. Unanchored it
@@ -25,8 +31,13 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root: unanchored, this swallowed
+# plugins/{self-assess,confab}/scripts/lib/ (a real, hand-written source
+# package, not a build artifact) from every commit since the plugins that
+# import it were first added -- see issue #24. Same class of fix as
+# /analysis/ above.
+/lib/
+/lib64/
 parts/
 sdist/
 var/
