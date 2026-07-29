@@ -36,9 +36,24 @@ silently dropped.
 
 ## Step 3: Verify violations
 
+Before dispatching, resolve the shared symbol-index snapshot. Read
+`analysis/self-assess/current.json`; if missing or its `source_fingerprint`
+no longer matches, run
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py --repo-path . --plugin-name self-assess
+```
+
+(single-flight lock makes concurrent callers safe -- see
+`references/parallel-safe-research-protocol.md`). For a repo well under
+~50 tracked files the build overhead may not be worth it -- skip this and
+dispatch without it.
+
 Unless `skip_verification` is set, dispatch `convention-auditor` once per dispatched rule (or
 batched, at the agent's discretion) to find and confirm violations by reading the actual code
--- never invent a convention not documented in the source file.
+-- never invent a convention not documented in the source file. When the snapshot is available,
+hand it to `convention-auditor` as additional evidence for locating symbol definitions and call
+sites relevant to each rule.
 
 ## Step 4: Validate and write
 

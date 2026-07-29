@@ -9,9 +9,13 @@ Draft `.cupertino/<domain>-handbook.md` by analyzing this project one dimension 
 
 1. **Parse the domain** from the first argument — must be exactly one of `code`, `design`, `testing`, `documentation`. If it's anything else, say so and stop; don't guess a mapping.
 2. **Check for an existing handbook** at `.cupertino/<domain>-handbook.md`. If it exists, **ask the user explicitly** whether to overwrite before doing anything else — do not proceed silently. (A PreToolUse hook also enforces this: it refuses to overwrite an existing handbook file unless its first line is the literal marker `<!-- cupertino-overwrite-confirmed -->`. Only include that marker after the user has actually said yes.)
-3. **Run the dimension fan-out** via the Workflow tool:
+3. **Run the dimension fan-out** via the Workflow tool. First resolve or build the shared symbol-index snapshot: read `analysis/cupertino/current.json`; if missing or its `source_fingerprint` no longer matches, run
    ```
-   Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-draft.js", args: { domain: "<domain>" } })
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name cupertino
+   ```
+   (single-flight lock makes concurrent callers safe -- see `references/parallel-safe-research-protocol.md`). For a repo well under ~50 tracked files the build overhead may not be worth it -- skip this and pass `symbolIndexPath: null`.
+   ```
+   Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-draft.js", args: { domain: "<domain>", symbolIndexPath: "<resolved snapshot dir, or null>" } })
    ```
    This dispatches `handbook-dimension-analyst` once per dimension in the domain's fixed catalog (6 dimensions), each with exactly one dimension named — enforced structurally by the workflow's loop and backstopped by the PreToolUse hook, which denies any dispatch of that agent whose prompt doesn't contain exactly one `DIMENSION:` marker. Each candidate rule is then independently re-verified by a second, blind dispatch of the same agent type before you use it.
 4. **Write the handbook** at `.cupertino/<domain>-handbook.md` with sections:

@@ -150,10 +150,24 @@ explicitly skip this gap. Do not apply the fix in the meantime.
 
 ## Phase 4: verify
 
-Dispatch the `andon-verify` skill with the wire, its contract, and the
-proposed fix. It returns a verdict (`green`/`red`/`unknown`) plus evidence
-content -- **you** persist it via `write-doc` into `evidence/`, never
-`andon-verify` itself.
+Before dispatching, resolve or build the shared symbol-index snapshot. Read
+`analysis/andon/current.json`; if missing or its `source_fingerprint` no
+longer matches, run
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name andon
+```
+
+(single-flight lock makes concurrent callers safe -- see
+`references/parallel-safe-research-protocol.md`). For a repo well under
+~50 tracked files the build overhead may not be worth it -- skip this and
+tell `andon-verify` no snapshot is available.
+
+Dispatch the `andon-verify` skill with the wire, its contract, the proposed
+fix, and (when resolved) the snapshot path as additional evidence context.
+It returns a verdict (`green`/`red`/`unknown`) plus evidence content --
+**you** persist it via `write-doc` into `evidence/`, never `andon-verify`
+itself.
 
 Run the full stop-condition check now that you have a real verdict and tier:
 
