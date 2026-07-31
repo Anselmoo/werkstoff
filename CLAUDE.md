@@ -188,6 +188,17 @@ This is enforced twice: locally via the `rrt-branch-name` pre-commit hook
 `.github/workflows/plugin-checks.yml`, which runs `rrt-hooks check-branch-name`
 against the PR's head branch on every pull request.
 
+`plugin-checks.yml` also re-runs `.pre-commit-config.yaml`'s hooks in CI
+(`pre-commit run --all-files`, `rrt-branch-name` skipped there for the reason
+above) so the Andon Board's "Pre-commit hooks" block is a real pass/fail, not
+a label. **`rrt-doctor`'s own hook manifest pins it to `stages: [manual]`**,
+so it never runs under a plain `pre-commit run` — locally *or* in CI — despite
+sitting in `.pre-commit-config.yaml` next to hooks that do; a second
+`pre-commit run --all-files --hook-stage manual` is required to actually
+exercise it. Locally this means `rrt-doctor` still won't fire on `git commit`;
+run it explicitly (`pre-commit run --hook-stage manual rrt-doctor`, or `rrt
+doctor`) when you want that check.
+
 ## Gotchas
 
 - **Workflow scripts have no filesystem access.** Anything a workflow needs

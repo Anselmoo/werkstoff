@@ -22,6 +22,7 @@ jobs:
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
+      pre_commit: ${{ steps.pre_commit.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,6 +47,29 @@ jobs:
 
       - name: Install rrt
         run: uv tool install "repo-release-tools>=1.13.1"
+
+      - name: Install pre-commit
+        run: uv tool install pre-commit
+
+      - name: Run pre-commit hooks
+        id: pre_commit
+        continue-on-error: true
+        # rrt-branch-name is skipped here and verified separately below:
+        # GitHub Actions checks out the PR's detached-HEAD merge ref, so a
+        # plain `pre-commit run` can't see the real head branch name the way
+        # github.head_ref can.
+        #
+        # Two invocations, not one: rrt-doctor's own hook manifest pins it to
+        # `stages: [manual]`, so it never runs under a plain `pre-commit run`
+        # (locally or in CI) despite sitting in .pre-commit-config.yaml next
+        # to hooks that do -- the exact "configured but never invoked" shape
+        # this repo has been burned by before. `--hook-stage manual` is the
+        # only way to actually exercise it.
+        env:
+          SKIP: rrt-branch-name
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+          pre-commit run --all-files --hook-stage manual --show-diff-on-failure
 
       - name: Validate branch name
         id: rrt_branch_name
@@ -95,7 +119,8 @@ jobs:
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
-          steps.rrt_branch_name.outcome == 'failure'
+          steps.rrt_branch_name.outcome == 'failure' ||
+          steps.pre_commit.outcome == 'failure'
         run: exit 1
 
   board:
@@ -120,6 +145,8 @@ jobs:
           {
             echo "<!-- andon-board -->"
             echo "### 🚦 Plugin Andon Board"
+            echo
+            echo "#### 🤖 CI checks"
             echo "| Check | Status |"
             echo "|---|---|"
             row "Plugin/marketplace manifests" "${{ needs.checks.outputs.manifests }}"
@@ -127,7 +154,12 @@ jobs:
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
-            row "Branch name (conventional)" "${{ needs.checks.outputs.rrt_branch_name }}"
+            echo
+            echo "#### 🪝 Pre-commit hooks (\`.pre-commit-config.yaml\`)"
+            echo "| Hook | Status |"
+            echo "|---|---|"
+            row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
+            row "rrt-config-validate, rrt-doctor (\`pre-commit run --all-files\`)" "${{ needs.checks.outputs.pre_commit }}"
           } > board.md
           cat board.md
 
