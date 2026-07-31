@@ -134,32 +134,42 @@ jobs:
       - name: Build board markdown
         id: render
         run: |
+          # Raw HTML, not a GFM pipe table: a lone status emoji in a table
+          # cell (🟢/🔴/⚪) gets GitHub's "sole emoji content" auto-enlarge
+          # treatment, which is what made the old board's circles huge and
+          # misaligned. A small shields.io badge <img> sidesteps that --
+          # GitHub camo-proxies it server-side, so viewers make no direct
+          # third-party request.
           row() {
-            local label="$1" outcome="$2"
+            local label="$1" outcome="$2" alt msg color
             case "$outcome" in
-              success) echo "| $label | 🟢 |" ;;
-              failure) echo "| $label | 🔴 |" ;;
-              *) echo "| $label | ⚪ |" ;;
+              success) alt="passing"; msg="pass"; color="2ea44f" ;;
+              failure) alt="failing"; msg="fail"; color="cf222e" ;;
+              *)       alt="skipped"; msg="skipped"; color="8c959f" ;;
             esac
+            echo "<tr><td>$label</td><td align=\"center\"><img alt=\"$alt\" src=\"https://img.shields.io/badge/$msg-$color?style=flat-square\"></td></tr>"
+          }
+          table_open() {
+            echo "<table><thead><tr><th align=\"left\">$1</th><th align=\"center\">Status</th></tr></thead><tbody>"
           }
           {
             echo "<!-- andon-board -->"
-            echo "### 🚦 Plugin Andon Board"
+            echo "<h3>🚦 Plugin Andon Board</h3>"
             echo
-            echo "#### 🤖 CI checks"
-            echo "| Check | Status |"
-            echo "|---|---|"
+            echo "<h4>🤖 CI checks</h4>"
+            table_open "Check"
             row "Plugin/marketplace manifests" "${{ needs.checks.outputs.manifests }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
+            echo "</tbody></table>"
             echo
-            echo "#### 🪝 Pre-commit hooks (\`.pre-commit-config.yaml\`)"
-            echo "| Hook | Status |"
-            echo "|---|---|"
+            echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
+            table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor (\`pre-commit run --all-files\`)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            echo "</tbody></table>"
           } > board.md
           cat board.md
 
