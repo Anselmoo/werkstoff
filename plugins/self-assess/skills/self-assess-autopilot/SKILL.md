@@ -16,12 +16,27 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <r
 
 ## Step 1: CHECK phase -- stage-map first, then everything else in parallel
 
-Rule `autopilot-stage-map-first`: invoke `self-assess:self-assess-stage-map` before any other
-finding domain -- it writes `stage_graph.json` and `file_stage_index.json`, which
-`self-assess-arch-health` and `self-assess-transform-brief` both require. Do not parallelize
-stage-map with the rest.
+Rule `autopilot-stage-map-fresh-reuse`: **before** invoking `self-assess:self-assess-stage-map`,
+check whether its outputs can be reused instead of rebuilt:
 
-Once stage-map has written its outputs, dispatch the remaining finding domains in parallel:
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py stage-map-fresh-check --repo <repo_root>
+```
+
+- If `fresh` is `true`, **skip invoking `self-assess:self-assess-stage-map`** — its
+  `stage_graph.json` and `file_stage_index.json` already exist and are not stale relative to the
+  latest commit. Tell the user you're reusing the existing stage map rather than silently
+  redoing it, and proceed straight to dispatching the other finding domains.
+- If `fresh` is `false`, invoke `self-assess:self-assess-stage-map` — either it has never run,
+  a prior run left it incomplete, or the repo has changed since it last ran. This is also true
+  the first time autopilot ever runs in a repo (nothing to reuse yet).
+
+Rule `autopilot-stage-map-first` (unchanged): whichever branch above applies, stage-map's
+outputs (fresh or reused) MUST be settled before any other finding domain starts — it writes
+`stage_graph.json` and `file_stage_index.json`, which `self-assess-arch-health` and
+`self-assess-transform-brief` both require. Do not parallelize stage-map with the rest.
+
+Once stage-map's outputs are settled, dispatch the remaining finding domains in parallel:
 `self-assess-docs-drift`, `self-assess-ci-topology`, `self-assess-lint-audit`,
 `self-assess-code-idiom`, `self-assess-extract-rules`, `self-assess-arch-health`,
 `self-assess-complexity-score`, `self-assess-ui-audit`.

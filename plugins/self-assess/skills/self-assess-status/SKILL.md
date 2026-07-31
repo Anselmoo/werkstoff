@@ -26,9 +26,15 @@ exists on disk right now. Rule `status-no-fabrication`: never add a key with an 
 a placeholder, or a guessed status for a skill that has not run -- if it is not in `present`,
 omit it from the dashboard entirely.
 
-Rule: `self-assess-complexity-score`, `self-assess-stage-map`, and `self-assess-transform-brief`
-are excluded from `present` by design (they are progress/synthesis artifacts, not findings
-domains) -- do not add them back into the dashboard even if their sidecars exist.
+The same call also returns a `structural` map, built the identical way, for
+`self-assess-complexity-score`, `self-assess-stage-map`, and `self-assess-transform-brief` --
+these are progress/synthesis artifacts, not findings domains, so `structural`'s contents MUST
+NEVER be folded into `present` or counted by `recommend_transform_brief` (running
+self-assess-stage-map is not itself a finding). But they ARE part of the dashboard: a user
+asking "where does self-assess stand" needs to know stage-map has already run, not just that no
+findings-producing skill has. Surface `structural` as its own section, distinct from `present`'s
+findings table, applying the same `status-no-fabrication` rule (omit a skill entirely if it is
+not in `structural`, never fabricate a placeholder for one that hasn't run).
 
 ## Step 2: Staleness
 
@@ -36,9 +42,10 @@ domains) -- do not add them back into the dashboard even if their sidecars exist
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py staleness-check --repo <repo_root> --artifact <path1> --artifact <path2> ...
 ```
 
-Pass every path from `present`. `stale: true` means that artifact's mtime predates the repo's
-latest commit -- surface this per-artifact in the dashboard. If the repo has no commits or is
-not under git, `latest_commit_ts` is `null` and every staleness value is `null` (unknown) --
+Pass every path from **both** `present` and `structural`. `stale: true` means that artifact's
+mtime predates the repo's latest commit -- surface this per-artifact in the dashboard, in
+whichever section (findings or structural) that artifact belongs to. If the repo has no commits
+or is not under git, `latest_commit_ts` is `null` and every staleness value is `null` (unknown) --
 report it as "staleness unknown," never guess `stale: false`.
 
 ## Step 3: Recommend transform-brief when warranted
