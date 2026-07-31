@@ -57,7 +57,20 @@ function computeWaves(stages) {
   return waves
 }
 
-const rawTask = args?.task ?? args?.rawTask
+function normalizeArgs(a) {
+  if (typeof a !== 'string') return a
+  try {
+    const parsed = JSON.parse(a)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {}
+  throw new Error(
+    'compass-solve: args arrived as a string that is not a JSON object — ' +
+    'pass args as an object in the tool call, not JSON.stringify(...)',
+  )
+}
+const parsedArgs = normalizeArgs(args)
+
+const rawTask = parsedArgs?.task ?? parsedArgs?.rawTask
 if (!rawTask) throw new Error('compass-solve: args.task (the raw task) is required')
 const phasesRun = []
 
@@ -119,7 +132,7 @@ if (blocking.length > 0) {
 // it in as `args.priorExplore` ({ selected, scores }) and this script reuses
 // it instead of dispatching the explore-branches workflow again.
 let explore = null
-const hasStrategicFork = !!args?.multipleApproaches
+const hasStrategicFork = !!parsedArgs?.multipleApproaches
 if (hasStrategicFork) {
   phase('Explore')
   phasesRun.push('Explore')
@@ -197,7 +210,7 @@ for (let w = 0; w < waves.length; w++) {
 phase('Revise')
 phasesRun.push('Revise')
 const composed = Object.values(results).map((r) => `## ${byId[r.id].name} [${r.mode}]\n${r.output}`).join('\n\n')
-const criteria = args?.successCriteria ?? clarify.success_criteria?.map((c) => c.criterion ?? c) ?? []
+const criteria = parsedArgs?.successCriteria ?? clarify.success_criteria?.map((c) => c.criterion ?? c) ?? []
 let revision = null
 if (Array.isArray(criteria) && criteria.length >= 3) {
   const REVISE_SCHEMA = {

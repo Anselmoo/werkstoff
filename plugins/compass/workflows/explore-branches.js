@@ -31,10 +31,23 @@ function requireScore(v, where) {
   return v
 }
 
-const problem = args?.problem ?? args?.scopedTask
+function normalizeArgs(a) {
+  if (typeof a !== 'string') return a
+  try {
+    const parsed = JSON.parse(a)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {}
+  throw new Error(
+    'explore-branches: args arrived as a string that is not a JSON object — ' +
+    'pass args as an object in the tool call, not JSON.stringify(...)',
+  )
+}
+const parsedArgs = normalizeArgs(args)
+
+const problem = parsedArgs?.problem ?? parsedArgs?.scopedTask
 if (!problem) throw new Error('explore-branches: args.problem (scoped problem statement) is required')
 
-const count = effectiveCap(args?.requestedBranches ?? null, args?.maxBranchCount ?? null)
+const count = effectiveCap(parsedArgs?.requestedBranches ?? null, parsedArgs?.maxBranchCount ?? null)
 const angles = ANGLES.slice(0, count)
 log(`Proposing ${count} branches (cap=${count}) under angles: ${angles.join(', ')}`)
 
