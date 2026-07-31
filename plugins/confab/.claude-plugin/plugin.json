@@ -1,6 +1,6 @@
 {
   "name": "confab",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
   "author": {
     "name": "confab contributors",
