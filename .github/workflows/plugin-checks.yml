@@ -21,6 +21,8 @@ jobs:
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
+      rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
+      pre_commit: ${{ steps.pre_commit.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +47,39 @@ jobs:
 
       - name: Install rrt
         run: uv tool install "repo-release-tools>=1.13.1"
+
+      - name: Install pre-commit
+        run: uv tool install pre-commit
+
+      - name: Run pre-commit hooks
+        id: pre_commit
+        continue-on-error: true
+        # rrt-branch-name is skipped here and verified separately below:
+        # GitHub Actions checks out the PR's detached-HEAD merge ref, so a
+        # plain `pre-commit run` can't see the real head branch name the way
+        # github.head_ref can.
+        #
+        # Two invocations, not one: rrt-doctor's own hook manifest pins it to
+        # `stages: [manual]`, so it never runs under a plain `pre-commit run`
+        # (locally or in CI) despite sitting in .pre-commit-config.yaml next
+        # to hooks that do -- the exact "configured but never invoked" shape
+        # this repo has been burned by before. `--hook-stage manual` is the
+        # only way to actually exercise it.
+        env:
+          SKIP: rrt-branch-name
+        run: |
+          pre-commit run --all-files --show-diff-on-failure
+          pre-commit run --all-files --hook-stage manual --show-diff-on-failure
+
+      - name: Validate branch name
+        id: rrt_branch_name
+        continue-on-error: true
+        # Mirrors the branch-name step of Anselmoo/repo-release-tools' own
+        # composite action (rrt-hooks check-branch-name), run via the CLI
+        # already installed above instead of pulling in a second action.
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: rrt-hooks check-branch-name --branch "$BRANCH_NAME"
 
       - name: Validate plugin/marketplace manifests
         id: manifests
@@ -83,7 +118,9 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
-          steps.rrt_artifacts.outcome == 'failure'
+          steps.rrt_artifacts.outcome == 'failure' ||
+          steps.rrt_branch_name.outcome == 'failure' ||
+          steps.pre_commit.outcome == 'failure'
         run: exit 1
 
   board:
@@ -97,24 +134,42 @@ jobs:
       - name: Build board markdown
         id: render
         run: |
+          # Raw HTML, not a GFM pipe table: a lone status emoji in a table
+          # cell (🟢/🔴/⚪) gets GitHub's "sole emoji content" auto-enlarge
+          # treatment, which is what made the old board's circles huge and
+          # misaligned. A small shields.io badge <img> sidesteps that --
+          # GitHub camo-proxies it server-side, so viewers make no direct
+          # third-party request.
           row() {
-            local label="$1" outcome="$2"
+            local label="$1" outcome="$2" alt msg color
             case "$outcome" in
-              success) echo "| $label | 🟢 |" ;;
-              failure) echo "| $label | 🔴 |" ;;
-              *) echo "| $label | ⚪ |" ;;
+              success) alt="passing"; msg="pass"; color="2ea44f" ;;
+              failure) alt="failing"; msg="fail"; color="cf222e" ;;
+              *)       alt="skipped"; msg="skipped"; color="8c959f" ;;
             esac
+            echo "<tr><td>$label</td><td align=\"center\"><img alt=\"$alt\" src=\"https://img.shields.io/badge/$msg-$color?style=flat-square\"></td></tr>"
+          }
+          table_open() {
+            echo "<table><thead><tr><th align=\"left\">$1</th><th align=\"center\">Status</th></tr></thead><tbody>"
           }
           {
             echo "<!-- andon-board -->"
-            echo "### 🚦 Plugin Andon Board"
-            echo "| Check | Status |"
-            echo "|---|---|"
+            echo "<h3>🚦 Plugin Andon Board</h3>"
+            echo
+            echo "<h4>🤖 CI checks</h4>"
+            table_open "Check"
             row "Plugin/marketplace manifests" "${{ needs.checks.outputs.manifests }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
+            echo "</tbody></table>"
+            echo
+            echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
+            table_open "Hook"
+            row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
+            row "rrt-config-validate, rrt-doctor (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            echo "</tbody></table>"
           } > board.md
           cat board.md
 
