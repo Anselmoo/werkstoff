@@ -50,7 +50,7 @@ LANG_EXTENSIONS = {
     ".yaml": "yaml", ".yml": "yaml", ".toml": "toml", ".ini": "ini", ".cfg": "ini",
     ".conf": "ini", ".properties": "properties", ".xml": "xml", ".xsd": "xml",
     ".xsl": "xml", ".xslt": "xml", ".graphql": "graphql", ".gql": "graphql",
-    ".proto": "protobuf", ".md": "markdown", ".markdown": "markdown", ".rst": "rst",
+    ".proto": "protobuf", ".md": "markdown", ".markdown": "markdown", ".mdx": "mdx", ".rst": "rst",
     ".tf": "hcl", ".tfvars": "hcl", ".hcl": "hcl", ".rego": "rego",
     ".jinja": "jinja", ".jinja2": "jinja", ".njk": "jinja",
 }
@@ -288,6 +288,86 @@ def scan_generic_file(path: Path, repo_root: Path, content: str, language: str) 
     return symbols
 
 
+CSS_AT_RULE_PATTERN = re.compile(r"@(media|supports|keyframes|font-face|import|layer)\b(.*)")
+CSS_CUSTOM_PROPERTY_PATTERN = re.compile(r"(--[\w-]+)\s*:\s*(.+?);?\s*$")
+
+
+def scan_css_file(path: Path, repo_root: Path, content: str, language: str) -> list[Symbol]:
+    relative = path.relative_to(repo_root).as_posix()
+    symbols: list[Symbol] = []
+    for line_number, raw_line in enumerate(content.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        at_rule = CSS_AT_RULE_PATTERN.match(line)
+        if at_rule:
+            name = f"@{at_rule.group(1)}{at_rule.group(2)}".rstrip("{ ").strip()
+            symbols.append(Symbol(name[:120], "at-rule", relative, line_number, line[:120], language=language))
+            continue
+        custom_property = CSS_CUSTOM_PROPERTY_PATTERN.match(line)
+        if custom_property:
+            symbols.append(Symbol(custom_property.group(1), "custom-property", relative, line_number, line[:120], language=language))
+            continue
+        if line.endswith("{"):
+            selector = line[:-1].strip()
+            if selector:
+                symbols.append(Symbol(selector[:120], "selector", relative, line_number, line[:120], language=language))
+    return symbols
+
+
+HTML_HEADING_PATTERN = re.compile(r"<h([1-6])[^>]*>(.*?)</h\1>", re.IGNORECASE)
+HTML_LANDMARK_PATTERN = re.compile(
+    r"<(nav|header|main|footer|section|article|aside|form)\b[^>]*\bid=[\"']([\w-]+)[\"']", re.IGNORECASE
+)
+
+
+def scan_html_file(path: Path, repo_root: Path, content: str) -> list[Symbol]:
+    relative = path.relative_to(repo_root).as_posix()
+    symbols: list[Symbol] = []
+    for line_number, raw_line in enumerate(content.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        for match in HTML_HEADING_PATTERN.finditer(line):
+            text = re.sub(r"<[^>]+>", "", match.group(2)).strip()
+            symbols.append(Symbol((text or f"h{match.group(1)}")[:120], "heading", relative, line_number, line[:120], language="html"))
+        for match in HTML_LANDMARK_PATTERN.finditer(line):
+            symbols.append(Symbol(match.group(2), "landmark", relative, line_number, line[:120], language="html"))
+    return symbols
+
+
+MARKDOWN_FRONTMATTER_PATTERN = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
+MARKDOWN_FRONTMATTER_KEY_PATTERN = re.compile(r"^([A-Za-z0-9_-]+):\s*(.+)$")
+MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)\s]+)")
+MARKDOWN_CODE_FENCE_PATTERN = re.compile(r"^`{3,}([A-Za-z0-9_+-]+)\s*$")
+
+
+def scan_markdown_file(path: Path, repo_root: Path, content: str, language: str) -> list[Symbol]:
+    """Runs scan_generic_file first so existing behavior (ATX '#' headings as
+    kind="section", --flag mentions, and any function/class/interface matches
+    -- the last of these matter for MDX's embedded JSX/exports and for code
+    samples inside .md fences) is preserved, then layers frontmatter/link/
+    code-fence extraction on top."""
+    relative = path.relative_to(repo_root).as_posix()
+    symbols = scan_generic_file(path, repo_root, content, language)
+
+    frontmatter = MARKDOWN_FRONTMATTER_PATTERN.match(content)
+    if frontmatter:
+        for offset, raw_line in enumerate(frontmatter.group(1).splitlines(), start=1):
+            key_value = MARKDOWN_FRONTMATTER_KEY_PATTERN.match(raw_line.strip())
+            if key_value:
+                symbols.append(Symbol(key_value.group(1), "frontmatter", relative, offset + 1, raw_line.strip()[:120], language=language))
+
+    for line_number, raw_line in enumerate(content.splitlines(), start=1):
+        line = raw_line.strip()
+        for match in MARKDOWN_LINK_PATTERN.finditer(line):
+            symbols.append(Symbol(match.group(1)[:120], "link", relative, line_number, f"{match.group(1)} -> {match.group(2)}"[:120], language=language))
+        fence = MARKDOWN_CODE_FENCE_PATTERN.match(line)
+        if fence:
+            symbols.append(Symbol(fence.group(1), "code-fence", relative, line_number, line[:120], language=language))
+    return symbols
+
+
 def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], contents: dict[str, str], generation_id: str, *, show_progress: bool = False) -> SymbolIndex:
     symbols: list[Symbol] = []
     total = len(records)
@@ -298,6 +378,12 @@ def build_index(repo_root: Path, plugin_name: str, records: list[FileRecord], co
             continue
         if record.language == "python":
             symbols.extend(scan_python_file(path, repo_root, content))
+        elif record.language in ("css", "scss", "sass", "less"):
+            symbols.extend(scan_css_file(path, repo_root, content, record.language))
+        elif record.language == "html":
+            symbols.extend(scan_html_file(path, repo_root, content))
+        elif record.language in ("markdown", "mdx"):
+            symbols.extend(scan_markdown_file(path, repo_root, content, record.language))
         else:
             symbols.extend(scan_generic_file(path, repo_root, content, record.language))
         if show_progress:

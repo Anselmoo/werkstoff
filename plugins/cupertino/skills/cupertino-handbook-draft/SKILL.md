@@ -13,7 +13,7 @@ Draft `.cupertino/<domain>-handbook.md` by analyzing this project one dimension 
    ```
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name cupertino
    ```
-   (single-flight lock makes concurrent callers safe -- see `references/parallel-safe-research-protocol.md`). For a repo well under ~50 tracked files the build overhead may not be worth it -- skip this and pass `symbolIndexPath: null`.
+   (single-flight lock makes concurrent callers safe -- see `references/parallel-safe-research-protocol.md`). For a repo well under ~50 tracked files the build overhead may not be worth it -- skip this and pass `symbolIndexPath: null`. The snapshot isn't code-only: for `design` and `documentation` dimensions it also surfaces CSS selectors/at-rules/custom properties, HTML headings/landmarks, and full Markdown/MDX structure (headings, YAML frontmatter, links, code-fence languages).
    ```
    Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-draft.js", args: { domain: "<domain>", symbolIndexPath: "<resolved snapshot dir, or null>" } })
    ```
