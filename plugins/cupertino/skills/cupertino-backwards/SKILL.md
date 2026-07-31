@@ -20,12 +20,14 @@ Work backwards from customer experience to technology. Never accept the literal 
 
 ## Mark the gate as passed
 
-Every technique later in the cupertino pipeline that commits to architecture or design (`cupertino-focus`, `cupertino-longevity`, `cupertino-integrate`, `cupertino-council`) is blocked by a PreToolUse hook until this marker exists for the current repo:
+Every technique later in the cupertino pipeline that commits to architecture or design (`cupertino-focus`, `cupertino-longevity`, `cupertino-integrate`, `cupertino-council`) is blocked by a PreToolUse hook until this marker exists for the current repo. The hook only checks that the marker file exists — it never reads its content — so the marker's value is free to carry the real output forward instead of a placeholder:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" init
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set backwards-done
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set backwards-done '{"literalRequest":"...","underlyingProblem":"...","statement":"...","techDirection":"...","driftRisks":["..."]}'
 ```
+
+Use the actual content from steps 1-6 above as that JSON's values — not a placeholder "1". This is what lets `cupertino-review` (and anything else invoking this stage as part of a pipeline) read back a real, structured result via `state.py check backwards-done` instead of only knowing the gate passed with no idea what was decided.
 
 Run this only after step 4 has actually passed — do not set the marker preemptively or on a failed validation.
 
