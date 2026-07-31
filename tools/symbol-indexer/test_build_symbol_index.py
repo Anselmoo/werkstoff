@@ -112,6 +112,92 @@ class SymbolIndexerTest(unittest.TestCase):
             self.assertEqual(index["files_scanned"], len(INDEXER.LANG_EXTENSIONS))
             self.assertLess(elapsed, float(os.environ.get("SYMBOL_INDEX_MAX_SECONDS", "1")))
 
+    def test_css_selectors_and_at_rules_are_extracted(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "styles.css").write_text(
+            ".card {\n"
+            "  --accent-color: #ff0000;\n"
+            "}\n"
+            "@media (min-width: 768px) {\n"
+            "  .card { display: flex; }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_kind = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        self.assertIn(".card", by_kind.get("selector", set()))
+        self.assertIn("--accent-color", by_kind.get("custom-property", set()))
+        self.assertTrue(any(name.startswith("@media") for name in by_kind.get("at-rule", set())))
+
+    def test_html_headings_and_landmarks_are_extracted(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "page.html").write_text(
+            "<h1>Title</h1>\n<nav id=\"main-nav\">links</nav>\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_kind = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        self.assertIn("Title", by_kind.get("heading", set()))
+        self.assertIn("main-nav", by_kind.get("landmark", set()))
+
+    def test_markdown_frontmatter_links_and_code_fences_are_extracted(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "guide.md").write_text(
+            "---\n"
+            "title: Example\n"
+            "type: guide\n"
+            "---\n"
+            "# Heading\n"
+            "See [the docs](https://example.com).\n"
+            "```js\n"
+            "console.log('hi')\n"
+            "```\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_kind = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        self.assertIn("title", by_kind.get("frontmatter", set()))
+        self.assertIn("type", by_kind.get("frontmatter", set()))
+        self.assertIn("Heading", by_kind.get("section", set()))
+        self.assertIn("the docs", by_kind.get("link", set()))
+        self.assertIn("js", by_kind.get("code-fence", set()))
+
+    def test_mdx_is_cataloged_with_frontmatter_and_headings(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "page.mdx").write_text(
+            "---\ntitle: MDX Example\n---\n# Heading\n\nexport const Widget = () => <div />\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        self.assertIn("page.mdx", {record["file"] for record in json.loads((run / "file_catalog.json").read_text())["files"]})
+        by_kind = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        self.assertIn("title", by_kind.get("frontmatter", set()))
+        self.assertIn("Heading", by_kind.get("section", set()))
+
     def test_canonical_script_runs_standalone_for_an_arbitrary_plugin_name(self) -> None:
         # The vendoring convention this test's history refers to (each plugin
         # carrying a byte-identical synced copy of this script) was briefly
