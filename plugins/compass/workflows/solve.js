@@ -75,6 +75,12 @@ if (!rawTask) throw new Error('compass-solve: args.task (the raw task) is requir
 const phasesRun = []
 
 // ---------- CLARIFY ----------
+// Workflow scripts have no filesystem access, so this script cannot call
+// `compass.py state-find` itself. When the calling SKILL.md already did that
+// lookup (rule: solve-reuses-prior-standalone-run) and found a prior
+// compass-clarify-scope run for this exact `rawTask`, it passes the result in
+// as `args.priorClarify` — matching the CLARIFY_SCHEMA shape below — and this
+// script reuses it instead of dispatching a fresh agent.
 phase('Clarify')
 phasesRun.push('Clarify')
 const CLARIFY_SCHEMA = {
@@ -97,13 +103,14 @@ const CLARIFY_SCHEMA = {
     success_criteria: { type: 'array', items: { type: 'object' } },
   },
 }
-const clarify = await agent(
+const clarify = args?.priorClarify ?? await agent(
   `Scope this task. Restate it with every default interpretation stated inline. List known facts ` +
   `(mark any below 90% confidence with the warning marker). For each uncertainty give ` +
   `{element, default_interpretation, confidence 0-100, blocking}. Any uncertainty with confidence ` +
   `below ${CLARIFY_FLAG_THRESHOLD} MUST be flagged. State success criteria.\n\nTask:\n${rawTask}`,
   { label: 'clarify', phase: 'Clarify', schema: CLARIFY_SCHEMA },
 )
+if (args?.priorClarify) log('Clarify: reusing a prior compass-clarify-scope run (args.priorClarify).')
 
 // Enforce the flag gate and the blocking-pause in code.
 const flagged = clarify.flagged_uncertainties.filter((u) => u.confidence < CLARIFY_FLAG_THRESHOLD)
@@ -120,14 +127,23 @@ if (blocking.length > 0) {
 }
 
 // ---------- EXPLORE (conditional) ----------
+// Same filesystem constraint as Clarify above: if the calling SKILL.md found a
+// prior compass-explore-branches run matching clarify.scoped_task, it passes
+// it in as `args.priorExplore` ({ selected, scores }) and this script reuses
+// it instead of dispatching the explore-branches workflow again.
 let explore = null
 const hasStrategicFork = !!parsedArgs?.multipleApproaches
 if (hasStrategicFork) {
   phase('Explore')
   phasesRun.push('Explore')
-  explore = await workflow('compass-explore-branches', { problem: clarify.scoped_task,
-    requestedBranches: parsedArgs?.requestedBranches, maxBranchCount: parsedArgs?.maxBranchCount })
-  log(`Explore selected: ${explore.selected}`)
+  if (args?.priorExplore) {
+    explore = args.priorExplore
+    log(`Explore: reusing a prior compass-explore-branches run (args.priorExplore). Selected: ${explore.selected}`)
+  } else {
+    explore = await workflow('compass-explore-branches', { problem: clarify.scoped_task,
+      requestedBranches: args?.requestedBranches, maxBranchCount: args?.maxBranchCount })
+    log(`Explore selected: ${explore.selected}`)
+  }
 } else {
   log('Explore skipped: one obvious approach, no strategic fork.')
 }

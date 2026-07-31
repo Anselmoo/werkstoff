@@ -14,9 +14,12 @@ The non-zero exit is the enforcement: a skill that runs a check and ignores a
 failing exit code is making an observable, auditable mistake — the rule is not a
 sentence it can silently skip.
 
-State subcommands (state-write / state-read) additionally enforce write scope
-BEFORE any file is written, and validate every gating field on both read and
-write. A record missing a gating field is rejected, never defaulted or repaired.
+State subcommands (state-write / state-read / state-find) additionally enforce
+write scope BEFORE any file is written, and validate every gating field on both
+read and write. A record missing a gating field is rejected, never defaulted or
+repaired. state-find scans every persisted run for one whose own raw_task
+matches a given task byte-for-byte, so compass-solve's Clarify/Explore steps
+can reuse a prior standalone run instead of always redoing it from scratch.
 """
 
 from __future__ import annotations
@@ -55,6 +58,8 @@ def validate_state(state: dict, where: str = "state") -> dict:
     # Nested artifacts, when present, are validated by their own guards.
     if "clarify" in state and state["clarify"] is not None:
         C.validate_clarify(state["clarify"])
+    if "explore" in state and state["explore"] is not None:
+        C.validate_branch_scores(state["explore"].get("branches", []))
     if "dag" in state and state["dag"] is not None:
         C.validate_dag(state["dag"].get("stages", []))
     return state
@@ -135,14 +140,52 @@ def _cli_state_write(p, a):
 
 
 def _cli_state_read(p, a):
-    """Validate on read; reject any artifact missing a gating field."""
+    """Validate on read; reject any artifact missing a gating field. Returns
+    the full validated state (not just a validity flag) — a caller reusing
+    a prior run needs the actual `clarify`/`explore`/`dag` content, not
+    merely confirmation that the file was well-formed."""
     path = _opt(a, "--from")
     if not path:
         raise C.GuardError("state-read requires --from PATH")
     with open(path, "r", encoding="utf-8") as fh:
         state = json.load(fh)
     validate_state(state, "state(read)")
-    return {"valid": True, "phase": state["phase"], "explore_ran": state["explore_ran"]}
+    return {"valid": True, "phase": state["phase"], "explore_ran": state["explore_ran"], "state": state}
+
+
+def _cli_state_find(p, a):
+    """Scan output_dir/runs/*/state.json for one whose own `raw_task`
+    matches the given text byte-for-byte, returning the most recently
+    modified match — this is what lets compass-solve's Clarify/Explore
+    steps reuse a prior standalone compass-clarify-scope/compass-explore-
+    branches run instead of always redoing it from scratch (rule:
+    solve-reuses-prior-standalone-run). A missing runs/ directory, or any
+    individual state.json that is missing, unreadable, or fails
+    validate_state, is skipped rather than treated as fatal — finding
+    nothing is the normal, common outcome (first time this exact text has
+    gone through this phase), not a violation."""
+    out_dir = _opt(a, "--output-dir", C.DEFAULT_OUTPUT_DIR)
+    raw_task = p.get("raw_task") if isinstance(p, dict) else None
+    if not raw_task:
+        raise C.GuardError('state-find requires payload {"raw_task": "..."}')
+    runs_root = os.path.join(out_dir, "runs")
+    candidates = []
+    if os.path.isdir(runs_root):
+        for name in sorted(os.listdir(runs_root)):
+            state_path = os.path.join(runs_root, name, "state.json")
+            if not os.path.isfile(state_path):
+                continue
+            try:
+                with open(state_path, "r", encoding="utf-8") as fh:
+                    state = json.load(fh)
+                validate_state(state, f"state(find:{name})")
+            except (OSError, json.JSONDecodeError, C.GuardError):
+                continue
+            candidates.append({"path": state_path, "mtime": os.path.getmtime(state_path), "state": state})
+    winner = C.select_reusable_run(candidates, raw_task)
+    if winner is None:
+        return {"found": False}
+    return {"found": True, "path": winner["path"], "state": winner["state"]}
 
 
 CHECKS = {
@@ -167,6 +210,7 @@ CHECKS = {
     "write-scope": _cli_write_scope,
     "state-write": _cli_state_write,
     "state-read": _cli_state_read,
+    "state-find": _cli_state_find,
 }
 
 

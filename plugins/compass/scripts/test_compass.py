@@ -9,6 +9,9 @@ This is the executable proof that the rules are enforced by code, not prose.
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import compass_lib as C
+import json
+import subprocess
+import tempfile
 
 passed = failed = 0
 
@@ -176,6 +179,108 @@ refuses("stage dispatch hardcoded", lambda: C.validate_stage_dispatch(
     {"id": "a", "mode": "ground-evidence", "mode_decided_at": "authored"}, 0))
 ok("stage dispatch runtime", lambda: C.validate_stage_dispatch(
     {"id": "a", "mode": "ground-evidence", "mode_decided_at": "runtime"}, 0))
+
+# --- select_reusable_run (state-find's selection rule; Phase 2 CMP-1/CMP-2 fix) ---
+def _cand(path, mtime, raw_task, **extra):
+    return {"path": path, "mtime": mtime, "state": {"raw_task": raw_task, **extra}}
+
+assert C.select_reusable_run([], "x") is None
+assert C.select_reusable_run(
+    [_cand("a", 1.0, "task X"), _cand("b", 2.0, "task Y")], "task Z") is None
+_one = C.select_reusable_run([_cand("a", 1.0, "task X")], "task X")
+assert _one is not None and _one["path"] == "a"
+# no fuzzy matching -- a near-miss must NOT match
+assert C.select_reusable_run([_cand("a", 1.0, "task X ")], "task X") is None
+# more than one match for the same raw_task -- most recently modified wins
+_pick = C.select_reusable_run(
+    [_cand("older", 1.0, "task X"), _cand("newer", 2.0, "task X"),
+     _cand("unrelated", 3.0, "task Y")],
+    "task X")
+assert _pick is not None and _pick["path"] == "newer", _pick
+
+# --- validate_state's optional "explore" artifact (compass.py, not compass_lib,
+#     but exercised here via subprocess since compass.py's own dispatch table
+#     is what actually wires state-write/state-find/state-read together) ---
+COMPASS_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "compass.py")
+
+
+def _run_guard(check, payload=None, extra_args=None):
+    cmd = [sys.executable, COMPASS_PY, check, "-"] + (extra_args or [])
+    r = subprocess.run(cmd, input=json.dumps(payload) if payload is not None else "",
+                capture_output=True, text=True)
+    return r.returncode, json.loads(r.stdout) if r.stdout.strip() else None
+
+
+with tempfile.TemporaryDirectory() as _d:
+    _out = os.path.join(_d, ".compass")
+    _state_ok = {
+        "run_id": "r1", "raw_task": "should X be merged?", "phase": "Clarify",
+        "explore_ran": False,
+        "clarify": {"flagged_uncertainties": [], "known_facts": []},
+    }
+    rc, out = _run_guard("state-write", _state_ok, ["--output-dir", _out, "--to", "runs/r1/state.json"])
+    if rc == 0:
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-write of a valid Clarify state should succeed: {out}")
+
+    rc, out = _run_guard("state-find", {"raw_task": "should X be merged?"}, ["--output-dir", _out])
+    if rc == 0 and out and out["result"]["found"] and out["result"]["state"]["run_id"] == "r1":
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-find should match the exact raw_task and return it: {out}")
+
+    rc, out = _run_guard("state-find", {"raw_task": "a totally different question"}, ["--output-dir", _out])
+    if rc == 0 and out and out["result"]["found"] is False:
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-find should report not-found for a non-matching raw_task: {out}")
+
+    rc, out = _run_guard("state-read", extra_args=["--from", os.path.join(_out, "runs/r1/state.json")])
+    if rc == 0 and out and out["result"]["state"]["clarify"] == _state_ok["clarify"]:
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-read should return the full state, not just a validity flag: {out}")
+
+    # A state.json with a valid "explore" artifact must round-trip through
+    # state-write/state-find; an invalid one must be rejected on write.
+    _state_explore_ok = {
+        "run_id": "r2", "raw_task": "scoped X", "phase": "Explore", "explore_ran": True,
+        "explore": {"branches": [{"name": "A", "feasibility": 5, "impact": 5, "risk": 5}]},
+    }
+    rc, out = _run_guard("state-write", _state_explore_ok,
+                          ["--output-dir", _out, "--to", "runs/r2/state.json"])
+    if rc == 0:
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-write of a valid Explore state should succeed: {out}")
+
+    _state_explore_bad = {**_state_explore_ok, "explore": {"branches": [{"name": "A"}]}}  # missing axes
+    rc, out = _run_guard("state-write", _state_explore_bad,
+                          ["--output-dir", _out, "--to", "runs/bad/state.json"])
+    if rc == 2:
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-write should reject an Explore artifact missing required axes: {out}")
+
+    # A malformed state.json sitting in runs/ must not crash state-find -- it's
+    # skipped, and a genuine match elsewhere must still be found.
+    _malformed_dir = os.path.join(_out, "runs", "malformed")
+    os.makedirs(_malformed_dir, exist_ok=True)
+    with open(os.path.join(_malformed_dir, "state.json"), "w") as fh:
+        fh.write("not json")
+    rc, out = _run_guard("state-find", {"raw_task": "scoped X"}, ["--output-dir", _out])
+    if rc == 0 and out and out["result"]["found"] and out["result"]["state"]["run_id"] == "r2":
+        passed += 1
+    else:
+        failed += 1
+        print(f"FAIL: state-find must skip a malformed state.json, not crash: {out}")
 
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

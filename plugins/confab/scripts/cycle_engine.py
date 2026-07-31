@@ -24,6 +24,13 @@ Rules enforced here:
     ledger records specifically; findings arriving from a domain
     *_summary.json sidecar were already validated at the point they were
     written by that domain's own writer script).
+  * cycle-first-pass-uses-existing-audit-findings — on a ledger with no
+    findings recorded yet (a fresh cycle, or one where nothing has been
+    upserted into it), plan-next-pass reads each domain's own standalone
+    *_summary.json sidecar (the artifact a domain audit skill run before
+    or outside the cycle already wrote) to pick the constraint domain,
+    instead of always defaulting to DOMAIN_ORDER_FALLBACK[0] regardless of
+    what's actually sitting on disk.
 
 Subcommands:
     plan-next-pass <repo_root> [--max-passes N] [--mode fix|propose]
@@ -62,14 +69,59 @@ from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
 DOMAIN_ORDER_FALLBACK = ["dependency_audit", "contract_drift", "agentic_reliability", "assertion_audit"]
 
 
-def _pick_constraint_domain(ledger: dict) -> str:
+def _load_domain_summary_counts(repo_root: str) -> dict:
+    """Best-effort read of each domain's standalone *_summary.json sidecar
+    (written by that domain's own audit script, e.g. dependency_audit.py),
+    used only to pick a constraint domain when the ledger itself has no
+    findings recorded yet. A missing, unreadable, or malformed sidecar is
+    treated as "no data for that domain" rather than an error -- plan-next-
+    pass is the first command of a cycle and must still succeed when no
+    domain audit has ever been run.
+
+    Findings here have no ledger "status" (they haven't been triaged by a
+    cycle pass yet) or "escalated" state (escalation only exists after a
+    reopen inside the ledger) -- so only open_high/open_total are counted,
+    matching what these findings would look like the moment they're first
+    upserted into the ledger.
+    """
+    counts = {}
+    for domain in DOMAIN_ORDER_FALLBACK:
+        path = safe_output_path(repo_root, f"{domain}_summary.json")
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as fh:
+                summary = json.load(fh)
+        except (OSError, json.JSONDecodeError):
+            continue
+        findings = summary.get("findings")
+        if not isinstance(findings, list) or not findings:
+            continue
+        open_high = sum(1 for f in findings if isinstance(f, dict) and f.get("severity") == "High")
+        counts[domain] = {"open_high": open_high, "open_total": len(findings)}
+    return counts
+
+
+def _pick_constraint_domain(ledger: dict, repo_root: str) -> str:
     """"whichever domain is 'constraint' (escalated findings first, then
-    most open High findings, then most total open)". Falls back to a fixed
-    canonical order when the ledger has no findings yet (design decision,
-    documented in README — the spec does not state a first-pass tiebreak).
+    most open High findings, then most total open)". When the ledger has
+    no findings of its own yet, falls back to each domain's own standalone
+    *_summary.json sidecar (rule: cycle-first-pass-uses-existing-audit-
+    findings) so a fresh cycle's first pass targets the domain that
+    already has real, on-disk findings rather than always starting with
+    DOMAIN_ORDER_FALLBACK[0]. Only when no domain has any sidecar data
+    either does it fall back to that fixed canonical order (design
+    decision, documented in README — the spec does not state a
+    first-pass tiebreak).
     """
     findings = ledger["findings"]
     if not findings:
+        summary_counts = _load_domain_summary_counts(repo_root)
+        if summary_counts:
+            high_domains = {d: c for d, c in summary_counts.items() if c["open_high"] > 0}
+            if high_domains:
+                return max(high_domains, key=lambda d: high_domains[d]["open_high"])
+            return max(summary_counts, key=lambda d: summary_counts[d]["open_total"])
         return DOMAIN_ORDER_FALLBACK[0]
 
     by_domain = {}
@@ -112,7 +164,7 @@ def cmd_plan_next_pass(args) -> int:
         print(json.dumps({"error": str(exc), "maxPasses": max_passes}), file=sys.stderr)
         return 2
 
-    domain = _pick_constraint_domain(ledger)
+    domain = _pick_constraint_domain(ledger, repo_root)
     plan = {"passNumber": pass_number, "domain": domain, "mode": args.mode, "maxPasses": max_passes}
     print(json.dumps(plan, indent=2))
     return 0

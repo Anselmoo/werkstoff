@@ -189,8 +189,9 @@ def cmd_status_present_artifacts(args):
     output_dir = args.output_dir or s["output_dir"]
     output_abs = os.path.join(os.path.realpath(args.repo), output_dir)
     present = status.build_present_artifacts(output_abs)
+    structural = status.build_structural_artifacts(output_abs)
     recommend_brief = status.recommend_transform_brief(output_abs)
-    _print({"present": present, "recommend_transform_brief": recommend_brief})
+    _print({"present": present, "structural": structural, "recommend_transform_brief": recommend_brief})
 
 
 def cmd_grade_repo(args):
@@ -233,6 +234,14 @@ def cmd_staleness_check(args):
     for artifact_path in args.artifact:
         result[artifact_path] = staleness.is_stale(artifact_path, ts)
     _print({"latest_commit_ts": ts, "stale": result})
+
+
+def cmd_stage_map_fresh_check(args):
+    s = settings_mod.load_settings(args.repo)
+    output_dir = args.output_dir or s["output_dir"]
+    output_abs = os.path.join(os.path.realpath(args.repo), output_dir)
+    fresh = staleness.stage_map_fresh(output_abs, args.repo)
+    _print({"fresh": fresh, "required_artifacts": list(staleness.STAGE_MAP_REQUIRED_ARTIFACTS)})
 
 
 def cmd_autopilot_fix_gate(args):
@@ -391,6 +400,11 @@ def build_parser():
     p.add_argument("--repo", required=True)
     p.add_argument("--artifact", required=True, action="append")
     p.set_defaults(func=cmd_staleness_check)
+
+    p = sub.add_parser("stage-map-fresh-check")
+    p.add_argument("--repo", required=True)
+    p.add_argument("--output-dir")
+    p.set_defaults(func=cmd_stage_map_fresh_check)
 
     p = sub.add_parser("autopilot-fix-gate")
     p.add_argument("--repo", required=True)

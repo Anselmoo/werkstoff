@@ -358,6 +358,28 @@ def validate_branch_scores(branches: list) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# compass-solve run-reuse enforcement (state-find's selection rule)
+# --------------------------------------------------------------------------- #
+
+def select_reusable_run(candidates: list[dict], raw_task: str) -> dict | None:
+    """Pick the persisted run whose own `raw_task` matches the given text
+    byte-for-byte (no fuzzy/normalized matching — a mismatch is reported as
+    "not found," never guessed at), preferring the most recently modified
+    match when more than one exists. Each candidate is
+    {"path": str, "mtime": float, "state": dict} — already loaded and
+    schema-validated by the caller (compass.py's state-find subcommand);
+    this function makes no filesystem calls of its own, so it is directly
+    testable without I/O. Returns the winning candidate, or None if nothing
+    matches — finding nothing is the normal, common case (first time this
+    exact text has gone through this phase), never an error.
+    """
+    matches = [c for c in candidates if c["state"].get("raw_task") == raw_task]
+    if not matches:
+        return None
+    return max(matches, key=lambda c: c["mtime"])
+
+
+# --------------------------------------------------------------------------- #
 # compass-draft-revise enforcement
 # --------------------------------------------------------------------------- #
 

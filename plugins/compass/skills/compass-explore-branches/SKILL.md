@@ -53,6 +53,25 @@ The guard computes **Total = Feasibility + Impact + Risk (Risk NOT inverted)**,
 selects the **highest total**, and **breaks ties by lower risk**. Use its
 `selected` — do not re-derive the winner by hand.
 
+### 5. Persist (so a later `compass-solve` can reuse this)
+
+Generate a run id (`python3 -c "import uuid; print(uuid.uuid4())"`), then write:
+
+```
+echo '{
+  "run_id": "<run-id>",
+  "raw_task": "<the exact `problem` text you were given>",
+  "phase": "Explore",
+  "explore_ran": true,
+  "explore": {"branches": [<the same scored branches from step 3>]}
+}' | $GUARD state-write - --output-dir .compass --to runs/<run-id>/state.json
+```
+
+`raw_task` here is the `problem` text this invocation actually scored branches for.
+A later `compass-solve` run only reuses this if its own Explore step is about to
+score branches for that **exact same text** (see `compass-solve`'s own "Reuse a
+prior run" step) — matching is byte-for-byte, never fuzzy.
+
 ## Output
 - branches (name + description)
 - scores table: branch, Feasibility, Impact, Risk, Total, biggest blocker
