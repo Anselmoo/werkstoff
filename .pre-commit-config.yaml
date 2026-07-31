@@ -6,3 +6,4 @@ repos:
     hooks:
       - id: rrt-config-validate
       - id: rrt-doctor
+      - id: rrt-branch-name

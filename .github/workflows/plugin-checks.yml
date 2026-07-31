@@ -21,6 +21,7 @@ jobs:
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
+      rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +46,16 @@ jobs:
 
       - name: Install rrt
         run: uv tool install "repo-release-tools>=1.13.1"
+
+      - name: Validate branch name
+        id: rrt_branch_name
+        continue-on-error: true
+        # Mirrors the branch-name step of Anselmoo/repo-release-tools' own
+        # composite action (rrt-hooks check-branch-name), run via the CLI
+        # already installed above instead of pulling in a second action.
+        env:
+          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        run: rrt-hooks check-branch-name --branch "$BRANCH_NAME"
 
       - name: Validate plugin/marketplace manifests
         id: manifests
@@ -83,7 +94,8 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
-          steps.rrt_artifacts.outcome == 'failure'
+          steps.rrt_artifacts.outcome == 'failure' ||
+          steps.rrt_branch_name.outcome == 'failure'
         run: exit 1
 
   board:
@@ -115,6 +127,7 @@ jobs:
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
+            row "Branch name (conventional)" "${{ needs.checks.outputs.rrt_branch_name }}"
           } > board.md
           cat board.md
 

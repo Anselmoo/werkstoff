@@ -180,6 +180,14 @@ fires on any `v*.*.*` tag and always publishes `tools/werkstoff-cli` regardless
 of intent, so a bare tag on a plugin triggers a spurious PyPI publish.
 `<group>-v...` tags instead fire `plugin-release.yml` (a scoped GitHub Release).
 
+Branch names must follow rrt's conventional format, `<type>/[<scope>-]<kebab-case-description>`
+(e.g. `feat/rrt-branch-naming`, `fix/api-timeout`) — use `rrt branch new <type>
+"<description>"` (or `rrt branch rename`) rather than naming branches by hand.
+This is enforced twice: locally via the `rrt-branch-name` pre-commit hook
+(`.pre-commit-config.yaml`), and in CI via the "Validate branch name" step in
+`.github/workflows/plugin-checks.yml`, which runs `rrt-hooks check-branch-name`
+against the PR's head branch on every pull request.
+
 ## Gotchas
 
 - **Workflow scripts have no filesystem access.** Anything a workflow needs
