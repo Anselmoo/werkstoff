@@ -51,3 +51,27 @@ echo '{
 The result gives `flagged_count`, `blocking_uncertainties`, and `must_pause`. **If
 `must_pause` is true, stop and ask the user** — do not proceed under a guess. A
 non-zero exit means a gating field was missing; supply it, never invent it.
+
+## Persist (so a later `compass-solve` can reuse this)
+
+Generate a run id (`python3 -c "import uuid; print(uuid.uuid4())"`), then write:
+
+```
+echo '{
+  "run_id": "<run-id>",
+  "raw_task": "<the exact text you were asked to scope>",
+  "phase": "Clarify",
+  "explore_ran": false,
+  "clarify": {
+    "scoped_task": "...",
+    "known_facts": [...],
+    "flagged_uncertainties": [...],
+    "success_criteria": [...]
+  }
+}' | $GUARD state-write - --output-dir .compass --to runs/<run-id>/state.json
+```
+
+This is what lets a later `compass-solve` run on the same task skip re-running Clarify
+from scratch — it matches on `raw_task` **byte-for-byte** (see `compass-solve`'s own
+"Reuse a prior run" step), so keep this identical to what you were actually given, not
+a paraphrase.

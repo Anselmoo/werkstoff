@@ -23,8 +23,29 @@ guard CLI. Never skip a guard call — its non-zero exit is the enforcement.
 
 When the Workflow tool is available, run the whole pipeline through
 `${CLAUDE_PLUGIN_ROOT}/workflows/solve.js` (args: `{ task, multipleApproaches?,
-requestedBranches?, maxBranchCount?, successCriteria? }`). It computes Kahn waves,
-enforces phase order, and pauses on blocking uncertainty — all in code. Prefer it.
+requestedBranches?, maxBranchCount?, successCriteria?, priorClarify?, priorExplore? }`).
+It computes Kahn waves, enforces phase order, and pauses on blocking uncertainty —
+all in code. Prefer it.
+
+**Workflow scripts have no filesystem access**, so every reuse check must happen
+before you invoke it — the script runs to completion in one shot; it cannot pause
+partway to ask you to look something up.
+1. `echo '{"raw_task":"<task>"}' | $GUARD state-find - --output-dir .compass`. If
+   `found` is true and `state.phase` is `Clarify` or later, that's your
+   `args.priorClarify` (pass `state.clarify` through unchanged).
+2. Only if step 1 found a reusable Clarify run do you already know
+   `state.clarify.scoped_task` before invoking the workflow — if so, run
+   `state-find` a second time with that text as `raw_task`. If it finds an
+   `Explore`-phase match, that's your `args.priorExplore` (pass `state.explore`
+   through unchanged).
+3. If step 1 found nothing, Clarify will run fresh inside the workflow and you
+   cannot know `scoped_task` in advance — pass no `priorExplore` in that case and
+   accept that Explore-reuse only works for the workflow path when Clarify was
+   also reused. (The Manual path doesn't have this limitation, since it can check
+   again after Clarify actually runs.)
+
+Never invent a `priorClarify`/`priorExplore` value yourself — only pass through
+exactly what `state-find` returned.
 
 ## Manual path (no Workflow tool)
 
@@ -32,8 +53,17 @@ Run the phases yourself, calling the guard between each. **MUST run in this orde
 Clarify -> Explore (conditional) -> Decompose -> Execute -> Revise.**
 
 ### 1. Clarify
-Invoke `compass-clarify-scope`. Then validate and get the pause decision:
-`echo '<clarify-json>' | $GUARD clarify -`
+**First, check for a prior run** (rule: solve-reuses-prior-standalone-run) so a
+task someone already scoped with `compass-clarify-scope` doesn't get redone blind:
+`echo '{"raw_task":"<the task text>"}' | $GUARD state-find - --output-dir .compass`
+- If `found` is `true` and the returned `state.phase` is `Clarify` or later, **reuse
+  `state.clarify`** as this phase's result instead of invoking `compass-clarify-scope`
+  — tell the user you're reusing a prior scoping run (cite its `run_id`), don't
+  silently redo it and don't silently skip mentioning it either.
+- Otherwise, invoke `compass-clarify-scope` fresh.
+
+Then, whichever `clarify` object you now have (fresh or reused), validate it and get
+the pause decision: `echo '<clarify-json>' | $GUARD clarify -`
 - The result's `must_pause` is a first-class field. **If `must_pause` is true you
   MUST stop and wait for user input before Explore.** Do not silently adopt a
   default for a blocking uncertainty. Present the `blocking_uncertainties` and halt.
@@ -41,7 +71,14 @@ Invoke `compass-clarify-scope`. Then validate and get the pause decision:
 ### 2. Explore (conditional)
 - **Skip Explore entirely** if the scoped task has one obvious approach and no real
   strategic fork; pass the scoped task straight to Decompose.
-- Otherwise invoke `compass-explore-branches` to pick an approach.
+- Otherwise, **first check for a prior run**, matching on `clarify.scoped_task` (the
+  exact text Explore is about to be given, whether Clarify just ran fresh or was
+  reused above):
+  `echo '{"raw_task":"<clarify.scoped_task>"}' | $GUARD state-find - --output-dir .compass`
+  If `found` is `true`, `state.phase` is `Explore` (or later), and `state.explore` is
+  present, **reuse `state.explore`** instead of invoking `compass-explore-branches` —
+  cite the reused `run_id` to the user. Otherwise invoke `compass-explore-branches`
+  to pick an approach.
 
 ### 3. Decompose
 Invoke `compass-decompose-chain`, then:
@@ -70,6 +107,9 @@ out of order — a bug to fix, not to report as success.
 To persist run state for a later `compass-summarize-trace`, use the guarded writer
 (it enforces write scope and validates every gating field before writing):
 `echo '<state-json>' | $GUARD state-write - --output-dir .compass --to runs/<id>/state.json`
+This is the pipeline's own final, complete record — write it under a fresh `<id>`
+even when Clarify/Explore reused an earlier standalone run above; the reused runs'
+own state.json files are left in place as-is, not merged or deleted.
 
 ## Output
 - scoped task result
