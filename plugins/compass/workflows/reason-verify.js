@@ -11,13 +11,26 @@ export const meta = {
 const SELF_CONSISTENCY_ATTEMPTS = 3
 const STRATEGIES = ['forward deduction', 'backward from options', 'constraint mapping']
 
-const task = args?.task
+function normalizeArgs(a) {
+  if (typeof a !== 'string') return a
+  try {
+    const parsed = JSON.parse(a)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {}
+  throw new Error(
+    'reason-verify: args arrived as a string that is not a JSON object — ' +
+    'pass args as an object in the tool call, not JSON.stringify(...)',
+  )
+}
+const parsedArgs = normalizeArgs(args)
+
+const task = parsedArgs?.task
 if (!task) throw new Error('reason-verify: args.task is required')
 if (STRATEGIES.length !== SELF_CONSISTENCY_ATTEMPTS) {
   throw new Error('reason-verify: strategy count must equal SELF_CONSISTENCY_ATTEMPTS')
 }
 
-const multimodal = !!args?.hasImageOrDiagram
+const multimodal = !!parsedArgs?.hasImageOrDiagram
 if (multimodal) log('Input contains an image/diagram: Multimodal-CoT applied before reasoning.')
 
 phase('Attempt')

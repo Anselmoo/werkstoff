@@ -14,8 +14,21 @@ const CANDIDATE_COUNT = APE_FRAMINGS.length // exactly 5
 const CHECKLIST_SIZE = 4
 const FRAMING_ORDER = Object.fromEntries(APE_FRAMINGS.map((f, i) => [f, i]))
 
-const taskDesc = args?.taskDescription
-const testCases = args?.testCases
+function normalizeArgs(a) {
+  if (typeof a !== 'string') return a
+  try {
+    const parsed = JSON.parse(a)
+    if (parsed && typeof parsed === 'object') return parsed
+  } catch {}
+  throw new Error(
+    'optimize-instruction: args arrived as a string that is not a JSON object — ' +
+    'pass args as an object in the tool call, not JSON.stringify(...)',
+  )
+}
+const parsedArgs = normalizeArgs(args)
+
+const taskDesc = parsedArgs?.taskDescription
+const testCases = parsedArgs?.testCases
 if (!taskDesc) throw new Error('optimize-instruction: args.taskDescription is required')
 if (!Array.isArray(testCases) || testCases.length < 3 || testCases.length > 5) {
   throw new Error('optimize-instruction: 3-5 real test cases {input, expectedOutcome} required')
