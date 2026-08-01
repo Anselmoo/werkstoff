@@ -84,7 +84,19 @@ jobs:
 
       - name: Determine bump level from the head commit's conventional-commit type
         id: level
-        if: github.event_name != 'workflow_call'
+        # NOT `github.event_name != 'workflow_call'` -- confirmed against
+        # GitHub's own docs ("the github context is consistently associated
+        # with the caller workflow"): when this workflow is invoked via
+        # batch-release.yml's `uses:`, github.event_name is the CALLER's
+        # trigger (workflow_dispatch), never 'workflow_call'. That check was
+        # therefore always true even on the explicit-input path, so this
+        # step always ran and the "Normalize" step below always ignored
+        # groups_and_levels in favor of sniffing HEAD~1..HEAD -- confirmed
+        # live: a real dispatch with an explicit six-group input resolved to
+        # "Resolved pairs: '<none>'". inputs.groups_and_levels is empty on a
+        # plain push (workflow_call inputs don't populate outside that
+        # event), so checking it directly is the actual reliable signal.
+        if: inputs.groups_and_levels == ''
         env:
           # GitHub Actions expression interpolation (${{ ... }}) splices its
           # value directly into the shell script's TEXT before bash ever
@@ -123,7 +135,7 @@ jobs:
 
       - name: Determine which version groups changed
         id: groups
-        if: github.event_name != 'workflow_call' && steps.level.outputs.level != ''
+        if: inputs.groups_and_levels == '' && steps.level.outputs.level != ''
         run: |
           # NOTE: GROUPS is a bash-reserved special variable (auto-populated
           # with the current user's OS group IDs) -- naming a plain variable
@@ -146,7 +158,6 @@ jobs:
       - name: Normalize groups_and_levels for this run
         id: pairs
         env:
-          EVENT_NAME: ${{ github.event_name }}
           CALL_INPUT: ${{ inputs.groups_and_levels }}
           PUSH_LEVEL: ${{ steps.level.outputs.level }}
           PUSH_GROUPS: ${{ steps.groups.outputs.groups }}
@@ -156,7 +167,12 @@ jobs:
           # trigger fired it. workflow_call already arrives in exactly that
           # shape; the push trigger applies its single detected LEVEL to
           # every changed GROUP to build the same shape.
-          if [ "$EVENT_NAME" = "workflow_call" ]; then
+          #
+          # Branches on CALL_INPUT itself, NOT EVENT_NAME -- see the
+          # comment on the "Determine bump level" step above: EVENT_NAME is
+          # always the CALLER's trigger for a workflow invoked via `uses:`,
+          # never 'workflow_call', so this branch was previously dead code.
+          if [ -n "$CALL_INPUT" ]; then
             PAIRS="$CALL_INPUT"
           elif [ -n "$PUSH_LEVEL" ] && [ -n "$PUSH_GROUPS" ]; then
             PAIRS=""
