@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -18,6 +19,28 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 REPO_ROOT = ROOT.parent.parent  # tools/symbol-indexer -> tools -> repo root
 SCRIPT = ROOT / "build_symbol_index.py"
+
+
+def _vendored_plugin_dirs(filename: str) -> list[Path]:
+    """Plugin dirs that vendor `filename`, per .rrt.toml's artifact_targets --
+
+    not every directory under plugins/. Only some plugins came out of the
+    rebuild pipeline that vendors build_symbol_index.py and
+    parallel-safe-research-protocol.md; a plugin outside that lineage (e.g.
+    one forked from a different upstream, like codebase-consistency) has no
+    reason to carry either file, so this must read the same config
+    `rrt artifacts --check` treats as authoritative rather than assume every
+    plugin dir participates.
+    """
+    config = tomllib.loads((REPO_ROOT / ".rrt.toml").read_text(encoding="utf-8"))
+    targets = config["tool"]["rrt"]["artifact_targets"]
+    return sorted(
+        {
+            REPO_ROOT / Path(target["path"]).parent.parent
+            for target in targets
+            if Path(target["path"]).name == filename
+        }
+    )
 SPEC = importlib.util.spec_from_file_location("symbol_indexer", SCRIPT)
 assert SPEC and SPEC.loader
 INDEXER = importlib.util.module_from_spec(SPEC)
@@ -223,21 +246,28 @@ class SymbolIndexerTest(unittest.TestCase):
     def test_every_vendored_copy_matches_the_canonical_source(self) -> None:
         # The vendoring convention (retired in commit 0c10fa0, reinstated via
         # .rrt.toml's artifact_targets) is back: build_symbol_index.py and
-        # parallel-safe-research-protocol.md are synced into all six plugins'
-        # scripts/ and references/ directories via `rrt artifacts --regenerate`.
-        # This is a second, rrt-independent guard against silent drift -- if a
-        # vendored copy is hand-edited without re-running rrt, this catches it
-        # even in a CI job that never invokes rrt.
+        # parallel-safe-research-protocol.md are synced into the plugins
+        # .rrt.toml's artifact_targets actually name, via
+        # `rrt artifacts --regenerate`. This is a second, rrt-independent
+        # guard against silent drift -- if a vendored copy is hand-edited
+        # without re-running rrt, this catches it even in a CI job that
+        # never invokes rrt. It must read the same config `rrt artifacts
+        # --check` treats as authoritative (_vendored_plugin_dirs) rather
+        # than scan every directory under plugins/ -- a plugin outside the
+        # rebuild-pipeline lineage (e.g. one forked from a different
+        # upstream) legitimately has neither file, and scanning every
+        # plugin dir wrongly demanded it vendor tooling it never uses.
         canonical_script = SCRIPT.read_bytes()
         canonical_protocol = (ROOT / "parallel-safe-research-protocol.md").read_bytes()
-        for plugin_dir in sorted((REPO_ROOT / "plugins").iterdir()):
+        for plugin_dir in _vendored_plugin_dirs("build_symbol_index.py"):
             vendored_script = plugin_dir / "scripts" / "build_symbol_index.py"
-            vendored_protocol = plugin_dir / "references" / "parallel-safe-research-protocol.md"
             self.assertTrue(vendored_script.is_file(), f"{vendored_script} missing -- run `rrt artifacts --regenerate`")
             self.assertEqual(
                 vendored_script.read_bytes(), canonical_script,
                 f"{vendored_script} has drifted from the canonical source -- run `rrt artifacts --regenerate`",
             )
+        for plugin_dir in _vendored_plugin_dirs("parallel-safe-research-protocol.md"):
+            vendored_protocol = plugin_dir / "references" / "parallel-safe-research-protocol.md"
             self.assertTrue(vendored_protocol.is_file(), f"{vendored_protocol} missing -- run `rrt artifacts --regenerate`")
             self.assertEqual(
                 vendored_protocol.read_bytes(), canonical_protocol,
