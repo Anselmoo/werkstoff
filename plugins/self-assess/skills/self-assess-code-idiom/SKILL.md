@@ -1,7 +1,6 @@
 ---
 name: self-assess-code-idiom
 description: This skill should be used when the user asks to "find modernization opportunities", "check for deprecated idioms", "find code smells", or as part of self-assess-autopilot's CHECK phase. Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell.
-version: 0.1.0
 ---
 
 # self-assess-code-idiom

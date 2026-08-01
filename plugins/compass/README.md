@@ -2,6 +2,15 @@
 
 **Staged reasoning-composition for complex, ambiguous, or multi-faceted tasks.**
 
+## Why this exists
+
+Ad hoc prompting for complex or ambiguous tasks tends to skip steps under
+pressure — clarification gets rushed, alternatives don't get explored,
+self-consistency checks quietly don't happen. compass composes the standard
+reasoning techniques into one fixed pipeline so a task can't silently skip a
+stage, and enforces every guarantee with executable code rather than prose a
+model could ignore under load — the difference explained below.
+
 compass applies techniques from prompt-engineering theory — clarification,
 tree-of-thoughts exploration, chain decomposition, chain-of-thought /
 self-consistency / PAL reasoning, RAG-style grounding, ReAct investigation, APE

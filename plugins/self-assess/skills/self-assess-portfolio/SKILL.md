@@ -1,7 +1,6 @@
 ---
 name: self-assess-portfolio
 description: This skill should be used when the user asks to "sweep multiple repos", "assess our whole portfolio", "grade all our projects", or names a parent directory containing several git repositories. Grades each repo Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo.
-version: 0.1.0
 ---
 
 # self-assess-portfolio

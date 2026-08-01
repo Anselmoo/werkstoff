@@ -1,7 +1,6 @@
 ---
 name: self-assess-ui-audit
 description: This skill should be used when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", or as part of self-assess-autopilot's CHECK phase. Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app.
-version: 0.1.0
 ---
 
 # self-assess-ui-audit

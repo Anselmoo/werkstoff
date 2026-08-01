@@ -4,6 +4,17 @@ A design and craft discipline rooted in Steve Jobs' documented decisions,
 applied through a fixed, sequenced lifecycle pipeline — not a menu of
 individually-selectable design techniques.
 
+## Why this exists
+
+"Design like Apple" requests usually produce Apple *aesthetic* — rounded
+corners, San Francisco-adjacent type — without the decision discipline that
+produced it. cupertino grounds each stage in a specific, documented
+Jobs/Apple decision instead of a vibe, and it is deliberately not a menu: the
+eight stages run in a fixed sequence because skipping straight to
+prototyping without first cutting scope (`cupertino-backwards` →
+`cupertino-focus`) is exactly how "premium" ends up meaning "more
+decoration" instead of "more considered."
+
 ```
 cupertino-backwards -> cupertino-focus -> [cupertino-longevity & cupertino-integrate]
   -> cupertino-council -> cupertino-prototype -> cupertino-elevate -> cupertino-unbox -> cupertino-reveal

@@ -1,7 +1,6 @@
 ---
 name: self-assess-idiom-fix
 description: This skill should be used when the user explicitly asks to "apply the modernization findings", "fix the idiom findings", or "auto-fix what code-idiom found". Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode="fix", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying.
-version: 0.1.0
 ---
 
 # self-assess-idiom-fix

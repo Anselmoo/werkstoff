@@ -50,6 +50,20 @@ the mismatch is real and not a false positive (e.g. an overload you
 missed), mark it `severity: "High"`. Do not inflate severity to make a
 finding look more important than your own confidence in it.
 
+One instance, with concrete values:
+
+```json
+{
+  "severity": "High",
+  "title": "fetch_user(id: int) is called with a string id at three call sites",
+  "evidence": "src/api/handlers.py:203",
+  "category": "type-mismatch",
+  "fixability": "advisory",
+  "declaredLocation": "src/api/users.py:14",
+  "actualUsageLocation": "src/api/handlers.py:203"
+}
+```
+
 ## What you must refuse
 
 - You cannot fix contracts or code — you have no `Write` or `Edit` tool.

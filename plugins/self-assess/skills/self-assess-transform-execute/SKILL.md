@@ -1,7 +1,6 @@
 ---
 name: self-assess-transform-execute
 description: This skill should be used when the user explicitly asks to "execute phase N from the modernization brief", "apply this transform phase", or "run the merge/split transform-execute proposed". Applies exactly one human-authorized phase from MODERNIZATION_BRIEF.md, gated behind transform.mode="execute", a clean tree, and every Open Question resolved -- then hands off to andon-verify without self-verifying.
-version: 0.1.0
 ---
 
 # self-assess-transform-execute

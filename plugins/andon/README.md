@@ -5,6 +5,17 @@ discovered gaps, proving each wire before advancing via seven
 evidence-grounded strategies, and halting rather than passing broken or
 unproven handoffs -- the andon rule.
 
+## Why this exists
+
+Automated "fix loops" have an obvious failure mode: they propose something
+that looks right, move on, and the next stage inherits a fix that was never
+actually checked. andon borrows the Toyota andon cord — stop the line the
+moment a defect is found, rather than pass it downstream — and applies it to
+an AI hardening loop: every fix must be proven against its wire's contract by
+one of seven evidence-grounded strategies (adversarial tribunal, numerical
+V&V, and others) before the loop is allowed to advance to the next stage. A
+halt is the intended outcome for an unproven fix, not a bug in the loop.
+
 ## Install
 
 ```bash

@@ -5,6 +5,16 @@ topology, conventions, code idioms, business rules, and UI/accessibility — wit
 carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
 (only when explicitly authorized) one gated transformation phase applied to source.
 
+## Why this exists
+
+A codebase self-assessment is only useful if its findings are trustworthy —
+a report that hallucinates a stale doc claim or an architecture violation
+costs more time to fact-check than it saves. self-assess ties every finding
+to `file:line` evidence read from the actual repository, keeps its CHECK
+phase strictly read-only, and gates the one place it can touch source (the
+FIX phase) behind explicit human authorization recorded on disk, not just a
+remembered "yes" earlier in the conversation.
+
 ## Install
 
 ```

@@ -5,6 +5,17 @@ in 12 languages**, each built against one unified five-pillar architecture
 doctrine and each ecosystem's real idioms — then verified against that doctrine
 before it is shown to you.
 
+## Why this exists
+
+CLI scaffolding usually means one of two things: hand-rolled boilerplate that
+goes stale as a language's idioms move on, or a generator locked to whatever
+templates it shipped with. cli-scaffold does neither — every scaffold is
+freeform-generated against one frozen five-pillar doctrine (UX, backend/core
+separation, stability, idiomatic distribution, Unix composability) and each
+target ecosystem's actual current idioms, then verified against that doctrine
+before you ever see it. The same architectural bar applies whether you ask
+for Rust, Bash, or PowerShell.
+
 ## Install
 
 ```bash

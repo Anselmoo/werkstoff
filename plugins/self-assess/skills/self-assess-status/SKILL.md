@@ -1,7 +1,6 @@
 ---
 name: self-assess-status
 description: This skill should be used when the user asks "where does self-assess stand", "what's stale in our analysis", "what should we run next", or "self-assess status". Reports which artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run.
-version: 0.1.0
 ---
 
 # self-assess-status

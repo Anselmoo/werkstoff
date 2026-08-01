@@ -1,7 +1,6 @@
 ---
 name: self-assess-stage-map
 description: This skill should be used when the user asks to "map the repo's architecture", "show me the real module boundaries", "map stages and wires", or as the first step of self-assess-autopilot's CHECK phase. Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on.
-version: 0.1.0
 ---
 
 # self-assess-stage-map

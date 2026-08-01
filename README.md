@@ -7,8 +7,10 @@ uses.
 
 ## Plugins
 
-Each plugin's own README has an **Example Prompts** section showing what to actually
-say to Claude Code to trigger it.
+Each plugin exists to catch or enforce one distinct thing — pick by problem,
+not by feature list. Every plugin README opens with a **Why this exists**
+section explaining the specific failure mode it targets, and an **Example
+Prompts** section showing what to actually say to Claude Code to trigger it.
 
 - **[`self-assess`](plugins/self-assess/README.md)** — codebase
   self-assessment for live, actively-maintained repos: import-graph-based
