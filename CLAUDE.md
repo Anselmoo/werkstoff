@@ -16,7 +16,7 @@ Before writing or editing a SKILL.md or agent file, read
 @docs/plugin-authoring/README.md — the craft/content-split entry point into
 `docs/plugin-authoring/references/craft-standards.md` (universal rules:
 frontmatter, anatomy, progressive disclosure, writing voice) and
-`references/output-shape-findings.md` (the evidence: this repo's skills/agents
+`docs/plugin-authoring/references/output-shape-findings.md` (the evidence: this repo's skills/agents
 are strong on enforcement prose but were weak on showing output shape —
 `plugins/cupertino/agents/handbook-dimension-analyst.md` and
 `plugins/self-assess/agents/business-rules-miner.md` are the two files in
