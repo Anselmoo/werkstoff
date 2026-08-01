@@ -66,6 +66,16 @@
       },
       "category": "development",
       "source": "./plugins/cli-scaffold"
+    },
+    {
+      "name": "codebase-consistency",
+      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "author": {
+        "name": "Anselm Hahn",
+        "email": "anselm.hahn@gmail.com"
+      },
+      "category": "development",
+      "source": "./plugins/codebase-consistency"
     }
   ]
 }

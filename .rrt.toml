@@ -1,6 +1,6 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# Seven independently-versioned units: six plugins under plugins/<name>/ (each
+# Eight independently-versioned units: seven plugins under plugins/<name>/ (each
 # with its own .claude-plugin/plugin.json) plus the werkstoff-cli installer
 # under tools/werkstoff-cli/ (pyproject.toml). There is deliberately NO
 # repo-wide version — bump one unit with `rrt bump <bump> --group <name>`.
@@ -68,6 +68,15 @@ changelog_file = "plugins/cli-scaffold/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
+name = "codebase-consistency"
+release_branch = "release/codebase-consistency/v{version}"
+changelog_file = "plugins/codebase-consistency/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/codebase-consistency/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
 name = "werkstoff-cli"
 release_branch = "release/werkstoff-cli/v{version}"
 changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
@@ -125,6 +134,13 @@ source = "plugins/cli-scaffold/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=cli-scaffold].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/codebase-consistency/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=codebase-consistency].description" },
 ]
 
 # Partially-standardized README section: the "## Example Prompts" heading and its

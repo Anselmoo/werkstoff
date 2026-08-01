@@ -1,0 +1,43 @@
+codebase-consistency
+Copyright 2026 Anselm Hahn
+
+This product is a Derivative Work, within the meaning of the Apache
+License, Version 2.0, of:
+
+    code-modernization
+    Copyright 2026 Anthropic, PBC
+    https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-modernization
+    Licensed under the Apache License, Version 2.0
+
+The pipeline discipline, workflow-orchestration mechanics (dependency-aware
+escalating batches, per-batch circuit breaker, loop-until-dry extraction
+with independent-referee verification), agent-boundary conventions
+(read-only discovery agents vs. write-scoped execution agents), and
+untrusted-input handling patterns (source code treated as data, credential
+masking, injection-flag reporting) originate in code-modernization and are
+reused here under the terms of the Apache License, Version 2.0.
+
+The domain content — commands, agents, workflow scripts, and the
+consistency-matrix viewer asset — has been substantially rewritten for a
+different problem: harmonizing internal architecture/docs/pattern/style
+divergence in an already-current, live codebase, as opposed to
+code-modernization's legacy-to-modern migration of COBOL/legacy
+Java/C++/.NET/monolith systems. No legacy-modernization domain content
+(business-rule mining, COBOL/CICS/JCL parsing, dual-runtime equivalence
+proving, version-delta cataloging) is carried over.
+
+Per License §4(b): every file in this plugin has been modified from, or
+newly written in place of, its code-modernization counterpart; each such
+file is a modified file within the meaning of that section, and this
+NOTICE stands as that prominent notice for the whole distribution rather
+than repeating it file-by-file.
+
+This plugin is not affiliated with, endorsed by, or produced by Anthropic.
+"Claude" and "Claude Code" are used only descriptively, to name the
+platform this plugin runs on.
+
+---
+
+See LICENSE for the full text of the Apache License, Version 2.0, under
+which this plugin is distributed. The contents of this NOTICE file are
+for informational purposes only and do not modify the License.
