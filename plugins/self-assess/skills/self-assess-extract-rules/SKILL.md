@@ -1,7 +1,6 @@
 ---
 name: self-assess-extract-rules
 description: This skill should be used when the user asks to "extract business logic", "document the domain rules hidden in this code", "turn tribal knowledge into a spec", or as part of self-assess-autopilot's CHECK phase. Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule.
-version: 0.1.0
 ---
 
 # self-assess-extract-rules
@@ -68,7 +67,27 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --r
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename business_rules.json
 ```
 
+Render `BUSINESS_RULES.md` as one Rule Card per confirmed rule, in the exact
+shape defined by `references/rule-card-template.md` (worked instances in
+`references/rule-card-examples.md`) -- a P0 rule downgraded to
+`unconfirmed` in Step 3 goes in a separate "Unconfirmed rules" section with
+its downgrade reason, never as a card, never silently dropped. If mining
+found nothing across all rounds, write the explicit empty-run form, not a
+missing or partial file. Both forms are shown end to end in
+`references/business-rules-report-sample.md` -- **mandatory read** before
+writing the file the first time.
+
 ## Read-only constraint
 
 Never use Write/Edit outside the four resolved output paths. Never invent business logic not
 present in the code.
+
+## Resources
+
+- `references/rule-card-template.md` -- the Rule Card schema every confirmed rule renders
+  as in `BUSINESS_RULES.md`. Read before writing that file the first time.
+- `references/rule-card-examples.md` -- worked Rule Card instances with concrete values.
+  Read alongside the template if the schema's field shapes aren't already obvious.
+- `references/business-rules-report-sample.md` -- a full rendered `BUSINESS_RULES.md`
+  sample, mixed-results and empty-run cases. **Mandatory read** before writing the file
+  the first time (see Step 4).

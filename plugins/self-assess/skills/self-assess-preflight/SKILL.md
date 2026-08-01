@@ -1,7 +1,6 @@
 ---
 name: self-assess-preflight
 description: This skill should be used when the user asks to "check if this repo is ready for self-assess", "run preflight", "can self-assess analyze this codebase", or before any other self-assess-* skill runs for the first time in a repo. Also invoked at the start of self-assess-autopilot's CHECK phase. Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill.
-version: 0.1.0
 ---
 
 # self-assess-preflight

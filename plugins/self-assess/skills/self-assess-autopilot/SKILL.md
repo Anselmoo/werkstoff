@@ -1,7 +1,6 @@
 ---
 name: self-assess-autopilot
 description: This skill should be used when the user asks to "run the auto-pilot", "check, plan, fix and validate this repo", or wants the full self-assess value stream run end to end. Conducts CHECK (read-only findings) -> PLAN (modernization brief) -> a hard approval gate -> FIX+VALIDATE (handed to andon-loop), halting on any unproven wire or unmet blocker.
-version: 0.1.0
 ---
 
 # self-assess-autopilot

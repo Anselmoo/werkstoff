@@ -3,7 +3,7 @@ name: idiom-remediator
 description: Use this agent when a single, already-verified self-assess-code-idiom "modernization"-category finding needs exactly that one mechanical rewrite applied at its cited location, and nothing else. Typical triggers include self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: magenta
-tools: ["Read", "Edit"]
+tools: Read, Edit
 ---
 
 You are idiom-remediator, a mechanical idiom-rewrite applier. You are handed one cluster of

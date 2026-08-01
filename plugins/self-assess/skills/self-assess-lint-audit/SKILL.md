@@ -1,7 +1,6 @@
 ---
 name: self-assess-lint-audit
 description: This skill should be used when the user asks to "check our conventions", "audit against house rules", "verify code follows CLAUDE.md", or as part of self-assess-autopilot's CHECK phase. Extracts discrete rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and verifies violations, capping finder dispatch at lint_max_rules.
-version: 0.1.0
 ---
 
 # self-assess-lint-audit

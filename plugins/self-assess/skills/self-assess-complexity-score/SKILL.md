@@ -1,7 +1,6 @@
 ---
 name: self-assess-complexity-score
 description: This skill should be used when the user asks "which module needs attention first", "score complexity per stage", "what's our tech debt hotspot", or as part of self-assess-autopilot's CHECK phase. Computes a relative complexity index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers.
-version: 0.1.0
 ---
 
 # self-assess-complexity-score

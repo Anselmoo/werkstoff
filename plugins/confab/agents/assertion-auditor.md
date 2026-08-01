@@ -46,6 +46,19 @@ mutation site), `category` (e.g. `"weak-assertion"`,
 (`"real-tool"` or `"llm-reasoned"`), and `fixability` — which you must
 ALWAYS set to `"advisory"`. Assertions are never auto-fixable; the
 calling skill's writer script rejects any other value for this domain.
+One instance, with concrete values:
+
+```json
+{
+  "severity": "Medium",
+  "title": "test asserts the mock was called, not the actual return value",
+  "evidence": "tests/test_pricing.py:41",
+  "category": "weak-assertion",
+  "toolSource": "llm-reasoned",
+  "fallbackReason": "mutmut not found on PATH",
+  "fixability": "advisory"
+}
+```
 
 ## What you must refuse
 

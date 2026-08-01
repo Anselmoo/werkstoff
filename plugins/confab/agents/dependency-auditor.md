@@ -46,7 +46,27 @@ manifest), `category` (`"hallucinated-dependency"`,
 `"typosquat-adjacent"`, or `"registry-unreachable"`), `fixability`
 (`"fixable"` for a clearly hallucinated entry a maintainer would just
 delete or correct; `"advisory"` for anything requiring judgment, including
-all `registry-unreachable` findings).
+all `registry-unreachable` findings). One instance of each, with concrete
+values:
+
+```json
+[
+  {
+    "severity": "High",
+    "title": "declared dependency 'reqeusts' does not exist in PyPI",
+    "evidence": "requirements.txt:7",
+    "category": "hallucinated-dependency",
+    "fixability": "fixable"
+  },
+  {
+    "severity": "Low",
+    "title": "PyPI lookup for 'internal-toolkit' timed out",
+    "evidence": "requirements.txt:12",
+    "category": "registry-unreachable",
+    "fixability": "advisory"
+  }
+]
+```
 
 ## What you must refuse
 

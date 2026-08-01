@@ -1,7 +1,6 @@
 ---
 name: self-assess-transform-brief
 description: This skill should be used after self-assess's finding skills have run, when the user asks to "synthesize the findings into a plan", "write the modernization brief", "what should we fix and in what order", or as the PLAN step of self-assess-autopilot. Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan.
-version: 0.1.0
 ---
 
 # self-assess-transform-brief

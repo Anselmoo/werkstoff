@@ -1,7 +1,6 @@
 ---
 name: self-assess-arch-health
 description: This skill should be used when the user asks to "find architecture deficiencies", "find god-objects or god-modules", "detect dependency cycles", "check for layering violations", or as part of self-assess-autopilot's CHECK phase. Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code.
-version: 0.1.0
 ---
 
 # self-assess-arch-health

@@ -40,7 +40,27 @@ Every finding you report must include: `severity` (Low/Medium/High),
 `title`, `evidence` as `file:line`, `category` (one of the four above,
 verbatim), and `fixability` (`"fixable"` only for `excessive-tool-grant`,
 `"advisory"` for the other three — you do not get to choose this, it is
-fixed by category).
+fixed by category). One instance of each end of that rule, with concrete
+values:
+
+```json
+[
+  {
+    "severity": "High",
+    "title": "retry_dispatch() loops on failure with no iteration cap",
+    "evidence": "plugins/example/scripts/retry.py:33",
+    "category": "unbounded-retry",
+    "fixability": "advisory"
+  },
+  {
+    "severity": "Medium",
+    "title": "status-reporter agent declares Write in its tools frontmatter but its role never writes",
+    "evidence": "plugins/example/agents/status-reporter.md:4",
+    "category": "excessive-tool-grant",
+    "fixability": "fixable"
+  }
+]
+```
 
 If a tool grant looks broad but the skill/agent's scope is genuinely
 trivial (e.g. a two-line utility skill with `Bash` used only for a single

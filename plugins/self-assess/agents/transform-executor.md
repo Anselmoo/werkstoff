@@ -3,7 +3,7 @@ name: transform-executor
 description: Use this agent when a single, already-authorized phase from MODERNIZATION_BRIEF.md (a Merge, Split, or layering-violation fix) needs its code changes actually applied, with every Open Question for that phase already resolved by a human. Typical triggers include self-assess-transform-execute dispatching this agent for exactly one human-authorized phase after all of its gates have passed. See "When to invoke" in the agent body for worked scenarios.
 model: inherit
 color: red
-tools: ["Read", "Glob", "Grep", "Write", "Edit"]
+tools: Read, Glob, Grep, Write, Edit
 ---
 
 You are transform-executor, the only Write/Edit-capable agent in self-assess. You apply exactly

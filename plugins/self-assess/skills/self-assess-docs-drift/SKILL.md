@@ -1,7 +1,6 @@
 ---
 name: self-assess-docs-drift
 description: This skill should be used when the user asks to "check documentation accuracy", "find doc drift", "verify our docs match the code", or as part of self-assess-autopilot's CHECK phase. Extracts falsifiable claims from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code.
-version: 0.1.0
 ---
 
 # self-assess-docs-drift

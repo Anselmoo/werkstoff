@@ -12,6 +12,16 @@ All six were regenerated from behavior specifications rather than hand-edited �
 see `docs/plugin-rebuild-findings.md` for what that measured, including which
 rebuilds gained enforcement and which lost rules.
 
+Before writing or editing a SKILL.md or agent file, read
+@docs/plugin-authoring/README.md — the craft/content-split entry point into
+`docs/plugin-authoring/references/craft-standards.md` (universal rules:
+frontmatter, anatomy, progressive disclosure, writing voice) and
+`references/output-shape-findings.md` (the evidence: this repo's skills/agents
+are strong on enforcement prose but were weak on showing output shape —
+`plugins/cupertino/agents/handbook-dimension-analyst.md` and
+`plugins/self-assess/agents/business-rules-miner.md` are the two files in
+this repo that already do it right).
+
 ## Use the MCPs — they are faster and more accurate than grep
 
 **serena** (connected) — symbol-level navigation. Prefer it over grep whenever
@@ -217,3 +227,32 @@ doctor`) when you want that check.
   `code-modernization`. Check that plugin's actual source before extending, not
   its description — a prior pass found the docs claimed more mirroring than the
   code did.
+- **Plugin/agent definitions load once per session.** Editing a skill/agent
+  file mid-conversation and then dispatching that agent (via the `Agent` tool)
+  in the *same* session can still reflect the pre-edit content — confirmed by
+  dispatching `self-assess:business-rules-miner` after editing its "Output
+  format" section and getting back the old prose verbatim, not the new fenced
+  example. Any behavioral test of a just-edited agent/skill (tool grants,
+  system-prompt wording, anything) needs a fresh session/process to be
+  meaningful — `test/plugins/run.sh` already documents and relies on this
+  (each case is its own `claude --print` process for exactly this reason).
+- **Unresolved: `self-assess:arch-health-auditor` reports having only
+  `{Read, Bash}` — missing `Glob`/`Grep` — against every tool-declaration
+  format tried.** Tested three ways: within-session with the original
+  bracket-array `tools: ["Read", "Glob", "Grep", "Bash"]`; within-session
+  after converting to `tools: Read, Glob, Grep, Bash` (no change); and in a
+  genuinely fresh `claude --print` subprocess with the corrected format
+  already on disk (still `{Read, Bash}` only). The fresh-process result rules
+  out both "stale session cache" and "the array format specifically" as the
+  cause — neither explanation survives the third test. No working alternative
+  hypothesis was found; a planned comparison run against a confab agent in an
+  equally fresh process didn't complete cleanly (a `--print`-mode quirk,
+  itself unexplained) before the investigation was stopped. All self-assess
+  agents are standardized on the comma-string `tools:` form regardless (it's
+  the documented canonical format, and two *other* agents —
+  `confab:contract-auditor`, `andon:andon-defender` — were confirmed via the
+  same self-report method to get exactly their declared tool set with it) —
+  but that fix is not proven to be the fix for this specific agent. Treat any
+  self-assess `*-auditor` agent's actual runtime tool access as unverified
+  until someone re-tests this with harness-level visibility this
+  investigation didn't have.
