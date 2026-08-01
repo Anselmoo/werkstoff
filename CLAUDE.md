@@ -4,12 +4,13 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — six plugins: `andon`, `cli-scaffold`, `compass`, `confab`,
-`cupertino`, `self-assess`. Each is independently versioned; `marketplace.json`
-and `.rrt.toml` both point here.
+`plugins/<name>/` — seven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
+`compass`, `confab`, `cupertino`, `self-assess`. Each is independently versioned;
+`marketplace.json` and `.rrt.toml` both point here.
 
-All six were regenerated from behavior specifications rather than hand-edited —
-see `docs/plugin-rebuild-findings.md` for what that measured, including which
+The first six (all but `codebase-consistency`, added later) were regenerated
+from behavior specifications rather than hand-edited — see
+`docs/plugin-rebuild-findings.md` for what that measured, including which
 rebuilds gained enforcement and which lost rules.
 
 Before writing or editing a SKILL.md or agent file, read
@@ -176,7 +177,7 @@ scoring" — which is why their rebuilds gained nothing.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Seven independent version groups in `.rrt.toml` (6 plugins + `tools/werkstoff-cli`).
+Eight independent version groups in `.rrt.toml` (7 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

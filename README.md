@@ -45,6 +45,14 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   POSIX sh), freeform-generated every time against a frozen five-pillar
   doctrine (UX, backend/core separation, stability, idiomatic
   distribution, Unix composability) rather than stored boilerplate.
+- **[`codebase-consistency`](plugins/codebase-consistency/README.md)** —
+  harmonizes an already-modern, live codebase that grew inconsistent:
+  derives the canonical form for undocumented, non-deprecated pattern
+  variants (documented conventions and version-deprecated idioms are
+  out of scope — see `self-assess`) via a structured preflight / scan /
+  map / canonize / brief / align / verify / status workflow, with a
+  navigable consistency matrix and an equivalence-verified alignment
+  pass.
 
 ## Install
 
@@ -54,8 +62,8 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 ```
 
 Swap `self-assess` for any plugin name above (`confab`, `compass`,
-`cupertino`, `andon`, `cli-scaffold`) to install a different one — each
-is independent and can be installed on its own.
+`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`) to install
+a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin
 directory without registering the marketplace:
@@ -74,5 +82,8 @@ code between them beyond convention.
 
 ## License
 
-MIT. See `LICENSE` (repo-wide) and each plugin's own `LICENSE`
-copy under `plugins/<name>/`.
+MIT for the repo and every plugin except `codebase-consistency`, which
+is Apache-2.0 — it's a Derivative Work of Anthropic's `code-modernization`
+plugin and carries that plugin's license forward; see
+`plugins/codebase-consistency/LICENSE` and `NOTICE`. See the repo-root
+`LICENSE` for everything else.
