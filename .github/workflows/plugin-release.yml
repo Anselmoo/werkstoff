@@ -22,7 +22,7 @@ jobs:
           GROUP="${TAG%-v*}"
           VERSION="${TAG##*-v}"
           case "$GROUP" in
-            self-assess|confab|compass|cupertino|andon|cli-scaffold) ;;
+            self-assess|confab|compass|cupertino|andon|cli-scaffold|codebase-consistency) ;;
             *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
           esac
           echo "group=$GROUP" >> "$GITHUB_OUTPUT"
