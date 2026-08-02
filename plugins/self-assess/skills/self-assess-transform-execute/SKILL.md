@@ -55,12 +55,28 @@ Add `--allow-dirty` only when the user has set `require_clean_tree: false` in
 non-zero exit with a dirty tree and no override means: stop, show the user the changed paths,
 and ask them to commit, stash, or explicitly confirm proceeding anyway.
 
-## Step 5: Dispatch transform-executor
+## Step 5: Open the edit-scope lock, then dispatch transform-executor
 
-Only after all four gates above pass, dispatch the `transform-executor` agent with exactly
-phase `<N>`'s decision, its declared stage scope, and its (now-resolved) Open Questions. The
-agent refuses to touch files outside that stage scope and refuses a second phase in the same
-dispatch -- one phase, one dispatch.
+Only after all four gates above pass, open the edit-scope lock naming exactly phase `<N>`'s
+declared stage-scope files -- `guard_target_edit.py`'s PreToolUse hook is inert until this
+lock exists, and only authorizes edits to the files it names, so this is what makes "the agent
+refuses to touch files outside that stage scope" a mechanical deny instead of prose the agent
+might not honor:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py open-edit-scope --repo <repo_root> \
+    --mode transform --files <phase N's declared stage-scope files>
+```
+
+Then dispatch the `transform-executor` agent with exactly phase `<N>`'s decision, its declared
+stage scope, and its (now-resolved) Open Questions. The agent refuses a second phase in the
+same dispatch -- one phase, one dispatch.
+
+Once the dispatch finishes, close the lock:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py close-edit-scope --repo <repo_root>
+```
 
 ## Step 6: Hand off to verification -- never self-verify
 

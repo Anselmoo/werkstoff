@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import (  # noqa: E402
     attribution,
     credentials,
+    edit_scope,
     formulas,
     gates,
     graph,
@@ -250,6 +251,21 @@ def cmd_autopilot_fix_gate(args):
     _print({"fix_approved": True})
 
 
+def cmd_open_edit_scope(args):
+    s = settings_mod.load_settings(args.repo)
+    if args.mode == "idiom_fix":
+        gates.check_idiom_fix_mode(s)
+    else:
+        gates.check_transform_mode(s)
+    path, resolved = edit_scope.open_scope(args.repo, mode=args.mode, allowed_files=args.files)
+    _print({"scopePath": path, "allowedFiles": resolved})
+
+
+def cmd_close_edit_scope(args):
+    edit_scope.close_scope(args.repo)
+    _print({"closed": True})
+
+
 def build_parser():
     parser = argparse.ArgumentParser(prog="self_assess_cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -409,6 +425,16 @@ def build_parser():
     p = sub.add_parser("autopilot-fix-gate")
     p.add_argument("--repo", required=True)
     p.set_defaults(func=cmd_autopilot_fix_gate)
+
+    p = sub.add_parser("open-edit-scope")
+    p.add_argument("--repo", required=True)
+    p.add_argument("--mode", required=True, choices=("idiom_fix", "transform"))
+    p.add_argument("--files", required=True, nargs="+")
+    p.set_defaults(func=cmd_open_edit_scope)
+
+    p = sub.add_parser("close-edit-scope")
+    p.add_argument("--repo", required=True)
+    p.set_defaults(func=cmd_close_edit_scope)
 
     return parser
 

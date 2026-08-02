@@ -37,11 +37,27 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py dirty-tree-gate --repo 
 Same behavior as `self-assess-transform-execute`'s Step 4: a dirty tree without an explicit
 `require_clean_tree: false` and user confirmation halts here.
 
-## Step 4: Cluster and dispatch one remediator per cluster
+## Step 4: Cluster, open the edit-scope lock, then dispatch one remediator per cluster
 
-Group `eligible` findings by `(file, kind)`. Dispatch one `idiom-remediator` agent per cluster,
-handing it only that cluster's findings -- never a batch spanning multiple files or multiple
-kinds in one dispatch, and never a location not cited in the findings it was given.
+Group `eligible` findings by `(file, kind)`. Before dispatching any remediator, open the
+edit-scope lock naming every cluster's file up front -- `guard_target_edit.py`'s PreToolUse
+hook is inert until this lock exists, and only authorizes edits to the files it names:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py open-edit-scope --repo <repo_root> \
+    --mode idiom_fix --files <cluster 1's file> <cluster 2's file> ...
+```
+
+Then dispatch one `idiom-remediator` agent per cluster (safe to do in parallel -- the lock
+names every cluster's file up front, so concurrent dispatches never race on it), handing each
+only that cluster's findings -- never a batch spanning multiple files or multiple kinds in one
+dispatch, and never a location not cited in the findings it was given.
+
+Once every remediator has finished, close the lock:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py close-edit-scope --repo <repo_root>
+```
 
 ## Step 5: Hand off to verification -- never self-verify
 
