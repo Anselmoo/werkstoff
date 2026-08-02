@@ -72,6 +72,45 @@ by intent.
 > Triggers `confab-status` — read-only dashboard: what's run, what's stale, what to
 > run next.
 
+##### Check for contract drift
+
+````prompt
+"check if our type signatures and docstrings still match how the code is actually called"
+````
+
+> Triggers `confab-contract-drift` — compares type hints, docstrings, and
+> API/OpenAPI/GraphQL schemas against real call-site or handler usage,
+> independently re-verified by default.
+
+##### Audit the plugin's own agent design
+
+````prompt
+"is our own agent design safe — any unbounded retries or missing escalation paths?"
+````
+
+> Triggers `confab-agentic-reliability` — audits this repo's own skill/agent/workflow
+> definitions for unbounded retry loops, unwired Find/Verify phases, and excessive
+> tool grants.
+
+##### Quick pre-commit check
+
+````prompt
+"is this diff okay to commit?"
+````
+
+> Triggers `confab-code-change` — runs only the domains whose file patterns match
+> what actually changed, and always produces an advisory verdict that never blocks
+> the commit.
+
+##### Check readiness first
+
+````prompt
+"is confab set up correctly in this repo?"
+````
+
+> Triggers `confab-preflight` — five independent readiness checks, one verdict per
+> domain skill, before any audit actually runs.
+
 Run `confab-preflight` first if you're not sure the plugin's checks can even run in
 this repo — it's read-only and never blocks the other four.
 

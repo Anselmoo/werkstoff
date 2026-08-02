@@ -63,6 +63,25 @@ by intent.
 > Triggers `scaffold-cli` (shell paradigm, `cli-scaffold-shell`) — same five-pillar
 > doctrine, plus POSIX-sh bashism checks.
 
+##### Scaffold a compiled-language CLI
+
+````prompt
+"scaffold a CLI in Go called deploy-bot"
+````
+
+> Triggers `scaffold-cli` (compiled paradigm, `cli-scaffold-compiled`) — produces
+> a lib+binary split with zero CLI-framework imports in the core library,
+> packaging metadata for Go's idiomatic channel, and a `--help` snapshot test.
+
+##### An unsupported or ambiguous language is refused, not guessed
+
+````prompt
+"scaffold a CLI in some scripting language, whatever's easiest"
+````
+
+> `scaffold-cli` refuses outright and lists the 12 supported languages rather
+> than picking one for you — ambiguity is never silently resolved.
+
 Ambiguous or unsupported language names are refused outright, never guessed — see
 `## What it does` below for the full generate-then-verify sequence.
 

@@ -72,6 +72,123 @@ by intent.
 
 > Triggers `self-assess-portfolio` — multi-repo dashboard, graded worst-signal-wins.
 
+##### Check readiness first
+
+````prompt
+"can self-assess actually analyze this codebase?"
+````
+
+> Triggers `self-assess-preflight` — verifies language detection, tool availability,
+> house-rules presence, and git/CI presence, then assigns a Ready/Ready-with-gaps/
+> Not-ready verdict per downstream skill.
+
+##### Find architecture problems
+
+````prompt
+"find god-modules or dependency cycles in this codebase"
+````
+
+> Triggers `self-assess-arch-health` — reads the stage graph from
+> `self-assess-stage-map` and confirms every candidate god-module or cycle against
+> actual code, not just the graph.
+
+##### Audit git/CI setup
+
+````prompt
+"check our git remotes and CI setup for redundant mirrors"
+````
+
+> Triggers `self-assess-ci-topology` — audits remote topology and CI config for
+> redundancy and mirror risk, masking every credential to a short preview.
+
+##### Find modernization opportunities
+
+````prompt
+"find deprecated idioms and code smells in this repo"
+````
+
+> Triggers `self-assess-code-idiom` — judges idioms against the actual language
+> version declared in the repo's own manifest, never a fixed list, and separates
+> fixable modernization from judgment-requiring smells.
+
+##### Score complexity per module
+
+````prompt
+"which module needs attention first? score complexity per stage"
+````
+
+> Triggers `self-assess-complexity-score` — computes a relative complexity index
+> (2.94 × KSLOC^1.10) per stage, and lists unmeasured stages plainly rather than
+> inventing numbers.
+
+##### Check documentation accuracy
+
+````prompt
+"does our README still match what the code actually does?"
+````
+
+> Triggers `self-assess-docs-drift` — extracts falsifiable claims from
+> CLAUDE.md/README/ADRs and verifies each one against the cited code.
+
+##### Mine the hidden business rules
+
+````prompt
+"document the domain rules hidden in this code as testable specs"
+````
+
+> Triggers `self-assess-extract-rules` — mines calculations, validations, and
+> state transitions into Given/When/Then rules, looping to convergence and
+> requiring a two-judge panel to confirm any P0 rule.
+
+##### Apply the modernization findings
+
+````prompt
+"apply the modernization findings self-assess-code-idiom found"
+````
+
+> Triggers `self-assess-idiom-fix` — applies only eligible modernization-category
+> findings, gated behind `idiom_fix.mode: fix`, one remediator dispatch per
+> (file, kind) cluster, then hands off to `andon-verify` unverified.
+
+##### Check our own conventions
+
+````prompt
+"audit this code against our house rules"
+````
+
+> Triggers `self-assess-lint-audit` — extracts discrete rules from
+> `.claude/house-rules.md` (or CLAUDE.md as a fallback) and verifies violations,
+> capped at `lint_max_rules` dispatches.
+
+##### Turn findings into a plan
+
+````prompt
+"synthesize all the findings into a modernization brief"
+````
+
+> Triggers `self-assess-transform-brief` — synthesizes stage-map, arch-health, and
+> every other domain summary into a phased, ranked, read-only transformation plan.
+
+##### Execute one authorized phase
+
+````prompt
+"execute phase 3 from the modernization brief"
+````
+
+> Triggers `self-assess-transform-execute` — applies exactly one human-authorized
+> phase, gated behind `transform.mode: execute`, a clean tree, and every Open
+> Question resolved.
+
+##### Audit UI accessibility
+
+````prompt
+"check our components for accessibility issues and hardcoded design values"
+````
+
+> Triggers `self-assess-ui-audit` — statically audits JSX/TSX, Vue/Svelte, HTML,
+> and CSS/SCSS for accessibility and design-token problems, never running or
+> rendering the app.
+
 Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode:
 fix`, in `.claude/self-assess.local.md` only when ready to apply a change — both
 default to a plan/propose-only mode that refuses to touch source.

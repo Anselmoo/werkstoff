@@ -79,6 +79,16 @@ by intent.
 > Triggers `andon-verify` — routes the wire to one of seven evidence-grounded
 > strategies and returns a structured green/red verdict.
 
+##### Resume a paused pass
+
+````prompt
+"resume the andon ledger from where we left off"
+````
+
+> Triggers `andon-loop` — continues an existing ledger's cycle rather than
+> starting fresh, still refusing to advance past whatever gap stopped the
+> last pass.
+
 Run `andon-preflight` first in any repo — it's read-only and never creates the
 ledger — then `andon-loop` to start a pass, and `andon-status` at any point to see
 the board without advancing anything.

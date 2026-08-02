@@ -71,6 +71,116 @@ by intent.
 > Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated
 > success criteria before any work starts.
 
+##### Break a problem into stages
+
+````prompt
+"break this into steps — what depends on what"
+````
+
+> Triggers `compass-decompose-chain` — splits the problem into a 2-5 stage
+> pipeline with explicit input/output contracts per stage, and derives which
+> stages can run in parallel from the dependency graph.
+
+##### Score and fix a draft
+
+````prompt
+"score this draft against these criteria and fix what's weak"
+````
+
+> Triggers `compass-draft-revise` — rates 1-5 against each criterion, revises
+> only what falls at or below threshold, and reports exactly what changed
+> (capped at 2 revision cycles).
+
+##### Ground every claim
+
+````prompt
+"don't make this up — ground every claim in the actual code or docs"
+````
+
+> Triggers `compass-ground-evidence` — requires a file:line, URL, or
+> explicitly-flagged prior knowledge behind every factual claim, and refuses
+> to assert anything unverified.
+
+##### Investigate step by step
+
+````prompt
+"I don't know where the problem is — go find it"
+````
+
+> Triggers `compass-investigate-dynamically` — runs a Reasoning/Action/Observation
+> loop where each observation decides the next step, for cases where the
+> sequence of actions can't be planned upfront.
+
+##### Trace a multi-hop chain
+
+````prompt
+"trace how A affects D through the whole dependency chain"
+````
+
+> Triggers `compass-map-relationships` — extracts indexed relationship triples
+> and traverses them hop by hop, citing the triple index at every hop.
+
+##### Combine the best of two approaches
+
+````prompt
+"the winner's good, but can we fold in what I liked from the runner-up?"
+````
+
+> Triggers `compass-negotiate-tradeoffs` — synthesizes a hybrid from 2-3
+> already-scored branches, but only presents it if it actually beats every
+> source branch on at least one axis.
+
+##### Tune a reusable prompt
+
+````prompt
+"find the best wording for this system prompt — I have test cases"
+````
+
+> Triggers `compass-optimize-instruction` — generates one candidate per APE
+> framing, scores each against your real test cases, and critiques the winner.
+> Needs representative test cases; not for one-off prompts.
+
+##### Guard against a silent reasoning error
+
+````prompt
+"walk through this calculation carefully, I can't afford a wrong assumption here"
+````
+
+> Triggers `compass-reason-verify` — climbs a 4-rung ladder (zero-shot →
+> Chain-of-Thought → self-consistency → PAL) matched to the actual
+> failure-mode risk, applying Multimodal-CoT first if there's an image or
+> diagram involved.
+
+##### Anchor a fuzzy output format
+
+````prompt
+"I can't describe the format, but here's an example — make it look like this"
+````
+
+> Triggers `compass-calibrate-format` — anchors the target shape to 2-5
+> concrete input/output examples instead of more prose, enforcing at least
+> one near-boundary example so the set actually pins the decision.
+
+##### Write up a finished run
+
+````prompt
+"summarize what we just did for the PR"
+````
+
+> Triggers `compass-summarize-trace` — produces a fixed 7-section record
+> (asked, assumed, weighed, run, produced, revised, not done) after a
+> `compass-solve` pipeline finishes.
+
+##### Check one blocking assumption
+
+````prompt
+"before we rely on this, verify it's actually true"
+````
+
+> Triggers `compass-verify-assumptions` — checks exactly one named assumption
+> against real evidence in at most 3 steps; for more than one uncertainty,
+> invoke it once per uncertainty.
+
 `compass-solve` composes the rest of the pipeline automatically — you rarely need
 to name one of the other 13 technique skills directly unless you want just that one
 step (see the full table below).

@@ -72,6 +72,124 @@ by intent.
 > Triggers `cupertino-handbook-check` — flags drift from an already-drafted
 > handbook rule, with file:line evidence.
 
+##### Start from the experience, not the tech
+
+````prompt
+"we need a feature that lets users share a project with a client — nothing's decided yet"
+````
+
+> Triggers `cupertino-backwards` — a pre-architecture gate: establishes what
+> experience actually matters before any database, framework, or API gets
+> named. Always runs first; every other lifecycle stage stays locked until
+> it has.
+
+##### Cut a sprawling portfolio down
+
+````prompt
+"we have twelve pricing tiers and nobody can explain the difference — help us cut"
+````
+
+> Triggers `cupertino-focus` — runs right after `cupertino-backwards`, reducing
+> shipped and planned variants to the smallest focused set before architecture
+> work commits effort.
+
+##### Transfigure a boring feature
+
+````prompt
+"nobody uses our export feature, it's just a chore — can we make it delightful?"
+````
+
+> Triggers `cupertino-elevate` — only for a commodity feature already in scope
+> for the current build (error messages, logs, settings, onboarding...); never
+> seeks one out on its own.
+
+##### Consider replacing your own best thing
+
+````prompt
+"is it time to replace our own flagship feature with something better we'd build today?"
+````
+
+> Triggers `cupertino-cannibalize` — user-invoked only, never automatic; a
+> deliberate post-ship check on whether to cannibalize a currently-successful,
+> load-bearing thing.
+
+##### Decide build vs. buy for one seam
+
+````prompt
+"should we build our own auth system or just integrate an existing provider?"
+````
+
+> Triggers `cupertino-integrate` — judges one specific, named boundary at a
+> time; never applied as a blanket build-vs-buy policy across a whole system.
+
+##### Check whether an architecture will age well
+
+````prompt
+"will this API design still make sense in two years, or are we setting up a rewrite?"
+````
+
+> Triggers `cupertino-longevity` — evaluates whether the architecture can
+> evolve incrementally or is quietly committing to a future rewrite; pairs
+> with `cupertino-integrate` at architecture-decision time.
+
+##### Spike an uncertain approach
+
+````prompt
+"I'm not sure this library can actually do what we need — let's just build a throwaway spike"
+````
+
+> Triggers `cupertino-prototype` — settles one specific empirical uncertainty
+> by building and running a small experiment, not by debating it further.
+
+##### Get the "one more thing"
+
+````prompt
+"is there anything else this needs before we ship it?"
+````
+
+> Triggers `cupertino-reveal` — the final ship-time stage: delivers exactly
+> one non-obvious, high-leverage addition, built rather than pitched — never
+> a list.
+
+##### Redesign the first five minutes
+
+````prompt
+"our onboarding flow feels clunky — help us fix the first-run experience"
+````
+
+> Triggers `cupertino-unbox` — scoped strictly to a new user's first five
+> minutes (install, first-run, onboarding), distinct from `cupertino-elevate`'s
+> ongoing-feel transfiguration.
+
+##### Draft a durable handbook
+
+````prompt
+"write us a design handbook that captures our actual conventions"
+````
+
+> Triggers `cupertino-handbook-draft` — persists one checkable rule per
+> dimension for a domain (design, code, testing, or docs), honestly labeling
+> scaffolded defaults where no real convention exists yet.
+
+##### Pull in just the relevant handbook rules
+
+````prompt
+"what does our handbook say that's relevant to this task?"
+````
+
+> Triggers `cupertino-handbook-apply` — surfaces only the constraints and
+> exceptions relevant to the upcoming task, not the whole document.
+
+##### Apply the mechanical handbook fixes
+
+````prompt
+"fix the mechanical findings from the last handbook check"
+````
+
+> Triggers `cupertino-handbook-fix` — only after fix mode is explicitly
+> enabled for a domain; never touches a `mechanical:false` finding, and never
+> infers consent from a check report alone.
+
 `cupertino-backwards` always runs first; the other lifecycle stages stay locked
 until it has.
 
