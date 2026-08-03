@@ -18,7 +18,7 @@ the flag. This script trusts that marker rather than treating absence and
 skip as the same thing.
 
 Usage:
-    build_review_flow_html.py <cupertino_dir> --template <path> [--out <path>]
+    build_review_flow_html.py <cupertino_dir> --template <path> --d3 <path> --tokens <path> [--out <path>]
 """
 import argparse
 import json
@@ -75,8 +75,21 @@ def build_flow(cupertino_dir):
     return {"stages": stages}
 
 
-def render_html(template_path, flow):
+def render_html(template_path, d3_path, tokens_path, flow):
     tpl = open(template_path, encoding="utf-8").read()
+
+    d3_snippet = open(d3_path, encoding="utf-8").read()
+    d3_marker = "<!--__D3_SUBSET__-->"
+    if d3_marker not in tpl:
+        raise ValueError(f"D3 injection marker not found in {template_path}")
+    tpl = tpl.replace(d3_marker, d3_snippet)
+
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+    tokens_marker = "/*__DESIGN_TOKENS__*/"
+    if tokens_marker not in tpl:
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, tokens_css)
+
     marker = "/*__FLOW_DATA__*/ null"
     if marker not in tpl:
         raise ValueError(f"injection marker not found in {template_path}")
@@ -89,6 +102,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("cupertino_dir", help="the .cupertino directory for this repo")
     parser.add_argument("--template", required=True)
+    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css snippet")
     parser.add_argument("--out", help="defaults to <cupertino_dir>/CUPERTINO_REVIEW_FLOW.html")
     args = parser.parse_args(argv)
 
@@ -96,7 +111,7 @@ def main(argv=None):
 
     out_path = args.out or os.path.join(args.cupertino_dir, "CUPERTINO_REVIEW_FLOW.html")
     with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, flow))
+        fh.write(render_html(args.template, args.d3, args.tokens, flow))
 
     print(json.dumps({"flowPath": out_path}))
     return 0
