@@ -1,0 +1,42 @@
+{
+  "run_id": "9f2b6b1e-1c2b-4c3a-9c3e-2f6a2d6b7a10",
+  "raw_task": "How should compass persist and surface branch-comparison results to the user?",
+  "phase": "Explore",
+  "explore_ran": true,
+  "explore": {
+    "branches": [
+      {
+        "name": "Inline guard-only summary",
+        "description": "Keep compass-explore-branches exactly as it is today: print the scores table in chat and rely on the guard's JSON output. No new files, no new script, no HTML report -- the fastest to ship and the least that could possibly work.",
+        "feasibility": 9,
+        "impact": 3,
+        "risk": 2,
+        "biggest_blocker": "Loses the report entirely for anyone who reruns compass-solve later and wants to see how a decision was actually reached."
+      },
+      {
+        "name": "Standalone D3 branch-comparison viewer",
+        "description": "Add a build_branch_comparison_html.py that renders state.json's Explore branches as a small-multiples grouped-bar D3 chart, built against the shared tokens.css/inline-d3.html vendored in the report-viewer foundation PR, and wire it into compass-explore-branches's Persist step so every run produces a report by default.",
+        "feasibility": 6,
+        "impact": 9,
+        "risk": 4,
+        "biggest_blocker": "Requires fixing the Persist step's structural gap (currently nested only under the Manual path, so the preferred Workflow path never persists state.json at all)."
+      },
+      {
+        "name": "Radar chart for N-axis comparison",
+        "description": "Render the Feasibility/Impact/Risk/Total comparison as a radar/spider chart, one polygon per branch overlaid on shared axes -- the default choice for multi-axis comparisons in most charting libraries.",
+        "feasibility": 7,
+        "impact": 4,
+        "risk": 7,
+        "biggest_blocker": "cupertino-council already rejected this mark type for this exact data shape: enclosed polygon area is not proportional to score in any way a viewer can correctly decode, and overlapping polygons obscure the tie-break-by-risk signal."
+      },
+      {
+        "name": "Defer to a future cross-plugin dashboard",
+        "description": "Do not build a compass-specific viewer at all; wait for a hypothetical unified werkstoff dashboard that would show every plugin's reports in one place, and skip this feature until that exists.",
+        "feasibility": 8,
+        "impact": 2,
+        "risk": 3,
+        "biggest_blocker": "No such dashboard is planned or scoped anywhere in this repo -- this branch defers indefinitely to something that does not exist."
+      }
+    ]
+  }
+}
