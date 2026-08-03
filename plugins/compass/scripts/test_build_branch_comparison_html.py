@@ -75,5 +75,46 @@ try:
 finally:
     shutil.rmtree(_tmp)
 
+# --- End-to-end: main() against the real fixture, template, d3, tokens ---
+_here = os.path.dirname(os.path.abspath(__file__))
+_fixture_path = os.path.join(_here, "fixtures", "sample_explore_state.json")
+_assets = os.path.join(os.path.dirname(_here), "assets")
+
+with open(_fixture_path, encoding="utf-8") as fh:
+    _fixture_state = json.load(fh)
+
+_tmp2 = tempfile.mkdtemp()
+try:
+    _write_state(_tmp2, _fixture_state["run_id"], _fixture_state)
+    rc = B.main([
+        _tmp2, "--run-id", _fixture_state["run_id"],
+        "--template", os.path.join(_assets, "branch-comparison-viewer.html"),
+        "--d3", os.path.join(_assets, "inline-d3.html"),
+        "--tokens", os.path.join(_assets, "tokens.css"),
+    ])
+    ok("main() exits 0 for a valid fixture run", rc == 0)
+
+    out_path = os.path.join(_tmp2, ".compass", "runs", _fixture_state["run_id"], "branch-comparison.html")
+    ok("main() writes the report to the default .compass/runs/<id>/ path", os.path.isfile(out_path))
+
+    html = open(out_path, encoding="utf-8").read()
+    ok("rendered report has no leftover D3 marker", "<!--__D3_SUBSET__-->" not in html)
+    ok("rendered report has no leftover tokens marker", "<!--__DESIGN_TOKENS__-->" not in html)
+    ok("rendered report has no leftover data marker", "/*__BRANCH_DATA__*/ null" not in html)
+    ok("rendered report embeds the winning branch's name",
+       "Standalone D3 branch-comparison viewer" in html)
+    ok("rendered report embeds the vendored d3 bundle", "var d3=" in html)
+
+    # main() with no --run-id must fall back to find_latest_explore_run.
+    rc2 = B.main([
+        _tmp2,
+        "--template", os.path.join(_assets, "branch-comparison-viewer.html"),
+        "--d3", os.path.join(_assets, "inline-d3.html"),
+        "--tokens", os.path.join(_assets, "tokens.css"),
+    ])
+    ok("main() falls back to the latest Explore run when --run-id is omitted", rc2 == 0)
+finally:
+    shutil.rmtree(_tmp2)
+
 print(f"\n{passed} passed, {failed} failed")
 sys.exit(1 if failed else 0)

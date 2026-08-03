@@ -101,3 +101,76 @@ def build_payload(state: dict) -> dict:
         "branches": enriched,
         "selected": selected_name,
     }
+
+
+def render_html(template_path: str, d3_path: str, tokens_path: str, payload: dict) -> str:
+    tpl = open(template_path, encoding="utf-8").read()
+
+    d3_snippet = open(d3_path, encoding="utf-8").read()
+    d3_marker = "<!--__D3_SUBSET__-->"
+    if d3_marker not in tpl:
+        raise ValueError(f"D3 injection marker not found in {template_path}")
+    tpl = tpl.replace(d3_marker, d3_snippet)
+
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
+    if tokens_marker not in tpl:
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
+
+    data_marker = "/*__BRANCH_DATA__*/ null"
+    if data_marker not in tpl:
+        raise ValueError(f"data injection marker not found in {template_path}")
+    data = json.dumps(payload)
+    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+    return tpl.replace(data_marker, "/*__BRANCH_DATA__*/ " + data)
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("repo_root")
+    parser.add_argument("--run-id", help="defaults to the most recently modified Explore run")
+    parser.add_argument("--template", required=True)
+    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css file")
+    parser.add_argument("--out", help="defaults to .compass/runs/<run-id>/branch-comparison.html")
+    args = parser.parse_args(argv)
+
+    run_id = args.run_id or find_latest_explore_run(args.repo_root)
+    if not run_id:
+        sys.stderr.write(
+            "error: no --run-id given and no persisted Explore run found under "
+            f"{os.path.join(args.repo_root, DEFAULT_OUTPUT_DIR, 'runs')}\n"
+        )
+        return 1
+
+    try:
+        state = load_state(args.repo_root, run_id)
+    except (FileNotFoundError, C.GuardError) as exc:
+        sys.stderr.write(f"error: {exc}\n")
+        return 1
+
+    if not state.get("explore_ran") or not state.get("explore", {}).get("branches"):
+        sys.stderr.write(f"error: run {run_id!r} has no Explore branches to compare\n")
+        return 1
+
+    payload = build_payload(state)
+
+    if args.out:
+        out_path = args.out
+    else:
+        # Reuses the guard's own write-scope check, exactly like state-write
+        # enforces, so this script can never write outside .compass/.
+        safe_rel = C.enforce_write_scope(f"runs/{run_id}/branch-comparison.html", DEFAULT_OUTPUT_DIR)
+        out_path = os.path.join(args.repo_root, safe_rel)
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as fh:
+        fh.write(render_html(args.template, args.d3, args.tokens, payload))
+
+    print(json.dumps({"reportPath": out_path, "runId": run_id, "selected": payload["selected"]}))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
