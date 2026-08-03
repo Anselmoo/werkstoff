@@ -91,14 +91,23 @@
 <header>
   <h1 id="title">Confab Burndown</h1>
   <span class="sub" id="subtitle"></span>
+  <div class="tabs">
+    <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend">Trend</button>
+    <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown">Breakdown</button>
+  </div>
 </header>
 
-<div class="layout">
-  <div class="content" id="content"></div>
+<div class="stat-row" id="statRow"></div>
+
+<div id="view-trend" class="content"></div>
+
+<div id="view-breakdown" class="layout" hidden>
+  <div class="content" id="breakdownContent"></div>
   <div class="sidebar" id="sidebar">
     <div class="placeholder">Click a "by status" or "by domain" bar to see the actual findings behind that count.</div>
   </div>
 </div>
+
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
 <script>
