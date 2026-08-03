@@ -15,7 +15,7 @@
     --border: #3a3a3a;
     --wire-green: #4c8d5a;
     --wire-red: #b0503f;
-    --wire-unknown: #3a5a7a;
+    --wire-unknown: #555;
     --hold-bg: #4a2020;
   }
   * { box-sizing: border-box; }
@@ -26,30 +26,45 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     font-size: 14px;
   }
-  header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border);
-  }
-  header h1 {
-    font-size: 16px;
-    margin: 0 0 4px;
-    font-weight: 600;
-    color: var(--accent);
-  }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; color: var(--accent); }
   header .sub { color: var(--text-dim); font-size: 12px; }
-  .content {
+  .layout { display: flex; }
+  .main {
+    flex: 1;
     padding: 20px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 20px;
-    max-width: 1400px;
+    max-width: 1200px;
   }
+  .sidebar {
+    width: 340px;
+    border-left: 1px solid var(--border);
+    background: var(--bg-panel);
+    padding: 18px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    height: calc(100vh - 61px);
+    position: sticky;
+    top: 61px;
+  }
+  .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+  .sidebar .placeholder { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-top: 40px; }
+  .sidebar .gap-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .sidebar .gap-item .title { font-weight: 500; }
+  .sidebar .gap-item .meta { color: var(--text-dim); margin-top: 2px; }
   .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 16px;
   }
+  .panel.wide { grid-column: 1 / -1; }
   .panel h2 {
     font-size: 13px;
     margin: 0 0 12px;
@@ -66,12 +81,7 @@
   }
   .hold-banner h2 { color: #ff8a75; margin-bottom: 8px; }
   .hold-banner ul { margin: 0; padding-left: 20px; }
-  .stat-row {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
+  .stat-row { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; }
   .stat {
     background: var(--bg-panel);
     border: 1px solid var(--border);
@@ -81,35 +91,17 @@
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
   .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  table.wires { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.wires th, table.wires td {
-    text-align: left;
-    padding: 6px 8px;
-    border-bottom: 1px solid var(--border);
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 10px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 600;
-    color: #fff;
-  }
-  .badge.green { background: var(--wire-green); }
-  .badge.red { background: var(--wire-red); }
-  .badge.unknown { background: var(--wire-unknown); }
-  .constraint {
-    font-size: 13px;
-    line-height: 1.6;
-  }
+  .constraint { font-size: 13px; line-height: 1.6; }
   .constraint .label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
-  .bar-row .label { width: 90px; flex-shrink: 0; color: var(--text-dim); }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; cursor: pointer; }
+  .bar-row:hover .label { color: var(--accent); }
+  .bar-row .label { width: 100px; flex-shrink: 0; color: var(--text-dim); }
   .bar-row .track { flex: 1; background: var(--bg-header); border-radius: 3px; height: 16px; overflow: hidden; }
   .bar-row .fill { height: 100%; background: var(--accent); border-radius: 3px; }
   .bar-row .count { width: 24px; text-align: right; flex-shrink: 0; }
-  .stages-list { font-size: 13px; line-height: 1.9; }
-  .stages-list .cursor-marker { color: var(--accent); font-weight: 600; }
+  #pipeline { width: 100%; }
+  .pipeline-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-dim); margin-top: 10px; flex-wrap: wrap; }
+  .pipeline-legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
 </style>
 </head>
 <body>
@@ -119,7 +111,12 @@
   <span class="sub" id="subtitle"></span>
 </header>
 
-<div class="content" id="content"></div>
+<div class="layout">
+  <div class="main" id="content"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="placeholder">Click a "by kind" or "by blast radius" bar to see the actual open gaps behind that count.</div>
+  </div>
+</div>
 
 <script>
 // build_board_html.py replaces everything from the marker onward on this
@@ -138,6 +135,10 @@ const BOARD = BOARD_DATA_RAW || {
   constraint: "transform (reopened 2x)",
   open_gap_counts_by_kind: { bug: 1, feature: 0, wire: 1 },
   open_gap_counts_by_radius: { local: 1, module: 1, cross_module: 0, repo_wide: 0 },
+  open_gaps: [
+    { title: "stale schema cache breaks transform", stage: "transform", kind: "bug", blast_radius: "local", slug: "stale-schema-cache" },
+    { title: "publish wire unproven", stage: "publish", kind: "wire", blast_radius: "module", slug: "publish-wire-unproven" },
+  ],
   strategy_counts: { a: 2, b: 0, c: 1, d: 0, e: 1, f: 0, g: 0 },
   non_overridable_holds: [],
 };
@@ -154,16 +155,114 @@ function el(tag, cls, html) {
   if (html !== undefined) e.innerHTML = html;
   return e;
 }
+function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function wireColor(status) {
+  if (status === 'green') return 'var(--wire-green)';
+  if (status === 'red') return 'var(--wire-red)';
+  return 'var(--wire-unknown)';
 }
 
-function renderBarPanel(title, containerParent, counts, order) {
+function renderPipeline(parent) {
+  const panel = el('div', 'panel wide');
+  panel.appendChild(el('h2', null, 'Value stream'));
+
+  const stages = BOARD.stages;
+  const wireByPair = {};
+  for (const w of BOARD.wire_rows) wireByPair[w.wire] = w.status;
+  const cursorStage = (BOARD.cursor || '').split('::')[0];
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const nodeW = 130, nodeH = 40, gapW = 60;
+  const W = stages.length * nodeW + (stages.length - 1) * gapW + 20;
+  const H = 90;
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('id', 'pipeline');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+  stages.forEach((stage, i) => {
+    const x = 10 + i * (nodeW + gapW);
+    const y = (H - nodeH) / 2;
+
+    // edge to next stage
+    if (i < stages.length - 1) {
+      const wireKey = stage + '->' + stages[i + 1];
+      const status = wireByPair[wireKey];
+      const edgeColor = status ? wireColor(status) : 'var(--wire-unknown)';
+      const dashed = !status;
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', x + nodeW); line.setAttribute('y1', H / 2);
+      line.setAttribute('x2', x + nodeW + gapW); line.setAttribute('y2', H / 2);
+      line.setAttribute('stroke', edgeColor);
+      line.setAttribute('stroke-width', '3');
+      if (dashed) line.setAttribute('stroke-dasharray', '4,3');
+      svg.appendChild(line);
+      const arrow = document.createElementNS(svgNS, 'polygon');
+      const ax = x + nodeW + gapW;
+      arrow.setAttribute('points', ax + ',' + (H / 2 - 5) + ' ' + (ax + 8) + ',' + (H / 2) + ' ' + ax + ',' + (H / 2 + 5));
+      arrow.setAttribute('fill', edgeColor);
+      svg.appendChild(arrow);
+      if (status) {
+        const title = document.createElementNS(svgNS, 'title');
+        title.textContent = wireKey + ': ' + status;
+        line.appendChild(title);
+      }
+    }
+
+    // stage node
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', x); rect.setAttribute('y', y);
+    rect.setAttribute('width', nodeW); rect.setAttribute('height', nodeH);
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('fill', 'var(--bg-header)');
+    rect.setAttribute('stroke', stage === cursorStage ? 'var(--accent)' : 'var(--border)');
+    rect.setAttribute('stroke-width', stage === cursorStage ? '2' : '1');
+    svg.appendChild(rect);
+    const text = document.createElementNS(svgNS, 'text');
+    text.setAttribute('x', x + nodeW / 2);
+    text.setAttribute('y', y + nodeH / 2 + 4);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('fill', stage === cursorStage ? 'var(--accent)' : 'var(--text)');
+    text.setAttribute('font-size', '12');
+    text.setAttribute('font-weight', stage === cursorStage ? '600' : '400');
+    text.textContent = stage + (stage === cursorStage ? ' ←' : '');
+    svg.appendChild(text);
+  });
+
+  panel.appendChild(svg);
+  const legend = el('div', 'pipeline-legend');
+  legend.innerHTML =
+    '<span><span class="swatch" style="background:var(--wire-green)"></span>proven green</span>' +
+    '<span><span class="swatch" style="background:var(--wire-red)"></span>proven red</span>' +
+    '<span><span class="swatch" style="background:var(--wire-unknown)"></span>no evidence yet (dashed)</span>' +
+    '<span>← current cursor</span>';
+  panel.appendChild(legend);
+  parent.appendChild(panel);
+}
+
+function showGapsInSidebar(title, gaps) {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(el('h2', null, title + ' (' + gaps.length + ')'));
+  if (!gaps.length) {
+    sidebar.appendChild(el('div', 'placeholder', 'No open gaps in this bucket.'));
+    return;
+  }
+  for (const g of gaps) {
+    const item = el('div', 'gap-item');
+    item.appendChild(el('div', 'title', escapeHtml(g.title || g.slug)));
+    item.appendChild(el('div', 'meta', 'stage: ' + escapeHtml(g.stage) + ' · kind: ' + escapeHtml(g.kind) +
+      ' · blast radius: ' + escapeHtml(g.blast_radius) + ' · ' + escapeHtml(g.slug)));
+    sidebar.appendChild(item);
+  }
+}
+
+function renderBarPanel(title, parent, counts, order, gapField) {
   const panel = el('div', 'panel');
   panel.appendChild(el('h2', null, title));
   const keys = order || Object.keys(counts);
   const max = Math.max(1, ...keys.map(k => counts[k] || 0));
+  const allGaps = BOARD.open_gaps || [];
   for (const k of keys) {
     const n = counts[k] || 0;
     const row = el('div', 'bar-row');
@@ -174,16 +273,16 @@ function renderBarPanel(title, containerParent, counts, order) {
     track.appendChild(fill);
     row.appendChild(track);
     row.appendChild(el('div', 'count', String(n)));
+    row.onclick = () => showGapsInSidebar(title + ': ' + k, allGaps.filter(g => g[gapField] === k));
     panel.appendChild(row);
   }
-  containerParent.appendChild(panel);
+  parent.appendChild(panel);
 }
 
 function render() {
   const content = document.getElementById('content');
   content.innerHTML = '';
 
-  // 1. Non-overridable holds -- lead with these, per andon-status's own render order.
   if (BOARD.non_overridable_holds && BOARD.non_overridable_holds.length) {
     const banner = el('div', 'hold-banner');
     banner.appendChild(el('h2', null, '⛔ Non-overridable holds (' + BOARD.non_overridable_holds.length + ')'));
@@ -195,7 +294,6 @@ function render() {
     content.appendChild(banner);
   }
 
-  // 2. Counters stat row.
   const statRow = el('div', 'stat-row');
   const stats = [
     ['Cycle', BOARD.counters.current_cycle],
@@ -211,36 +309,8 @@ function render() {
   }
   content.appendChild(statRow);
 
-  // 3. Stream table (stages) + wire statuses.
-  const streamPanel = el('div', 'panel');
-  streamPanel.appendChild(el('h2', null, 'Stream'));
-  const stagesList = el('div', 'stages-list');
-  const cursorStage = (BOARD.cursor || '').split('::')[0];
-  for (const s of BOARD.stages) {
-    const marked = s === cursorStage;
-    stagesList.appendChild(el('div', marked ? 'cursor-marker' : null, (marked ? '→ ' : '  ') + escapeHtml(s)));
-  }
-  streamPanel.appendChild(stagesList);
-  content.appendChild(streamPanel);
+  renderPipeline(content);
 
-  // 4. Wire statuses table.
-  const wirePanel = el('div', 'panel');
-  wirePanel.appendChild(el('h2', null, 'Wires'));
-  const table = el('table', 'wires');
-  const thead = el('tr', null, '<th>Wire</th><th>Status</th>');
-  table.appendChild(thead);
-  for (const w of BOARD.wire_rows) {
-    const tr = el('tr');
-    tr.appendChild(el('td', null, escapeHtml(w.wire)));
-    const td = el('td');
-    td.appendChild(el('span', 'badge ' + w.status, w.status));
-    tr.appendChild(td);
-    table.appendChild(tr);
-  }
-  wirePanel.appendChild(table);
-  content.appendChild(wirePanel);
-
-  // 5. Cursor + constraint.
   const constraintPanel = el('div', 'panel');
   constraintPanel.appendChild(el('h2', null, 'Cursor & constraint'));
   const cWrap = el('div', 'constraint');
@@ -249,12 +319,28 @@ function render() {
   constraintPanel.appendChild(cWrap);
   content.appendChild(constraintPanel);
 
-  // 6. Gap counts by kind / by blast-radius, and strategy mix.
-  renderBarPanel('Open gaps by kind', content, BOARD.open_gap_counts_by_kind);
+  renderBarPanel('Open gaps by kind', content, BOARD.open_gap_counts_by_kind, null, 'kind');
   renderBarPanel('Open gaps by blast radius', content, BOARD.open_gap_counts_by_radius,
-    ['local', 'module', 'cross_module', 'repo_wide']);
-  renderBarPanel('Evidence-strategy mix', content, BOARD.strategy_counts,
-    ['a', 'b', 'c', 'd', 'e', 'f', 'g']);
+    Object.keys(BOARD.open_gap_counts_by_radius), 'blast_radius');
+
+  const stratPanel = el('div', 'panel');
+  stratPanel.appendChild(el('h2', null, 'Evidence-strategy mix'));
+  const stratKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  const stratMax = Math.max(1, ...stratKeys.map(k => BOARD.strategy_counts[k] || 0));
+  for (const k of stratKeys) {
+    const n = BOARD.strategy_counts[k] || 0;
+    const row = el('div', 'bar-row');
+    row.style.cursor = 'default';
+    row.appendChild(el('div', 'label', k));
+    const track = el('div', 'track');
+    const fill = el('div', 'fill');
+    fill.style.width = (n / stratMax * 100) + '%';
+    track.appendChild(fill);
+    row.appendChild(track);
+    row.appendChild(el('div', 'count', String(n)));
+    stratPanel.appendChild(row);
+  }
+  content.appendChild(stratPanel);
 }
 
 render();

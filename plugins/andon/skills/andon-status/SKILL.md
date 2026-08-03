@@ -42,7 +42,10 @@ ledger's actual files (never invented):
   mention it, the count is what the script computed, not a guess.
 - `constraint`: the stage/wire with the most sub-cycle log entries, or the
   oldest open gap if none have sub-cycled yet.
-- `open_gap_counts_by_kind` / `open_gap_counts_by_radius`.
+- `open_gap_counts_by_kind` / `open_gap_counts_by_radius`, plus `open_gaps`
+  (the actual gap records behind those counts -- title, stage, kind,
+  blast_radius, slug -- for anything that wants to drill down past the
+  count, e.g. the HTML board below).
 - `strategy_counts`: tally by `strategy:a` through `strategy:g` tags.
 - `non_overridable_holds`: any evidence doc with a Tier 1 non-overridable
   contradiction still linked to an open gap.

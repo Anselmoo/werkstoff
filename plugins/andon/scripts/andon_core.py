@@ -929,7 +929,12 @@ def render_board(repo_root, ledger_dir):
         return None  # caller must report "never run" and suggest preflight -> loop
 
     abs_ledger = os.path.join(repo_root, ledger_dir)
-    stages = read_all_docs(abs_ledger, "stages")
+    # read_all_docs sorts by filename, not stream position -- a stage doc's
+    # `order` field is the only authoritative sequence, so sort by it
+    # explicitly rather than relying on filenames happening to be numbered
+    # in stream order (true today only by naming coincidence, not by
+    # anything enforced).
+    stages = sorted(read_all_docs(abs_ledger, "stages"), key=lambda s: s["fields"].get("order", 0))
     gaps = read_all_docs(abs_ledger, "gaps")
     evidence = read_all_docs(abs_ledger, "evidence")
     counters = parse_log_counters(repo_root, ledger_dir)
@@ -982,6 +987,20 @@ def render_board(repo_root, ledger_dir):
         "constraint": constraint_desc,
         "open_gap_counts_by_kind": by_kind,
         "open_gap_counts_by_radius": by_radius,
+        # Additive, backward-compatible: existing consumers of render-board's
+        # JSON that only read the counts above are unaffected. Drill-down
+        # views (e.g. the HTML board) need the actual gaps behind a count,
+        # not just the number.
+        "open_gaps": [
+            {
+                "title": g["fields"].get("title"),
+                "stage": g["fields"].get("stage"),
+                "kind": g["fields"].get("kind"),
+                "blast_radius": g["fields"].get("blast_radius"),
+                "slug": g["slug"],
+            }
+            for g in open_gaps
+        ],
         "strategy_counts": strategy_counts,
         "non_overridable_holds": [
             {"wire": e["fields"].get("wire"), "slug": e["slug"]} for e in non_overridable_holds

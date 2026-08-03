@@ -85,17 +85,37 @@ next stage on an incomplete handoff.
    scope alone. Only if a genuine empirical uncertainty exists in this scope. If there is no
    specific answerable question to settle empirically, **report this stage as explicitly
    skipped** ("no empirical uncertainty identified for this scope — skipped"), never omit it
-   silently and never as "not applicable." Persist the result to `prototype-output` if it ran.
+   silently and never as "not applicable." Persist the result to `prototype-output` if it ran;
+   if skipped, persist `{"skipped": true, "reason": "<why>"}` to the same flag instead of leaving
+   it absent — absence alone can't distinguish "explicitly skipped" from "not reached yet."
 6. **cupertino-elevate** — dispatch with every prior stage's content included. Only if something
    already in scope is a low-status commodity feature worth transfiguring. If nothing qualifies,
    **report as explicitly skipped**, same rule as above — don't invent a candidate to avoid an
-   empty stage. Persist the result to `elevate-output` if it ran.
+   empty stage. Persist the result to `elevate-output` if it ran; if skipped, persist
+   `{"skipped": true, "reason": "<why>"}` to the same flag, same reason as step 5.
 7. **cupertino-unbox** — dispatch with every prior stage's content included. For the first five
    minutes of the resulting build, if applicable to this scope. Persist the result to
    `unbox-output`.
 8. **cupertino-reveal** — the final automatic stage, dispatched with every prior stage's content
    included — the one built suggestion must actually draw on what the whole pipeline decided,
-   not re-derive it from the original scope alone. Exactly one built suggestion.
+   not re-derive it from the original scope alone. Exactly one built suggestion. Persist the
+   result to `reveal-output`, same as every other stage — it's read back in the next step before
+   cleanup, not just presented and discarded.
+
+## Render the flow diagram before cleanup
+
+Immediately after `cupertino-reveal` and before the end-of-run flag cleanup below, render this
+run's pipeline as a self-contained HTML flow diagram — every stage's persisted content is about
+to be deleted, so this is the only point this data can be captured:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_review_flow_html.py" "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" path | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")" \
+    --template "${CLAUDE_PLUGIN_ROOT}/assets/review-flow-viewer.html"
+```
+
+Writes `.cupertino/CUPERTINO_REVIEW_FLOW.html` — outside `flags/`, so the cleanup step below
+(which only ever removes files under `flags/`) never touches it. Mention this path when
+presenting the review's results.
 
 ## Cannibalization — never automatic
 
