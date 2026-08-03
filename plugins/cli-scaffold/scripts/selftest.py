@@ -138,6 +138,37 @@ def main():
                              "--d3", d3_stub, "--out", out])
         expect(code != 0, "--tokens is required")
 
+    print("architecture tree — token migration:")
+    ASSETS = os.path.join(HERE, "..", "assets")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "tinyapp2")
+        os.makedirs(scaffold)
+        with open(os.path.join(scaffold, "cli-scaffold.manifest.json"), "w") as fh:
+            json.dump({
+                "app_name": "tinyapp2", "language": "python",
+                "core_files": ["core.py"], "entry_file": "cli.py",
+                "distribution_file": "pyproject.toml", "snapshot_test": None,
+                "help_file": None, "completion": None,
+            }, fh)
+        open(os.path.join(scaffold, "core.py"), "w").close()
+        open(os.path.join(scaffold, "cli.py"), "w").close()
+        open(os.path.join(scaffold, "pyproject.toml"), "w").close()
+
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, _, err = run([bat, scaffold,
+                             "--template", os.path.join(ASSETS, "architecture-tree-viewer.html"),
+                             "--d3", os.path.join(ASSETS, "inline-d3.html"),
+                             "--tokens", os.path.join(ASSETS, "tokens.css"),
+                             "--out", out])
+        expect(code == 0, "build succeeds against the real viewer template: " + err.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+        expect(rendered.count("--status-good: #4c8d5a") == 1,
+               "shared tokens.css injected exactly once")
+        expect(rendered.count("--bg: #1e1e1e") == 1,
+               "--bg no longer hand-duplicated in the viewer's own <style> block")
+        expect("--role-core: #4c8d5a" in rendered,
+               "viewer-local role colors preserved (no shared equivalent to migrate to)")
+
     print()
     if FAILURES:
         print("SELFTEST FAILED: %d check(s) regressed" % len(FAILURES))
