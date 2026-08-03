@@ -1,6 +1,6 @@
 {
   "name": "cli-scaffold",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
   "author": {
     "name": "Anselm Hahn",
