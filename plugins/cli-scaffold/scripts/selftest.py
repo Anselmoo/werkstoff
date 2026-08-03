@@ -36,6 +36,7 @@ def main():
     ws = os.path.join(HERE, "write_scope.py")
     vs = os.path.join(HERE, "verify_scaffold.py")
     di = os.path.join(HERE, "check_doctrine_isolation.py")
+    bat = os.path.join(HERE, "build_architecture_tree.py")
 
     print("router:")
     code, out, _ = run([r, "rust"])
@@ -93,6 +94,49 @@ def main():
         print("verifier refuses to write inside the scaffold:")
         code, _, err = run([vs, app, "rust", "--reports-dir", os.path.join(app, "r")])
         expect(code != 0 and "SCOPE VIOLATION" in err, "reports-in-scaffold refused")
+
+    print("architecture tree — --tokens flag:")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "tinyapp")
+        os.makedirs(scaffold)
+        with open(os.path.join(scaffold, "cli-scaffold.manifest.json"), "w") as fh:
+            json.dump({
+                "app_name": "tinyapp", "language": "python",
+                "core_files": ["core.py"], "entry_file": "cli.py",
+                "distribution_file": "pyproject.toml", "snapshot_test": None,
+                "help_file": None, "completion": None,
+            }, fh)
+        open(os.path.join(scaffold, "core.py"), "w").close()
+        open(os.path.join(scaffold, "cli.py"), "w").close()
+        open(os.path.join(scaffold, "pyproject.toml"), "w").close()
+
+        template = os.path.join(tmp, "template.html")
+        with open(template, "w") as fh:
+            fh.write(
+                "<html><head><style>/*__TOKENS__*/</style></head>"
+                "<body><!--__D3_SUBSET__-->"
+                '<script type="module">const DATA = /*__TREE_DATA__*/ null;</script>'
+                "</body></html>"
+            )
+        d3_stub = os.path.join(tmp, "d3.html")
+        with open(d3_stub, "w") as fh:
+            fh.write("<script>window.d3 = {};</script>")
+        tokens_stub = os.path.join(tmp, "tokens.css")
+        with open(tokens_stub, "w") as fh:
+            fh.write(":root { --status-good: #4c8d5a; }")
+
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, stdout, stderr = run([bat, scaffold, "--template", template,
+                                     "--d3", d3_stub, "--tokens", tokens_stub,
+                                     "--out", out])
+        expect(code == 0, "build succeeds with --tokens supplied: " + stderr.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+        expect("--status-good: #4c8d5a" in rendered, "tokens.css content injected")
+        expect("/*__TOKENS__*/" not in rendered, "tokens marker fully replaced")
+
+        code, _, err = run([bat, scaffold, "--template", template,
+                             "--d3", d3_stub, "--out", out])
+        expect(code != 0, "--tokens is required")
 
     print()
     if FAILURES:
