@@ -1,0 +1,14 @@
+{
+  "area": "billing",
+  "modules": ["billing", "shipping", "auth", "notifications"],
+  "dimensions": ["error-handling-style", "logging-style", "test-structure"],
+  "cells": [
+    { "module": "billing", "dimension": "error-handling-style", "variant": "return Result<T,E>", "sites": 41, "conformance": 1.0, "example": "src/billing/charge.py:88" },
+    { "module": "shipping", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 17, "conformance": 0.0, "example": "src/shipping/label.py:22" },
+    { "module": "auth", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 9, "conformance": 0.35, "example": "src/auth/session.py:14" },
+    { "module": "billing", "dimension": "logging-style", "variant": "structlog", "sites": 12, "conformance": 0.9, "example": "src/billing/ledger.py:5" },
+    { "module": "notifications", "dimension": "logging-style", "variant": "print()", "sites": 6, "conformance": 0.1, "example": "src/notifications/send.py:31" },
+    { "module": "billing", "dimension": "test-structure", "variant": "pytest fixtures", "sites": 22, "conformance": 1.0, "example": "tests/billing/test_charge.py:1" },
+    { "module": "auth", "dimension": "test-structure", "variant": "unittest.TestCase", "sites": 14, "conformance": 0.2, "example": "tests/auth/test_session.py:1" }
+  ]
+}
