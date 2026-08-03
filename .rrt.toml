@@ -193,11 +193,6 @@ description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_inde
 command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/cupertino/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/cli-scaffold/scripts/build_symbol_index.py"
-description = "cli-scaffold's synced copy of tools/symbol-indexer/build_symbol_index.py"
-command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/cli-scaffold/scripts/build_symbol_index.py"]
-
-[[tool.rrt.artifact_targets]]
 path = "plugins/self-assess/references/parallel-safe-research-protocol.md"
 description = "self-assess's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/self-assess/references/parallel-safe-research-protocol.md"]
@@ -221,11 +216,6 @@ command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plu
 path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/cupertino/references/parallel-safe-research-protocol.md"]
-
-[[tool.rrt.artifact_targets]]
-path = "plugins/cli-scaffold/references/parallel-safe-research-protocol.md"
-description = "cli-scaffold's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/cli-scaffold/references/parallel-safe-research-protocol.md"]
 
 # lib/ canary (issue #24): a real, committed file at the root of every
 # plugin's scripts/lib/ package, so a `.gitignore` regression that swallows

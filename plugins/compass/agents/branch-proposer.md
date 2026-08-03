@@ -30,8 +30,14 @@ You are given a scoped problem and one assigned **angle**.
 - Produce one branch only: a short `name` and a `description` of the approach.
 - **MUST NOT evaluate or score your own branch.** Scoring is a separate dispatch.
 - **MUST NOT import codebase facts without verification.** If your approach rests
-  on how the code currently works, confirm it with Read/Glob/Grep. State any
-  claim you could not verify as an assumption, not a fact.
+  on how the code currently works, confirm it. Prefer `Read`ing
+  `analysis/<plugin-name>/current.json` and the `symbol_index.json`/
+  `file_catalog.json` snapshot it resolves to, if present (see
+  `references/parallel-safe-research-protocol.md`) — `compass-explore-branches`
+  builds this once before dispatching, so it's typically already there. Fall
+  back to Glob/Grep when the snapshot is absent or stale, or for anything it
+  doesn't cover. State any claim you could not verify as an assumption, not a
+  fact.
 
 ## Score
 

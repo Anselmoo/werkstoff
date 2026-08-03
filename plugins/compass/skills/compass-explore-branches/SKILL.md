@@ -17,6 +17,22 @@ it is structural, not a suggestion.
 
 `GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/compass.py"`
 
+## 0. Build or reuse the shared research snapshot
+
+Before dispatching any `branch-proposer`, build (or reuse) compass's symbol-index
+snapshot once, so every parallel proposer can query the same cached index instead
+of each re-scanning the codebase independently:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name compass
+```
+
+This is a no-op if `analysis/compass/current.json`'s `source_fingerprint` already
+matches the repo (see `references/parallel-safe-research-protocol.md`). Skip this
+step for a repository well under roughly 50 tracked files, where the build's own
+overhead may exceed what a direct `Grep` would cost — the script makes no such
+size check itself, so this is your judgment call, not its.
+
 ## Preferred path: the workflow
 When the Workflow tool is available, run
 `${CLAUDE_PLUGIN_ROOT}/workflows/explore-branches.js`
