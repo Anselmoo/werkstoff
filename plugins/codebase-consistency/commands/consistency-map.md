@@ -51,28 +51,22 @@ canon" color scale; render cells by variant-cluster color instead.
 
 ## Render
 
-`analysis/$1/CONSISTENCY_MATRIX.html` — a self-contained, offline-capable
-HTML/CSS/vanilla-JS heatmap (no external CDN dependency, matching the
-plugin's air-gapped-network requirement). Build it from the template that
-ships with this plugin — do not hand-write the viewer:
+`analysis/$1/CONSISTENCY_MATRIX.html` — a self-contained, offline-capable,
+D3/SVG-rendered consistency matrix (no external CDN dependency, matching the
+plugin's air-gapped-network requirement), sharing its design tokens and
+vendored D3 bundle with every other report-viewer plugin. Build it with the
+plugin's own script — never hand-build this HTML inline:
 
 ```bash
-python3 - "${CLAUDE_PLUGIN_ROOT}/assets/matrix-viewer.html" analysis/$1 <<'EOF'
-import json, sys
-tpl_path, out_dir = sys.argv[1], sys.argv[2]
-tpl = open(tpl_path).read()
-marker = "/*__MATRIX_DATA__*/ null"
-assert marker in tpl, f"injection marker not found in {tpl_path}"
-data = json.dumps(json.load(open(f"{out_dir}/matrix.json")))
-# matrix.json is derived from source file/module names, which are effectively
-# untrusted (a module could be named to break out of the <script> block the
-# data is injected into) — escape JSON-unsafe HTML-breakout characters.
-data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-open(f"{out_dir}/CONSISTENCY_MATRIX.html", "w").write(
-    tpl.replace(marker, "/*__MATRIX_DATA__*/ " + data))
-print(f"wrote {out_dir}/CONSISTENCY_MATRIX.html")
-EOF
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_matrix_html.py" <repo_root> $1 \
+    --template "${CLAUDE_PLUGIN_ROOT}/assets/matrix-viewer.html" \
+    --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
+    --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
 ```
+
+This reads only `analysis/$1/matrix.json`, written in the previous step — it
+does not re-derive or estimate anything not already on disk. Writes
+`analysis/$1/CONSISTENCY_MATRIX.html`.
 
 The viewer: rows = modules (sortable by total divergence), columns =
 dimensions (sortable by variant count), cell color = conformance-to-canon
