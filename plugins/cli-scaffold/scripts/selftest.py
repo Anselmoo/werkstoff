@@ -210,6 +210,82 @@ def main():
             expect(proc.returncode == 0,
                    "rendered script has valid JS syntax: " + proc.stderr.strip())
 
+    print("architecture tree — nested directory row order "
+          "(regression: pre-order eachBefore, not breadth-first descendants):")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "tinyapp4")
+        os.makedirs(os.path.join(scaffold, "src"))
+        with open(os.path.join(scaffold, "cli-scaffold.manifest.json"), "w") as fh:
+            json.dump({
+                "app_name": "tinyapp4", "language": "python",
+                "core_files": ["src/core.py"], "entry_file": "cli.py",
+                "distribution_file": "pyproject.toml", "snapshot_test": None,
+                "help_file": None, "completion": None,
+            }, fh)
+        open(os.path.join(scaffold, "src", "core.py"), "w").close()
+        open(os.path.join(scaffold, "cli.py"), "w").close()
+        open(os.path.join(scaffold, "pyproject.toml"), "w").close()
+        # Sorts AFTER "src" alphabetically -- a breadth-first bug puts this
+        # row before src's own child row; pre-order must not.
+        open(os.path.join(scaffold, "zz_after.py"), "w").close()
+
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, _, err = run([bat, scaffold,
+                             "--template", os.path.join(ASSETS, "architecture-tree-viewer.html"),
+                             "--d3", os.path.join(ASSETS, "inline-d3.html"),
+                             "--tokens", os.path.join(ASSETS, "tokens.css"),
+                             "--out", out])
+        expect(code == 0, "build succeeds with a nested subdirectory: " + err.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+
+        data_m = re.search(r'/\*__TREE_DATA__\*/\s*(\{.*?\})\s*;', rendered, re.S)
+        script_m = re.search(r'<script type="module">(.*?)</script>', rendered, re.S)
+        expect(data_m is not None, "tree DATA payload present in rendered output")
+        expect(script_m is not None, "module script block present")
+
+        if data_m and script_m:
+            # Run the LITERAL row-layout lines from the rendered script (not
+            # a reimplementation) against the real vendored d3 bundle, so a
+            # regression back to `.descendants().filter(...)` in the source
+            # is caught by executing the real shipped code, not by an
+            # independent Python model of what it should do.
+            script = script_m.group(1)
+            start_anchor = "const root = d3.hierarchy(DATA.tree, d => d.children);"
+            end_anchor = "rows.forEach((d, i) => { d.rowIndex = i; });"
+            has_anchors = start_anchor in script and end_anchor in script
+            expect(has_anchors, "row-layout lines found in rendered script (anchors intact)")
+
+            if has_anchors:
+                start = script.index(start_anchor)
+                end = script.index(end_anchor) + len(end_anchor)
+                layout_snippet = script[start:end]
+
+                d3_src = open(os.path.join(ASSETS, "inline-d3.html")).read()
+                d3_src = d3_src.replace("<script>", "", 1)
+                d3_src = d3_src[:d3_src.rfind("</script>")]
+
+                harness = (
+                    d3_src + "\n"
+                    "const DATA = " + data_m.group(1) + ";\n"
+                    + layout_snippet + "\n"
+                    "console.log(JSON.stringify(rows.map(d => "
+                    "({ path: d.data.name, depth: d.depth, rowIndex: d.rowIndex }))));\n"
+                )
+                proc = subprocess.run(["node", "-e", harness], capture_output=True, text=True)
+                expect(proc.returncode == 0,
+                       "row-layout harness executes against the real vendored d3: " + proc.stderr.strip())
+                if proc.returncode == 0:
+                    rows_out = json.loads(proc.stdout.strip().splitlines()[-1])
+                    by_name = {r["path"]: r for r in rows_out}
+                    present = "src" in by_name and "core.py" in by_name and "zz_after.py" in by_name
+                    expect(present, "fixture nodes present in computed rows")
+                    if present:
+                        expect(by_name["core.py"]["rowIndex"] == by_name["src"]["rowIndex"] + 1,
+                               "nested child renders immediately after its parent directory "
+                               "(pre-order, not breadth-first)")
+                        expect(by_name["zz_after.py"]["rowIndex"] > by_name["core.py"]["rowIndex"],
+                               "a later top-level sibling still renders after the nested child")
+
     print()
     if FAILURES:
         print("SELFTEST FAILED: %d check(s) regressed" % len(FAILURES))
