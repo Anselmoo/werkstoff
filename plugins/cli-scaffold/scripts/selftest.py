@@ -7,6 +7,7 @@ enforcement behaves; non-zero = a guard regressed. Intended for CI / a quick
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -168,6 +169,46 @@ def main():
                "--bg no longer hand-duplicated in the viewer's own <style> block")
         expect("--role-core: #4c8d5a" in rendered,
                "viewer-local role colors preserved (no shared equivalent to migrate to)")
+
+    print("architecture tree — indented tree rebuild:")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "tinyapp3")
+        os.makedirs(scaffold)
+        with open(os.path.join(scaffold, "cli-scaffold.manifest.json"), "w") as fh:
+            json.dump({
+                "app_name": "tinyapp3", "language": "python",
+                "core_files": ["core.py"], "entry_file": "cli.py",
+                "distribution_file": "pyproject.toml", "snapshot_test": None,
+                "help_file": None, "completion": None,
+            }, fh)
+        open(os.path.join(scaffold, "core.py"), "w").close()
+        open(os.path.join(scaffold, "cli.py"), "w").close()
+        open(os.path.join(scaffold, "pyproject.toml"), "w").close()
+
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, _, err = run([bat, scaffold,
+                             "--template", os.path.join(ASSETS, "architecture-tree-viewer.html"),
+                             "--d3", os.path.join(ASSETS, "inline-d3.html"),
+                             "--tokens", os.path.join(ASSETS, "tokens.css"),
+                             "--out", out])
+        expect(code == 0, "build succeeds after the mark rebuild: " + err.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+        expect("d3.pack(" not in rendered, "circle-pack layout removed")
+        expect("d3.zoom(" not in rendered, "zoom/pan canvas removed")
+        expect('id="sidebar"' not in rendered, "click-through sidebar removed")
+        expect('id="search"' not in rendered,
+               "search box removed (native Cmd/Ctrl+F works on real DOM rows instead)")
+        expect('"tree-row"' in rendered, "indented tree rows present")
+        expect('"guide"' in rendered, "d3-hierarchy-driven guide lines present")
+        expect('"badge"' in rendered, "inline role badges present")
+
+        m = re.search(r'<script type="module">(.*?)</script>', rendered, re.S)
+        expect(m is not None, "module script block present")
+        if m:
+            proc = subprocess.run(["node", "--check", "/dev/stdin"],
+                                   input=m.group(1), text=True, capture_output=True)
+            expect(proc.returncode == 0,
+                   "rendered script has valid JS syntax: " + proc.stderr.strip())
 
     print()
     if FAILURES:
