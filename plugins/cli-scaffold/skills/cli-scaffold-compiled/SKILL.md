@@ -74,7 +74,8 @@ tagged with which five-pillar role it plays — derived from the same
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_architecture_tree.py" "<scaffold-dir>" \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/architecture-tree-viewer.html" \
-    --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html"
+    --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
+    --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
 ```
 
 Writes `<scaffold-dir>/ARCHITECTURE.html` — inside the scaffold itself, since
