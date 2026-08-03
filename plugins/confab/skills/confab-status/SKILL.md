@@ -20,11 +20,23 @@ latest commit, and the single most useful next action.
    itself. It writes `analysis/confab/findings_dashboard_data.json` and
    `analysis/confab/reports/findings-dashboard.html`, and prints the same data
    plus a `suggestion` field to stdout.
-3. Report to the user, per domain: has it ever run, how many findings,
+3. If `analysis/confab/ledger.json` exists (a `confab-cycle` has run at
+   least once), also render its pass history as a burndown chart —
+   separate from the snapshot dashboard above, purely additive:
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_burndown_html.py" <repo_root> \
+       --template "${CLAUDE_PLUGIN_ROOT}/assets/burndown-viewer.html"
+   ```
+   This reads only `ledger.json`'s already-persisted `passes` array and
+   current `findings` statuses — it does not re-derive or estimate
+   anything not already on disk. Writes
+   `analysis/confab/reports/BURNDOWN.html`. Skip this step entirely if no
+   ledger exists yet.
+4. Report to the user, per domain: has it ever run, how many findings,
    and whether it's stale relative to the latest commit. Report whether a
    `confab-cycle` ledger exists and, if so, whether its last pass
    converged.
-4. Surface the `suggestion` field as your one recommended next action —
+5. Surface the `suggestion` field as your one recommended next action —
    it's already picked using this priority: a domain that has never run,
    else the stalest domain that has run, else `confab-cycle` if a ledger
    exists but hasn't converged, else `confab-cycle` if no ledger exists
@@ -32,8 +44,8 @@ latest commit, and the single most useful next action.
    with your own priority call — if you disagree with what it suggests
    for this specific repository, say so as a caveat, but still report
    the suggestion itself accurately.
-5. Mention the HTML dashboard path so the user can open it if they want a
-   visual view.
+6. Mention the HTML dashboard path, and the burndown chart path if step 3
+   ran, so the user can open either for a visual view.
 
 ## What NOT to do
 

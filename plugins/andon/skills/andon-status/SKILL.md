@@ -58,6 +58,25 @@ ledger's actual files (never invented):
 4. Open gap counts by kind and blast-radius.
 5. Evidence-strategy mix.
 
+## Also write the HTML board
+
+After the markdown board above, also render it as a self-contained HTML
+dashboard -- same data `render-board` already returned, nothing re-derived:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py <repo_root> <ledger_dir> \
+    --template ${CLAUDE_PLUGIN_ROOT}/assets/board-viewer.html
+```
+
+Written inside the ledger directory itself (`<ledger_dir>/ANDON_BOARD.html`),
+never as a sibling of it -- andon_enforce.py's PreToolUse hook allows any
+write resolving inside the ledger dir unconditionally ("the loop must always
+be able to record its halt"), so this rendering step can never itself be
+blocked by a stop condition. If this returns `{"never_run": true}`, skip it
+silently -- the "never run" case is already handled above. Mention the
+written path to the user as a bonus, but never let this step block or delay
+the markdown board, which stays authoritative.
+
 ## Optional secondary path: OKF reference tooling
 
 Best-effort only, and never allowed to block or delay the markdown board
@@ -67,8 +86,8 @@ above. If an `okf` CLI is importable, try:
 okf visualize <ledger_dir>
 ```
 
-If it succeeds, mention the HTML output path as a bonus. If it's absent or
-errors, emit one calm line -- "OKF reference tooling not available --
-markdown board above is authoritative" -- and move on. Never let this
-secondary path fail the primary one, and never spend more than one attempt
-on it.
+If it succeeds, mention the HTML output path as a bonus alongside (or instead
+of) the plugin's own board above. If it's absent or errors, emit one calm
+line -- "OKF reference tooling not available -- markdown board above is
+authoritative" -- and move on. Never let this secondary path fail the primary
+one, and never spend more than one attempt on it.
