@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scaffold Architecture</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --bg-panel: #252526;
+    --bg-header: #2d2d2d;
+    --text: #d4d4d4;
+    --text-dim: #8a8a8a;
+    --accent: #cc785c;
+    --border: #3a3a3a;
+    --role-core: #4c8d5a;
+    --role-entry: #5b7fa6;
+    --role-distribution: #a5648a;
+    --role-test: #b58b3a;
+    --role-help: #5a9e9e;
+    --role-completion: #9e7a5a;
+    --role-other: #555;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+  }
+  header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  header h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; color: var(--accent); }
+  header .sub { color: var(--text-dim); font-size: 12px; }
+  .layout { display: flex; height: calc(100vh - 61px); }
+  .tree-wrap { flex: 1; overflow: auto; padding: 16px 20px; }
+  .sidebar {
+    width: 340px;
+    border-left: 1px solid var(--border);
+    background: var(--bg-panel);
+    padding: 18px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  .sidebar h2 { font-size: 14px; margin: 0 0 8px; color: var(--accent); }
+  .sidebar .placeholder { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-top: 40px; }
+  .sidebar .role-line { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .node { user-select: none; }
+  .node-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .node-row:hover { background: var(--bg-header); }
+  .node-row.selected { background: var(--bg-header); outline: 1px solid var(--accent); }
+  .node-row .toggle { width: 14px; color: var(--text-dim); flex-shrink: 0; text-align: center; }
+  .node-row .name-dir { color: var(--text); }
+  .node-row .name-file { color: var(--text); }
+  .role-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .node-children { margin-left: 20px; }
+  .node-children.collapsed { display: none; }
+  .legend { display: flex; gap: 14px; padding: 10px 20px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-dim); align-items: center; flex-wrap: wrap; }
+  .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="title">Scaffold Architecture</h1>
+  <span class="sub" id="subtitle"></span>
+</header>
+
+<div class="layout">
+  <div class="tree-wrap" id="treeWrap"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="placeholder">Click a file to see which five-pillar role(s) it plays, per cli-scaffold.manifest.json. A file with no dot is not one of the manifest's declared gating files (e.g. README, LICENSE) — not a problem, just uncategorized.</div>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<script>
+// build_architecture_tree.py replaces everything from the marker onward on
+// this line with the real JSON literal. Left unmodified (template opened
+// directly), the fallback demo below is used instead.
+const TREE_DATA_RAW = /*__TREE_DATA__*/ null;
+
+const DATA = TREE_DATA_RAW || {
+  appName: "myapp",
+  language: "rust",
+  roleLabels: {
+    core: "Backend/core (zero CLI-framework imports)",
+    entry: "Entry point (thin, wires flags to core)",
+    distribution: "Idiomatic distribution / packaging metadata",
+    test: "Stability (--help snapshot test)",
+    help: "UX/discoverability (--help golden output)",
+    completion: "UX/discoverability (shell completion)",
+  },
+  tree: {
+    name: "myapp", type: "dir", children: [
+      { name: "src", type: "dir", children: [
+        { name: "lib.rs", type: "file", roles: ["core"] },
+        { name: "main.rs", type: "file", roles: ["entry"] },
+      ]},
+      { name: "tests", type: "dir", children: [
+        { name: "help_snapshot.rs", type: "file", roles: ["test"] },
+        { name: "help.golden", type: "file", roles: ["help"] },
+      ]},
+      { name: "Cargo.toml", type: "file", roles: ["distribution"] },
+      { name: "README.md", type: "file", roles: [] },
+    ],
+  },
+};
+
+document.getElementById('title').textContent =
+  'Scaffold Architecture — ' + DATA.appName + (TREE_DATA_RAW ? '' : ' (no data — template opened directly)');
+document.getElementById('subtitle').textContent = 'language: ' + DATA.language;
+
+function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+function countFiles(node) {
+  if (node.type === 'file') return 1;
+  return (node.children || []).reduce((sum, c) => sum + countFiles(c), 0);
+}
+
+function buildNode(node, path) {
+  const wrap = document.createElement('div');
+  wrap.className = 'node';
+  const row = document.createElement('div');
+  row.className = 'node-row';
+
+  if (node.type === 'dir') {
+    const toggle = document.createElement('span');
+    toggle.className = 'toggle';
+    toggle.textContent = '▾';
+    row.appendChild(toggle);
+    row.appendChild(document.createTextNode('📁 '));
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'name-dir';
+    nameSpan.textContent = node.name + '/';
+    row.appendChild(nameSpan);
+    wrap.appendChild(row);
+
+    const childWrap = document.createElement('div');
+    childWrap.className = 'node-children';
+    for (const child of (node.children || [])) {
+      childWrap.appendChild(buildNode(child, path + '/' + node.name));
+    }
+    wrap.appendChild(childWrap);
+
+    row.onclick = () => {
+      childWrap.classList.toggle('collapsed');
+      toggle.textContent = childWrap.classList.contains('collapsed') ? '▸' : '▾';
+    };
+  } else {
+    row.appendChild(document.createElement('span')).className = 'toggle';
+    const roles = node.roles || [];
+    if (roles.length) {
+      const dot = document.createElement('span');
+      dot.className = 'role-dot';
+      dot.style.background = 'var(--role-' + roles[0] + ')';
+      row.appendChild(dot);
+    } else {
+      const spacer = document.createElement('span');
+      spacer.style.width = '9px';
+      spacer.style.display = 'inline-block';
+      row.appendChild(spacer);
+    }
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'name-file';
+    nameSpan.textContent = node.name;
+    row.appendChild(nameSpan);
+    wrap.appendChild(row);
+    row.onclick = () => selectFile(row, node, path + '/' + node.name);
+  }
+  return wrap;
+}
+
+let selectedRow = null;
+function selectFile(row, node, fullPath) {
+  if (selectedRow) selectedRow.classList.remove('selected');
+  row.classList.add('selected');
+  selectedRow = row;
+
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(Object.assign(document.createElement('h2'), { textContent: node.name }));
+  const pathLine = document.createElement('div');
+  pathLine.className = 'role-line';
+  pathLine.innerHTML = '<span style="color:var(--text-dim)">Path</span><br>' + escapeHtml(fullPath.replace(/^\//, ''));
+  sidebar.appendChild(pathLine);
+
+  const roles = node.roles || [];
+  if (!roles.length) {
+    const line = document.createElement('div');
+    line.className = 'role-line';
+    line.textContent = 'Not one of the manifest\'s declared gating files — uncategorized, not a problem.';
+    sidebar.appendChild(line);
+    return;
+  }
+  for (const r of roles) {
+    const line = document.createElement('div');
+    line.className = 'role-line';
+    line.innerHTML = '<span class="role-dot" style="background:var(--role-' + r + ')"></span> ' +
+      escapeHtml(DATA.roleLabels[r] || r);
+    sidebar.appendChild(line);
+  }
+}
+
+function renderLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  for (const [role, label] of Object.entries(DATA.roleLabels)) {
+    const span = document.createElement('span');
+    const sw = document.createElement('span');
+    sw.className = 'swatch';
+    sw.style.background = 'var(--role-' + role + ')';
+    span.appendChild(sw);
+    span.appendChild(document.createTextNode(label));
+    legend.appendChild(span);
+  }
+}
+
+document.getElementById('treeWrap').appendChild(buildNode(DATA.tree, ''));
+renderLegend();
+</script>
+</body>
+</html>

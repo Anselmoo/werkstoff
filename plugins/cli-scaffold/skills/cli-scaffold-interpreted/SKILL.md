@@ -66,3 +66,18 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<la
   it HALTs — if that happens, surface the remaining gaps instead of looping.
 
 Never present a scaffold that still has fixable gaps.
+
+## Step 6 — Render the architecture tree
+
+Once verification passes, render the scaffold's real file tree, each file
+tagged with which five-pillar role it plays — derived from the same
+`cli-scaffold.manifest.json` keys the verifier just read, not re-invented:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_architecture_tree.py" "<scaffold-dir>" \
+    --template "${CLAUDE_PLUGIN_ROOT}/assets/architecture-tree-viewer.html"
+```
+
+Writes `<scaffold-dir>/ARCHITECTURE.html` — inside the scaffold itself, since
+here the output IS the deliverable, not a report about existing code.
+Mention this path when presenting the scaffold.
