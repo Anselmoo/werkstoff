@@ -68,7 +68,9 @@ dashboard -- same data `render-board` already returned, nothing re-derived:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py <repo_root> <ledger_dir> \
-    --template ${CLAUDE_PLUGIN_ROOT}/assets/board-viewer.html
+    --template ${CLAUDE_PLUGIN_ROOT}/assets/board-viewer.html \
+    --d3 ${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html \
+    --tokens ${CLAUDE_PLUGIN_ROOT}/assets/tokens.css
 ```
 
 Written inside the ledger directory itself (`<ledger_dir>/ANDON_BOARD.html`),
