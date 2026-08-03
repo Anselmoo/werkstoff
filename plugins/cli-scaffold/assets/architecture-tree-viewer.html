@@ -28,6 +28,10 @@
     border: 1px solid var(--border); background: var(--panel-2);
     color: var(--text); font: inherit; outline: none; }
   #search:focus { border-color: var(--accent); }
+  #results { max-height: 180px; overflow-y: auto; margin-top: 4px; }
+  #results div { padding: 4px 6px; border-radius: 4px; cursor: pointer;
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #results div:hover { background: var(--panel-2); }
   #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
     width: 320px; overflow-y: auto; z-index: 2; display: none; }
   #sidebar.open { display: block; }
@@ -53,13 +57,15 @@
     <div class="sub" id="subtitle"></div>
   </div>
   <div class="panel">
-    <input id="search" type="search" placeholder="Filter files…" autocomplete="off">
+    <input id="search" type="search" placeholder="Search files…" autocomplete="off">
+    <div id="results"></div>
   </div>
 </div>
 
 <div id="sidebar" class="panel"></div>
 <div id="legend"></div>
 <div id="hint">drag to pan · scroll to zoom · click a circle for detail</div>
+<div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
 <!--__D3_SUBSET__-->
 <script type="module">
@@ -67,6 +73,14 @@ const d3 = window.d3;
 
 // Injected by build_architecture_tree.py.
 const DATA = /*__TREE_DATA__*/ null;
+
+if (!DATA || !DATA.tree) {
+  const err = document.getElementById("err");
+  err.querySelector("p").innerHTML =
+    "No architecture data found in this file.<br>Re-run the cli-scaffold paradigm skill to regenerate it.";
+  err.style.display = "grid";
+  throw new Error("no data");
+}
 
 document.getElementById("title").textContent = "Scaffold Architecture — " + (DATA.appName || "");
 document.getElementById("subtitle").textContent = "language: " + (DATA.language || "?");
@@ -191,13 +205,36 @@ function selectNode(d) {
 
 svg.on("click", () => sidebar.classList.remove("open"));
 
-// ── Search / filter ───────────────────────────────────────────────────────
+// ── Search ────────────────────────────────────────────────────────────────
+// Dims non-matches (not just outlines matches) and lists results, matching
+// the reference topology-viewer's search UX rather than a bare filter.
+const leaves = root.descendants().filter(d => d.data.type === "file");
+const resultsEl = document.getElementById("results");
+
+function applyMatch(q) {
+  nodeSel.select("circle")
+    .attr("stroke", d => (q && d.data.name.toLowerCase().includes(q)) ? "#cc785c" : "#3a3a3a")
+    .attr("stroke-width", d => (q && d.data.name.toLowerCase().includes(q)) ? 2.5 : 1);
+  nodeSel.attr("opacity", d => {
+    if (!q) return 1;
+    const selfMatch = d.data.name.toLowerCase().includes(q);
+    const descendantMatch = d.descendants ? d.descendants().some(c => c.data.name.toLowerCase().includes(q)) : false;
+    return (selfMatch || descendantMatch) ? 1 : 0.15;
+  });
+}
+
 document.getElementById("search").addEventListener("input", e => {
   const q = e.target.value.trim().toLowerCase();
-  nodeSel.select("circle").attr("stroke", d => {
-    if (!q) return "#3a3a3a";
-    return d.data.name.toLowerCase().includes(q) ? "#cc785c" : "#3a3a3a";
-  }).attr("stroke-width", d => (q && d.data.name.toLowerCase().includes(q) ? 2.5 : 1));
+  applyMatch(q);
+  resultsEl.innerHTML = "";
+  if (!q) return;
+  const matches = leaves.filter(d => d.data.name.toLowerCase().includes(q)).slice(0, 30);
+  for (const d of matches) {
+    const div = document.createElement("div");
+    div.textContent = fullPath(d).replace(/^[^/]*\//, "");
+    div.onclick = () => { selectNode(d); resultsEl.innerHTML = ""; };
+    resultsEl.appendChild(div);
+  }
 });
 
 // ── Legend ──────────────────────────────────────────────────────────────

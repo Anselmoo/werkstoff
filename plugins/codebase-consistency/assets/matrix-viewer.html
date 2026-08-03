@@ -203,6 +203,13 @@
     vertical-align: middle;
   }
   .arrow { font-size: 9px; opacity: 0.6; margin-left: 4px; }
+  .stat-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 20px 14px; }
+  .stat {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px 18px; min-width: 110px;
+  }
+  .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
+  .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -220,6 +227,8 @@
   </div>
 </header>
 
+<div class="stat-row" id="statRow"></div>
+
 <div class="layout">
   <div class="matrix-wrap">
     <table class="matrix" id="matrixTable"></table>
@@ -230,27 +239,24 @@
 </div>
 
 <div class="legend" id="legend"></div>
+<div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
 <script>
 // The build script in /consistency-map replaces everything from the comment
 // marker onward on this line with the real JSON literal — so after
-// injection this becomes `const MATRIX_DATA = /*__MATRIX_DATA__*/ {...};`.
-// Left unmodified (template opened directly), MATRIX_DATA_RAW is null and
-// the fallback demo below is used instead.
+// injection this becomes `const MATRIX_DATA_RAW = /*__MATRIX_DATA__*/ {...};`.
 const MATRIX_DATA_RAW = /*__MATRIX_DATA__*/ null;
 
-const MATRIX = MATRIX_DATA_RAW || {
-  // Tiny demo so the viewer still renders something sane if opened directly.
-  area: "(no data — template opened directly)",
-  modules: ["example-module-a", "example-module-b"],
-  dimensions: ["error-handling-style", "docstring-format"],
-  cells: [
-    { module: "example-module-a", dimension: "error-handling-style", variant: "return Result<T,E>", sites: 12 },
-    { module: "example-module-b", dimension: "error-handling-style", variant: "raise + catch at boundary", sites: 4 },
-    { module: "example-module-a", dimension: "docstring-format", variant: "Google-style", sites: 8 },
-    { module: "example-module-b", dimension: "docstring-format", variant: "Google-style", sites: 6 }
-  ]
-};
+if (!MATRIX_DATA_RAW || !MATRIX_DATA_RAW.modules) {
+  const err = document.getElementById('err');
+  err.querySelector('p').innerHTML =
+    'No matrix data found in this file.<br>Re-run <code>/consistency-map</code> to regenerate it.';
+  err.style.display = 'grid';
+  document.querySelector('.layout').style.display = 'none';
+  document.querySelector('.legend').style.display = 'none';
+  throw new Error('no data');
+}
+const MATRIX = MATRIX_DATA_RAW;
 
 document.getElementById('title').textContent = 'Consistency Matrix — ' + (MATRIX.area || '');
 document.getElementById('subtitle').textContent =
@@ -283,6 +289,30 @@ for (const c of (MATRIX.cells || [])) {
 }
 
 const hasConformance = (MATRIX.cells || []).some(c => typeof c.conformance === 'number');
+
+function renderStatRow() {
+  const row = document.getElementById('statRow');
+  const cells = MATRIX.cells || [];
+  const totalSites = cells.reduce((s, c) => s + (c.sites || 0), 0);
+  const stats = [
+    ['Modules', MATRIX.modules.length],
+    ['Dimensions', MATRIX.dimensions.length],
+    ['Divergent cells', cells.length],
+    ['Total sites', totalSites],
+  ];
+  if (hasConformance) {
+    const withConf = cells.filter(c => typeof c.conformance === 'number');
+    const avg = withConf.length ? withConf.reduce((s, c) => s + c.conformance, 0) / withConf.length : 0;
+    stats.push(['Avg. conformance', Math.round(avg * 100) + '%']);
+  }
+  for (const [k, v] of stats) {
+    const stat = document.createElement('div');
+    stat.className = 'stat';
+    stat.innerHTML = '<div class="v">' + v + '</div><div class="k">' + k + '</div>';
+    row.appendChild(stat);
+  }
+}
+renderStatRow();
 
 // ---- sorting -----------------------------------------------------------------
 function moduleDivergenceScore(mod) {

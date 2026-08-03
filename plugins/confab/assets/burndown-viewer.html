@@ -63,12 +63,29 @@
   .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
   .legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-dim); margin-top: 10px; flex-wrap: wrap; }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; cursor: pointer; }
+  .bar-row:hover .label { color: var(--accent); }
   .bar-row .label { width: 100px; flex-shrink: 0; color: var(--text-dim); }
   .bar-row .track { flex: 1; background: var(--bg-header); border-radius: 3px; height: 16px; overflow: hidden; }
   .bar-row .fill { height: 100%; border-radius: 3px; }
   .bar-row .count { width: 28px; text-align: right; flex-shrink: 0; }
   #chart { width: 100%; height: 260px; }
+  .layout { display: flex; }
+  .sidebar {
+    width: 340px; border-left: 1px solid var(--border); background: var(--bg-panel);
+    padding: 18px; overflow-y: auto; flex-shrink: 0; height: calc(100vh - 61px);
+    position: sticky; top: 61px;
+  }
+  .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
+  .sidebar .placeholder { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-top: 40px; }
+  .sidebar .finding-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .sidebar .finding-item .id { font-weight: 500; }
+  .sidebar .finding-item .meta { color: var(--text-dim); margin-top: 2px; }
+  .sidebar .finding-item .evidence {
+    margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 5px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+    word-break: break-word;
+  }
 </style>
 </head>
 <body>
@@ -78,29 +95,30 @@
   <span class="sub" id="subtitle"></span>
 </header>
 
-<div class="content" id="content"></div>
+<div class="layout">
+  <div class="content" id="content"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="placeholder">Click a "by status" or "by domain" bar to see the actual findings behind that count.</div>
+  </div>
+</div>
+<div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
 <script>
 // build_burndown_html.py replaces everything from the marker onward on this
-// line with the real JSON literal. Left unmodified (template opened
-// directly), the fallback demo below is used instead.
+// line with the real JSON literal.
 const BURNDOWN_DATA_RAW = /*__BURNDOWN_DATA__*/ null;
 
-const DATA = BURNDOWN_DATA_RAW || {
-  totalPasses: 4,
-  totalFindingsEver: 9,
-  passes: [
-    { passNumber: 1, domain: "dependency_audit", closed: 2, fixOrDraftOutcomes: 2, cumulativeClosed: 2 },
-    { passNumber: 2, domain: "contract_drift", closed: 1, fixOrDraftOutcomes: 3, cumulativeClosed: 3 },
-    { passNumber: 3, domain: "assertion_audit", closed: 0, fixOrDraftOutcomes: 1, cumulativeClosed: 3 },
-    { passNumber: 4, domain: "agentic_reliability", closed: 3, fixOrDraftOutcomes: 3, cumulativeClosed: 6 },
-  ],
-  byStatus: { open: 2, closed: 6, escalated: 1 },
-  byDomain: { dependency_audit: 3, contract_drift: 2, assertion_audit: 2, agentic_reliability: 2 },
-};
+if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
+  const err = document.getElementById('err');
+  err.querySelector('p').innerHTML =
+    'No burndown data found in this file.<br>Re-run <code>confab-status</code> (with a confab-cycle ledger present) to regenerate it.';
+  err.style.display = 'grid';
+  document.getElementById('content').style.display = 'none';
+  throw new Error('no data');
+}
+const DATA = BURNDOWN_DATA_RAW;
 
-document.getElementById('title').textContent =
-  'Confab Burndown' + (BURNDOWN_DATA_RAW ? '' : ' — (no data — template opened directly)');
+document.getElementById('title').textContent = 'Confab Burndown';
 document.getElementById('subtitle').textContent =
   DATA.totalPasses + ' passes · ' + DATA.totalFindingsEver + ' findings tracked';
 
@@ -112,11 +130,31 @@ function el(tag, cls, html) {
 }
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
-function renderBarPanel(title, parent, counts, colorMap) {
+function showFindingsInSidebar(title, findings) {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(el('h2', null, title + ' (' + findings.length + ')'));
+  if (!findings.length) {
+    sidebar.appendChild(el('div', 'placeholder', 'No findings in this bucket.'));
+    return;
+  }
+  for (const f of findings) {
+    const item = el('div', 'finding-item');
+    item.appendChild(el('div', 'id', escapeHtml(f.id) + (f.severity ? ' · ' + f.severity : '')));
+    item.appendChild(el('div', 'meta',
+      'domain: ' + escapeHtml(f.domain) + ' · category: ' + escapeHtml(f.category || '?') +
+      (f.reopenCount ? ' · reopened ' + f.reopenCount + 'x' : '')));
+    if (f.evidence) item.appendChild(el('div', 'evidence', escapeHtml(f.evidence)));
+    sidebar.appendChild(item);
+  }
+}
+
+function renderBarPanel(title, parent, counts, colorMap, findingField) {
   const panel = el('div', 'panel');
   panel.appendChild(el('h2', null, title));
   const keys = Object.keys(counts);
   const max = Math.max(1, ...keys.map(k => counts[k] || 0));
+  const allFindings = DATA.findings || [];
   for (const k of keys) {
     const n = counts[k] || 0;
     const row = el('div', 'bar-row');
@@ -128,6 +166,7 @@ function renderBarPanel(title, parent, counts, colorMap) {
     track.appendChild(fill);
     row.appendChild(track);
     row.appendChild(el('div', 'count', String(n)));
+    row.onclick = () => showFindingsInSidebar(title + ': ' + k, allFindings.filter(f => f[findingField] === k));
     panel.appendChild(row);
   }
   parent.appendChild(panel);
@@ -245,8 +284,8 @@ function render() {
 
   renderChart(content);
   renderBarPanel('Findings by status', content, DATA.byStatus,
-    { open: 'var(--open)', closed: 'var(--closed)', escalated: 'var(--escalated)' });
-  renderBarPanel('Findings by domain', content, DATA.byDomain);
+    { open: 'var(--open)', closed: 'var(--closed)', escalated: 'var(--escalated)' }, 'status');
+  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
 }
 
 render();

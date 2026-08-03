@@ -46,16 +46,27 @@ def build_burndown(repo_root):
     findings = ledger.get("findings", {})
     by_status = {"open": 0, "closed": 0, "escalated": 0}
     by_domain = {}
-    for f in findings.values():
+    finding_list = []
+    for finding_id, f in findings.items():
         status = f.get("status", "open")
         if status in by_status:
             by_status[status] += 1
         domain = f.get("domain", "(unknown)")
         by_domain[domain] = by_domain.get(domain, 0) + 1
+        finding_list.append({
+            "id": finding_id,
+            "status": status,
+            "domain": domain,
+            "category": f.get("category"),
+            "severity": f.get("severity"),
+            "evidence": f.get("evidence"),
+            "reopenCount": f.get("reopenCount", 0),
+        })
 
     return {
         "totalPasses": ledger.get("totalPasses", 0),
         "totalFindingsEver": len(findings),
+        "findings": finding_list,
         "passes": pass_series,
         "byStatus": by_status,
         "byDomain": by_domain,
