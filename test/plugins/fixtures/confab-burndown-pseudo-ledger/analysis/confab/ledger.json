@@ -1,0 +1,22 @@
+{
+  "totalPasses": 5,
+  "passes": [
+    {"passNumber": 1, "domain": "dependency_audit", "closed": 1, "fixOrDraftOutcomes": 4},
+    {"passNumber": 2, "domain": "assertion_audit", "closed": 3, "fixOrDraftOutcomes": 3},
+    {"passNumber": 3, "domain": "contract_drift", "closed": 2, "fixOrDraftOutcomes": 2},
+    {"passNumber": 4, "domain": "agentic_reliability", "closed": 1, "fixOrDraftOutcomes": 1},
+    {"passNumber": 5, "domain": "code_change_review", "closed": 0, "fixOrDraftOutcomes": 0}
+  ],
+  "findings": {
+    "dep-1": {"status": "closed", "domain": "dependency_audit", "category": "hallucinated-dependency", "severity": "High", "evidence": "requirements.txt:12", "reopenCount": 0},
+    "dep-2": {"status": "closed", "domain": "dependency_audit", "category": "hallucinated-dependency", "severity": "Low", "evidence": "requirements.txt:19", "reopenCount": 0},
+    "assert-1": {"status": "closed", "domain": "assertion_audit", "category": "mutation-survivor", "severity": "Medium", "evidence": "src/pricing.py:41", "reopenCount": 0},
+    "assert-2": {"status": "closed", "domain": "assertion_audit", "category": "mutation-survivor", "severity": "Medium", "evidence": "src/pricing.py:57", "reopenCount": 1},
+    "assert-3": {"status": "closed", "domain": "assertion_audit", "category": "mutation-survivor", "severity": "Low", "evidence": "src/pricing.py:73", "reopenCount": 0},
+    "contract-1": {"status": "closed", "domain": "contract_drift", "category": "docstring-mismatch", "severity": "Medium", "evidence": "src/api/handlers.py:88", "reopenCount": 0},
+    "contract-2": {"status": "closed", "domain": "contract_drift", "category": "docstring-mismatch", "severity": "Low", "evidence": "src/api/handlers.py:104", "reopenCount": 0},
+    "agentic-1": {"status": "closed", "domain": "agentic_reliability", "category": "unbounded-retry", "severity": "High", "evidence": "src/loop/runner.py:22", "reopenCount": 0},
+    "agentic-2": {"status": "open", "domain": "agentic_reliability", "category": "missing-escalation", "severity": "Medium", "evidence": "src/loop/runner.py:60", "reopenCount": 0},
+    "code-1": {"status": "escalated", "domain": "code_change_review", "category": "silent-fallback", "severity": "High", "evidence": "src/ingest/parser.py:130", "reopenCount": 4}
+  }
+}
