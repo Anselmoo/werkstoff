@@ -279,7 +279,7 @@ function getCss(varName) {
 // ---- index cells for O(1) lookup ------------------------------------------
 const cellIndex = new Map();
 for (const c of (MATRIX.cells || [])) {
-  cellIndex.set(c.module + ' ' + c.dimension, c);
+  cellIndex.set(c.module + '\u0000' + c.dimension, c);
 }
 
 const hasConformance = (MATRIX.cells || []).some(c => typeof c.conformance === 'number');
@@ -312,7 +312,7 @@ renderStatRow();
 function moduleDivergenceScore(mod) {
   let score = 0;
   for (const dim of MATRIX.dimensions) {
-    const c = cellIndex.get(mod + ' ' + dim);
+    const c = cellIndex.get(mod + '\u0000' + dim);
     if (!c) continue;
     score += hasConformance ? (1 - (c.conformance ?? 0.5)) : 1;
   }
@@ -321,7 +321,7 @@ function moduleDivergenceScore(mod) {
 function dimensionDivergenceScore(dim) {
   let score = 0;
   for (const mod of MATRIX.modules) {
-    const c = cellIndex.get(mod + ' ' + dim);
+    const c = cellIndex.get(mod + '\u0000' + dim);
     if (!c) continue;
     score += hasConformance ? (1 - (c.conformance ?? 0.5)) : 1;
   }
@@ -402,7 +402,7 @@ function render() {
   const flat = [];
   modules.forEach((mod, i) => {
     dimensions.forEach((dim, j) => {
-      const c = cellIndex.get(mod + ' ' + dim) || null;
+      const c = cellIndex.get(mod + '\u0000' + dim) || null;
       flat.push({ mod, dim, i, j, c });
     });
   });
@@ -423,7 +423,7 @@ function render() {
   hatch.append('rect').attr('width', 4).attr('height', 8).attr('fill', getCss('--status-unknown')).attr('fill-opacity', 0.35);
 
   svg.selectAll('rect.cell-rect')
-    .data(flat, d => d.mod + ' ' + d.dim)
+    .data(flat, d => d.mod + '\u0000' + d.dim)
     .join('rect')
     .attr('class', 'cell-rect')
     .attr('x', d => d.j * CELL_W + 1)
@@ -444,7 +444,7 @@ function render() {
     .text(d => d.c ? (d.mod + ' × ' + d.dim) : ('no data for ' + d.mod + ' × ' + d.dim));
 
   svg.selectAll('text.cell-text')
-    .data(flat.filter(d => d.c && d.c.sites != null), d => d.mod + ' ' + d.dim)
+    .data(flat.filter(d => d.c && d.c.sites != null), d => d.mod + '\u0000' + d.dim)
     .join('text')
     .attr('class', 'cell-text')
     .attr('x', d => d.j * CELL_W + CELL_W / 2)
