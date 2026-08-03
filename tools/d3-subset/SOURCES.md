@@ -21,6 +21,12 @@ to the same major versions the `d3@7` umbrella package itself depends on
 (confirmed via `npm view d3@7 dependencies`) to keep the whole bundle on one
 coherent D3 v7 line.
 
+The bundle also includes each package's own transitive D3 dependencies
+(`d3-array`, `d3-color`, `d3-dispatch`, `d3-drag`, `d3-format`,
+`d3-quadtree`, `d3-time`, `d3-time-format`, `d3-timer`, `d3-transition`,
+`internmap`) — all confirmed ISC License. See `package-lock.json` for the
+exact transitive version set.
+
 To regenerate: `cd tools/d3-subset && ./build.sh`. To add a module, add it
 to both `package.json` devDependencies and the `export * from` list in
 `entry.js`, then re-run `build.sh` and re-run this file's version capture.

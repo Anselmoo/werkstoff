@@ -234,12 +234,15 @@ path = "plugins/confab/scripts/lib/README.md"
 description = "confab's synced copy of tools/plugin-lib-canary/README.md"
 command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/confab/scripts/lib/README.md"]
 
-# Shared vendored D3 v7 subset (d3-hierarchy, d3-pack, d3-zoom, d3-interpolate,
-# d3-ease), sourced from anthropics/claude-plugins-official's code-modernization
-# topology-viewer.html (ISC License, Copyright Mike Bostock) -- self-contained,
-# no CDN, same constraint every other self-assess/cli-scaffold HTML asset
-# already follows. One source of truth, vendored the same way
-# build_symbol_index.py is, so both consumers can never drift apart.
+# Shared vendored D3 v7 subset (d3-hierarchy, d3-zoom, d3-selection,
+# d3-interpolate, d3-ease, d3-force, d3-scale) -- built via
+# tools/d3-subset/build.sh from official npm releases. ISC License
+# (Mike Bostock and D3 contributors) except d3-ease, which is
+# BSD-3-Clause. See tools/d3-subset/SOURCES.md for exact versions and
+# provenance. Self-contained, no CDN, same constraint every report-viewer
+# plugin's HTML asset needs (CSP is default-src 'none'). One source of truth,
+# vendored the same way build_symbol_index.py is, so both consumers can
+# never drift apart.
 [[tool.rrt.artifact_targets]]
 path = "plugins/self-assess/assets/inline-d3.html"
 description = "self-assess's synced copy of tools/d3-subset/inline-d3.html"
