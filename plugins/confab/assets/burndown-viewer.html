@@ -110,7 +110,8 @@
 
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
-<script>
+<!--__D3_SUBSET__-->
+<script type="module">
 // build_burndown_html.py replaces everything from the marker onward on this
 // line with the real JSON literal.
 const BURNDOWN_DATA_RAW = /*__BURNDOWN_DATA__*/ null;
@@ -120,10 +121,14 @@ if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
   err.querySelector('p').innerHTML =
     'No burndown data found in this file.<br>Re-run <code>confab-status</code> (with a confab-cycle ledger present) to regenerate it.';
   err.style.display = 'grid';
-  document.getElementById('content').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'none';
+  ['statRow', 'view-trend', 'view-breakdown'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
   throw new Error('no data');
 }
 const DATA = BURNDOWN_DATA_RAW;
+const d3 = window.d3;
 
 document.getElementById('title').textContent = 'Confab Burndown';
 document.getElementById('subtitle').textContent =
@@ -179,101 +184,106 @@ function renderBarPanel(title, parent, counts, colorMap, findingField) {
   parent.appendChild(panel);
 }
 
-function renderChart(parent) {
+// Primary view: ONE line, cumulative closed vs. pass index. No grouped bars
+// sharing this axis -- a bar's height (a per-pass rate) and a line's height
+// (a running total) mean structurally different things, which is exactly
+// the chartjunk the cupertino-council verdict for confab's burndown flagged
+// in the old combined chart this function replaces. Per-pass detail
+// (closed / fixOrDraftOutcomes) is still available, but only as a
+// per-point tooltip -- metadata, never a second competing mark.
+function renderTrendChart(parent) {
   const panel = el('div', 'panel wide');
-  panel.appendChild(el('h2', null, 'Closed / drafted findings per pass, cumulative closed'));
+  panel.appendChild(el('h2', null, 'Cumulative findings closed, by pass'));
 
   const passes = DATA.passes;
-  const W = 900, H = 260, padL = 40, padR = 20, padT = 10, padB = 30;
+  const W = 900, H = 300, padL = 44, padR = 20, padT = 16, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = Math.max(1, passes.length);
-  const barGroupW = plotW / n;
-  const maxBar = Math.max(1, ...passes.map(p => Math.max(p.closed, p.fixOrDraftOutcomes)));
+
+  const svg = d3.select(panel).append('svg')
+    .attr('viewBox', '0 0 ' + W + ' ' + H)
+    .attr('id', 'chart');
+
+  if (!passes.length) {
+    svg.append('text')
+      .attr('x', W / 2).attr('y', H / 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--muted)')
+      .text('No passes recorded yet.');
+    parent.appendChild(panel);
+    return;
+  }
+
+  const lastPass = passes[passes.length - 1].passNumber;
+  const x = d3.scaleLinear().domain([1, Math.max(1, lastPass)]).range([padL, padL + plotW]);
   const maxCum = Math.max(1, ...passes.map(p => p.cumulativeClosed));
+  const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
 
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  svg.setAttribute('id', 'chart');
+  svg.append('line')
+    .attr('x1', padL).attr('y1', padT + plotH).attr('x2', padL + plotW).attr('y2', padT + plotH)
+    .attr('stroke', 'var(--border)');
+  svg.append('line')
+    .attr('x1', padL).attr('y1', padT).attr('x2', padL).attr('y2', padT + plotH)
+    .attr('stroke', 'var(--border)');
 
-  // axis line
-  const axis = document.createElementNS(svgNS, 'line');
-  axis.setAttribute('x1', padL); axis.setAttribute('y1', padT + plotH);
-  axis.setAttribute('x2', padL + plotW); axis.setAttribute('y2', padT + plotH);
-  axis.setAttribute('stroke', 'var(--border)');
-  svg.appendChild(axis);
+  for (const tick of y.ticks(5)) {
+    svg.append('text')
+      .attr('x', padL - 8).attr('y', y(tick))
+      .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+      .attr('fill', 'var(--muted)').attr('font-size', 10)
+      .text(tick);
+  }
+  for (const p of passes) {
+    svg.append('text')
+      .attr('x', x(p.passNumber)).attr('y', H - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--muted)').attr('font-size', 10)
+      .text('#' + p.passNumber);
+  }
 
-  passes.forEach((p, i) => {
-    const gx = padL + i * barGroupW;
-    const barW = barGroupW * 0.28;
-    // closed bar
-    const closedH = (p.closed / maxBar) * plotH;
-    const closedRect = document.createElementNS(svgNS, 'rect');
-    closedRect.setAttribute('x', gx + barGroupW * 0.15);
-    closedRect.setAttribute('y', padT + plotH - closedH);
-    closedRect.setAttribute('width', barW);
-    closedRect.setAttribute('height', closedH);
-    closedRect.setAttribute('fill', 'var(--closed)');
-    svg.appendChild(closedRect);
-    // outcomes bar
-    const outH = (p.fixOrDraftOutcomes / maxBar) * plotH;
-    const outRect = document.createElementNS(svgNS, 'rect');
-    outRect.setAttribute('x', gx + barGroupW * 0.15 + barW + 4);
-    outRect.setAttribute('y', padT + plotH - outH);
-    outRect.setAttribute('width', barW);
-    outRect.setAttribute('height', outH);
-    outRect.setAttribute('fill', 'var(--outcomes)');
-    svg.appendChild(outRect);
-    // x label
-    const label = document.createElementNS(svgNS, 'text');
-    label.setAttribute('x', gx + barGroupW / 2);
-    label.setAttribute('y', H - 8);
-    label.setAttribute('fill', 'var(--text-dim)');
-    label.setAttribute('font-size', '10');
-    label.setAttribute('text-anchor', 'middle');
-    label.textContent = '#' + p.passNumber;
-    svg.appendChild(label);
-  });
+  // Manual path string: inline-d3.html vendors d3-scale + d3-selection but
+  // not d3-shape, so d3.line() is not available here -- this is the same
+  // coordinate math the old combined chart already did by hand for its
+  // cumulative-closed polyline, just fed by d3 scales instead of a
+  // hand-rolled linear map.
+  const pathD = passes.map((p, i) =>
+    (i === 0 ? 'M' : 'L') + x(p.passNumber) + ',' + y(p.cumulativeClosed)
+  ).join(' ');
+  svg.append('path')
+    .attr('d', pathD).attr('fill', 'none')
+    .attr('stroke', 'var(--accent-2)').attr('stroke-width', 2);
 
-  // cumulative line
-  const points = passes.map((p, i) => {
-    const x = padL + i * barGroupW + barGroupW / 2;
-    const y = padT + plotH - (p.cumulativeClosed / maxCum) * plotH;
-    return x + ',' + y;
-  }).join(' ');
-  const polyline = document.createElementNS(svgNS, 'polyline');
-  polyline.setAttribute('points', points);
-  polyline.setAttribute('fill', 'none');
-  polyline.setAttribute('stroke', 'var(--cumulative)');
-  polyline.setAttribute('stroke-width', '2');
-  svg.appendChild(polyline);
-  passes.forEach((p, i) => {
-    const x = padL + i * barGroupW + barGroupW / 2;
-    const y = padT + plotH - (p.cumulativeClosed / maxCum) * plotH;
-    const dot = document.createElementNS(svgNS, 'circle');
-    dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 3);
-    dot.setAttribute('fill', 'var(--cumulative)');
-    const title = document.createElementNS(svgNS, 'title');
-    title.textContent = 'pass ' + p.passNumber + ' (' + p.domain + '): cumulative closed ' + p.cumulativeClosed;
-    dot.appendChild(title);
-    svg.appendChild(dot);
-  });
+  svg.selectAll('circle').data(passes).join('circle')
+    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
+    .attr('r', 3.5).attr('fill', 'var(--accent-2)')
+    .append('title')
+    .text(p => 'pass ' + p.passNumber + ' (' + p.domain + '): cumulative closed ' + p.cumulativeClosed +
+               ' (closed this pass ' + p.closed + ', fix/draft outcomes ' + p.fixOrDraftOutcomes + ')');
 
-  panel.appendChild(svg);
-  const legend = el('div', 'legend');
-  legend.innerHTML =
-    '<span><span class="swatch" style="background:var(--closed)"></span>closed this pass</span>' +
-    '<span><span class="swatch" style="background:var(--outcomes)"></span>fix/draft outcomes this pass</span>' +
-    '<span><span class="swatch" style="background:var(--cumulative)"></span>cumulative closed</span>';
-  panel.appendChild(legend);
   parent.appendChild(panel);
 }
 
-function render() {
-  const content = document.getElementById('content');
-  content.innerHTML = '';
+function renderTrendView() {
+  const view = document.getElementById('view-trend');
+  view.innerHTML = '';
+  renderTrendChart(view);
+}
 
-  const statRow = el('div', 'stat-row');
+// Secondary view: current-state snapshots (by-status, by-domain) -- a
+// fundamentally different question from "is this converging," so it is
+// never co-displayed with the trend line. Content and interaction
+// (click a bar, see the findings in the sidebar) are unchanged from the
+// original single-view file.
+function renderBreakdownView() {
+  const content = document.getElementById('breakdownContent');
+  content.innerHTML = '';
+  renderBarPanel('Findings by status', content, DATA.byStatus,
+    { open: 'var(--status-warn)', closed: 'var(--status-good)', escalated: 'var(--status-bad)' }, 'status');
+  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
+}
+
+function renderStatRow() {
+  const statRow = document.getElementById('statRow');
+  statRow.innerHTML = '';
   const stats = [
     ['Total passes', DATA.totalPasses],
     ['Findings tracked', DATA.totalFindingsEver],
@@ -287,15 +297,21 @@ function render() {
     stat.appendChild(el('div', 'k', k));
     statRow.appendChild(stat);
   }
-  content.appendChild(statRow);
-
-  renderChart(content);
-  renderBarPanel('Findings by status', content, DATA.byStatus,
-    { open: 'var(--open)', closed: 'var(--closed)', escalated: 'var(--escalated)' }, 'status');
-  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
 }
 
-render();
+function setActiveTab(view) {
+  document.getElementById('tabTrendBtn').classList.toggle('active', view === 'trend');
+  document.getElementById('tabBreakdownBtn').classList.toggle('active', view === 'breakdown');
+  document.getElementById('view-trend').hidden = view !== 'trend';
+  document.getElementById('view-breakdown').hidden = view !== 'breakdown';
+}
+
+document.getElementById('tabTrendBtn').addEventListener('click', () => setActiveTab('trend'));
+document.getElementById('tabBreakdownBtn').addEventListener('click', () => setActiveTab('breakdown'));
+
+renderStatRow();
+renderTrendView();
+renderBreakdownView();
 </script>
 </body>
 </html>
