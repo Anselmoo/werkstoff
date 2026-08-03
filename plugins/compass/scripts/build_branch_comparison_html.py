@@ -160,11 +160,15 @@ def main(argv=None):
         out_path = args.out
     else:
         # Reuses the guard's own write-scope check, exactly like state-write
-        # enforces, so this script can never write outside .compass/.
+        # enforces. When --out is omitted, this script cannot write outside .compass/.
+        # (An explicit --out bypasses this check by design: it's an operator-supplied
+        # override, not attacker-reachable via state.json content.)
         safe_rel = C.enforce_write_scope(f"runs/{run_id}/branch-comparison.html", DEFAULT_OUTPUT_DIR)
         out_path = os.path.join(args.repo_root, safe_rel)
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    out_dir = os.path.dirname(out_path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(render_html(args.template, args.d3, args.tokens, payload))
 
