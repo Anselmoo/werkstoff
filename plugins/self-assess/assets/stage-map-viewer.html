@@ -75,7 +75,7 @@
 </div>
 
 <div id="sidebar" class="panel"></div>
-<div id="hint">drag to pan · scroll to zoom · double-click a stage to focus · Esc to reset</div>
+<div id="hint">drag a stage to reposition · drag empty space to pan · scroll to zoom · double-click a stage to focus · Esc to reset</div>
 <div id="err" class="panel"><p></p></div>
 
 <!--__D3_SUBSET__-->
@@ -91,60 +91,17 @@ const d3 = window.d3;
 // Injected by build_stage_map_html.py: the contents of stage_graph.json +
 // file_stage_index.json, already joined and cycle/god-module annotated via
 // lib.graph's own find_cycles/find_god_modules -- see that script for the
-// exact schema.
+// exact schema. `nodes` is a FLAT list (the data has no containment
+// hierarchy); `edges` are the directed wires between them.
 const DATA = /*__STAGE_MAP_DATA__*/ null;
 
-if (!DATA || !DATA.root) {
+if (!DATA || !DATA.nodes) {
   fail("No stage map data found in this file.<br>Re-run <code>self-assess-stage-map</code> to regenerate it.");
   throw new Error("no data");
 }
 
-// ── Layout: single-level circle-pack ─────────────────────────────────────
-// self-assess-stage-map clusters files by shallowest importable package
-// boundary -- a genuinely flat list of stages, never nested. This packs
-// one level (stages as direct children of a synthetic root), not a fake
-// multi-level hierarchy the data doesn't have.
-const WORLD = 2000;
-const sizeOf = d => Math.max(1, d.fileCount || 1);
-const root = d3.hierarchy(DATA.root, d => d.children)
-  .sum(d => (d.children ? 0 : sizeOf(d)))
-  .sort((a, b) => b.value - a.value);
-d3.pack().size([WORLD, WORLD]).padding(6)(root);
-
-const nodes = [];
-const byId = new Map();
-root.each(d => {
-  if (d.data.id === "__root__") return; // the synthetic root itself isn't drawn
-  const n = { id: d.data.id, name: d.data.name, fileCount: d.data.fileCount || 0,
-    fanIn: d.data.fanIn || 0, fanOut: d.data.fanOut || 0, inCycle: !!d.data.inCycle,
-    cycleId: d.data.cycleId, godModuleFanIn: d.data.godModuleFanIn,
-    deadEnd: !!d.data.deadEnd, x: d.x, y: d.y, r: d.r };
-  nodes.push(n); byId.set(n.id, n);
-});
-if (!nodes.length) {
-  fail("The stage graph has no stages to draw.<br>Check <code>stage_graph.json</code>.");
-  throw new Error("empty graph");
-}
-
-document.getElementById("title").textContent = "Stage map";
-document.getElementById("stats").textContent =
-  DATA.stats.stageCount + " stages · " + DATA.stats.edgeCount + " wires" +
-  (DATA.stats.cycleCount ? " · " + DATA.stats.cycleCount + " cycle(s)" : "") +
-  (DATA.stats.godModuleCount ? " · " + DATA.stats.godModuleCount + " god-module(s)" : "");
-
-const edges = (DATA.edges || []).filter(e => byId.has(e.source) && byId.has(e.target));
-const adjacency = new Map();
-const addAdj = (id, e) => { const a = adjacency.get(id); a ? a.push(e) : adjacency.set(id, [e]); };
-for (const e of edges) { addAdj(e.source, e); if (e.target !== e.source) addAdj(e.target, e); }
-
-const CYCLE_PALETTE = ["#b0503f", "#a5648a", "#9e5a5a", "#7a5d8a"];
-function fillFor(n) {
-  if (n.inCycle) return CYCLE_PALETTE[(n.cycleId || 0) % CYCLE_PALETTE.length];
-  if (n.godModuleFanIn) return "#7a6a3a";
-  return "#4a6580";
-}
-
-// ── State / render ────────────────────────────────────────────────────────
+// ── Canvas / draw scaffolding -- defined before the simulation below so
+// its tick handler already has requestDraw to call. ─────────────────────
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 let transform = d3.zoomIdentity;
@@ -158,6 +115,103 @@ function visible(n, k, tx, ty, vw, vh) {
   return sx + sr > -60 && sx - sr < vw + 60 && sy + sr > -60 && sy - sr < vh + 60;
 }
 
+// ── Data prep: node radius from file count, edges/adjacency ─────────────
+const nodes = DATA.nodes.map(d => ({
+  id: d.id, name: d.name, fileCount: d.fileCount || 0,
+  fanIn: d.fanIn || 0, fanOut: d.fanOut || 0, inCycle: !!d.inCycle,
+  cycleId: d.cycleId, godModuleFanIn: d.godModuleFanIn, deadEnd: !!d.deadEnd,
+}));
+const byId = new Map(nodes.map(n => [n.id, n]));
+if (!nodes.length) {
+  fail("The stage graph has no stages to draw.<br>Check <code>stage_graph.json</code>.");
+  throw new Error("empty graph");
+}
+
+const maxFileCount = Math.max(1, ...nodes.map(n => n.fileCount));
+const rScale = d3.scaleSqrt().domain([0, maxFileCount]).range([6, 40]).clamp(true);
+for (const n of nodes) n.r = rScale(n.fileCount);
+
+document.getElementById("title").textContent = "Stage map";
+document.getElementById("stats").textContent =
+  DATA.stats.stageCount + " stages · " + DATA.stats.edgeCount + " wires" +
+  (DATA.stats.cycleCount ? " · " + DATA.stats.cycleCount + " cycle(s)" : "") +
+  (DATA.stats.godModuleCount ? " · " + DATA.stats.godModuleCount + " god-module(s)" : "");
+
+const edges = (DATA.edges || []).filter(e => byId.has(e.source) && byId.has(e.target));
+const adjacency = new Map();
+const addAdj = (id, e) => { const a = adjacency.get(id); a ? a.push(e) : adjacency.set(id, [e]); };
+for (const e of edges) { addAdj(e.source, e); if (e.target !== e.source) addAdj(e.target, e); }
+
+// ── Colors: resolved from the injected design tokens once at startup, so
+// canvas fillStyle/strokeStyle (which cannot reference CSS var() directly)
+// stay in sync with the same tokens.css the DOM chrome uses. A few colors
+// have no equivalent canonical token -- those stay hardcoded, called out
+// inline below rather than silently left as unexplained magic hex. ──────
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const hexToRgba = (hex, alpha) => {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+};
+const COLOR = {
+  bg: cssVar("--bg"),
+  accent: cssVar("--accent"),
+  border: cssVar("--border"),
+  textFaint: hexToRgba(cssVar("--text"), 0.15),
+  accentFocus: hexToRgba(cssVar("--accent"), 0.3),
+  cycle: cssVar("--status-bad"),
+  god: cssVar("--status-warn"),
+  // Not in tokens.css -- viewer-specific fill hues with no canonical
+  // equivalent (deliberately distinct from the --cycle/--god BORDER colors
+  // above, which mark the same nodes' outlines, not their fills).
+  godFill: "#7a6a3a",
+  stageFill: "#4a6580",
+  label: "#e8e8e8",
+};
+const CYCLE_PALETTE = [COLOR.cycle, "#a5648a", "#9e5a5a", "#7a5d8a"];
+function fillFor(n) {
+  if (n.inCycle) return CYCLE_PALETTE[(n.cycleId || 0) % CYCLE_PALETTE.length];
+  if (n.godModuleFanIn) return COLOR.godFill;
+  return COLOR.stageFill;
+}
+
+// ── Layout: force-directed graph ─────────────────────────────────────────
+// self-assess-stage-map's data is a FLAT list of stages with DIRECTED
+// wires between them, some forming real cycles (mutual dependency) -- there
+// is no containment hierarchy, so circle-pack's subtree-size positioning
+// encoded nothing about which stage points to which (two nodes in the same
+// cycle could land anywhere relative to each other, so curved edges drawn
+// between them could cross in ways with zero relationship to real
+// topology). A force simulation instead lets connectivity itself determine
+// position: forceLink pulls wired stages together (so a real cycle's
+// mutual edges pull its members into a visibly tight, tangled cluster --
+// exactly the "dangerous to touch" signal this report exists to show),
+// forceManyBody repels unrelated stages apart (so a fan-in hub naturally
+// ends up visually central, with many converging edges), forceCollide
+// keeps differently-sized circles from overlapping at rest, and
+// forceCenter keeps the whole layout centered on the canvas origin.
+const links = edges.map(e => ({ source: e.source, target: e.target }));
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(70))
+  .force("charge", d3.forceManyBody().strength(d => -60 - d.r * 4))
+  .force("collide", d3.forceCollide().radius(d => d.r + 6))
+  .force("center", d3.forceCenter())
+  .on("tick", requestDraw)
+  .on("end", fitToNodes);
+
+function fitToNodes() {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
+    minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r);
+  }
+  const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
+  const vw = innerWidth, vh = innerHeight;
+  const k = Math.min(vw / (w * 1.1), vh / (h * 1.1), MAX_K);
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, vh / 2 - cy * k).scale(k));
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
 function draw() {
   const dpr = window.devicePixelRatio || 1;
   const vw = innerWidth, vh = innerHeight;
@@ -165,14 +219,17 @@ function draw() {
   if (canvas.width !== bw) { canvas.width = bw; canvas.style.width = vw + "px"; }
   if (canvas.height !== bh) { canvas.height = bh; canvas.style.height = vh + "px"; }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#1e1e1e"; ctx.fillRect(0, 0, vw, vh);
+  ctx.fillStyle = COLOR.bg; ctx.fillRect(0, 0, vw, vh);
 
   const { x: tx, y: ty, k } = transform;
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
 
-  // Edges first, underneath nodes.
+  // Edges first, underneath nodes. Curved (not straight) so a cycle's two
+  // opposite-direction wires (a->b and b->a) don't perfectly overlap -- the
+  // curve is what makes a mutual dependency visually readable as two
+  // distinct wires instead of one.
   const focus = hovered || selected;
-  ctx.strokeStyle = "rgba(212,212,212,0.15)"; ctx.lineWidth = 0.8; ctx.beginPath();
+  ctx.strokeStyle = COLOR.textFaint; ctx.lineWidth = 0.8; ctx.beginPath();
   for (const e of edges) {
     const a = byId.get(e.source), b = byId.get(e.target);
     if (!visible(a, k, tx, ty, vw, vh) && !visible(b, k, tx, ty, vw, vh)) continue;
@@ -183,7 +240,7 @@ function draw() {
   ctx.stroke();
 
   if (focus) {
-    ctx.strokeStyle = "#cc785c"; ctx.lineWidth = 1.6; ctx.beginPath();
+    ctx.strokeStyle = COLOR.accent; ctx.lineWidth = 1.6; ctx.beginPath();
     for (const e of adjacency.get(focus) || []) {
       const a = byId.get(e.source), b = byId.get(e.target);
       const ax = a.x * k + tx, ay = a.y * k + ty, bx = b.x * k + tx, by = b.y * k + ty;
@@ -202,18 +259,17 @@ function draw() {
     const isSel = selected === n.id, isHov = hovered === n.id;
 
     ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-    ctx.fillStyle = isSel ? "rgba(204,120,92,0.3)" : fillFor(n);
+    ctx.fillStyle = isSel ? COLOR.accentFocus : fillFor(n);
     ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
     ctx.lineWidth = isSel ? 2.5 : isHov ? 1.8 : n.godModuleFanIn ? 2 : 1;
-    ctx.strokeStyle = isSel || isHov ? "#cc785c" : n.godModuleFanIn ? "var(--god)" : "#3a3a3a";
-    ctx.strokeStyle = isSel || isHov ? "#cc785c" : n.godModuleFanIn ? "#b58b3a" : "#3a3a3a";
+    ctx.strokeStyle = isSel || isHov ? COLOR.accent : n.godModuleFanIn ? COLOR.god : COLOR.border;
     if (n.deadEnd) ctx.setLineDash([5, 4]);
     ctx.stroke(); ctx.setLineDash([]);
 
     if (sr > LABEL_R) {
       const fs = Math.min(16, Math.max(9, sr / 4));
       ctx.font = `400 ${fs}px system-ui, sans-serif`;
-      ctx.fillStyle = "#e8e8e8";
+      ctx.fillStyle = COLOR.label;
       const label = n.name.length > 22 ? [...n.name].slice(0, 20).join("") + "…" : n.name;
       ctx.fillText(label, sx, sy);
     }
@@ -223,11 +279,6 @@ function draw() {
 // ── Zoom / pan / hit-testing ────────────────────────────────────────────
 const leafRs = nodes.map(n => n.r);
 const MAX_K = Math.max(20, Math.ceil(140 / Math.max(1e-6, Math.min(...leafRs))));
-const zoomB = d3.zoom().scaleExtent([0.3, MAX_K]).clickDistance(4)
-  .on("zoom", ev => { transform = ev.transform; requestDraw(); })
-  .on("start", () => canvas.classList.add("dragging"))
-  .on("end", () => canvas.classList.remove("dragging"));
-const sel = d3.select(canvas).call(zoomB).on("dblclick.zoom", null);
 
 function hit(mx, my) {
   const wx = (mx - transform.x) / transform.k, wy = (my - transform.y) / transform.k;
@@ -239,6 +290,24 @@ function hit(mx, my) {
   }
   return best;
 }
+
+const zoomB = d3.zoom().scaleExtent([0.3, MAX_K]).clickDistance(4)
+  .on("zoom", ev => { transform = ev.transform; requestDraw(); })
+  .on("start", () => canvas.classList.add("dragging"))
+  .on("end", () => canvas.classList.remove("dragging"));
+// Don't let d3.zoom start a pan gesture when the pointer is over a node --
+// that's a node-drag instead (installed further below), not a canvas pan.
+const defaultZoomFilter = zoomB.filter();
+zoomB.filter(event => defaultZoomFilter(event) &&
+  !(event.type === "mousedown" && hit(event.offsetX, event.offsetY)));
+const sel = d3.select(canvas).call(zoomB).on("dblclick.zoom", null);
+
+// Center on the simulation's origin immediately, before it has settled --
+// fitToNodes() (above) replaces this with a tight fit once the simulation's
+// "end" event fires (alpha decays below alphaMin, usually well under 2s).
+transform = d3.zoomIdentity.translate(innerWidth / 2, innerHeight / 2).scale(1);
+sel.call(zoomB.transform, transform);
+
 let flyGen = 0;
 function flyTo(n) {
   const gen = ++flyGen;
@@ -256,12 +325,42 @@ function flyTo(n) {
     if (t < 1) requestAnimationFrame(step);
   })();
 }
+// ── Node drag-to-reposition ──────────────────────────────────────────────
+// d3-drag isn't in the vendored bundle (only d3-force/d3-scale were added
+// for this rebuild), so this is hand-rolled: mousedown on a node pins it
+// (fx/fy) and reheats the simulation via alphaTarget so the rest of the
+// graph visibly re-settles around the moved node; mouseup releases it back
+// to the physics. The zoom filter above already keeps d3.zoom from also
+// starting a pan for the same mousedown.
+let dragNode = null, dragStart = null, dragMoved = false;
+canvas.addEventListener("mousedown", e => {
+  const h = hit(e.offsetX, e.offsetY);
+  if (!h) return;
+  dragNode = h; dragStart = [e.offsetX, e.offsetY]; dragMoved = false;
+  simulation.alphaTarget(0.3).restart();
+});
 canvas.addEventListener("mousemove", e => {
+  if (dragNode) {
+    if (Math.hypot(e.offsetX - dragStart[0], e.offsetY - dragStart[1]) > 4) dragMoved = true;
+    dragNode.fx = (e.offsetX - transform.x) / transform.k;
+    dragNode.fy = (e.offsetY - transform.y) / transform.k;
+    canvas.classList.add("dragging");
+    requestDraw();
+    return;
+  }
   const h = hit(e.offsetX, e.offsetY);
   const id = h ? h.id : null;
   if (id !== hovered) { hovered = id; canvas.style.cursor = h ? "pointer" : "grab"; requestDraw(); }
 });
+addEventListener("mouseup", () => {
+  if (!dragNode) return;
+  dragNode.fx = null; dragNode.fy = null;
+  simulation.alphaTarget(0);
+  canvas.classList.remove("dragging");
+  dragNode = null;
+});
 canvas.addEventListener("click", e => {
+  if (dragMoved) { dragMoved = false; return; }
   const h = hit(e.offsetX, e.offsetY);
   selected = h ? h.id : null;
   resultsEl.innerHTML = "";
@@ -326,12 +425,11 @@ searchEl.addEventListener("input", () => {
   }
 });
 
-// Initial view: fit the whole pack in frame.
-(function initialFit() {
-  const vw = innerWidth, vh = innerHeight;
-  const k = Math.min(vw, vh) / (WORLD * 1.1);
-  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - WORLD / 2 * k, vh / 2 - WORLD / 2 * k).scale(k));
-})();
+// Exposed only for this rebuild's own Playwright-driven verification (and
+// any future automated check) -- a `type="module"` script's top-level
+// bindings don't otherwise leak to `window`, so there is no other way to
+// inspect live simulation state from outside the page's own script.
+window.__stageMapDebug = { nodes, edges, simulation };
 </script>
 </body>
 </html>
