@@ -182,7 +182,7 @@ function showGapsInSidebar(stageName) {
   const gaps = gapsForStage(stageName);
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
-  sidebar.appendChild(el('h2', null, stageName + ' — open gaps (' + gaps.length + ')'));
+  sidebar.appendChild(el('h2', null, escapeHtml(stageName) + ' — open gaps (' + gaps.length + ')'));
   if (!gaps.length) {
     sidebar.appendChild(el('div', 'placeholder', 'No open gaps at this stage.'));
     return;
