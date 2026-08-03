@@ -257,25 +257,32 @@ function showGapsInSidebar(title, gaps) {
   }
 }
 
-function renderBarPanel(title, parent, counts, order, gapField) {
+// Ordinal severity ramp for blast radius (local -> repo_wide), one hue off
+// --accent, light->dark. Steps + surface #2d2d2d (the .track background)
+// clear the dataviz skill's ordinal checks (monotone L, adjacent ΔL >= 0.06,
+// light-end contrast >= 2:1, single hue) -- see conversation for derivation.
+const RADIUS_RAMP = ['#da8568', '#c47155', '#af5e42', '#9a4b30'];
+
+function renderBarPanel(title, parent, counts, order, gapField, colors) {
   const panel = el('div', 'panel');
   panel.appendChild(el('h2', null, title));
   const keys = order || Object.keys(counts);
   const max = Math.max(1, ...keys.map(k => counts[k] || 0));
   const allGaps = BOARD.open_gaps || [];
-  for (const k of keys) {
+  keys.forEach((k, i) => {
     const n = counts[k] || 0;
     const row = el('div', 'bar-row');
     row.appendChild(el('div', 'label', escapeHtml(k)));
     const track = el('div', 'track');
     const fill = el('div', 'fill');
     fill.style.width = (n / max * 100) + '%';
+    if (colors) fill.style.background = colors[i];
     track.appendChild(fill);
     row.appendChild(track);
     row.appendChild(el('div', 'count', String(n)));
     row.onclick = () => showGapsInSidebar(title + ': ' + k, allGaps.filter(g => g[gapField] === k));
     panel.appendChild(row);
-  }
+  });
   parent.appendChild(panel);
 }
 
@@ -321,7 +328,7 @@ function render() {
 
   renderBarPanel('Open gaps by kind', content, BOARD.open_gap_counts_by_kind, null, 'kind');
   renderBarPanel('Open gaps by blast radius', content, BOARD.open_gap_counts_by_radius,
-    Object.keys(BOARD.open_gap_counts_by_radius), 'blast_radius');
+    ['local', 'module', 'cross_module', 'repo_wide'], 'blast_radius', RADIUS_RAMP);
 
   const stratPanel = el('div', 'panel');
   stratPanel.appendChild(el('h2', null, 'Evidence-strategy mix'));

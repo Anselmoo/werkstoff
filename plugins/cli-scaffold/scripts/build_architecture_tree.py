@@ -92,20 +92,28 @@ def build_tree(scaffold_dir, manifest):
     }
 
 
-def render_html(template_path, payload):
+def render_html(template_path, d3_path, payload):
     tpl = open(template_path, encoding="utf-8").read()
-    marker = "/*__TREE_DATA__*/ null"
-    if marker not in tpl:
-        raise ValueError(f"injection marker not found in {template_path}")
+    d3_snippet = open(d3_path, encoding="utf-8").read()
+
+    d3_marker = "<!--__D3_SUBSET__-->"
+    if d3_marker not in tpl:
+        raise ValueError(f"D3 injection marker not found in {template_path}")
+    tpl = tpl.replace(d3_marker, d3_snippet)
+
+    data_marker = "/*__TREE_DATA__*/ null"
+    if data_marker not in tpl:
+        raise ValueError(f"data injection marker not found in {template_path}")
     data = json.dumps(payload)
     data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(marker, "/*__TREE_DATA__*/ " + data)
+    return tpl.replace(data_marker, "/*__TREE_DATA__*/ " + data)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("scaffold_dir")
     parser.add_argument("--template", required=True)
+    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
     parser.add_argument("--out", help="defaults to <scaffold_dir>/ARCHITECTURE.html")
     args = parser.parse_args(argv)
 
@@ -123,7 +131,7 @@ def main(argv=None):
 
     out_path = args.out or os.path.join(args.scaffold_dir, "ARCHITECTURE.html")
     with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, payload))
+        fh.write(render_html(args.template, args.d3, payload))
 
     print(json.dumps({"architecturePath": out_path}))
     return 0

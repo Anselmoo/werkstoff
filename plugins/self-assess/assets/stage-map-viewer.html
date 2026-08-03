@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Stage map</title>
+<style>
+  :root {
+    --bg: #1e1e1e; --panel: #252526; --panel-2: #2d2d2d;
+    --text: #d4d4d4; --muted: #8a8a8a; --accent: #cc785c;
+    --border: #3a3a3a; --cycle: #b0503f; --god: #b58b3a;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg);
+    color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+  #map { position: absolute; inset: 0; cursor: grab; }
+  #map.dragging { cursor: grabbing; }
+  #hud { position: absolute; top: 12px; left: 12px; width: 280px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 2; }
+  .panel { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; }
+  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
+  .panel .sub { color: var(--muted); font-size: 12px; }
+  #search { width: 100%; padding: 6px 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--panel-2);
+    color: var(--text); font: inherit; outline: none; }
+  #search:focus { border-color: var(--accent); }
+  #results { max-height: 180px; overflow-y: auto; margin-top: 4px; }
+  #results div { padding: 4px 6px; border-radius: 4px; cursor: pointer;
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #results div:hover { background: var(--panel-2); }
+  #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
+    width: 320px; overflow-y: auto; z-index: 2; display: none; }
+  #sidebar.open { display: block; }
+  #sidebar h2 { font-size: 16px; word-break: break-word; }
+  #sidebar .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  #sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin: 12px 0 4px; }
+  #sidebar .link { color: #5ba0e0; cursor: pointer; display: block;
+    padding: 2px 0; font-size: 13px; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  #sidebar .link:hover { color: var(--accent); }
+  #sidebar .closebtn { float: right; cursor: pointer; color: var(--muted);
+    font-size: 18px; line-height: 1; } #sidebar .closebtn:hover { color: var(--text); }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 9px;
+    font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
+  .badge.cycle { border-color: var(--cycle); color: var(--cycle); }
+  .badge.god { border-color: var(--god); color: var(--god); }
+  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    color: var(--muted); font-size: 12px; z-index: 2; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
+  #err .panel { max-width: 420px; text-align: center; }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<div id="hud">
+  <div class="panel">
+    <h1 id="title">Stage map</h1>
+    <div class="sub" id="stats"></div>
+  </div>
+  <div class="panel">
+    <input id="search" type="search" placeholder="Search stages…" autocomplete="off">
+    <div id="results"></div>
+  </div>
+</div>
+
+<div id="sidebar" class="panel"></div>
+<div id="hint">drag to pan · scroll to zoom · double-click a stage to focus · Esc to reset</div>
+<div id="err" class="panel"><p></p></div>
+
+<!--__D3_SUBSET__-->
+<script type="module">
+function fail(html) {
+  const err = document.getElementById("err");
+  err.querySelector("p").innerHTML = html;
+  err.style.display = "grid";
+}
+
+const d3 = window.d3;
+
+// Injected by build_stage_map_html.py: the contents of stage_graph.json +
+// file_stage_index.json, already joined and cycle/god-module annotated via
+// lib.graph's own find_cycles/find_god_modules -- see that script for the
+// exact schema.
+const DATA = /*__STAGE_MAP_DATA__*/ null;
+
+if (!DATA || !DATA.root) {
+  fail("No stage map data found in this file.<br>Re-run <code>self-assess-stage-map</code> to regenerate it.");
+  throw new Error("no data");
+}
+
+// ── Layout: single-level circle-pack ─────────────────────────────────────
+// self-assess-stage-map clusters files by shallowest importable package
+// boundary -- a genuinely flat list of stages, never nested. This packs
+// one level (stages as direct children of a synthetic root), not a fake
+// multi-level hierarchy the data doesn't have.
+const WORLD = 2000;
+const sizeOf = d => Math.max(1, d.fileCount || 1);
+const root = d3.hierarchy(DATA.root, d => d.children)
+  .sum(d => (d.children ? 0 : sizeOf(d)))
+  .sort((a, b) => b.value - a.value);
+d3.pack().size([WORLD, WORLD]).padding(6)(root);
+
+const nodes = [];
+const byId = new Map();
+root.each(d => {
+  if (d.data.id === "__root__") return; // the synthetic root itself isn't drawn
+  const n = { id: d.data.id, name: d.data.name, fileCount: d.data.fileCount || 0,
+    fanIn: d.data.fanIn || 0, fanOut: d.data.fanOut || 0, inCycle: !!d.data.inCycle,
+    cycleId: d.data.cycleId, godModuleFanIn: d.data.godModuleFanIn,
+    deadEnd: !!d.data.deadEnd, x: d.x, y: d.y, r: d.r };
+  nodes.push(n); byId.set(n.id, n);
+});
+if (!nodes.length) {
+  fail("The stage graph has no stages to draw.<br>Check <code>stage_graph.json</code>.");
+  throw new Error("empty graph");
+}
+
+document.getElementById("title").textContent = "Stage map";
+document.getElementById("stats").textContent =
+  DATA.stats.stageCount + " stages · " + DATA.stats.edgeCount + " wires" +
+  (DATA.stats.cycleCount ? " · " + DATA.stats.cycleCount + " cycle(s)" : "") +
+  (DATA.stats.godModuleCount ? " · " + DATA.stats.godModuleCount + " god-module(s)" : "");
+
+const edges = (DATA.edges || []).filter(e => byId.has(e.source) && byId.has(e.target));
+const adjacency = new Map();
+const addAdj = (id, e) => { const a = adjacency.get(id); a ? a.push(e) : adjacency.set(id, [e]); };
+for (const e of edges) { addAdj(e.source, e); if (e.target !== e.source) addAdj(e.target, e); }
+
+const CYCLE_PALETTE = ["#b0503f", "#a5648a", "#9e5a5a", "#7a5d8a"];
+function fillFor(n) {
+  if (n.inCycle) return CYCLE_PALETTE[(n.cycleId || 0) % CYCLE_PALETTE.length];
+  if (n.godModuleFanIn) return "#7a6a3a";
+  return "#4a6580";
+}
+
+// ── State / render ────────────────────────────────────────────────────────
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+let transform = d3.zoomIdentity;
+let hovered = null, selected = null;
+const MIN_R = 1.5, LABEL_R = 14;
+let raf = null;
+const requestDraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = null; draw(); }); };
+
+function visible(n, k, tx, ty, vw, vh) {
+  const sx = n.x * k + tx, sy = n.y * k + ty, sr = n.r * k;
+  return sx + sr > -60 && sx - sr < vw + 60 && sy + sr > -60 && sy - sr < vh + 60;
+}
+
+function draw() {
+  const dpr = window.devicePixelRatio || 1;
+  const vw = innerWidth, vh = innerHeight;
+  const bw = Math.round(vw * dpr), bh = Math.round(vh * dpr);
+  if (canvas.width !== bw) { canvas.width = bw; canvas.style.width = vw + "px"; }
+  if (canvas.height !== bh) { canvas.height = bh; canvas.style.height = vh + "px"; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#1e1e1e"; ctx.fillRect(0, 0, vw, vh);
+
+  const { x: tx, y: ty, k } = transform;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+  // Edges first, underneath nodes.
+  const focus = hovered || selected;
+  ctx.strokeStyle = "rgba(212,212,212,0.15)"; ctx.lineWidth = 0.8; ctx.beginPath();
+  for (const e of edges) {
+    const a = byId.get(e.source), b = byId.get(e.target);
+    if (!visible(a, k, tx, ty, vw, vh) && !visible(b, k, tx, ty, vw, vh)) continue;
+    const ax = a.x * k + tx, ay = a.y * k + ty, bx = b.x * k + tx, by = b.y * k + ty;
+    ctx.moveTo(ax, ay);
+    ctx.quadraticCurveTo((ax + bx) / 2 + (by - ay) * 0.1, (ay + by) / 2 + (ax - bx) * 0.1, bx, by);
+  }
+  ctx.stroke();
+
+  if (focus) {
+    ctx.strokeStyle = "#cc785c"; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (const e of adjacency.get(focus) || []) {
+      const a = byId.get(e.source), b = byId.get(e.target);
+      const ax = a.x * k + tx, ay = a.y * k + ty, bx = b.x * k + tx, by = b.y * k + ty;
+      ctx.moveTo(ax, ay);
+      ctx.quadraticCurveTo((ax + bx) / 2 + (by - ay) * 0.1, (ay + by) / 2 + (ax - bx) * 0.1, bx, by);
+    }
+    ctx.stroke();
+  }
+
+  // Nodes
+  for (const n of nodes) {
+    const sr = n.r * k;
+    if (sr < MIN_R) continue;
+    if (!visible(n, k, tx, ty, vw, vh)) continue;
+    const sx = n.x * k + tx, sy = n.y * k + ty;
+    const isSel = selected === n.id, isHov = hovered === n.id;
+
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fillStyle = isSel ? "rgba(204,120,92,0.3)" : fillFor(n);
+    ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
+    ctx.lineWidth = isSel ? 2.5 : isHov ? 1.8 : n.godModuleFanIn ? 2 : 1;
+    ctx.strokeStyle = isSel || isHov ? "#cc785c" : n.godModuleFanIn ? "var(--god)" : "#3a3a3a";
+    ctx.strokeStyle = isSel || isHov ? "#cc785c" : n.godModuleFanIn ? "#b58b3a" : "#3a3a3a";
+    if (n.deadEnd) ctx.setLineDash([5, 4]);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    if (sr > LABEL_R) {
+      const fs = Math.min(16, Math.max(9, sr / 4));
+      ctx.font = `400 ${fs}px system-ui, sans-serif`;
+      ctx.fillStyle = "#e8e8e8";
+      const label = n.name.length > 22 ? [...n.name].slice(0, 20).join("") + "…" : n.name;
+      ctx.fillText(label, sx, sy);
+    }
+  }
+}
+
+// ── Zoom / pan / hit-testing ────────────────────────────────────────────
+const leafRs = nodes.map(n => n.r);
+const MAX_K = Math.max(20, Math.ceil(140 / Math.max(1e-6, Math.min(...leafRs))));
+const zoomB = d3.zoom().scaleExtent([0.3, MAX_K]).clickDistance(4)
+  .on("zoom", ev => { transform = ev.transform; requestDraw(); })
+  .on("start", () => canvas.classList.add("dragging"))
+  .on("end", () => canvas.classList.remove("dragging"));
+const sel = d3.select(canvas).call(zoomB).on("dblclick.zoom", null);
+
+function hit(mx, my) {
+  const wx = (mx - transform.x) / transform.k, wy = (my - transform.y) / transform.k;
+  let best = null;
+  for (const n of nodes) {
+    if (n.r * transform.k < MIN_R) continue;
+    const dx = wx - n.x, dy = wy - n.y;
+    if (dx * dx + dy * dy <= n.r * n.r && (!best || n.r < best.r)) best = n;
+  }
+  return best;
+}
+let flyGen = 0;
+function flyTo(n) {
+  const gen = ++flyGen;
+  const vw = innerWidth, vh = innerHeight, cur = transform;
+  const from = [(vw / 2 - cur.x) / cur.k, (vh / 2 - cur.y) / cur.k, Math.min(vw, vh) / cur.k];
+  const targetW = Math.max(n.r * 2.6, Math.min(vw, vh) / MAX_K);
+  const interp = d3.interpolateZoom(from, [n.x, n.y, targetW]);
+  const dur = Math.max(400, interp.duration * 0.55), t0 = performance.now();
+  (function step() {
+    if (gen !== flyGen) return;
+    const t = Math.min(1, (performance.now() - t0) / dur);
+    const [cx, cy, w] = interp(d3.easeCubicInOut(t));
+    const k = Math.min(vw, vh) / w;
+    sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, vh / 2 - cy * k).scale(k));
+    if (t < 1) requestAnimationFrame(step);
+  })();
+}
+canvas.addEventListener("mousemove", e => {
+  const h = hit(e.offsetX, e.offsetY);
+  const id = h ? h.id : null;
+  if (id !== hovered) { hovered = id; canvas.style.cursor = h ? "pointer" : "grab"; requestDraw(); }
+});
+canvas.addEventListener("click", e => {
+  const h = hit(e.offsetX, e.offsetY);
+  selected = h ? h.id : null;
+  resultsEl.innerHTML = "";
+  renderSidebar(); requestDraw();
+});
+canvas.addEventListener("dblclick", e => { const h = hit(e.offsetX, e.offsetY); if (h) flyTo(h); });
+addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (e.target === searchEl) return;
+  flyGen++; selected = null; resultsEl.innerHTML = "";
+  flyTo(nodes[0]); renderSidebar();
+});
+addEventListener("resize", requestDraw);
+
+// ── Sidebar ─────────────────────────────────────────────────────────────
+const sidebar = document.getElementById("sidebar");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function renderSidebar() {
+  if (!selected) { sidebar.classList.remove("open"); return; }
+  const n = byId.get(selected);
+  const neighbors = [];
+  for (const e of adjacency.get(n.id) || []) {
+    if (e.source === n.id) neighbors.push({ id: e.target, dir: "→" });
+    else neighbors.push({ id: e.source, dir: "←" });
+  }
+  sidebar.innerHTML = `
+    <span class="closebtn" id="close">×</span>
+    <h2>${esc(n.name)}</h2>
+    <div class="meta">${n.fileCount} file(s)</div>
+    <div>
+      ${n.inCycle ? '<span class="badge cycle">in a dependency cycle</span>' : ""}
+      ${n.godModuleFanIn ? `<span class="badge god">god-module: fan-in ${n.godModuleFanIn}</span>` : ""}
+      ${n.deadEnd ? '<span class="badge">dead-end (no outgoing wires)</span>' : ""}
+      <span class="badge">fan-in ${n.fanIn}</span>
+      <span class="badge">fan-out ${n.fanOut}</span>
+    </div>
+    ${neighbors.length ? `<h3>Wires (${neighbors.length})</h3>` +
+      neighbors.slice(0, 60).map(x => `<span class="link" data-id="${esc(x.id)}">${x.dir} ${esc(byId.get(x.id)?.name || x.id)}</span>`).join("") +
+      (neighbors.length > 60 ? `<div class="meta">…and ${neighbors.length - 60} more</div>` : "")
+      : `<h3>Wires</h3><div class="meta">none</div>`}`;
+  sidebar.classList.add("open");
+  sidebar.querySelector("#close").onclick = () => { selected = null; renderSidebar(); requestDraw(); };
+  sidebar.querySelectorAll(".link").forEach(el => el.onclick = () => {
+    const t = byId.get(el.dataset.id);
+    if (t) { selected = t.id; flyTo(t); renderSidebar(); requestDraw(); }
+  });
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+const searchEl = document.getElementById("search");
+const resultsEl = document.getElementById("results");
+searchEl.addEventListener("input", () => {
+  const q = searchEl.value.trim().toLowerCase();
+  resultsEl.innerHTML = "";
+  if (!q) return;
+  const matches = nodes.filter(n => n.name.toLowerCase().includes(q)).slice(0, 30);
+  for (const n of matches) {
+    const div = document.createElement("div");
+    div.textContent = n.name;
+    div.onclick = () => { selected = n.id; flyTo(n); renderSidebar(); requestDraw(); searchEl.blur(); };
+    resultsEl.appendChild(div);
+  }
+});
+
+// Initial view: fit the whole pack in frame.
+(function initialFit() {
+  const vw = innerWidth, vh = innerHeight;
+  const k = Math.min(vw, vh) / (WORLD * 1.1);
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - WORLD / 2 * k, vh / 2 - WORLD / 2 * k).scale(k));
+})();
+</script>
+</body>
+</html>

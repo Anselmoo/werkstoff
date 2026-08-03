@@ -82,10 +82,29 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --r
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename stage_map_summary.json
 ```
 
-Write `STAGE_MAP.md`, `STAGE_MAP.html` (a simple static graph render), `stage_graph.json`,
-`file_stage_index.json`, and `stage_map_summary.json` to their resolved paths. `stage_map.json`
-(viewer format, sampled edges) may also be written here for `self-assess-transform-brief` to
-later append a `flows` field to.
+Write `STAGE_MAP.md`, `stage_graph.json`, `file_stage_index.json`, and `stage_map_summary.json`
+to their resolved paths. `stage_map.json` (viewer format, sampled edges) may also be written
+here for `self-assess-transform-brief` to later append a `flows` field to -- that is its own,
+separate consumer, unrelated to the HTML viewer below.
+
+Then render `STAGE_MAP.html` -- a real canvas-based D3 viewer (circle-pack layout, pan/zoom,
+search), not the old "simple static graph render":
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py \
+    --stage-graph <resolved stage_graph.json path> \
+    --file-stage-index <resolved file_stage_index.json path> \
+    --template ${CLAUDE_PLUGIN_ROOT}/assets/stage-map-viewer.html \
+    --d3 ${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html \
+    --out <resolved STAGE_MAP.html path>
+```
+
+This reads the FULL `stage_graph.json` directly (never `stage_map.json`'s sampled edges --
+canvas rendering with proper culling doesn't need the edge count thinned down for readability
+the way the old prose-only render did), and reuses `lib.graph`'s own `find_cycles`/
+`find_god_modules` to highlight cycles and god-modules in the viewer -- the exact same
+functions `self-assess-arch-health` reports from, so the viewer can never show something that
+skill disagrees with.
 
 ## Read-only constraint
 
