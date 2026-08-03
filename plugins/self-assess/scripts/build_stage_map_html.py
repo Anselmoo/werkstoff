@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Renders stage_graph.json + file_stage_index.json as a self-contained,
-canvas-based D3 viewer -- circle-pack layout (stage size ~ file count),
-pan/zoom, search, and level-of-detail-safe rendering, following the same
-techniques as anthropics/claude-plugins-official's code-modernization
-topology-viewer.html (vendored inline D3 subset, see tools/d3-subset/).
+canvas-based D3 viewer -- a force-directed graph (d3-force: forceSimulation
++ forceLink + forceManyBody + forceCenter), pan/zoom, search, and
+level-of-detail-safe rendering, following the same vendored-inline-D3
+technique as anthropics/claude-plugins-official's code-modernization
+topology-viewer.html (see tools/d3-subset/).
 
-Unlike that reference's system/domain/module hierarchy, self-assess-stage-map
-clusters files by the *shallowest importable package boundary* -- a genuinely
-flat list of stages, never nested. Faking a multi-level hierarchy here would
-misrepresent the actual data; this renders a single-level pack (one synthetic
-root, stages as direct children) instead.
+self-assess-stage-map's data is a genuinely FLAT list of stages with
+DIRECTED edges (wires) between them -- there is no containment hierarchy at
+all, and some wires form real cycles (mutual dependency). build_data() below
+returns nodes as a flat list, not nested; a prior version faked a
+single-level d3.hierarchy()+d3.pack() layout under a synthetic root, which
+positioned nodes by subtree-size accumulation and encoded nothing about
+which stage points to which -- two nodes in the same real cycle could land
+anywhere relative to each other, so edges drawn between them could visually
+cross in ways unrelated to the graph's actual topology. The force layout
+below instead lets connectivity itself determine position.
 
 Reads the FULL stage_graph.json (never sampled -- rule
 stage-graph-vs-stage-map-json), not the separate, deliberately-sampled
@@ -64,29 +70,23 @@ def build_data(stage_graph, file_stage_index):
         if b in fan_in:
             fan_in[b] += 1
 
-    root = {
-        "id": "__root__",
-        "name": "repository",
-        "kind": "root",
-        "children": [
-            {
-                "id": s,
-                "name": s,
-                "kind": "stage",
-                "fileCount": file_count.get(s, 0),
-                "fanIn": fan_in.get(s, 0),
-                "fanOut": fan_out.get(s, 0),
-                "inCycle": s in in_cycle,
-                "cycleId": cycle_of.get(s),
-                "godModuleFanIn": god_modules.get(s),
-                "deadEnd": s in dead_ends,
-            }
-            for s in stages
-        ],
-    }
+    nodes = [
+        {
+            "id": s,
+            "name": s,
+            "fileCount": file_count.get(s, 0),
+            "fanIn": fan_in.get(s, 0),
+            "fanOut": fan_out.get(s, 0),
+            "inCycle": s in in_cycle,
+            "cycleId": cycle_of.get(s),
+            "godModuleFanIn": god_modules.get(s),
+            "deadEnd": s in dead_ends,
+        }
+        for s in stages
+    ]
 
     return {
-        "root": root,
+        "nodes": nodes,
         "edges": [{"source": a, "target": b} for a, b in wires],
         "cycles": [sorted(c) for c in cycles],
         "stats": {
