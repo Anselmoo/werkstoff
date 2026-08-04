@@ -3,35 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Consistency Matrix</title>
+<!--__DESIGN_TOKENS__-->
 <style>
-  :root {
-    --bg: #1e1e1e;
-    --bg-panel: #252526;
-    --bg-header: #2d2d2d;
-    --text: #d4d4d4;
-    --text-dim: #8a8a8a;
-    --accent: #cc785c;
-    --border: #3a3a3a;
-    --conform-high: #4c8d5a;
-    --conform-mid: #b58b3a;
-    --conform-low: #b0503f;
-    --conform-unknown: #3a5a7a;
-  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    font-size: 14px;
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
   }
   header {
-    padding: 16px 20px;
+    padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--space-4);
     flex-wrap: wrap;
   }
   header h1 {
@@ -41,30 +30,30 @@
     color: var(--accent);
   }
   header .sub {
-    color: var(--text-dim);
+    color: var(--muted);
     font-size: 12px;
   }
   .controls {
     margin-left: auto;
     display: flex;
-    gap: 10px;
+    gap: var(--space-3);
     align-items: center;
   }
   input[type="text"] {
-    background: var(--bg-panel);
+    background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 6px 10px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
     width: 200px;
   }
   select {
-    background: var(--bg-panel);
+    background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: 13px;
   }
   .layout {
@@ -74,82 +63,73 @@
   .matrix-wrap {
     flex: 1;
     overflow: auto;
-    padding: 16px 20px;
+    padding: var(--space-4) var(--space-5);
   }
-  table.matrix {
-    border-collapse: collapse;
+  .matrix-grid {
+    display: grid;
+  }
+  .corner, .col-header, .row-label {
+    background: var(--panel-2);
     font-size: 12px;
-  }
-  table.matrix th, table.matrix td {
     border: 1px solid var(--border);
-    padding: 0;
-    text-align: left;
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  table.matrix th {
-    background: var(--bg-header);
+  .corner {
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 4;
+  }
+  .col-header {
     position: sticky;
     top: 0;
     z-index: 2;
-    padding: 8px 10px;
     cursor: pointer;
     user-select: none;
-    white-space: nowrap;
   }
-  table.matrix th.row-head {
-    position: sticky;
-    left: 0;
-    z-index: 3;
-    top: auto;
-  }
-  table.matrix th:first-child {
-    z-index: 4;
-  }
-  table.matrix th:hover { color: var(--accent); }
-  table.matrix td.row-label {
-    background: var(--bg-header);
+  .col-header:hover { color: var(--accent); }
+  .row-label {
     position: sticky;
     left: 0;
     z-index: 1;
-    padding: 8px 10px;
     font-weight: 500;
-    white-space: nowrap;
     cursor: pointer;
   }
-  table.matrix td.row-label:hover { color: var(--accent); }
-  td.cell {
-    min-width: 92px;
-    height: 40px;
+  .row-label:hover { color: var(--accent); }
+  .cells-svg {
+    grid-column: 2 / -1;
+    grid-row: 2 / -1;
+    display: block;
+  }
+  .cell-rect {
+    stroke: var(--border);
+    stroke-width: 1;
     cursor: pointer;
-    position: relative;
-    transition: outline 0.1s;
   }
-  td.cell:hover {
-    outline: 2px solid var(--accent);
-    outline-offset: -2px;
+  .cell-rect:hover {
+    stroke: var(--accent);
+    stroke-width: 2;
   }
-  td.cell.empty {
-    background: repeating-linear-gradient(45deg, #262626, #262626 6px, #2a2a2a 6px, #2a2a2a 12px);
+  .cell-rect.selected {
+    stroke: var(--text);
+    stroke-width: 2;
   }
-  td.cell .fill {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .cell-text {
     font-size: 10px;
-    color: rgba(255,255,255,0.85);
-    padding: 2px 4px;
-    text-align: center;
-    overflow: hidden;
-  }
-  td.cell.selected {
-    outline: 2px solid #fff;
-    outline-offset: -2px;
+    fill: rgba(255,255,255,0.85);
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
   }
   .sidebar {
     width: 340px;
     border-left: 1px solid var(--border);
-    background: var(--bg-panel);
+    background: var(--panel);
     padding: 18px;
     overflow-y: auto;
     flex-shrink: 0;
@@ -166,12 +146,12 @@
     border-bottom: 1px solid var(--border);
     font-size: 12px;
   }
-  .sidebar .meta-row .k { color: var(--text-dim); }
+  .sidebar .meta-row .k { color: var(--muted); }
   .sidebar .example {
     margin-top: 12px;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 8px 10px;
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11px;
@@ -179,7 +159,7 @@
     word-break: break-all;
   }
   .sidebar .placeholder {
-    color: var(--text-dim);
+    color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
     margin-top: 40px;
@@ -190,7 +170,7 @@
     padding: 10px 20px;
     border-top: 1px solid var(--border);
     font-size: 11px;
-    color: var(--text-dim);
+    color: var(--muted);
     align-items: center;
     flex-wrap: wrap;
   }
@@ -202,14 +182,13 @@
     margin-right: 5px;
     vertical-align: middle;
   }
-  .arrow { font-size: 9px; opacity: 0.6; margin-left: 4px; }
   .stat-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 20px 14px; }
   .stat {
-    background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-control);
     padding: 12px 18px; min-width: 110px;
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -231,7 +210,7 @@
 
 <div class="layout">
   <div class="matrix-wrap">
-    <table class="matrix" id="matrixTable"></table>
+    <div class="matrix-grid" id="matrixGrid"></div>
   </div>
   <div class="sidebar" id="sidebar">
     <div class="placeholder">Click a cell to see its detail — module, dimension, variant in use, and site count. Once /consistency-canonize has run, cell color shows distance from the chosen canon; before that, color shows variant-cluster identity.</div>
@@ -241,7 +220,10 @@
 <div class="legend" id="legend"></div>
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
-<script>
+<!--__D3_SUBSET__-->
+<script type="module">
+const d3 = window.d3;
+
 // The build script in /consistency-map replaces everything from the comment
 // marker onward on this line with the real JSON literal — so after
 // injection this becomes `const MATRIX_DATA_RAW = /*__MATRIX_DATA__*/ {...};`.
@@ -262,7 +244,19 @@ document.getElementById('title').textContent = 'Consistency Matrix — ' + (MATR
 document.getElementById('subtitle').textContent =
   MATRIX.modules.length + ' modules × ' + MATRIX.dimensions.length + ' dimensions';
 
-// ---- palette per variant (stable hash → hue) --------------------------------
+// ---- grid geometry -------------------------------------------------------
+// CELL_W/CELL_H match the original table's `min-width:92px; height:40px`
+// cell sizing exactly, so this rebuild changes rendering technique, not
+// visual density.
+const CELL_W = 92;
+const CELL_H = 40;
+const HEADER_H = 40;
+const ROW_LABEL_W = 180;
+
+// ---- palette per variant (stable hash → hue) ------------------------------
+// Not part of the shared token system — these are arbitrary hashed hues for
+// distinguishing variant identity before /consistency-canonize has run, and
+// tokens.css has no categorical-variant palette to draw from instead.
 const VARIANT_COLORS = {};
 const PALETTE = ['#5b7fa6', '#7a9e6b', '#c98f4a', '#a5648a', '#5a9e9e', '#9e7a5a', '#7a7a9e', '#9e5a5a'];
 function colorForVariant(label) {
@@ -274,15 +268,15 @@ function colorForVariant(label) {
   return c;
 }
 function colorForConformance(c) {
-  if (c >= 0.85) return getCss('--conform-high');
-  if (c >= 0.4) return getCss('--conform-mid');
-  return getCss('--conform-low');
+  if (c >= 0.85) return getCss('--status-good');
+  if (c >= 0.4) return getCss('--status-warn');
+  return getCss('--status-bad');
 }
 function getCss(varName) {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
 }
 
-// ---- index cells for O(1) lookup --------------------------------------------
+// ---- index cells for O(1) lookup ------------------------------------------
 const cellIndex = new Map();
 for (const c of (MATRIX.cells || [])) {
   cellIndex.set(c.module + '\u0000' + c.dimension, c);
@@ -314,7 +308,7 @@ function renderStatRow() {
 }
 renderStatRow();
 
-// ---- sorting -----------------------------------------------------------------
+// ---- sorting ---------------------------------------------------------------
 function moduleDivergenceScore(mod) {
   let score = 0;
   for (const dim of MATRIX.dimensions) {
@@ -342,7 +336,7 @@ function computeOrder() {
   let dimensions = [...MATRIX.dimensions];
   if (filterText) {
     const f = filterText.toLowerCase();
-    modules = modules.filter(m => m.toLowerCase().includes(f)) ;
+    modules = modules.filter(m => m.toLowerCase().includes(f));
     dimensions = dimensions.filter(d => d.toLowerCase().includes(f));
     // if filter matches only dimensions or only modules, keep the other axis full
     if (modules.length === 0) modules = [...MATRIX.modules];
@@ -359,65 +353,111 @@ function computeOrder() {
   return { modules, dimensions };
 }
 
-// ---- render -------------------------------------------------------------------
+// ---- render ------------------------------------------------------------------
+// Sticky row-label/column-header cells stay plain HTML `<div>`s in a CSS
+// Grid (so `position: sticky` keeps working exactly like the old table's
+// `th`/`td.row-label`); only the colored data cells are drawn as one `<svg>`
+// populated via a real d3 data-join, per the cupertino verdict.
+let selectedRect = null;
+
 function render() {
   const { modules, dimensions } = computeOrder();
-  const table = document.getElementById('matrixTable');
-  table.innerHTML = '';
+  const grid = document.getElementById('matrixGrid');
+  grid.innerHTML = '';
+  selectedRect = null;
 
-  const thead = document.createElement('tr');
-  const corner = document.createElement('th');
+  grid.style.gridTemplateColumns = ROW_LABEL_W + 'px repeat(' + dimensions.length + ', ' + CELL_W + 'px)';
+  grid.style.gridTemplateRows = HEADER_H + 'px repeat(' + modules.length + ', ' + CELL_H + 'px)';
+
+  const corner = document.createElement('div');
+  corner.className = 'corner';
   corner.textContent = MATRIX.area || 'module \\ dimension';
-  corner.className = 'row-head';
-  thead.appendChild(corner);
-  for (const dim of dimensions) {
-    const th = document.createElement('th');
-    th.textContent = dim;
-    th.title = 'click to sort by this dimension';
-    th.onclick = () => { sortMode = 'worst-dimension'; document.getElementById('sortMode').value = 'worst-dimension'; render(); };
-    thead.appendChild(th);
-  }
-  table.appendChild(thead);
+  corner.style.gridColumn = '1';
+  corner.style.gridRow = '1';
+  grid.appendChild(corner);
 
-  for (const mod of modules) {
-    const tr = document.createElement('tr');
-    const rowLabel = document.createElement('td');
-    rowLabel.textContent = mod;
-    rowLabel.className = 'row-label';
-    rowLabel.onclick = () => { sortMode = 'worst-module'; document.getElementById('sortMode').value = 'worst-module'; render(); };
-    tr.appendChild(rowLabel);
+  dimensions.forEach((dim, j) => {
+    const h = document.createElement('div');
+    h.className = 'col-header';
+    h.textContent = dim;
+    h.title = 'click to sort by this dimension';
+    h.style.gridColumn = String(j + 2);
+    h.style.gridRow = '1';
+    h.onclick = () => { sortMode = 'worst-dimension'; document.getElementById('sortMode').value = 'worst-dimension'; render(); };
+    grid.appendChild(h);
+  });
 
-    for (const dim of dimensions) {
-      const td = document.createElement('td');
-      td.className = 'cell';
-      const c = cellIndex.get(mod + '\u0000' + dim);
-      if (!c) {
-        td.classList.add('empty');
-        td.title = 'no data for ' + mod + ' × ' + dim;
-      } else {
-        const bg = hasConformance && typeof c.conformance === 'number'
-          ? colorForConformance(c.conformance)
-          : colorForVariant(c.variant || '?');
-        const div = document.createElement('div');
-        div.className = 'fill';
-        div.style.background = bg;
-        div.textContent = c.sites != null ? c.sites : '';
-        td.appendChild(div);
-        td.onclick = () => selectCell(td, mod, dim, c);
-      }
-      tr.appendChild(td);
-    }
-    table.appendChild(tr);
-  }
+  modules.forEach((mod, i) => {
+    const label = document.createElement('div');
+    label.className = 'row-label';
+    label.textContent = mod;
+    label.title = 'click to sort by this module';
+    label.style.gridColumn = '1';
+    label.style.gridRow = String(i + 2);
+    label.onclick = () => { sortMode = 'worst-module'; document.getElementById('sortMode').value = 'worst-module'; render(); };
+    grid.appendChild(label);
+  });
+
+  // ---- SVG cell grid, D3 data-join ----------------------------------------
+  const flat = [];
+  modules.forEach((mod, i) => {
+    dimensions.forEach((dim, j) => {
+      const c = cellIndex.get(mod + '\u0000' + dim) || null;
+      flat.push({ mod, dim, i, j, c });
+    });
+  });
+
+  const svg = d3.select(grid).append('svg')
+    .attr('class', 'cells-svg')
+    .attr('width', dimensions.length * CELL_W)
+    .attr('height', modules.length * CELL_H)
+    .attr('viewBox', '0 0 ' + (dimensions.length * CELL_W) + ' ' + (modules.length * CELL_H));
+
+  const defs = svg.append('defs');
+  const hatch = defs.append('pattern')
+    .attr('id', 'emptyHatch')
+    .attr('width', 8).attr('height', 8)
+    .attr('patternTransform', 'rotate(45)')
+    .attr('patternUnits', 'userSpaceOnUse');
+  hatch.append('rect').attr('width', 8).attr('height', 8).attr('fill', getCss('--panel-2'));
+  hatch.append('rect').attr('width', 4).attr('height', 8).attr('fill', getCss('--status-unknown')).attr('fill-opacity', 0.35);
+
+  svg.selectAll('rect.cell-rect')
+    .data(flat, d => d.mod + '\u0000' + d.dim)
+    .join('rect')
+    .attr('class', 'cell-rect')
+    .attr('x', d => d.j * CELL_W + 1)
+    .attr('y', d => d.i * CELL_H + 1)
+    .attr('width', CELL_W - 2)
+    .attr('height', CELL_H - 2)
+    .attr('fill', d => {
+      if (!d.c) return 'url(#emptyHatch)';
+      return hasConformance && typeof d.c.conformance === 'number'
+        ? colorForConformance(d.c.conformance)
+        : colorForVariant(d.c.variant || '?');
+    })
+    .on('click', (event, d) => {
+      if (!d.c) return;
+      selectCell(event.currentTarget, d.mod, d.dim, d.c);
+    })
+    .append('title')
+    .text(d => d.c ? (d.mod + ' × ' + d.dim) : ('no data for ' + d.mod + ' × ' + d.dim));
+
+  svg.selectAll('text.cell-text')
+    .data(flat.filter(d => d.c && d.c.sites != null), d => d.mod + '\u0000' + d.dim)
+    .join('text')
+    .attr('class', 'cell-text')
+    .attr('x', d => d.j * CELL_W + CELL_W / 2)
+    .attr('y', d => d.i * CELL_H + CELL_H / 2)
+    .text(d => d.c.sites);
 
   renderLegend();
 }
 
-let selectedTd = null;
-function selectCell(td, mod, dim, cell) {
-  if (selectedTd) selectedTd.classList.remove('selected');
-  td.classList.add('selected');
-  selectedTd = td;
+function selectCell(rectEl, mod, dim, cell) {
+  if (selectedRect) selectedRect.classList.remove('selected');
+  rectEl.classList.add('selected');
+  selectedRect = rectEl;
 
   const sidebar = document.getElementById('sidebar');
   sidebar.innerHTML = '';
@@ -457,9 +497,9 @@ function renderLegend() {
   legend.innerHTML = '';
   if (hasConformance) {
     const items = [
-      ['--conform-high', 'aligned with canon (≥85%)'],
-      ['--conform-mid', 'partially aligned (40–85%)'],
-      ['--conform-low', 'diverges from canon (<40%)'],
+      ['--status-good', 'aligned with canon (≥85%)'],
+      ['--status-warn', 'partially aligned (40–85%)'],
+      ['--status-bad', 'diverges from canon (<40%)'],
     ];
     for (const [varName, label] of items) {
       const span = document.createElement('span');
