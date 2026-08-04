@@ -14,7 +14,7 @@ findings-by-domain snapshot from "findings" as of now. It does not claim a
 lib/ledger.py's record_pass and upsert_finding for the exact fields kept.
 
 Usage:
-    build_burndown_html.py <repo_root> --template <path> [--out <path>]
+    build_burndown_html.py <repo_root> --template <path> --d3 <path> --tokens <path> [--out <path>]
 """
 import argparse
 import json
@@ -73,20 +73,33 @@ def build_burndown(repo_root):
     }
 
 
-def render_html(template_path, burndown):
+def render_html(template_path, d3_path, tokens_path, burndown):
     tpl = open(template_path, encoding="utf-8").read()
-    marker = "/*__BURNDOWN_DATA__*/ null"
-    if marker not in tpl:
+
+    d3_marker = "<!--__D3_SUBSET__-->"
+    if d3_marker not in tpl:
+        raise ValueError(f"D3 injection marker not found in {template_path}")
+    tpl = tpl.replace(d3_marker, open(d3_path, encoding="utf-8").read())
+
+    tokens_marker = "/*__TOKENS__*/"
+    if tokens_marker not in tpl:
+        raise ValueError(f"tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, open(tokens_path, encoding="utf-8").read())
+
+    data_marker = "/*__BURNDOWN_DATA__*/ null"
+    if data_marker not in tpl:
         raise ValueError(f"injection marker not found in {template_path}")
     data = json.dumps(burndown)
     data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(marker, "/*__BURNDOWN_DATA__*/ " + data)
+    return tpl.replace(data_marker, "/*__BURNDOWN_DATA__*/ " + data)
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("repo_root")
     parser.add_argument("--template", required=True)
+    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css snippet")
     parser.add_argument("--out", help="defaults to analysis/confab/reports/BURNDOWN.html")
     args = parser.parse_args(argv)
 
@@ -95,7 +108,7 @@ def main(argv=None):
     out_path = args.out or safe_output_path(args.repo_root, "reports/BURNDOWN.html")
     ensure_parent_dir(out_path)
     with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, burndown))
+        fh.write(render_html(args.template, args.d3, args.tokens, burndown))
 
     print(json.dumps({"burndownPath": out_path, "totalPasses": burndown["totalPasses"]}))
     return 0

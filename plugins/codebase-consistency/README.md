@@ -87,6 +87,12 @@ by intent.
 > Triggers `consistency-map` — renders the scan as a module × dimension heatmap
 > (`matrix.json` + an interactive `CONSISTENCY_MATRIX.html`).
 
+The rendered `CONSISTENCY_MATRIX.html` is a self-contained D3/SVG grid — click any
+cell for its variant, site count, and an example citation in the sidebar; hatched
+cells mean no divergence was found there.
+
+![Consistency matrix viewer showing six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions, cells colored green/amber/red by conformance to the canonical pattern and hatched where no data exists, with the sidebar open on a selected shipping × error-handling-style cell showing its diverging variant and site count](assets/matrix-viewer-screenshot.jpg)
+
 ##### Derive the canon
 
 ````prompt

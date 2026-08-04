@@ -25,7 +25,9 @@ latest commit, and the single most useful next action.
    separate from the snapshot dashboard above, purely additive:
    ```
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_burndown_html.py" <repo_root> \
-       --template "${CLAUDE_PLUGIN_ROOT}/assets/burndown-viewer.html"
+       --template "${CLAUDE_PLUGIN_ROOT}/assets/burndown-viewer.html" \
+       --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
+       --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
    ```
    This reads only `ledger.json`'s already-persisted `passes` array and
    current `findings` statuses — it does not re-derive or estimate

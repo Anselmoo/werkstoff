@@ -26,8 +26,21 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from andon_core import render_board  # noqa: E402
 
 
-def render_html(template_path, board):
+def render_html(template_path, d3_path, tokens_path, board):
     tpl = open(template_path, encoding="utf-8").read()
+
+    d3_snippet = open(d3_path, encoding="utf-8").read()
+    d3_marker = "<!--__D3_SUBSET__-->"
+    if d3_marker not in tpl:
+        raise ValueError(f"D3 injection marker not found in {template_path}")
+    tpl = tpl.replace(d3_marker, d3_snippet)
+
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
+    if tokens_marker not in tpl:
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
+
     marker = "/*__BOARD_DATA__*/ null"
     if marker not in tpl:
         raise ValueError(f"injection marker not found in {template_path}")
@@ -45,6 +58,8 @@ def main(argv=None):
     parser.add_argument("repo_root")
     parser.add_argument("ledger_dir")
     parser.add_argument("--template", required=True)
+    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css snippet")
     parser.add_argument("--out", help="defaults to <ledger_dir>/ANDON_BOARD.html")
     args = parser.parse_args(argv)
 
@@ -56,7 +71,7 @@ def main(argv=None):
     out_path = args.out or os.path.join(args.repo_root, args.ledger_dir, "ANDON_BOARD.html")
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, board))
+        fh.write(render_html(args.template, args.d3, args.tokens, board))
 
     print(json.dumps({"boardPath": out_path}))
     return 0

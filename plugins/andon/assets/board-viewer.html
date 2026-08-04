@@ -3,45 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>Andon Board</title>
+<!--__DESIGN_TOKENS__-->
 <style>
-  :root {
-    --bg: #1e1e1e;
-    --bg-panel: #252526;
-    --bg-header: #2d2d2d;
-    --text: #d4d4d4;
-    --text-dim: #8a8a8a;
-    --accent: #cc785c;
-    --border: #3a3a3a;
-    --wire-green: #4c8d5a;
-    --wire-red: #b0503f;
-    --wire-unknown: #555;
-    --hold-bg: #4a2020;
-  }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    font-size: 14px;
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
   }
-  header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  header { padding: var(--space-5); border-bottom: 1px solid var(--border); }
   header h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; color: var(--accent); }
-  header .sub { color: var(--text-dim); font-size: 12px; }
+  header .sub { color: var(--muted); font-size: 12px; }
   .layout { display: flex; }
   .main {
     flex: 1;
-    padding: 20px;
+    padding: var(--space-5);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
+    gap: var(--space-5);
     max-width: 1200px;
   }
   .sidebar {
     width: 340px;
     border-left: 1px solid var(--border);
-    background: var(--bg-panel);
+    background: var(--panel);
     padding: 18px;
     overflow-y: auto;
     flex-shrink: 0;
@@ -50,19 +40,19 @@
     top: 61px;
   }
   .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
-  .sidebar .placeholder { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-top: 40px; }
-  .sidebar .gap-item {
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-  }
+  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 40px; }
+  .sidebar .gap-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .sidebar .gap-item .title { font-weight: 500; }
-  .sidebar .gap-item .meta { color: var(--text-dim); margin-top: 2px; }
+  .sidebar .gap-item .meta { color: var(--muted); margin-top: 4px; }
+  .sidebar .gap-item .badge {
+    display: inline-block; padding: 1px 6px; border-radius: 9px;
+    font-size: 10px; border: 1px solid currentColor; margin-right: 4px;
+  }
   .panel {
-    background: var(--bg-panel);
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px;
+    border-radius: var(--radius-panel);
+    padding: var(--space-4);
   }
   .panel.wide { grid-column: 1 / -1; }
   .panel h2 {
@@ -74,34 +64,32 @@
   }
   .hold-banner {
     grid-column: 1 / -1;
-    background: var(--hold-bg);
-    border: 1px solid var(--wire-red);
-    border-radius: 6px;
+    background: var(--bg);
+    border: 1px solid var(--status-bad);
+    border-radius: var(--radius-panel);
     padding: 14px 16px;
   }
-  .hold-banner h2 { color: #ff8a75; margin-bottom: 8px; }
+  .hold-banner h2 { color: var(--status-bad); margin-bottom: 8px; }
   .hold-banner ul { margin: 0; padding-left: 20px; }
   .stat-row { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; }
   .stat {
-    background: var(--bg-panel);
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     padding: 12px 18px;
     min-width: 110px;
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .constraint { font-size: 13px; line-height: 1.6; }
-  .constraint .label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; cursor: pointer; }
-  .bar-row:hover .label { color: var(--accent); }
-  .bar-row .label { width: 100px; flex-shrink: 0; color: var(--text-dim); }
-  .bar-row .track { flex: 1; background: var(--bg-header); border-radius: 3px; height: 16px; overflow: hidden; }
-  .bar-row .fill { height: 100%; background: var(--accent); border-radius: 3px; }
-  .bar-row .count { width: 24px; text-align: right; flex-shrink: 0; }
+  .constraint .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
   #pipeline { width: 100%; }
-  .pipeline-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-dim); margin-top: 10px; flex-wrap: wrap; }
+  .pipeline-legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
   .pipeline-legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  .pipeline-legend .swatch.dot { border-radius: 50%; }
+  .stage-node { cursor: pointer; }
+  .stage-node rect { transition: stroke var(--transition-fast); }
+  .stage-node:hover rect { stroke: var(--accent); }
 </style>
 </head>
 <body>
@@ -114,12 +102,15 @@
 <div class="layout">
   <div class="main" id="content"></div>
   <div class="sidebar" id="sidebar">
-    <div class="placeholder">Click a "by kind" or "by blast radius" bar to see the actual open gaps behind that count.</div>
+    <div class="placeholder">Click a stage (or its open-gap badge) in the value stream below to see that stage's open gaps — kind, blast radius, and title.</div>
   </div>
 </div>
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
-<script>
+<!--__D3_SUBSET__-->
+<script type="module">
+const d3 = window.d3;
+
 // build_board_html.py replaces everything from the marker onward on this
 // line with the real JSON literal.
 const BOARD_DATA_RAW = /*__BOARD_DATA__*/ null;
@@ -148,11 +139,69 @@ function el(tag, cls, html) {
 function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function wireColor(status) {
-  if (status === 'green') return 'var(--wire-green)';
-  if (status === 'red') return 'var(--wire-red)';
-  return 'var(--wire-unknown)';
+  if (status === 'green') return 'var(--status-good)';
+  if (status === 'red') return 'var(--status-bad)';
+  return 'var(--status-unknown)';
 }
 
+// Ordinal severity ramp for blast radius, keyed to andon_core.py's REAL
+// BLAST_RADIUS_ORDER. The pre-rebuild viewer hardcoded a 4-bucket
+// local/module/cross-module/repo-wide scheme that never matched any gap's
+// actual blast_radius field, so every "by blast radius" bar silently
+// rendered as zero -- fixed here by using the true 3 values. Single hue
+// off --accent, light -> dark, monotone lightness (same derivation as the
+// removed 4-stop ramp); re-run the dataviz skill's ordinal validator if
+// these exact stops are revisited.
+const RADIUS_COLORS = {
+  'local+reversible': '#da8568',
+  'hard-to-reverse': '#af5e42',
+  'shared-state-visible': '#8a3d24',
+};
+const RADIUS_LABELS = {
+  'local+reversible': 'local, reversible',
+  'hard-to-reverse': 'hard to reverse',
+  'shared-state-visible': 'shared state visible',
+};
+
+// Kind has no order -- three distinct hues, not a lightness ramp.
+const KIND_COLORS = {
+  bug: 'var(--status-bad)',
+  feature: 'var(--accent-2)',
+  wire: 'var(--status-unknown)',
+};
+
+function gapsForStage(stageName) {
+  return (BOARD.open_gaps || []).filter(g => g.stage === stageName);
+}
+
+// The single click-driven annotated list that replaces the old "gap-by-kind"
+// and "gap-by-radius" bar panels: click a stage (or its badge) in the flow
+// diagram, this populates with that stage's open gaps, each annotated with
+// kind + blast radius + title.
+function showGapsInSidebar(stageName) {
+  const gaps = gapsForStage(stageName);
+  const sidebar = document.getElementById('sidebar');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(el('h2', null, escapeHtml(stageName) + ' — open gaps (' + gaps.length + ')'));
+  if (!gaps.length) {
+    sidebar.appendChild(el('div', 'placeholder', 'No open gaps at this stage.'));
+    return;
+  }
+  for (const g of gaps) {
+    const item = el('div', 'gap-item');
+    const kindColor = KIND_COLORS[g.kind] || 'var(--muted)';
+    const radiusColor = RADIUS_COLORS[g.blast_radius] || 'var(--muted)';
+    const radiusLabel = RADIUS_LABELS[g.blast_radius] || (g.blast_radius || 'unknown');
+    item.appendChild(el('div', 'title', escapeHtml(g.title || g.slug)));
+    item.appendChild(el('div', 'meta',
+      '<span class="badge" style="color:' + kindColor + '">' + escapeHtml(g.kind || '?') + '</span>' +
+      '<span class="badge" style="color:' + radiusColor + '">' + escapeHtml(radiusLabel) + '</span>' +
+      escapeHtml(g.slug)));
+    sidebar.appendChild(item);
+  }
+}
+
+// ── Value stream: real D3 selection/data-join, not string-templated coords ─
 function renderPipeline(parent) {
   const panel = el('div', 'panel wide');
   panel.appendChild(el('h2', null, 'Value stream'));
@@ -161,118 +210,99 @@ function renderPipeline(parent) {
   const wireByPair = {};
   for (const w of BOARD.wire_rows) wireByPair[w.wire] = w.status;
   const cursorStage = (BOARD.cursor || '').split('::')[0];
+  const openCountByStage = {};
+  for (const g of (BOARD.open_gaps || [])) {
+    openCountByStage[g.stage] = (openCountByStage[g.stage] || 0) + 1;
+  }
 
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const nodeW = 130, nodeH = 40, gapW = 60;
-  const W = stages.length * nodeW + (stages.length - 1) * gapW + 20;
-  const H = 90;
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('id', 'pipeline');
-  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  const nodeW = 130, nodeH = 40, H = 90;
+  const W = Math.max(nodeW + 20, stages.length * 190);
 
-  stages.forEach((stage, i) => {
-    const x = 10 + i * (nodeW + gapW);
-    const y = (H - nodeH) / 2;
+  // d3-scale's scalePoint spaces N stages evenly across the drawable width,
+  // replacing the old hand arithmetic (`10 + i * (nodeW + gapW)`) with a
+  // real D3 scale.
+  const x = d3.scalePoint()
+    .domain(stages)
+    .range([nodeW / 2 + 10, W - nodeW / 2 - 10]);
 
-    // edge to next stage
-    if (i < stages.length - 1) {
-      const wireKey = stage + '->' + stages[i + 1];
-      const status = wireByPair[wireKey];
-      const edgeColor = status ? wireColor(status) : 'var(--wire-unknown)';
-      const dashed = !status;
-      const line = document.createElementNS(svgNS, 'line');
-      line.setAttribute('x1', x + nodeW); line.setAttribute('y1', H / 2);
-      line.setAttribute('x2', x + nodeW + gapW); line.setAttribute('y2', H / 2);
-      line.setAttribute('stroke', edgeColor);
-      line.setAttribute('stroke-width', '3');
-      if (dashed) line.setAttribute('stroke-dasharray', '4,3');
-      svg.appendChild(line);
-      const arrow = document.createElementNS(svgNS, 'polygon');
-      const ax = x + nodeW + gapW;
-      arrow.setAttribute('points', ax + ',' + (H / 2 - 5) + ' ' + (ax + 8) + ',' + (H / 2) + ' ' + ax + ',' + (H / 2 + 5));
-      arrow.setAttribute('fill', edgeColor);
-      svg.appendChild(arrow);
-      if (status) {
-        const title = document.createElementNS(svgNS, 'title');
-        title.textContent = wireKey + ': ' + status;
-        line.appendChild(title);
-      }
-    }
+  const svg = d3.select(document.createElementNS('http://www.w3.org/2000/svg', 'svg'))
+    .attr('id', 'pipeline')
+    .attr('viewBox', '0 0 ' + W + ' ' + H);
 
-    // stage node
-    const rect = document.createElementNS(svgNS, 'rect');
-    rect.setAttribute('x', x); rect.setAttribute('y', y);
-    rect.setAttribute('width', nodeW); rect.setAttribute('height', nodeH);
-    rect.setAttribute('rx', 6);
-    rect.setAttribute('fill', 'var(--bg-header)');
-    rect.setAttribute('stroke', stage === cursorStage ? 'var(--accent)' : 'var(--border)');
-    rect.setAttribute('stroke-width', stage === cursorStage ? '2' : '1');
-    svg.appendChild(rect);
-    const text = document.createElementNS(svgNS, 'text');
-    text.setAttribute('x', x + nodeW / 2);
-    text.setAttribute('y', y + nodeH / 2 + 4);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', stage === cursorStage ? 'var(--accent)' : 'var(--text)');
-    text.setAttribute('font-size', '12');
-    text.setAttribute('font-weight', stage === cursorStage ? '600' : '400');
-    text.textContent = stage + (stage === cursorStage ? ' ←' : '');
-    svg.appendChild(text);
+  // Edges: one data-join keyed by stage pair, drawn under the nodes.
+  const edgeData = stages.slice(0, -1).map((s, i) => {
+    const next = stages[i + 1];
+    const wireKey = s + '->' + next;
+    return { from: s, to: next, wireKey, status: wireByPair[wireKey] };
   });
+  const edges = svg.append('g').attr('class', 'edges')
+    .selectAll('g.edge')
+    .data(edgeData, d => d.wireKey)
+    .join('g')
+    .attr('class', 'edge');
+  edges.append('line')
+    .attr('x1', d => x(d.from) + nodeW / 2)
+    .attr('y1', H / 2)
+    .attr('x2', d => x(d.to) - nodeW / 2)
+    .attr('y2', H / 2)
+    .attr('stroke', d => wireColor(d.status))
+    .attr('stroke-width', 3)
+    .attr('stroke-dasharray', d => (d.status ? null : '4,3'));
+  edges.append('polygon')
+    .attr('points', d => {
+      const ax = x(d.to) - nodeW / 2;
+      return ax + ',' + (H / 2 - 5) + ' ' + (ax + 8) + ',' + (H / 2) + ' ' + ax + ',' + (H / 2 + 5);
+    })
+    .attr('fill', d => wireColor(d.status));
+  edges.append('title')
+    .text(d => d.status ? (d.wireKey + ': ' + d.status) : (d.wireKey + ': no evidence yet'));
 
-  panel.appendChild(svg);
+  // Stage nodes: one data-join keyed by stage title.
+  const nodeSel = svg.append('g').attr('class', 'stages')
+    .selectAll('g.stage-node')
+    .data(stages, d => d)
+    .join('g')
+    .attr('class', 'stage-node')
+    .attr('transform', d => 'translate(' + (x(d) - nodeW / 2) + ',' + ((H - nodeH) / 2) + ')')
+    .on('click', (event, d) => { event.stopPropagation(); showGapsInSidebar(d); });
+
+  nodeSel.append('rect')
+    .attr('width', nodeW).attr('height', nodeH).attr('rx', 6)
+    .attr('fill', 'var(--panel-2)')
+    .attr('stroke', d => (d === cursorStage ? 'var(--accent)' : 'var(--border)'))
+    .attr('stroke-width', d => (d === cursorStage ? 2 : 1));
+
+  nodeSel.append('text')
+    .attr('x', nodeW / 2).attr('y', nodeH / 2 + 4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', d => (d === cursorStage ? 'var(--accent)' : 'var(--text)'))
+    .attr('font-size', 12)
+    .attr('font-weight', d => (d === cursorStage ? 600 : 400))
+    .text(d => d + (d === cursorStage ? ' ←' : ''));
+
+  // Open-gap badge: the "or gap" half of "click a stage or gap in the flow
+  // diagram" -- only drawn on stages with >= 1 open gap, clicking it opens
+  // the same sidebar list as clicking the stage node itself.
+  const badged = nodeSel.filter(d => openCountByStage[d] > 0);
+  const badge = badged.append('g')
+    .attr('transform', 'translate(' + (nodeW - 10) + ',-6)')
+    .on('click', (event, d) => { event.stopPropagation(); showGapsInSidebar(d); });
+  badge.append('circle').attr('r', 9).attr('fill', 'var(--status-bad)');
+  badge.append('text')
+    .attr('text-anchor', 'middle').attr('dy', 3)
+    .attr('font-size', 10)
+    .attr('fill', '#fff') // fixed on-color text; tokens.css has no --on-status token
+    .text(d => String(openCountByStage[d]));
+
+  panel.appendChild(svg.node());
   const legend = el('div', 'pipeline-legend');
   legend.innerHTML =
-    '<span><span class="swatch" style="background:var(--wire-green)"></span>proven green</span>' +
-    '<span><span class="swatch" style="background:var(--wire-red)"></span>proven red</span>' +
-    '<span><span class="swatch" style="background:var(--wire-unknown)"></span>no evidence yet (dashed)</span>' +
-    '<span>← current cursor</span>';
+    '<span><span class="swatch" style="background:var(--status-good)"></span>proven green</span>' +
+    '<span><span class="swatch" style="background:var(--status-bad)"></span>proven red</span>' +
+    '<span><span class="swatch" style="background:var(--status-unknown)"></span>no evidence yet (dashed)</span>' +
+    '<span>← current cursor</span>' +
+    '<span><span class="swatch dot" style="background:var(--status-bad)"></span>open gap count — click stage or badge</span>';
   panel.appendChild(legend);
-  parent.appendChild(panel);
-}
-
-function showGapsInSidebar(title, gaps) {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.innerHTML = '';
-  sidebar.appendChild(el('h2', null, title + ' (' + gaps.length + ')'));
-  if (!gaps.length) {
-    sidebar.appendChild(el('div', 'placeholder', 'No open gaps in this bucket.'));
-    return;
-  }
-  for (const g of gaps) {
-    const item = el('div', 'gap-item');
-    item.appendChild(el('div', 'title', escapeHtml(g.title || g.slug)));
-    item.appendChild(el('div', 'meta', 'stage: ' + escapeHtml(g.stage) + ' · kind: ' + escapeHtml(g.kind) +
-      ' · blast radius: ' + escapeHtml(g.blast_radius) + ' · ' + escapeHtml(g.slug)));
-    sidebar.appendChild(item);
-  }
-}
-
-// Ordinal severity ramp for blast radius (local -> repo_wide), one hue off
-// --accent, light->dark. Steps + surface #2d2d2d (the .track background)
-// clear the dataviz skill's ordinal checks (monotone L, adjacent ΔL >= 0.06,
-// light-end contrast >= 2:1, single hue) -- see conversation for derivation.
-const RADIUS_RAMP = ['#da8568', '#c47155', '#af5e42', '#9a4b30'];
-
-function renderBarPanel(title, parent, counts, order, gapField, colors) {
-  const panel = el('div', 'panel');
-  panel.appendChild(el('h2', null, title));
-  const keys = order || Object.keys(counts);
-  const max = Math.max(1, ...keys.map(k => counts[k] || 0));
-  const allGaps = BOARD.open_gaps || [];
-  keys.forEach((k, i) => {
-    const n = counts[k] || 0;
-    const row = el('div', 'bar-row');
-    row.appendChild(el('div', 'label', escapeHtml(k)));
-    const track = el('div', 'track');
-    const fill = el('div', 'fill');
-    fill.style.width = (n / max * 100) + '%';
-    if (colors) fill.style.background = colors[i];
-    track.appendChild(fill);
-    row.appendChild(track);
-    row.appendChild(el('div', 'count', String(n)));
-    row.onclick = () => showGapsInSidebar(title + ': ' + k, allGaps.filter(g => g[gapField] === k));
-    panel.appendChild(row);
-  });
   parent.appendChild(panel);
 }
 
@@ -315,29 +345,6 @@ function render() {
   cWrap.appendChild(el('div', null, '<br><span class="label">Active constraint</span><br>' + escapeHtml(BOARD.constraint)));
   constraintPanel.appendChild(cWrap);
   content.appendChild(constraintPanel);
-
-  renderBarPanel('Open gaps by kind', content, BOARD.open_gap_counts_by_kind, null, 'kind');
-  renderBarPanel('Open gaps by blast radius', content, BOARD.open_gap_counts_by_radius,
-    ['local', 'module', 'cross_module', 'repo_wide'], 'blast_radius', RADIUS_RAMP);
-
-  const stratPanel = el('div', 'panel');
-  stratPanel.appendChild(el('h2', null, 'Evidence-strategy mix'));
-  const stratKeys = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
-  const stratMax = Math.max(1, ...stratKeys.map(k => BOARD.strategy_counts[k] || 0));
-  for (const k of stratKeys) {
-    const n = BOARD.strategy_counts[k] || 0;
-    const row = el('div', 'bar-row');
-    row.style.cursor = 'default';
-    row.appendChild(el('div', 'label', k));
-    const track = el('div', 'track');
-    const fill = el('div', 'fill');
-    fill.style.width = (n / stratMax * 100) + '%';
-    track.appendChild(fill);
-    row.appendChild(track);
-    row.appendChild(el('div', 'count', String(n)));
-    stratPanel.appendChild(row);
-  }
-  content.appendChild(stratPanel);
 }
 
 render();

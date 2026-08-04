@@ -5,87 +5,85 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Confab Burndown</title>
 <style>
-  :root {
-    --bg: #1e1e1e;
-    --bg-panel: #252526;
-    --bg-header: #2d2d2d;
-    --text: #d4d4d4;
-    --text-dim: #8a8a8a;
-    --accent: #cc785c;
-    --border: #3a3a3a;
-    --closed: #4c8d5a;
-    --outcomes: #5b7fa6;
-    --cumulative: #ffb020;
-    --open: #b58b3a;
-    --escalated: #b0503f;
-  }
+/*__TOKENS__*/
+</style>
+<style>
   * { box-sizing: border-box; }
   body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    font-size: 14px;
+    font-family: var(--font-sans);
+    font-size: var(--font-size-base);
   }
-  header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  header { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
   header h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; color: var(--accent); }
-  header .sub { color: var(--text-dim); font-size: 12px; }
-  .content {
-    padding: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-    max-width: 1400px;
+  header .sub { color: var(--muted); font-size: 12px; }
+  .tabs { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+  .tab-btn {
+    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: 6px 14px; font: inherit; font-size: 12px;
+    cursor: pointer; transition: var(--transition-fast);
   }
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 16px;
-  }
-  .panel.wide { grid-column: 1 / -1; }
-  .panel h2 {
-    font-size: 13px;
-    margin: 0 0 12px;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  .stat-row { grid-column: 1 / -1; display: flex; gap: 14px; flex-wrap: wrap; }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-color: var(--accent); background: var(--panel-2); }
+  .stat-row { padding: var(--space-4) var(--space-5) 0; display: flex; gap: 14px; flex-wrap: wrap; }
   .stat {
-    background: var(--bg-panel);
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--radius-control);
     padding: 12px 18px;
     min-width: 110px;
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
-  .legend { display: flex; gap: 16px; font-size: 11px; color: var(--text-dim); margin-top: 10px; flex-wrap: wrap; }
+  .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .content {
+    padding: var(--space-5);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--space-5);
+    max-width: 1400px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+    padding: var(--space-4);
+  }
+  .panel.wide { grid-column: 1 / -1; }
+  .panel h2 {
+    font-size: 13px;
+    margin: 0 0 var(--space-3);
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .legend { display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
   .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; cursor: pointer; }
   .bar-row:hover .label { color: var(--accent); }
-  .bar-row .label { width: 100px; flex-shrink: 0; color: var(--text-dim); }
-  .bar-row .track { flex: 1; background: var(--bg-header); border-radius: 3px; height: 16px; overflow: hidden; }
-  .bar-row .fill { height: 100%; border-radius: 3px; }
+  .bar-row .label { width: 100px; flex-shrink: 0; color: var(--muted); }
+  .bar-row .track { flex: 1; background: var(--panel-2); border-radius: var(--radius-sm); height: 16px; overflow: hidden; }
+  .bar-row .fill { height: 100%; border-radius: var(--radius-sm); }
   .bar-row .count { width: 28px; text-align: right; flex-shrink: 0; }
-  #chart { width: 100%; height: 260px; }
+  #chart { width: 100%; height: 300px; }
   .layout { display: flex; }
   .sidebar {
-    width: 340px; border-left: 1px solid var(--border); background: var(--bg-panel);
-    padding: 18px; overflow-y: auto; flex-shrink: 0; height: calc(100vh - 61px);
-    position: sticky; top: 61px;
+    width: 340px; border-left: 1px solid var(--border); background: var(--panel);
+    padding: var(--space-4); overflow-y: auto; flex-shrink: 0;
+    position: sticky; top: var(--space-3); max-height: calc(100vh - 2 * var(--space-3));
   }
   .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
-  .sidebar .placeholder { color: var(--text-dim); font-size: 13px; line-height: 1.5; margin-top: 40px; }
+  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: var(--line-height-base); margin-top: 40px; }
   .sidebar .finding-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .sidebar .finding-item .id { font-weight: 500; }
-  .sidebar .finding-item .meta { color: var(--text-dim); margin-top: 2px; }
+  .sidebar .finding-item .meta { color: var(--muted); margin-top: 2px; }
   .sidebar .finding-item .evidence {
-    margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 5px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
     word-break: break-word;
   }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
@@ -93,17 +91,27 @@
 <header>
   <h1 id="title">Confab Burndown</h1>
   <span class="sub" id="subtitle"></span>
+  <div class="tabs">
+    <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend">Trend</button>
+    <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown">Breakdown</button>
+  </div>
 </header>
 
-<div class="layout">
-  <div class="content" id="content"></div>
+<div class="stat-row" id="statRow"></div>
+
+<div id="view-trend" class="content"></div>
+
+<div id="view-breakdown" class="layout" hidden>
+  <div class="content" id="breakdownContent"></div>
   <div class="sidebar" id="sidebar">
     <div class="placeholder">Click a "by status" or "by domain" bar to see the actual findings behind that count.</div>
   </div>
 </div>
+
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
-<script>
+<!--__D3_SUBSET__-->
+<script type="module">
 // build_burndown_html.py replaces everything from the marker onward on this
 // line with the real JSON literal.
 const BURNDOWN_DATA_RAW = /*__BURNDOWN_DATA__*/ null;
@@ -113,10 +121,14 @@ if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
   err.querySelector('p').innerHTML =
     'No burndown data found in this file.<br>Re-run <code>confab-status</code> (with a confab-cycle ledger present) to regenerate it.';
   err.style.display = 'grid';
-  document.getElementById('content').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'none';
+  ['statRow', 'view-trend', 'view-breakdown'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
   throw new Error('no data');
 }
 const DATA = BURNDOWN_DATA_RAW;
+const d3 = window.d3;
 
 document.getElementById('title').textContent = 'Confab Burndown';
 document.getElementById('subtitle').textContent =
@@ -172,101 +184,106 @@ function renderBarPanel(title, parent, counts, colorMap, findingField) {
   parent.appendChild(panel);
 }
 
-function renderChart(parent) {
+// Primary view: ONE line, cumulative closed vs. pass index. No grouped bars
+// sharing this axis -- a bar's height (a per-pass rate) and a line's height
+// (a running total) mean structurally different things, which is exactly
+// the chartjunk the cupertino-council verdict for confab's burndown flagged
+// in the old combined chart this function replaces. Per-pass detail
+// (closed / fixOrDraftOutcomes) is still available, but only as a
+// per-point tooltip -- metadata, never a second competing mark.
+function renderTrendChart(parent) {
   const panel = el('div', 'panel wide');
-  panel.appendChild(el('h2', null, 'Closed / drafted findings per pass, cumulative closed'));
+  panel.appendChild(el('h2', null, 'Cumulative findings closed, by pass'));
 
   const passes = DATA.passes;
-  const W = 900, H = 260, padL = 40, padR = 20, padT = 10, padB = 30;
+  const W = 900, H = 300, padL = 44, padR = 20, padT = 16, padB = 34;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = Math.max(1, passes.length);
-  const barGroupW = plotW / n;
-  const maxBar = Math.max(1, ...passes.map(p => Math.max(p.closed, p.fixOrDraftOutcomes)));
+
+  const svg = d3.select(panel).append('svg')
+    .attr('viewBox', '0 0 ' + W + ' ' + H)
+    .attr('id', 'chart');
+
+  if (!passes.length) {
+    svg.append('text')
+      .attr('x', W / 2).attr('y', H / 2)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--muted)')
+      .text('No passes recorded yet.');
+    parent.appendChild(panel);
+    return;
+  }
+
+  const lastPass = passes[passes.length - 1].passNumber;
+  const x = d3.scaleLinear().domain([1, Math.max(1, lastPass)]).range([padL, padL + plotW]);
   const maxCum = Math.max(1, ...passes.map(p => p.cumulativeClosed));
+  const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
 
-  const svgNS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-  svg.setAttribute('id', 'chart');
+  svg.append('line')
+    .attr('x1', padL).attr('y1', padT + plotH).attr('x2', padL + plotW).attr('y2', padT + plotH)
+    .attr('stroke', 'var(--border)');
+  svg.append('line')
+    .attr('x1', padL).attr('y1', padT).attr('x2', padL).attr('y2', padT + plotH)
+    .attr('stroke', 'var(--border)');
 
-  // axis line
-  const axis = document.createElementNS(svgNS, 'line');
-  axis.setAttribute('x1', padL); axis.setAttribute('y1', padT + plotH);
-  axis.setAttribute('x2', padL + plotW); axis.setAttribute('y2', padT + plotH);
-  axis.setAttribute('stroke', 'var(--border)');
-  svg.appendChild(axis);
+  for (const tick of y.ticks(5)) {
+    svg.append('text')
+      .attr('x', padL - 8).attr('y', y(tick))
+      .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
+      .attr('fill', 'var(--muted)').attr('font-size', 10)
+      .text(tick);
+  }
+  for (const p of passes) {
+    svg.append('text')
+      .attr('x', x(p.passNumber)).attr('y', H - 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'var(--muted)').attr('font-size', 10)
+      .text('#' + p.passNumber);
+  }
 
-  passes.forEach((p, i) => {
-    const gx = padL + i * barGroupW;
-    const barW = barGroupW * 0.28;
-    // closed bar
-    const closedH = (p.closed / maxBar) * plotH;
-    const closedRect = document.createElementNS(svgNS, 'rect');
-    closedRect.setAttribute('x', gx + barGroupW * 0.15);
-    closedRect.setAttribute('y', padT + plotH - closedH);
-    closedRect.setAttribute('width', barW);
-    closedRect.setAttribute('height', closedH);
-    closedRect.setAttribute('fill', 'var(--closed)');
-    svg.appendChild(closedRect);
-    // outcomes bar
-    const outH = (p.fixOrDraftOutcomes / maxBar) * plotH;
-    const outRect = document.createElementNS(svgNS, 'rect');
-    outRect.setAttribute('x', gx + barGroupW * 0.15 + barW + 4);
-    outRect.setAttribute('y', padT + plotH - outH);
-    outRect.setAttribute('width', barW);
-    outRect.setAttribute('height', outH);
-    outRect.setAttribute('fill', 'var(--outcomes)');
-    svg.appendChild(outRect);
-    // x label
-    const label = document.createElementNS(svgNS, 'text');
-    label.setAttribute('x', gx + barGroupW / 2);
-    label.setAttribute('y', H - 8);
-    label.setAttribute('fill', 'var(--text-dim)');
-    label.setAttribute('font-size', '10');
-    label.setAttribute('text-anchor', 'middle');
-    label.textContent = '#' + p.passNumber;
-    svg.appendChild(label);
-  });
+  // Manual path string: inline-d3.html vendors d3-scale + d3-selection but
+  // not d3-shape, so d3.line() is not available here -- this is the same
+  // coordinate math the old combined chart already did by hand for its
+  // cumulative-closed polyline, just fed by d3 scales instead of a
+  // hand-rolled linear map.
+  const pathD = passes.map((p, i) =>
+    (i === 0 ? 'M' : 'L') + x(p.passNumber) + ',' + y(p.cumulativeClosed)
+  ).join(' ');
+  svg.append('path')
+    .attr('d', pathD).attr('fill', 'none')
+    .attr('stroke', 'var(--accent-2)').attr('stroke-width', 2);
 
-  // cumulative line
-  const points = passes.map((p, i) => {
-    const x = padL + i * barGroupW + barGroupW / 2;
-    const y = padT + plotH - (p.cumulativeClosed / maxCum) * plotH;
-    return x + ',' + y;
-  }).join(' ');
-  const polyline = document.createElementNS(svgNS, 'polyline');
-  polyline.setAttribute('points', points);
-  polyline.setAttribute('fill', 'none');
-  polyline.setAttribute('stroke', 'var(--cumulative)');
-  polyline.setAttribute('stroke-width', '2');
-  svg.appendChild(polyline);
-  passes.forEach((p, i) => {
-    const x = padL + i * barGroupW + barGroupW / 2;
-    const y = padT + plotH - (p.cumulativeClosed / maxCum) * plotH;
-    const dot = document.createElementNS(svgNS, 'circle');
-    dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 3);
-    dot.setAttribute('fill', 'var(--cumulative)');
-    const title = document.createElementNS(svgNS, 'title');
-    title.textContent = 'pass ' + p.passNumber + ' (' + p.domain + '): cumulative closed ' + p.cumulativeClosed;
-    dot.appendChild(title);
-    svg.appendChild(dot);
-  });
+  svg.selectAll('circle').data(passes).join('circle')
+    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
+    .attr('r', 3.5).attr('fill', 'var(--accent-2)')
+    .append('title')
+    .text(p => 'pass ' + p.passNumber + ' (' + p.domain + '): cumulative closed ' + p.cumulativeClosed +
+               ' (closed this pass ' + p.closed + ', fix/draft outcomes ' + p.fixOrDraftOutcomes + ')');
 
-  panel.appendChild(svg);
-  const legend = el('div', 'legend');
-  legend.innerHTML =
-    '<span><span class="swatch" style="background:var(--closed)"></span>closed this pass</span>' +
-    '<span><span class="swatch" style="background:var(--outcomes)"></span>fix/draft outcomes this pass</span>' +
-    '<span><span class="swatch" style="background:var(--cumulative)"></span>cumulative closed</span>';
-  panel.appendChild(legend);
   parent.appendChild(panel);
 }
 
-function render() {
-  const content = document.getElementById('content');
-  content.innerHTML = '';
+function renderTrendView() {
+  const view = document.getElementById('view-trend');
+  view.innerHTML = '';
+  renderTrendChart(view);
+}
 
-  const statRow = el('div', 'stat-row');
+// Secondary view: current-state snapshots (by-status, by-domain) -- a
+// fundamentally different question from "is this converging," so it is
+// never co-displayed with the trend line. Content and interaction
+// (click a bar, see the findings in the sidebar) are unchanged from the
+// original single-view file.
+function renderBreakdownView() {
+  const content = document.getElementById('breakdownContent');
+  content.innerHTML = '';
+  renderBarPanel('Findings by status', content, DATA.byStatus,
+    { open: 'var(--status-warn)', closed: 'var(--status-good)', escalated: 'var(--status-bad)' }, 'status');
+  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
+}
+
+function renderStatRow() {
+  const statRow = document.getElementById('statRow');
+  statRow.innerHTML = '';
   const stats = [
     ['Total passes', DATA.totalPasses],
     ['Findings tracked', DATA.totalFindingsEver],
@@ -280,15 +297,21 @@ function render() {
     stat.appendChild(el('div', 'k', k));
     statRow.appendChild(stat);
   }
-  content.appendChild(statRow);
-
-  renderChart(content);
-  renderBarPanel('Findings by status', content, DATA.byStatus,
-    { open: 'var(--open)', closed: 'var(--closed)', escalated: 'var(--escalated)' }, 'status');
-  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
 }
 
-render();
+function setActiveTab(view) {
+  document.getElementById('tabTrendBtn').classList.toggle('active', view === 'trend');
+  document.getElementById('tabBreakdownBtn').classList.toggle('active', view === 'breakdown');
+  document.getElementById('view-trend').hidden = view !== 'trend';
+  document.getElementById('view-breakdown').hidden = view !== 'breakdown';
+}
+
+document.getElementById('tabTrendBtn').addEventListener('click', () => setActiveTab('trend'));
+document.getElementById('tabBreakdownBtn').addEventListener('click', () => setActiveTab('breakdown'));
+
+renderStatRow();
+renderTrendView();
+renderBreakdownView();
 </script>
 </body>
 </html>

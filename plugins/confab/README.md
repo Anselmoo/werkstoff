@@ -181,6 +181,17 @@ it didn't specify something, these are the choices made and why:
   filenames like `DEPENDENCY_AUDIT.md` without a directory; putting
   everything under one declared directory is what makes the write-scope
   enforcement in `lib/paths.py` possible and keeps the repo root clean.
+- **Burndown viewer**: `scripts/build_burndown_html.py` renders
+  `ledger.json`'s recorded pass history into a self-contained HTML report
+  (`analysis/confab/reports/BURNDOWN.html` by default) with a Trend tab and a
+  Breakdown tab. The Trend tab is the default view — a single honest D3 line
+  chart of cumulative closed findings, since `ledger.json`'s `passes` array is
+  the only place pass-over-pass history actually exists:
+
+  ![Confab burndown viewer's Trend tab, showing a single D3 line chart of cumulative closed findings converging upward across five cleanup passes](assets/burndown-viewer-screenshot.jpg)
+
+  The Breakdown tab adds by-status and by-domain bars plus a findings
+  sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
 - **First-pass constraint-domain tiebreak in `confab-cycle`**: when the
   ledger has no findings yet (first pass of a fresh cycle), there's no
   "most open High findings" signal to rank domains by. `cycle_engine.py`

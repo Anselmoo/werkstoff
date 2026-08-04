@@ -61,6 +61,14 @@ by intent.
 > Triggers `andon-status` — read-only: stream table, cursor, pass/cycle counters,
 > open gap counts; nothing advances.
 
+Alongside the markdown board, `andon-status` can render the same evidence as a
+self-contained HTML report (`scripts/build_board_html.py`) -- a left-to-right
+value-stream flow diagram with stage nodes and wire edges colored by proof
+status, plus a click-driven sidebar that lists a stage's open gaps, each
+tagged with its kind and blast-radius badges, on demand:
+
+![Andon board HTML viewer showing a four-stage value-stream flow diagram with green, red, and dashed wire edges, red open-gap count badges on each stage, and a click-driven sidebar listing the selected stage's open gaps with kind and blast-radius badges](assets/board-viewer-screenshot.jpg)
+
 ##### Propose a fix
 
 ````prompt

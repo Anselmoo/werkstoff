@@ -1,0 +1,49 @@
+:root {
+  /* Base palette — identical across all 5 existing viewers already;
+     this file is their single source instead of 5 hand-copies. */
+  --bg: #1e1e1e;
+  --panel: #252526;
+  --panel-2: #2d2d2d;
+  --text: #d4d4d4;
+  --muted: #8a8a8a;
+  --accent: #cc785c;
+  --border: #3a3a3a;
+
+  /* Secondary accent — confab's --cumulative line color and cli-scaffold's
+     --role-entry both already used this hue; promoted to a shared
+     "emphasis" token for trend lines / highlighted rows. */
+  --accent-2: #ffb020;
+
+  /* Semantic status scale. good/bad/warn already converged on the exact
+     same hex across andon/confab/self-assess/matrix independently — real
+     evidence these were the right colors, just never named once.
+     "unknown" had NOT converged (andon used #555, matrix used #3a5a7a) —
+     canonicalized on matrix's value, more legible against --muted. */
+  --status-good: #4c8d5a;
+  --status-bad: #b0503f;
+  --status-warn: #b58b3a;
+  --status-unknown: #3a5a7a;
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-size-base: 14px;
+  --line-height-base: 1.45;
+
+  /* Spacing scale, derived from values already in use (4/8/12/16/20px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+
+  /* Radii, derived from values already in use */
+  --radius-sm: 4px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+
+  /* Motion — none of the 5 viewers use a transition today; available for
+     rebuilds to opt into (sidebar open/close, hover states), not required
+     by anything in this plan. */
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+}

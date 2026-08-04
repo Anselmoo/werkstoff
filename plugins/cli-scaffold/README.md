@@ -101,6 +101,12 @@ foo") and the plugin:
 4. **Verifies** it read-only against the doctrine, fixes every *fixable* gap and
    re-verifies (bounded), and surfaces only *needs-human-judgment* gaps to you.
 
+Generation also writes `ARCHITECTURE.html` inside the scaffold itself: a
+self-contained report viewer rendering the scaffold's real directory tree,
+each file tagged with the five-pillar role(s) its manifest declares for it.
+
+![Self-contained HTML architecture viewer showing an indented file tree with directory nesting for a Python scaffold — completions/, docs/, src/widgetctl/, and tests/ subdirectories each expanded to their files, with inline colored badges marking each file's role (core, entry, distribution, test, help, completion) and README.md/LICENSE left unbadged](assets/architecture-tree-viewer-screenshot.jpg)
+
 ### The 12 languages / 3 paradigms
 
 | Paradigm | Languages | Skill |

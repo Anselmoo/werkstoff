@@ -110,7 +110,9 @@ to be deleted, so this is the only point this data can be captured:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_review_flow_html.py" "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" path | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")" \
-    --template "${CLAUDE_PLUGIN_ROOT}/assets/review-flow-viewer.html"
+    --template "${CLAUDE_PLUGIN_ROOT}/assets/review-flow-viewer.html" \
+    --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
+    --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
 ```
 
 Writes `.cupertino/CUPERTINO_REVIEW_FLOW.html` — outside `flags/`, so the cleanup step below

@@ -92,9 +92,15 @@ def build_tree(scaffold_dir, manifest):
     }
 
 
-def render_html(template_path, d3_path, payload):
+def render_html(template_path, d3_path, tokens_path, payload):
     tpl = open(template_path, encoding="utf-8").read()
     d3_snippet = open(d3_path, encoding="utf-8").read()
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+
+    tokens_marker = "/*__TOKENS__*/"
+    if tokens_marker not in tpl:
+        raise ValueError(f"tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, tokens_css)
 
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
@@ -114,6 +120,7 @@ def main(argv=None):
     parser.add_argument("scaffold_dir")
     parser.add_argument("--template", required=True)
     parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css")
     parser.add_argument("--out", help="defaults to <scaffold_dir>/ARCHITECTURE.html")
     args = parser.parse_args(argv)
 
@@ -131,7 +138,7 @@ def main(argv=None):
 
     out_path = args.out or os.path.join(args.scaffold_dir, "ARCHITECTURE.html")
     with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, args.d3, payload))
+        fh.write(render_html(args.template, args.d3, args.tokens, payload))
 
     print(json.dumps({"architecturePath": out_path}))
     return 0
