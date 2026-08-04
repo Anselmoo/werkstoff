@@ -4,6 +4,7 @@ All notable changes to the `compass` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-04
 ### Added
 - `compass-explore-branches`: render a small-multiples grouped-bar branch-comparison HTML report (`.compass/runs/<run-id>/branch-comparison.html`) at the end of every run, and fix Persist so it runs regardless of which path (workflow or manual) produced the scores
 
