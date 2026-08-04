@@ -54,6 +54,13 @@ by intent.
 > Triggers `cupertino-review` — runs all eight lifecycle stages end-to-end,
 > backwards-compatibility check through reveal.
 
+Immediately before its end-of-run cleanup, `cupertino-review` renders the run's own
+pipeline as a self-contained HTML flow diagram — `.cupertino/CUPERTINO_REVIEW_FLOW.html` —
+built by `scripts/build_review_flow_html.py` from each stage's persisted `flags/<stage>-output`
+content, since that content is deleted once the run finishes.
+
+![Cupertino Review Flow diagram showing the fixed nine-stage pipeline — backwards, focus, a real fork into longevity and integrate that merges back into council, then prototype, elevate, unbox, and reveal — with a genuine mix of node states: most stages outlined green for ran, prototype shown dashed orange for explicitly skipped, and elevate shown muted for not yet reached](assets/review-flow-viewer-screenshot.jpg)
+
 ##### Convene the council
 
 ````prompt
