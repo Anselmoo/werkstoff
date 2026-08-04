@@ -87,8 +87,8 @@ to their resolved paths. `stage_map.json` (viewer format, sampled edges) may als
 here for `self-assess-transform-brief` to later append a `flows` field to -- that is its own,
 separate consumer, unrelated to the HTML viewer below.
 
-Then render `STAGE_MAP.html` -- a real canvas-based D3 viewer (circle-pack layout, pan/zoom,
-search), not the old "simple static graph render":
+Then render `STAGE_MAP.html` -- a real canvas-based D3 viewer (force-directed graph layout,
+pan/zoom, search, drag-to-reposition), not the old "simple static graph render":
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py \
@@ -96,6 +96,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py \
     --file-stage-index <resolved file_stage_index.json path> \
     --template ${CLAUDE_PLUGIN_ROOT}/assets/stage-map-viewer.html \
     --d3 ${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html \
+    --tokens ${CLAUDE_PLUGIN_ROOT}/assets/tokens.css \
     --out <resolved STAGE_MAP.html path>
 ```
 

@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """Renders stage_graph.json + file_stage_index.json as a self-contained,
-canvas-based D3 viewer -- circle-pack layout (stage size ~ file count),
-pan/zoom, search, and level-of-detail-safe rendering, following the same
-techniques as anthropics/claude-plugins-official's code-modernization
-topology-viewer.html (vendored inline D3 subset, see tools/d3-subset/).
+canvas-based D3 viewer -- a force-directed graph (d3-force: forceSimulation
++ forceLink + forceManyBody + forceCenter), pan/zoom, search, and
+level-of-detail-safe rendering, following the same vendored-inline-D3
+technique as anthropics/claude-plugins-official's code-modernization
+topology-viewer.html (see tools/d3-subset/).
 
-Unlike that reference's system/domain/module hierarchy, self-assess-stage-map
-clusters files by the *shallowest importable package boundary* -- a genuinely
-flat list of stages, never nested. Faking a multi-level hierarchy here would
-misrepresent the actual data; this renders a single-level pack (one synthetic
-root, stages as direct children) instead.
+self-assess-stage-map's data is a genuinely FLAT list of stages with
+DIRECTED edges (wires) between them -- there is no containment hierarchy at
+all, and some wires form real cycles (mutual dependency). build_data() below
+returns nodes as a flat list, not nested; a prior version faked a
+single-level d3.hierarchy()+d3.pack() layout under a synthetic root, which
+positioned nodes by subtree-size accumulation and encoded nothing about
+which stage points to which -- two nodes in the same real cycle could land
+anywhere relative to each other, so edges drawn between them could visually
+cross in ways unrelated to the graph's actual topology. The force layout
+below instead lets connectivity itself determine position.
 
 Reads the FULL stage_graph.json (never sampled -- rule
 stage-graph-vs-stage-map-json), not the separate, deliberately-sampled
@@ -25,7 +31,7 @@ that skill actually reports.
 
 Usage:
     build_stage_map_html.py --stage-graph <path> --file-stage-index <path> \
-        --template <path> --d3 <path> [--out <path>]
+        --template <path> --d3 <path> --tokens <path> [--out <path>]
 """
 import argparse
 import json
@@ -64,29 +70,23 @@ def build_data(stage_graph, file_stage_index):
         if b in fan_in:
             fan_in[b] += 1
 
-    root = {
-        "id": "__root__",
-        "name": "repository",
-        "kind": "root",
-        "children": [
-            {
-                "id": s,
-                "name": s,
-                "kind": "stage",
-                "fileCount": file_count.get(s, 0),
-                "fanIn": fan_in.get(s, 0),
-                "fanOut": fan_out.get(s, 0),
-                "inCycle": s in in_cycle,
-                "cycleId": cycle_of.get(s),
-                "godModuleFanIn": god_modules.get(s),
-                "deadEnd": s in dead_ends,
-            }
-            for s in stages
-        ],
-    }
+    nodes = [
+        {
+            "id": s,
+            "name": s,
+            "fileCount": file_count.get(s, 0),
+            "fanIn": fan_in.get(s, 0),
+            "fanOut": fan_out.get(s, 0),
+            "inCycle": s in in_cycle,
+            "cycleId": cycle_of.get(s),
+            "godModuleFanIn": god_modules.get(s),
+            "deadEnd": s in dead_ends,
+        }
+        for s in stages
+    ]
 
     return {
-        "root": root,
+        "nodes": nodes,
         "edges": [{"source": a, "target": b} for a, b in wires],
         "cycles": [sorted(c) for c in cycles],
         "stats": {
@@ -98,9 +98,15 @@ def build_data(stage_graph, file_stage_index):
     }
 
 
-def render_html(template_path, d3_path, data):
+def render_html(template_path, d3_path, tokens_path, data):
     tpl = open(template_path, encoding="utf-8").read()
     d3_snippet = open(d3_path, encoding="utf-8").read()
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
+    if tokens_marker not in tpl:
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, f"<style>\n{tokens_css}\n</style>")
 
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
@@ -121,6 +127,7 @@ def main(argv=None):
     parser.add_argument("--file-stage-index", required=True)
     parser.add_argument("--template", required=True)
     parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", required=True, help="path to the vendored design-tokens/tokens.css file")
     parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
 
@@ -130,7 +137,7 @@ def main(argv=None):
         file_stage_index = json.load(fh)
 
     data = build_data(stage_graph, file_stage_index)
-    html = render_html(args.template, args.d3, data)
+    html = render_html(args.template, args.d3, args.tokens, data)
 
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(html)
