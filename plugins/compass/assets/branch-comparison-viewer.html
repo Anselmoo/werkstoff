@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>Compass Branch Comparison</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: var(--font-size-base)/var(--line-height-base) var(--font-sans);
+    padding: var(--space-5);
+  }
+  header { margin-bottom: var(--space-4); }
+  header h1 { font-size: 18px; color: var(--accent); margin-bottom: var(--space-1); }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .legend { display: flex; gap: var(--space-4); font-size: 11px; color: var(--muted);
+    margin: var(--space-3) 0 var(--space-5); flex-wrap: wrap; }
+  .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px;
+    margin-right: 5px; vertical-align: middle; }
+  .rows { display: flex; flex-direction: column; gap: var(--space-3); max-width: 900px; }
+  .row {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: var(--space-4); display: grid; grid-template-columns: 220px 1fr 90px;
+    gap: var(--space-4); align-items: center;
+  }
+  .row.winner { border-left: 3px solid var(--accent-2); background: var(--panel-2); }
+  .row .name { font-weight: 600; }
+  .row .badge {
+    display: inline-block; margin-left: var(--space-2); font-size: 10px; color: var(--accent-2);
+    border: 1px solid var(--accent-2); border-radius: var(--radius-sm); padding: 1px 5px;
+    vertical-align: middle;
+  }
+  .row .desc { color: var(--muted); font-size: 12px; margin-top: var(--space-1); line-height: 1.4; }
+  .row .blocker { color: var(--muted); font-size: 11px; margin-top: var(--space-2); font-style: italic; }
+  .row .bars svg { width: 100%; height: 64px; display: block; }
+  .row .total { text-align: right; }
+  .row .total .n { font-size: 24px; font-weight: 700; color: var(--text); }
+  .row.winner .total .n { color: var(--accent-2); }
+  .row .total .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; }
+  #err .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: var(--space-4); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="title">Compass Branch Comparison</h1>
+  <div class="sub" id="subtitle"></div>
+</header>
+
+<div class="legend">
+  <span><span class="swatch" style="background:var(--status-good)"></span>Feasibility</span>
+  <span><span class="swatch" style="background:var(--accent)"></span>Impact</span>
+  <span><span class="swatch" style="background:var(--status-bad)"></span>Risk</span>
+  <span><span class="swatch" style="background:var(--accent-2)"></span>Total / winner</span>
+</div>
+
+<div class="rows" id="rows"></div>
+<div id="err"><div class="panel"><p></p></div></div>
+
+<!--__D3_SUBSET__-->
+<script type="module">
+const d3 = window.d3;
+
+// Injected by build_branch_comparison_html.py.
+const DATA = /*__BRANCH_DATA__*/ null;
+
+if (!DATA || !DATA.branches || !DATA.branches.length) {
+  const err = document.getElementById("err");
+  err.querySelector("p").innerHTML =
+    "No branch-comparison data found in this file.<br>Re-run compass-explore-branches to regenerate it.";
+  err.style.display = "grid";
+  document.getElementById("rows").style.display = "none";
+  throw new Error("no data");
+}
+
+document.getElementById("title").textContent = "Compass Branch Comparison";
+document.getElementById("subtitle").textContent = DATA.rawTask + " — winner: " + DATA.selected;
+
+const AXES = [
+  { key: "feasibility", label: "Feasibility", color: "var(--status-good)" },
+  { key: "impact",      label: "Impact",      color: "var(--accent)" },
+  { key: "risk",        label: "Risk",        color: "var(--status-bad)" },
+];
+
+// d3-scale maps every axis's 1-10 score onto the same bar-length range, so
+// bars are directly comparable within a row and across rows -- the whole
+// reason a mark type with a real scale (not a radar's uncalibrated area)
+// was chosen for this data shape.
+const scoreScale = d3.scaleLinear().domain([0, 10]).range([0, 100]);
+const rowScale = d3.scaleBand().domain(AXES.map(a => a.key)).range([4, 60]).padding(0.35);
+
+function renderBars(svgEl, branch) {
+  const svg = d3.select(svgEl);
+  svg.attr("viewBox", "0 0 320 64");
+
+  const groups = svg.selectAll("g.axis")
+    .data(AXES)
+    .join("g")
+    .attr("class", "axis")
+    .attr("transform", a => `translate(0,${rowScale(a.key)})`);
+
+  groups.append("text")
+    .attr("x", 0).attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em")
+    .attr("font-size", 9).attr("fill", "var(--muted)")
+    .text(a => a.label);
+
+  groups.append("rect")
+    .attr("x", 68).attr("y", 0)
+    .attr("width", a => scoreScale(branch[a.key]))
+    .attr("height", rowScale.bandwidth())
+    .attr("rx", 2)
+    .attr("fill", a => a.color);
+
+  groups.append("text")
+    .attr("x", a => 68 + scoreScale(branch[a.key]) + 6)
+    .attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em")
+    .attr("font-size", 10).attr("fill", "var(--text)")
+    .text(a => branch[a.key]);
+}
+
+function renderRow(branch) {
+  const row = document.createElement("div");
+  row.className = "row" + (branch.isWinner ? " winner" : "");
+
+  const left = document.createElement("div");
+  const nameEl = document.createElement("span");
+  nameEl.className = "name";
+  nameEl.textContent = branch.name;
+  left.appendChild(nameEl);
+  if (branch.isWinner) {
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = "WINNER";
+    left.appendChild(badge);
+  }
+  const desc = document.createElement("div");
+  desc.className = "desc";
+  desc.textContent = branch.description || "(no description recorded for this run)";
+  left.appendChild(desc);
+  if (branch.biggestBlocker) {
+    const blocker = document.createElement("div");
+    blocker.className = "blocker";
+    blocker.textContent = "Biggest blocker: " + branch.biggestBlocker;
+    left.appendChild(blocker);
+  }
+  row.appendChild(left);
+
+  const bars = document.createElement("div");
+  bars.className = "bars";
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svgEl = document.createElementNS(svgNS, "svg");
+  bars.appendChild(svgEl);
+  row.appendChild(bars);
+  renderBars(svgEl, branch);
+
+  const total = document.createElement("div");
+  total.className = "total";
+  total.innerHTML = '<div class="n">' + branch.total + '</div><div class="k">Total</div>';
+  row.appendChild(total);
+
+  return row;
+}
+
+const rowsEl = document.getElementById("rows");
+// Winner-first ordering would hide the tie-break signal (lower risk wins
+// ties) the council flagged as the one thing this chart must keep legible --
+// render in the original propose order instead; the WINNER badge and
+// --accent-2 row highlight do the "who won" job on their own.
+for (const branch of DATA.branches) {
+  rowsEl.appendChild(renderRow(branch));
+}
+</script>
+</body>
+</html>

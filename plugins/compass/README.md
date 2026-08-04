@@ -62,6 +62,13 @@ by intent.
 > Triggers `compass-explore-branches` — proposes and scores multiple viable
 > approaches instead of anchoring on the first.
 
+Every `compass-explore-branches` run can also persist a self-contained HTML
+report — `scripts/build_branch_comparison_html.py` renders the run's
+`state.json` as a small-multiples grouped-bar D3 chart, one card per branch,
+so the scores never live only in chat history:
+
+![HTML report comparing four branches for how compass should persist and surface branch-comparison results — "Inline guard-only summary" (Total 14), "Standalone D3 branch-comparison viewer" (Total 19, highlighted WINNER with an orange border and badge), and "Radar chart for N-axis comparison" (Total 18) — each card showing grouped Feasibility/Impact/Risk bars alongside the branch's description and biggest blocker](assets/branch-comparison-viewer-screenshot.jpg)
+
 ##### Clarify a fuzzy scope
 
 ````prompt
