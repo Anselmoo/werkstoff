@@ -46,6 +46,14 @@ by intent.
 > Triggers `self-assess-stage-map` — import-graph-based stage/wire detection, not
 > naive directory guessing.
 
+Alongside the JSON stage graph, this skill renders a self-contained HTML viewer
+(`build_stage_map_html.py`) that lays the real dependency graph out as a live
+`d3-force` physics simulation on canvas: nodes cluster by actual connectivity
+instead of directory structure, so a tight interconnected core reads as a
+visible cluster and an unconnected module drifts off on its own.
+
+![Force-directed dependency graph rendered on canvas: a gold-outlined "core" god-module node sits at the center of a tight cluster of blue stage nodes (api, ui, cache, utils, legacy), two red nodes (auth, db) forming one real mutual-dependency cycle, two purple nodes (worker, queue) forming a second cycle, and an unconnected "sandbox" node drifted into the opposite corner of the canvas with no edges to the rest of the graph at all](assets/stage-map-viewer-screenshot.jpg)
+
 ##### Run the auto-pilot
 
 ````prompt
