@@ -11,12 +11,18 @@ name: Deploy docs to Pages
 on:
   push:
     branches: [main]
-    paths:
+    paths: &docs_paths
       - 'docs/**'
       - 'plugins/*/README.md'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/docs.yml'
+  # Build on PRs too. Without this the site is only built after merge, so a
+  # broken build would surface at deploy time on main rather than in review.
+  # The deploy job below stays main-only.
+  pull_request:
+    branches: [main]
+    paths: *docs_paths
   workflow_dispatch:
 
 permissions:
@@ -63,6 +69,7 @@ jobs:
             ${{ runner.os }}-vitepress-
 
       - name: Setup Pages
+        if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v4
 
       - name: Install dependencies
@@ -72,12 +79,14 @@ jobs:
         run: npm run docs:build
 
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist
 
   deploy:
     needs: build
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     name: Deploy
     environment:
