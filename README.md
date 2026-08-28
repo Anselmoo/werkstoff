@@ -54,6 +54,12 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   navigable consistency matrix and an equivalence-verified alignment
   pass.
 
+- **[`takt`](plugins/takt/README.md)** — enforces declared beat
+  order at the tool-call layer: denies an edit or a dispatch that runs
+  ahead of the step it depends on, so cross-plugin sequencing is a
+  runtime gate rather than a sentence a model may skip. Inert until a
+  repository declares its beats.
+
 ## Install
 
 ```
@@ -62,7 +68,7 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 ```
 
 Swap `self-assess` for any plugin name above (`confab`, `compass`,
-`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`) to install
+`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`, `takt`) to install
 a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin
@@ -71,6 +77,19 @@ directory without registering the marketplace:
 ```
 cc --plugin-dir /path/to/werkstoff/plugins/self-assess
 ```
+
+## Docs
+
+- **[Orchestration](docs/orchestration/README.md)** — how these plugins compose
+  with each other, with `superpowers`, and with the official Anthropic plugins.
+  Includes a task-indexed
+  [prompt catalog](docs/orchestration/references/catalog.md), a
+  [routing table](docs/orchestration/references/routing.md) for the pipelines
+  that overlap, and the
+  [composition hazards](docs/orchestration/references/composition.md) of running
+  several hook-bearing plugins in one session.
+- **[Plugin authoring](docs/plugin-authoring/README.md)** — the craft standards
+  to read before writing or editing a `SKILL.md` or agent file.
 
 ## Adding a new plugin
 

@@ -4,14 +4,20 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — seven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `self-assess`. Each is independently versioned;
+`plugins/<name>/` — eight plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
+`compass`, `confab`, `cupertino`, `self-assess`, `takt`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
 The first six (all but `codebase-consistency`, added later) were regenerated
 from behavior specifications rather than hand-edited — see
 `docs/plugin-rebuild-findings.md` for what that measured, including which
 rebuilds gained enforcement and which lost rules.
+
+Before composing these plugins with each other, with `superpowers`, or with the
+official Anthropic plugins, read @docs/orchestration/README.md — the
+orchestrator-vs-leaf rule, a task-indexed prompt catalog, a routing table for
+the pipelines whose scopes overlap, and the composition hazards of running
+several hook-bearing plugins in one session.
 
 Before writing or editing a SKILL.md or agent file, read
 @docs/plugin-authoring/README.md — the craft/content-split entry point into
@@ -37,7 +43,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the seven-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the eight-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 

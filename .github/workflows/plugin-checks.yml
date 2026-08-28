@@ -20,6 +20,7 @@ jobs:
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
+      takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
@@ -102,6 +103,17 @@ jobs:
         working-directory: tools/symbol-indexer
         run: python3 -m unittest test_build_symbol_index -v
 
+      - name: Verify takt evaluates every edit-payload shape
+        id: takt_payload_shapes
+        continue-on-error: true
+        # verify-hooks-deny.py drives exactly one payload shape
+        # ({"tool_name": "Edit", "tool_input": {"file_path": ...}}), which is the
+        # right contract for a shared harness but left a real gap: takt's first
+        # implementation read only `file_path`, so a MultiEdit carrying its paths
+        # in an `edits` array was silently ALLOWED in an opted-in repo. This pins
+        # the shapes that harness cannot express.
+        run: python3 test/plugins/verify-takt-payload-shapes.py
+
       - name: Verify vendored artifacts match their committed lock
         id: rrt_artifacts
         continue-on-error: true
@@ -118,6 +130,7 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
+          steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure'
@@ -162,6 +175,7 @@ jobs:
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
+            row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             echo "</tbody></table>"
             echo

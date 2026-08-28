@@ -1,0 +1,112 @@
+# Build the VitePress docs site and publish it to GitHub Pages.
+#
+# Adapted from VitePress's official deployment recipe. Two werkstoff-specific
+# additions before the build:
+#   - regenerate docs/prompt-index.md and fail if it drifted from the plugin
+#     READMEs it is generated from, so the published page can never disagree
+#     with the source it claims to mirror
+#   - a strict artifact check, matching what plugin-checks.yml already enforces
+name: Deploy docs to Pages
+
+on:
+  push:
+    branches: [main]
+    paths: &docs_paths
+      - 'docs/**'
+      - 'plugins/*/README.md'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  # Build on PRs too. Without this the site is only built after merge, so a
+  # broken build would surface at deploy time on main rather than in review.
+  # The deploy job below stays main-only.
+  pull_request:
+    branches: [main]
+    paths: *docs_paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; never cancel a production deploy in flight.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # lastUpdated needs full history
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate the prompt index and fail on drift
+        run: |
+          python3 tools/prompt-index/build_prompt_index.py
+          git diff --exit-code -- docs/prompt-index.md
+
+      # Installed the same way plugin-checks.yml does it, so both workflows
+      # exercise the same rrt. Deliberately NOT continue-on-error: a drifted
+      # artifact must block publishing, not be rendered as a status square.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install rrt
+        run: uv tool install "repo-release-tools>=1.13.1"
+
+      - name: Verify tracked artifacts
+        run: rrt artifacts --check --strict
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache VitePress
+        uses: actions/cache@v4
+        with:
+          path: docs/.vitepress/cache
+          key: ${{ runner.os }}-vitepress-${{ hashFiles('docs/**', 'package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vitepress-
+
+      - name: Setup Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with VitePress
+        run: npm run docs:build
+
+      - name: Upload artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    name: Deploy
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

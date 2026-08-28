@@ -8,7 +8,7 @@ code-modernization plugin, and `obra/superpowers`. **This document is the plan â
 Phase 2 have not been executed yet.**
 
 Headline finding from this pass: `cupertino` has a real, fail-closed `PreToolUse` hook
-(`hooks/pretooluse_guard.py`) that contradicts this repo's own [CLAUDE.md](../CLAUDE.md), which
+(`hooks/pretooluse_guard.py`) that contradicts this repo's own [CLAUDE.md](https://github.com/Anselmoo/werkstoff/blob/main/CLAUDE.md), which
 calls it advisory-only. See "Classify plugin families by literal hooks/ presence" below.
 
 ---

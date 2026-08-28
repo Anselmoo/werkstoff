@@ -1,0 +1,17 @@
+{
+  "description": "takt: denies an edit or a dispatch that runs ahead of a beat the repository declared it depends on. type:command, never type:prompt -- a prompt hook asks a model to decide, which is the model-mediated path this exists to replace. Inert until .claude/takt.local.md exists.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Task|Agent|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/takt_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

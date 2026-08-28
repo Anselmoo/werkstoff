@@ -1,0 +1,18 @@
+{
+  "name": "takt",
+  "version": "0.1.0",
+  "description": "Enforces declared beat order at the tool-call layer: denies an edit or a dispatch that runs ahead of the step it depends on, so cross-plugin sequencing is a runtime gate rather than a sentence a model may skip. Inert until a repository declares its beats.",
+  "author": {
+    "name": "Anselm Hahn",
+    "email": "anselm.hahn@gmail.com"
+  },
+  "keywords": [
+    "sequencing",
+    "beats",
+    "pretooluse",
+    "enforcement",
+    "orchestration",
+    "gate"
+  ],
+  "license": "MIT"
+}

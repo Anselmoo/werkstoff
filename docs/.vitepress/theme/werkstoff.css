@@ -1,0 +1,157 @@
+/* werkstoff identity for the docs site.
+ *
+ * The palette is not invented here. tools/design-tokens/tokens.css is the single
+ * source of truth -- vendored into all seven capability plugins' assets/tokens.css
+ * -- and its comments record why each value exists, several having converged
+ * independently across viewers before they were ever named once. Change a colour
+ * THERE, then mirror it here.
+ *
+ * The values are mirrored rather than @import-ed: this file ships to a static site
+ * while tokens.css lives in tools/, outside the VitePress source root, so an import
+ * would either break the build or need a bundler alias to survive it. Duplication
+ * with a named source beats a fragile path.
+ *
+ * Contrast, measured rather than assumed (WCAG 2.1, normal text needs 4.5:1):
+ *   dark   #d4d4d4 on #1e1e1e = 11.25:1   body text
+ *   dark   #cc785c on #1e1e1e =  5.09:1   accent as link text
+ *   dark   #8a8a8a on #1e1e1e =  4.83:1   muted text
+ *   light  #cc785c on #ffffff =  3.28:1   FAILS AA -- the palette is dark-native,
+ *                                         so light mode uses a darkened accent:
+ *   light  #b35c3f on #ffffff =  4.65:1   passes AA
+ * That is the one place light mode deliberately departs from the token value.
+ */
+
+:root {
+  /* ---- werkstoff tokens, mirrored from tools/design-tokens/tokens.css ---- */
+  --wk-bg: #1e1e1e;
+  --wk-panel: #252526;
+  --wk-panel-2: #2d2d2d;
+  --wk-text: #d4d4d4;
+  --wk-muted: #8a8a8a;
+  --wk-accent: #cc785c;
+  --wk-accent-2: #ffb020;
+  --wk-border: #3a3a3a;
+  --wk-status-good: #4c8d5a;
+  --wk-status-bad: #b0503f;
+  --wk-status-warn: #b58b3a;
+  --wk-status-unknown: #3a5a7a;
+  --wk-radius-sm: 4px;
+  --wk-radius-control: 6px;
+  --wk-radius-panel: 8px;
+  --wk-transition-fast: 120ms ease;
+
+  /* Light mode: the accent darkened to clear AA on white (see header). */
+  --vp-c-brand-1: #b35c3f;
+  --vp-c-brand-2: #a04f35;
+  --vp-c-brand-3: #cc785c;
+  --vp-c-brand-soft: rgba(204, 120, 92, 0.14);
+
+  /* Light mode otherwise keeps VitePress's own neutrals, which are already
+   * accessible. Forcing a dark-native palette into light mode buys nothing and
+   * risks unreadable text. */
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-bg: var(--vp-c-brand-1);
+}
+
+/* ---- Dark mode is the native identity: a faithful application of the tokens ---- */
+.dark {
+  --vp-c-bg: var(--wk-bg);
+  --vp-c-bg-alt: var(--wk-panel);
+  --vp-c-bg-soft: var(--wk-panel);
+  --vp-c-bg-elv: var(--wk-panel-2);
+
+  --vp-c-text-1: var(--wk-text);
+  --vp-c-text-2: var(--wk-muted);
+  --vp-c-text-3: var(--wk-muted);
+
+  --vp-c-divider: var(--wk-border);
+  --vp-c-border: var(--wk-border);
+  --vp-c-gutter: var(--wk-border);
+
+  /* Full-strength accent: 5.09:1 on --wk-bg, so it is safe as link text here. */
+  --vp-c-brand-1: var(--wk-accent);
+  --vp-c-brand-2: #d98a70;
+  --vp-c-brand-3: var(--wk-accent);
+  --vp-c-brand-soft: rgba(204, 120, 92, 0.16);
+
+  --vp-code-block-bg: var(--wk-panel);
+  --vp-code-bg: var(--wk-panel-2);
+  --vp-code-color: var(--wk-text);
+
+  --vp-c-default-soft: var(--wk-panel-2);
+}
+
+/* ---- Semantic status scale onto VitePress's custom blocks ----
+ * The tokens already carry a named status scale; using it here means a tip in
+ * the docs is the same green as a passing cell in every plugin's HTML viewer. */
+.dark {
+  --vp-custom-block-tip-border: var(--wk-status-good);
+  --vp-custom-block-tip-text: var(--wk-text);
+  --vp-custom-block-tip-bg: rgba(76, 141, 90, 0.12);
+
+  --vp-custom-block-warning-border: var(--wk-status-warn);
+  --vp-custom-block-warning-text: var(--wk-text);
+  --vp-custom-block-warning-bg: rgba(181, 139, 58, 0.12);
+
+  --vp-custom-block-danger-border: var(--wk-status-bad);
+  --vp-custom-block-danger-text: var(--wk-text);
+  --vp-custom-block-danger-bg: rgba(176, 80, 63, 0.12);
+
+  --vp-custom-block-info-border: var(--wk-status-unknown);
+  --vp-custom-block-info-text: var(--wk-text);
+  --vp-custom-block-info-bg: rgba(58, 90, 116, 0.12);
+}
+
+/* ---- Home hero: the accent -> accent-2 relationship the viewers already use ---- */
+:root {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(
+    120deg,
+    var(--wk-accent) 30%,
+    var(--wk-accent-2)
+  );
+  --vp-home-hero-image-background-image: linear-gradient(
+    120deg,
+    rgba(204, 120, 92, 0.5),
+    rgba(255, 176, 32, 0.35)
+  );
+  --vp-home-hero-image-filter: blur(48px);
+}
+
+/* ---- The prompt fences are the docs' signature element ----
+ * Four-backtick ```prompt blocks carry no Shiki grammar, so they render as plain
+ * text. Marking them with the accent makes a copy-pasteable prompt visually
+ * distinct from an ordinary code sample, which is the one distinction a reader
+ * of this catalog actually needs. */
+.dark div[class*='language-prompt'] {
+  border-left: 3px solid var(--wk-accent);
+  border-radius: var(--wk-radius-sm);
+}
+
+div[class*='language-prompt'] {
+  border-left: 3px solid var(--vp-c-brand-1);
+  border-radius: var(--wk-radius-sm);
+}
+
+/* Tables carry most of the catalog's beat sheets; tighten them to the token
+ * spacing scale so a long entry stays scannable. */
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc th,
+.vp-doc td {
+  padding: 8px 12px;
+}
+
+.dark .vp-doc tr:nth-child(2n) {
+  background-color: var(--wk-panel);
+}
+
+/* Motion token, applied where the default theme already animates. */
+.VPLink,
+.vp-doc a {
+  transition: color var(--wk-transition-fast);
+}
