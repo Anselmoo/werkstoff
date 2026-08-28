@@ -77,6 +77,15 @@ changelog_file = "plugins/codebase-consistency/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
+name = "takt"
+release_branch = "release/takt/v{version}"
+changelog_file = "plugins/takt/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/takt/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
 name = "werkstoff-cli"
 release_branch = "release/werkstoff-cli/v{version}"
 changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
@@ -141,6 +150,13 @@ source = "plugins/codebase-consistency/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=codebase-consistency].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/takt/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=takt].description" },
 ]
 
 # Partially-standardized README section: the "## Example Prompts" heading and its
