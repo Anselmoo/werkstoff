@@ -27,6 +27,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 GUARD = REPO / "plugins" / "takt" / "hooks" / "takt_guard.py"
 OPTED_IN = REPO / "test" / "plugins" / "fixtures" / "hook-violation-takt"
+DISPATCH = REPO / "test" / "plugins" / "fixtures" / "takt-dispatch-beat"
 
 DENY, ALLOW = 2, 0
 
@@ -54,6 +55,25 @@ CASES = [
      OPTED_IN, "Edit", {"file_path": "src/api.py"}, {}, ALLOW),
     ("Write, gated via top-level file_path (regression)",
      OPTED_IN, "Write", {"file_path": "src/ui/Panel.tsx"}, {}, DENY),
+
+    # A malformed payload must look EMPTY to the collector, not full. Iterating a
+    # string yields characters, each a non-empty str; if those were collected the
+    # target set would be non-empty, no glob would match, and the fail-closed
+    # branch would never fire -- allowing the very call it exists to stop.
+    ("MultiEdit, file_paths as a string not a list -> fail closed",
+     OPTED_IN, "MultiEdit", {"file_paths": "src/ui/Panel.tsx"}, {}, DENY),
+    ("MultiEdit, edits given as a string -> fail closed",
+     OPTED_IN, "MultiEdit", {"edits": "src/ui/Panel.tsx"}, {}, DENY),
+
+    # The dispatch branch carries the same contract as the edit branch.
+    ("Skill, gated name",
+     DISPATCH, "Skill", {"skill": "cupertino-focus"}, {}, DENY),
+    ("Skill, ungated name",
+     DISPATCH, "Skill", {"skill": "compass-solve"}, {}, ALLOW),
+    ("Skill, no determinable name -> fail closed",
+     DISPATCH, "Skill", {}, {}, DENY),
+    ("Agent, gated via subagent_type",
+     DISPATCH, "Agent", {"subagent_type": "cupertino-longevity"}, {}, DENY),
 ]
 
 

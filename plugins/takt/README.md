@@ -63,6 +63,10 @@ Create `.claude/takt.local.md` with one fenced `json` block:
 Whatever performs the beat creates the marker — `mkdir -p .takt && touch
 .takt/council-done`. takt never writes files; it only reads and refuses.
 
+A single call can touch several files: a `MultiEdit` may carry its paths in an `edits`
+array rather than one top-level `file_path`. Every path a payload exposes is collected,
+and a beat is violated if **any** of them is gated.
+
 Matching is `fnmatch`, never regex. Every silent-failure regex form this repository has
 been burned by is a regex-only failure mode that a glob cannot express.
 
@@ -101,7 +105,10 @@ model to decide, which is the model-mediated path this plugin exists to replace.
 - **Inert** when `.claude/takt.local.md` is absent: the call is allowed before it is
   even inspected.
 - **Fail-closed** once that file exists: any internal error denies rather than silently
-  allowing, naming the escape hatch.
+  allowing, naming the escape hatch. So does an *indeterminate* payload — if a beat gates
+  the call but no file path (or, for a dispatch, no skill or agent name) can be
+  determined from it, takt refuses. A call that cannot be checked against a gate the
+  repository opted into is precisely the bypass this plugin exists to prevent.
 - **Escape hatch**: `TAKT_DISABLE_GUARD=1`, or remove the declaration file.
 
 ## Testing

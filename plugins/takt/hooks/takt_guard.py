@@ -57,7 +57,9 @@ collected (`file_path`, `edits[].file_path`, `file_paths`) and the beat is
 violated if ANY of them is gated. If a beat gates the current edit tool but no
 path can be determined at all, the call is DENIED rather than allowed: an edit
 that cannot be checked against a gate the repository opted into is exactly the
-silent bypass this hook exists to prevent.
+silent bypass this hook exists to prevent. The same rule applies to dispatches --
+a Skill/Task/Agent call whose name cannot be determined is denied by a beat that
+gates dispatches, for identical reasons.
 """
 
 from __future__ import annotations
@@ -159,14 +161,26 @@ def edit_targets(cwd: str, tool_input: dict) -> list:
     single = tool_input.get("file_path")
     if isinstance(single, str) and single:
         found.append(single)
-    for entry in tool_input.get("edits") or []:
-        if isinstance(entry, dict):
-            path = entry.get("file_path")
+
+    # `isinstance(..., list)` rather than a truthiness check: iterating a STRING
+    # yields characters, every one of which is a non-empty str, which would fill
+    # `found` with junk that matches no glob -- and, worse, would make the set
+    # non-empty so the caller's fail-closed branch never fires. A malformed
+    # payload must look empty here, not look full.
+    edits = tool_input.get("edits")
+    if isinstance(edits, list):
+        for entry in edits:
+            if isinstance(entry, dict):
+                path = entry.get("file_path")
+                if isinstance(path, str) and path:
+                    found.append(path)
+
+    plural = tool_input.get("file_paths")
+    if isinstance(plural, list):
+        for path in plural:
             if isinstance(path, str) and path:
                 found.append(path)
-    for path in tool_input.get("file_paths") or []:
-        if isinstance(path, str) and path:
-            found.append(path)
+
     return [relative(cwd, path) for path in found]
 
 
@@ -230,7 +244,19 @@ def main() -> NoReturn:
                 target = first_match(targets, patterns)
             elif tool_name in DISPATCH_TOOLS:
                 patterns = beat.get("skills")
-                target = first_match([dispatch_target(tool_input)], patterns)
+                if not isinstance(patterns, list) or not patterns:
+                    continue  # this beat does not gate dispatches
+                name = dispatch_target(tool_input)
+                if not name:
+                    # Same rule as the edit side: a dispatch that cannot be
+                    # identified cannot be checked against a beat that gates it.
+                    deny(
+                        f"takt: beat '{beat_id}' gates {tool_name}, but the payload "
+                        f"carried no determinable skill or agent name, so the beat "
+                        f"could not be evaluated. Refusing rather than allowing an "
+                        f"unchecked dispatch. {ESCAPE_HATCH}"
+                    )
+                target = first_match([name], patterns)
             else:
                 continue
 

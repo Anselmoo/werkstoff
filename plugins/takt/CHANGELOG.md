@@ -13,6 +13,11 @@ All notable changes to the `takt` plugin are documented here.
   all is denied rather than allowed
 - `test/plugins/verify-takt-payload-shapes.py` pins the payload shapes the shared
   `verify-hooks-deny.py` harness cannot express, and runs in CI
+- two further holes of the same class, found while re-auditing that fix: a `file_paths`
+  value supplied as a *string* was iterated character-by-character, filling the target
+  set with junk so the fail-closed branch never fired; and a `Skill`/`Task`/`Agent`
+  dispatch whose name could not be determined was allowed by a beat that gates
+  dispatches. Both now deny
 
 ## [0.1.0] - 2026-08-28
 
