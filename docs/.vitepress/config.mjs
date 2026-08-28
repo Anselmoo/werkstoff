@@ -1,5 +1,10 @@
 import { defineConfig } from 'vitepress'
 
+// Project site at https://anselmoo.github.io/werkstoff/. VitePress prepends this
+// to themeConfig.logo for us, but NOT to raw `head` entries, so the favicon href
+// interpolates it explicitly rather than hardcoding the path twice.
+const base = '/werkstoff/'
+
 // Project site at https://anselmoo.github.io/werkstoff/ -> base must be '/werkstoff/'.
 // `rewrites` maps each section's README.md onto a directory index so the existing
 // files keep their names on disk; nothing under docs/ needs renaming or frontmatter.
@@ -7,10 +12,15 @@ export default defineConfig({
   title: 'werkstoff',
   description:
     'A workshop of Claude Code plugins, and how they compose with superpowers and the official Anthropic plugin set.',
-  base: '/werkstoff/',
+  base,
   cleanUrls: true,
   lastUpdated: true,
   ignoreDeadLinks: false,
+
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}favicon.svg` }],
+    ['meta', { name: 'theme-color', content: '#cc785c' }],
+  ],
 
   // Not published. These two pilot records name an internal host, an internal
   // repository, and an absolute path on that host. They stay in the repo and on
@@ -24,6 +34,8 @@ export default defineConfig({
   },
 
   themeConfig: {
+    logo: '/logo.svg',
+
     nav: [
       { text: 'Prompt catalog', link: '/orchestration/references/catalog' },
       { text: 'Orchestration', link: '/orchestration/' },

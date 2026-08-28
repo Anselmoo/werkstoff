@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="t">
+  <title id="t">werkstoff</title>
+  <!-- Simplified for 16px: full-bleed plate, heavier stroke, larger node. The
+       1.5px border and the plate inset of logo.svg both disappear at this size,
+       so they are dropped rather than rendered as mud. -->
+  <rect width="32" height="32" rx="7" fill="#252526"/>
+  <path d="M6 10 L11 22.5 L16 12.5 L21 22.5 L26 10"
+        fill="none" stroke="#cc785c" stroke-width="3.75"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="26" cy="10" r="3.1" fill="#ffb020"/>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-labelledby="t">
+  <title id="t">werkstoff</title>
+  <!-- Dark plate: reads as a chip on both a light and a dark page, so one mark
+       serves both colour schemes. Colours are tools/design-tokens/tokens.css. -->
+  <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7"
+        fill="#252526" stroke="#3a3a3a" stroke-width="1.5"/>
+  <!-- A W that is also a value stream: down, up, down, up. The stroke is the
+       run; it terminates at the amber node rather than continuing, which is the
+       halt this project is built around. -->
+  <path d="M7 10 L11.5 22 L16 13 L20.5 22 L25 10"
+        fill="none" stroke="#cc785c" stroke-width="2.75"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="25" cy="10" r="2.6" fill="#ffb020"/>
+</svg>
