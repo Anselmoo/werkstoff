@@ -337,3 +337,8 @@ command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/cupertino/assets/inl
 path = "plugins/compass/assets/inline-d3.html"
 description = "compass's synced copy of tools/d3-subset/inline-d3.html"
 command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/compass/assets/inline-d3.html"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/prompt-index.md"
+description = "generated aggregate of every plugin README's Example Prompts section"
+command = ["python3", "tools/prompt-index/build_prompt_index.py"]

@@ -66,7 +66,7 @@ it does *not* consistently do:
   like in practice.
 
 One partial exception worth crediting:
-[`plugins/cupertino/agents/handbook-dimension-analyst.md`](../../../plugins/cupertino/agents/handbook-dimension-analyst.md)
+[`plugins/cupertino/agents/handbook-dimension-analyst.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/agents/handbook-dimension-analyst.md)
 *does* include a literal fenced JSON output block for both its Propose and
 Verify modes:
 
@@ -449,7 +449,7 @@ complex enough to have a genuinely reusable, repeated-record output —
 `Wirasm/prp`'s pattern (§2e) of splitting **schema template**, **worked
 example**, and **rendered end-of-run report** into three separate,
 purpose-labeled files is now applied under
-[`plugins/self-assess/skills/self-assess-extract-rules/references/`](../../../plugins/self-assess/skills/self-assess-extract-rules/references/):
+[`plugins/self-assess/skills/self-assess-extract-rules/references/`](https://github.com/Anselmoo/werkstoff/tree/main/plugins/self-assess/skills/self-assess-extract-rules/references/):
 
 - `rule-card-template.md` — the abstract Rule Card schema (mirrors
   `modernize-extract-rules.md`'s template from §2c, adapted to self-assess's

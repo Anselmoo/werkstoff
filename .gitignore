@@ -301,3 +301,9 @@ Backups.backupdb
 MobileBackups.trash
 tmbootpicker.efi
 .worktrees/
+
+# VitePress docs site — anchored to the exact paths on purpose. An unanchored
+# `cache/` or `dist/` line here would silently swallow real source elsewhere in
+# the tree, which is the failure this file's own /analysis/ comment warns about.
+docs/.vitepress/dist/
+docs/.vitepress/cache/
