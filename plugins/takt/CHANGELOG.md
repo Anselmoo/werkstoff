@@ -4,6 +4,16 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- `takt_guard.py` read only `tool_input["file_path"]`, so a `MultiEdit` carrying its
+  paths in an `edits` array produced no target, matched no beat, and was **allowed** in
+  a repository that had opted in — a silent bypass of a fail-closed guard. Every path a
+  payload exposes (`file_path`, `edits[].file_path`, `file_paths`) is now collected, a
+  beat is violated if any of them is gated, and a payload with no determinable path at
+  all is denied rather than allowed
+- `test/plugins/verify-takt-payload-shapes.py` pins the payload shapes the shared
+  `verify-hooks-deny.py` harness cannot express, and runs in CI
+
 ## [0.1.0] - 2026-08-28
 
 ### Added

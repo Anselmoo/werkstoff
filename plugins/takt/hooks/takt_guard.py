@@ -50,6 +50,14 @@ Declaring beats -- .claude/takt.local.md, one fenced json block:
 A beat matches on `paths` (for Write/Edit/MultiEdit) or on `skills` (for
 Skill/Task/Agent). It denies when its `require` marker does not yet exist.
 Whatever performs the beat creates that marker; nothing here writes files.
+
+An edit payload may name more than one file -- a MultiEdit does not reliably
+carry a single top-level `file_path` -- so every path the payload exposes is
+collected (`file_path`, `edits[].file_path`, `file_paths`) and the beat is
+violated if ANY of them is gated. If a beat gates the current edit tool but no
+path can be determined at all, the call is DENIED rather than allowed: an edit
+that cannot be checked against a gate the repository opted into is exactly the
+silent bypass this hook exists to prevent.
 """
 
 from __future__ import annotations
@@ -128,6 +136,40 @@ def matches(target: str, patterns) -> bool:
     return False
 
 
+def first_match(targets, patterns):
+    """The first target matching any pattern, or None. An edit payload can name
+    several files; a beat is violated if ANY of them is gated."""
+    for target in targets:
+        if matches(target, patterns):
+            return target
+    return None
+
+
+def edit_targets(cwd: str, tool_input: dict) -> list:
+    """Every file path an edit payload names, repo-relative.
+
+    A MultiEdit payload does not reliably carry a single top-level `file_path`.
+    This repository already records that shape in
+    `plugins/self-assess/hooks/guard_target_edit.py`, which allows when it cannot
+    find one -- defensible there, because that hook is scope-checking. takt is
+    fail-closed, so it gathers every path the payload does expose, and its caller
+    denies rather than allows when the set comes back empty.
+    """
+    found = []
+    single = tool_input.get("file_path")
+    if isinstance(single, str) and single:
+        found.append(single)
+    for entry in tool_input.get("edits") or []:
+        if isinstance(entry, dict):
+            path = entry.get("file_path")
+            if isinstance(path, str) and path:
+                found.append(path)
+    for path in tool_input.get("file_paths") or []:
+        if isinstance(path, str) and path:
+            found.append(path)
+    return [relative(cwd, path) for path in found]
+
+
 def dispatch_target(tool_input: dict) -> str:
     for key in ("skill", "subagent_type", "name", "agent", "command"):
         value = tool_input.get(key)
@@ -167,16 +209,32 @@ def main() -> NoReturn:
             if tool_name not in tools:
                 continue
 
+            beat_id = beat.get("id") or "unnamed beat"
+            reason = beat.get("reason") or "this beat has not run yet"
+
             if tool_name in EDIT_TOOLS:
-                target = relative(cwd, tool_input.get("file_path") or "")
                 patterns = beat.get("paths")
+                if not isinstance(patterns, list) or not patterns:
+                    continue  # this beat does not gate file edits
+                targets = edit_targets(cwd, tool_input)
+                if not targets:
+                    # Fail closed. An edit whose targets cannot be determined
+                    # cannot be checked against this beat, and allowing it would
+                    # be a silent bypass of a gate the repository opted into.
+                    deny(
+                        f"takt: beat '{beat_id}' gates {tool_name}, but the payload "
+                        f"carried no determinable file path, so the beat could not be "
+                        f"evaluated. Refusing rather than allowing an unchecked edit. "
+                        f"{ESCAPE_HATCH}"
+                    )
+                target = first_match(targets, patterns)
             elif tool_name in DISPATCH_TOOLS:
-                target = dispatch_target(tool_input)
                 patterns = beat.get("skills")
+                target = first_match([dispatch_target(tool_input)], patterns)
             else:
                 continue
 
-            if not matches(target, patterns):
+            if target is None:
                 continue
 
             marker = beat.get("require")
@@ -186,8 +244,6 @@ def main() -> NoReturn:
             if os.path.exists(marker_path):
                 continue
 
-            beat_id = beat.get("id") or "unnamed beat"
-            reason = beat.get("reason") or "this beat has not run yet"
             deny(
                 f"takt: '{target}' runs ahead of beat '{beat_id}'. {reason} "
                 f"Required marker '{marker}' does not exist. {ESCAPE_HATCH}"
