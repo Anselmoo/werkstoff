@@ -119,4 +119,4 @@ Four other werkstoff plugins hold a `PreToolUse` hook of their own — `andon` a
 `self-assess` gate write tools, `confab` gates `Edit`/`Write` and `Bash`, and
 `cupertino` enforces its own internal ordering through `GATED_AFTER_BACKWARDS`. All
 are inert until the repository actually uses the owning plugin. See
-[`composition.md`](composition.md) for what happens when several are installed at once.
+[`hazards.md`](hazards.md) for what happens when several are installed at once.

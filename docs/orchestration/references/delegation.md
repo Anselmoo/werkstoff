@@ -4,7 +4,7 @@ A controller session dispatching subagents chooses two things at once: whether a
 of dispatches actually runs in parallel, and which model tier each one deserves. Both
 disciplines come from superpowers' `dispatching-parallel-agents` and
 `subagent-driven-development`, cross-checked against what werkstoff's own agents
-declare. `composition.md` covers what happens once those dispatches share guard hooks.
+declare. `hazards.md` covers what happens once those dispatches share guard hooks.
 
 ## The only parallel primitive
 

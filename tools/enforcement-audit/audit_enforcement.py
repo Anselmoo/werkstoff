@@ -18,11 +18,11 @@ confab throw. Every one of andon's four throws
 repoPath traversal, stageFiles entries. Useful hygiene; not a stop rule.
 
 Confab enforces the SAME rule andon only writes down. Its reopen limit is
-control flow:
+control flow (rebuilt from confab-cycle-scan.js into plugins/confab/scripts/lib/ledger.py
+during plugin rebuild):
 
-    confab-cycle-scan.js:194   if (topEntry.fixAttempts >= maxReopens) {
-    confab-cycle-scan.js:210     if (entry.fixAttempts >= maxReopens) return false
-    confab-cycle-scan.js:176   for (; passesRun < maxPassesPerInvocation; passesRun++)
+    plugins/confab/scripts/lib/ledger.py:90   record["status"] = "escalated" if record["reopenCount"] > max_reopens else "open"
+    plugins/confab/scripts/lib/ledger.py:56   raise CycleBoundExceededError(...)
 
 Andon's identical rule ("the same wire reopens three times -> escalate") greps
 to zero hits across its workflows. So the discriminating question is:

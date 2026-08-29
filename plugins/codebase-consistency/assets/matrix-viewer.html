@@ -255,8 +255,11 @@ const ROW_LABEL_W = 180;
 
 // ---- palette per variant (stable hash → hue) ------------------------------
 // Not part of the shared token system — these are arbitrary hashed hues for
-// distinguishing variant identity before /consistency-canonize has run, and
-// tokens.css has no categorical-variant palette to draw from instead.
+// distinguishing variant identity before /consistency-canonize has run.
+// tokens.css now ships a categorical scale (--cat-1..5), but it only covers
+// 5 hues against this PALETTE's 8; migrating this hashed lookup onto
+// --cat-1..5 plus a fallback for the 3 extra hues is a follow-up, not done
+// in this change.
 const VARIANT_COLORS = {};
 const PALETTE = ['#5b7fa6', '#7a9e6b', '#c98f4a', '#a5648a', '#5a9e9e', '#9e7a5a', '#7a7a9e', '#9e5a5a'];
 function colorForVariant(label) {

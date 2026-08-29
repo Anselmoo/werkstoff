@@ -128,7 +128,7 @@ def main() -> int:
         "total, collected on one page. This is the plugin-indexed view; for the task-indexed"
     )
     out.append("view — which skill fires at which moment of a piece of work — see the")
-    out.append("[extended prompt catalog](/orchestration/references/catalog).")
+    out.append("[prompt catalog](/catalog/).")
     out.append("")
     out.append("This page is generated from the plugin READMEs by")
     out.append("`tools/prompt-index/build_prompt_index.py` and tracked as an artifact, so it")

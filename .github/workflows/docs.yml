@@ -49,10 +49,17 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Regenerate the prompt index and fail on drift
+      # PyYAML pinned in explicitly: build_surface_index.py falls back to a
+      # minimal parser when it is absent, and a CI run using a different parser
+      # from the local run could report drift that does not exist.
+      - name: Install generator dependencies
+        run: python3 -m pip install --quiet PyYAML
+
+      - name: Regenerate the generated docs artifacts and fail on drift
         run: |
           python3 tools/prompt-index/build_prompt_index.py
-          git diff --exit-code -- docs/prompt-index.md
+          python3 tools/surface-index/build_surface_index.py
+          git diff --exit-code -- docs/prompt-index.md docs/.vitepress/data/surface.json
 
       # Installed the same way plugin-checks.yml does it, so both workflows
       # exercise the same rrt. Deliberately NOT continue-on-error: a drifted

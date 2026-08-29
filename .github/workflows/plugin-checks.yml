@@ -20,6 +20,7 @@ jobs:
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
+      catalog_recipes: ${{ steps.catalog_recipes.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
@@ -103,6 +104,16 @@ jobs:
         working-directory: tools/symbol-indexer
         run: python3 -m unittest test_build_symbol_index -v
 
+      - name: Validate catalog recipes against the capability surface
+        id: catalog_recipes
+        continue-on-error: true
+        # docs/catalog/**/*.md's `beats` name skill/agent ids that must
+        # actually exist in docs/.vitepress/data/surface.json -- PR #44
+        # introduced the catalog but deliberately left this check out; a
+        # renamed or removed skill under plugins/<name>/skills/ would
+        # otherwise silently strand a recipe pointing at nothing.
+        run: python3 tools/catalog-validator/validate_catalog.py
+
       - name: Verify takt evaluates every edit-payload shape
         id: takt_payload_shapes
         continue-on-error: true
@@ -130,6 +141,7 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
+          steps.catalog_recipes.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
@@ -175,6 +187,7 @@ jobs:
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
+            row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             echo "</tbody></table>"

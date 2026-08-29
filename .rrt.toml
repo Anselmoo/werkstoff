@@ -342,3 +342,8 @@ command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/compass/assets/inlin
 path = "docs/prompt-index.md"
 description = "generated aggregate of every plugin README's Example Prompts section"
 command = ["python3", "tools/prompt-index/build_prompt_index.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/.vitepress/data/surface.json"
+description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
+command = ["python3", "tools/surface-index/build_surface_index.py"]

@@ -22,9 +22,11 @@ A five-agent adversarial review ("rubber-duck tribunal") compared werkstoff to
 
 The critical finding: andon's stop rules (reopen-3x escalation, blast-radius
 authorization gate, convergence bookkeeping) exist **only as prose** the model
-must re-read and self-enforce. `plugins/confab/workflows/confab-cycle-scan.js:19,55`
-implements the equivalent guard as a bounded, validated code check that throws.
-So it is an *inconsistency*, not ignorance.
+must re-read and self-enforce. `plugins/confab/scripts/lib/ledger.py:56,90`
+implements the equivalent guards in code rather than prose
+(the cycle-max-passes gate at line 56 raises CycleBoundExceededError; the reopen
+guard at line 90 forces a status transition to `escalated` past max-reopens --
+a state change, not a throw). So it is an *inconsistency*, not ignorance.
 
 **The pilot tests one thesis, and is built so the thesis can lose:**
 *enforcement-first design produces a materially better plugin than retrofitting
@@ -177,8 +179,10 @@ serialization.
 From `docs/andon-behavior-contract.md` only. Location `plugins/andon-ng/`
 during the pilot so the harness can run both. Invariants:
 
-1. Every stop rule is code with validated args that throw
-   (`confab-cycle-scan.js:55-56` is the reference shape).
+1. Every stop rule is code with validated args, not prose
+   (`plugins/confab/scripts/lib/ledger.py:56-59` raises for cycle-max-passes;
+   `plugins/confab/scripts/lib/ledger.py:88-90` forces an `escalated` status for
+   the thrash guard -- enforced in code, though only the former throws).
 2. The ledger is validated on read and write; gating fields (`verdict`,
    `non_overridable`, `on_constraint`, `blast_radius`) are first-class
    frontmatter keys, never body prose, never stringly-typed `"key:value"` tags.

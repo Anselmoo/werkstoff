@@ -149,16 +149,16 @@ work and can double-apply a fix.
 The entry point stops here. Each reference below covers one decision a session
 actually has to make.
 
-- [`references/catalog.md`](references/catalog.md) — the task-indexed prompt catalog:
-  what to say, per task shape, to get the right combination dispatched.
+- [the prompt catalog](../catalog/index.md) — the task-indexed prompt catalog: what to
+  say, per task shape, to get the right combination dispatched.
 - [`references/routing.md`](references/routing.md) — which of the four overlapping
   pipelines owns a task, and which brief must not be signed alongside it.
 - [`references/gates.md`](references/gates.md) — the approval, verification and hook
   gates each family enforces, and where they collide.
 - [`references/delegation.md`](references/delegation.md) — model tiering and dispatch
   shape for parallel subagent work.
-- [`references/composition.md`](references/composition.md) — worked multi-plugin
-  compositions end to end.
+- [`references/hazards.md`](references/hazards.md) — a catalog of composition
+  hazards: what breaks when several hook-bearing plugins share a session.
 - [`references/claude-md-block.md`](references/claude-md-block.md) — a paste-in
   `CLAUDE.md` block that encodes these routing rules for a repo.
 
