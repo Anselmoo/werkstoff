@@ -26,9 +26,11 @@ What it checks, per recipe file:
        ground truth for it, but a typo'd external namespace should still show up
        as suspicious in the summary line.
 
-Files with no YAML frontmatter at all, or with frontmatter that lacks a `category`
-key, are skipped -- that's docs/catalog/index.md and docs/catalog/_UNRESOLVED.md by
-convention, not recipes.
+Files with no YAML frontmatter at all, or with frontmatter that shares none of the
+recipe's required keys, are skipped -- that's genuinely not a recipe. Files with
+frontmatter that has some recipe-shaped keys but is missing required ones (like a
+missing `category`) are treated as mis-authored recipes and validated as such,
+generating failure reports for missing keys.
 
 Frontmatter parsing uses PyYAML. Unlike tools/surface-index/build_surface_index.py's
 flat SKILL.md/agent frontmatter (scalars and simple string lists only), a recipe's
@@ -324,8 +326,9 @@ def validate_catalog(catalog_dir: Path, surface_path: Path) -> ValidationReport:
 
         if frontmatter is None:
             continue  # no frontmatter at all -- not a recipe (e.g. index.md)
-        if "category" not in frontmatter:
-            continue  # frontmatter present but no category -- not a recipe
+        if not any(key in frontmatter for key in REQUIRED_KEYS):
+            continue  # frontmatter present but shares none of the recipe's
+            # required keys -- genuinely not a recipe, not a mis-authored one
 
         report.files_checked += 1
         directory_name = path.parent.name
