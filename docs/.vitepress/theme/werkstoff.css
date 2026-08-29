@@ -2,8 +2,8 @@
  *
  * The palette is not invented here. tools/design-tokens/tokens.css is the single
  * source of truth -- vendored into all seven capability plugins' assets/tokens.css
- * -- and its comments record why each value exists, several having converged
- * independently across viewers before they were ever named once. Change a colour
+ * -- and its comments record the brand rule: the identity material is silica
+ * aerogel, and each categorical slot is one aerogel chemistry. Change a colour
  * THERE, then mirror it here.
  *
  * The values are mirrored rather than @import-ed: this file ships to a static site
@@ -12,39 +12,74 @@
  * with a named source beats a fragile path.
  *
  * Contrast, measured rather than assumed (WCAG 2.1, normal text needs 4.5:1):
- *   dark   #d4d4d4 on #1e1e1e = 11.25:1   body text
- *   dark   #cc785c on #1e1e1e =  5.09:1   accent as link text
- *   dark   #8a8a8a on #1e1e1e =  4.83:1   muted text
- *   light  #cc785c on #ffffff =  3.28:1   FAILS AA -- the palette is dark-native,
- *                                         so light mode uses a darkened accent:
- *   light  #b35c3f on #ffffff =  4.65:1   passes AA
- * That is the one place light mode deliberately departs from the token value.
+ *   dark   #dfe6ea on #0a0d10 = 15.44:1   body text
+ *   dark   #348ad9 on #0a0d10 =  5.37:1   accent as link text
+ *   dark   #8b9aa4 on #0a0d10 =  6.73:1   muted text
+ *   light  #348ad9 on #ffffff =  3.63:1   FAILS AA -- the palette is dark-native
+ *                                         (aerogel is photographed against black),
+ *                                         so light mode uses a darkened silica:
+ *   light  #1874c2 on #ffffff =  4.87:1   passes AA
+ * That is the one place light mode deliberately departs from the token value, and
+ * it is the same accommodation the previous palette needed for the same reason.
  */
 
 :root {
   /* ---- werkstoff tokens, mirrored from tools/design-tokens/tokens.css ---- */
-  --wk-bg: #1e1e1e;
-  --wk-panel: #252526;
-  --wk-panel-2: #2d2d2d;
-  --wk-text: #d4d4d4;
-  --wk-muted: #8a8a8a;
-  --wk-accent: #cc785c;
-  --wk-accent-2: #ffb020;
-  --wk-border: #3a3a3a;
+  --wk-bg: #0a0d10;
+  --wk-panel: #141a1f;
+  --wk-panel-2: #1c242b;
+  --wk-text: #dfe6ea;
+  --wk-muted: #8b9aa4;
+  --wk-smoke: #cdd8de;
+  --wk-border: #28323a;
+
+  /* The aerogel family — one chemistry per categorical slot. Mirrored here so a
+     later CSS pass can reference these without touching this :root block again. */
+  --wk-silica: #348ad9;
+  --wk-silica-light: #73b6fa;
+  --wk-chromia: #08935c;
+  --wk-chromia-light: #5cbd89;
+  --wk-neodymia: #ab6dc6;
+  --wk-neodymia-light: #d39eea;
+  --wk-samaria: #ab8f00;
+  --wk-samaria-light: #cfb656;
+  --wk-ferria: #bd5137;
+  --wk-ferria-light: #e2856d;
+
+  /* -deep steps: only mirrored now, for the catalog category colors below.
+   * The base and -light steps above all measure under 4.5:1 as TEXT on white
+   * (3.15-4.08:1 on dark for the bases; see the catalog section for the
+   * dark-side numbers) -- light mode needs a darker step to pass AA as text,
+   * and tokens.css does not carry one for four of the five families. Values
+   * taken verbatim from tools/design-tokens/tokens.css; independently
+   * verified here to clear 4.5:1 on #ffffff (silica 7.12:1, chromia 7.89:1,
+   * neodymia 7.11:1, samaria 6.14:1, ferria 9.40:1). */
+  --wk-silica-deep: #005a9d;
+  --wk-chromia-deep: #005e39;
+  --wk-neodymia-deep: #77428e;
+  --wk-samaria-deep: #746005;
+  --wk-ferria-deep: #82260f;
+
+  /* The two poles of the duality: scattered blue, transmitted warmth. */
+  --wk-accent: var(--wk-silica);
+  --wk-accent-2: var(--wk-samaria-light);
+
   --wk-status-good: #4c8d5a;
   --wk-status-bad: #b0503f;
   --wk-status-warn: #b58b3a;
-  --wk-status-unknown: #3a5a7a;
+  /* was #3a5a7a, 2.71:1 against the new darker --wk-bg -- below WCAG 1.4.11's
+     3:1 non-text minimum; lightened within the same hue family to clear it. */
+  --wk-status-unknown: #4a719c;
   --wk-radius-sm: 4px;
   --wk-radius-control: 6px;
   --wk-radius-panel: 8px;
   --wk-transition-fast: 120ms ease;
 
-  /* Light mode: the accent darkened to clear AA on white (see header). */
-  --vp-c-brand-1: #b35c3f;
-  --vp-c-brand-2: #a04f35;
-  --vp-c-brand-3: #cc785c;
-  --vp-c-brand-soft: rgba(204, 120, 92, 0.14);
+  /* Light mode: silica darkened to clear AA on white (see header). */
+  --vp-c-brand-1: #1874c2;
+  --vp-c-brand-2: #0f66ae;
+  --vp-c-brand-3: #348ad9;
+  --vp-c-brand-soft: rgba(52, 138, 217, 0.14);
 
   /* Light mode otherwise keeps VitePress's own neutrals, which are already
    * accessible. Forcing a dark-native palette into light mode buys nothing and
@@ -54,7 +89,7 @@
   --vp-button-brand-bg: var(--vp-c-brand-1);
 }
 
-/* ---- Dark mode is the native identity: a faithful application of the tokens ---- */
+/* ---- Dark mode is the native identity: aerogel seen against black ---- */
 .dark {
   --vp-c-bg: var(--wk-bg);
   --vp-c-bg-alt: var(--wk-panel);
@@ -69,11 +104,11 @@
   --vp-c-border: var(--wk-border);
   --vp-c-gutter: var(--wk-border);
 
-  /* Full-strength accent: 5.09:1 on --wk-bg, so it is safe as link text here. */
-  --vp-c-brand-1: var(--wk-accent);
-  --vp-c-brand-2: #d98a70;
-  --vp-c-brand-3: var(--wk-accent);
-  --vp-c-brand-soft: rgba(204, 120, 92, 0.16);
+  /* Full-strength silica: 5.37:1 on --wk-bg, so it is safe as link text here. */
+  --vp-c-brand-1: var(--wk-silica);
+  --vp-c-brand-2: var(--wk-silica-light);
+  --vp-c-brand-3: var(--wk-silica);
+  --vp-c-brand-soft: rgba(52, 138, 217, 0.16);
 
   --vp-code-block-bg: var(--wk-panel);
   --vp-code-bg: var(--wk-panel-2);
@@ -83,8 +118,9 @@
 }
 
 /* ---- Semantic status scale onto VitePress's custom blocks ----
- * The tokens already carry a named status scale; using it here means a tip in
- * the docs is the same green as a passing cell in every plugin's HTML viewer. */
+ * The tokens carry a named status scale; using it here means a tip in the docs
+ * is the same green as a passing cell in every plugin's HTML viewer. Status is
+ * state, not identity, so the aerogel palette deliberately leaves it alone. */
 .dark {
   --vp-custom-block-tip-border: var(--wk-status-good);
   --vp-custom-block-tip-text: var(--wk-text);
@@ -100,21 +136,21 @@
 
   --vp-custom-block-info-border: var(--wk-status-unknown);
   --vp-custom-block-info-text: var(--wk-text);
-  --vp-custom-block-info-bg: rgba(58, 90, 116, 0.12);
+  --vp-custom-block-info-bg: rgba(74, 113, 156, 0.12);
 }
 
-/* ---- Home hero: the accent -> accent-2 relationship the viewers already use ---- */
+/* ---- Home hero: the duality, scattered blue into transmitted warmth ---- */
 :root {
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(
     120deg,
-    var(--wk-accent) 30%,
-    var(--wk-accent-2)
+    var(--wk-silica) 30%,
+    var(--wk-samaria-light)
   );
   --vp-home-hero-image-background-image: linear-gradient(
     120deg,
-    rgba(204, 120, 92, 0.5),
-    rgba(255, 176, 32, 0.35)
+    rgba(52, 138, 217, 0.5),
+    rgba(207, 182, 86, 0.35)
   );
   --vp-home-hero-image-filter: blur(48px);
 }
@@ -154,4 +190,165 @@ div[class*='language-prompt'] {
 .VPLink,
 .vp-doc a {
   transition: color var(--wk-transition-fast);
+}
+
+/* ---- Catalog category colors: one aerogel chemistry per dev-loop stage ----
+ * CatalogGrid.vue stamps `data-category="<slug>"` on each `.recipe-card`
+ * (verified against the component source; the filter buttons do NOT carry
+ * the attribute, only the cards do -- so that is the only selector surface
+ * available here). tokens.css caps the palette at 5 hues and folds a 6th
+ * category into "Other"; `surface` is that fold (the only category that
+ * isn't a phase of the dev loop), so it gets a neutral treatment instead of
+ * a hue.
+ *
+ * Each hued category gets: a base-step border-left (the accent/non-text
+ * role the base step is safe for -- all 5 bases clear the 3:1 non-text
+ * minimum against both #0a0d10 and #ffffff, 3.15:1 to 6.18:1), a low-alpha
+ * background tint, and the title link recolored to the theme-safe step per
+ * mode (the card has no separate "category" text node -- the recipe title
+ * link is the only in-card text available to carry it). Rule enforced in
+ * both modes: -light step in dark, -deep step in light -- see the numbers
+ * in the :root block above and in the CLAUDE.md doc for the dark-side
+ * figures (all 7.11-9.72:1, well past the 4.5:1 AA floor).
+ *
+ * --cat-1/--cat-3 (silica/neodymia, i.e. before-any-code/quality-verification)
+ * are the least colorblind-distinguishable pair in this palette. Category is
+ * never conveyed by color alone here: the category name is always visible as
+ * plain text in the filter buttons regardless of a card's color, and this
+ * section never removes or replaces that text with an icon or a color swatch.
+ */
+.recipe-card[data-category] {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+
+.recipe-card[data-category='before-any-code'] {
+  border-left-color: var(--wk-silica);
+  background: rgba(52, 138, 217, 0.06);
+}
+.recipe-card[data-category='before-any-code'] .recipe-task a {
+  color: var(--wk-silica-deep);
+}
+.dark .recipe-card[data-category='before-any-code'] {
+  background: rgba(52, 138, 217, 0.12);
+}
+.dark .recipe-card[data-category='before-any-code'] .recipe-task a {
+  color: var(--wk-silica-light);
+}
+
+.recipe-card[data-category='change-existing-code'] {
+  border-left-color: var(--wk-chromia);
+  background: rgba(8, 147, 92, 0.06);
+}
+.recipe-card[data-category='change-existing-code'] .recipe-task a {
+  color: var(--wk-chromia-deep);
+}
+.dark .recipe-card[data-category='change-existing-code'] {
+  background: rgba(8, 147, 92, 0.12);
+}
+.dark .recipe-card[data-category='change-existing-code'] .recipe-task a {
+  color: var(--wk-chromia-light);
+}
+
+.recipe-card[data-category='quality-verification'] {
+  border-left-color: var(--wk-neodymia);
+  background: rgba(171, 109, 198, 0.06);
+}
+.recipe-card[data-category='quality-verification'] .recipe-task a {
+  color: var(--wk-neodymia-deep);
+}
+.dark .recipe-card[data-category='quality-verification'] {
+  background: rgba(171, 109, 198, 0.12);
+}
+.dark .recipe-card[data-category='quality-verification'] .recipe-task a {
+  color: var(--wk-neodymia-light);
+}
+
+.recipe-card[data-category='ci-release'] {
+  border-left-color: var(--wk-samaria);
+  background: rgba(171, 143, 0, 0.06);
+}
+.recipe-card[data-category='ci-release'] .recipe-task a {
+  color: var(--wk-samaria-deep);
+}
+.dark .recipe-card[data-category='ci-release'] {
+  background: rgba(171, 143, 0, 0.12);
+}
+.dark .recipe-card[data-category='ci-release'] .recipe-task a {
+  color: var(--wk-samaria-light);
+}
+
+.recipe-card[data-category='defect-work'] {
+  border-left-color: var(--wk-ferria);
+  background: rgba(189, 81, 55, 0.06);
+}
+.recipe-card[data-category='defect-work'] .recipe-task a {
+  color: var(--wk-ferria-deep);
+}
+.dark .recipe-card[data-category='defect-work'] {
+  background: rgba(189, 81, 55, 0.12);
+}
+.dark .recipe-card[data-category='defect-work'] .recipe-task a {
+  color: var(--wk-ferria-light);
+}
+
+/* surface / "Other": no chemistry, so no hue -- border and text both stay on
+ * the muted neutral rather than the aerogel palette. --wk-muted itself is
+ * dark-native (6.73:1 on #0a0d10, safe as text or border there) but measures
+ * only 2.89:1 on white -- below even the 3:1 non-text floor -- so light mode
+ * uses VitePress's own --vp-c-text-2 / --vp-c-divider neutrals instead,
+ * exactly as the header comment's silica accommodation already sets the
+ * precedent for departing from a token value that fails on white. */
+.recipe-card[data-category='surface'] {
+  border-left-color: var(--vp-c-divider);
+}
+.recipe-card[data-category='surface'] .recipe-task a {
+  color: var(--vp-c-text-2);
+}
+.dark .recipe-card[data-category='surface'] {
+  border-left-color: var(--wk-muted);
+}
+.dark .recipe-card[data-category='surface'] .recipe-task a {
+  color: var(--wk-muted);
+}
+
+/* ---- External-tag badges: a second channel, not a sixth hue ----
+ * CatalogGrid.vue renders `.ext-badge[data-external="<tag>"]` only when a
+ * recipe's `external` array is non-empty (verified in the component source:
+ * `v-if="recipe.external.length"` gates the whole badge row), so a
+ * werkstoff-only recipe already gets no badge -- nothing to add here for
+ * that case. A recipe carrying both tags (exactly one does) renders both
+ * badges side by side automatically, since these rules key off
+ * `data-external`'s value rather than any per-recipe special case.
+ *
+ * Both tags reuse silica/accent rather than adding a hue: `superpowers` is
+ * an outline (transparent fill), `claude-plugins-official` is filled. Text
+ * color for either is specified as --wk-text in the palette note this
+ * mirrors, which is dark-native (near-white, #dfe6ea) and would be
+ * effectively invisible on a white badge -- so, matching the same
+ * dark-native accommodation used throughout this file, light mode substitutes
+ * --vp-c-text-1 (== --wk-text under .dark already, per the :root aliasing
+ * above, so dark mode renders identically to the literal spec). The outline
+ * badge's border has the same problem as the surface neutral above --
+ * --wk-muted fails 3:1 on white -- so light mode substitutes --vp-c-divider
+ * there too; the filled badge's border uses --wk-silica directly, which
+ * clears 3:1 on white (3.63:1) so needs no per-mode split. */
+.ext-badge[data-external='superpowers'] {
+  border: 1px solid var(--vp-c-divider);
+  background: transparent;
+  color: var(--vp-c-text-1);
+}
+.dark .ext-badge[data-external='superpowers'] {
+  border-color: var(--wk-muted);
+  color: var(--wk-text);
+}
+
+.ext-badge[data-external='claude-plugins-official'] {
+  border: 1px solid var(--wk-silica);
+  background: rgba(52, 138, 217, 0.08);
+  color: var(--vp-c-text-1);
+}
+.dark .ext-badge[data-external='claude-plugins-official'] {
+  background: rgba(52, 138, 217, 0.14);
+  color: var(--wk-text);
 }

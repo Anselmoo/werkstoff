@@ -148,14 +148,15 @@ function wireColor(status) {
 // BLAST_RADIUS_ORDER. The pre-rebuild viewer hardcoded a 4-bucket
 // local/module/cross-module/repo-wide scheme that never matched any gap's
 // actual blast_radius field, so every "by blast radius" bar silently
-// rendered as zero -- fixed here by using the true 3 values. Single hue
-// off --accent, light -> dark, monotone lightness (same derivation as the
-// removed 4-stop ramp); re-run the dataviz skill's ordinal validator if
-// these exact stops are revisited.
+// rendered as zero -- fixed here by using the true 3 values. Now the ferria
+// ramp from the shared token set (light -> base -> deep, monotone
+// lightness) -- previously a standalone hue off the old orange --accent,
+// which is now silica (blue) and no longer this ramp's source; re-run the
+// dataviz skill's ordinal validator if these exact stops are revisited.
 const RADIUS_COLORS = {
-  'local+reversible': '#da8568',
-  'hard-to-reverse': '#af5e42',
-  'shared-state-visible': '#8a3d24',
+  'local+reversible': 'var(--ferria-light)',
+  'hard-to-reverse': 'var(--ferria)',
+  'shared-state-visible': 'var(--ferria-deep)',
 };
 const RADIUS_LABELS = {
   'local+reversible': 'local, reversible',

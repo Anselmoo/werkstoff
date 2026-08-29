@@ -160,9 +160,12 @@ const COLOR = {
   accentFocus: hexToRgba(cssVar("--accent"), 0.3),
   cycle: cssVar("--status-bad"),
   god: cssVar("--status-warn"),
-  // Not in tokens.css -- viewer-specific fill hues with no canonical
-  // equivalent (deliberately distinct from the --cycle/--god BORDER colors
-  // above, which mark the same nodes' outlines, not their fills).
+  // Viewer-specific fill hues (deliberately distinct from the --cycle/--god
+  // BORDER colors above, which mark the same nodes' outlines, not their
+  // fills). tokens.css now ships --cat-1..5, and some of these hues --
+  // notably the CYCLE_PALETTE entries below -- already sit close to a
+  // canonical categorical equivalent; a full migration onto --cat-* is a
+  // follow-up, not done in this change.
   godFill: "#7a6a3a",
   stageFill: "#4a6580",
   label: "#e8e8e8",
