@@ -61,7 +61,7 @@ export default defineConfig({
           { text: 'Routing between pipelines', link: '/orchestration/references/routing' },
           { text: 'Review gates', link: '/orchestration/references/gates' },
           { text: 'Delegation and model tiers', link: '/orchestration/references/delegation' },
-          { text: 'Composition hazards', link: '/orchestration/references/composition' },
+          { text: 'Composition hazards', link: '/orchestration/references/hazards' },
           { text: 'Paste-in CLAUDE.md block', link: '/orchestration/references/claude-md-block' },
         ],
       },

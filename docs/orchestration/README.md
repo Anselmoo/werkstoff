@@ -157,8 +157,8 @@ actually has to make.
   gates each family enforces, and where they collide.
 - [`references/delegation.md`](references/delegation.md) — model tiering and dispatch
   shape for parallel subagent work.
-- [`references/composition.md`](references/composition.md) — worked multi-plugin
-  compositions end to end.
+- [`references/hazards.md`](references/hazards.md) — a catalog of composition
+  hazards: what breaks when several hook-bearing plugins share a session.
 - [`references/claude-md-block.md`](references/claude-md-block.md) — a paste-in
   `CLAUDE.md` block that encodes these routing rules for a repo.
 

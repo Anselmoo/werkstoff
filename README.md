@@ -86,7 +86,7 @@ cc --plugin-dir /path/to/werkstoff/plugins/self-assess
   [prompt catalog](docs/orchestration/references/catalog.md), a
   [routing table](docs/orchestration/references/routing.md) for the pipelines
   that overlap, and the
-  [composition hazards](docs/orchestration/references/composition.md) of running
+  [composition hazards](docs/orchestration/references/hazards.md) of running
   several hook-bearing plugins in one session.
 - **[Plugin authoring](docs/plugin-authoring/README.md)** — the craft standards
   to read before writing or editing a `SKILL.md` or agent file.
