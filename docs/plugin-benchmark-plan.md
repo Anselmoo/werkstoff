@@ -17,7 +17,7 @@ calls it advisory-only. See "Classify plugin families by literal hooks/ presence
 Execution mode: ground-evidence — this stage is pure extraction (verbatim quotes tied to file locations), not reasoning/verification, dynamic investigation, or format calibration, so the right mode is to pull exact text from each plugin's README `## Example Prompts` section and cite it, inventing nothing.
 
 Source read for each: `plugins/<name>/README.md`, `## Example Prompts` section, in
-`/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/readme-examples-version-release-31f770/`.
+the repository root.
 
 All six READMEs carry the identical shared-block framing sentence (enforced via `.rrt.toml`'s `example-prompts-intro` anchor): "Say any of these to Claude Code once the plugin is installed — they're plain-language prompts, not exact phrasing Claude has to match. Claude routes them to the skill below by intent." — omitted below per-plugin to avoid repetition; only the plugin-specific bullets (hand-written, not template-shared) are listed.
 
@@ -121,9 +121,8 @@ All six READMEs carry the identical shared-block framing sentence (enforced via 
 Notes on fidelity: every prompt string above is copied verbatim (including quote marks / slash-command syntax) from the corresponding README's fenced ` ```prompt ` block; no prompt was invented or reworded. Each "downstream dispatch" clause is quoted from that same prompt's own blockquote annotation in the README — no chain was inferred beyond what the README states. cli-scaffold, compass, and cupertino each have only 3 bulleted prompts in their READMEs (not 4); andon has 5, of which one (`andon-propose`) was dropped to respect the 3-4 cap. confab and self-assess each have exactly 4.
 
 ## Classify plugin families by literal hooks/ presence [ground-evidence]
-## Execution mode: ground-evidence
 
-The stage demands a verified partition backed by direct file-read citations, with explicit instruction to distrust CLAUDE.md's own prose — a canonical evidence-grounding task, not reasoning, dynamic investigation, or format calibration. I read every plugin's actual `hooks/` presence and hook-script contents rather than trusting the repo's documentation.
+**Execution mode:** ground-evidence — the stage demands a verified partition backed by direct file-read citations, with explicit instruction to distrust CLAUDE.md's own prose — a canonical evidence-grounding task, not reasoning, dynamic investigation, or format calibration. I read every plugin's actual `hooks/` presence and hook-script contents rather than trusting the repo's documentation.
 
 ## Partition
 
@@ -168,11 +167,9 @@ CLAUDE.md's "Enforcement: only hooks actually enforce" section frames cupertino 
 
 
 ## Author (not execute) the Phase 1 static structural audit plan [calibrate-format]
-# Phase 1 Static Structural Audit Plan (authored, not executed)
+## Phase 1 Static Structural Audit Plan (authored, not executed)
 
-## Execution mode: calibrate-format
-
-This stage's job is to *author* a document that must satisfy a fixed output contract (three
+**Execution mode:** calibrate-format — this stage's job is to *author* a document that must satisfy a fixed output contract (three
 named mandatory sections, four named checklist dimensions, explicit scoring rules, explicit
 non-collapsing rules) and that must contain **zero** file content from the reference repos —
 the contract says so explicitly. There is nothing to verify (nothing has been fetched yet),
@@ -331,9 +328,8 @@ to silently loosen the number after the fact.
 
 
 ## Sharpen thesis into one falsifiable claim per family [reason-verify]
-## Execution mode: reason-verify
 
-This stage takes an already-verified partition (ground-evidence output, trusted as-is) and an unfalsifiable prose thesis, and must produce exactly two propositions each carrying its own falsifier. There is nothing left to discover in the filesystem (that was the prior stage) and no format ambiguity to resolve (the output contract is fully specified) — the task is to *construct* two claims and *verify* each one actually satisfies the Popperian bar (a stated observation that would prove it wrong, expressed in terms of data a caller can mechanically inspect: tool-call/tool-result JSON payloads, not vibes). Hence reason-verify, not ground-evidence (no new file reads needed), not investigate-dynamically (no unknown to chase), not calibrate-format (the shape is fixed by the contract, not negotiable).
+**Execution mode:** reason-verify — this stage takes an already-verified partition (ground-evidence output, trusted as-is) and an unfalsifiable prose thesis, and must produce exactly two propositions each carrying its own falsifier. There is nothing left to discover in the filesystem (that was the prior stage) and no format ambiguity to resolve (the output contract is fully specified) — the task is to *construct* two claims and *verify* each one actually satisfies the Popperian bar (a stated observation that would prove it wrong, expressed in terms of data a caller can mechanically inspect: tool-call/tool-result JSON payloads, not vibes). Hence reason-verify, not ground-evidence (no new file reads needed), not investigate-dynamically (no unknown to chase), not calibrate-format (the shape is fixed by the contract, not negotiable).
 
 ## Claim 1 — hook-enforced family (andon, confab, self-assess, cupertino)
 
@@ -356,9 +352,8 @@ This stage takes an already-verified partition (ground-evidence output, trusted 
 Phase 1 (structural score: does the `tool_result`/hook payload carry a machine-parseable output contract at all) and Phase 2 (handoff ratio: of the runs that do carry one, what fraction a downstream consumer actually acts on without re-invoking a model to reinterpret it) are reported as two separate, non-fungible axes for each claim above. They are never averaged, combined into a single index, or allowed to offset one another — a plugin scoring well on Phase 1 structure and poorly on Phase 2 handoff (or vice versa) is reported as exactly that, two numbers, not blended into one.
 
 ## Author (not execute) the Phase 2 executed-chain benchmark plan [reason-verify]
-## Execution mode: reason-verify
 
-Both inputs are already-finished, trusted artifacts (verbatim prompt extraction; two falsifiable claims with mechanical falsifiers). Nothing here needs new file discovery beyond a narrow grounding check, no format is up for negotiation (the output contract below is dictated verbatim by the stage spec), and the actual work is *construction under a bar*: pick chains that are legitimate (verifiably drawn from the given extraction, not invented), write a HANDOFF_WORKED/FAILED test that is verifiably mechanical (keyed to raw payload fields, not prose/self-report), and pick thresholds that are verifiably fixed-before-any-run and verifiably asymmetric. Each of those three constructions is checked against its own bar before being included — reason-verify.
+**Execution mode:** reason-verify — both inputs are already-finished, trusted artifacts (verbatim prompt extraction; two falsifiable claims with mechanical falsifiers). Nothing here needs new file discovery beyond a narrow grounding check, no format is up for negotiation (the output contract below is dictated verbatim by the stage spec), and the actual work is *construction under a bar*: pick chains that are legitimate (verifiably drawn from the given extraction, not invented), write a HANDOFF_WORKED/FAILED test that is verifiably mechanical (keyed to raw payload fields, not prose/self-report), and pick thresholds that are verifiably fixed-before-any-run and verifiably asymmetric. Each of those three constructions is checked against its own bar before being included — reason-verify.
 
 One grounding check was done, because it bears directly on whether the thresholds below are assigned to the right family: I read `plugins/{andon,confab,self-assess,cupertino,compass,cli-scaffold}/hooks/hooks.json` on disk. All four named in thesis Claim 1 (andon, confab, self-assess, cupertino) have a `PreToolUse` hook with `"type": "command"` (cupertino's guard is literally named as enforcing "ordering gates" among other things). Neither compass nor cli-scaffold has a `hooks/` directory at all. This corroborates the thesis's two-family split against the actual repo, despite CLAUDE.md's own prose elsewhere calling cupertino "advisory" in a different, narrower context (a specific rule-type example, not a blanket claim the hook file is absent) — flagged here as a documentation-vs-code tension worth a maintainer's eye, but it does not change the family assignment below, which the file evidence supports.
 
