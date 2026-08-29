@@ -3,7 +3,7 @@
 Every example prompt shipped by the 8 plugin READMEs, 74 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
-[extended prompt catalog](/orchestration/references/catalog).
+[prompt catalog](/catalog/).
 
 This page is generated from the plugin READMEs by
 `tools/prompt-index/build_prompt_index.py` and tracked as an artifact, so it

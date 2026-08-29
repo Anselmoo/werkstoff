@@ -83,7 +83,7 @@ cc --plugin-dir /path/to/werkstoff/plugins/self-assess
 - **[Orchestration](docs/orchestration/README.md)** — how these plugins compose
   with each other, with `superpowers`, and with the official Anthropic plugins.
   Includes a task-indexed
-  [prompt catalog](docs/orchestration/references/catalog.md), a
+  [prompt catalog](docs/catalog/), a
   [routing table](docs/orchestration/references/routing.md) for the pipelines
   that overlap, and the
   [composition hazards](docs/orchestration/references/hazards.md) of running

@@ -149,8 +149,8 @@ work and can double-apply a fix.
 The entry point stops here. Each reference below covers one decision a session
 actually has to make.
 
-- [`references/catalog.md`](references/catalog.md) — the task-indexed prompt catalog:
-  what to say, per task shape, to get the right combination dispatched.
+- [the prompt catalog](../catalog/index.md) — the task-indexed prompt catalog: what to
+  say, per task shape, to get the right combination dispatched.
 - [`references/routing.md`](references/routing.md) — which of the four overlapping
   pipelines owns a task, and which brief must not be signed alongside it.
 - [`references/gates.md`](references/gates.md) — the approval, verification and hook
