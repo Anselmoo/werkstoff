@@ -18,6 +18,10 @@ combines a werkstoff beat with a Superpowers skill in the same task. One tagged
 Three recipes are marked "no werkstoff fit" in their body text — honest gaps where
 Superpowers alone is the better answer, not a forced pairing.
 
+Indexed by task, not by pairing. For the pairing-indexed view — pick two skills, see
+whether combining them is grounded in anything real — see
+[orchestration/references/pairings.md](/orchestration/references/pairings).
+
 <CatalogGrid />
 
 ## How to read a recipe

@@ -3,6 +3,7 @@ import DefaultTheme from 'vitepress/theme'
 import './werkstoff.css'
 import RecipeBeats from './components/RecipeBeats.vue'
 import CatalogGrid from './components/CatalogGrid.vue'
+import PairingCards from './components/PairingCards.vue'
 
 export default {
   extends: DefaultTheme,
@@ -13,5 +14,6 @@ export default {
   },
   enhanceApp({ app }) {
     app.component('CatalogGrid', CatalogGrid)
+    app.component('PairingCards', PairingCards)
   },
 }
