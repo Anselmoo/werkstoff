@@ -76,10 +76,15 @@ let copyTimeout = null
 
 function selectPromptText(button) {
   const pre = button.closest('.prompt-row')?.querySelector('.prompt-code')
-  if (!pre) return
+  const selection = window.getSelection()
+  // getSelection() returns null in some non-standard/restricted contexts
+  // (MDN). Skipping the select there still leaves the button's own
+  // "Selected -- ⌘C" state as the user-visible signal that clipboard
+  // access failed -- an unguarded throw here would instead break the whole
+  // .catch() chain and leave the button silently stuck on "Copy".
+  if (!pre || !selection) return
   const range = document.createRange()
   range.selectNodeContents(pre)
-  const selection = window.getSelection()
   selection.removeAllRanges()
   selection.addRange(range)
 }
