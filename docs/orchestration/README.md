@@ -128,6 +128,53 @@ mutation; `confab-contract-drift` checks contracts after a refactor; superpowers
 `pr-review-toolkit` agents cover the diff-shaped checks werkstoff has no equivalent
 for, `silent-failure-hunter` and `type-design-analyzer` in particular.
 
+## Worked examples
+
+Naming leaves in prose is not the same as showing what to actually type. Three real
+recipes from the [catalog](../catalog/index.md), quoted unedited, each pairing a
+werkstoff leaf with a leaf from one of the other two sources named in this document's
+title.
+
+**superpowers, at the "Execute in parallel" beat** — from
+[`execute-plan-across-parallel-workstreams`](../catalog/change-existing-code/execute-plan-across-parallel-workstreams):
+
+````prompt
+break this plan into independent workstreams -- tell me what actually depends on what
+and what can truly run in parallel
+````
+
+That single ask dispatches `compass:compass-decompose-chain` to derive the split, then
+hands each independent workstream to `superpowers:subagent-driven-development` and
+`superpowers:dispatching-parallel-agents`, with `andon:andon-verify` proving each one
+before it counts as done.
+
+**`code-modernization`, at the "Inspect and research" beat** — from
+[`same-stack-version-uplift`](../catalog/change-existing-code/same-stack-version-uplift):
+
+````prompt
+we're moving this codebase up a major version of the same stack. Which breaking
+changes actually affect our code?
+````
+
+`code-modernization:version-delta-analyst` is dispatched directly — `modernize-brief.md`
+sanctions exactly this, and the eight-stage pipeline around it would refuse without
+artifacts this task has no reason to produce. `self-assess:self-assess-code-idiom` then
+judges idioms against the version this repo actually targets, and
+`self-assess:self-assess-idiom-fix` applies only the mechanical fixes.
+
+**`pr-review-toolkit:code-simplifier`, at the "Verify" beat** — from
+[`audit-against-documented-conventions`](../catalog/quality-verification/audit-against-documented-conventions):
+
+````prompt
+extract the discrete, checkable rules this repo's own documentation states, and audit
+the code against them
+````
+
+`code-simplifier` runs last in that recipe, deliberately: it simplifies the now-aligned
+code only after `self-assess` has audited the documented rules and
+`codebase-consistency` has canonized the undocumented ones, so nothing gets simplified
+twice.
+
 ## What is already wired
 
 Three handoffs exist in the skill definitions. Orchestrating them by hand duplicates
@@ -159,6 +206,8 @@ actually has to make.
   shape for parallel subagent work.
 - [`references/hazards.md`](references/hazards.md) — a catalog of composition
   hazards: what breaks when several hook-bearing plugins share a session.
+- [`references/pairings.md`](references/pairings.md) — the pairing-indexed
+  companion to the task catalog above: which two skills combine, and why.
 - [`references/claude-md-block.md`](references/claude-md-block.md) — a paste-in
   `CLAUDE.md` block that encodes these routing rules for a repo.
 

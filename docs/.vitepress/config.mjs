@@ -158,6 +158,7 @@ export default defineConfig({
           { text: 'Review gates', link: '/orchestration/references/gates' },
           { text: 'Delegation and model tiers', link: '/orchestration/references/delegation' },
           { text: 'Composition hazards', link: '/orchestration/references/hazards' },
+          { text: 'Pairings', link: '/orchestration/references/pairings' },
           { text: 'Paste-in CLAUDE.md block', link: '/orchestration/references/claude-md-block' },
         ],
       },

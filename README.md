@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/public/logo.svg" alt="werkstoff" width="96" height="96">
+</p>
+
 # werkstoff
 
 My personal workshop for Claude Code plugins — a marketplace

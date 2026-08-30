@@ -3,9 +3,25 @@
   <!-- Simplified for 16px: full-bleed plate, heavier stroke, larger node. The
        1.5px border and the plate inset of logo.svg both disappear at this size,
        so they are dropped rather than rendered as mud. -->
-  <rect width="32" height="32" rx="7" fill="#141a1f"/>
-  <path d="M6 10 L11 22.5 L16 12.5 L21 22.5 L26 10"
-        fill="none" stroke="#348ad9" stroke-width="3.75"
+  <!-- prefers-color-scheme here is the browser's own chrome (tab strip, app
+       switcher), not this site's .dark class: a fixed dark plate reads fine
+       against a light tab bar but disappears into a dark one. Dark chrome
+       therefore gets a light plate instead, using the exact deep accent steps
+       tools/design-tokens/tokens.css and werkstoff.css already calibrated for
+       AA contrast on a light background, so this stays one palette, not two. -->
+  <style>
+    .plate { fill: #141a1f; }
+    .mark { stroke: #348ad9; }
+    .node { fill: #cfb656; stroke: #141a1f; }
+    @media (prefers-color-scheme: dark) {
+      .plate { fill: #eef1f3; }
+      .mark { stroke: #005a9d; }
+      .node { fill: #746005; stroke: #eef1f3; }
+    }
+  </style>
+  <rect class="plate" width="32" height="32" rx="7"/>
+  <path class="mark" d="M6 10 L11 22.5 L16 12.5 L21 22.5 L26 10"
+        fill="none" stroke-width="3.75"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="26" cy="10" r="3.4" fill="#cfb656" stroke="#141a1f" stroke-width="1.6"/>
+  <circle class="node" cx="26" cy="10" r="3.4" stroke-width="1.6"/>
 </svg>
