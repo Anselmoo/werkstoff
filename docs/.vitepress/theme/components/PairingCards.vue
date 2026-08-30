@@ -297,6 +297,27 @@ function copyPrompt(id, text, event) {
   fill: var(--wk-samaria-light);
 }
 
+/* Below ~480px, a long skill name ("code-modernization:business-rules-
+   extractor") wraps to two lines on its own, and `flex-wrap` on a still-row
+   layout strands the glyph alone on a line between two multi-line blocks --
+   the connector reads as orphaned punctuation, not a join. Below that width
+   the header switches to a column instead: each name gets its own line to
+   wrap within, and the glyph rotates 90deg so the SAME mark still connects
+   top-to-bottom instead of left-to-right -- the metaphor survives the
+   layout change rather than just surviving the overflow. */
+@media (max-width: 480px) {
+  .pairing-head {
+    flex-direction: column;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+  }
+  .join-glyph {
+    transform: rotate(90deg);
+    margin: 0.05rem 0 0.05rem 0.3rem;
+  }
+}
+
 .pairing-meta {
   display: flex;
   flex-wrap: wrap;
