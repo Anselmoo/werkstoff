@@ -19,6 +19,13 @@ export default createContentLoader('catalog/**/*.md', {
         category: page.frontmatter.category,
         summary: page.frontmatter.summary,
         external: page.frontmatter.external ?? [],
+        // Consumed by BeatSkillRefs.vue, which inverts this array across
+        // every recipe (skill -> the recipes that place it in a beat) to
+        // render "also in N other recipes" on the recipe page itself. Kept
+        // as the raw per-recipe list here, not pre-inverted, because the
+        // inversion is cheap (a few hundred entries total) and doing it at
+        // the single call site keeps this loader's output shape identical
+        // to what a recipe's own frontmatter already asserts.
         skills: Array.isArray(page.frontmatter.beats)
           ? page.frontmatter.beats.map((b) => b.skill)
           : [],

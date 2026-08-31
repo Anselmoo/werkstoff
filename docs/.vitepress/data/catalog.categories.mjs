@@ -1,4 +1,4 @@
-// Fixed display order for the six recipe categories. Any category not listed
+// Fixed display order for the seven recipe categories. Any category not listed
 // here sorts after all of these (index -1 sorts last, not first) rather than
 // silently vanishing, so a typo'd or new category is visible instead of hidden.
 export const CATEGORY_ORDER = [

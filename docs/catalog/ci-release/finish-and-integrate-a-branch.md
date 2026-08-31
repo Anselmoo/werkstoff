@@ -2,6 +2,7 @@
 task: "Finish and integrate a development branch"
 category: ci-release
 summary: "How to integrate -- merge, rebase, or PR -- is a decision with a real wrong answer in this repo, not a formality to skip once the tests are green."
+openingPrompt: "Implementation's done and tests pass -- audit the changed files first, then help me actually decide how this branch should get integrated (merge, rebase, or PR) rather than defaulting to whichever, and once it's in, verify the release artifact was actually produced and prove the release wire itself instead of trusting a green merge."
 external: ["superpowers"]
 beats:
   - skill: "confab:confab-code-change"
@@ -14,7 +15,18 @@ beats:
   - skill: "andon:andon-verify"
     why: "The release wire itself, proved rather than assumed just because the merge succeeded."
 grounding: "This repo's own tagging rule: .github/workflows/cicd.yml fires on any v*.*.* tag and always publishes tools/werkstoff-cli, so a bare tag on a plugin group triggers a spurious PyPI publish -- <group>-v... tags fire plugin-release.yml instead. An integration decision with a real, irreversible wrong answer."
+dos:
+  - "Run the changed-files audit before making the integration decision, not after."
+  - "Decide deliberately how to integrate -- merge, rebase, or PR is a real decision in this repo, with a real wrong answer."
+  - "Verify the artifact was actually produced, not just that the merge succeeded -- those are different claims."
+  - "Prove the release wire itself with andon-verify rather than assuming it holds because the merge went through."
+donts:
+  - "Don't treat the integration method as a formality once tests are green -- merge, rebase, or PR is a decision with a real wrong answer here."
+  - "Don't tag a plugin group without its prefix -- a bare tag fires the wrong release path and triggers a spurious PyPI publish."
+  - "Don't accept 'it merged' as evidence that 'it produced the artifact' -- verify the second claim, not just the first."
 ---
+
+# Finish and integrate a development branch
 
 How to integrate a finished branch -- merge, rebase, or PR -- is a decision with a real
 wrong answer in this repo, not a formality to rubber-stamp once the tests are green. Run

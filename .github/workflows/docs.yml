@@ -75,6 +75,12 @@ jobs:
       - name: Verify tracked artifacts
         run: rrt artifacts --check --strict
 
+      - name: Verify catalog and docs artifacts are up to date
+        # A drifted docs artifact must block publishing, not be rendered as a
+        # status square. This mirrors the stance already established for other
+        # generated artifacts above.
+        run: python3 test/docs/docs_ux_audit.py
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:

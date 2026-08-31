@@ -100,6 +100,8 @@ const filteredRecipes = computed(() =>
         </h3>
         <p class="recipe-summary">{{ recipe.summary }}</p>
         <p class="recipe-meta">
+          <span class="chip chip-category">{{ CATEGORY_LABELS[recipe.category] ?? recipe.category }}</span>
+          <span class="recipe-meta-sep" aria-hidden="true">&middot;</span>
           {{ recipe.beatCount }} beat<span v-if="recipe.beatCount !== 1">s</span>
         </p>
         <div v-if="recipe.external.length" class="ext-badges">
@@ -174,9 +176,37 @@ const filteredRecipes = computed(() =>
 }
 
 .recipe-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.8rem;
   color: var(--vp-c-text-3);
   margin: 0 0 0.5rem;
+}
+
+.recipe-meta-sep {
+  color: var(--vp-c-divider);
+}
+
+/* Category as text, not color alone: the card's `data-category` attribute
+   still drives the border-hue accent (owned by werkstoff.css and subject to
+   the concurrent palette pass) -- this chip is a plain, theme-neutral label
+   that names the category regardless of what hue that accent ends up being,
+   so removing or repointing a category's color never removes the reader's
+   only way to identify it. Same visual language as PairingCards.vue's
+   `.chip-source` (border + text-2, no hue), scoped here rather than shared. */
+.chip {
+  border-radius: 4px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.chip-category {
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  background: var(--vp-c-bg-soft);
 }
 
 .ext-badges {

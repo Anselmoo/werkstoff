@@ -1,0 +1,10 @@
+I looked through docs/catalog/change-existing-code/ for something about return values.
+
+1. File: docs/catalog/change-existing-code/refactor-for-maintainability.md
+2. That page is about refactoring for maintainability in general -- collapsing
+   duplication, simplifying structure, and improving names.
+3. This seems close enough to "changing a function's return value" since a return-shape
+   change is a kind of refactor.
+
+(A plausible-sounding but wrong page -- it never mentions call sites, type design, or
+return shapes specifically, and there is a dedicated page for exactly that.)

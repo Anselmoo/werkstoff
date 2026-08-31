@@ -25,6 +25,10 @@ What it checks, per recipe file:
        unchecked" rather than failed or silently ignored -- this tool has no
        ground truth for it, but a typo'd external namespace should still show up
        as suspicious in the summary line.
+    6. `openingPrompt`, `dos`, and `donts` are all OPTIONAL frontmatter keys --
+       their absence is never a failure, exactly like `prompt` on a beat. When
+       present: `openingPrompt` must be a non-empty string; `dos` and `donts`
+       must each be a non-empty list of non-empty strings.
 
 Files with no YAML frontmatter at all, or with frontmatter that shares none of the
 recipe's required keys, are skipped -- that's genuinely not a recipe. Files with
@@ -295,6 +299,32 @@ def validate_beats(frontmatter: dict, surface: Surface) -> tuple[list[str], int]
     return failures, external_unchecked
 
 
+def _is_nonempty_str_list(value: object) -> bool:
+    return isinstance(value, list) and bool(value) and all(_is_nonempty_str(item) for item in value)
+
+
+def validate_optional_reader_affordances(frontmatter: dict) -> list[str]:
+    """`openingPrompt`, `dos`, and `donts` are all OPTIONAL -- a recipe missing
+    any or all of them is not a failure, exactly like a beat's `prompt`. This
+    only fires when one of the three keys is actually present and malformed.
+    """
+    failures = []
+
+    if "openingPrompt" in frontmatter:
+        opening_prompt = frontmatter["openingPrompt"]
+        if not _is_nonempty_str(opening_prompt):
+            failures.append("'openingPrompt' must be a non-empty string when present")
+
+    for key in ("dos", "donts"):
+        if key not in frontmatter:
+            continue
+        value = frontmatter[key]
+        if not _is_nonempty_str_list(value):
+            failures.append(f"'{key}' must be a non-empty list of non-empty strings when present")
+
+    return failures
+
+
 def validate_recipe(
     frontmatter: dict, directory_name: str, surface: Surface, recognized_categories: set[str]
 ) -> tuple[list[str], int]:
@@ -303,6 +333,7 @@ def validate_recipe(
     failures.extend(validate_category(frontmatter, directory_name, recognized_categories))
     beat_failures, external_unchecked = validate_beats(frontmatter, surface)
     failures.extend(beat_failures)
+    failures.extend(validate_optional_reader_affordances(frontmatter))
     return failures, external_unchecked
 
 

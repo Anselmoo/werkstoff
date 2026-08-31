@@ -1,0 +1,12 @@
+I searched the ci-release category but nothing in this docs tree seems to cover rehearsing
+a release path that has never run before -- most of the ci-release pages assume the
+pipeline has already executed at least once and something specific went wrong.
+
+Honest answer: no werkstoff fit here. I'd reach for Superpowers alone -- brainstorming to
+list preconditions, then a disposable worktree to rehearse safely.
+
+(This fixture must FAIL: it reaches the right conclusion in spirit and says "no werkstoff
+fit", but it never actually locates or cites the specific recipe file that documents this
+exact gap -- it is a plausible-sounding guess, not a grounded reading of the page. The
+oracle's conjunction exists precisely to reject this shape: an honest-sounding "I don't
+know" that was never checked against the actual page.)

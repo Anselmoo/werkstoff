@@ -22,6 +22,7 @@ jobs:
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       catalog_recipes: ${{ steps.catalog_recipes.outcome }}
+      docs_ux_audit: ${{ steps.docs_ux_audit.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
@@ -127,6 +128,13 @@ jobs:
         # otherwise silently strand a recipe pointing at nothing.
         run: python3 tools/catalog-validator/validate_catalog.py
 
+      - name: Verify docs artifacts are up to date
+        id: docs_ux_audit
+        continue-on-error: true
+        # Catches drifted counts and category mismatches between the docs site
+        # content and its configuration data.
+        run: python3 test/docs/docs_ux_audit.py
+
       - name: Verify takt evaluates every edit-payload shape
         id: takt_payload_shapes
         continue-on-error: true
@@ -168,6 +176,7 @@ jobs:
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.catalog_recipes.outcome == 'failure' ||
+          steps.docs_ux_audit.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.docs_inject_check.outcome == 'failure' ||
@@ -216,6 +225,7 @@ jobs:
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
+            row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"

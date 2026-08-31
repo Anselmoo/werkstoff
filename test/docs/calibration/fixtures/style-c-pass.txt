@@ -1,0 +1,7 @@
+1. File: docs/catalog/ci-release/pipeline-red-across-jobs.md
+2. That page says: "Several jobs red at once is usually one cause with several symptoms,
+   or several unrelated causes that must not be debugged as one. The first move is
+   telling those two cases apart." It recommends auditing the CI config itself before
+   any individual job, then decomposing which failures are genuinely independent, then
+   working root cause on one track at a time.
+3. This matches the goal exactly -- five jobs red at once, no idea where to start.

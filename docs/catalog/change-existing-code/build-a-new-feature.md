@@ -2,6 +2,7 @@
 task: "Build a new feature in an existing codebase"
 category: change-existing-code
 summary: "Explore before designing, design before building, and stay skeptical of the design once it exists — the ordering that keeps the most common development task from becoming ad hoc."
+openingPrompt: "I want to build this new feature -- trace how the existing code around it actually works before we design anything, turn that into a concrete blueprint naming the files and build order, review the blueprint adversarially before any branch exists, write the tests from the specification rather than the finished code, and prove the new feature's integration with andon-verify rather than trusting a green suite."
 external: ["superpowers", "claude-plugins-official"]
 beats:
   - skill: "feature-dev:code-explorer"
@@ -18,7 +19,20 @@ beats:
   - skill: "andon:andon-verify"
     why: "The new feature's integration with existing stages is a wire, not a formality; a green test suite is not by itself evidence that wire holds."
 grounding: "Adding a subcommand to tools/werkstoff-cli/src/werkstoff/ — cli.py and core.py split the surface, and tests/__snapshots__/test_cli.ambr will re-record silently if the feature lands before the snapshot is read, which is exactly the kind of integration wire andon-verify exists to check rather than assume."
+dos:
+  - "Trace the existing execution paths and layers before designing anything -- done with an explorer that has no Write/Edit access, so it cannot drift into building ahead of the design."
+  - "Write the blueprint naming specific files and a build order before the first file exists -- a blueprint written after is a rationalization, not a plan."
+  - "Review the blueprint adversarially while it's still just a blueprint -- architecture-critic is cheapest against a blueprint and worthless once the branch is built."
+  - "Write tests from the specification, before the feature exists to test."
+  - "Prove the new feature's integration with existing stages with andon-verify -- a green suite alone is not evidence that the wire holds."
+donts:
+  - "Don't design before tracing how the existing code actually works -- exploration and design are separate, sequential steps."
+  - "Don't write the blueprint after the first file already exists -- that produces a rationalization, not a plan."
+  - "Don't skip the adversarial review once a branch already exists -- by then it's too late to be cheap."
+  - "Don't write tests after the feature already exists -- they'll test the feature that got built, not the one that was specified."
 ---
+
+# Build a new feature in an existing codebase
 
 Building a new feature is the most common development task, and the easiest to let
 slide into ad hoc work. `feature-dev:code-explorer` and `feature-dev:code-architect`

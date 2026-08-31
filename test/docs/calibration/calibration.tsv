@@ -1,0 +1,43 @@
+# Fabricated-transcript oracle calibration -- TAB-separated, one row per fixture.
+# Columns: id  style  fixture  regex  expect  [antiregex]
+#   id         short unique name
+#   style      which oracle mechanism this exercises: "simple" (one literal
+#              regex, no @@AND@@, no antiregex), "conjunctive" (@@AND@@, used
+#              by the two negative journeys cases), or "antiregex" (a
+#              must-NOT-match column, used by the confusable ci-release pair)
+#   fixture    filename under test/docs/calibration/fixtures/ -- a fabricated
+#              model transcript, never a real claude run
+#   regex      the SAME oracle pattern a real journeys.tsv case uses (copied
+#              verbatim from journeys.tsv, not invented fresh for this file --
+#              calibrating a pattern that isn't actually in use would prove
+#              nothing about the real suite)
+#   expect     PASS or FAIL -- what oracle_verdict() MUST return for this
+#              fixture. calibrate-oracles.sh fails loudly if it returns
+#              anything else.
+#   antiregex  OPTIONAL, LAST column, same convention as journeys.tsv. Kept
+#              last deliberately: bash's `read` treats IFS-tab as "IFS
+#              whitespace" and collapses a run of tabs regardless of what IFS
+#              is set to, so an EMPTY MIDDLE field (two consecutive tabs) can
+#              silently misalign every column after it. journeys.tsv and this
+#              file both put the one genuinely optional column last, where a
+#              missing trailing field is harmless, for exactly this reason --
+#              caught by this calibration script itself failing to parse its
+#              own manifest on the first run (see test/docs/README.md).
+#
+# Per CLAUDE.md: "oracles are calibrated against fabricated transcripts before
+# first use" and "Never retune an oracle after the thing it grades exists."
+# Every regex/antiregex here is copied from journeys.tsv BEFORE any real
+# `claude --print` journey run has happened -- see test/docs/README.md.
+
+# style: simple (copied from the return-type-migrate case)
+simple-pass	simple	style-a-pass.txt	migrate-return-shape-or-type	PASS
+simple-fail	simple	style-a-fail.txt	migrate-return-shape-or-type	FAIL
+
+# style: conjunctive (copied from the rehearse-release negative case)
+conjunctive-pass	conjunctive	style-b-pass.txt	release-path-never-succeeded@@AND@@(no werkstoff fit|pure superpowers)	PASS
+conjunctive-fail-overclaim	conjunctive	style-b-fail-overclaim.txt	release-path-never-succeeded@@AND@@(no werkstoff fit|pure superpowers)	FAIL
+conjunctive-fail-ungrounded	conjunctive	style-b-fail-ungrounded.txt	release-path-never-succeeded@@AND@@(no werkstoff fit|pure superpowers)	FAIL
+
+# style: antiregex (copied from the ci-red-jobs case)
+antiregex-pass	antiregex	style-c-pass.txt	pipeline-red-across-jobs	PASS	job-reports-success-but-changed-nothing
+antiregex-fail-confused	antiregex	style-c-fail-confused.txt	pipeline-red-across-jobs	FAIL	job-reports-success-but-changed-nothing
