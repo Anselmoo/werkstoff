@@ -25,6 +25,12 @@
 #   KEEP_TMP=1        keep temp dirs for debugging instead of removing them
 #   RUN_LOG_DIR=dir   preserve every run's stdout/stderr there (for sweeps)
 #   MIN_STDOUT_BYTES  (default 200) below this, a run is ERROR not FAIL
+#   CLEAN_BOX=0             skip the clean-box settings entirely (reproduces
+#                           pre-isolation behavior; see the CLEAN BOX comment)
+#   SKIP_CLEAN_BOX_VERIFY=1 escape hatch: skip proving isolation via
+#                           verify-clean-box.sh before running cases. Only for
+#                           callers (e.g. determinism.sh) that already proved
+#                           isolation for this exact plugin set this session.
 #
 # Verdicts are PASS / FAIL / ERROR. ERROR means the run never really happened —
 # no output, a CLI refusal banner (session/usage limit, bad key, not logged
@@ -76,6 +82,29 @@ if [[ "$CLEAN_BOX" == "1" ]]; then
   else
     echo "ERROR: could not build the clean-box settings; refusing to run contaminated." >&2
     exit 2
+  fi
+
+  # PROVE isolation before spending tokens on it. make-clean-box.py builds the
+  # settings that SHOULD isolate the run, but a documented mandatory guard
+  # that nothing ever calls is exactly the "guard that exists and is never
+  # called" defect this repo has been burned by before (CLAUDE.md, "Think
+  # before deciding"). verify-clean-box.sh actually asks a run which
+  # skills/agents it can see and fails if anything beyond the plugin(s) under
+  # test leaks in. Escape hatch: SKIP_CLEAN_BOX_VERIFY=1, for callers (e.g.
+  # determinism.sh) that already verified the same plugin set this session.
+  if [[ "${SKIP_CLEAN_BOX_VERIFY:-0}" != "1" ]]; then
+    mapfile -t _cb_plugins < <(awk -F'\t' -v filt="$FILTER" \
+      '!/^#/ && NF && (filt=="" || $1==filt) {print $2}' "$CASES" | sort -u)
+    if [[ "${#_cb_plugins[@]}" -eq 0 ]]; then
+      echo "ERROR: no matching cases to determine which plugin(s) to clean-box-verify (filter='$FILTER')." >&2
+      exit 2
+    fi
+    echo "── verifying clean-box isolation for: ${_cb_plugins[*]}"
+    if ! CLAUDE_BIN="$CLAUDE_BIN" bash "$HERE/verify-clean-box.sh" "${_cb_plugins[@]}"; then
+      echo "ERROR: clean box is NOT isolated — refusing to run cases against a contaminated box." >&2
+      echo "       Set SKIP_CLEAN_BOX_VERIFY=1 to bypass, only if isolation was already verified for this plugin set." >&2
+      exit 2
+    fi
   fi
 fi
 

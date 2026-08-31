@@ -17,12 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       manifests: ${{ steps.manifests.outcome }}
+      plugin_authors: ${{ steps.plugin_authors.outcome }}
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       catalog_recipes: ${{ steps.catalog_recipes.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
+      docs_inject_check: ${{ steps.docs_inject_check.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
     steps:
@@ -88,6 +90,17 @@ jobs:
         continue-on-error: true
         run: ./scripts/ci/check-plugin-manifests.sh
 
+      - name: Validate plugin author attribution against marketplace.json
+        id: plugin_authors
+        continue-on-error: true
+        # marketplace.json credits "Anselm Hahn" correctly for every plugin,
+        # but the Claude Code plugin UI displays each per-plugin manifest's
+        # own author field -- three of those (andon, confab, self-assess)
+        # were found still carrying scaffold placeholders ("andon plugin",
+        # "confab contributors", "self-assess contributors" / noreply@
+        # example.com) that nothing had ever compared against marketplace.json.
+        run: python3 test/plugins/lint-plugin-authors.py
+
       - name: Validate SKILL.md/agent frontmatter
         id: frontmatter
         continue-on-error: true
@@ -135,15 +148,29 @@ jobs:
         # here instead of a hook denying every edit months later.
         run: rrt artifacts --check --strict
 
+      - name: Verify README shared blocks have not drifted
+        id: docs_inject_check
+        continue-on-error: true
+        # `[[tool.rrt.docs.shared_blocks]]` in .rrt.toml injects the same
+        # `## Example Prompts` framing sentence into every plugin README's
+        # `<!-- rrt:auto:start:... --> / <!-- rrt:auto:end:... -->` markers.
+        # A hand-edit inside those markers gets silently overwritten by the
+        # next `rrt docs inject`, and until now nothing caught the reverse
+        # case either -- a marker block that had drifted from the shared
+        # source going undetected all the way to release.
+        run: rrt docs inject --check
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
+          steps.plugin_authors.outcome == 'failure' ||
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.catalog_recipes.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
+          steps.docs_inject_check.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure'
         run: exit 1
@@ -184,12 +211,14 @@ jobs:
             echo "<h4>🤖 CI checks</h4>"
             table_open "Check"
             row "Plugin/marketplace manifests" "${{ needs.checks.outputs.manifests }}"
+            row "Plugin author attribution vs. marketplace.json" "${{ needs.checks.outputs.plugin_authors }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
+            row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             echo "</tbody></table>"
             echo
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
