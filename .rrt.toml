@@ -1,6 +1,6 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# Eight independently-versioned units: seven plugins under plugins/<name>/ (each
+# Nine independently-versioned units: eight plugins under plugins/<name>/ (each
 # with its own .claude-plugin/plugin.json) plus the werkstoff-cli installer
 # under tools/werkstoff-cli/ (pyproject.toml). There is deliberately NO
 # repo-wide version — bump one unit with `rrt bump <bump> --group <name>`.

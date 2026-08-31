@@ -8,9 +8,11 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 `compass`, `confab`, `cupertino`, `self-assess`, `takt`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
-The first six (all but `codebase-consistency`, added later) were regenerated
-from behavior specifications rather than hand-edited — see
-`docs/plugin-rebuild-findings.md` for what that measured, including which
+The first six (all but `codebase-consistency`, added later) were run through a
+behavior-specification rebuild; four (`andon`, `self-assess`, `cli-scaffold`,
+`confab`) were promoted as regenerated, while `compass` and `cupertino` kept
+their hand-edited legacy code — see `docs/plugin-rebuild-findings.md`'s `keep`
+column (`rebuild` vs `legacy`) for what that measured, including which
 rebuilds gained enforcement and which lost rules.
 
 Before composing these plugins with each other, with `superpowers`, or with the
@@ -43,7 +45,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the eight-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the nine-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 
@@ -183,7 +185,7 @@ scoring" — which is why their rebuilds gained nothing.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Eight independent version groups in `.rrt.toml` (7 plugins + `tools/werkstoff-cli`).
+Nine independent version groups in `.rrt.toml` (8 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

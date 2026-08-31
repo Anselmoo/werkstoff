@@ -20,7 +20,10 @@
 #
 # Env: N (default 5), J (default 1 — concurrent runs), RUN_LOG_DIR (default a
 # timestamped dir under analysis/andon-pilot/), plus everything run.sh honors
-# (CLAUDE_BIN, CLAUDE_PERM_FLAGS, VERBOSE, KEEP_TMP).
+# (CLAUDE_BIN, CLAUDE_PERM_FLAGS, VERBOSE, KEEP_TMP, CLEAN_BOX).
+# SKIP_CLEAN_BOX_VERIFY=1 skips this script's own one-time isolation proof
+# (see below); it is then also exported so the N per-iteration run.sh calls
+# do not each re-verify it.
 #
 # Cost warning: each run spawns a fresh `claude` process that fans out
 # subagents. At roughly 3-4 min per run, N=5 over 4 cases is about an hour of
@@ -43,6 +46,34 @@ if [[ $# -gt 0 ]]; then
   ids=("$@")
 else
   mapfile -t ids < <(awk -F'\t' '!/^#/ && NF {print $1}' "$CASES")
+fi
+
+# Prove clean-box isolation ONCE for the whole sweep, not once per iteration.
+# Every iteration below shells out to run.sh, which would otherwise call
+# verify-clean-box.sh N times per case — real tokens each time, for a
+# question that does not change between iterations of the same case. See
+# run.sh's CLEAN BOX comment for why this must not be skipped outright.
+# Escape hatch: SKIP_CLEAN_BOX_VERIFY=1, same variable run.sh honors.
+if [[ "${CLEAN_BOX:-1}" == "1" && "${SKIP_CLEAN_BOX_VERIFY:-0}" != "1" ]]; then
+  plugins_needed=()
+  while IFS=$'\t' read -r cid cplugin _rest; do
+    [[ -z "${cid:-}" || "$cid" == \#* ]] && continue
+    for want in "${ids[@]}"; do
+      [[ "$cid" == "$want" ]] && { plugins_needed+=("$cplugin"); break; }
+    done
+  done < "$CASES"
+  mapfile -t _cb_plugins < <(printf '%s\n' "${plugins_needed[@]}" | sort -u)
+  if [[ "${#_cb_plugins[@]}" -eq 0 ]]; then
+    echo "ERROR: no matching cases to determine which plugin(s) to clean-box-verify." >&2
+    exit 2
+  fi
+  echo "verifying clean-box isolation once for: ${_cb_plugins[*]}" >&2
+  if ! bash "$HERE/verify-clean-box.sh" "${_cb_plugins[@]}"; then
+    echo "ERROR: clean box is NOT isolated — refusing to run the sweep against a contaminated box." >&2
+    echo "       Set SKIP_CLEAN_BOX_VERIFY=1 to bypass, only if isolation was already verified for this plugin set." >&2
+    exit 2
+  fi
+  export SKIP_CLEAN_BOX_VERIFY=1
 fi
 
 echo "determinism sweep — N=$N per case, J=$J concurrent, $(date -u +%FT%TZ)"

@@ -98,10 +98,12 @@ cc --plugin-dir /path/to/werkstoff/plugins/self-assess
 ## Adding a new plugin
 
 Scaffold it under `plugins/<name>/` (own `.claude-plugin/plugin.json`,
-own `README.md`, own `LICENSE`) and add an entry to the root
+own `README.md`) and add an entry to the root
 `.claude-plugin/marketplace.json`'s `plugins` array with
 `"source": "./plugins/<name>"`. Each plugin is independent — no shared
-code between them beyond convention.
+code between them beyond convention. The root `LICENSE` (MIT) covers it;
+add a plugin-local `LICENSE` only if it carries forward a different
+license, as `codebase-consistency` does (see License below).
 
 ## License
 
