@@ -13,7 +13,7 @@ beats:
   - skill: "superpowers:systematic-debugging"
     why: "Required before proposing any fix; a fix proposed ahead of a root cause is a second failure mode."
     prompt: "work the lint failure to root cause first — no fixes proposed until the cause is nailed down"
-grounding: "`.github/workflows/plugin-checks.yml` runs seven checks with `continue-on-error: true` and collapses them into a single \"Fail the job if any check failed\" step. One red job can therefore mean any of seven independent causes, which is exactly the shape this entry exists to untangle."
+grounding: "`.github/workflows/plugin-checks.yml` runs eleven checks with `continue-on-error: true` and collapses them into a single \"Fail the job if any check failed\" step. One red job can therefore mean any of eleven independent causes, which is exactly the shape this entry exists to untangle."
 ---
 
 <RecipeHeader />

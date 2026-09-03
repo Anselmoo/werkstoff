@@ -13,7 +13,7 @@ beats:
   - skill: "superpowers:verification-before-completion"
     why: "\"The alert cleared\" and \"the cause is gone\" are different claims."
     prompt: "before we close this out, show me the cause is actually gone — not just that the alert stopped"
-grounding: "a red `plugin-checks.yml` blocking every open pull request in this repo at once: the triage move is parallel investigators across the seven `continue-on-error` steps, not a tribunal on any one of them."
+grounding: "a red `plugin-checks.yml` blocking every open pull request in this repo at once: the triage move is parallel investigators across the eleven `continue-on-error` steps, not a tribunal on any one of them."
 ---
 
 <RecipeHeader />

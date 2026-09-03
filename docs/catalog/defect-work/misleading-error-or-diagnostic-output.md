@@ -13,7 +13,7 @@ beats:
   - skill: "pr-review-toolkit:comment-analyzer"
     why: "Comment rot and message rot come from the same edit that moved the behavior."
     prompt: "check whether the comments around this error path still describe what the code does"
-grounding: "the resolve step in `.github/workflows/plugin-release.yml` exits with `Unknown plugin group '$GROUP' from tag '$TAG'` — accurate, but silent on the fact that the allowed set is a hardcoded seven-name `case` list in the same file, which is what a reader actually needs to know."
+grounding: "the resolve step in `.github/workflows/plugin-release.yml` exits with `Unknown plugin group '$GROUP' from tag '$TAG'` — accurate, but silent on the fact that the allowed set is a hardcoded eight-name `case` list in the same file, which is what a reader actually needs to know."
 ---
 
 <RecipeHeader />

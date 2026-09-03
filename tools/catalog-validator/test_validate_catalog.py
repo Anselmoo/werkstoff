@@ -190,6 +190,45 @@ class BodyComponentsTest(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertEqual(len(report.failures), 2)
 
+    def test_mention_only_inside_a_code_fence_fails(self) -> None:
+        """A recipe that DOCUMENTS the pattern renders none of it.
+
+        Caught in review of PR #50: the check was a raw substring search over the
+        whole body, so a ```markdown fence showing the components satisfied it
+        while the page rendered nothing -- a validator reporting a pass it had
+        not earned, which is the failure class it exists to prevent.
+        """
+        report = self._report("Text.\n\n```markdown\n<RecipeHeader />\n<RecipeBeats />\n```\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_mention_only_in_a_tilde_fence_fails(self) -> None:
+        report = self._report("~~~markdown\n<RecipeHeader />\n<RecipeBeats />\n~~~\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_mention_only_in_an_inline_code_span_fails(self) -> None:
+        report = self._report("Use `<RecipeHeader />` and `<RecipeBeats />` in the body.\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_real_mount_plus_a_documenting_fence_passes(self) -> None:
+        """The inverse case. A recipe may legitimately mount the components AND
+        show them in a fence; stripping fences must not break that. The fence
+        here is four backticks wrapping a three-backtick block, so this also
+        pins the run-length matching -- a fence tracker that closed on the first
+        ``` would drop the real mount that follows."""
+        report = self._report(
+            "<RecipeHeader />\n\nProse:\n\n````markdown\n```\n<RecipeBeats />\n```\n````\n\n<RecipeBeats />\n"
+        )
+        self.assertEqual(report.failures, [])
+        self.assertTrue(report.ok)
+
+    def test_indented_fence_is_still_a_fence(self) -> None:
+        report = self._report("Text:\n\n  ```\n  <RecipeHeader />\n  <RecipeBeats />\n  ```\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
     def test_frontmatter_mention_does_not_satisfy_the_check(self) -> None:
         """The check reads the BODY, not the whole file -- a component named in
         frontmatter renders nothing, so it must not count."""
