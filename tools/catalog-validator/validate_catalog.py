@@ -211,26 +211,61 @@ def extract_body(path: Path) -> str:
 
 
 def strip_non_rendering(body: str) -> str:
-    """Drop the parts of a markdown body that do NOT render as live markup:
-    fenced code blocks and inline code spans.
+    """Return only the lines of a markdown body that render as live markup.
 
     Why this exists: the component check below is a substring search, and a
-    recipe that merely *documents* the pattern -- showing `<RecipeBeats />`
-    inside a ```markdown fence, as docs/catalog/index.md legitimately does --
-    would satisfy a naive search while rendering none of the component's
-    output. That is a check reporting a pass it did not earn, which is the
-    failure class this whole validator exists to prevent; leaving it in place
-    here would be the tool committing the defect it polices.
+    recipe that merely *documents* the pattern would satisfy a naive search
+    while rendering none of the component's output. That is a check reporting
+    a pass it did not earn -- the failure class this validator exists to
+    prevent -- so the tool must not commit it itself.
 
-    Line-based fence tracking, never a regex spanning the file (see module
-    docstring). Fences are matched on the opening run length so a ```` block
+    Four non-rendering contexts are removed, each verified by a probe that
+    false-passed before it was handled:
+
+        ```lang fences and ~~~ fences      a documented example
+        <!-- ... --> HTML comments         a commented-out mount
+        four-space indented code blocks    an indented example
+        `inline code spans`                a prose mention
+
+    Indentation is handled by dropping any line indented four or more spaces
+    rather than by modelling markdown's indented-code rules, which need list
+    context to get right. That is deliberately strict: every real recipe mounts
+    its components at column zero, and the two error directions are not
+    symmetric. A false FAIL is loud, names the file, and takes seconds to fix;
+    a false PASS ships a page silently missing its entire content.
+
+    Line-based throughout, never a regex spanning the file (see module
+    docstring). Fences match on the opening run length so a ```` block
     containing ``` is not closed early -- this repo's own prompt fences are
     four backticks for exactly that reason.
     """
     out: list[str] = []
     fence_char = ""
     fence_len = 0
-    for line in body.split("\n"):
+    in_comment = False
+
+    for raw in body.split("\n"):
+        line = raw
+
+        # HTML comments first: a comment may wrap a fence, and a fence opened
+        # inside a comment is not a fence at all.
+        if in_comment:
+            closer = line.find("-->")
+            if closer == -1:
+                continue
+            line = line[closer + 3 :]
+            in_comment = False
+        while True:
+            opener = line.find("<!--")
+            if opener == -1:
+                break
+            closer = line.find("-->", opener + 4)
+            if closer == -1:
+                line = line[:opener]
+                in_comment = True
+                break
+            line = line[:opener] + line[closer + 3 :]
+
         stripped = line.lstrip()
         indent = len(line) - len(stripped)
         run_char = stripped[:1]
@@ -240,13 +275,13 @@ def strip_non_rendering(body: str) -> str:
                 if not fence_char:
                     fence_char, fence_len = run_char, run
                     continue
-                # A closing fence matches the opening char, is at least as
-                # long, and carries no info string.
                 if run_char == fence_char and run >= fence_len and not stripped[run:].strip():
                     fence_char, fence_len = "", 0
                     continue
         if fence_char:
-            continue  # inside a fenced block: not rendered markup
+            continue  # inside a fenced block
+        if indent >= 4:
+            continue  # indented code block, not rendered markup
         out.append(_strip_inline_code(line))
     return "\n".join(out)
 
@@ -273,7 +308,8 @@ def validate_body(body: str) -> list[str]:
             failures.append(
                 f"body does not mount {component} as rendered markup -- the page would "
                 f"render without the content that component produces, silently and with "
-                f"no error (a mention inside a code fence or inline code span does not count)"
+                f"no error (a mention inside a code fence, HTML comment, indented code block "
+                f"or inline code span does not count)"
             )
     return failures
 

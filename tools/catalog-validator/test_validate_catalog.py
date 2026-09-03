@@ -224,6 +224,38 @@ class BodyComponentsTest(unittest.TestCase):
         self.assertEqual(report.failures, [])
         self.assertTrue(report.ok)
 
+    def test_mention_only_in_an_html_comment_fails(self) -> None:
+        """A commented-out mount renders nothing. Copilot's review said "code
+        fences (or other non-rendered contexts)"; the first fix handled only
+        fences and inline spans, and this probe false-passed until the
+        parenthetical was taken literally."""
+        report = self._report("<!--\n<RecipeHeader />\n<RecipeBeats />\n-->\n\nProse.\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_mention_only_in_an_inline_html_comment_fails(self) -> None:
+        report = self._report("<!-- <RecipeHeader /> --> <!-- <RecipeBeats /> -->\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_mention_only_in_an_indented_code_block_fails(self) -> None:
+        report = self._report("Example:\n\n    <RecipeHeader />\n    <RecipeBeats />\n\nEnd.\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_comment_wrapping_a_fence_is_handled_once(self) -> None:
+        """A comment may wrap a fence. Comments are stripped BEFORE fences, so a
+        fence opened inside a comment never registers as an open fence and does
+        not swallow the rest of the document."""
+        report = self._report("<!--\n```\n<RecipeHeader />\n```\n<RecipeBeats />\n-->\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_real_mount_beside_a_documenting_comment_passes(self) -> None:
+        report = self._report("<RecipeHeader />\n\n<!-- example: <RecipeBeats /> -->\n\n<RecipeBeats />\n")
+        self.assertEqual(report.failures, [])
+        self.assertTrue(report.ok)
+
     def test_indented_fence_is_still_a_fence(self) -> None:
         report = self._report("Text:\n\n  ```\n  <RecipeHeader />\n  <RecipeBeats />\n  ```\n")
         self.assertFalse(report.ok)
