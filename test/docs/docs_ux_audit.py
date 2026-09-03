@@ -608,8 +608,24 @@ def check_c1_counts(report: Report, recipes: list[tuple[Path, dict]]) -> None:
     n_beats = sum(len(fm.get("beats") or []) for _, fm in recipes)
     n_categories = len({fm.get("category") for _, fm in recipes})
 
+    # A recipe's `grounding` may cite a count from a workflow file. Those rot the
+    # same way prose counts do, and did: main's #50 corrected "seven checks" to
+    # "eleven" against plugin-checks.yml, while this branch was independently
+    # adding a twelfth step to that same file. Neither diff touched the other, so
+    # the merge kept a correct-at-the-time number that was already stale.
+    n_coe_steps = len(re.findall(
+        r"^\s*continue-on-error:\s*true\s*$",
+        (REPO / ".github" / "workflows" / "plugin-checks.yml").read_text(encoding="utf-8"),
+        re.M))
+
     claims = [
         (DOCS / "index.md", r"([A-Za-z-]+|\d+) development tasks", n_recipes, "catalog recipes"),
+        (DOCS / "catalog" / "ci-release" / "pipeline-red-across-jobs.md",
+         r"runs ([A-Za-z-]+|\d+) checks with", n_coe_steps,
+         "continue-on-error steps in plugin-checks.yml"),
+        (DOCS / "catalog" / "defect-work" / "incident-triage-under-time-pressure.md",
+         r"across the ([A-Za-z-]+|\d+) `continue-on-error` steps", n_coe_steps,
+         "continue-on-error steps in plugin-checks.yml"),
         (DOCS / "index.md", r"([A-Za-z-]+|\d+) copy-paste prompts", n_prompts, "beats carrying a prompt"),
         (DOCS / "orchestration" / "references" / "catalog.md",
          r"the same\s+([A-Za-z-]+|\d+) task recipes", n_recipes, "catalog recipes"),
