@@ -104,7 +104,7 @@ pairings:
     donts:
       - "Don't debug the first red job you see without first checking whether a single config-level cause explains all of them."
       - "Don't propose a fix ahead of a root cause -- a fix proposed ahead of a root cause is a second failure mode."
-    grounding: "plugin-checks.yml runs seven checks with continue-on-error: true and collapses them into one \"Fail the job if any check failed\" step, so one red job can mean any of seven independent causes."
+    grounding: "plugin-checks.yml runs eleven checks with continue-on-error: true and collapses them into one \"Fail the job if any check failed\" step, so one red job can mean any of eleven independent causes."
     recipeTask: "Diagnose a pipeline red across several jobs"
     recipeUrl: "/catalog/ci-release/pipeline-red-across-jobs"
 

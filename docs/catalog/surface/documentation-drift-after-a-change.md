@@ -16,6 +16,10 @@ beats:
 grounding: "this repo generates part of its own documentation surface: `.rrt.toml` declares `[[tool.rrt.docs.shared_blocks]]`, which is what regenerates the `rrt:auto:start:example-prompts-intro` block visible at the top of every plugin README's Example Prompts section — so a drift sweep must distinguish generated prose from hand-written prose before reporting either."
 ---
 
+<RecipeHeader />
+
 Docs drift is asymmetric: the code moves and the prose does not, so the drift is always in
 the same direction and is never announced. The cheapest catch is a claim-level sweep
 immediately after the change, while the diff is still legible.
+
+<RecipeBeats />

@@ -177,6 +177,6 @@ one beat in someone else's.
 architecture and have no standalone reviewing role. `claude-security` is the
 sharpest case: its skill sets `disable-model-invocation: true`, so a model can never
 propose dispatching it on its own initiative — a human has to invoke it directly —
-and five of its seven agents state in their own definitions that they are not for
+and six of its eight agents state in their own definitions that they are not for
 direct invocation. None of `claude-security`'s agents belong in this gate's
 dispatch slot; the plugin's own command is the only sanctioned entry point.

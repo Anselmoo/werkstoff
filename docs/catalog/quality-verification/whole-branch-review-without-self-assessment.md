@@ -22,6 +22,10 @@ beats:
 grounding: "a branch touching all five plugin-local copies of `build_symbol_index.py` plus `tools/symbol-indexer/` — a diff whose risk is entirely in what it left out, which is precisely what a self-assessment cannot see."
 ---
 
+<RecipeHeader />
+
 The failure mode is structural, not moral: a session that built something is the worst
 available judge of it, because it reviews the intent it remembers rather than the diff it
 produced. Every skill here is chosen for its blindness properties.
+
+<RecipeBeats />

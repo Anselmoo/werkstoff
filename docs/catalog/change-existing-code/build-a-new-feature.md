@@ -20,6 +20,8 @@ beats:
 grounding: "Adding a subcommand to tools/werkstoff-cli/src/werkstoff/ — cli.py and core.py split the surface, and tests/__snapshots__/test_cli.ambr will re-record silently if the feature lands before the snapshot is read, which is exactly the kind of integration wire andon-verify exists to check rather than assume."
 ---
 
+<RecipeHeader />
+
 Building a new feature is the most common development task, and the easiest to let
 slide into ad hoc work. `feature-dev:code-explorer` and `feature-dev:code-architect`
 keep exploration and design as separate, sequential steps; `code-modernization:architecture-critic`
@@ -27,3 +29,5 @@ is cheapest to apply against a blueprint that has not yet become a branch. Tests
 from superpowers' test-driven-development before the feature exists to test, and
 `andon:andon-verify` checks the new feature's integration with existing stages as a wire,
 not a formality.
+
+<RecipeBeats />

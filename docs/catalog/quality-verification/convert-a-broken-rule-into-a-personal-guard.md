@@ -13,6 +13,8 @@ beats:
 grounding: "CLAUDE.md's own rule \"Prefer rrt over raw git for repo-level operations\" is exactly the shape of rule a contributor could keep forgetting; hookify's own hooks.json wires real `type: \"command\"` hooks for PreToolUse/PostToolUse/Stop/UserPromptSubmit, but its `pretooluse.py` fails OPEN on any exception (\"allow operation and log error\"), the opposite of this repo's fail-closed doctrine for shipped enforcement -- so a hookify rule is a fast personal nudge, not a substitute for the fail-closed plugin hook the other recipe produces."
 ---
 
+<RecipeHeader />
+
 self-assess-lint-audit is explicitly read-only and never auto-fixes a violation it finds --
 that's deliberate, and it leaves a gap for whoever keeps tripping the same rule. hookify
 fills exactly that gap, but at a different scope and strength than
@@ -21,3 +23,5 @@ personal, and immediate, and its own dispatcher fails open on error, unlike the 
 doctrine a plugin-shipped hook has to meet. Use this recipe for a contributor's own habit;
 use the cupertino/plugin-dev recipe when the rule needs to hold for everyone who installs
 the plugin.
+
+<RecipeBeats />

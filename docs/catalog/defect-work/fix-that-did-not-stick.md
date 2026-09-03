@@ -16,6 +16,10 @@ beats:
 grounding: "re-proving the \"Verify vendored artifacts match their committed lock\" check by removing one `plugins/*/assets/inline-d3.html` in a disposable worktree and confirming `rrt artifacts --check --strict` actually goes red, rather than trusting that it would."
 ---
 
+<RecipeHeader />
+
 A bug reported fixed and then seen again means one of three things: the fix addressed a
 symptom, the fix regressed, or the fix was never proven in the first place. All three are
 verification failures, not coding failures.
+
+<RecipeBeats />

@@ -16,8 +16,12 @@ beats:
 grounding: "This repo's own tagging rule: .github/workflows/cicd.yml fires on any v*.*.* tag and always publishes tools/werkstoff-cli, so a bare tag on a plugin group triggers a spurious PyPI publish -- <group>-v... tags fire plugin-release.yml instead. An integration decision with a real, irreversible wrong answer."
 ---
 
+<RecipeHeader />
+
 How to integrate a finished branch -- merge, rebase, or PR -- is a decision with a real
 wrong answer in this repo, not a formality to rubber-stamp once the tests are green. Run
 the changed-files audit first, make the integration decision deliberately, then verify what
 actually happened rather than what was supposed to happen, and prove the release wire itself
 before trusting that a green merge means the release is real.
+
+<RecipeBeats />

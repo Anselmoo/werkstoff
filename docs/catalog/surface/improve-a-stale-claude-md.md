@@ -13,8 +13,12 @@ beats:
 grounding: "this repo's own CLAUDE.md, which is unusually dense with falsifiable claims — \"rrt-doctor's own hook manifest pins it to stages: [manual]\", the six-defect table, the tool-grant anomaly note — exactly the shape of claim self-assess-docs-drift is built to check and that claude-md-improver's currency criterion only grades impressionistically."
 ---
 
+<RecipeHeader />
+
 A CLAUDE.md that claude-md-improver extends without first checking its existing claims
 against the code risks reinforcing content that's already wrong — its own quality rubric
 grades currency on a letter scale, not claim by claim. self-assess-docs-drift closes that
 gap first, with file:line evidence on both the doc side and the code side, so the
 improvement pass starts from a verified baseline instead of a plausible-looking one.
+
+<RecipeBeats />

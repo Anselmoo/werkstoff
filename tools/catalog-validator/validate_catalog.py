@@ -18,7 +18,17 @@ What it checks, per recipe file:
        prevent elsewhere, so it must not reintroduce the same failure mode here).
     4. Every beat has non-empty `skill` and `why` (`prompt` is optional; its
        absence is never a failure).
-    5. Every beat's `skill` id, when its `plugin:` namespace matches one of
+    5. The rendered body contains both `<RecipeHeader />` and `<RecipeBeats />`.
+       These are global Vue components (registered in docs/.vitepress/theme/index.js)
+       that render the page's <h1>/summary and its Beats section from the very
+       frontmatter above. They live in the markdown body rather than a layout slot
+       because no VitePress slot lands inside <main>: `doc-after` renders below the
+       prev/next footer (which is how 37 recipes shipped with their Beats under the
+       navigation), and `doc-footer-before` renders inside a <footer> that is a
+       contentinfo landmark. A recipe that omits a component renders NOTHING where
+       its content should be -- no error, no warning, just a page missing its whole
+       point -- so it is checked here rather than left to review.
+    6. Every beat's `skill` id, when its `plugin:` namespace matches one of
        werkstoff's own 9 plugins, must resolve to a real skill or agent id in
        surface.json. A namespace that does not match any werkstoff plugin (e.g.
        `superpowers:*`, `pr-review-toolkit:*`) is counted as "external,
@@ -75,6 +85,12 @@ SURFACE_PATH = REPO / "docs" / ".vitepress" / "data" / "surface.json"
 REQUIRED_STRING_KEYS = ("task", "category", "summary", "grounding")
 REQUIRED_LIST_KEYS = ("external", "beats")
 REQUIRED_KEYS = REQUIRED_STRING_KEYS + REQUIRED_LIST_KEYS
+
+#: Global Vue components every recipe body must mount. Substring checks, not a
+#: regex: these are fixed literals, and a regex over markdown containing angle
+#: brackets and slashes is precisely the shape this repo's CLAUDE.md documents as
+#: matching nothing while reporting success.
+REQUIRED_BODY_COMPONENTS = ("<RecipeHeader />", "<RecipeBeats />")
 
 
 class CatalogValidatorError(RuntimeError):
@@ -177,6 +193,125 @@ def extract_frontmatter_block(path: Path) -> str | None:
         raise CatalogValidatorError(f"{path}: unterminated frontmatter (no closing '---')")
 
     return "\n".join(lines[1:end])
+
+
+def extract_body(path: Path) -> str:
+    """Everything after the closing '---' of the frontmatter block.
+
+    Line-based, mirroring extract_frontmatter_block: a file with no frontmatter
+    is all body, which is the correct reading for a non-recipe page.
+    """
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if not lines or lines[0].strip() != "---":
+        return "\n".join(lines)
+    for index in range(1, len(lines)):
+        if lines[index].strip() == "---":
+            return "\n".join(lines[index + 1 :])
+    return ""
+
+
+def strip_non_rendering(body: str) -> str:
+    """Return only the lines of a markdown body that render as live markup.
+
+    Why this exists: the component check below is a substring search, and a
+    recipe that merely *documents* the pattern would satisfy a naive search
+    while rendering none of the component's output. That is a check reporting
+    a pass it did not earn -- the failure class this validator exists to
+    prevent -- so the tool must not commit it itself.
+
+    Four non-rendering contexts are removed, each verified by a probe that
+    false-passed before it was handled:
+
+        ```lang fences and ~~~ fences      a documented example
+        <!-- ... --> HTML comments         a commented-out mount
+        four-space indented code blocks    an indented example
+        `inline code spans`                a prose mention
+
+    Indentation is handled by dropping any line indented four or more spaces
+    rather than by modelling markdown's indented-code rules, which need list
+    context to get right. That is deliberately strict: every real recipe mounts
+    its components at column zero, and the two error directions are not
+    symmetric. A false FAIL is loud, names the file, and takes seconds to fix;
+    a false PASS ships a page silently missing its entire content.
+
+    Line-based throughout, never a regex spanning the file (see module
+    docstring). Fences match on the opening run length so a ```` block
+    containing ``` is not closed early -- this repo's own prompt fences are
+    four backticks for exactly that reason.
+    """
+    out: list[str] = []
+    fence_char = ""
+    fence_len = 0
+    in_comment = False
+
+    for raw in body.split("\n"):
+        line = raw
+
+        # HTML comments first: a comment may wrap a fence, and a fence opened
+        # inside a comment is not a fence at all.
+        if in_comment:
+            closer = line.find("-->")
+            if closer == -1:
+                continue
+            line = line[closer + 3 :]
+            in_comment = False
+        while True:
+            opener = line.find("<!--")
+            if opener == -1:
+                break
+            closer = line.find("-->", opener + 4)
+            if closer == -1:
+                line = line[:opener]
+                in_comment = True
+                break
+            line = line[:opener] + line[closer + 3 :]
+
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+        run_char = stripped[:1]
+        if indent <= 3 and run_char in ("`", "~"):
+            run = len(stripped) - len(stripped.lstrip(run_char))
+            if run >= 3:
+                if not fence_char:
+                    fence_char, fence_len = run_char, run
+                    continue
+                if run_char == fence_char and run >= fence_len and not stripped[run:].strip():
+                    fence_char, fence_len = "", 0
+                    continue
+        if fence_char:
+            continue  # inside a fenced block
+        if indent >= 4:
+            continue  # indented code block, not rendered markup
+        out.append(_strip_inline_code(line))
+    return "\n".join(out)
+
+
+def _strip_inline_code(line: str) -> str:
+    """Remove `...` inline code spans from one line.
+
+    Split on backticks and keep the even-indexed pieces: an unclosed span
+    leaves a trailing odd piece, which is dropped, so a half-written span
+    cannot smuggle a component mention through either.
+    """
+    if "`" not in line:
+        return line
+    parts = line.split("`")
+    return "".join(parts[i] for i in range(0, len(parts), 2))
+
+
+def validate_body(body: str) -> list[str]:
+    """Check the markdown body mounts both recipe components, as live markup."""
+    rendered = strip_non_rendering(body)
+    failures: list[str] = []
+    for component in REQUIRED_BODY_COMPONENTS:
+        if component not in rendered:
+            failures.append(
+                f"body does not mount {component} as rendered markup -- the page would "
+                f"render without the content that component produces, silently and with "
+                f"no error (a mention inside a code fence, HTML comment, indented code block "
+                f"or inline code span does not count)"
+            )
+    return failures
 
 
 def try_parse_frontmatter(path: Path) -> dict | None:
@@ -335,6 +470,7 @@ def validate_catalog(catalog_dir: Path, surface_path: Path) -> ValidationReport:
         failures, external_unchecked = validate_recipe(
             frontmatter, directory_name, surface, recognized_categories
         )
+        failures.extend(validate_body(extract_body(path)))
         report.external_unchecked += external_unchecked
         for reason in failures:
             report.failures.append(f"{path}: {reason}")

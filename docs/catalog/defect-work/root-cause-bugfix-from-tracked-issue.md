@@ -19,5 +19,9 @@ beats:
 grounding: "the failure mode recorded in `.github/workflows/plugin-checks.yml`: a `.gitignore` regression that silently drops a vendored file, leaving the artifact lock expecting a file that no longer exists — a bug whose symptom appears months later, at a hook denial, rather than where the cause lives."
 ---
 
+<RecipeHeader />
+
 The spine of this task is Superpowers: root cause before fix, failing test before code.
 The werkstoff contribution is the search and the proof at either end.
+
+<RecipeBeats />

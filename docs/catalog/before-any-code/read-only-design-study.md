@@ -18,7 +18,11 @@ beats:
 grounding: "a read-only study of how the four werkstoff `PreToolUse` hooks interact, covering `plugins/andon/hooks/`, `plugins/self-assess/hooks/`, `plugins/confab/hooks/`, and `plugins/cupertino/hooks/`, with each interaction marked [V] or [P]."
 ---
 
+<RecipeHeader />
+
 A design study is worth reading only if its confidence is legible. The trap is a study
 that mixes what was checked with what was assumed and marks neither. A two-symbol legend
 fixes it: **[V]** for a claim carrying a file:line or URL, **[P]** for a claim that is
 provisional — inferred, plausible, and explicitly flagged as unverified.
+
+<RecipeBeats />

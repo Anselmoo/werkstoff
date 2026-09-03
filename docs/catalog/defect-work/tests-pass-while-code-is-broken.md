@@ -16,6 +16,10 @@ beats:
 grounding: "auditing `plugins/confab/scripts/test_cycle_engine.py` and `tools/enforcement-audit/test_audit_enforcement.py` for assertions whose expected value is the same hardcoded default the code falls back to when the real path never runs."
 ---
 
+<RecipeHeader />
+
 A green suite proves the tests ran, not that they would notice. The specific trap worth
 naming: an assertion whose expected value brackets a hardcoded default, so the test passes
 whether or not the logic under it ever executes.
+
+<RecipeBeats />

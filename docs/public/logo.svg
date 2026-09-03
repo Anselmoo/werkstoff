@@ -2,14 +2,20 @@
   <title id="t">werkstoff</title>
   <!-- Dark plate: reads as a chip on both a light and a dark page, so one mark
        serves both colour schemes. Colours are tools/design-tokens/tokens.css: silica (the scattered
-       blue) and samaria (the transmitted warmth), the two poles of the aerogel duality. -->
+       blue) and samaria (the transmitted warmth), the two poles of the aerogel duality. Mark uses
+       silica-light, not the base step: the token file's own rule is "light = brand/emphasis", and
+       the node already followed it; the mark stroke previously didn't (4.83:1 vs panel; -light
+       measures 8.19:1). -->
   <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="7"
         fill="#141a1f" stroke="#28323a" stroke-width="1.5"/>
   <!-- A W that is also a value stream: down, up, down, up. The stroke is the
        run; it terminates at the gold node rather than continuing, which is the
-       halt this project is built around. -->
-  <path d="M7 10 L11.5 22 L16 13 L20.5 22 L25 10"
-        fill="none" stroke="#348ad9" stroke-width="2.75"
+       halt this project is built around. Node at (23,11) r=2.5/1.3 clears the
+       corner arc by ~4.35 units, measured against the rounded-rect's actual
+       geometry: the old (25,10) r=2.9/1.5 cleared only ~1.85, crowding the
+       curve rather than resting inside it with intent. -->
+  <path d="M9 11 L12.5 22 L16 12 L19.5 22 L23 11"
+        fill="none" stroke="#73b6fa" stroke-width="2.75"
         stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="25" cy="10" r="2.9" fill="#cfb656" stroke="#141a1f" stroke-width="1.5"/>
+  <circle cx="23" cy="11" r="2.5" fill="#cfb656" stroke="#141a1f" stroke-width="1.3"/>
 </svg>

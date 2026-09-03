@@ -18,5 +18,9 @@ beats:
 grounding: "the `core.py` to `cli.py` boundary in `tools/werkstoff-cli/src/werkstoff/`, whose output shape is pinned by the snapshot file `tools/werkstoff-cli/tests/__snapshots__/test_cli.ambr` — snapshots that will re-record silently if the migration lands before they are read."
 ---
 
+<RecipeHeader />
+
 Changing what a function hands back is a contract change wearing a refactor's clothes.
 Every call site is a participant, and the compiler catches only the subset that is typed.
+
+<RecipeBeats />

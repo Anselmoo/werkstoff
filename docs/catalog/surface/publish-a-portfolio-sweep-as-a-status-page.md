@@ -13,9 +13,13 @@ beats:
 grounding: "the user's own ~/LocalDocuments/GitHub_Forks directory holds roughly 150 git repositories, including werkstoff itself -- exactly the shape of \"explicit portfolio directory\" self-assess-portfolio's own Step 1 scope gate requires, since it refuses to infer a git repo's parent as the portfolio."
 ---
 
+<RecipeHeader />
+
 self-assess-portfolio's own output is deliberately narrow: one grade per repo, worst-signal-wins,
 written once to a local file with no sharing and no delta tracking across sweeps.
 project-artifact adds exactly what that file lacks -- a shareable URL, status pills, an
 Attention tab for what's blocked, and a refresh that reports only what changed since the
 last sweep instead of re-narrating every repo. Run the sweep first; a Gray verdict means
 "not yet assessed," and the status page must not smooth that over into an invented grade.
+
+<RecipeBeats />
