@@ -71,7 +71,14 @@ jobs:
         # uvx, not `uv run`: there is no root pyproject.toml/project for uv to
         # resolve once working-directory is the repo root, and this step
         # must not depend on the tools/werkstoff-cli venv the prior steps use.
-        run: uvx ruff check .
+        # Pinned deliberately. Unpinned `uvx ruff` resolves to latest, and ruff's
+        # DEFAULT rule set widened in 0.16 -- this step went red on a commit that
+        # changed nothing, because the tool changed underneath it. ruff.toml now
+        # also spells out `select`, so the two protections are independent: the pin
+        # keeps the run reproducible, the explicit select keeps it correct even if
+        # the pin drifts. Keep this in step with the ruff pinned in
+        # tools/werkstoff-cli/pyproject.toml's dev dependencies.
+        run: uvx ruff@0.15.22 check .
 
   test:
     name: 🧪 Tests (${{ matrix.python-version }})
