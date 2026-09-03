@@ -1,0 +1,27 @@
+# Repo-root ruff config.
+#
+# This file exists to widen `ruff check` from tools/werkstoff-cli (the only
+# place CI ever linted -- see .github/workflows/cicd.yml's `defaults.run.
+# working-directory`) to the whole repo. That's a SCOPE change, not a bar
+# raise: `select`/`ignore` are deliberately left unset so ruff's own default
+# rule set applies (pyflakes `F` plus pycodestyle's `E4`/`E7`/`E9`).
+#
+# tools/werkstoff-cli/pyproject.toml's [tool.ruff] selects a broader,
+# stricter set ("E","F","I","UP","B" with line-length=100) tailored to that
+# one polished package. Copying it verbatim here was tried and rejected:
+# against the rest of the repo it raises the finding count from a handful to
+# 700+ (550 of them E501 alone, from repo-wide scripts nobody has ever
+# formatted to a 100-column limit), which is exactly the "bundling a
+# stricter rule set into a scope change" this widening is supposed to avoid
+# -- it would make the diff this enables unreviewable. Defaults keep this a
+# pure scope change; the CLI package keeps its own stricter config in its
+# own pyproject.toml untouched.
+target-version = "py312"
+
+# test/plugins/fixtures/ holds deliberately-defective test fixtures, not real
+# source: e.g. test/plugins/fixtures/lehre-unparseable/src/broken.py contains
+# `def broken(:` -- a syntax error that IS the fixture -- and
+# test/plugins/fixtures/lehre-fidelity-gap/src/adapters/base.py has an
+# intentionally unused import. Linting (or "fixing") either destroys the test
+# it exists to support. Do not remove this exclusion.
+extend-exclude = ["test/plugins/fixtures"]

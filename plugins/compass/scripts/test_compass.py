@@ -6,7 +6,8 @@ Exits 0 if every guard both accepts valid input and REFUSES invalid input.
 This is the executable proof that the rules are enforced by code, not prose.
 """
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import compass_lib as C
 import json
@@ -19,19 +20,24 @@ passed = failed = 0
 def ok(label, fn):
     global passed, failed
     try:
-        fn(); passed += 1
+        fn()
+        passed += 1
     except Exception as exc:  # noqa: BLE001
-        failed += 1; print(f"FAIL (should have passed): {label}: {exc}")
+        failed += 1
+        print(f"FAIL (should have passed): {label}: {exc}")
 
 
 def refuses(label, fn):
     global passed, failed
     try:
-        fn(); failed += 1; print(f"FAIL (should have refused): {label}")
+        fn()
+        failed += 1
+        print(f"FAIL (should have refused): {label}")
     except C.GuardError:
         passed += 1
     except Exception as exc:  # noqa: BLE001
-        failed += 1; print(f"FAIL (wrong error): {label}: {exc}")
+        failed += 1
+        print(f"FAIL (wrong error): {label}: {exc}")
 
 
 def stage(i, deps):

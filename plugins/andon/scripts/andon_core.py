@@ -684,7 +684,7 @@ def route_wire(signals, availability):
     prereq_flag = PREREQ_FLAG_BY_STRATEGY[chosen]
     if prereq_flag is not None and not availability.get(prereq_flag, False):
         degraded_from = chosen
-        fallback_order = [l for l in CLASSIFIER_ORDER if l != chosen]
+        fallback_order = [letter for letter in CLASSIFIER_ORDER if letter != chosen]
         chosen = None
         for letter in fallback_order:
             p = PREREQ_FLAG_BY_STRATEGY[letter]

@@ -59,6 +59,20 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
 
+      # Repo-root lint, scoped via ${{ github.workspace }} rather than by
+      # changing this job's working-directory (the steps above depend on it
+      # staying tools/werkstoff-cli). Config comes from the root ruff.toml.
+      # Deliberately `ruff check .` only, NOT `ruff format --check .`:
+      # reformatting the whole repo is a much larger, riskier diff than this
+      # scope change, and several existing plugin scripts would be
+      # reformatted. Root-wide format checking stays out of scope here.
+      - name: Ruff check (repo root)
+        working-directory: ${{ github.workspace }}
+        # uvx, not `uv run`: there is no root pyproject.toml/project for uv to
+        # resolve once working-directory is the repo root, and this step
+        # must not depend on the tools/werkstoff-cli venv the prior steps use.
+        run: uvx ruff check .
+
   test:
     name: 🧪 Tests (${{ matrix.python-version }})
     needs: lint
