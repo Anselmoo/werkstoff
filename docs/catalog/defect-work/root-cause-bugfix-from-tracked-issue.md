@@ -30,7 +30,9 @@ donts:
   - "Don't trust your own review of your own fix -- the tribunal exists because self-review is generous."
 ---
 
-# Root-cause a bugfix from a tracked issue
+<RecipeHeader />
 
 The spine of this task is Superpowers: root cause before fix, failing test before code.
 The werkstoff contribution is the search and the proof at either end.
+
+<RecipeBeats />

@@ -32,7 +32,7 @@ donts:
   - "Don't write tests after the feature already exists -- they'll test the feature that got built, not the one that was specified."
 ---
 
-# Build a new feature in an existing codebase
+<RecipeHeader />
 
 Building a new feature is the most common development task, and the easiest to let
 slide into ad hoc work. `feature-dev:code-explorer` and `feature-dev:code-architect`
@@ -41,3 +41,5 @@ is cheapest to apply against a blueprint that has not yet become a branch. Tests
 from superpowers' test-driven-development before the feature exists to test, and
 `andon:andon-verify` checks the new feature's integration with existing stages as a wire,
 not a formality.
+
+<RecipeBeats />

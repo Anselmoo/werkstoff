@@ -25,8 +25,10 @@ donts:
   - "Don't trust that a prior pass would have caught the regression without actually checking it -- confirm the check itself would go red, don't assume it."
 ---
 
-# Investigate a fix that did not stick
+<RecipeHeader />
 
 A bug reported fixed and then seen again means one of three things: the fix addressed a
 symptom, the fix regressed, or the fix was never proven in the first place. All three are
 verification failures, not coding failures.
+
+<RecipeBeats />

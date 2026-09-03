@@ -67,9 +67,13 @@ this replaces. Only `type: "command"` enforces.
 | cupertino | sonnet | — | `0/19/1` → `0/12/8` | **legacy** |
 
 The four that gained enforcement gate *operations* — advance past a wire, apply
-a fix, write a record, exit with a code. compass and cupertino are **advisory**:
-compass shapes reasoning, cupertino shapes design judgment. There is no tool
-call to deny when the rule is "explore branches independently before scoring."
+a fix, write a record, exit with a code. As measured in this pass, compass and
+cupertino were both treated as **advisory**: compass shapes reasoning, cupertino
+shapes design judgment, and there is no tool call to deny when the rule is
+"explore branches independently before scoring." That still holds for compass.
+It no longer holds for cupertino, whose hand-edited legacy code — kept over the
+rebuild — does register a real `type: "command"` PreToolUse hook; see `CLAUDE.md`'s
+"Enforcement: only hooks actually enforce".
 
 Opus could not raise compass either (1 → 1), which rules out model capability as
 the explanation.
@@ -128,9 +132,22 @@ assert exit code *and* JSON shape.
 ## 6. Not done
 
 - gate 4 (behavioral, clean box) has not run against the four keepers
-- the hook exists only in `plugins/andon`; the other three keepers were generated
-  before requirement 6 (confab has one, self-assess and cli-scaffold do not)
+- as originally written here (2026-07-27, commit `0c10fa0`) this bullet claimed
+  the PreToolUse hook "exists only in `plugins/andon`" while granting in the same
+  sentence that confab has one too, and further claimed self-assess had none —
+  that second claim was already wrong the day it was written: the same commit
+  also added `hooks/hooks.json` to `confab`, `cupertino`, and `self-assess`.
+  Current inventory (checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`):
+  `andon`, `confab`, `cupertino`, `self-assess`, and `takt` each have one;
+  `cli-scaffold`, `codebase-consistency`, and `compass` do not
 - compass/cupertino rebuilds are retained under `plugins/` but should not be
-  promoted over `legacy_plugins/`
-- `.claude-plugin/marketplace.json` and `.rrt.toml` still point every plugin at
-  `legacy_plugins/`; promoting a rebuild means repointing its entry
+  promoted over `legacy_plugins/` — moot as written: `legacy_plugins/` was since
+  deleted (see the note below), and both plugins kept their hand-edited legacy
+  code rather than being promoted
+
+Done since: `.claude-plugin/marketplace.json` and `.rrt.toml` no longer point
+at `legacy_plugins/` — both now source every plugin straight from
+`plugins/<name>/` (confirmed 2026-09-03: `grep -n legacy_plugins
+.claude-plugin/marketplace.json .rrt.toml` returns nothing). `legacy_plugins/`
+itself no longer exists — it was deleted, per `test/plugins/cases.tsv`'s
+retirement comment.

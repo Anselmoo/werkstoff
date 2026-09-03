@@ -25,8 +25,10 @@ donts:
   - "Don't leave the job's effect unasserted -- nothing catching a silent skip once means nothing will catch it the next time either."
 ---
 
-# Investigate a job that reports success but changed nothing
+<RecipeHeader />
 
 The most expensive CI defect is the green one. A job exits zero, the badge stays green,
 and the work it was supposed to do never happened. Conditional skips, swallowed errors,
 and unmatched patterns all produce this shape.
+
+<RecipeBeats />

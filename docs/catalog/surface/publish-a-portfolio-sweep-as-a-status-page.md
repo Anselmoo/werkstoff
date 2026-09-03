@@ -22,7 +22,7 @@ donts:
   - "Don't let an unassessed repo's Gray verdict get smoothed into an invented grade on the published page."
 ---
 
-# Publish a multi-repo portfolio sweep as a living, shareable status page
+<RecipeHeader />
 
 self-assess-portfolio's own output is deliberately narrow: one grade per repo, worst-signal-wins,
 written once to a local file with no sharing and no delta tracking across sweeps.
@@ -30,3 +30,5 @@ project-artifact adds exactly what that file lacks -- a shareable URL, status pi
 Attention tab for what's blocked, and a refresh that reports only what changed since the
 last sweep instead of re-narrating every repo. Run the sweep first; a Gray verdict means
 "not yet assessed," and the status page must not smooth that over into an invented grade.
+
+<RecipeBeats />

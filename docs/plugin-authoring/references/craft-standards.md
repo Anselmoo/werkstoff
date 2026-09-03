@@ -29,8 +29,8 @@ one-size-fits-all:
 
 A skill can blend types. What you never do is impose a workflow skill's machinery
 (phases, validation loops, output skeletons) on a skill that isn't one — this is a real
-werkstoff-relevant caution, since `compass` and `cupertino`'s advisory skills are
-deliberately *not* gated the way `andon`/`confab`'s enforcement skills are (see
+werkstoff-relevant caution, since `compass`'s advisory skills are deliberately *not*
+gated the way `andon`/`confab`'s enforcement skills are (see
 `CLAUDE.md`'s "Enforcement: only hooks actually enforce" section — the same
 type-proportionality point, arrived at independently).
 
@@ -53,10 +53,12 @@ skill-name/
 **werkstoff status:** `references/` is already an established pattern (`andon`,
 `cli-scaffold`, `confab`, `cupertino`, `self-assess` all use it, at both plugin-root and
 skill-scope — see `CLAUDE.md`'s own note on `self-assess-extract-rules/references/`).
-`templates/` and `assets/` are not used anywhere in werkstoff today — the `templates/`
-vs `references/` distinction (schema-you-fill-in vs. detail-you-read) is currently
-collapsed into `references/` everywhere, including the three-file split just added to
-`self-assess-extract-rules/references/` (`rule-card-template.md` plays the `templates/`
+`templates/` is not used anywhere in werkstoff today; `assets/` is — 7 of the 8 plugins
+(all but `takt`) have a plugin-root `assets/` directory, referenced from SKILL.md (or,
+for `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`. The
+`templates/` vs `references/` distinction (schema-you-fill-in vs. detail-you-read) is
+still collapsed into `references/` for that role, including the three-file split just
+added to `self-assess-extract-rules/references/` (`rule-card-template.md` plays the `templates/`
 role by content, but lives under `references/` by directory, matching this repo's
 existing single-directory convention — see `output-shape-findings.md` §4.6 for why that
 deviation from `Wirasm/prp`'s literal layout was made deliberately, not by oversight).
@@ -84,7 +86,7 @@ moment (current repo state, the user's actual intent).
 | Field | Wirasm/prp's rule | werkstoff's actual usage |
 |---|---|---|
 | `name` | ≤64 chars, lowercase+hyphens, matches directory | Followed — `name:` always matches the skill's directory name across all 63 SKILL.md files |
-| `description` | ≤1024 chars, third person, WHAT + WHEN + literal phrases | Followed — longest is 647 chars (`cli-scaffold-shell`), well under the ceiling; all use the "Use this skill when the user asks to..." trigger-phrase pattern |
+| `description` | ≤1024 chars, third person, WHAT + WHEN + literal phrases | Followed — longest is 631 chars (`cli-scaffold-shell`, as of `1cd5d07`), well under the ceiling; all use the "Use this skill when the user asks to..." trigger-phrase pattern |
 | `version` | not a field Wirasm/prp's spec lists at all (nor is it a documented Claude Code SKILL.md field — see `output-shape-findings.md` §5) | Was present, frozen at `0.1.0`, in all 16 `self-assess` skills only — removed; matches the other five plugins, which never had it |
 | `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `self-assess-idiom-fix`, `self-assess-transform-execute`, and `confab-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
 
@@ -97,8 +99,9 @@ Three load levels: metadata (`name`+`description`, ~100 words, always in context
 loaded only on demand, effectively unlimited).
 
 **werkstoff status: confirmed clean.** Across all 63 SKILL.md files, body word counts
-range 196–1,381 words (average 411) — comfortably under even the 1,500–2,000 target, let
-alone the 5k ceiling. This independently corroborates `output-shape-findings.md`'s
+range 196–1,381 words (average 433, as of `1cd5d07`) — comfortably under even the
+1,500–2,000 target, let alone the 5k ceiling. This independently corroborates
+`output-shape-findings.md`'s
 `obra/superpowers` citation of the same "<150 words for always-loaded skills, one
 excellent example beats several mediocre ones" discipline — two unrelated sources
 converging on the same number is a stronger signal than either alone.

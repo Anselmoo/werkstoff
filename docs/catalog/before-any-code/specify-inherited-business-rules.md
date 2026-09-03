@@ -31,10 +31,12 @@ donts:
   - "Don't wait until after the rewrite starts to write characterization tests -- by then they're useless."
 ---
 
-# Specify an inherited codebase's business rules
+<RecipeHeader />
 
 Specifying an inherited codebase's rules only works if the second extractor runs after
 the first, not instead of it — the cross-check needs an independent read to disagree
 with, not a second pass over the same output. Characterization tests then pin down what
 both extractors agree the code does, before any transformation gets a chance to
 invalidate the read.
+
+<RecipeBeats />

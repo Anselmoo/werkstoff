@@ -26,9 +26,11 @@ donts:
   - "Don't ship a tuned instruction into a SKILL.md without checking whether its frontmatter and description will actually make it fire."
 ---
 
-# Tune an instruction a workflow will reuse
+<RecipeHeader />
 
 Anchor an ambiguous output shape to concrete examples before reaching for more descriptive
 prose, then score competing phrasings against real test cases rather than picking by feel.
 If the tuned instruction is destined for a SKILL.md, its frontmatter and description are
 what decide whether it fires at all, so settle the wording before shipping it there.
+
+<RecipeBeats />

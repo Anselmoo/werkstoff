@@ -25,8 +25,10 @@ donts:
   - "Don't set a tolerance wide enough to pass regardless -- that's wide enough to hide the defect too."
 ---
 
-# Do oracle engineering and numerical V&V
+<RecipeHeader />
 
 Numerical correctness has a distinct failure mode: the code and the test agree because
 both were written from the same misunderstanding. The fix is an oracle the implementation
 did not author.
+
+<RecipeBeats />

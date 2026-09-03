@@ -26,10 +26,12 @@ donts:
   - "Don't accept 'it merged' as evidence that 'it produced the artifact' -- verify the second claim, not just the first."
 ---
 
-# Finish and integrate a development branch
+<RecipeHeader />
 
 How to integrate a finished branch -- merge, rebase, or PR -- is a decision with a real
 wrong answer in this repo, not a formality to rubber-stamp once the tests are green. Run
 the changed-files audit first, make the integration decision deliberately, then verify what
 actually happened rather than what was supposed to happen, and prove the release wire itself
 before trusting that a green merge means the release is real.
+
+<RecipeBeats />

@@ -28,8 +28,10 @@ donts:
   - "Don't leave an agreed scope unwritten -- it will be re-litigated at every subsequent step."
 ---
 
-# Scope an ambiguous task
+<RecipeHeader />
 
 "Make the plugins consistent" is not a task; it is four tasks wearing one coat. Scoping
 work belongs strictly before anything else, because every later decision inherits the
 ambiguity unchanged.
+
+<RecipeBeats />

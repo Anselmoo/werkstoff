@@ -28,9 +28,11 @@ donts:
   - "Don't reach for andon-verify here -- it proves a wire from evidence the wire already produced, and an unexercised path has none to route."
 ---
 
-# Rehearse a release path that has never succeeded
+<RecipeHeader />
 
 **No werkstoff fit — this is pure Superpowers.** `andon-verify` proves a wire from
 evidence that the wire has already produced. A release path that has never run has
 produced no evidence to route, so there is nothing for it to prove; and no werkstoff skill
 rehearses an unexercised path.
+
+<RecipeBeats />

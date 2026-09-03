@@ -12,8 +12,10 @@ with Superpowers, with an official Anthropic plugin, or uses werkstoff alone.
 
 A recipe with an empty `external` filter is werkstoff-only. One tagged `superpowers`
 combines a werkstoff beat with a Superpowers skill in the same task. One tagged
-`claude-plugins-official` reaches into `pr-review-toolkit`, `code-modernization`,
-`frontend-design`, or `plugin-dev`.
+`claude-plugins-official` reaches into one or more of the official plugins —
+`pr-review-toolkit`, `code-modernization`, `frontend-design`, `plugin-dev`,
+`feature-dev`, `hookify`, `claude-md-management`, and `project-artifact` all appear
+across the catalog.
 
 Three recipes are marked "no werkstoff fit" in their body text — honest gaps where
 Superpowers alone is the better answer, not a forced pairing.
@@ -31,6 +33,12 @@ lists its **beats** in order — each an ordered moment where a skill or agent e
 place, given as `skill`, `why` (what is lost if the beat slides to a different position),
 and an optional literal `prompt` that fires it. A closing `grounding` field gives a
 worked example drawn from this repository.
+
+None of that is hand-laid-out prose: `<RecipeHeader />` renders the page's `h1` and
+summary from `task` and `summary`, and `<RecipeBeats />` renders the numbered Beats
+list (and the Worked example) from `beats` and `grounding`, all read straight out of
+that page's own frontmatter. `tools/catalog-validator/validate_catalog.py` fails CI
+if a recipe body is missing either component.
 
 Three conventions hold throughout the catalog.
 
@@ -58,12 +66,9 @@ running ahead of a beat the repository declared it depends on, and stays inert u
 one; it's the mechanism that turns "these beats fire in this order" from documentation
 this catalog states into a constraint the runtime actually enforces.
 
-Where a recipe dispatches several agents at once, one rule from
-`superpowers:subagent-driven-development` applies verbatim: "Always specify the model
-explicitly when dispatching a subagent. An omitted model inherits your session's model —
-often the most capable and most expensive — which silently defeats this section."
-Mechanical fan-out goes to the cheap tier; integration and judgment to the standard tier;
-architecture and any final whole-branch review to the most capable tier.
+Where a recipe dispatches several agents at once, the model tiering rule applies —
+see ["How many plugins"](#how-many-plugins) below for the full guidance and the
+verbatim rule it's drawn from.
 
 ## How many plugins
 
@@ -85,8 +90,8 @@ Two mechanical rules govern the dispatch itself. From
 `superpowers:dispatching-parallel-agents`: "Multiple dispatch calls in one response =
 parallel execution. One per response = sequential." And from
 `superpowers:subagent-driven-development`: "Always specify the model explicitly when
-dispatching a subagent. An omitted model inherits your session's model - often the most
-capable and most expensive - which silently defeats this section." Mechanical fan-out
+dispatching a subagent. An omitted model inherits your session's model — often the most
+capable and most expensive — which silently defeats this section." Mechanical fan-out
 takes the cheap tier, integration and judgment the standard tier, architecture and the
 final whole-branch review the most capable tier, and any fix round that has already failed
 three times moves at least one tier up.

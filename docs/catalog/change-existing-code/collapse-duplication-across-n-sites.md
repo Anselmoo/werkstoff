@@ -28,8 +28,10 @@ donts:
   - "Don't trust a green import as proof that every consumer still works -- that's the exact claim andon-verify has to prove instead of assume."
 ---
 
-# Collapse duplication hand-synced across N sites
+<RecipeHeader />
 
 N byte-identical copies kept in step by hand is a defect with a countdown. The trap is
 that collapsing them looks trivial, and the risk lives entirely in the sites that were
 about to diverge.
+
+<RecipeBeats />

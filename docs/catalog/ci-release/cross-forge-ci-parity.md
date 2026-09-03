@@ -25,8 +25,10 @@ donts:
   - "Don't trust CI documentation as current -- it's exactly what let the surfaces drift apart unnoticed in the first place."
 ---
 
-# Check cross-forge CI parity
+<RecipeHeader />
 
 Two execution surfaces claiming to run "the same checks" drift silently, because nothing
 compares them. The trap is that both surfaces are green and neither is running what the
 documentation says it runs.
+
+<RecipeBeats />

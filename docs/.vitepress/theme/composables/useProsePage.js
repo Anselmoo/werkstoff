@@ -37,7 +37,7 @@
  * missing here. Registering a component without listing it here would silently
  * mis-scope both marks on that page; the audit is what stops that being silent.
  */
-export const COMPONENT_TAGS = ['CatalogGrid', 'PairingCards']
+export const COMPONENT_TAGS = ['CatalogGrid', 'PairingCards', 'RecipeHeader', 'RecipeBeats']
 
 /**
  * @param {Record<string, unknown>} frontmatter parsed page frontmatter

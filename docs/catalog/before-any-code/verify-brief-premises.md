@@ -25,9 +25,11 @@ donts:
   - "Don't add a named dependency without confirming it exists -- a hallucinated or typosquat-adjacent package is free to catch now and expensive later."
 ---
 
-# Verify a brief's premises before acting
+<RecipeHeader />
 
 Most bad work is correct work aimed at a premise that was never true. A brief arrives
 asserting where something lives, what a job does, or which package is already a
 dependency — and the cheapest possible moment to test those assertions is before a single
 file is opened for editing.
+
+<RecipeBeats />

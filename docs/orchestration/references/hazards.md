@@ -25,11 +25,12 @@ Two details matter beyond the table. First, andon's matcher covers `Write` and `
 only — it does not list `MultiEdit`, unlike self-assess's matcher on the same three
 tool names. Second, two matchers reach upstream of the edit itself by covering
 `Skill|Task|Agent`, so they can intercept a dispatch and not only a file write.
-cupertino uses that reach for its own ordering — refusing `cupertino-focus` or
-`cupertino-longevity` before `cupertino-backwards` has run, via
-`GATED_AFTER_BACKWARDS`. takt's matcher is the widest of the five, adding
-`MultiEdit` on top of the same dispatch tools, and it gates declared beat order
-across plugins rather than within one. The other three reach only the write tools.
+cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
+`cupertino-longevity`, `cupertino-integrate`, or `cupertino-council` before
+`cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. takt's matcher is the
+widest of the five, adding `MultiEdit` on top of the same dispatch tools, and it
+gates declared beat order across plugins rather than within one. The other three
+reach only the write tools.
 
 ## All five fail closed, with one shared exception
 

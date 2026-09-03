@@ -22,10 +22,12 @@ donts:
   - "Don't treat a stale claim the drift check found as something to build around instead of something to fix first."
 ---
 
-# Improve a stale CLAUDE.md without trusting its own claims
+<RecipeHeader />
 
 A CLAUDE.md that claude-md-improver extends without first checking its existing claims
 against the code risks reinforcing content that's already wrong — its own quality rubric
 grades currency on a letter scale, not claim by claim. self-assess-docs-drift closes that
 gap first, with file:line evidence on both the doc side and the code side, so the
 improvement pass starts from a verified baseline instead of a plausible-looking one.
+
+<RecipeBeats />

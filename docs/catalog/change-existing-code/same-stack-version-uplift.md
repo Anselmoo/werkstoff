@@ -28,8 +28,10 @@ donts:
   - "Don't batch mechanical fixes across multiple files in one remediation pass."
 ---
 
-# Perform a same-stack version uplift
+<RecipeHeader />
 
 A same-stack uplift preserves code and tweaks it; it is not a rewrite from intent. The
 right tool for it lives inside `code-modernization`, and the right way to use it is to
 dispatch the one agent directly rather than adopt the eight-stage pipeline around it.
+
+<RecipeBeats />

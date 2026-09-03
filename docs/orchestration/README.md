@@ -34,7 +34,7 @@ so is wrong.
 
 **The Anthropic-internal plugins ship named, tool-scoped agents that a command
 orchestrates.** `pr-review-toolkit` holds 6 agents behind one command, `feature-dev`
-3 behind one, `code-modernization` 8 behind ten, and `claude-security` 7 behind none.
+3 behind one, `code-modernization` 8 behind ten, and `claude-security` 8 behind none.
 The agents are the reusable part; the command is the pipeline that happens to sequence
 them.
 
@@ -93,8 +93,8 @@ verification beat inside any other workflow.
 The six `pr-review-toolkit` agents declare no `tools:` key, fetch no PR themselves, and
 are diff-shaped — which is exactly what makes them droppable into a werkstoff review
 gate. `claude-security` is the exception on the other side: it sets
-`disable-model-invocation: true`, so the model can never propose it, and five of its
-seven agents state they are not for direct invocation.
+`disable-model-invocation: true`, so the model can never propose it, and six of its
+eight agents state they are not for direct invocation (as of `claude-security@0.11.0`).
 
 ## The four beats
 

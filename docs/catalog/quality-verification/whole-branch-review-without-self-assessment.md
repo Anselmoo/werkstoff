@@ -32,8 +32,10 @@ donts:
   - "Don't resolve a disagreement between reviewers by picking one over the other without running the tribunal to decide it per criterion."
 ---
 
-# Whole-branch review without re-trusting the branch's own self-assessment
+<RecipeHeader />
 
 The failure mode is structural, not moral: a session that built something is the worst
 available judge of it, because it reviews the intent it remembers rather than the diff it
 produced. Every skill here is chosen for its blindness properties.
+
+<RecipeBeats />

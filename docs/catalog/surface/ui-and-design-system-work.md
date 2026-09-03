@@ -25,8 +25,10 @@ donts:
   - "Don't audit for accessibility and hardcoded values before the markup exists -- there's nothing real to check yet."
 ---
 
-# Do UI and design-system work
+<RecipeHeader />
 
 Design work has a hard ordering constraint that most other tasks do not: the principled
 pass must precede the code, and the static audit must follow it. Running either in the
 wrong order produces the appearance of both with the value of neither.
+
+<RecipeBeats />

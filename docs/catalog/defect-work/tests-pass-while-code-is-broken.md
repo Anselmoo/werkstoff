@@ -25,8 +25,10 @@ donts:
   - "Don't write an assertion whose expected value is the same hardcoded default the code falls back to -- it passes whether or not the real path ever executes."
 ---
 
-# Investigate tests that pass while the code is broken
+<RecipeHeader />
 
 A green suite proves the tests ran, not that they would notice. The specific trap worth
 naming: an assertion whose expected value brackets a hardcoded default, so the test passes
 whether or not the logic under it ever executes.
+
+<RecipeBeats />

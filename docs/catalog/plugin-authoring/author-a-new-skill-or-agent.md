@@ -32,7 +32,7 @@ donts:
   - "Don't skip the agentic-reliability audit just because the description and structure already passed review -- it catches a different category of defect entirely."
 ---
 
-# Author a new skill or agent for a plugin
+<RecipeHeader />
 
 A new skill or agent that never fires reports no error at all — it just sits unused,
 indistinguishable from a skill nobody needed. `plugin-dev:skill-development` supplies the
@@ -41,3 +41,5 @@ checks whether the description will actually trigger; that is `plugin-dev:skill-
 job specifically. `confab:confab-agentic-reliability` catches what a style/triggering
 review reads past — excessive tool grants and missing verify-wiring — and
 `plugin-dev:plugin-validator` runs last, once there is a real manifest to validate against.
+
+<RecipeBeats />

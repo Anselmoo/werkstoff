@@ -4,16 +4,23 @@ import { useData } from 'vitepress'
 import CopyButton from './CopyButton.vue'
 import DoDontList from './DoDontList.vue'
 import BeatSkillRefs from './BeatSkillRefs.vue'
+import PromptFence from './PromptFence.vue'
 import { useClipboardCopy } from '../composables/useClipboardCopy'
 
-// Injected globally via the `doc-after` slot (see theme/index.js) so it
-// renders after every page's markdown body. It must stay inert on any page
-// whose frontmatter carries no `beats` -- that's what makes global injection
-// safe rather than recipe-page-only. `openingPrompt`, `dos`, and `donts` are
-// all OPTIONAL recipe frontmatter keys nested inside that same outer guard:
-// a recipe carrying none of them still renders exactly as it did before
-// they existed, and each one's own sub-template is independently guarded so
-// a recipe can carry any subset of the three.
+// Placed in each recipe's markdown BODY as `<RecipeBeats />`, not mounted in a
+// VitePress layout slot. theme/index.js carries the full rationale for why no
+// slot works here; the short version is that `doc-after` renders below the
+// prev/next footer (which is how 37 recipes shipped with their Beats under the
+// navigation) and `doc-footer-before` renders inside a contentinfo <footer>.
+// Only a body mount lands inside <main>.
+//
+// Because a missing component renders nothing at all and raises no error,
+// tools/catalog-validator/validate_catalog.py fails CI when a recipe body omits
+// it -- that check is what makes body mounting safe rather than forgettable.
+//
+// `openingPrompt`, `dos` and `donts` are OPTIONAL recipe frontmatter keys, each
+// independently guarded, so a recipe carrying any subset of the three renders
+// exactly as it did before they existed.
 const { frontmatter } = useData()
 
 // Shared with PairingCards.vue's per-card copy buttons -- see
@@ -75,27 +82,31 @@ const pluginRequirements = computed(() => {
     </p>
 
     <h2 id="beats">Beats</h2>
+    <p class="beats-lead">
+      Run these in order. Each prompt is copy-pasteable straight into Claude Code.
+    </p>
+
     <ol class="beats-list">
       <li v-for="(beat, index) in frontmatter.beats" :key="`${beat.skill}-${index}`" class="beat">
         <BeatSkillRefs :skill="beat.skill" />
         <p class="beat-why">{{ beat.why }}</p>
         <!--
-          Demoted, not deleted: the per-beat prompt stays in the DOM (closed
-          <details> still renders its text for in-page find and the local
-          search index) but no longer competes with the opening prompt for
-          "which of these do I paste?" -- see infodesign brief S4. The
-          summary names the job rather than saying "Show more": this prompt
-          is for running the beat on its own, standalone, which is a real
-          and different use from the opening prompt (the brief cites
-          andon-verify/andon-propose as the standing example of a leaf run
-          this way). Native <details>/<summary>: keyboard-operable and
-          announced by screen readers with no ARIA required.
+          Demoted, not deleted: the per-beat prompt stays in the DOM (a closed
+          <details> still renders its text for in-page find and the local search
+          index) but no longer competes with the opening prompt for "which of
+          these do I paste?". The summary names the job rather than saying "Show
+          more" -- this prompt is for running the beat standalone, a real and
+          different use from the opening prompt.
+
+          The body is a PromptFence, not a blockquote: prompts render as real
+          `language-prompt` code fences, the convention werkstoff.css calls the
+          docs' signature element, and that is what carries a working copy
+          button. Native <details>/<summary> keeps it keyboard-operable and
+          screen-reader-announced with no ARIA of our own.
         -->
         <details v-if="beat.prompt" class="disclosure beat-prompt-disclosure">
           <summary>Run this beat on its own</summary>
-          <blockquote class="beat-prompt">
-            <p>{{ beat.prompt }}</p>
-          </blockquote>
+          <PromptFence :text="beat.prompt" />
         </details>
       </li>
     </ol>
@@ -125,26 +136,57 @@ const pluginRequirements = computed(() => {
 
 <style scoped>
 .recipe-beats {
-  margin-top: 2rem;
-  padding-top: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 0.5rem;
   border-top: 1px solid var(--vp-c-divider);
 }
 
+.beats-lead {
+  color: var(--vp-c-text-2);
+  margin-top: 0.5rem;
+}
+
+/* Counter-driven numbering rather than a plain <ol> marker: the step number is
+ * the one piece of information a reader scanning a fixed chain needs first, and
+ * a default marker sits too far from the skill id to read as a sequence. */
 .beats-list {
-  padding-left: 1.25rem;
+  list-style: none;
+  padding-left: 0;
+  counter-reset: beat;
 }
 
 .beat {
-  margin-bottom: 1.25rem;
+  counter-increment: beat;
+  position: relative;
+  padding-left: 2.5rem;
+  margin-bottom: 1.75rem;
+}
+
+.beat::before {
+  content: counter(beat);
+  position: absolute;
+  left: 0;
+  top: 0.1rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--vp-c-default-soft);
+  color: var(--vp-c-text-1);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.beat-skill {
+  margin: 0;
 }
 
 .beat-why {
   color: var(--vp-c-text-2);
-  margin: 0.25rem 0;
-}
-
-.beat-prompt {
-  margin: 0.5rem 0 0;
+  margin: 0.35rem 0 0.6rem;
 }
 
 .grounding {
@@ -230,5 +272,11 @@ const pluginRequirements = computed(() => {
   color: var(--vp-c-text-1);
   background: none;
   padding: 0;
+}
+
+/* The fence carries its own accent border from werkstoff.css; pull it back in
+ * line with the step column so the chain reads as one left edge. */
+.beat :deep(div[class*='language-']) {
+  margin: 0.5rem 0 0;
 }
 </style>

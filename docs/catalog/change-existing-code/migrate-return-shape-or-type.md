@@ -27,7 +27,9 @@ donts:
   - "Don't let the migration land before snapshot tests like `tests/__snapshots__/test_cli.ambr` are read -- they re-record silently and swallow the exact drift this recipe exists to catch."
 ---
 
-# Migrate a return shape or type representation
+<RecipeHeader />
 
 Changing what a function hands back is a contract change wearing a refactor's clothes.
 Every call site is a participant, and the compiler catches only the subset that is typed.
+
+<RecipeBeats />

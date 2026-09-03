@@ -25,8 +25,10 @@ donts:
   - "Don't assume dependency existence and pin strength both hold just because one of them was checked."
 ---
 
-# Audit supply-chain pinning and dependencies
+<RecipeHeader />
 
 Two different questions hide under one heading. "Does this package exist?" is answerable
 against a registry. "Is this reference pinned tightly enough to be reproducible?" is a
 policy question about mutable refs, and no werkstoff skill answers it alone.
+
+<RecipeBeats />

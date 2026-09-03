@@ -25,7 +25,9 @@ donts:
   - "Don't leave a rule that must hold universally sitting only in a fenced script or workflow-script guard -- those fire far less reliably than a PreToolUse hook."
 ---
 
-# Make a strategy enforced rather than documented
+<RecipeHeader />
 
 A rule that lives only in prose is a suggestion. This repo has measured the difference,
 and the measurement is what makes the entry actionable rather than moralistic.
+
+<RecipeBeats />

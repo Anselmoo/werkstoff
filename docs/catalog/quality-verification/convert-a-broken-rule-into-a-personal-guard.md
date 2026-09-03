@@ -22,7 +22,7 @@ donts:
   - "Don't expect self-assess-lint-audit to auto-fix what it finds -- it's explicitly read-only by its own stated scope."
 ---
 
-# Convert a documented rule you keep breaking into an immediate personal guard
+<RecipeHeader />
 
 self-assess-lint-audit is explicitly read-only and never auto-fixes a violation it finds --
 that's deliberate, and it leaves a gap for whoever keeps tripping the same rule. hookify
@@ -32,3 +32,5 @@ personal, and immediate, and its own dispatcher fails open on error, unlike the 
 doctrine a plugin-shipped hook has to meet. Use this recipe for a contributor's own habit;
 use the cupertino/plugin-dev recipe when the rule needs to hold for everyone who installs
 the plugin.
+
+<RecipeBeats />

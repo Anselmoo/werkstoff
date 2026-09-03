@@ -26,7 +26,7 @@ donts:
   - "Don't treat a reliability finding as resolved just because a guard was written -- confirm it actually runs, the way this repo's own unresolved arch-health-auditor tool-grant anomaly still hasn't been."
 ---
 
-# Audit your own agent and skill definitions for loop-reliability defects
+<RecipeHeader />
 
 This is the after-the-fact half of authoring, run against skills and agents that already
 exist. `confab:confab-agentic-reliability` sweeps four fixed categories with verification
@@ -35,3 +35,5 @@ paper over an excessive-tool-grant finding by widening its own grant. `plugin-de
 supplies the canonical `tools:`/`description:` spec a finding of "excessive" is judged
 against, and `andon:andon-verify` closes the gap between a guard that exists in prose and
 a guard that actually runs.
+
+<RecipeBeats />

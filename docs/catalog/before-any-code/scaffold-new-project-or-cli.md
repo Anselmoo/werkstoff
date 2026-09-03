@@ -27,9 +27,11 @@ donts:
   - "Don't treat verification as optional once the scaffold exists -- it's cheapest to fix while still disposable."
 ---
 
-# Scaffold a new project or CLI
+<RecipeHeader />
 
 Scaffolding is the one task where the doctrine must be loaded before the generator runs,
 because a scaffold that violates the doctrine is cheaper to regenerate than to retrofit.
 Paradigm choice — compiled, interpreted, or shell — is fixed by language and cannot be
 swapped later without regenerating.
+
+<RecipeBeats />

@@ -25,7 +25,9 @@ donts:
   - "Don't treat a completed copy loop as proof the lock holds -- prove it strictly, the way CI's own `rrt artifacts --check --strict` step does."
 ---
 
-# Propagate a vendored artifact to N copies
+<RecipeHeader />
 
 Propagation is mechanical, parallel, and unforgiving: N-1 updated copies is a worse state
 than zero updated copies, because the drift is now invisible.
+
+<RecipeBeats />

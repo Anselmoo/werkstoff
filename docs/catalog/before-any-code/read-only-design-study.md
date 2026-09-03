@@ -28,9 +28,11 @@ donts:
   - "Don't edit anything -- this is explicitly read-only, before anyone changes it."
 ---
 
-# Run a read-only design study with an evidence legend
+<RecipeHeader />
 
 A design study is worth reading only if its confidence is legible. The trap is a study
 that mixes what was checked with what was assumed and marks neither. A two-symbol legend
 fixes it: **[V]** for a claim carrying a file:line or URL, **[P]** for a claim that is
 provisional — inferred, plausible, and explicitly flagged as unverified.
+
+<RecipeBeats />

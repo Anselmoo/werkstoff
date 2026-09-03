@@ -26,9 +26,11 @@ donts:
   - "Don't claim a review comment is addressed without showing the change that actually resolves its concern."
 ---
 
-# Incorporate external review feedback
+<RecipeHeader />
 
 **No werkstoff fit — this is pure Superpowers.** `superpowers:receiving-code-review` owns
 this task end to end: reading feedback without defensiveness, separating what must change
 from what is preference, and closing the loop. `compass:compass-draft-revise` is the
 nearest candidate but is scoped to prose, not code.
+
+<RecipeBeats />

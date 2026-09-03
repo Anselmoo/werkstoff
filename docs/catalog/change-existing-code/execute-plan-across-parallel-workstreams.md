@@ -30,10 +30,12 @@ donts:
   - "Don't let a partial parallel result pass as complete -- it reads exactly the same until each wire is checked on its own."
 ---
 
-# Execute a written plan across parallel workstreams
+<RecipeHeader />
 
 What can run in parallel here is derived from the dependency graph, not assumed from
 the plan's own layout — a workstream that waits on another's output is sequential work
 wearing a parallel label. Every dispatch, mechanical or architectural, carries an
 explicit model tier, and each workstream earns its own andon-verify proof rather than
 inheriting one from the aggregate result.
+
+<RecipeBeats />

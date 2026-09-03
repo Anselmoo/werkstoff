@@ -537,10 +537,20 @@ def treatment_wiring_gaps() -> list[str]:
         if not re.search(r"h\(DocEnd\)", index_js):
             gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: DocEnd is imported but never "
                         "rendered -- nothing puts the terminal node on the page")
-        elif not re.search(r"'doc-after':.*h\(RecipeBeats\).*h\(DocEnd\)", index_js, re.S):
-            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: the `doc-after` slot does not render "
-                        "RecipeBeats then DocEnd -- order is load-bearing, the node must come "
-                        "after the beats, not before them")
+        elif not re.search(r"'doc-footer-before':\s*\(\)\s*=>\s*h\(DocEnd\)", index_js):
+            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: DocEnd is rendered, but not from the "
+                        "`doc-footer-before` slot -- `doc-after` renders below the whole "
+                        "VPDocFooter, which would put the terminal node under 'Edit this page' "
+                        "and prev/next, marking the end of the page furniture rather than the "
+                        "end of the document")
+        # RecipeBeats must NOT be slot-rendered. It is a markdown-body component
+        # (theme/index.js explains why: no slot lands inside <main>). Putting it
+        # back in a slot would render every recipe's Beats TWICE -- once from the
+        # body, once from the slot -- and the page would still look plausible.
+        if re.search(r"'doc-[a-z-]+':[^\n]*h\(RecipeBeats\)", index_js):
+            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: RecipeBeats is rendered from a layout "
+                        "slot as well as the markdown body -- every recipe would emit its Beats "
+                        "twice")
         if not re.search(r"applyBreathers\(", index_js):
             gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: applyBreathers is imported but "
                         "never called")

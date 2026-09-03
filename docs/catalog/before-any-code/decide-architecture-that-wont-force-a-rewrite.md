@@ -29,10 +29,12 @@ donts:
   - "Don't treat cupertino-longevity as separable from cupertino-integrate -- they run together, at architecture-decision time."
 ---
 
-# Decide an architecture that will not force a rewrite
+<RecipeHeader />
 
 Each beat here is only valid once its predecessor has already run: cupertino-backwards
 must precede any named framework, cupertino-focus must precede longevity and integrate,
 and architecture-critic must close the chain rather than open it. Skipping ahead — naming
 an integration seam before the portfolio is cut, or reviewing adversarially before a
 decision exists to review — produces a verdict on the wrong artifact.
+
+<RecipeBeats />
