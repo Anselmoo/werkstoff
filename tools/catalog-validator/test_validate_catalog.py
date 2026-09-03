@@ -6,7 +6,7 @@ script as a module via importlib (it has no package, so it can't be
 `import`ed normally), build small fixture trees under a TemporaryDirectory,
 and assert on real files -- no mocking of the filesystem calls themselves.
 
-Deliberately does not couple to the real docs/catalog/ (25 recipes and
+Deliberately does not couple to the real docs/catalog/ (37 recipes and
 counting, changing under concurrent work) or the real surface.json -- every
 test builds its own tiny fixture catalog and fixture surface.json.
 

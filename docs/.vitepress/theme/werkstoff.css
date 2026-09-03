@@ -492,7 +492,7 @@ div[class*='language-prompt'] {
  * >> to prose pages all live in theme/index.js and a DocEnd component, which
  * >> this file does not own. Two things must hold there or this rule is inert
  * >> or wrong: (1) the element carries class `wk-doc-end`; (2) it renders
- * >> nothing unless the page is prose -- `frontmatter.beats` (25 recipe pages,
+ * >> nothing unless the page is prose -- `frontmatter.beats` (37 recipe pages,
  * >> where RecipeBeats owns the tail), `frontmatter.pairings`, and any
  * >> `layout` other than `doc` must all return false. RecipeBeats is injected
  * >> globally through the same `doc-after` slot, so an unscoped node lands in

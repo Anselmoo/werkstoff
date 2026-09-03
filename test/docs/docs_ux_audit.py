@@ -28,7 +28,13 @@ What it checks:
        16 genuine prose pages (see is_component_rendered()): a flat run of
        same-level headings the outline can't collapse, a page too long to
        read in one sitting, and the longest stretch of prose between two
-       headings a reader could get lost in
+       headings a reader could get lost in. The two length arms are gated on
+       whether the page carries the long-page treatment they prescribe --
+       that remedy is applied at runtime, in the DOM, so a source-only check
+       could never see it land and the pages stayed red forever. The
+       thresholds are untouched; see check_c4_outline() for what can still
+       fail, and treatment_wiring_gaps() for the mechanism every verdict
+       rests on.
     5. C5 -- do/don't guidance coverage across pairings and recipes
     6. C6 -- every recipe body says something its frontmatter doesn't, so a
        reader arriving from search has something to orient on
@@ -172,8 +178,8 @@ def registered_components() -> set[str]:
     hardcoded here, so a newly registered component cannot silently leave a
     page mis-graded (the exact drift this tool exists to catch).
     """
-    source = (DOCS / ".vitepress" / "theme" / "index.js").read_text(encoding="utf-8")
-    return set(re.findall(r"app\.component\('([A-Za-z0-9]+)'", source))
+    return set(re.findall(r"app\.component\('([A-Za-z0-9]+)'",
+                          js_code(DOCS / ".vitepress" / "theme" / "index.js")))
 
 
 def is_component_rendered(path: Path) -> bool:
@@ -212,6 +218,369 @@ def longest_gap_between_headings(body: str) -> int:
     """
     segments = re.split(r"^#{2,4} .*$", body, flags=re.M)
     return max((len(seg.split()) for seg in segments), default=0)
+
+
+# ---------------------------------------------------------------------------
+# The long-page treatment, modelled from the theme that implements it
+# ---------------------------------------------------------------------------
+#
+# C4's two reading-load arms name a RUNTIME remedy. Everything below is what
+# lets the check see whether that remedy actually reaches a given page, instead
+# of failing a page forever for a defect its own prescribed fix cannot touch.
+
+THEME = DOCS / ".vitepress" / "theme"
+PROSE_PREDICATE_JS = THEME / "composables" / "useProsePage.js"
+BREATHERS_JS = THEME / "composables" / "useBreathers.js"
+DOC_END_VUE = THEME / "components" / "DocEnd.vue"
+THEME_INDEX_JS = THEME / "index.js"
+
+
+def js_code(path: Path) -> str:
+    """A JS/Vue source with its comments removed.
+
+    Every wiring assertion below greps source for a construct. Grepping the raw
+    file greps the PROSE TOO, and these files are heavily commented with the
+    exact identifiers being asserted -- so a guard would go on passing after the
+    code it guards was deleted, satisfied by the comment that describes it.
+    Measured, not theorised: deleting theme/index.js's route-change hook left
+    C4 green, because the comment above it still said `onAfterRouteChange`.
+    That is CLAUDE.md's "code that looks correct and silently does nothing",
+    committed by this audit against itself.
+    """
+    source = path.read_text(encoding="utf-8")
+    source = re.sub(r"/\*.*?\*/", " ", source, flags=re.S)
+    return re.sub(r"^\s*//.*$", "", source, flags=re.M)
+
+
+def breather_params() -> tuple[int, int]:
+    """`RUN_MIN` and `EVERY`, read live from useBreathers.js.
+
+    Not copied into this file. They are the knob the design brief calls
+    measured-not-guessed, and a Python copy of them would drift from the
+    JavaScript that actually inserts the marks without anything noticing --
+    which is the whole class of defect C4 was rewritten to stop pretending it
+    could see. Missing or unparseable is an audit-cannot-run error, never a
+    default: a defaulted threshold is exactly the "policy by accident" this
+    check refuses elsewhere.
+    """
+    if not BREATHERS_JS.is_file():
+        raise DocsAuditError(f"{BREATHERS_JS.relative_to(REPO)} is missing -- the breather half of "
+                             "the long-page treatment cannot be modelled")
+    source = js_code(BREATHERS_JS)
+    values = {}
+    for name in ("RUN_MIN", "EVERY"):
+        match = re.search(rf"^export const {name} = (\d+)$", source, re.M)
+        if match is None:
+            raise DocsAuditError(f"{BREATHERS_JS.relative_to(REPO)}: cannot read `export const "
+                                 f"{name} = <int>` -- C4 cannot model breather placement without it")
+        values[name] = int(match.group(1))
+    return values["RUN_MIN"], values["EVERY"]
+
+
+def outline_max_level() -> int:
+    """The deepest heading level the right-hand rail renders, from config.mjs's
+    `outline: [min, max]`. Part of the long-page treatment: an outline that
+    stops at h2 gives a long page no resumption structure however many h3s it
+    has.
+    """
+    source = CONFIG.read_text(encoding="utf-8")
+    match = re.search(r"^\s*outline: \[(\d+), (\d+)\],$", source, re.M)
+    if match is None:
+        raise DocsAuditError(f"{CONFIG.relative_to(REPO)}: cannot read `outline: [min, max]`")
+    return int(match.group(2))
+
+
+# Block openers, checked in this order. Order matters: a line can satisfy more
+# than one pattern, and the first match wins the way markdown-it resolves it.
+_FENCE = re.compile(r"^(```+|~~~+)")
+_CONTAINER_OPEN = re.compile(r"^:::+\s*\S")
+_CONTAINER_CLOSE = re.compile(r"^:::+\s*$")
+_HEADING = re.compile(r"^(#{1,6}) ")
+_THEMATIC_BREAK = re.compile(r"^(---+|\*\*\*+|___+)$")
+_LIST_ITEM = re.compile(r"^([-*+] |\d+[.)] )")
+
+
+def markdown_blocks(body: str) -> list[tuple[str, str]]:
+    """Split a markdown body into the TOP-LEVEL block elements it renders as,
+    in order, as (tag, source-text) pairs.
+
+    This exists because useBreathers.js counts `root.children` -- the top-level
+    DOM element sequence -- and nothing about a markdown source file tells you
+    that sequence directly. Two consequences drive every rule below, and both
+    are the difference between a model and a guess:
+
+      * a bulleted list is ONE <ul> however many items it has. The 1,010-word
+        tail of andon-behavior-contract.md is a <p> and a <ul>: two blocks, not
+        nine, so no breather can land in it whatever the threshold is.
+      * a `::: details` container is ONE <details>, and the paragraphs inside it
+        are NOT top-level children. Six of them separate the paragraphs of
+        plugin-benchmark-plan.md's longest stretch.
+
+    Verified rather than assumed: the tag sequence this returns was diffed
+    against the live client DOM of all 16 prose pages, read out of a real
+    browser after hydration. See the C4 wiring notes for what that check found.
+    """
+    lines = body.split("\n")
+    blocks: list[tuple[str, str]] = []
+    i, n = 0, len(lines)
+
+    def emit(tag: str, start: int, stop: int) -> None:
+        blocks.append((tag, "\n".join(lines[start:stop])))
+
+    while i < n:
+        raw = lines[i]
+        line = raw.strip()
+        if not line:
+            i += 1
+            continue
+
+        fence = _FENCE.match(line)
+        if fence:
+            marker = fence.group(1)
+            j = i + 1
+            while j < n and not lines[j].strip().startswith(marker):
+                j += 1
+            emit("CODE", i, min(j + 1, n))
+            i = j + 1
+            continue
+
+        if line.startswith(":::"):
+            depth, j = 0, i
+            while j < n:
+                inner = lines[j].strip()
+                if _CONTAINER_OPEN.match(inner):
+                    depth += 1
+                elif _CONTAINER_CLOSE.match(inner):
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            emit("CONTAINER", i, min(j + 1, n))
+            i = j + 1
+            continue
+
+        heading = _HEADING.match(line)
+        if heading:
+            emit(f"H{len(heading.group(1))}", i, i + 1)
+            i += 1
+            continue
+
+        if _THEMATIC_BREAK.match(line):
+            emit("HR", i, i + 1)
+            i += 1
+            continue
+
+        if line.startswith(">"):
+            j = i
+            while j < n and lines[j].strip():
+                j += 1
+            emit("BLOCKQUOTE", i, j)
+            i = j
+            continue
+
+        if line.startswith("|"):
+            j = i
+            while j < n and lines[j].strip().startswith("|"):
+                j += 1
+            emit("TABLE", i, j)
+            i = j
+            continue
+
+        if _LIST_ITEM.match(line):
+            tag = "UL" if line[0] in "-*+" else "OL"
+            j = i
+            while j < n:
+                if lines[j].strip():
+                    j += 1
+                    continue
+                # A blank line ends the list only if what follows is neither an
+                # indented continuation nor another item: markdown-it keeps both
+                # inside the same (loose) list, and so must this.
+                k = j + 1
+                while k < n and not lines[k].strip():
+                    k += 1
+                if k < n and (lines[k].startswith((" ", "\t")) or _LIST_ITEM.match(lines[k])):
+                    j = k
+                    continue
+                break
+            emit(tag, i, j)
+            i = j
+            continue
+
+        if line.startswith("<"):
+            j = i
+            while j < n and lines[j].strip():
+                j += 1
+            emit("HTML", i, j)
+            i = j
+            continue
+
+        # Paragraph: runs to the next blank line or the next block opener.
+        j = i
+        while j < n and lines[j].strip():
+            nxt = lines[j].strip()
+            if j > i and (
+                _HEADING.match(nxt)
+                or _FENCE.match(nxt)
+                or nxt.startswith((":::", "|", ">"))
+                or _LIST_ITEM.match(nxt)
+                or _THEMATIC_BREAK.match(nxt)
+            ):
+                break
+            j += 1
+        emit("P", i, max(j, i + 1))
+        i = max(j, i + 1)
+
+    return blocks
+
+
+# The tags useBreathers.js counts as an unbroken text block. Kept in step with
+# that file's own TEXT_TAGS by the wiring assertion below rather than by hope.
+BREATHER_TEXT_TAGS = {"P", "UL", "OL"}
+
+
+def longest_text_run(body: str) -> int:
+    """Longest run of consecutive top-level text blocks -- the quantity
+    useBreathers.js thresholds on. A page whose longest run is below RUN_MIN
+    receives no breather anywhere, however long the page is.
+    """
+    longest = run = 0
+    for tag, _ in markdown_blocks(body):
+        if tag in BREATHER_TEXT_TAGS:
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 0
+    return longest
+
+
+def treatment_wiring_gaps() -> list[str]:
+    """Is the long-page treatment actually wired, at all, for any page?
+
+    This is the anti-vacuity half of C4's reading-load arms. The terminal node
+    renders on EVERY prose page, so "does this page have a terminal node" is a
+    per-page property that can no longer fail once the mark ships -- asserting
+    it would be theatre. What can fail is the mechanism: a deleted component, a
+    predicate that stopped agreeing with this file's, a route hook that was
+    never registered so the marks vanish from the second page onward. Every
+    long page's verdict depends on these, so a break here turns every long page
+    red again rather than silently passing them all.
+    """
+    gaps: list[str] = []
+
+    if not DOC_END_VUE.is_file():
+        gaps.append(f"{DOC_END_VUE.relative_to(REPO)} is missing -- nothing emits the terminal node")
+    else:
+        doc_end = js_code(DOC_END_VUE)
+        if "wk-doc-end" not in doc_end:
+            gaps.append(f"{DOC_END_VUE.relative_to(REPO)} does not emit class `wk-doc-end`, which "
+                        "is the class werkstoff.css styles")
+        if 'aria-hidden="true"' not in doc_end:
+            gaps.append(f"{DOC_END_VUE.relative_to(REPO)} does not set aria-hidden -- the mark "
+                        "would be announced as content")
+
+    if not PROSE_PREDICATE_JS.is_file():
+        gaps.append(f"{PROSE_PREDICATE_JS.relative_to(REPO)} is missing -- the marks have no "
+                    "prose-page scope, so the terminal node lands mid-page on every recipe")
+    else:
+        predicate = js_code(PROSE_PREDICATE_JS)
+        # The runtime predicate must gate on the same signals is_component_rendered()
+        # does. These three are named here because this file's own predicate names
+        # them; the fourth signal is cross-checked live below.
+        for key in ("layout", "beats", "pairings"):
+            if not re.search(rf"\bfm\.{key}\b", predicate):
+                gaps.append(f"{PROSE_PREDICATE_JS.relative_to(REPO)}: isProsePage() does not gate "
+                            f"on `{key}`, so it disagrees with this file's is_component_rendered()")
+        # The fourth signal: a globally registered component invoked in a page
+        # BODY. Read live from enhanceApp() so registering a new component and
+        # forgetting to list it fails here instead of silently mis-scoping both
+        # marks on that component's page (docs/catalog/index.md is exactly this
+        # case -- prose frontmatter, `<CatalogGrid />` body).
+        listed = set(re.findall(r"'([A-Za-z0-9]+)'",
+                                re.search(r"COMPONENT_TAGS = \[([^\]]*)\]", predicate).group(1)
+                                if re.search(r"COMPONENT_TAGS = \[([^\]]*)\]", predicate) else ""))
+        missing = registered_components() - listed
+        if missing:
+            gaps.append(f"{PROSE_PREDICATE_JS.relative_to(REPO)}: COMPONENT_TAGS is missing "
+                        f"{sorted(missing)}, which theme/index.js registers globally -- a page "
+                        "whose body invokes one would be graded as prose here and marked as "
+                        "prose there, both wrongly")
+
+    if not BREATHERS_JS.is_file():
+        gaps.append(f"{BREATHERS_JS.relative_to(REPO)} is missing -- nothing inserts breathers")
+    else:
+        breathers = js_code(BREATHERS_JS)
+        if "wk-breather" not in breathers:
+            gaps.append(f"{BREATHERS_JS.relative_to(REPO)} does not emit class `wk-breather`")
+        for attr in ('aria-hidden', 'role'):
+            if f"'{attr}'" not in breathers:
+                gaps.append(f"{BREATHERS_JS.relative_to(REPO)} does not set {attr} -- a breather "
+                            "must carry nothing a screen reader announces")
+        declared = set(re.findall(r"'(P|UL|OL|[A-Z]+)'",
+                                  re.search(r"TEXT_TAGS = new Set\(\[([^\]]*)\]\)", breathers).group(1)
+                                  if re.search(r"TEXT_TAGS = new Set\(\[([^\]]*)\]\)", breathers) else ""))
+        if declared != BREATHER_TEXT_TAGS:
+            gaps.append(f"{BREATHERS_JS.relative_to(REPO)}: TEXT_TAGS is {sorted(declared)} but "
+                        f"this file models {sorted(BREATHER_TEXT_TAGS)} -- longest_text_run() "
+                        "would count a different thing than the code that inserts the marks")
+
+    if not THEME_INDEX_JS.is_file():
+        gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)} is missing")
+    else:
+        index_js = js_code(THEME_INDEX_JS)
+        # Every pattern here is CALL-SHAPED on purpose. Matching a bare
+        # identifier matches the `import { onMounted, applyBreathers } from ...`
+        # line at the top of the file, so deleting the call while leaving the
+        # import -- which is what actually happens when someone rips a hook out
+        # -- would leave the guard green. Measured: an identifier-only version
+        # of both hook assertions passed with the hooks deleted.
+        if not re.search(r"h\(DocEnd\)", index_js):
+            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: DocEnd is imported but never "
+                        "rendered -- nothing puts the terminal node on the page")
+        elif not re.search(r"'doc-after':.*h\(RecipeBeats\).*h\(DocEnd\)", index_js, re.S):
+            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: the `doc-after` slot does not render "
+                        "RecipeBeats then DocEnd -- order is load-bearing, the node must come "
+                        "after the beats, not before them")
+        if not re.search(r"applyBreathers\(", index_js):
+            gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: applyBreathers is imported but "
+                        "never called")
+        else:
+            if not re.search(r"onMounted\(\s*\w", index_js):
+                gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: breathers are not applied on "
+                            "mount, so the first page a reader loads gets none")
+            if not re.search(r"watch\(\(\) => route\.path", index_js) and \
+               not re.search(r"onAfterRouteChange\s*=", index_js):
+                gaps.append(f"{THEME_INDEX_JS.relative_to(REPO)}: breathers are not re-applied on "
+                            "route change. VitePress is an SPA -- a mount-only version silently "
+                            "does nothing from the second page onward")
+
+    if outline_max_level() < 3:
+        gaps.append(f"{CONFIG.relative_to(REPO)}: `outline` stops at h{outline_max_level()}, so a "
+                    "long page's h3s never reach the right-hand rail")
+
+    return gaps
+
+
+def treatment_gaps(body: str, run_min: int) -> list[str]:
+    """Which parts of the long-page treatment this particular page does NOT get.
+
+    Empty means the page carries it in full and a length finding against it is
+    not actionable. Non-empty is a real defect with a real remedy, and the
+    remedy is a source change the author can make.
+    """
+    gaps: list[str] = []
+
+    if not re.search(r"^### ", body, re.M):
+        gaps.append("its outline never reaches h3 (the page has no `###` heading), so the "
+                    "right-hand rail offers one flat list and no resumption points")
+
+    run = longest_text_run(body)
+    if run < run_min:
+        gaps.append(f"no breather is inserted anywhere on it -- its longest run of consecutive "
+                    f"top-level text blocks is {run}, below useBreathers.js's RUN_MIN={run_min} "
+                    "(a bulleted list is one block, and a `::: details` container ends a run)")
+
+    return gaps
 
 
 # ---------------------------------------------------------------------------
@@ -395,13 +764,51 @@ MAX_WORDS_BETWEEN_HEADINGS = 700
 
 
 def check_c4_outline(report: Report) -> None:
+    """Reading load, graded against the remedy this check actually prescribes.
+
+    WHY THE TWO LENGTH ARMS ARE CONDITIONAL, and why that is a correctness fix
+    rather than a softening
+    ----------------------------------------------------------------------
+    MAX_PAGE_WORDS and MAX_WORDS_BETWEEN_HEADINGS are measured from the
+    MARKDOWN SOURCE, and the remedy both of them name -- the long-page
+    treatment: breathers, the terminal node, an outline that reaches h3 -- is
+    applied at RUNTIME, in the DOM. Splitting the page is ruled out by the same
+    human sign-off that set the numbers. So as originally written, neither arm
+    could ever observe its own prescribed fix being applied: the word count is
+    identical before and after the treatment lands, and the pages stayed red
+    permanently no matter what shipped. A check whose only satisfiable exit is
+    a remedy it forbids is not measuring what it claims to measure.
+
+    The thresholds are UNCHANGED. What changed is the predicate they feed: a
+    long page, or a long unbroken stretch, is a defect when the page does not
+    carry the long-page treatment. Carrying it is not free and not automatic --
+    see treatment_gaps() for the two per-page conditions that can fail, and
+    treatment_wiring_gaps() for the mechanism every page's verdict rests on.
+
+    WHAT STILL FAILS, so this is not a vacuous pass
+    ----------------------------------------------
+      * an over-long page or stretch whose outline never reaches h3;
+      * an over-long page with no run of consecutive text blocks long enough
+        for useBreathers.js to fire on -- a page of tables, code fences or
+        `::: details` containers gets no breather however long it is;
+      * ANY over-long page at all, the moment the mechanism itself breaks:
+        DocEnd deleted, the predicate drifting from is_component_rendered(),
+        the route hook dropped so the marks vanish from the second page onward.
+    The flat-run arm is deliberately NOT gated. Its remedy is a source change
+    (add h3s), the treatment does not touch it, and it can still fail on its own.
+    """
     if MAX_FLAT_RUN is None or MAX_PAGE_WORDS is None or MAX_WORDS_BETWEEN_HEADINGS is None:
         report.fail("C4", "reading-load thresholds are unset (MAX_FLAT_RUN, MAX_PAGE_WORDS, "
                           "MAX_WORDS_BETWEEN_HEADINGS) -- set them rather than defaulting, so "
                           "the policy is a decision on the record instead of an accident")
         return
 
-    excluded = graded = 0
+    run_min, every = breather_params()
+    wiring = treatment_wiring_gaps()
+    for gap_text in wiring:
+        report.fail("C4", f"the long-page treatment is not wired: {gap_text}")
+
+    excluded = graded = treated = 0
     for path in published_pages():
         rel = path.relative_to(DOCS).as_posix()
         if is_component_rendered(path):
@@ -426,21 +833,49 @@ def check_c4_outline(report: Report) -> None:
             report.fail("C4", f"{rel}: {longest} consecutive '##' headings with no '###' between "
                               f"them (max {MAX_FLAT_RUN}) -- the right-hand outline renders them "
                               "as one flat list the reader cannot collapse")
-        if words > MAX_PAGE_WORDS:
-            report.fail("C4", f"{rel}: {words} words (~{words // 220} min read, max {MAX_PAGE_WORDS}) "
-                              "-- this page must carry the full long-page treatment (breathers, "
-                              "the terminal node, and an outline that reaches h3), not be split: "
-                              "splitting is explicitly out of scope for this check")
+
         gap = longest_gap_between_headings(body)
-        if gap > MAX_WORDS_BETWEEN_HEADINGS:
+        over_long_page = words > MAX_PAGE_WORDS
+        over_long_gap = gap > MAX_WORDS_BETWEEN_HEADINGS
+        if not (over_long_page or over_long_gap):
+            continue
+
+        # Only pages that are actually over a length threshold are asked
+        # whether they carry the treatment. Asking a short page would be noise:
+        # the treatment exists to make length survivable, and a page that is
+        # not long has nothing to survive.
+        missing = wiring + treatment_gaps(body, run_min)
+        if not missing:
+            treated += 1
+            report.checks_run.append(
+                f"C4 long-page treatment carried: {rel} "
+                f"({words} words, longest stretch {gap}) -- outline reaches h3 and its longest "
+                f"text-block run of {longest_text_run(body)} is at or over RUN_MIN={run_min}, so "
+                f"useBreathers.js inserts a breather every {every}th block; the terminal node "
+                "closes the page"
+            )
+            continue
+
+        reasons = "; ".join(missing)
+        if over_long_page:
+            report.fail("C4", f"{rel}: {words} words (~{words // 220} min read, max {MAX_PAGE_WORDS}) "
+                              "and the page does NOT carry the full long-page treatment "
+                              "(breathers, the terminal node, and an outline that reaches h3). "
+                              f"Splitting it is out of scope for this check; what is missing: {reasons}")
+        if over_long_gap:
             report.fail("C4", f"{rel}: {gap} words in the longest stretch between headings "
                               f"(max {MAX_WORDS_BETWEEN_HEADINGS}) -- a reader who looks away in "
-                              "this stretch has no landmark to resume from")
+                              "this stretch has no landmark to resume from, and the page does NOT "
+                              f"carry the long-page treatment that would give them one: {reasons}")
 
     report.checks_run.append(
         f"C4 component-page exclusion: {excluded} of {excluded + graded} published pages are "
         f"component-rendered (frontmatter-driven beats/pairings, or a home layout) and excluded "
         f"from reading-load grading; {graded} genuine prose pages graded"
+    )
+    report.checks_run.append(
+        f"C4 long-page treatment: wired ({len(wiring)} wiring defects), carried by {treated} of "
+        f"the graded pages that exceed a length threshold"
     )
 
 
