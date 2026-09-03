@@ -13,7 +13,9 @@ established). Every rule below is checked against what werkstoff's six plugins a
 do, not copied blind — where werkstoff already follows a rule, that's stated as
 confirmed; where it doesn't, that's a named gap, not a silent assumption.
 
-## Skill types
+## Shape
+
+### Skill types
 
 Classify a skill before applying craft rules — guidance is proportional, not
 one-size-fits-all:
@@ -32,7 +34,7 @@ deliberately *not* gated the way `andon`/`confab`'s enforcement skills are (see
 `CLAUDE.md`'s "Enforcement: only hooks actually enforce" section — the same
 type-proportionality point, arrived at independently).
 
-## Anatomy
+### Anatomy
 
 ```
 skill-name/
@@ -59,7 +61,7 @@ role by content, but lives under `references/` by directory, matching this repo'
 existing single-directory convention — see `output-shape-findings.md` §4.6 for why that
 deviation from `Wirasm/prp`'s literal layout was made deliberately, not by oversight).
 
-## Context sources
+### Context sources
 
 A skill draws context from four places — use the cheapest that fits:
 
@@ -77,7 +79,7 @@ Choose by ownership and volatility: bundle what you own and want versioned; poin
 what you don't own or what changes upstream; gather at runtime what only exists in the
 moment (current repo state, the user's actual intent).
 
-## Frontmatter spec
+### Frontmatter spec
 
 | Field | Wirasm/prp's rule | werkstoff's actual usage |
 |---|---|---|
@@ -86,7 +88,9 @@ moment (current repo state, the user's actual intent).
 | `version` | not a field Wirasm/prp's spec lists at all (nor is it a documented Claude Code SKILL.md field — see `output-shape-findings.md` §5) | Was present, frozen at `0.1.0`, in all 16 `self-assess` skills only — removed; matches the other five plugins, which never had it |
 | `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `self-assess-idiom-fix`, `self-assess-transform-execute`, and `confab-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
 
-## Progressive disclosure
+## Voice and disclosure
+
+### Progressive disclosure
 
 Three load levels: metadata (`name`+`description`, ~100 words, always in context) → body
 (`SKILL.md`, target 1,500–2,000 words, hard ceiling ~5k) → resources (`references/` etc.,
@@ -99,7 +103,7 @@ alone the 5k ceiling. This independently corroborates `output-shape-findings.md`
 excellent example beats several mediocre ones" discipline — two unrelated sources
 converging on the same number is a stronger signal than either alone.
 
-## Writing style — two voices
+### Writing style — two voices
 
 - **`description` → third person, trigger-rich.** Confirmed followed across werkstoff.
 - **Body → imperative/infinitive, NOT second person.**
@@ -113,7 +117,7 @@ second person. This is a real, citable inconsistency — not a hypothetical — 
 converging on for new/edited skills, though rewriting all existing bodies for voice
 alone is out of scope here (that's a repo-wide sweep, not a byproduct of this doc).
 
-## No duplication
+### No duplication
 
 A fact lives in exactly one place — body OR a reference, never both. This is the same
 principle behind `.rrt.toml`'s `[[tool.rrt.docs.shared_blocks]]` mechanism for READMEs
@@ -121,7 +125,9 @@ principle behind `.rrt.toml`'s `[[tool.rrt.docs.shared_blocks]]` mechanism for R
 no-duplication for one specific shared block (the Example Prompts intro) via tooling;
 this rule generalizes that instinct to skill bodies vs. references.
 
-## Structure implies a maintainer
+## Structure and wiring
+
+### Structure implies a maintainer
 
 If a skill's output carries stateful sections — status markers, a lifecycle field, an
 amendments log — something must keep them current, or it's dead weight that quietly
@@ -132,7 +138,7 @@ since scaffolding, while the plugin itself moved through 0.1.0 → 0.3.2 at the
 than given a maintainer, since no real per-skill versioning need was identified (see
 `output-shape-findings.md` §5 for the full removal rationale).
 
-## Wiring references
+### Wiring references
 
 Every bundled file must be linked from `SKILL.md`, or the agent won't know it exists.
 End the body with a `## Resources` section listing each file and one line on when to
@@ -147,7 +153,7 @@ forward. The other ~62 skills with `references/` (andon, cli-scaffold, confab, c
 self-assess's other 15) are unaudited for this specific gap — flagged here, not fixed
 here.
 
-## Cross-provider portability
+### Cross-provider portability
 
 Not currently a werkstoff goal — this repo is explicitly scoped as "Personal Claude Code
 plugin workshop" (`CLAUDE.md` line 1), with Workflow scripts, hooks, and
