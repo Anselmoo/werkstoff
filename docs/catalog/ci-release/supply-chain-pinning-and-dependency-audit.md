@@ -16,6 +16,10 @@ beats:
 grounding: "every `uses:` reference in `.github/workflows/` is a float tag, not a commit SHA: `actions/checkout@v7`, `anchore/sbom-action@v0`, `actions/attest-build-provenance@v4`, and `pypa/gh-action-pypi-publish@release/v1` — the last a moving branch ref inside the publish path that already emits an SBOM and a provenance attestation."
 ---
 
+<RecipeHeader />
+
 Two different questions hide under one heading. "Does this package exist?" is answerable
 against a registry. "Is this reference pinned tightly enough to be reproducible?" is a
 policy question about mutable refs, and no werkstoff skill answers it alone.
+
+<RecipeBeats />

@@ -85,7 +85,8 @@ Consequences that follow, and are not optional here:
 ```bash
 python3 test/plugins/lint-frontmatter.py plugins/<name>   # YAML that would load with EMPTY metadata
 claude plugin validate plugins/<name> --strict            # manifest + structure
-python3 tools/enforcement-audit/audit_enforcement.py --rules analysis/rebuild/<name>.behavior.json plugins/<name>
+python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
+                                                            # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
 node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
@@ -176,9 +177,15 @@ deny must emit **both** exit 2 with the reason on stderr **and** stdout JSON
 with `hookEventName` + `permissionDecisionReason`; the hook must be inert unless
 the repo actually uses the plugin; fail **closed** with a named escape hatch.
 
-This only helps plugins whose rules gate *actions*. `compass` and `cupertino`
-are advisory — there is no tool call to deny for "explore branches before
-scoring" — which is why their rebuilds gained nothing.
+This only helps plugins whose rules gate *actions*. `compass` is advisory —
+there is no tool call to deny for "explore branches before scoring", and its
+rebuild gained nothing. `cupertino` is not: `plugins/cupertino/hooks/hooks.json`
+registers a real `type: "command"` PreToolUse hook whose guard
+(`pretooluse_guard.py`) denies on ordering gates, one-item-per-dispatch,
+write-scope, persisted-state schema, and no-commit-during-audit (escape hatch:
+`CUPERTINO_DISABLE_GUARD=1`) — but that enforcement lives in the hand-edited
+legacy code kept over the rebuild (`docs/plugin-rebuild-findings.md`'s `keep`
+column), not in anything the rebuild pipeline itself added.
 
 ## Git & release
 

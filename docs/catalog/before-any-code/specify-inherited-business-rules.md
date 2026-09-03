@@ -19,8 +19,12 @@ beats:
 grounding: "This is the exact scope overlap docs/orchestration/references/routing.md governs: this recipe dispatches code-modernization leaves directly and must not be run alongside a signed /modernize-* brief, which owns the same territory as a whole pipeline."
 ---
 
+<RecipeHeader />
+
 Specifying an inherited codebase's rules only works if the second extractor runs after
 the first, not instead of it — the cross-check needs an independent read to disagree
 with, not a second pass over the same output. Characterization tests then pin down what
 both extractors agree the code does, before any transformation gets a chance to
 invalidate the read.
+
+<RecipeBeats />

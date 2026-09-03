@@ -16,7 +16,11 @@ beats:
 grounding: "tools/plugin-serializer/'s generator prompt: this repo's CLAUDE.md records that its YAML-frontmatter traps had to be named explicitly in the prompt before sonnet reliably stopped producing them, and that opus bought nothing extra on the same task -- a tuned instruction with a measured pass/fail history, exactly beat 2's precondition."
 ---
 
+<RecipeHeader />
+
 Anchor an ambiguous output shape to concrete examples before reaching for more descriptive
 prose, then score competing phrasings against real test cases rather than picking by feel.
 If the tuned instruction is destined for a SKILL.md, its frontmatter and description are
 what decide whether it fires at all, so settle the wording before shipping it there.
+
+<RecipeBeats />

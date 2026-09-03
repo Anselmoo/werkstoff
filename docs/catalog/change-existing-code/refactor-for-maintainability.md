@@ -20,7 +20,11 @@ beats:
 grounding: "`tools/plugin-serializer/` holds four scripts — `build_inventory.py`, `contract_diff.py`, `extract_behavior.py`, `generate_plugin.py` — whose shared assumptions about plugin shape make it a real candidate for the measure-then-map-then-pin sequence above."
 ---
 
+<RecipeHeader />
+
 Refactoring's defining constraint is that behavior must not change — which makes the
 before-picture and the after-proof more important than the edit itself. Superpowers'
 test-driven-development pins behavior first; `codebase-consistency:equivalence-verifier`
 re-checks it afterward, genuinely post-hoc.
+
+<RecipeBeats />

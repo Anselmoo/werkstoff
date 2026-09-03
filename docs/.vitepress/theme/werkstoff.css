@@ -170,6 +170,26 @@ div[class*='language-prompt'] {
   border-radius: var(--wk-radius-sm);
 }
 
+/* A prompt is prose, not code: it has no meaningful line structure to preserve
+ * and reads left-to-right like a sentence. VitePress's default `pre` scrolls
+ * horizontally, which is right for a code sample and wrong here -- a long prompt
+ * runs off the edge and the reader has to scroll a paragraph sideways to find
+ * out what to type. Wrapping keeps the whole instruction visible at once.
+ *
+ * Only the text wraps; the copy button still yields the original single line,
+ * because it reads textContent and CSS wrapping introduces no characters.
+ *
+ * The leading `.vp-doc` is load-bearing, not decoration. VitePress ships
+ * `.vp-doc [class*="language-"] pre { white-space: pre }` at specificity
+ * (0,2,1); without the extra class this rule sits at (0,1,2) and loses, so the
+ * declaration is present, valid, overridden, and does nothing -- measured in the
+ * browser's computed style, which is how the first attempt was caught. */
+.vp-doc div[class*='language-prompt'] pre,
+.vp-doc div[class*='language-prompt'] code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 /* Tables carry most of the catalog's beat sheets; tighten them to the token
  * spacing scale so a long entry stays scannable. */
 .vp-doc table {

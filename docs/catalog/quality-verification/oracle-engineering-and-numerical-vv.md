@@ -16,6 +16,10 @@ beats:
 grounding: "`tools/symbol-indexer/test_build_symbol_index.py` is the suite CI runs for the indexer; the oracle question is whether its expected index is derived independently or regenerated from the same `build_symbol_index.py` it is meant to check."
 ---
 
+<RecipeHeader />
+
 Numerical correctness has a distinct failure mode: the code and the test agree because
 both were written from the same misunderstanding. The fix is an oracle the implementation
 did not author.
+
+<RecipeBeats />

@@ -19,8 +19,12 @@ beats:
 grounding: "This repo's own eight independent version groups in .rrt.toml, with deliberately no aggregate werkstoff version -- a real longevity/integrate decision (each plugin owns its own release seam) that no recipe currently shows anyone how to reach."
 ---
 
+<RecipeHeader />
+
 Each beat here is only valid once its predecessor has already run: cupertino-backwards
 must precede any named framework, cupertino-focus must precede longevity and integrate,
 and architecture-critic must close the chain rather than open it. Skipping ahead — naming
 an integration seam before the portfolio is cut, or reviewing adversarially before a
 decision exists to review — produces a verdict on the wrong artifact.
+
+<RecipeBeats />

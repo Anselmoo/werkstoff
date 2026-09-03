@@ -16,7 +16,11 @@ beats:
 grounding: "a brief asserting that the symbol indexer lives only in `tools/symbol-indexer/` collapses on the first grounding pass: five plugins each carry a byte-identical `scripts/build_symbol_index.py`."
 ---
 
+<RecipeHeader />
+
 Most bad work is correct work aimed at a premise that was never true. A brief arrives
 asserting where something lives, what a job does, or which package is already a
 dependency — and the cheapest possible moment to test those assertions is before a single
 file is opened for editing.
+
+<RecipeBeats />

@@ -20,6 +20,8 @@ beats:
 grounding: "This repo's own CLAUDE.md finding: frontmatter that fails to parse still loads, with no description and no tools, so the skill never triggers and nothing reports an error — which is exactly why test/plugins/lint-frontmatter.py exists and why the skill-reviewer beat here can't be skipped."
 ---
 
+<RecipeHeader />
+
 A new skill or agent that never fires reports no error at all — it just sits unused,
 indistinguishable from a skill nobody needed. `plugin-dev:skill-development` supplies the
 frontmatter spec and `superpowers:writing-skills` the authoring loop, but neither one
@@ -27,3 +29,5 @@ checks whether the description will actually trigger; that is `plugin-dev:skill-
 job specifically. `confab:confab-agentic-reliability` catches what a style/triggering
 review reads past — excessive tool grants and missing verify-wiring — and
 `plugin-dev:plugin-validator` runs last, once there is a real manifest to validate against.
+
+<RecipeBeats />

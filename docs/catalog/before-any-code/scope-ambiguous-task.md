@@ -18,6 +18,10 @@ beats:
 grounding: "\"make the plugins consistent\" splits on a documented boundary: `plugins/codebase-consistency/README.md` lines 28-47 are headed \"Scope - read this before installing both this and self-assess\", and route documented conventions and version-deprecated idioms out of `codebase-consistency` and into `self-assess`. Which of the two owns the request is a scoping answer, not an implementation detail."
 ---
 
+<RecipeHeader />
+
 "Make the plugins consistent" is not a task; it is four tasks wearing one coat. Scoping
 work belongs strictly before anything else, because every later decision inherits the
 ambiguity unchanged.
+
+<RecipeBeats />

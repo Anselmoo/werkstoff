@@ -18,6 +18,10 @@ beats:
 grounding: "`tools/werkstoff-cli/pyproject.toml` declares `requires-python = \">=3.12\"` and `target-version = \"py312\"`, so any idiom finding must be judged against 3.12 — flagging a pre-3.12 replacement as \"modern\" would be a regression dressed as an uplift."
 ---
 
+<RecipeHeader />
+
 A same-stack uplift preserves code and tweaks it; it is not a rewrite from intent. The
 right tool for it lives inside `code-modernization`, and the right way to use it is to
 dispatch the one agent directly rather than adopt the eight-stage pipeline around it.
+
+<RecipeBeats />

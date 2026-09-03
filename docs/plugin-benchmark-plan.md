@@ -5,7 +5,9 @@ thesis "our plugins are off industry standards; skills/agents are too short and 
 enough feedback for follow-up tasks" into two falsifiable claims (one per plugin family) plus a
 two-phase benchmark plan against `Wirasm/prp`, `anthropics/claude-plugins-official`'s
 code-modernization plugin, and `obra/superpowers`. **This document is the plan — Phase 1 and
-Phase 2 have not been executed yet.**
+Phase 2 have been executed; see
+[docs/plugin-benchmark-phase1-results.md](plugin-benchmark-phase1-results.md) and
+[docs/plugin-benchmark-phase2-results.md](plugin-benchmark-phase2-results.md).**
 
 Headline finding from this pass: `cupertino` has a real, fail-closed `PreToolUse` hook
 (`hooks/pretooluse_guard.py`) that contradicts this repo's own [CLAUDE.md](https://github.com/Anselmoo/werkstoff/blob/main/CLAUDE.md), which

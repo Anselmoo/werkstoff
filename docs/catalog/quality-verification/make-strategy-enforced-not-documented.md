@@ -16,5 +16,9 @@ beats:
 grounding: "the enforcement ladder measured in this repo's own `CLAUDE.md` — prose in a `SKILL.md` as baseline, a guard behind a fenced `python3` block invoked one run in three, a guard inside a Workflow script one in fourteen, and a `PreToolUse` hook of `type: \"command\"` blocked on the first attempt. `tools/enforcement-audit/rules/` currently holds a single `andon.json`; six plugins have no rules file at all."
 ---
 
+<RecipeHeader />
+
 A rule that lives only in prose is a suggestion. This repo has measured the difference,
 and the measurement is what makes the entry actionable rather than moralistic.
+
+<RecipeBeats />
