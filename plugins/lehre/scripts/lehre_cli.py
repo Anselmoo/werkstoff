@@ -14,9 +14,10 @@ level up.
 
 Exit codes are a frozen contract:
     0  clean -- and for `gauge` that means BOTH no violations at the requested
-       severity AND nothing left unevaluated
-    1  the sweep did not come back clean: violations found, or a file could not
-       be judged
+       severity AND nothing left unevaluated: no unparseable file, no unreadable
+       file, no unreadable directory, and no rule whose linter never ran
+    1  the sweep did not come back clean: violations found, or something could
+       not be judged
     2  the ruleset itself is unusable (schema error, missing file)
 
 Why an unevaluated file exits 1: a file that would not parse was not judged, and
@@ -102,30 +103,38 @@ def read_text(path: str) -> str | None:
         return None
 
 
-def run_linter(rule: dict, root: str, paths: list[str]) -> list[core.Violation]:
+def run_linter(rule: dict, root: str, paths: list[str]) -> tuple[list[core.Violation], str | None]:
     """Gauge-tier check: run the declared argv and read its exit code.
+
+    Returns (violations, unevaluated_reason). The second element is the whole
+    point: a linter that is not installed, or that timed out, produced NO
+    VERDICT. Earlier this function printed that to stderr and returned an empty
+    list, which is indistinguishable from "ran and found nothing" -- so the
+    caller exited 0 and CI recorded a clean sweep for a rule that never ran.
+    That is the same defect this plugin exists to prevent, one level up, and it
+    is why the reason travels back in the return value rather than only to a
+    stream nobody's exit code reads.
 
     Never `shell=True`. The command is an argv list precisely so a rule cannot
     smuggle a shell metacharacter into an enforcement path.
     """
     targets = [p for p in paths if core.matches(p, rule["check"]["paths"])]
     if not targets:
-        return []
+        return [], None
     argv = list(rule["check"]["command"]) + targets
     try:
         proc = subprocess.run(argv, cwd=root, capture_output=True, text=True, timeout=120)
     except FileNotFoundError:
-        print(f"lehre: rule {rule['id']} names linter {argv[0]!r}, which is not installed. "
-              f"Reporting as UNEVALUATED, not as clean.", file=sys.stderr)
-        return []
+        return [], f"linter {argv[0]!r} is not installed, so this rule was never evaluated"
+    except OSError as exc:
+        return [], f"linter {argv[0]!r} could not be executed ({exc}), so this rule was never evaluated"
     except subprocess.TimeoutExpired:
-        print(f"lehre: rule {rule['id']}'s linter timed out. UNEVALUATED, not clean.", file=sys.stderr)
-        return []
+        return [], f"linter {argv[0]!r} timed out after 120s, so this rule was never evaluated"
     if proc.returncode == 0:
-        return []
+        return [], None
     detail = (proc.stdout or proc.stderr or "").strip().splitlines()
     summary = detail[0][:160] if detail else f"{argv[0]} exited {proc.returncode}"
-    return [core.Violation(rule["id"], rule["severity"], targets[0], None, summary, rule["rationale"])]
+    return [core.Violation(rule["id"], rule["severity"], targets[0], None, summary, rule["rationale"])], None
 
 
 def cmd_validate(args) -> int:
@@ -159,6 +168,11 @@ def cmd_gauge(args) -> int:
 
     violations: list[core.Violation] = []
     unparseable: list[str] = []
+    #: A rule that could not be run at all (linter missing, timed out).
+    unevaluated_rules: list[dict] = []
+    #: An in-scope file whose content could not be read, so a content rule was
+    #: never decided for it. Previously a bare `continue`, which under-reported.
+    unreadable_files: list[dict] = []
     content_cache: dict[str, str | None] = {}
     judgement: list[dict] = []
     for rule in wanted:
@@ -172,7 +186,10 @@ def cmd_gauge(args) -> int:
                               "matching_files": targets})
             continue
         if rule["check"]["kind"] == "linter":
-            violations.extend(run_linter(rule, root, paths))
+            linter_hits, why = run_linter(rule, root, paths)
+            violations.extend(linter_hits)
+            if why:
+                unevaluated_rules.append({"rule_id": rule["id"], "reason": why})
             continue
         needs_content = rule["check"]["kind"] in ("python-import", "python-construct")
         for path in paths:
@@ -184,6 +201,10 @@ def cmd_gauge(args) -> int:
                     content_cache[path] = read_text(os.path.join(root, path))
                 content = content_cache[path]
                 if content is None:
+                    # Not readable as UTF-8 text, or an I/O error. The rule was
+                    # not decided for this file, and silently continuing here is
+                    # how an unjudged file becomes a file counted as clean.
+                    unreadable_files.append({"path": path, "rule_id": rule["id"]})
                     continue
             try:
                 violations.extend(core.evaluate_file(rule, path, content))
@@ -196,9 +217,12 @@ def cmd_gauge(args) -> int:
         print(json.dumps({
             "violations": [v.as_dict() for v in violations],
             "unevaluated_unparseable": sorted(set(unparseable)),
+            "unevaluated_rules": unevaluated_rules,
+            "unreadable_files": unreadable_files,
             "unreadable_directories": unreadable,
             "needs_judgement_pass": judgement,
-            "sweep_complete": not unreadable,
+            "sweep_complete": not (unreadable or unevaluated_rules
+                                   or unreadable_files or unparseable),
             "files_swept": len(paths),
             "rules_applied": len(wanted),
         }, indent=2))
@@ -207,17 +231,30 @@ def cmd_gauge(args) -> int:
             print(violation)
         for item in sorted(set(unparseable)):
             print(f"[UNEVALUATED] {item} -- would not parse, so the rule could not be decided")
+        for item in unevaluated_rules:
+            print(f"[UNEVALUATED] rule {item['rule_id']} -- {item['reason']}")
+        for item in unreadable_files:
+            print(f"[UNEVALUATED] {item['path']} -- could not be read as text, "
+                  f"so rule {item['rule_id']} was not decided for it")
         for item in judgement:
             print(f"[JUDGEMENT] {item['rule_id']} -- not machine-checkable; "
                   f"{len(item['matching_files'])} file(s) in scope. Asks: {item['asks']}")
         blocking = sum(1 for v in violations if v.severity == "blocking")
+        # Every unevaluated channel, not just unparseable: a summary that says
+        # "0 could not be evaluated" while a linter never ran is the same lie in
+        # prose that the exit code used to tell in its status.
+        unevaluated_total = (len(set(unparseable)) + len(unevaluated_rules)
+                             + len(unreadable_files))
         print(f"\n{len(violations)} violation(s) ({blocking} blocking) across {len(paths)} file(s); "
-              f"{len(set(unparseable))} file(s) could not be evaluated"
+              f"{unevaluated_total} thing(s) could not be evaluated"
               + (f"; {len(unreadable)} director(y/ies) UNREADABLE -- sweep INCOMPLETE"
                  if unreadable else "")
               + (f"; {len(judgement)} rule(s) need a judgement pass (dispatch violation-auditor)"
                  if judgement else ""))
-    return EXIT_VIOLATIONS if (violations or unparseable or unreadable) else EXIT_OK
+    return (EXIT_VIOLATIONS
+            if (violations or unparseable or unreadable
+                or unevaluated_rules or unreadable_files)
+            else EXIT_OK)
 
 
 def cmd_close(args) -> int:
