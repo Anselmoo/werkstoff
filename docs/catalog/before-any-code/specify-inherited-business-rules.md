@@ -2,6 +2,7 @@
 task: "Specify an inherited codebase's business rules"
 category: before-any-code
 summary: "Two independently-authored extractors emitting the same Given/When/Then shape, so disagreement between them is signal rather than noise."
+openingPrompt: "Extract this inherited codebase's real business rules -- read it structurally and behaviorally first, map its real module boundaries rather than trusting directory names, mine the rules from the executable code as Given/When/Then specs, then run a second independent extractor afterward as a genuine cross-check, and pin the agreed behavior down with characterization tests before any rewrite starts."
 external: ["claude-plugins-official"]
 beats:
   - skill: "code-modernization:legacy-analyst"
@@ -17,6 +18,17 @@ beats:
   - skill: "code-modernization:test-engineer"
     why: "Characterization tests pin the behavior down before any transformation starts; useless once the rewrite has already begun."
 grounding: "This is the exact scope overlap docs/orchestration/references/routing.md governs: this recipe dispatches code-modernization leaves directly and must not be run alongside a signed /modernize-* brief, which owns the same territory as a whole pipeline."
+dos:
+  - "Build a structural and behavioral map of the inherited code before asserting anything about what it does."
+  - "Cluster the real module boundaries by shallowest package boundary, not by manifest directory, before mining rules."
+  - "Mine rules from the executable code itself, never from comments or docs."
+  - "Run the second extractor after the first, specifically so it can disagree with it, not repeat it."
+  - "Pin the agreed behavior down with characterization tests before any transformation starts -- they're useless once the rewrite has already begun."
+donts:
+  - "Don't assert what an inherited system does before reading it structurally and behaviorally."
+  - "Don't run both extractors expecting them to reconcile automatically -- the value is in an independent second read that can disagree."
+  - "Don't run this recipe alongside a signed /modernize-* brief -- it dispatches code-modernization leaves directly and the two own the same territory."
+  - "Don't wait until after the rewrite starts to write characterization tests -- by then they're useless."
 ---
 
 <RecipeHeader />

@@ -1,0 +1,82 @@
+# Layer-2 docs findability ("journey") cases -- TAB-separated, one per line.
+# Columns: id  category  expected_path  goal  regex  [antiregex]
+#   id            short unique name (also the run-journeys.sh filter arg)
+#   category      one of the 7 catalog categories, or "orchestration" for the
+#                 reference docs under docs/orchestration/references/ and
+#                 docs/orchestration/README.md
+#   expected_path repo-relative doc file a correct answer should land on --
+#                 for a human reading a failure, NOT itself matched by the
+#                 harness (the regex column is the actual oracle)
+#   goal          the prompt sent to the model under test, deliberately
+#                 phrased in a user's own words rather than the docs' own
+#                 vocabulary (no "beat", "wire", "leaf", "orchestrator",
+#                 skill ids). run-journeys.sh wraps this in a fixed template
+#                 that forbids answering from prior knowledge and requires a
+#                 cited file path -- see that script's PROMPT_TEMPLATE.
+#   regex         egrep -i pattern proving the model actually found and read
+#                 the right page, matched against its stdout. May be several
+#                 patterns joined by @@AND@@, ALL of which must match (see
+#                 lib-oracle-match.sh). Two negative cases below use @@AND@@
+#                 to require BOTH "found the specific page documenting the
+#                 gap" AND "said so honestly" -- either half alone is not
+#                 enough (see test/docs/README.md's calibration-rule section
+#                 for why this is the correct design, not an accident).
+#   antiregex     OPTIONAL egrep -i pattern that must NOT match -- used here
+#                 for a real, plausible confusion between two same-category
+#                 recipes with overlapping CI vocabulary (red vs green jobs),
+#                 not a contrived example.
+#
+# Lines starting with # and blank lines are ignored. Keep columns tab-separated.
+#
+# Coverage: all 7 catalog categories, 3 orchestration reference pages, and 2
+# of the catalog's 3 documented "No werkstoff fit" recipes (confirmed by
+# `grep -rli "no werkstoff fit" docs/catalog/` -- see test/docs/README.md).
+# The third ("Incorporate external review feedback") is left untested; see
+# README's "what was deliberately not tested" section.
+
+# --- before-any-code ---
+vague-ask	before-any-code	docs/catalog/before-any-code/scope-ambiguous-task.md	Someone just told me to "make the plugins consistent" and walked away. That's it -- that's the whole ask I got. What do I do with that?	scope-ambiguous-task
+new-cli	before-any-code	docs/catalog/before-any-code/scaffold-new-project-or-cli.md	I'm starting a brand-new command-line tool from scratch and I want it to feel like a real product, not a weekend script somebody hacked together in an afternoon.	scaffold-new-project-or-cli
+
+# --- change-existing-code ---
+return-type-migrate	change-existing-code	docs/catalog/change-existing-code/migrate-return-shape-or-type.md	I need to change what a function returns and I'm scared of missing call sites that depend on the old shape.	migrate-return-shape-or-type
+parallel-plan	change-existing-code	docs/catalog/change-existing-code/execute-plan-across-parallel-workstreams.md	I already have a big plan written down. I want to know what actually depends on what, and what can truly run at the same time instead of waiting its turn.	execute-plan-across-parallel-workstreams
+
+# --- ci-release ---
+# ci-red-jobs and green-but-nothing are a deliberately confusable pair: both
+# are CI-shaped complaints in the same category, and "red across jobs" vs
+# "green but did nothing" is exactly the kind of surface-similar vocabulary a
+# keyword-matching reader (or a sloppy skim of the catalog) could swap.
+ci-red-jobs	ci-release	docs/catalog/ci-release/pipeline-red-across-jobs.md	My CI just went red across five different jobs all at once and I genuinely don't know where to even start looking.	pipeline-red-across-jobs	job-reports-success-but-changed-nothing
+green-but-nothing	ci-release	docs/catalog/ci-release/job-reports-success-but-changed-nothing.md	This job in our pipeline exits with a green checkmark every single time, but I'm pretty sure it isn't actually doing the thing it's supposed to do.	job-reports-success-but-changed-nothing	pipeline-red-across-jobs
+
+# --- defect-work ---
+tests-lie	defect-work	docs/catalog/defect-work/tests-pass-while-code-is-broken.md	The tests all pass but I don't believe them. I think the code underneath is still broken.	tests-pass-while-code-is-broken
+fix-recurring	defect-work	docs/catalog/defect-work/fix-that-did-not-stick.md	We fixed this exact bug last week and it just came back. Something about that "fix" wasn't real.	fix-that-did-not-stick
+
+# --- plugin-authoring ---
+new-skill-authoring	plugin-authoring	docs/catalog/plugin-authoring/author-a-new-skill-or-agent.md	I want to write a brand-new skill for one of these plugins and I really don't want to botch the file format so badly that it silently never fires.	author-a-new-skill-or-agent
+
+# --- quality-verification ---
+convention-clash	quality-verification	docs/catalog/quality-verification/audit-against-documented-conventions.md	Two people on this project wrote error handling completely differently in the same repo. Which style wins, and how do I even decide that fairly?	audit-against-documented-conventions
+
+# --- surface ---
+stale-readme	surface	docs/catalog/surface/documentation-drift-after-a-change.md	We renamed a bunch of things in the code this week and I'd bet money the README and comments still describe the old names.	documentation-drift-after-a-change
+ui-design-review	surface	docs/catalog/surface/ui-and-design-system-work.md	I'm about to build a settings screen and I really do not want it to come out looking like generic, obviously-AI-made UI.	ui-and-design-system-work
+
+# --- orchestration references (not a catalog category, but a real "which
+# page answers this" destination the docs claim to provide) ---
+which-orchestrator	orchestration	docs/orchestration/README.md	I've got a bunch of these plugins installed at once, plus Superpowers. When a task needs more than one of them, who runs the whole show end to end, and who's just filling in for one step along the way?	orchestrat[a-z]*@@AND@@dispatchable at any moment
+pairing-check	orchestration	docs/orchestration/references/pairings.md	Before I wire two of these skills together on purpose, is there real evidence anywhere that this specific pairing actually makes sense, or would I just be guessing?	pairing[a-z]*@@AND@@nothing here is invented
+model-tiering	orchestration	docs/orchestration/references/delegation.md	When I fan work out to a bunch of sub-agents at the same time, how do I decide which ones get the expensive model and which get the cheap one?	delegat[a-z]*@@AND@@shared blackboard
+
+# --- negative cases: goals the docs deliberately do NOT cover with a
+# werkstoff pairing (confirmed via grep -rli "no werkstoff fit" docs/catalog/
+# -- see test/docs/README.md). Correct behavior is finding the specific
+# recipe that documents the gap AND reporting the gap honestly, not forcing
+# an unrelated werkstoff plugin onto the goal. Either half missing is a FAIL:
+# citing the file but inventing a fix is exactly the over-claiming failure
+# mode this suite exists to catch; saying "no fit" without ever finding the
+# actual page is an ungrounded guess, not a documented answer.
+rehearse-release	ci-release	docs/catalog/ci-release/release-path-never-succeeded.md	We're about to trigger a release path that has never once succeeded, not even a single time. I want to rehearse it safely before we pull the trigger for real.	release-path-never-succeeded@@AND@@(no werkstoff fit|pure superpowers)
+incident-now	defect-work	docs/catalog/defect-work/incident-triage-under-time-pressure.md	Production is on fire right now. I've got maybe ten minutes before this gets worse. Where do I even start?	incident-triage-under-time-pressure@@AND@@(no werkstoff fit|pure superpowers)

@@ -7,7 +7,7 @@ surface, indexed by development task.
 Each card below is one recipe: a task, the beats that fire in order, why each beat earns
 its position rather than sliding earlier or later, and the literal prompt that triggers
 it. Filter by category — before any code, CI & release, defect work, changes to existing
-code, quality & verification, or surface work — or by whether a recipe pairs werkstoff
+code, plugin authoring, quality & verification, or surface work — or by whether a recipe pairs werkstoff
 with Superpowers, with an official Anthropic plugin, or uses werkstoff alone.
 
 A recipe with an empty `external` filter is werkstoff-only. One tagged `superpowers`

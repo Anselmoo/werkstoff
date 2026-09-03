@@ -2,6 +2,7 @@
 task: "Refactor for maintainability"
 category: change-existing-code
 summary: "Measure where the debt actually is and map real dependencies before pinning behavior and refactoring."
+openingPrompt: "I want to refactor this for maintainability -- measure where the complexity and architecture debt actually is before touching anything, pin the current behavior down with tests first, and once the refactor is done, check for contract drift and have an independent pass confirm the module behaves identically to before, from the diff rather than from my own account of what changed."
 external: ["superpowers"]
 beats:
   - skill: "self-assess:self-assess-complexity-score"
@@ -18,6 +19,16 @@ beats:
   - skill: "codebase-consistency:equivalence-verifier"
     why: "Genuinely post-hoc: it re-checks that the module behaves identically to before and that its docs and comments still match, from the diff rather than from the refactorer's own report."
 grounding: "`tools/plugin-serializer/` holds four scripts — `build_inventory.py`, `contract_diff.py`, `extract_behavior.py`, `generate_plugin.py` — whose shared assumptions about plugin shape make it a real candidate for the measure-then-map-then-pin sequence above."
+dos:
+  - "Measure complexity and size per module before refactoring -- targeting by intuition hits the code that's annoying, not the code that's costly."
+  - "Check for god-modules, cycles, and layering violations before refactoring -- a refactor that ignores them relocates the problem instead of fixing it."
+  - "Write characterization tests before the refactor, not after -- tests written after a refactor only characterize the refactor."
+  - "Have equivalence checked post-hoc, from the diff itself, rather than trusting the refactorer's own report of what changed."
+donts:
+  - "Don't refactor by intuition -- it targets the annoying code, not the costly code."
+  - "Don't ignore god-modules, cycles, or layering violations found in the architecture check -- a refactor around them just relocates the problem."
+  - "Don't write the characterization tests after the refactor -- by then they characterize the refactor, not the original behavior."
+  - "Don't rely on your own report that behavior is unchanged -- verify it independently from the diff and the module's own tests."
 ---
 
 <RecipeHeader />

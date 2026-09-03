@@ -10,6 +10,13 @@ node_modules/
 !test/plugins/fixtures/**/*.local.md
 .serena/
 .superpowers/
+# Anchored to the repo root, same reasoning as /analysis/ and /lib/ below:
+# run-journeys.sh (test/docs/) saves every real journey-suite transcript here
+# so a human can read any single result without re-running it. Real, disposable
+# per-run output -- never seeded test data, so an anchored ignore is correct here
+# (unlike the *.local.md case above, there is no fixture content under this name
+# to carve back out).
+/test/docs/.runs/
 # Anchored to the repo root: this is generated plugin output. Unanchored it
 # also swallowed plugins/*/test-fixtures/**/analysis/, which is seeded test
 # data the behavior tests need committed.

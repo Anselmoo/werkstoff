@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitepress'
 import { CATEGORY_ORDER, CATEGORY_LABELS } from './data/catalog.categories.mjs'
+import { isProsePage, PROSE_PAGE_KEY } from './theme/composables/useProsePage.js'
 
 // Project site at https://anselmoo.github.io/werkstoff/. VitePress prepends this
 // to themeConfig.logo for us, but NOT to raw `head` entries, so the favicon href
@@ -95,6 +96,20 @@ function buildCatalogSidebar() {
   return sections
 }
 
+// Drops a leading `---`/`---` YAML block, returning the markdown body. Line-wise
+// for the reason readRecipeFrontmatter() above already documents: a dotall regex
+// spanning a file full of dots and newlines is this repo's signature silent
+// failure. Mirrors test/docs/docs_ux_audit.py's frontmatter_and_body() so both
+// halves of the prose-page predicate read exactly the same text.
+function stripFrontmatter(source) {
+  const lines = source.split('\n')
+  if (lines[0]?.trim() !== '---') return source
+  for (let i = 1; i < lines.length; i += 1) {
+    if (lines[i].trim() === '---') return lines.slice(i + 1).join('\n')
+  }
+  return source
+}
+
 // Project site at https://anselmoo.github.io/werkstoff/ -> base must be '/werkstoff/'.
 // `rewrites` maps each section's README.md onto a directory index so the existing
 // files keep their names on disk; nothing under docs/ needs renaming or frontmatter.
@@ -122,6 +137,48 @@ export default defineConfig({
   rewrites: {
     'orchestration/README.md': 'orchestration/index.md',
     'plugin-authoring/README.md': 'plugin-authoring/index.md',
+  },
+
+  // Stamp every page with the long-page treatment's prose/component verdict.
+  //
+  // This runs here, at build time, for one reason that is not a preference: the
+  // predicate needs the markdown BODY, and the browser never has it. Three of
+  // the four signals live in frontmatter, but the fourth -- a globally
+  // registered component invoked in the body -- is what identifies
+  // docs/catalog/index.md, whose frontmatter is indistinguishable from prose
+  // and whose body is `<CatalogGrid />`. Deriving this client-side from the
+  // rendered DOM instead would have to happen after hydration, which would put
+  // the terminal node into the server-rendered HTML and then take it away
+  // again: a hydration mismatch, and a mark that is briefly wrong on every load.
+  //
+  // The verdict is read back by DocEnd.vue and by useBreathers.js via
+  // PROSE_PAGE_KEY. Neither re-derives it, and neither falls back to the
+  // frontmatter-only half if the stamp is missing -- absent stamp means no
+  // mark anywhere, which is the failure the docs UX audit's C4 wiring
+  // assertion names out loud rather than the failure nobody sees.
+  transformPageData(pageData, { siteConfig }) {
+    // `filePath`, not `relativePath`. The two differ for every entry in
+    // `rewrites` above: relativePath is the DESTINATION route
+    // (orchestration/index.md), which is not a file on disk, while filePath is
+    // the source VitePress actually read (orchestration/README.md). Reading
+    // relativePath silently withheld both marks from exactly those two pages --
+    // a wrong-file read that resolved to "no such file" rather than to an error.
+    const relative = pageData.filePath || pageData.relativePath
+    const source = path.join(siteConfig.srcDir, relative)
+    if (!fs.existsSync(source)) {
+      // Fail closed AND loud. Withholding the marks quietly is what the bug
+      // above already did once; a page whose source cannot be read is a real
+      // defect in this config, not a page to skip. Escape hatch, if a future
+      // virtual page ever legitimately has no source: give it explicit
+      // `layout:` frontmatter and exclude it here by name, on the record.
+      throw new Error(
+        `[werkstoff] transformPageData: no source file for page '${relative}' ` +
+          `(looked in ${siteConfig.srcDir}). The long-page treatment cannot be scoped ` +
+          'without the markdown body -- see theme/composables/useProsePage.js.',
+      )
+    }
+    const body = stripFrontmatter(fs.readFileSync(source, 'utf-8'))
+    pageData.frontmatter[PROSE_PAGE_KEY] = isProsePage(pageData.frontmatter, body)
   },
 
   themeConfig: {

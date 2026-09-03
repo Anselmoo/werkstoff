@@ -2,6 +2,7 @@
 task: "Fix misleading error or diagnostic output"
 category: defect-work
 summary: "Treat error messages as a first-class surface and check they aren't the visible half of a suppressed failure."
+openingPrompt: "Our error messages are technically accurate and useless -- treat them as a first-class surface rather than an afterthought, check whether something upstream is actually swallowing the real failure behind the misleading text, and check whether the comments around that error path still describe what the code does."
 external: ["claude-plugins-official"]
 beats:
   - skill: "cupertino:cupertino-elevate"
@@ -14,6 +15,14 @@ beats:
     why: "Comment rot and message rot come from the same edit that moved the behavior."
     prompt: "check whether the comments around this error path still describe what the code does"
 grounding: "the resolve step in `.github/workflows/plugin-release.yml` exits with `Unknown plugin group '$GROUP' from tag '$TAG'` — accurate, but silent on the fact that the allowed set is a hardcoded eight-name `case` list in the same file, which is what a reader actually needs to know."
+dos:
+  - "Treat error messages, logs, config, and onboarding text as a first-class surface worth designing, not an afterthought."
+  - "Check whether a misleading message is the visible half of a suppressed error upstream, not just a wording problem."
+  - "Check the comments around the error path for rot -- they drift from the same edit that moved the behavior."
+donts:
+  - "Don't fix only the wording of a misleading error -- if something upstream is swallowing the real failure, the suppression is still there."
+  - "Don't treat error-message quality as beneath a proper design pass -- it's explicitly in scope for exactly this kind of commodity-feature review."
+  - "Don't assume the comments near an error path still match the code -- they rot from the same edit that moved the behavior underneath them."
 ---
 
 <RecipeHeader />

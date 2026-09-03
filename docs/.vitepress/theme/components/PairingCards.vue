@@ -1,6 +1,9 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive } from 'vue'
 import { useData, withBase } from 'vitepress'
+import CopyButton from './CopyButton.vue'
+import DoDontList from './DoDontList.vue'
+import { useClipboardCopy } from '../composables/useClipboardCopy'
 
 // Frontmatter-driven, like RecipeBeats -- all of this page's data lives on
 // the one page that renders it, so a data loader (CatalogGrid's approach)
@@ -63,55 +66,14 @@ function splitStake(why) {
 // Copy-to-clipboard for the example prompt, with a visible confirmation --
 // a click that changes nothing the user can see is exactly the "silent
 // state change" this repo's own design review process (cupertino-council)
-// treats as a usability veto. The Clipboard API can reject even in a
-// perfectly normal browser (denied permission, an insecure context, no
-// support at all) -- confirmed live: it rejects unconditionally in this
-// project's own sandboxed preview. A `.then()` with no `.catch()` would
-// make that failure silent, which is exactly the defect this repo's
-// silent-failure-hunter pairing above exists to catch, so on rejection this
-// falls back to selecting the prompt text instead of doing nothing.
-const copiedId = ref(null)
-const failedId = ref(null)
-let copyTimeout = null
-
-function selectPromptText(button) {
-  const pre = button.closest('.prompt-row')?.querySelector('.prompt-code')
-  const selection = window.getSelection()
-  // getSelection() returns null in some non-standard/restricted contexts
-  // (MDN). Skipping the select there still leaves the button's own
-  // "Selected -- ⌘C" state as the user-visible signal that clipboard
-  // access failed -- an unguarded throw here would instead break the whole
-  // .catch() chain and leave the button silently stuck on "Copy".
-  if (!pre || !selection) return
-  const range = document.createRange()
-  range.selectNodeContents(pre)
-  selection.removeAllRanges()
-  selection.addRange(range)
-}
-
-function copyPrompt(id, text, event) {
-  const button = event.currentTarget
-  const settle = (target) => {
-    clearTimeout(copyTimeout)
-    copyTimeout = setTimeout(() => {
-      copiedId.value = null
-      failedId.value = null
-    }, 2000)
-    target.value = id
-  }
-  const onFail = () => {
-    selectPromptText(button)
-    settle(failedId)
-  }
-  if (!navigator.clipboard?.writeText) {
-    onFail()
-    return
-  }
-  navigator.clipboard
-    .writeText(text)
-    .then(() => settle(copiedId))
-    .catch(onFail)
-}
+// treats as a usability veto. The actual clipboard-write-with-fallback
+// logic now lives in ../composables/useClipboardCopy.js (see that file's
+// comment for why a silent .then() with no .catch() was rejected) so
+// RecipeBeats.vue's opening-prompt button can share it instead of
+// duplicating it. One composable instance here is shared by every card on
+// the page, preserving the original behavior: copiedId/failedId are keyed
+// by pairing id, not per-card state.
+const { copiedId, failedId, copy } = useClipboardCopy()
 </script>
 
 <template>
@@ -179,34 +141,20 @@ function copyPrompt(id, text, event) {
           <p>{{ pairing.how }}</p>
         </div>
 
-        <div v-if="pairing.prompt" class="prompt-row">
+        <div v-if="pairing.prompt" class="prompt-row" data-copy-scope>
           <div class="prompt-row-head">
             <span class="row-label">Example prompt</span>
-            <button
-              type="button"
-              class="copy-button"
-              @click="copyPrompt(pairing.id, pairing.prompt, $event)"
-            >
-              {{
-                copiedId === pairing.id
-                  ? 'Copied'
-                  : failedId === pairing.id
-                    ? 'Selected — ⌘C'
-                    : 'Copy'
-              }}
-            </button>
+            <CopyButton
+              :status="
+                copiedId === pairing.id ? 'copied' : failedId === pairing.id ? 'failed' : 'idle'
+              "
+              @click="copy(pairing.id, pairing.prompt, $event)"
+            />
           </div>
-          <pre class="prompt-code"><code>{{ pairing.prompt }}</code></pre>
+          <pre class="prompt-code" data-copy-target><code>{{ pairing.prompt }}</code></pre>
         </div>
 
-        <div class="dd-row">
-          <ul class="do">
-            <li v-for="(item, i) in pairing.dos" :key="i"><span class="mark" aria-hidden="true">&check;</span>{{ item }}</li>
-          </ul>
-          <ul class="dont">
-            <li v-for="(item, i) in pairing.donts" :key="i"><span class="mark" aria-hidden="true">&times;</span>{{ item }}</li>
-          </ul>
-        </div>
+        <DoDontList :dos="pairing.dos" :donts="pairing.donts" />
 
         <footer v-if="pairing.grounding" class="pairing-foot">
           {{ pairing.grounding }}
@@ -403,8 +351,7 @@ function copyPrompt(id, text, event) {
 }
 
 .pairing-row,
-.prompt-row,
-.dd-row {
+.prompt-row {
   border-top: 1px solid var(--vp-c-divider);
   padding: 0.85rem 0;
 }
@@ -432,21 +379,6 @@ function copyPrompt(id, text, event) {
   gap: 0.5rem;
 }
 
-.copy-button {
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--vp-c-text-2);
-  font-size: 0.72rem;
-  padding: 0.1rem 0.5rem;
-  cursor: pointer;
-  line-height: 1.6;
-}
-.copy-button:hover {
-  border-color: var(--vp-c-brand-1);
-  color: var(--vp-c-text-1);
-}
-
 .prompt-code {
   margin: 0.5rem 0 0;
   border-left: 3px solid var(--wk-samaria);
@@ -469,42 +401,6 @@ function copyPrompt(id, text, event) {
   padding: 0;
 }
 
-.dd-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem 1.5rem;
-}
-
-.dd-row ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 0.85rem;
-  color: var(--vp-c-text-2);
-}
-
-.dd-row li {
-  display: flex;
-  gap: 0.5rem;
-  line-height: 1.45;
-}
-.dd-row li + li {
-  margin-top: 0.5rem;
-}
-
-.mark {
-  flex: none;
-  font-weight: 700;
-  width: 1.1em;
-  text-align: center;
-}
-.do .mark {
-  color: var(--wk-status-good);
-}
-.dont .mark {
-  color: var(--wk-status-bad);
-}
-
 .pairing-foot {
   border-top: 1px solid var(--vp-c-divider);
   margin-top: 0.5rem;
@@ -515,11 +411,5 @@ function copyPrompt(id, text, event) {
 
 .pairing-foot a {
   color: var(--vp-c-brand-1);
-}
-
-@media (max-width: 480px) {
-  .dd-row {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

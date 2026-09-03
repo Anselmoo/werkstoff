@@ -1,0 +1,10 @@
+I explored the docs/ tree with Glob and Read and found the page that matches this goal.
+
+1. File: docs/catalog/change-existing-code/migrate-return-shape-or-type.md
+2. That page says: "Changing what a function hands back is a contract change wearing a
+   refactor's clothes. Every call site is a participant, and the compiler catches only
+   the subset that is typed." It walks through reviewing the new type's design first,
+   then finding every call site, then checking for signature/schema drift, then proving
+   equivalence.
+3. This directly addresses the goal -- it is exactly about changing a return shape
+   without missing call sites.

@@ -2,6 +2,7 @@
 task: "Investigate tests that pass while the code is broken"
 category: defect-work
 summary: "Mutate the source and check whether the suite would actually notice, instead of trusting a green run."
+openingPrompt: "This suite is green but I don't trust it -- mutate the source (flip a boundary, negate a condition, shift an index) and tell me which mutations it wouldn't catch, review the tests for real behavioral coverage rather than line coverage, and verify the verifier itself since it's the checker that's actually in question here."
 external: ["claude-plugins-official"]
 beats:
   - skill: "confab:confab-assertion-audit"
@@ -14,6 +15,14 @@ beats:
     why: "One of its seven strategies is verify-the-verifier — the right shape when the checker is what is suspect."
     prompt: "I don't trust this test suite. Verify the verifier before we trust anything it says."
 grounding: "auditing `plugins/confab/scripts/test_cycle_engine.py` and `tools/enforcement-audit/test_audit_enforcement.py` for assertions whose expected value is the same hardcoded default the code falls back to when the real path never runs."
+dos:
+  - "Mutate the source with off-by-one, boundary-flip, and condition-negation changes, and check which ones the suite would miss."
+  - "Review for behavioral coverage, not line coverage -- a high percentage is compatible with assertions that assert nothing."
+  - "Verify the verifier itself when the suite, not the code, is what's actually suspect."
+donts:
+  - "Don't trust a green suite as proof the tests would notice a regression -- it only proves the tests ran."
+  - "Don't treat a high coverage percentage as evidence of real assertions -- it's compatible with tests that assert nothing meaningful."
+  - "Don't write an assertion whose expected value is the same hardcoded default the code falls back to -- it passes whether or not the real path ever executes."
 ---
 
 <RecipeHeader />

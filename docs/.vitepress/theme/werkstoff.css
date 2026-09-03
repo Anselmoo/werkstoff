@@ -21,6 +21,29 @@
  *   light  #1874c2 on #ffffff =  4.87:1   passes AA
  * That is the one place light mode deliberately departs from the token value, and
  * it is the same accommodation the previous palette needed for the same reason.
+ *
+ * ---- Structural rules (WCAG 1.4.11: 3:1 for a non-text element that is the sole
+ * carrier of information; a purely decorative one is exempt). Every figure below
+ * was recomputed from the hex pair here rather than carried across from the design
+ * brief that specified it -- a ratio taken on trust is exactly the defect shape
+ * CLAUDE.md catalogues, and the recomputation agreed with the brief to 0.01 in
+ * every case, which is itself the evidence that it was worth doing:
+ *   dark   --wk-rule       #55616a on #0a0d10 = 3.07:1  load-bearing, clears 3:1
+ *   light  --wk-rule       #8e8e95 on #ffffff = 3.25:1  load-bearing, clears 3:1
+ *   dark   --wk-rule-soft  #46515a on #0a0d10 = 2.40:1  deliberately BELOW 3:1
+ *   light  --wk-rule-soft  #a7a7ac on #ffffff = 2.40:1  deliberately BELOW 3:1
+ *   dark   h2 origin tick  #348ad9 on #0a0d10 = 5.37:1
+ *   light  h2 origin tick  #1874c2 on #ffffff = 4.87:1
+ *   dark   terminal node   #cfb656 on #0a0d10 = 9.72:1
+ *   light  terminal node   #746005 on #ffffff = 6.14:1
+ *
+ * What those rules replace, and why this file now draws its own: the site was
+ * already painting a full-width rule above every h2 (VitePress's own
+ * `.vp-doc h2 { border-top: 1px solid var(--vp-c-divider) }`), and it measures
+ * 1.49:1 in dark (#28323a on #0a0d10) and 1.29:1 in light (#e2e2e3 on #ffffff).
+ * A 1px hairline at that contrast is not a faint line; it is a line a reader
+ * never registers. The section break was specified, drawn, and silently ignored
+ * -- this repo's documented failure shape, rendered in pixels.
  */
 
 :root {
@@ -46,14 +69,21 @@
   --wk-ferria: #bd5137;
   --wk-ferria-light: #e2856d;
 
-  /* -deep steps: only mirrored now, for the catalog category colors below.
-   * The base and -light steps above all measure under 4.5:1 as TEXT on white
-   * (3.15-4.08:1 on dark for the bases; see the catalog section for the
-   * dark-side numbers) -- light mode needs a darker step to pass AA as text,
-   * and tokens.css does not carry one for four of the five families. Values
-   * taken verbatim from tools/design-tokens/tokens.css; independently
-   * verified here to clear 4.5:1 on #ffffff (silica 7.12:1, chromia 7.89:1,
-   * neodymia 7.11:1, samaria 6.14:1, ferria 9.40:1). */
+  /* -deep steps: the light-mode-safe TEXT step for each family. The base and
+   * -light steps above all measure under 4.5:1 as text on white, so light mode
+   * needs a darker step to pass AA, and tokens.css does not carry one for four
+   * of the five families. Values taken verbatim from
+   * tools/design-tokens/tokens.css; independently verified here to clear 4.5:1
+   * on #ffffff (silica 7.12:1, chromia 7.89:1, neodymia 7.11:1, samaria
+   * 6.14:1, ferria 9.40:1).
+   *
+   * Only --wk-samaria-deep is consumed today (the terminal node in light mode,
+   * 6.14:1). The catalog block used to consume all five to recolour recipe
+   * title links; those 14 rules are gone and that per-mode text-contrast
+   * obligation is retired with them -- see the catalog section for why. The
+   * other four stay because this :root block is a MIRROR of tokens.css, not a
+   * usage list; the file's header rule is "change a colour THERE, then mirror
+   * it here", and a mirror with holes in it is worse than an unused token. */
   --wk-silica-deep: #005a9d;
   --wk-chromia-deep: #005e39;
   --wk-neodymia-deep: #77428e;
@@ -74,6 +104,62 @@
   --wk-radius-control: 6px;
   --wk-radius-panel: 8px;
   --wk-transition-fast: 120ms ease;
+
+  /* ---- The spacing scale: one gap ladder, learned once ----
+   * Base unit 4px, ratio sqrt(2), realised on the integer grid as two
+   * interleaved octave series -- A = 4,8,16,32,64 and B = A x 1.5 =
+   * 12,24,48,96. Merged: 4 8 12 16 24 32 48 64 96. Every two steps is exactly
+   * a doubling; the geometric mean of any two consecutive steps is sqrt(2).
+   *
+   * The scale is not invented, it is already latent here: --wk-radius-sm (4),
+   * --wk-radius-panel (8), this file's own `padding: 8px 12px` on table cells,
+   * and every VitePress spacing value in effect (8/16/24/32/48) are all
+   * members. Adopting it changes exactly two existing numbers -- VitePress's
+   * off-grid 20px table margin, and every heading's below-gap.
+   *
+   * The property that makes it worth having: no step is below 1.33x. Two
+   * spacings closer than roughly 1.33x are not reliably told apart on a page,
+   * which is the falsifiable reason the site read as flat -- of the twelve
+   * block relationships a reader meets, EIGHT resolved to exactly 16px, so
+   * most steps in practice were x1.00. Every value below is a member; a value
+   * that is not a member is a bug. */
+  --wk-space-1: 4px;
+  --wk-space-2: 8px;
+  --wk-space-3: 12px;
+  --wk-space-4: 16px;
+  --wk-space-6: 24px;
+  --wk-space-8: 32px;
+  --wk-space-12: 48px;
+  --wk-space-16: 64px;
+  --wk-space-24: 96px;
+
+  /* The text measure. Not a member of the spacing scale -- it is a line length,
+   * not a gap -- but it is a token because two rules consume it (the prose
+   * max-width and the terminal node's centring box) and the revision rule in
+   * the measure section below changes ONE number, not two. */
+  --wk-measure: 36rem;
+
+  /* ---- Two rule tokens, and the difference between them is load-bearing ----
+   * --wk-rule is the SOLE carrier of a section break, so WCAG 1.4.11's 3:1
+   * non-text floor applies to it and it clears it (3.25:1 here). --wk-rule-soft
+   * is deliberately below that floor (2.40:1) and is therefore only ever used
+   * where the same information is ALSO carried by space -- which is what makes
+   * 2.40:1 a legitimate choice rather than a shortfall. Never promote
+   * --wk-rule-soft to a position where it is the only signal.
+   *
+   * --vp-c-divider is deliberately NOT raised. It governs sidebar edges, table
+   * cell borders and card outlines site-wide, where a quiet 1.3-1.5:1 is the
+   * correct choice. Only the load-bearing uses are repointed: the h2 break,
+   * `hr`, and the blockquote left rule. (Whether the token should be raised
+   * globally instead is an open question the brief flagged; settling it needs
+   * an audit of every --vp-c-divider consumer in the built stylesheet, which
+   * is not something this file can see.)
+   *
+   * Light values sit on VitePress's own --vp-c-divider -> text-3 neutral ramp,
+   * which is what the header comment already establishes as correct light-mode
+   * behaviour. */
+  --wk-rule: #8e8e95;
+  --wk-rule-soft: #a7a7ac;
 
   /* Light mode: silica darkened to clear AA on white (see header). */
   --vp-c-brand-1: #1874c2;
@@ -103,6 +189,15 @@
   --vp-c-divider: var(--wk-border);
   --vp-c-border: var(--wk-border);
   --vp-c-gutter: var(--wk-border);
+
+  /* Both are interpolations on werkstoff's own neutral ramp,
+   * --wk-border #28323a -> --wk-muted #8b9aa4, at t = 0.45 and t = 0.30. They
+   * are not new colours; they are two stops on a line the palette already owns
+   * (verified: interpolating those two hex values at t=0.45 yields #55616a
+   * exactly, and at t=0.30 yields #46515a exactly). 3.07:1 and 2.40:1 on
+   * --wk-bg -- see the header block. */
+  --wk-rule: #55616a;
+  --wk-rule-soft: #46515a;
 
   /* Full-strength silica: 5.37:1 on --wk-bg, so it is safe as link text here. */
   --vp-c-brand-1: var(--wk-silica);
@@ -170,6 +265,291 @@ div[class*='language-prompt'] {
   border-radius: var(--wk-radius-sm);
 }
 
+/* ============================================================================
+ * VERTICAL RHYTHM
+ *
+ * The reader has to learn two things and only two things:
+ *
+ *   above-gap ladder   16 (p) -> 24 (h4) -> 32 (h3) -> 48 (hr) -> 64 (h2)
+ *                      step ratios 1.5, 1.33, 1.5, 1.33 -- the sqrt(2) scale,
+ *                      alternating, no two adjacent levels within the ~1.33x
+ *                      discrimination floor.
+ *   below-gap binary   8 means "bound to what follows" (every heading);
+ *                      16 means "peer" (everything else).
+ *
+ * The binding constraint, stated so a linter could check it rather than as a
+ * matter of taste: above / below >= 2.0 for every heading level, and every
+ * adjacent pair on the above-gap ladder differs by >= 1.33x.
+ *
+ * The keystone is SUBTRACTION, not addition. The constraint could equally have
+ * been met by inflating every heading's top margin, which would have added
+ * ~1,300px to the site's longest page to fix a ratio. Cutting the below-gap to
+ * 8px instead means the heading changes alone make docs/andon-behavior-contract.md
+ * SHORTER by 72px (10 h2 x +8 net, 19 h3 x -8). If a later pass finds itself
+ * raising a top margin to fix a ratio, it has inverted this decision.
+ * ========================================================================== */
+
+/* An h1 introduces the whole page, not the next paragraph; 24 rather than the
+ * 8 a section heading gets, because binding it tightly to the lede would
+ * misstate the relationship. VitePress's base reset zeroes all heading margins,
+ * so this gap does not exist until it is written. */
+.vp-doc h1 {
+  margin: 0 0 var(--wk-space-6);
+}
+
+/* h2: 64 above (4x the paragraph gap, 8x the list gap -- the three levels sit
+ * at powers of two, maximally discriminable), then the rule, then VitePress's
+ * own 24px of padding, then the text. Raised from 48 because the rule now sits
+ * INSIDE this gap and needs air on both sides or it crowds the preceding text.
+ * Keeping the 24px padding below the rule is deliberate: it makes the rule
+ * belong to the *break*, not to the heading.
+ *
+ * The rule itself is one 1px line in two tones, drawn as a background gradient
+ * rather than a border so that a single element carries both: the first 48px
+ * (one scale step, ~8% of the 576px measure) in silica, the remainder in
+ * --wk-rule. It reads as "a new run begins here", aligned to the same left rail
+ * as the text below it. No pseudo-element and no extra DOM, so there is no
+ * z-index question with VitePress's .header-anchor, which is absolutely
+ * positioned inside this same box.
+ *
+ * One gradient serves both themes: --vp-c-brand-1 is the light-darkened silica
+ * #1874c2 (4.87:1 on white) in :root and the full-strength --wk-silica #348ad9
+ * (5.37:1 on --wk-bg) under .dark, so the tick is already mode-correct without
+ * a second rule. */
+.vp-doc h2 {
+  margin: var(--wk-space-16) 0 var(--wk-space-2);
+  border-top: none;
+  padding-top: var(--wk-space-6);
+  background-image: linear-gradient(
+    to right,
+    var(--vp-c-brand-1) 0 48px,
+    var(--wk-rule) 48px
+  );
+  background-size: 100% 1px;
+  background-repeat: no-repeat;
+  background-position: top left;
+}
+
+/* h3 sits exactly one octave below h2 (64 -> 32) and one step above h4
+ * (32 vs 24 = 1.33). Above-gaps unchanged from VitePress; only the below-gap
+ * moves, from an inherited 16 to 8. */
+.vp-doc h3 {
+  margin: var(--wk-space-8) 0 var(--wk-space-2);
+}
+
+/* h4 was the worst heading failure on the site: 24 above, 16 below = 1.5, i.e.
+ * a bold paragraph. At 24/8 = 3.0 it is unambiguous, and 24 vs p's 16 = 1.5
+ * keeps it discriminable from body text without inflating it toward h3. */
+.vp-doc h4 {
+  margin: var(--wk-space-6) 0 var(--wk-space-2);
+}
+
+/* h5/h6 are NOT in the design brief's table -- it specifies h1-h4 only. They
+ * cannot be left alone, because the margin-collapse guard below zeroes the
+ * following block's top margin for every heading level, which would give an
+ * unstyled h5 a below-gap of 0. They are also not rare here: 84 h5s across the
+ * docs, 74 of them in prompt-index.md. Placed at h4's rung (24/8 = 3.0) rather
+ * than at 16/8: 16 above would put a heading at exactly the paragraph gap,
+ * which is the specific defect this whole section exists to remove. Cost is
+ * bounded and measured -- +8px per h5, so +592px on prompt-index.md, a dense
+ * index of short entries whose worst unbroken stretch is 77 words. */
+.vp-doc h5,
+.vp-doc h6 {
+  margin: var(--wk-space-6) 0 var(--wk-space-2);
+}
+
+/* Set-apart material -- a quotation, a code sample, a table -- all sit at 24,
+ * 1.5x the paragraph gap. Today all three sat at 16 (the table at an off-grid
+ * 20), identical to two unrelated paragraphs, which is why none of them read
+ * as set apart at all.
+ *
+ * The blockquote's 2px left rule moves to --wk-rule. At the inherited
+ * --vp-c-divider (1.29-1.49:1) it was invisible, so the indent was carrying the
+ * entire signal on its own. */
+.vp-doc blockquote {
+  margin: var(--wk-space-6) 0;
+  border-left: 2px solid var(--wk-rule);
+}
+
+/* Vertical margins only. VitePress bleeds code blocks to `margin: 16px -24px`
+ * below 640px and pulls them back to `16px 0` above it; writing the shorthand
+ * here would silently kill the mobile full-bleed. Nested cases keep their own
+ * values by specificity: `.vp-doc .custom-block div[class*=language-]` (8px)
+ * and the `!important` margin-top:0 inside a .vp-code-group both outrank this. */
+.vp-doc div[class*='language-'] {
+  margin-top: var(--wk-space-6);
+  margin-bottom: var(--wk-space-6);
+}
+
+.vp-doc .vp-code-group {
+  margin-top: var(--wk-space-6);
+}
+
+/* `hr` is the one element whose entire job is "major break", and it was at 16 --
+ * the same gap as two paragraphs -- which is why the pages that already use
+ * `---` got nothing from it. 48 is 3x the paragraph gap, one rung below h2's 64.
+ *
+ * Two marks, two meanings, and a reader never has to learn which is which
+ * because the named one carries the name: an h2 rule (with its silica tick)
+ * means *a named section begins*; an `hr` means *the author declared a break
+ * here that has no name*. So the `hr` gets no tick.
+ *
+ * `hr` is deliberately absent from the measure list below, so it spans the full
+ * container while the h2 rule spans the text measure. That width difference is
+ * a second, redundant channel distinguishing the two marks -- meaning is never
+ * left to the tick's colour alone. */
+.vp-doc hr {
+  margin: var(--wk-space-12) 0;
+  border: none;
+  border-top: 1px solid var(--wk-rule);
+}
+
+/* ---- The margin-collapsing trap ----
+ * A heading with margin-bottom: 8px followed by a `p` with margin-top: 16px
+ * collapses to 16px, silently reverting every below-gap above. Code that looks
+ * correct and does nothing: without this rule the keystone change is inert and
+ * nothing reports an error.
+ *
+ * Two selectors, not one, and the second is not redundant: VitePress's
+ * `.vp-doc div[class*='language-']` and `.custom-block` rules carry two class
+ * selectors, so the plain `+ *` form loses to them on specificity and a code
+ * block after a heading would keep its 24px top margin. Verify this is live
+ * rather than merely present: in devtools, select the first `p` after any h3
+ * and the first code block after any h2, and confirm computed margin-top is
+ * 0px on both. */
+.vp-doc > div > :is(h1, h2, h3, h4, h5, h6) + * {
+  margin-top: 0;
+}
+.vp-doc > div > :is(h1, h2, h3, h4, h5, h6) + div[class*='language-'],
+.vp-doc > div > :is(h1, h2, h3, h4, h5, h6) + .custom-block,
+.vp-doc > div > :is(h1, h2, h3, h4, h5, h6) + .vp-code-group {
+  margin-top: 0;
+}
+
+/* ---- Measure ----
+ * The content container is 688px at 16px Inter, which is ~86 characters per
+ * line: 15% above the top of the 60-75 band. A long measure makes the return
+ * sweep to the next line error-prone, and error-prone return sweeps are what
+ * "tired eyes" actually is.
+ *
+ * 36rem = 576px is ~72 characters. 72 rather than 66 on purpose: this corpus is
+ * full of long unbreakable identifiers (`code-modernization:business-rules-extractor`,
+ * `self-assess-transform-execute`) and inline code that cannot hyphenate, and at
+ * 66ch those force ragged lines and mid-identifier wraps. It is still a 16%
+ * reduction.
+ *
+ * >> THIS IS THE ONE VALUE HERE THAT RESTS ON AN ESTIMATE. The character count
+ * >> comes from the ~0.5em average-advance rule of thumb, not from a
+ * >> measurement of Inter at this size. Confirm on any prose page and adjust so
+ * >> the reported value lands in 68-74 (change --wk-measure, not this rule):
+ * >>   const p = [...document.querySelectorAll('.vp-doc p')]
+ * >>               .find(n => n.textContent.length > 400);
+ * >>   const r = document.createRange(); r.selectNodeContents(p);
+ * >>   Math.round(p.textContent.length / r.getClientRects().length)
+ * >> If it reports > 74, drop --wk-measure to 34rem; if < 68, raise it to
+ * >> 38rem. Nothing else in this file depends on the number.
+ *
+ * Left-aligned (margin-right: auto, margin-left untouched at 0) so prose, code,
+ * tables and the card grids all share one left rail -- the seam is where this
+ * would otherwise fail.
+ *
+ * Deliberately EXCLUDED, and therefore still full-container: `table`,
+ * `div[class*=language-]`, `img`, `hr`, `.catalog-grid`, `.pairing-cards`,
+ * `.recipe-beats`, and any `:::` container. A table or code sample that wraps
+ * is real information loss; a long prose line is only a reading cost.
+ *
+ * The h2 rule inherits this max-width, so it spans the text measure rather than
+ * the container -- correct, because it marks a break in *the text*, and a 688px
+ * rule over 576px text would leave the tick misaligned with the left rail on
+ * the very element it is marking.
+ *
+ * `.vp-doc > div >` is the real DOM, not a guess: VitePress compiles each page
+ * as `<template><div>{html}</div></template>` and the `.vp-doc` class lands on
+ * the Content wrapper outside it, so markdown blocks are grandchildren.
+ * Leading is untouched. line-height: 28px (1.75) is generous for 72ch and would
+ * only want tightening below ~64ch -- one fewer value to defend. */
+.vp-doc > div > :is(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6, dl) {
+  max-width: var(--wk-measure);
+  margin-right: auto;
+}
+
+/* ---- The end-of-document mark ----
+ * The logo is a stroke that terminates at a gold node -- the halt this project
+ * is built around. A section break is NOT a halt: the reader has not stopped,
+ * they have taken a breath. Stamping the mark at every h2 would assert a
+ * meaning the element does not have and would repeat a meaning-bearing mark
+ * ~30 times on one page, which empties it. There is exactly one place per page
+ * where the mark's own meaning is literally true: the end. The stroke
+ * terminates. So: the node alone, no stroke, no plate, once per page.
+ *
+ * This is not decoration hunting for a home. It answers a measured defect: the
+ * worst stretch on the site (1,016 words, the tail of andon-behavior-contract.md)
+ * runs to end-of-file with no following heading, so a reader has no signal
+ * distinguishing "the document ended" from "keep scrolling".
+ *
+ * >> CONTRACT WITH THE COMPONENT SIDE, WHICH THIS FILE CANNOT ENFORCE:
+ * >> the mark's DOM, its `aria-hidden="true"`, and the predicate that scopes it
+ * >> to prose pages all live in theme/index.js and a DocEnd component, which
+ * >> this file does not own. Two things must hold there or this rule is inert
+ * >> or wrong: (1) the element carries class `wk-doc-end`; (2) it renders
+ * >> nothing unless the page is prose -- `frontmatter.beats` (37 recipe pages,
+ * >> where RecipeBeats owns the tail), `frontmatter.pairings`, and any
+ * >> `layout` other than `doc` must all return false. 16 of 56 published pages
+ * >> are prose. (RecipeBeats no longer shares a slot with this mark: it is a
+ * >> markdown-body component now, and the mark renders from
+ * >> `doc-footer-before`. The predicate must still exclude recipes, because
+ * >> RecipeBeats owns their tail and a second end-mark under it would
+ * >> contradict that.)
+ *
+ * 6px in the transmitted-warmth pole, centred on the text measure, 64px below
+ * the last block. Contrast is far past any floor in both modes (9.72:1 dark,
+ * 6.14:1 light) -- see the header block. */
+.wk-doc-end {
+  display: flex;
+  justify-content: center;
+  max-width: var(--wk-measure);
+  margin: var(--wk-space-16) 0 0;
+}
+
+.wk-doc-end::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wk-samaria-deep);
+}
+
+.dark .wk-doc-end::before {
+  background: var(--wk-accent-2);
+}
+
+/* ---- Breathers: information-free, and that is the point ----
+ * A short rule inserted into long runs of unbroken text blocks. It is the
+ * falsifiable half of a genuine disagreement the design brief left open --
+ * whether a machine may assert a break the author did not write. It is
+ * therefore built so that deleting every one of them loses nothing: it sits on
+ * --wk-rule-soft (2.40:1, deliberately below the 3:1 floor), it is
+ * aria-hidden, and it carries no information the 24px of extra space does not
+ * already carry. If a reader test ever shows space alone suffices, delete this
+ * rule and the composable that inserts it.
+ *
+ * >> CONTRACT WITH THE COMPONENT SIDE: the inserting composable must give the
+ * >> element class `wk-breather` plus aria-hidden="true" and role="presentation",
+ * >> must fire on route change as well as mount (VitePress is an SPA; a
+ * >> mount-only version silently does nothing from the second page onward), and
+ * >> must be idempotent. Measured scope at a >=6-block run threshold: four
+ * >> pages site-wide.
+ *
+ * Centred in the container, not on the 576px text measure -- taken verbatim
+ * from the brief. Worth re-judging once it can be seen against the new left
+ * rail: container-centred puts it at 344px where the measure's centre is 288px. */
+.wk-breather {
+  height: var(--wk-space-6);
+  margin: var(--wk-space-4) auto;
+  width: 32px;
+  border-top: 1px solid var(--wk-rule-soft);
+}
+
 /* A prompt is prose, not code: it has no meaningful line structure to preserve
  * and reads left-to-right like a sentence. VitePress's default `pre` scrolls
  * horizontally, which is right for a code sample and wrong here -- a long prompt
@@ -191,10 +571,16 @@ div[class*='language-prompt'] {
 }
 
 /* Tables carry most of the catalog's beat sheets; tighten them to the token
- * spacing scale so a long entry stays scannable. */
+ * spacing scale so a long entry stays scannable. The 24px block margin replaces
+ * VitePress's 20px, which was the only value in the theme on no scale at all;
+ * the 8px 12px cell padding is two scale members. Cell BORDERS deliberately
+ * stay on --vp-c-divider rather than moving to --wk-rule: a cell border is not
+ * the sole carrier of anything (the table's own layout is), and raising ~200
+ * hairlines per beat sheet to 3:1 would turn a quiet grid into a cage. */
 .vp-doc table {
   display: table;
   width: 100%;
+  margin: var(--wk-space-6) 0;
 }
 
 .vp-doc th,
@@ -212,6 +598,21 @@ div[class*='language-prompt'] {
   transition: color var(--wk-transition-fast);
 }
 
+/* The rhythm, rule and palette work above introduces ZERO motion -- no
+ * transition, no animation, no transform. That is a claim, and an unstated
+ * claim is the failure mode this repo documents, so it is stated: the only
+ * motion this file has ever declared is the link-colour transition directly
+ * above. It is neutralised here for readers who ask for reduced motion, which
+ * is the honest reading of "prefer no motion" for a token this file owns.
+ * If any later pass animates a breather, the terminal node, or an h2 rule,
+ * that zero-motion claim expires and this block needs revisiting. */
+@media (prefers-reduced-motion: reduce) {
+  .VPLink,
+  .vp-doc a {
+    transition: none;
+  }
+}
+
 /* ---- Catalog category colors: one aerogel chemistry per dev-loop stage ----
  * CatalogGrid.vue stamps `data-category="<slug>"` on each `.recipe-card`
  * (verified against the component source; the filter buttons do NOT carry
@@ -221,115 +622,129 @@ div[class*='language-prompt'] {
  * isn't a phase of the dev loop), so it gets a neutral treatment instead of
  * a hue.
  *
- * Each hued category gets: a base-step border-left (the accent/non-text
- * role the base step is safe for -- all 5 bases clear the 3:1 non-text
- * minimum against both #0a0d10 and #ffffff, 3.15:1 to 6.18:1), a low-alpha
- * background tint, and the title link recolored to the theme-safe step per
- * mode (the card has no separate "category" text node -- the recipe title
- * link is the only in-card text available to carry it). Rule enforced in
- * both modes: -light step in dark, -deep step in light -- see the numbers
- * in the :root block above and in the CLAUDE.md doc for the dark-side
- * figures (all 7.11-9.72:1, well past the 4.5:1 AA floor).
+ * Each hued category gets exactly two things: a base-step border-left (the
+ * accent/non-text role the base step is safe for -- all 5 bases clear the 3:1
+ * non-text minimum against both #0a0d10 and #ffffff, 3.15:1 to 6.18:1) and a
+ * low-alpha background tint. Nothing else.
  *
- * --cat-1/--cat-3 (silica/neodymia, i.e. before-any-code/quality-verification)
- * are the least colorblind-distinguishable pair in this palette. Category is
- * never conveyed by color alone here: the category name is always visible as
- * plain text in the filter buttons regardless of a card's color, and this
- * section never removes or replaces that text with an icon or a color swatch.
+ * ---- What was removed, and why ----
+ * Each category also used to recolor the recipe title link -- one rule per
+ * category per mode, 14 rules -- on the reasoning recorded here that "the card
+ * has no separate category text node, so the title link is the only in-card
+ * text available to carry it". That defence does not survive contact with the
+ * actual failure: it defended the FILTER CONTROL, not the card. A reader
+ * looking at one card in an unfiltered 25-card grid, or arriving from search
+ * or a sidebar link, could not learn its category without clicking each of
+ * seven filters in turn. That is colour-alone encoding (WCAG 1.4.1), and two
+ * of the seven categories resolved to the same hue anyway, so for those two it
+ * did not even encode.
+ *
+ * The fix is that the card now prints its category as a text chip, which
+ * demotes colour from *the* encoding to reinforcement of an encoding that is
+ * already legible. Once the name is on the card, recolouring the title as well
+ * is redundant with the border on the same card -- so the 14 rules are gone,
+ * and with them the entire per-mode text-contrast obligation this block used to
+ * carry. The border and tint stay: an unfiltered grid of 25 cards is exactly
+ * where preattentive grouping earns its keep, and a reader sees the shape of
+ * the catalog before reading a word.
+ *
+ * >> The chip itself is CatalogGrid.vue's, not this file's. Its text must stay
+ * >> on --vp-c-text-2 / --vp-c-default-soft and must NOT be recoloured per
+ * >> category -- that would reintroduce exactly the contrast burden deleting
+ * >> these 14 rules just retired.
+ *
+ * ---- Five hues, and no sixth ----
+ * Seven categories still map onto five chemistries. That is deliberate and is
+ * not a shortage to be fixed by adding hues: seven hues is a decision per
+ * category that the design should be making for the reader, a five-hue system
+ * a reader can hold beats a seven-hue legend they must consult, a sixth hue
+ * would have to be a real aerogel chemistry sourced in tools/design-tokens/
+ * tokens.css and re-verified at four contrast steps in two modes, and
+ * silica/neodymia (before-any-code / quality-verification) are already the
+ * least colourblind-distinguishable pair AT FIVE -- seven makes that strictly
+ * worse. With the chip present, a shared hue is a grouping, not a collision.
+ *
+ * The one reassignment: plugin-authoring moves from ferria to silica. Sharing
+ * "rust" with defect-work stated no kinship at all; authoring a skill IS the
+ * before-any-code task, applied to the workshop itself, and silica is the
+ * undoped base chemistry every other aerogel here is a doping of -- the honest
+ * hue for work on the base material. The collision moves from arbitrary to
+ * meaningful.
  */
 .recipe-card[data-category] {
   border-left-width: 3px;
   border-left-style: solid;
 }
 
+/* The scattered-blue pole; the beginning. */
 .recipe-card[data-category='before-any-code'] {
   border-left-color: var(--wk-silica);
   background: rgba(52, 138, 217, 0.06);
 }
-.recipe-card[data-category='before-any-code'] .recipe-task a {
-  color: var(--wk-silica-deep);
-}
 .dark .recipe-card[data-category='before-any-code'] {
   background: rgba(52, 138, 217, 0.12);
-}
-.dark .recipe-card[data-category='before-any-code'] .recipe-task a {
-  color: var(--wk-silica-light);
 }
 
 .recipe-card[data-category='change-existing-code'] {
   border-left-color: var(--wk-chromia);
   background: rgba(8, 147, 92, 0.06);
 }
-.recipe-card[data-category='change-existing-code'] .recipe-task a {
-  color: var(--wk-chromia-deep);
-}
 .dark .recipe-card[data-category='change-existing-code'] {
   background: rgba(8, 147, 92, 0.12);
 }
-.dark .recipe-card[data-category='change-existing-code'] .recipe-task a {
-  color: var(--wk-chromia-light);
+
+/* Silica, not ferria: work on the undoped base material. See the block
+ * comment above -- this is the one reassignment, and it is a metaphor
+ * decision, not an arbitrary one. */
+.recipe-card[data-category='plugin-authoring'] {
+  border-left-color: var(--wk-silica);
+  background: rgba(52, 138, 217, 0.06);
+}
+.dark .recipe-card[data-category='plugin-authoring'] {
+  background: rgba(52, 138, 217, 0.12);
 }
 
 .recipe-card[data-category='quality-verification'] {
   border-left-color: var(--wk-neodymia);
   background: rgba(171, 109, 198, 0.06);
 }
-.recipe-card[data-category='quality-verification'] .recipe-task a {
-  color: var(--wk-neodymia-deep);
-}
 .dark .recipe-card[data-category='quality-verification'] {
   background: rgba(171, 109, 198, 0.12);
 }
-.dark .recipe-card[data-category='quality-verification'] .recipe-task a {
-  color: var(--wk-neodymia-light);
-}
 
+/* The transmitted-warmth pole -- the same gold as the terminal node. Release
+ * *is* completion; the metaphor is already exact. */
 .recipe-card[data-category='ci-release'] {
   border-left-color: var(--wk-samaria);
   background: rgba(171, 143, 0, 0.06);
 }
-.recipe-card[data-category='ci-release'] .recipe-task a {
-  color: var(--wk-samaria-deep);
-}
 .dark .recipe-card[data-category='ci-release'] {
   background: rgba(171, 143, 0, 0.12);
 }
-.dark .recipe-card[data-category='ci-release'] .recipe-task a {
-  color: var(--wk-samaria-light);
-}
 
+/* Rust is corrosion is defect. Exact, and now unshared. */
 .recipe-card[data-category='defect-work'] {
   border-left-color: var(--wk-ferria);
   background: rgba(189, 81, 55, 0.06);
 }
-.recipe-card[data-category='defect-work'] .recipe-task a {
-  color: var(--wk-ferria-deep);
-}
 .dark .recipe-card[data-category='defect-work'] {
   background: rgba(189, 81, 55, 0.12);
 }
-.dark .recipe-card[data-category='defect-work'] .recipe-task a {
-  color: var(--wk-ferria-light);
-}
 
-/* surface / "Other": no chemistry, so no hue -- border and text both stay on
- * the muted neutral rather than the aerogel palette. --wk-muted itself is
- * dark-native (6.73:1 on #0a0d10, safe as text or border there) but measures
- * only 2.89:1 on white -- below even the 3:1 non-text floor -- so light mode
- * uses VitePress's own --vp-c-text-2 / --vp-c-divider neutrals instead,
- * exactly as the header comment's silica accommodation already sets the
- * precedent for departing from a token value that fails on white. */
+/* surface / "Other": not a phase of the dev loop, so no chemistry and no hue --
+ * the border stays on the muted neutral rather than the aerogel palette. With
+ * the category chip present this reads as a statement rather than an opt-out;
+ * before the chip it was the one card whose category was carried by nothing at
+ * all. --wk-muted itself is dark-native (6.73:1 on #0a0d10, safe as a border
+ * there) but measures only 2.89:1 on white -- below even the 3:1 non-text
+ * floor -- so light mode uses VitePress's own --vp-c-divider neutral instead,
+ * exactly as the header comment's silica accommodation sets the precedent for
+ * departing from a token value that fails on white. */
 .recipe-card[data-category='surface'] {
   border-left-color: var(--vp-c-divider);
 }
-.recipe-card[data-category='surface'] .recipe-task a {
-  color: var(--vp-c-text-2);
-}
 .dark .recipe-card[data-category='surface'] {
   border-left-color: var(--wk-muted);
-}
-.dark .recipe-card[data-category='surface'] .recipe-task a {
-  color: var(--wk-muted);
 }
 
 /* ---- External-tag badges: a second channel, not a sixth hue ----

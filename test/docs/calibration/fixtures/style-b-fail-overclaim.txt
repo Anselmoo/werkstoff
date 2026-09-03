@@ -1,0 +1,11 @@
+1. File: docs/catalog/ci-release/release-path-never-succeeded.md
+2. This is the closest page in the catalog to rehearsing a release path.
+3. Recommendation: run andon:andon-loop against this release workflow -- it will harden
+   the value stream and prove each wire as you go, so by the time you trigger the real
+   release you'll have evidence it works.
+
+(This fixture must FAIL: it found the correct page, but then invented a werkstoff fit
+the page itself explicitly disclaims -- andon-verify proves a wire FROM evidence a wire
+has already produced, and this release path has never run, so there is no evidence to
+route. Recommending andon-loop here is exactly the over-claiming failure mode the
+negative cases exist to catch.)

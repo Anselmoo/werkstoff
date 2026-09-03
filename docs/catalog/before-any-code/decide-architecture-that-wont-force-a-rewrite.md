@@ -2,6 +2,7 @@
 task: "Decide an architecture that will not force a rewrite"
 category: before-any-code
 summary: "A fixed chain of declared-position beats -- cut the portfolio, check longevity, name the integration seam, then stress-test the decision -- each one only valid once its predecessor has already run."
+openingPrompt: "Before we pick any architecture or framework here, work backwards from what this actually needs to do, cut the feature portfolio before naming an integration seam, and close with an adversarial review of the decision once it's actually made -- not before."
 external: ["claude-plugins-official"]
 beats:
   - skill: "cupertino:cupertino-backwards"
@@ -17,6 +18,15 @@ beats:
     why: "Adversarial close: over-engineering and simpler alternatives, judged against the settled decision rather than against the enthusiasm that produced it."
     prompt: "review this architecture decision adversarially -- where is it over-engineered, and what's the simpler alternative we didn't take seriously?"
 grounding: "This repo's own eight independent version groups in .rrt.toml, with deliberately no aggregate werkstoff version -- a real longevity/integrate decision (each plugin owns its own release seam) that no recipe currently shows anyone how to reach."
+dos:
+  - "Run cupertino-backwards before naming any framework or database -- it's a pre-architecture gate by its own declaration."
+  - "Cut the feature portfolio with cupertino-focus before naming any integration seam with cupertino-integrate."
+  - "Name exactly one integration seam per cupertino-integrate invocation, never issue it as a blanket policy across the whole system."
+  - "Close with architecture-critic only once a real decision exists to review adversarially."
+donts:
+  - "Don't name an integration seam before the feature portfolio has been cut -- the ordering here is load-bearing, not incidental."
+  - "Don't run architecture-critic before a decision exists -- reviewing before an artifact exists produces a verdict on the wrong thing."
+  - "Don't treat cupertino-longevity as separable from cupertino-integrate -- they run together, at architecture-decision time."
 ---
 
 <RecipeHeader />

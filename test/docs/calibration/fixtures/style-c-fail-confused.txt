@@ -1,0 +1,14 @@
+I found two pages in docs/catalog/ci-release/ that both look relevant:
+
+1. docs/catalog/ci-release/pipeline-red-across-jobs.md -- for when several jobs go red
+   at once and you need to tell one cause from several.
+2. docs/catalog/ci-release/job-reports-success-but-changed-nothing.md -- for when a job
+   exits green but silently did nothing.
+
+Since the goal mentions "several jobs" and CI trouble in general, either page could be
+what's meant -- read both and see which one matches what you're actually seeing.
+
+(This fixture must FAIL: the goal was specifically about jobs going RED, not a green job
+doing nothing. Naming both pages as equally applicable is a hedge, not a finding -- it
+fails to actually distinguish the two despite them being about opposite symptoms. The
+antiregex exists to catch exactly this kind of un-discriminating answer.)

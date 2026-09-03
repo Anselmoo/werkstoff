@@ -1,0 +1,9 @@
+1. File: docs/catalog/ci-release/release-path-never-succeeded.md
+2. This page states plainly: "No werkstoff fit -- this is pure Superpowers." It explains
+   that andon-verify proves a wire from evidence a wire has already produced, and a
+   release path that has never run has produced no evidence to route, so there is
+   nothing for it to prove. The recommended approach is superpowers:brainstorming to
+   list what has to be true, superpowers:writing-plans, a disposable worktree via
+   superpowers:using-git-worktrees, and superpowers:verification-before-completion to
+   check the artifact was actually produced.
+3. Honest answer: no werkstoff plugin fits this goal. Use Superpowers alone.
