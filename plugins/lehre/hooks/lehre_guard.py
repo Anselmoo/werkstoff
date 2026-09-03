@@ -72,6 +72,10 @@ ESCAPE_HATCH = (
 )
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 
+#: The guard's own control plane. Gate 0 protects these from the agent the rest
+#: of the guard constrains; see the Gate 0 comment in main() for why.
+UNITS_DIR = os.path.join(".lehre", "units")
+
 
 def deny(reason: str) -> NoReturn:
     print(json.dumps({
@@ -129,6 +133,51 @@ def core_relative(cwd: str, path: str) -> str:
     taking the whole core module as a parameter."""
     import lehre_core
     return lehre_core.relative(cwd, path)
+
+
+def ruleset_weakenings(core, current: dict, proposed_text: str) -> str:
+    """Return a human-readable reason the proposed ruleset is WEAKER, or "".
+
+    Weaker means exactly two things, both decided by set comparison over parsed
+    JSON -- no regex, consistent with the evaluator's stance:
+
+      * a rule that currently denies writes no longer does (its id is gone, or
+        its severity dropped out of `blocking`, or its check kind moved off the
+        hook tier)
+      * a unit dependency edge disappeared, which would unblock a build order
+        the repository declared
+
+    Everything else passes untouched: adding rules, raising a severity,
+    extending a `forbid` list, editing prose fields, reordering.
+
+    A proposed file that will not parse or will not validate is treated as a
+    weakening, not as an error to pass through -- an unusable ruleset makes the
+    hook fail closed on every later write, which is a denial-of-service on the
+    repository's own doctrine rather than an honest tightening.
+    """
+    try:
+        proposed = core.validate_ruleset(json.loads(proposed_text))
+    except Exception as exc:  # noqa: BLE001 -- any unusable result is a weakening
+        return f"The proposed doctrine is not a usable ruleset ({type(exc).__name__}: {exc})."
+
+    def denying_ids(data: dict) -> set:
+        return {r["id"] for r in data.get("rules", [])
+                if r.get("severity") == "blocking" and r.get("enforcement") == "hook"}
+
+    lost_rules = denying_ids(current) - denying_ids(proposed)
+    if lost_rules:
+        return (f"{len(lost_rules)} rule(s) would stop denying writes: "
+                f"{sorted(lost_rules)}.")
+
+    current_edges = {(u["id"], dep) for u in current.get("units", [])
+                     for dep in u.get("depends_on", [])}
+    proposed_edges = {(u["id"], dep) for u in proposed.get("units", [])
+                      for dep in u.get("depends_on", [])}
+    lost_edges = current_edges - proposed_edges
+    if lost_edges:
+        return (f"{len(lost_edges)} build-order dependency edge(s) would disappear: "
+                f"{sorted(lost_edges)}.")
+    return ""
 
 
 class ContentUnknown(Exception):
@@ -226,6 +275,51 @@ def main() -> NoReturn:
                  f"unit order nor any blocking rule could be evaluated. Refusing rather "
                  f"than allowing an unchecked write. {ESCAPE_HATCH}")
 
+        # --- Gate 0: the guard's own control plane ------------------------
+        #
+        # Gates 1 and 2 both read state the agent could otherwise write. A model
+        # that hits the order gate can create the done-marker itself; a model
+        # that hits the rule gate can set "rules": [] and every later write
+        # passes. Neither is caught downstream, because lehre-pin's CI runs the
+        # gauge against whatever ruleset is on disk -- a gutted one exits 0 and
+        # CI is green.
+        #
+        # "Only lehre-validate writes the marker" was prose, which this repo
+        # measures at the bottom of the enforcement ladder, guarding the file
+        # the top of the ladder depends on.
+        #
+        # Neither clause costs a legitimate author anything: `lehre_cli.py close`
+        # writes the marker through Bash, and this hook does not match Bash.
+        for rel_path in targets:
+            if rel_path.startswith(UNITS_DIR + "/") or rel_path == UNITS_DIR:
+                # Deliberately does NOT name the path, the unit, or the marker
+                # convention. The Gate 1 message used to end with "it writes
+                # .lehre/units/<unit>.done", which told a blocked model exactly
+                # what to forge; a denial should not be a set of instructions.
+                deny(
+                    f"lehre: refusing to write unit-validation state directly. That state "
+                    f"records that a unit's rules and seams were CHECKED, so writing it by "
+                    f"hand would assert a check that never ran. Run lehre-validate on the "
+                    f"unit instead -- it writes this itself once the unit actually passes. "
+                    f"{ESCAPE_HATCH}"
+                )
+            if rel_path == RULESET:
+                try:
+                    proposed_text = resulting_content(cwd, tool_name, tool_input, rel_path)
+                except ContentUnknown as exc:
+                    deny(f"lehre: the doctrine file is being edited but its resulting content "
+                         f"could not be reconstructed ({exc}), so this change could not be "
+                         f"checked for weakening. {ESCAPE_HATCH}")
+                weakening = ruleset_weakenings(core, ruleset, proposed_text)
+                if weakening:
+                    deny(
+                        f"lehre: refusing to weaken the doctrine from inside a run it governs. "
+                        f"{weakening} Tightening is allowed and needs no bypass -- adding a rule, "
+                        f"raising a severity, or extending a forbid list all pass this gate. "
+                        f"Removing enforcement is a decision for lehre-codify with a human in "
+                        f"the loop. {ESCAPE_HATCH}"
+                    )
+
         # --- Gate 1: unit order -------------------------------------------
         for rel_path in targets:
             unit = core.unit_for(rel_path, units)
@@ -238,7 +332,7 @@ def main() -> NoReturn:
                     f"{pending} -- and {'none of those have' if len(pending) > 1 else 'that has not'} "
                     f"been validated yet. {unit.get('reason', '')} "
                     f"Build order is enforced, not advisory: run lehre-validate on "
-                    f"{pending[0]} first (it writes .lehre/units/{pending[0]}.done). {ESCAPE_HATCH}"
+                    f"'{pending[0]}' first. {ESCAPE_HATCH}"
                 )
 
         # --- Gate 2: blocking rules ---------------------------------------

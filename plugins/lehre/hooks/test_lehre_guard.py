@@ -155,6 +155,63 @@ with open(os.path.join(foreign, ".lehre", "ruleset.json"), "w", encoding="utf-8"
 expect_deny("foreign-provenance ruleset refused",
             run(foreign, write("src/api/h.py", "x = 1\n")))
 
+# -- GATE 0: the guard's own control plane ----------------------------------
+# Gates 1 and 2 read state the agent can otherwise write. Before Gate 0 existed,
+# both of these returned exit 0 -- verified, not assumed -- so a model that hit
+# the order gate could forge the marker and a model that hit the rule gate could
+# blank the ruleset, with CI none the wiser (lehre-pin's gauge runs against
+# whatever ruleset is on disk).
+
+expect_deny("forging a unit done-marker is refused",
+            run(ready, write(".lehre/units/contracts.done", "closed\n")))
+expect_deny("forging a marker for a not-yet-declared unit is refused too",
+            run(ready, write(".lehre/units/anything.done", "closed\n")))
+
+# The denial must not tell a blocked model what to forge. The Gate 1 message
+# used to end "it writes .lehre/units/<unit>.done", which was a set of
+# instructions rather than a refusal.
+_order = run(fresh, write("src/api/h.py", "x = 1\n"))
+if ".lehre/units/" in _order.stderr or ".lehre/units/" in _order.stdout:
+    FAILS.append("order-gate denial leaks the marker path a model would forge")
+
+expect_deny("blanking the ruleset is refused",
+            run(ready, write(".lehre/ruleset.json",
+                             json.dumps({"version": 1, "provenance": "lehre",
+                                         "mode": "greenfield", "units": [], "rules": []}))))
+
+_downgraded = json.loads(json.dumps(RULESET))
+for _r in _downgraded["rules"]:
+    if _r["id"] == "no-api-to-db":
+        _r["severity"] = "advisory"
+expect_deny("downgrading a blocking rule to advisory is refused",
+            run(ready, write(".lehre/ruleset.json", json.dumps(_downgraded))))
+
+_unlinked = json.loads(json.dumps(RULESET))
+for _u in _unlinked["units"]:
+    _u["depends_on"] = []
+expect_deny("dropping a build-order dependency edge is refused",
+            run(ready, write(".lehre/ruleset.json", json.dumps(_unlinked))))
+
+expect_deny("an unusable proposed ruleset is refused, not passed through",
+            run(ready, write(".lehre/ruleset.json", "not json at all")))
+
+# The inverse matters as much: a gate that refused every doctrine edit would
+# make lehre-codify unusable and get switched off wholesale.
+_tighter = json.loads(json.dumps(RULESET))
+_tighter["rules"].append({
+    "id": "no-wildcard-import", "severity": "blocking", "sourceMode": "scaffolded-default",
+    "rationale": "A wildcard import hides what a module actually depends on.",
+    "authority": {"source": "PEP 8"},
+    "check": {"kind": "python-construct", "paths": ["*.py"], "forbid": ["wildcard-import"]}})
+for _r in _tighter["rules"]:
+    if _r["id"] == "no-api-to-db":
+        _r["check"]["forbid"].append("src.orm.*")
+expect_allow("TIGHTENING the doctrine is allowed and needs no bypass",
+             run(ready, write(".lehre/ruleset.json", json.dumps(_tighter))))
+
+expect_allow("an unrelated file under .lehre/ is not gated",
+             run(ready, write(".lehre/notes.md", "scratch\n")))
+
 # -- ESCAPE HATCH -----------------------------------------------------------
 expect_allow("named escape hatch works",
              run(ready, write("utils.py", "x = 1\n"), {"LEHRE_DISABLE_GUARD": "1"}))

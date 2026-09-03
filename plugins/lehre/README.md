@@ -82,6 +82,7 @@ rule at all.
 | `advisory` + `judgement` | no | reported for `violation-auditor`; **never** machine-checked |
 | anything written through `Bash` rather than `Write`/`Edit` | no | yes |
 | a write into a unit with unvalidated dependencies | **yes** | — |
+| a write to `.lehre/units/*.done` or a weakening of `.lehre/ruleset.json` | **yes** | — |
 
 The two gaps are deliberate and layered over, not hidden: `lehre-gauge` sweeps the tree
 as it actually is, and `lehre-pin` emits a CI check that runs the same evaluator with no
@@ -126,6 +127,41 @@ the one thing all eight viewers share.
 
 Click any node in the enforcement flow to filter the rule table; ribbons are grouped by
 full path tuple, so the filter is exact rather than approximate.
+
+## The guard protects its own control plane
+
+Gates on the tree are worth nothing if the agent can edit the state the gates read.
+Both of these returned exit 0 before Gate 0 existed, verified by probe rather than
+assumed:
+
+```
+Write .lehre/units/contracts.done             -> ALLOWED   forge the marker, skip the order gate
+Write .lehre/ruleset.json  {... "rules": []}  -> ALLOWED   blank the doctrine, pass everything after
+```
+
+Neither was caught downstream, because `lehre-pin`'s CI runs the gauge against whatever
+ruleset is on disk — a gutted one exits 0 and CI is green. "Only `lehre-validate` writes
+the marker" was prose, which this repo measures at the *bottom* of the enforcement
+ladder, guarding the file the *top* of it depends on.
+
+Gate 0 now denies both, and the ordering is deliberate: it runs before the gates it
+protects.
+
+- **`.lehre/units/*.done`** — refused outright. That state records that a unit's rules
+  and seams were *checked*, so writing it by hand asserts a check that never ran. No
+  legitimate author is affected: `lehre_cli.py close` writes it through `Bash`, which
+  this hook does not match.
+- **`.lehre/ruleset.json`** — weakening refused, **tightening allowed**. A change is
+  weaker only if a rule that currently denies writes stops denying, or a build-order
+  dependency edge disappears. Adding a rule, raising a severity, extending a `forbid`
+  list and editing prose all pass untouched, so `lehre-codify` never needs the bypass.
+  A proposed file that will not parse counts as weakening, not as an error to pass
+  through — an unusable ruleset makes the hook fail closed on every later write.
+
+The denial message deliberately does **not** name the marker path, the unit, or the
+convention. The order-gate message used to end "it writes `.lehre/units/<unit>.done`",
+which told a blocked model exactly what to forge. A refusal should not double as
+instructions.
 
 ## Rule provenance
 

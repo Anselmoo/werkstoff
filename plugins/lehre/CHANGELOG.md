@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Gate 0 — the guard protects its own control plane.** `lehre_guard.py` now refuses a
+  write to `.lehre/units/*.done` (forging a validation marker asserts a check that never
+  ran) and refuses any change to `.lehre/ruleset.json` that removes enforcement — a
+  blocking rule that stops denying, or a build-order dependency edge that disappears.
+  Tightening passes untouched. Both exploits were reproduced at exit 0 before the fix,
+  and the six new cases in `hooks/test_lehre_guard.py` were mutation-checked: disabling
+  Gate 0 makes exactly those six fail.
+- The order-gate denial no longer names the marker file, which previously told a blocked
+  model what to forge.
+
 - Initial release.
 - `lehre_core.py` — one shared ruleset schema and predicate evaluator, used by both the
   PreToolUse hook and the gauge CLI so a sweep and a denial cannot disagree about a rule.
