@@ -650,6 +650,104 @@ class BeatsTest(unittest.TestCase):
             self.assertTrue(any("not in 'plugin:skill' form" in f for f in report.failures), report.failures)
 
 
+class OptionalReaderAffordancesTest(unittest.TestCase):
+    """`openingPrompt`, `dos` and `donts` are OPTIONAL recipe keys, validated
+    only when present -- the same contract a beat's `prompt` has.
+
+    Both halves matter and both are asserted here. If the "absent passes" half
+    broke, every recipe predating these keys would fail the gate; if the
+    "present-but-empty fails" half broke, the gate would silently accept an
+    empty affordance that renders as an empty heading, which is precisely the
+    'looks correct and does nothing' defect this repo keeps finding.
+    """
+
+    def _report(self, tmp: str, extra_yaml: str):
+        catalog_dir = Path(tmp) / "catalog"
+        surface_path = Path(tmp) / "surface.json"
+        fm = VALID_FRONTMATTER + ("\n" + extra_yaml if extra_yaml else "")
+        write_recipe(catalog_dir, "before-any-code", "do-a-thing.md", fm)
+        write_surface(surface_path, {"fixture": {"skills": ["fixture-skill"]}})
+        return VALIDATOR.validate_catalog(catalog_dir, surface_path)
+
+    # ---- absent is never a failure ----
+
+    def test_all_three_absent_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(self._report(tmp, "").ok)
+
+    # ---- openingPrompt ----
+
+    def test_opening_prompt_present_and_nonempty_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'openingPrompt: "Do the whole thing, in order."')
+            self.assertTrue(report.ok, report.failures)
+
+    def test_opening_prompt_empty_string_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'openingPrompt: ""')
+            self.assertFalse(report.ok)
+            self.assertTrue(any("openingPrompt" in f for f in report.failures), report.failures)
+
+    def test_opening_prompt_whitespace_only_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'openingPrompt: "   "')
+            self.assertFalse(report.ok)
+
+    def test_opening_prompt_wrong_type_fails(self) -> None:
+        """A list where a string belongs -- the shape a copy-paste from `dos`
+        would produce."""
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'openingPrompt:\n  - "not a string"')
+            self.assertFalse(report.ok)
+
+    # ---- dos / donts ----
+
+    def test_dos_and_donts_present_and_valid_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(
+                tmp,
+                'dos:\n  - "Do this first."\ndonts:\n  - "Don\'t do that."',
+            )
+            self.assertTrue(report.ok, report.failures)
+
+    def test_dos_empty_list_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, "dos: []")
+            self.assertFalse(report.ok)
+            self.assertTrue(any("'dos'" in f for f in report.failures), report.failures)
+
+    def test_donts_empty_list_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, "donts: []")
+            self.assertFalse(report.ok)
+            self.assertTrue(any("'donts'" in f for f in report.failures), report.failures)
+
+    def test_dos_with_an_empty_item_fails(self) -> None:
+        """One blank entry among good ones -- the shape an unfinished edit
+        leaves behind, and the one a length-only check would wave through."""
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'dos:\n  - "Do this first."\n  - ""')
+            self.assertFalse(report.ok)
+
+    def test_dos_as_a_bare_string_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'dos: "Do this first."')
+            self.assertFalse(report.ok)
+
+    def test_donts_wrong_item_type_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, "donts:\n  - 42")
+            self.assertFalse(report.ok)
+
+    # ---- the keys are independent of one another ----
+
+    def test_valid_dos_does_not_excuse_an_invalid_donts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report = self._report(tmp, 'dos:\n  - "Do this first."\ndonts: []')
+            self.assertFalse(report.ok)
+            self.assertTrue(any("'donts'" in f for f in report.failures), report.failures)
+
+
 class LoadSurfaceTest(unittest.TestCase):
     def test_missing_surface_file_raises_loudly(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

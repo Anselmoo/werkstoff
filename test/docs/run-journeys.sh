@@ -141,7 +141,40 @@ while IFS=$'\t' read -r id category expected goal regex antiregex; do
   # navigation shortcut a reader consulting the SOURCE prose does not get.
   # Excluding it also means this never races with a concurrent
   # `npm run docs:build` writing into the real docs/.vitepress/dist.
-  rsync -a --exclude '.vitepress/dist' "$REPO_ROOT/docs/" "$tmp/docs/"
+  # A failed or partial copy must NEVER reach `claude --print`. This script runs
+  # under `set -uo pipefail` with no `-e`, so an rsync failure would otherwise
+  # fall straight through and the model would explore an empty or half-populated
+  # docs tree; the run would then score FAIL and read as a findability verdict
+  # about the docs, when it is really a verdict about the harness. That is
+  # exactly the "code that looks correct and silently does nothing" shape
+  # CLAUDE.md catalogues, so the copy is checked three ways and any failure is
+  # classified ERROR -- missing data -- on the same terms as an empty stdout.
+  copy_err=""
+  # `$?` is captured on its own line, NOT inside `if ! rsync ...; then`: in that
+  # form `$?` holds the status of the negation (always 0 in the taken branch),
+  # so the message would report "rsync exited 0" for every failure. Measured --
+  # the first version of this guard did exactly that.
+  rsync -a --exclude '.vitepress/dist' "$REPO_ROOT/docs/" "$tmp/docs/" 2>"$tmp/.rsync.err"
+  rsync_rc=$?
+  if [[ "$rsync_rc" -ne 0 ]]; then
+    copy_err="rsync exited $rsync_rc copying docs/ into the isolation dir: $(tr '\n' ' ' <"$tmp/.rsync.err" | head -c 200)"
+  elif [[ ! -f "$tmp/docs/index.md" ]]; then
+    # rsync can exit 0 having copied nothing useful. index.md is the docs root
+    # and its absence means the model would start from nowhere.
+    copy_err="the copied tree has no docs/index.md -- the isolation dir is empty or partial"
+  else
+    copied=$(find "$tmp/docs" -name '*.md' -type f | wc -l | tr -d ' ')
+    source_count=$(find "$REPO_ROOT/docs" -name '*.md' -type f -not -path '*/.vitepress/dist/*' | wc -l | tr -d ' ')
+    if [[ "$copied" -ne "$source_count" ]]; then
+      copy_err="copied $copied markdown files but the source has $source_count -- partial copy"
+    fi
+  fi
+  if [[ -n "$copy_err" ]]; then
+    echo "── [$id] category=$category  expected=$expected"
+    echo "   ERROR — $copy_err; harness failure, not a findability verdict"
+    echo "VERDICT $id ERROR"
+    err=$((err + 1)); [[ -n "${KEEP_TMP:-}" ]] && echo "   tmp kept: $tmp" || rm -rf "$tmp"; continue
+  fi
 
   echo "── [$id] category=$category  expected=$expected"
   ( cd "$tmp" && "$CLAUDE_BIN" --settings "$CLEAN_BOX_JSON" --print "$prompt" $CLAUDE_PERM_FLAGS ) \
