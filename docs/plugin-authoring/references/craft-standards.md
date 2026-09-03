@@ -53,7 +53,7 @@ skill-name/
 **werkstoff status:** `references/` is already an established pattern (`andon`,
 `cli-scaffold`, `confab`, `cupertino`, `self-assess` all use it, at both plugin-root and
 skill-scope — see `CLAUDE.md`'s own note on `self-assess-extract-rules/references/`).
-`templates/` is not used anywhere in werkstoff today; `assets/` is — 7 of the 8 plugins
+`templates/` is not used anywhere in werkstoff today; `assets/` is — 8 of the 9 plugins
 (all but `takt`) have a plugin-root `assets/` directory, referenced from SKILL.md (or,
 for `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`. The
 `templates/` vs `references/` distinction (schema-you-fill-in vs. detail-you-read) is

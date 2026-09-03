@@ -69,7 +69,7 @@
     },
     {
       "name": "codebase-consistency",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "description": "Harmonize an already-modern, live codebase that grew inconsistent \u2014 divergent architecture, docs, code patterns, and style across modules \u2014 with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope \u2014 see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -86,6 +86,16 @@
       },
       "category": "development",
       "source": "./plugins/takt"
+    },
+    {
+      "name": "lehre",
+      "description": "Researches a code style, pattern and architecture doctrine from external authority plus real repository evidence, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, quoting its own rationale, rather than describing the violation after the fact. Works from a blank page as well as over an existing tree \u2014 greenfield project initialization is decomposed into units and seams, and a write into a unit whose dependencies are not yet validated is denied just as a rule violation is. Nine skills spanning evaluate / research / investigate / suggest / implement / validate / test, eight agents, one PreToolUse hook, and a closed deterministic check vocabulary (fnmatch and Python ast, never regex) whose enforcement tier is derived from the check kind rather than declared \u2014 so a rule cannot claim to block and silently fail to. Inert until a repository declares a doctrine.",
+      "author": {
+        "name": "Anselm Hahn",
+        "email": "anselm.hahn@gmail.com"
+      },
+      "category": "development",
+      "source": "./plugins/lehre"
     }
   ]
 }

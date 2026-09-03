@@ -1,0 +1,47 @@
+# Repo-root ruff config.
+#
+# This file exists to widen `ruff check` from tools/werkstoff-cli (the only
+# place CI ever linted -- see .github/workflows/cicd.yml's `defaults.run.
+# working-directory`) to the whole repo. That's a SCOPE change, not a bar
+# raise.
+#
+# tools/werkstoff-cli/pyproject.toml's [tool.ruff] selects a broader, stricter
+# set ("E","F","I","UP","B" with line-length=100) tailored to that one polished
+# package. Copying it verbatim here was tried and rejected: against the rest of
+# the repo it raises the finding count from a handful to 700+ (550 of them E501
+# alone, from repo-wide scripts nobody has ever formatted to a 100-column
+# limit), which would bury the real defects in reformatting noise. The CLI
+# package keeps its own stricter config in its own pyproject.toml, untouched.
+#
+# WHY `select` IS SPELLED OUT RATHER THAN LEFT TO "ruff's defaults":
+# because ruff's defaults are NOT stable across versions, and leaving them
+# implicit made CI fail on a commit that changed nothing relevant. This file
+# originally set no `select` at all, and the CI step ran unpinned `uvx ruff`,
+# which resolved to 0.16.6 -- whose default rule set is far broader than
+# 0.15's, additionally enabling EXE001, UP, RUF, SIM, PLW, BLE and I001. Same
+# commit, same config: 0 findings under 0.15.22, 325 under 0.16.6. A rule set
+# that changes when an unrelated tool cuts a release is not a decision this
+# repo ever made, so the decision is written down here instead. These four ARE
+# ruff's historical defaults (pyflakes, plus pycodestyle's syntax, statement
+# and indentation errors); the point is that they no longer depend on which
+# ruff happens to run.
+
+target-version = "py312"
+
+# test/plugins/fixtures/ holds deliberately-defective test fixtures, not real
+# source: e.g. test/plugins/fixtures/lehre-unparseable/src/broken.py contains
+# `def broken(:` -- a syntax error that IS the fixture -- and
+# test/plugins/fixtures/lehre-fidelity-gap/src/adapters/base.py has an
+# intentionally unused import. Linting (or "fixing") either destroys the test
+# it exists to support. Do not remove this exclusion.
+#
+# NOTE ON ORDERING: this key and `target-version` are TOP-LEVEL and must stay
+# above the [lint] table. TOML puts every key after a table header inside that
+# table, and `lint.extend-exclude` does not exist -- ruff then refuses to load
+# the file at all. That mistake was made here once and caught only because a
+# deliberately-broken probe file went undetected; a `--quiet` run had reported
+# it as "passing" while ruff was in fact scanning nothing.
+extend-exclude = ["test/plugins/fixtures"]
+
+[lint]
+select = ["E4", "E7", "E9", "F"]

@@ -1,0 +1,15 @@
+{
+  "version": 1, "provenance": "lehre", "mode": "brownfield", "units": [],
+  "rules": [
+    {"id": "no-api-to-db", "title": "The API layer must not import the database session",
+     "severity": "blocking", "sourceMode": "scaffolded-default",
+     "authority": {"source": "Clean Architecture (Martin), the Dependency Rule"},
+     "rationale": "An API handler reaching the session directly makes the transport layer un-testable without a database.",
+     "check": {"kind": "python-import", "paths": ["src/api/*"], "forbid": ["src.db.*"]}},
+    {"id": "prefer-logging", "title": "Use logging, not print",
+     "severity": "advisory", "sourceMode": "scaffolded-default",
+     "authority": {"source": "Python logging HOWTO"},
+     "rationale": "print() cannot be levelled, filtered or redirected.",
+     "check": {"kind": "python-construct", "paths": ["*.py"], "forbid": ["print-call"]}}
+  ]
+}

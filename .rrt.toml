@@ -77,6 +77,15 @@ changelog_file = "plugins/codebase-consistency/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
+name = "lehre"
+release_branch = "release/lehre/v{version}"
+changelog_file = "plugins/lehre/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/lehre/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
 name = "takt"
 release_branch = "release/takt/v{version}"
 changelog_file = "plugins/takt/CHANGELOG.md"
@@ -102,6 +111,13 @@ changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
 # not yet published at the time this was added; run from a local branch
 # checkout via `uv run --project <path-to-repo-release-tools> rrt fields`
 # until it ships in a release).
+
+[[tool.rrt.field_targets]]
+source = "plugins/lehre/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=lehre].description" },
+]
 
 [[tool.rrt.field_targets]]
 source = "plugins/self-assess/.claude-plugin/plugin.json"
@@ -297,6 +313,11 @@ command = ["cp", "tools/design-tokens/tokens.css", "plugins/cli-scaffold/assets/
 path = "plugins/codebase-consistency/assets/tokens.css"
 description = "codebase-consistency's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/codebase-consistency/assets/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/lehre/assets/tokens.css"
+description = "lehre's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/lehre/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/self-assess/assets/tokens.css"

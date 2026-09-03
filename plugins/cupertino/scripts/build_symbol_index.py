@@ -12,7 +12,6 @@ import ast
 import hashlib
 import json
 import os
-import platform
 import re
 import shutil
 import socket

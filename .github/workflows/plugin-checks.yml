@@ -26,6 +26,7 @@ jobs:
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
+      release_wiring: ${{ steps.release_wiring.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
     steps:
@@ -146,6 +147,22 @@ jobs:
         # the shapes that harness cannot express.
         run: python3 test/plugins/verify-takt-payload-shapes.py
 
+      - name: Verify every plugin is wired into the release workflows
+        id: release_wiring
+        continue-on-error: true
+        # Adding a plugin means adding its name to four separate lists, and
+        # three of them had nothing comparing them to anything. That drift has
+        # shipped twice: #46 for takt, and again for lehre, caught by review
+        # rather than by CI. A missing plugin-release.yml allowlist entry fails
+        # loudly at tag time; a missing auto-version-bump.yml matcher does not
+        # fail at all -- it silently skips the group, which is worse.
+        # The calibration runs first: a drift guard that cannot fail reports
+        # success every run and nobody looks again. Its own first run caught the
+        # guard failing on werkstoff-cli, a legitimate non-plugin version group.
+        run: |
+          python3 test/plugins/test-lint-release-wiring.py
+          python3 test/plugins/lint-release-wiring.py
+
       - name: Verify vendored artifacts match their committed lock
         id: rrt_artifacts
         continue-on-error: true
@@ -179,6 +196,7 @@ jobs:
           steps.docs_ux_audit.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
+          steps.release_wiring.outcome == 'failure' ||
           steps.docs_inject_check.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure'
@@ -228,6 +246,7 @@ jobs:
             row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
+            row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             echo "</tbody></table>"
             echo

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: werkstoff
   text: A workshop of Claude Code plugins
-  tagline: Eight plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
+  tagline: Nine plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
   actions:
     - theme: brand
       text: Prompt catalog
@@ -22,7 +22,7 @@ features:
     link: /catalog/
     linkText: Open the catalog
   - title: Every prompt each plugin answers
-    details: The example prompts from all eight plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
+    details: The example prompts from all nine plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
     link: /prompt-index
     linkText: Browse by plugin
   - title: Which pipeline owns the task
@@ -35,7 +35,7 @@ features:
     linkText: Read the hazards
 ---
 
-## Eight plugins, one job each
+## Nine plugins, one job each
 
 Pick by problem, not by feature list — each plugin targets one distinct failure mode
 and refuses to speak outside it. Full descriptions, install instructions, and licensing
@@ -49,3 +49,4 @@ live in the [repo README](https://github.com/Anselmoo/werkstoff#plugins).
 - **[`cli-scaffold`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cli-scaffold/README.md)** — scaffolds production-grade CLIs across 12 languages against a frozen five-pillar doctrine.
 - **[`codebase-consistency`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/codebase-consistency/README.md)** — harmonizes undocumented pattern variants in an already-modern, live codebase.
 - **[`takt`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/takt/README.md)** — enforces declared beat order at the tool-call layer; inert until a repo declares its beats.
+- **[`lehre`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/lehre/README.md)** — researches a code style, pattern and architecture doctrine, then denies the write that would violate it.

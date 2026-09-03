@@ -1,6 +1,6 @@
 # Orchestrating werkstoff with superpowers and the official plugins
 
-werkstoff's eight plugins, `obra/superpowers`, and Anthropic's official plugin set were
+werkstoff's nine plugins, `obra/superpowers`, and Anthropic's official plugin set were
 built independently, and they overlap far less than their descriptions suggest. This
 catalog records how they compose in one session: which pieces own a whole task, which
 drop into somebody else's workflow, and which handoffs are already wired so nobody
@@ -10,7 +10,7 @@ orchestrates them twice by hand.
 
 Three different things are installed, and they stack rather than compete.
 
-**werkstoff plugins are specialised inspectors and enforcers.** Seven of the eight
+**werkstoff plugins are specialised inspectors and enforcers.** Seven of the nine
 target one distinct failure mode and refuse to speak outside it — `andon` on
 handoffs between stages that were never proven, `self-assess` on a repo that cannot
 describe its own health, `confab` on assertions, contracts and dependency manifests
@@ -72,7 +72,7 @@ into another workflow's beats and gates.
 Everything else in werkstoff is a leaf. That covers all of `compass`'s reasoning
 skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
 paradigm and doctrine skills, `self-assess`'s finding skills, every `*-preflight`, and
-every named agent across all eight plugins.
+every named agent across all nine plugins.
 
 Two leaves deserve calling out by name, because they are usually assumed to be
 pipeline-bound and are not. `andon-verify` states "Never write to the ledger" and

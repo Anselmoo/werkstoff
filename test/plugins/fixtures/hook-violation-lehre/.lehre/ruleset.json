@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "provenance": "lehre",
+  "mode": "greenfield",
+  "units": [
+    {"id": "contracts", "paths": ["src/contracts/*"], "depends_on": [],
+     "reason": "Seams are settled before anything is written against them."},
+    {"id": "api", "paths": ["src/api.py", "src/api/*"], "depends_on": ["contracts"],
+     "reason": "The transport layer is built last, against a settled contract."}
+  ],
+  "rules": [
+    {
+      "id": "no-api-to-db",
+      "title": "The API layer must not import the database session",
+      "severity": "blocking",
+      "sourceMode": "scaffolded-default",
+      "authority": {"source": "Clean Architecture (Martin), the Dependency Rule"},
+      "rationale": "An API handler reaching the session directly makes the transport layer un-testable without a database.",
+      "check": {"kind": "python-import", "paths": ["src/api.py", "src/api/*"], "forbid": ["src.db.*"]}
+    },
+    {
+      "id": "no-utils-dumping-ground",
+      "title": "No module named utils",
+      "severity": "blocking",
+      "sourceMode": "scaffolded-default",
+      "authority": {"source": "Clean Code (Martin), ch.2 Meaningful Names"},
+      "rationale": "A utils module has no owner and no cohesion; it accretes whatever had no home.",
+      "check": {"kind": "forbid-path", "paths": ["utils.py", "utils/*"]}
+    }
+  ]
+}

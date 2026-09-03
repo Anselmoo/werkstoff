@@ -4,7 +4,12 @@
 Run: python3 scripts/test_build_branch_comparison_html.py
 Exits 0 if every case passes.
 """
-import sys, os, json, tempfile, shutil, time
+import sys
+import os
+import json
+import tempfile
+import shutil
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import build_branch_comparison_html as B  # noqa: E402

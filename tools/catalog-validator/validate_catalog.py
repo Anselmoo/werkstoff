@@ -29,7 +29,7 @@ What it checks, per recipe file:
        its content should be -- no error, no warning, just a page missing its whole
        point -- so it is checked here rather than left to review.
     6. Every beat's `skill` id, when its `plugin:` namespace matches one of
-       werkstoff's own 8 plugins, must resolve to a real skill or agent id in
+       werkstoff's own 9 plugins, must resolve to a real skill or agent id in
        surface.json. A namespace that does not match any werkstoff plugin (e.g.
        `superpowers:*`, `pr-review-toolkit:*`) is counted as "external,
        unchecked" rather than failed or silently ignored -- this tool has no

@@ -588,6 +588,150 @@
       ]
     },
     {
+      "name": "lehre",
+      "version": "0.1.0",
+      "description": "Researches a code style, pattern and architecture doctrine, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, rather than describing the violation afterwards. Works from a blank page (greenfield project initialization, decomposed into units and seams whose build order is itself enforced) as well as over an existing codebase.",
+      "skills": [
+        {
+          "id": "lehre:lehre-brief",
+          "name": "lehre-brief",
+          "description": "Use after lehre-gauge to turn a violation set into an ordered remediation plan behind an explicit human approval gate, written to LEHRE_BRIEF.md. Trigger on 'plan the cleanup', 'what order should we fix these in', 'write the remediation brief', or 'lehre brief'. Refuses to run without a gauge result, and refuses to overwrite a brief written by another pipeline."
+        },
+        {
+          "id": "lehre:lehre-codify",
+          "name": "lehre-codify",
+          "description": "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused."
+        },
+        {
+          "id": "lehre:lehre-conform",
+          "name": "lehre-conform",
+          "description": "Use to build a greenfield unit, or to apply exactly one approved phase of LEHRE_BRIEF.md, with the doctrine's blocking rules enforced at the tool-call layer throughout. Trigger on 'build the next unit', 'implement phase 1', 'apply the approved fixes', 'make this conform', or 'lehre conform'. Refuses to act on an unapproved brief, and never marks its own work validated."
+        },
+        {
+          "id": "lehre:lehre-decompose",
+          "name": "lehre-decompose",
+          "description": "Use on a blank page, after lehre-preflight reports greenfield, to turn a stated project intent into build units, the seams between them, and an enforced build order. Trigger on 'start this project properly', 'initialize this repo', 'break this down into pieces and connect them', 'what should I build first', or 'lehre decompose'. Produces units whose order is denied at the tool-call layer, not a plan anyone can skip."
+        },
+        {
+          "id": "lehre:lehre-gauge",
+          "name": "lehre-gauge",
+          "description": "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Read-only — reports violations, never fixes them."
+        },
+        {
+          "id": "lehre:lehre-pin",
+          "name": "lehre-pin",
+          "description": "Use once a unit or phase is validated, to make its rules survive without the plugin: emit a CI check that runs the doctrine with no agent in the loop, and write behaviour tests around the code that was changed to conform. Trigger on 'make this stick', 'add CI for our standards', 'pin these rules', 'test the conformance changes', or 'lehre pin'. Two phases — the durable rule check, then the regression net."
+        },
+        {
+          "id": "lehre:lehre-preflight",
+          "name": "lehre-preflight",
+          "description": "Use FIRST, before any other lehre skill, to determine whether this repository is a blank page or an existing tree, report what doctrine it already declares, and say plainly what lehre can and cannot enforce here. Trigger on 'set up code standards', 'enforce our architecture', 'start a new project properly', 'lehre preflight', or as the automatic first step of any lehre pipeline. Read-only — never writes a ruleset."
+        },
+        {
+          "id": "lehre:lehre-status",
+          "name": "lehre-status",
+          "description": "Use to report where a lehre run currently stands — which units are validated, blocked or ready, how many rules are in force, and what is denied at write time right now. Trigger on 'lehre status', 'where are we', 'what's blocked', 'what can I build next', or when resuming work on a repository that already has a .lehre directory. Read-only."
+        },
+        {
+          "id": "lehre:lehre-validate",
+          "name": "lehre-validate",
+          "description": "Use after lehre-conform to independently check that a unit satisfies its rules AND actually does what the project intent said it would, then close it so dependent units become buildable. Trigger on 'validate this unit', 'is this actually done', 'check the work before moving on', or 'lehre validate'. The ONLY skill that writes a unit done-marker — nothing else may certify a unit complete."
+        }
+      ],
+      "agents": [
+        {
+          "id": "lehre:conformance-remediator",
+          "name": "conformance-remediator",
+          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Typical triggers include lehre-conform dispatching one remediator per (file, rule) cluster after the approval gate closes. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Edit"
+          ]
+        },
+        {
+          "id": "lehre:doctrine-researcher",
+          "name": "doctrine-researcher",
+          "description": "Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Typical triggers include lehre-codify dispatching one agent per rule-domain in a single parallel batch, and a re-research pass after the project's target version changed. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "lehre:pattern-investigator",
+          "name": "pattern-investigator",
+          "description": "Use this agent when an existing codebase needs surveying for how it actually handles one convention dimension, with real file:line evidence, so a researched rule can be upgraded to evidence-backed provenance or dropped for contradicting settled practice. Typical triggers include lehre-codify dispatching one agent per dimension during a brownfield run, and a check on whether a specific proposed rule would break existing deliberate practice. Brownfield only — never dispatched on a blank page. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "lehre:rule-critic",
+          "name": "rule-critic",
+          "description": "Use this agent to adversarially review a candidate ruleset before it is written to .lehre/ruleset.json — independently re-deriving whether each rule's sourceMode claim is honest, hunting for forced consistency where genuine variation was warranted, and catching blocking rules whose predicate cannot actually decide them. Typical triggers include lehre-codify dispatching it once over the whole candidate set before writing, and a re-review after candidates were revised. Read-only; it refutes, it does not rewrite. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "lehre:spec-decomposer",
+          "name": "spec-decomposer",
+          "description": "Use this agent when one concern of a stated project intent needs turning into candidate build units — what each owns, what it must not know about, and which seams it participates in. Typical triggers include lehre-decompose dispatching one agent per concern in a single parallel batch so the concerns stay independent, and a re-decomposition after the user revises the intent. Every dispatch names exactly ONE concern; a dispatch naming several is out of scope and only the first is handled. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "lehre:spec-fidelity-auditor",
+          "name": "spec-fidelity-auditor",
+          "description": "Use this agent when a completed unit needs checking against the project intent it was built for — does it deliver what the recorded intent said, and does it respect what the decomposition declared it must not know? Typical triggers include lehre-validate dispatching it before closing any unit, and a direct question about whether a finished unit is actually the unit that was asked for. Answers a question no rule can express; every rule passing is not the same as the unit being right. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "lehre:violation-auditor",
+          "name": "violation-auditor",
+          "description": "Use this agent when a rule that has no deterministic predicate — an advisory rule the closed check vocabulary cannot express — needs a codebase surveyed for violations by reading, since the gauge script cannot decide it. Typical triggers include lehre-gauge dispatching one auditor per advisory rule with no machine check, and a targeted request to find where a specific named design rule is broken. Never dispatched for a rule the gauge can already decide — re-auditing those by hand produces a second, drifting opinion. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "lehre:violation-verifier",
+          "name": "violation-verifier",
+          "description": "Use this agent to independently re-confirm one candidate violation at its exact file:line, blind to the reasoning that produced it, so a false positive is caught before a remediation is planned around it. Typical triggers include lehre-gauge sampling one violation per rule before presenting a large set, and lehre-validate re-checking a file the gauge reported as UNEVALUATED. Judges one location per dispatch and never infers one location's verdict from another's, even within the same file and rule. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": []
+    },
+    {
       "name": "self-assess",
       "version": "0.6.0",
       "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
@@ -867,6 +1011,15 @@
     "cupertino:cupertino-reveal",
     "cupertino:cupertino-review",
     "cupertino:cupertino-unbox",
+    "lehre:lehre-brief",
+    "lehre:lehre-codify",
+    "lehre:lehre-conform",
+    "lehre:lehre-decompose",
+    "lehre:lehre-gauge",
+    "lehre:lehre-pin",
+    "lehre:lehre-preflight",
+    "lehre:lehre-status",
+    "lehre:lehre-validate",
     "self-assess:self-assess-arch-health",
     "self-assess:self-assess-autopilot",
     "self-assess:self-assess-ci-topology",
@@ -907,6 +1060,14 @@
     "cupertino:handbook-drift-auditor",
     "cupertino:handbook-remediator",
     "cupertino:handbook-verifier",
+    "lehre:conformance-remediator",
+    "lehre:doctrine-researcher",
+    "lehre:pattern-investigator",
+    "lehre:rule-critic",
+    "lehre:spec-decomposer",
+    "lehre:spec-fidelity-auditor",
+    "lehre:violation-auditor",
+    "lehre:violation-verifier",
     "self-assess:arch-health-auditor",
     "self-assess:business-rules-miner",
     "self-assess:ci-topology-auditor",

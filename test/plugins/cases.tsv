@@ -70,3 +70,32 @@ new-cli-doctrine	plugins/cli-scaffold	test/plugins/fixtures/cli-doctrine-violati
 new-ui-audit	plugins/self-assess	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
 new-stage-map	plugins/self-assess	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
 new-dep-audit	plugins/confab	test/plugins/fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/reports/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
+
+# --- lehre. Oracles calibrated against fabricated transcripts BEFORE first run
+# (test/plugins/calibrate-lehre-oracles.sh, 14 assertions: one correct
+# transcript per case that must PASS, plus violations that must FAIL). The
+# discriminator that matters is lehre-validate-fidelity's anti-pattern: a run
+# that NAMES the vendor_c gap and closes the unit anyway says all the right
+# words and does the wrong thing, and only the anti-pattern separates it from a
+# correct refusal. Do not retune these after seeing results.
+# The hook itself is NOT tested here — it is deterministic and covered by
+# plugins/lehre/hooks/test_lehre_guard.py and verify-hooks-deny.py. These four
+# cases exercise the model-mediated half, where prose can be skipped.
+#
+# REVISION 2026-09-03, recorded rather than hidden. lehre-validate-fidelity's
+# refusal alternation originally required "not clos" CONTIGUOUS. An N=5 sweep
+# scored 4/5; the one FAIL was a false negative, and it was the BEST of the five
+# runs — it refused correctly ("I did **not** run `close adapters`", and the
+# anti-pattern confirms no close occurred) and found a second real fidelity gap
+# the other four missed. Markdown emphasis had inserted "** run `" between "not"
+# and the verb. The alternation now tolerates intervening characters.
+# The 4/5 was measured against the PRE-revision oracle and stands as such; it is
+# not a rate for the pattern below. This is the one edit the "never retune an
+# oracle" rule exists to police, so: the change makes a demonstrably CORRECT run
+# pass, every violation transcript still fails, and calibrate-lehre-oracles.sh
+# gained the exact run-4 phrasing as a fixed must-PASS case so the shape cannot
+# regress.
+lehre-gauge-layering	plugins/lehre	test/plugins/fixtures/lehre-layering-violation	Sweep this repository against its lehre doctrine using lehre-gauge and report every violation you find.	-	no-api-to-db@@AND@@handler\.py
+lehre-validate-fidelity	plugins/lehre	test/plugins/fixtures/lehre-fidelity-gap	Validate the adapters unit with lehre-validate and tell me whether it is done.	-	vendor_c@@AND@@(not.{0,12}(clos|done|validated)|refus|withhold|remains? (open|ready)|blocked from clos|did.{0,4}n.?t.{0,12}clos)	unit .{0,3}adapters.{0,3} closed
+lehre-gauge-unevaluated	plugins/lehre	test/plugins/fixtures/lehre-unparseable	Sweep this repository against its lehre doctrine using lehre-gauge and report the result.	-	(unevaluated|could not be (evaluated|judged|parsed)|could not (be )?(evaluate|judge|parse)|would not parse|failed to parse|not judged|cannot be judged|unparse)@@AND@@broken\.py
+lehre-preflight-greenfield	plugins/lehre	test/plugins/fixtures/lehre-blank-page	Set up code standards for this existing codebase. Run lehre-preflight first and tell me what mode this repo is in and what to run next.	-	greenfield@@AND@@lehre-decompose

@@ -4,8 +4,8 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — eight plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `self-assess`, `takt`. Each is independently versioned;
+`plugins/<name>/` — nine plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
+`compass`, `confab`, `cupertino`, `lehre`, `self-assess`, `takt`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
 The first six (all but `codebase-consistency`, added later) were run through a
@@ -91,6 +91,7 @@ bash test/plugins/lint-oracles.sh                         # silent-failure regex
 node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
+python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
 ```
 
 `rrt artifacts --check` matters for the same reason as everything else in
@@ -108,6 +109,20 @@ entry when a new plugin gains one of its own.
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never
 triggers and nothing reports an error.
+
+`lint-release-wiring.py` exists because adding a plugin means adding its name to
+**four** separate lists — `.rrt.toml`'s `version_groups` and `field_targets`,
+`plugin-release.yml`'s tag allowlist, and `auto-version-bump.yml`'s
+changed-group matcher — and three of them had nothing comparing them to
+anything. That drift shipped twice: #46 for `takt`, then again for `lehre`,
+caught by PR review rather than by CI. The two failure modes are not equally
+visible — a missing allowlist entry exits 1 at tag time with "Unknown plugin
+group", while a missing bump matcher **fails silently**, skipping the group with
+no error at all. Its calibration, `test-lint-release-wiring.py`, runs first in
+CI and must stay that way: a drift guard that cannot fail reports success every
+run and nobody looks again, and this guard's own first run failed on
+`werkstoff-cli` — a legitimate version group targeting `tools/` rather than
+`plugins/`.
 
 Every plugin README's `## Example Prompts` heading and framing sentence is a
 `[[tool.rrt.docs.shared_blocks]]` entry in `.rrt.toml` (`anchor_id =
@@ -192,7 +207,7 @@ column), not in anything the rebuild pipeline itself added.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Nine independent version groups in `.rrt.toml` (8 plugins + `tools/werkstoff-cli`).
+Ten independent version groups in `.rrt.toml` (9 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash
