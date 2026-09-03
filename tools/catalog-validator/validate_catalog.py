@@ -19,7 +19,7 @@ What it checks, per recipe file:
     4. Every beat has non-empty `skill` and `why` (`prompt` is optional; its
        absence is never a failure).
     5. Every beat's `skill` id, when its `plugin:` namespace matches one of
-       werkstoff's own 8 plugins, must resolve to a real skill or agent id in
+       werkstoff's own 9 plugins, must resolve to a real skill or agent id in
        surface.json. A namespace that does not match any werkstoff plugin (e.g.
        `superpowers:*`, `pr-review-toolkit:*`) is counted as "external,
        unchecked" rather than failed or silently ignored -- this tool has no

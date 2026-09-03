@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 8 plugin READMEs, 74 in
+Every example prompt shipped by the 9 plugin READMEs, 79 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -480,6 +480,42 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `cupertino-handbook-fix` — only after fix mode is explicitly enabled for a domain; never touches a `mechanical:false` finding, and never infers consent from a check report alone.
+
+## lehre
+
+[`plugins/lehre/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/lehre/README.md) — 5 prompts.
+
+##### Start a new project so it cannot drift
+
+````prompt
+"I'm starting a CLI that ingests CSV from three vendors and writes Parquet. Set it up
+properly — I don't want the usual mess where everything imports everything."
+````
+
+##### Establish and enforce a doctrine on an existing repo
+
+````prompt
+"research what rules this codebase should follow for its stack, check them against what
+we actually do, and make the important ones actually enforced"
+````
+
+##### Find where the code violates its own architecture
+
+````prompt
+"where do we violate our own layering, and which of those are real"
+````
+
+##### Make the rules survive without the plugin
+
+````prompt
+"pin these rules into CI so they still hold when nobody's running Claude"
+````
+
+##### Ask what is currently blocked
+
+````prompt
+"lehre status — what can I build next?"
+````
 
 ## self-assess
 

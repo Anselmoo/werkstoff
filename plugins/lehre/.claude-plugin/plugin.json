@@ -1,0 +1,9 @@
+{
+  "name": "lehre",
+  "version": "0.1.0",
+  "description": "Researches a code style, pattern and architecture doctrine, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, rather than describing the violation afterwards. Works from a blank page (greenfield project initialization, decomposed into units and seams whose build order is itself enforced) as well as over an existing codebase.",
+  "author": {
+    "name": "Anselm Hahn",
+    "email": "anselm.hahn@gmail.com"
+  }
+}

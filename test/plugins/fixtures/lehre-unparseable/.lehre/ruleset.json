@@ -1,0 +1,10 @@
+{
+  "version": 1, "provenance": "lehre", "mode": "brownfield", "units": [],
+  "rules": [
+    {"id": "no-bare-except", "title": "No bare except",
+     "severity": "blocking", "sourceMode": "scaffolded-default",
+     "authority": {"source": "PEP 8, Programming Recommendations"},
+     "rationale": "A bare except also catches KeyboardInterrupt and SystemExit.",
+     "check": {"kind": "python-construct", "paths": ["*.py"], "forbid": ["bare-except"]}}
+  ]
+}

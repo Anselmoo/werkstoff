@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lehre — doctrine map</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
+  header { margin-bottom: var(--space-4); }
+  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; margin: 0 0 var(--space-2); color: var(--smoke); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .intent {
+    margin-top: var(--space-2); padding: var(--space-2) var(--space-3);
+    border-left: 3px solid var(--silica-deep); background: var(--panel);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--smoke); font-size: 0.85rem;
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); padding: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .note { color: var(--muted); font-size: 0.78rem; margin: var(--space-2) 0 0; }
+
+  /* ---- funnel strip ---- */
+  .funnel { display: flex; gap: 2px; align-items: stretch; margin-bottom: var(--space-3);
+            flex-wrap: wrap; }
+  .fstep { flex: 1 1 150px; min-width: 0; padding: var(--space-2); background: var(--panel-2);
+           border-radius: var(--radius-sm); }
+  .fstep .n { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+  .fstep .l { font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
+              letter-spacing: 0.06em; margin-top: 2px; }
+  .fstep .d { font-size: 0.75rem; color: var(--smoke); margin-top: var(--space-1); }
+  .fstep.terminal { outline: 1px solid var(--chromia-deep); }
+  .fstep.leak { outline: 1px solid var(--samaria-deep); }
+
+  /* ---- sankey ---- */
+  svg { display: block; width: 100%; height: auto; }
+  .snode rect { stroke: var(--bg); stroke-width: 1; cursor: pointer; }
+  /* Middle-stage labels necessarily sit over ribbons — that is inherent to a
+     Sankey, not a layout bug. A background-coloured halo painted UNDER the glyph
+     keeps them readable without moving them off their node. */
+  /* Labels are deliberately NOT pointer-events:none. SVG hit-testing fires only
+     on painted geometry, so a group whose only solid child is a 13px bar has a
+     bounding-box centre that lands on nothing — the click passes through and the
+     filter silently never applies. The glyphs plus their halo are the generous
+     part of the target; .hit below covers thin bars. */
+  .snode text {
+    font-size: 11px; fill: var(--smoke); cursor: pointer;
+    paint-order: stroke; stroke: var(--bg); stroke-width: 3px;
+    stroke-linejoin: round;
+  }
+  .snode .cnt { fill: var(--muted); font-size: 10px; }
+  /* Transparent, but painted as far as hit-testing is concerned, so a one-rule
+     node is still comfortably clickable. Scoped to the bar's own width so it
+     never steals hover from the ribbons either side. */
+  .snode .hit { fill: transparent; pointer-events: all; cursor: pointer; }
+  .snode:focus { outline: none; }
+  .snode:focus rect { stroke: var(--accent); stroke-width: 2; }
+  .slink { fill-opacity: 0.34; stroke: none; transition: fill-opacity var(--transition-fast); }
+  .slink:hover { fill-opacity: 0.62; }
+  .dim { opacity: 0.1; }
+  .stage-label { font-size: 10px; fill: var(--muted); text-transform: uppercase;
+                 letter-spacing: 0.08em; }
+
+  /* ---- dag ---- */
+  .unode text { font-size: 11px; fill: var(--text); pointer-events: none; }
+  .unode .st { font-size: 9px; fill: var(--muted); }
+  .uedge { fill: none; stroke: var(--border); stroke-width: 1.5; marker-end: url(#arrow); }
+  .uedge.blocked { stroke: var(--ferria-deep); stroke-dasharray: 4 3; }
+
+  /* ---- table ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border);
+           vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; text-transform: uppercase;
+       font-size: 0.68rem; letter-spacing: 0.06em; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px;
+          font-size: 0.68rem; font-weight: 600; white-space: nowrap; }
+  .why { color: var(--muted); font-size: 0.75rem; }
+  .bar { display: flex; align-items: center; justify-content: space-between;
+         gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 0.78rem; color: var(--text); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: var(--radius-control);
+    padding: 4px 12px; cursor: pointer; transition: background var(--transition-fast);
+  }
+  button:hover { background: var(--border); }
+  .filtermsg { color: var(--accent-2); font-size: 0.78rem; }
+  .empty { color: var(--muted); font-style: italic; padding: var(--space-3) 0; }
+  #tip {
+    position: fixed; pointer-events: none; opacity: 0; z-index: 9;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.75rem;
+    max-width: 340px; white-space: pre-line; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    transition: opacity var(--transition-fast);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>lehre — doctrine map</h1>
+    <p class="sub" id="sub"></p>
+    <div class="intent" id="intent" hidden></div>
+  </header>
+
+  <section class="panel">
+    <h2>Does the doctrine actually bite?</h2>
+    <div class="funnel" id="funnel"></div>
+    <p class="note">
+      Every rule enters at the left and leaves at exactly one outcome on the right.
+      Ribbons are coloured by where they <em>end</em>, not where they start, so a
+      blocking rule whose ribbon drains to amber is one everybody believes blocks
+      and which never denies a write.
+    </p>
+  </section>
+
+  <section class="panel">
+    <div class="bar">
+      <h2 style="margin:0">Enforcement flow</h2>
+      <div>
+        <span class="filtermsg" id="filtermsg"></span>
+        <button id="clear" hidden>clear filter</button>
+      </div>
+    </div>
+    <svg id="sankey" role="img"
+         aria-label="Sankey diagram of rules flowing from provenance through severity and check kind to enforcement outcome"></svg>
+  </section>
+
+  <section class="panel" id="dagpanel">
+    <h2>Build order — what is denied right now</h2>
+    <svg id="dag" role="img"
+         aria-label="Unit dependency graph coloured by validation state"></svg>
+    <p class="note" id="dagnote"></p>
+  </section>
+
+  <section class="panel">
+    <div class="bar"><h2 style="margin:0">Rules</h2><span class="filtermsg" id="count"></span></div>
+    <div id="tablewrap"></div>
+  </section>
+</div>
+<div id="tip" role="status"></div>
+
+<script>
+const DATA = /*__DOCTRINE_DATA__*/ null;
+
+/* Colour by role, always through a design token so no hex is hardcoded here. */
+const OUTCOME_COLOR = {
+  "denied at write time": "var(--chromia)",
+  "sweep + CI only":      "var(--samaria)",
+  "advisory only":        "var(--muted)",
+  "judgement only":       "var(--neodymia)"
+};
+const NODE_COLOR = {
+  "provenance:evidence-backed":    "var(--chromia-deep)",
+  "provenance:intent-derived":     "var(--silica-deep)",
+  "provenance:scaffolded-default": "var(--neodymia-deep)",
+  "severity:blocking":             "var(--silica)",
+  "severity:advisory":             "var(--muted)",
+  "kind:forbid-path":              "var(--cat-1)",
+  "kind:require-location":         "var(--cat-2)",
+  "kind:python-import":            "var(--cat-3)",
+  "kind:python-construct":         "var(--cat-4)",
+  "kind:linter":                   "var(--cat-5)",
+  "kind:judgement":                "var(--neodymia-light)"
+};
+const STATE_COLOR = {
+  validated: "var(--chromia)", ready: "var(--silica)", blocked: "var(--ferria)"
+};
+
+const el = id => document.getElementById(id);
+const SVGNS = "http://www.w3.org/2000/svg";
+function mk(tag, attrs, parent) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+/* Every string from the ruleset reaches the DOM through textContent, never
+   innerHTML. The builder also escapes < > & on the way in, so this is the
+   second of two independent barriers rather than the only one. */
+function txt(s) { return document.createTextNode(String(s)); }
+
+let filter = null;
+
+/* ---------------------------- funnel ---------------------------- */
+function drawFunnel() {
+  const t = DATA.totals, f = el("funnel");
+  /* A funnel asserts NESTING: every step must be a subset of the one before it.
+     t.hook_tier is deliberately NOT a step here — it counts every hook-decidable
+     rule including advisory ones, so it is not a subset of t.blocking, and
+     showing it between them would render a "no drop" that is an artifact of two
+     overlapping-but-different sets rather than a fact about enforcement. */
+  const steps = [
+    { n: t.rules, l: "declared", d: "rules in the doctrine" },
+    { n: t.blocking, l: "blocking", d: "severity: blocking" },
+    { n: t.denied_at_write_time, l: "denied at write time",
+      d: "blocking AND decidable by a hook", cls: "terminal" }
+  ];
+  steps.forEach((s, i) => {
+    const d = document.createElement("div");
+    d.className = "fstep" + (s.cls ? " " + s.cls : "");
+    const n = document.createElement("div");
+    n.className = "n";
+    n.appendChild(txt(s.n));
+    if (i > 0 && steps[i - 1].n > s.n) {
+      const drop = document.createElement("span");
+      drop.style.cssText =
+        "font-size:.75rem;font-weight:500;color:var(--samaria-light);margin-left:6px";
+      drop.appendChild(txt("-" + (steps[i - 1].n - s.n)));
+      n.appendChild(drop);
+    }
+    const l = document.createElement("div"); l.className = "l"; l.appendChild(txt(s.l));
+    const dd = document.createElement("div"); dd.className = "d"; dd.appendChild(txt(s.d));
+    d.appendChild(n); d.appendChild(l); d.appendChild(dd);
+    f.appendChild(d);
+  });
+  if (t.blocking > t.denied_at_write_time) {
+    const gap = document.createElement("div");
+    gap.className = "fstep leak";
+    const n = document.createElement("div");
+    n.className = "n";
+    n.style.color = "var(--samaria-light)";
+    n.appendChild(txt(t.blocking - t.denied_at_write_time));
+    const l = document.createElement("div"); l.className = "l";
+    l.appendChild(txt("believed to block"));
+    const dd = document.createElement("div"); dd.className = "d";
+    dd.appendChild(txt("blocking, but never a write-time denial"));
+    gap.appendChild(n); gap.appendChild(l); gap.appendChild(dd);
+    f.appendChild(gap);
+  }
+}
+
+/* ---------------------------- sankey ---------------------------- */
+function drawSankey() {
+  const svg = el("sankey");
+  const stages = DATA.stages, links = DATA.links;
+  const NODE_W = 13, GAP = 9, PAD_T = 24, PAD_B = 10, LABEL_W = 170;
+  const W = 1100;
+  const H = Math.max(230, DATA.totals.rules * 24 + 100);
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const innerH = H - PAD_T - PAD_B;
+  const colX = i => LABEL_W / 2 + i * ((W - LABEL_W) / (stages.length - 1));
+
+  /* ONE global scale. Every rule passes exactly one node per stage, so each
+     stage sums to the same total and band widths are comparable ACROSS stages
+     as well as within one. A per-stage scale would silently make a 2-rule band
+     in a 2-node stage look like a 5-rule band in a 5-node stage. */
+  const maxNodes = Math.max.apply(null, stages.map(s => s.nodes.length));
+  const scale = (innerH - (maxNodes - 1) * GAP) / Math.max(1, DATA.totals.rules);
+
+  const pos = {};
+  stages.forEach((st, si) => {
+    const blockH = st.nodes.reduce((a, n) => a + n.count * scale, 0)
+                 + (st.nodes.length - 1) * GAP;
+    let y = PAD_T + (innerH - blockH) / 2;
+    st.nodes.forEach(n => {
+      pos[n.id] = { x: colX(si), y0: y, y1: y + n.count * scale, stage: si };
+      y += n.count * scale + GAP;
+    });
+  });
+
+  /* Stack each link's endpoints in the vertical order of the node at the other
+     end. Cheapest crossing reduction that needs no iteration. */
+  const outAcc = {}, inAcc = {};
+  const ordered = links.slice().sort((a, b) =>
+    (pos[a.source].y0 - pos[b.source].y0) || (pos[a.target].y0 - pos[b.target].y0));
+  const gLink = mk("g", {}, svg), gNode = mk("g", {}, svg);
+
+  ordered.forEach(lk => {
+    const s = pos[lk.source], t = pos[lk.target];
+    if (!s || !t) return;
+    const h = lk.value * scale;
+    if (outAcc[lk.source] === undefined) outAcc[lk.source] = s.y0;
+    if (inAcc[lk.target] === undefined) inAcc[lk.target] = t.y0;
+    const sy = outAcc[lk.source]; outAcc[lk.source] += h;
+    const ty = inAcc[lk.target];  inAcc[lk.target]  += h;
+    const x0 = s.x + NODE_W, x1 = t.x, xm = (x0 + x1) / 2;
+    const d = "M" + x0 + "," + sy + "C" + xm + "," + sy + " " + xm + "," + ty +
+              " " + x1 + "," + ty +
+              "L" + x1 + "," + (ty + h) + "C" + xm + "," + (ty + h) + " " +
+              xm + "," + (sy + h) + " " + x0 + "," + (sy + h) + "Z";
+    const p = mk("path", { d: d, class: "slink",
+                           fill: OUTCOME_COLOR[lk.outcome] || "var(--muted)" }, gLink);
+    p._lk = lk;
+    p.addEventListener("mousemove", e => showTip(e,
+      lk.value + " rule" + (lk.value === 1 ? "" : "s") + " -> " + lk.outcome +
+      "\n" + lk.rules.join(", ")));
+    p.addEventListener("mouseleave", hideTip);
+  });
+
+  stages.forEach((st, si) => {
+    const last = si === stages.length - 1;
+    const lbl = mk("text", { x: colX(si), y: 13, class: "stage-label" }, svg);
+    lbl.setAttribute("text-anchor", si === 0 ? "start" : last ? "end" : "middle");
+    lbl.appendChild(txt(st.label));
+    st.nodes.forEach(n => {
+      const p = pos[n.id];
+      const g = mk("g", { class: "snode", tabindex: "0", role: "button" }, gNode);
+      g.setAttribute("aria-label", n.label + ", " + n.count + " rules");
+      const barH = Math.max(1, p.y1 - p.y0);
+      const hitH = Math.max(18, barH + 4);
+      mk("rect", { class: "hit", x: p.x - 3, y: (p.y0 + p.y1) / 2 - hitH / 2,
+                   width: NODE_W + 6, height: hitH }, g);
+      mk("rect", { x: p.x, y: p.y0, width: NODE_W, height: barH, rx: 2,
+                   fill: NODE_COLOR[n.id] || "var(--smoke)" }, g);
+      const tx = last ? p.x - 6 : p.x + NODE_W + 6;
+      const anchor = last ? "end" : "start";
+      const t1 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 - 1 }, g);
+      t1.setAttribute("text-anchor", anchor);
+      t1.appendChild(txt(n.label));
+      const t2 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 + 11, class: "cnt" }, g);
+      t2.setAttribute("text-anchor", anchor);
+      t2.appendChild(txt(n.count + (n.note ? " - " + n.note : "")));
+      const act = () => setFilter(n);
+      g.addEventListener("click", act);
+      g.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); }
+      });
+    });
+  });
+}
+
+function setFilter(node) {
+  filter = (filter && node && filter.id === node.id)
+    ? null
+    : (node && node.id ? { id: node.id, label: node.label } : null);
+  const links = document.querySelectorAll(".slink");
+  for (let i = 0; i < links.length; i++) {
+    const lk = links[i]._lk;
+    const hit = !filter || lk.through.indexOf(filter.id) !== -1;
+    links[i].classList.toggle("dim", !hit);
+  }
+  el("clear").hidden = !filter;
+  el("filtermsg").textContent = filter ? "filtered: " + filter.label : "";
+  drawTable();
+}
+
+/* ------------------------------ dag ------------------------------ */
+function drawDag() {
+  const svg = el("dag"), units = DATA.units;
+  if (!units.length) { el("dagpanel").hidden = true; return; }
+
+  /* Longest-path layering: a unit sits one column right of its deepest
+     dependency, so an edge never points backwards. */
+  const byId = {};
+  units.forEach(u => { byId[u.id] = u; });
+  const depth = {}, seen = {};
+  function dep(id) {
+    if (depth[id] !== undefined) return depth[id];
+    if (seen[id]) return 0;   /* schema rejects cycles; belt-and-braces only */
+    seen[id] = true;
+    const ds = byId[id].depends_on.filter(x => byId[x]);
+    depth[id] = ds.length ? Math.max.apply(null, ds.map(x => dep(x) + 1)) : 0;
+    return depth[id];
+  }
+  units.forEach(u => dep(u.id));
+
+  const cols = {};
+  units.forEach(u => { (cols[depth[u.id]] = cols[depth[u.id]] || []).push(u); });
+  const keys = Object.keys(cols).sort((a, b) => a - b);
+  const BW = 172, BH = 44, HGAP = 64, VGAP = 16;
+  const rows = Math.max.apply(null, keys.map(k => cols[k].length));
+  const W = keys.length * BW + (keys.length - 1) * HGAP + 20;
+  const H = rows * BH + (rows - 1) * VGAP + 20;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const defs = mk("defs", {}, svg);
+  const m = mk("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5",
+                           markerWidth: "5", markerHeight: "5",
+                           orient: "auto-start-reverse" }, defs);
+  mk("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--border)" }, m);
+
+  const at = {};
+  keys.forEach((k, ci) => {
+    const list = cols[k];
+    const off = (H - (list.length * BH + (list.length - 1) * VGAP)) / 2;
+    list.forEach((u, i) => {
+      at[u.id] = { x: 10 + ci * (BW + HGAP), y: off + i * (BH + VGAP) };
+    });
+  });
+
+  const gE = mk("g", {}, svg), gN = mk("g", {}, svg);
+  units.forEach(u => u.depends_on.forEach(d => {
+    const a = at[d], b = at[u.id];
+    if (!a || !b) return;
+    const x0 = a.x + BW, y0 = a.y + BH / 2;
+    const x1 = b.x, y1 = b.y + BH / 2, xm = (x0 + x1) / 2;
+    mk("path", { d: "M" + x0 + "," + y0 + "C" + xm + "," + y0 + " " +
+                     xm + "," + y1 + " " + x1 + "," + y1,
+                 class: "uedge" + (u.state === "blocked" ? " blocked" : "") }, gE);
+  }));
+  units.forEach(u => {
+    const p = at[u.id], g = mk("g", { class: "unode" }, gN);
+    mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 6,
+                 fill: "var(--panel-2)",
+                 stroke: STATE_COLOR[u.state] || "var(--border)",
+                 "stroke-width": "1.5" }, g);
+    mk("text", { x: p.x + 10, y: p.y + 19 }, g).appendChild(txt(u.id));
+    const s = mk("text", { x: p.x + 10, y: p.y + 33, class: "st" }, g);
+    s.appendChild(txt(u.state === "blocked"
+      ? "blocked by " + u.blocked_by.join(", ") : u.state));
+    const dot = mk("circle", { cx: p.x + BW - 13, cy: p.y + 14, r: 4,
+                               fill: STATE_COLOR[u.state] || "var(--muted)" }, g);
+    dot.setAttribute("aria-hidden", "true");
+  });
+
+  const denied = units.filter(u => u.state === "blocked");
+  el("dagnote").textContent = denied.length
+    ? "Denied at write time right now: " + denied.map(u =>
+        u.paths.join(", ") + " (needs " + u.blocked_by.join(", ") + ")").join(" - ")
+    : "No unit is currently blocked by an unvalidated dependency.";
+}
+
+/* ----------------------------- table ----------------------------- */
+function drawTable() {
+  const wrap = el("tablewrap");
+  while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+  const rules = DATA.rules.filter(r => !filter || r.nodes.indexOf(filter.id) !== -1);
+  el("count").textContent = rules.length + " of " + DATA.rules.length;
+  if (!rules.length) {
+    const d = document.createElement("div");
+    d.className = "empty";
+    d.appendChild(txt("No rule passes through this node."));
+    wrap.appendChild(d);
+    return;
+  }
+  const table = document.createElement("table");
+  const head = table.createTHead().insertRow();
+  ["rule", "severity", "provenance", "check", "enforcement", "why it exists"]
+    .forEach(h => {
+      const th = document.createElement("th");
+      th.appendChild(txt(h));
+      head.appendChild(th);
+    });
+  const tb = table.createTBody();
+  rules.forEach(r => {
+    const tr = tb.insertRow();
+    const c0 = tr.insertCell(); c0.className = "mono"; c0.appendChild(txt(r.id));
+    const c1 = tr.insertCell();
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.style.background = r.severity === "blocking" ? "var(--silica-deep)" : "var(--panel-2)";
+    pill.style.color = r.severity === "blocking" ? "var(--text)" : "var(--muted)";
+    pill.appendChild(txt(r.severity));
+    c1.appendChild(pill);
+    tr.insertCell().appendChild(txt(r.sourceMode));
+    const c3 = tr.insertCell(); c3.className = "mono"; c3.appendChild(txt(r.kind));
+    const c4 = tr.insertCell();
+    const p2 = document.createElement("span");
+    p2.className = "pill";
+    p2.style.background = "transparent";
+    p2.style.color = OUTCOME_COLOR[r.outcome] || "var(--muted)";
+    p2.style.border = "1px solid currentColor";
+    p2.appendChild(txt(r.outcome));
+    c4.appendChild(p2);
+    const c5 = tr.insertCell(); c5.className = "why"; c5.appendChild(txt(r.rationale));
+  });
+  wrap.appendChild(table);
+}
+
+/* ---------------------------- tooltip ---------------------------- */
+function showTip(e, text) {
+  const t = el("tip");
+  t.textContent = text;
+  t.style.opacity = "1";
+  t.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + "px";
+  t.style.top = (e.clientY + 16) + "px";
+}
+function hideTip() { el("tip").style.opacity = "0"; }
+
+/* ------------------------------ boot ----------------------------- */
+(function () {
+  if (!DATA) {
+    const p = document.createElement("p");
+    p.className = "empty";
+    p.appendChild(txt("No doctrine data was injected into this template."));
+    document.querySelector(".wrap").appendChild(p);
+    return;
+  }
+  const t = DATA.totals;
+  el("sub").textContent = DATA.mode + " - " + t.rules + " rules - " +
+                          t.units + " units - generated from " + DATA.source;
+  if (DATA.intent) {
+    el("intent").hidden = false;
+    el("intent").textContent = "intent: " + DATA.intent;
+  }
+  drawFunnel();
+  drawSankey();
+  drawDag();
+  drawTable();
+  el("clear").addEventListener("click", () => { filter = null; setFilter(null); });
+})();
+</script>
+</body>
+</html>

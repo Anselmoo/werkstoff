@@ -1,0 +1,26 @@
+{
+  "version": 1, "provenance": "lehre", "mode": "greenfield",
+  "intent": "A CLI that ingests CSV exports from three vendors (vendor_a, vendor_b, vendor_c), normalises them to one schema, and writes Parquet. Must never mutate the input files.",
+  "units": [
+    {"id": "contracts", "paths": ["src/contracts/*"], "depends_on": [],
+     "owns": "the normalised row schema and the VendorAdapter protocol",
+     "must_not_know": ["any vendor's name, dialect or quirks"],
+     "reason": "Seams are settled before anything is written against them."},
+    {"id": "adapters", "paths": ["src/adapters/*"], "depends_on": ["contracts"],
+     "owns": "one module per vendor, each implementing VendorAdapter",
+     "must_not_know": ["the output format", "that Parquet exists"],
+     "reason": "Adapters are written against a settled contract."}
+  ],
+  "rules": [
+    {"id": "no-bare-except", "title": "No bare except",
+     "severity": "blocking", "sourceMode": "scaffolded-default",
+     "authority": {"source": "PEP 8, Programming Recommendations"},
+     "rationale": "A bare except also catches KeyboardInterrupt and SystemExit.",
+     "check": {"kind": "python-construct", "paths": ["*.py"], "forbid": ["bare-except"]}},
+    {"id": "adapters-know-no-writer", "title": "Adapters must not import the writer",
+     "severity": "blocking", "sourceMode": "scaffolded-default",
+     "authority": {"source": "Clean Architecture (Martin), the Dependency Rule"},
+     "rationale": "An adapter that knows the output format cannot be reused for another one.",
+     "check": {"kind": "python-import", "paths": ["src/adapters/*"], "forbid": ["src.writer.*"]}}
+  ]
+}

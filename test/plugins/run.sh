@@ -154,18 +154,31 @@ while IFS=$'\t' read -r id plugin fixture prompt artifact regex antiregex; do
   # ERROR is a THIRD verdict, distinct from FAIL. A run that never really
   # happened is evidence about the harness, not about the plugin, and must
   # never be counted as either a pass or a fail. This has now bitten this
-  # pilot twice, in two different disguises:
+  # pilot three times, in three different disguises:
   #   1. empty stdout        — the CLI refused to start under root
   #   2. NON-empty stdout    — "You've hit your session limit · resets 2pm",
   #                            a one-line banner that scored as 5 clean FAILs
-  # So checking for 0 bytes is not enough. Three guards, in order of certainty:
-  # a known refusal banner, then a substantive-length floor (a real skill
-  # report runs to hundreds of bytes; a 60-byte reply did not run the plugin).
+  #   3. TRUNCATED stdout    — "API Error: Your computer went to sleep
+  #                            mid-response. The response above may be
+  #                            incomplete." 245 bytes: past the length floor,
+  #                            matching no refusal banner, so it scored as a
+  #                            clean FAIL for a run that never finished.
+  # So checking for 0 bytes is not enough, and neither is a length floor. Four
+  # guards, in order of certainty: a known refusal banner, an explicit
+  # incompleteness marker, then a substantive-length floor (a real skill report
+  # runs to hundreds of bytes; a 60-byte reply did not run the plugin).
+  #
+  # The incompleteness patterns are deliberately literal phrases the CLI itself
+  # emits when it truncates, NOT a general /api error/ match: a plugin whose job
+  # is to report on error handling can legitimately print the words "API error",
+  # and scoring that as a harness failure would silently discard real results.
   vacuous=""
   if [[ ! -s "$tmp/.stdout" ]]; then
     vacuous="claude produced no stdout"
   elif grep -Eiq '(hit your (session|usage) limit|usage limit reached|resets [0-9]|credit balance is too low|rate.?limit(ed)? |invalid api key|cannot be used with root|please run .?claude login|not logged in)' "$tmp/.stdout"; then
     vacuous="CLI refusal banner: $(head -c 120 "$tmp/.stdout" | tr '\n' ' ')"
+  elif grep -Eiq '(response above may be incomplete|computer went to sleep)' "$tmp/.stdout"; then
+    vacuous="response truncated mid-run: $(grep -Eio '(response above may be incomplete|computer went to sleep)' "$tmp/.stdout" | head -1)"
   elif [[ "$(wc -c <"$tmp/.stdout")" -lt "${MIN_STDOUT_BYTES:-200}" ]]; then
     vacuous="stdout is only $(wc -c <"$tmp/.stdout" | tr -d ' ') bytes — too short to be a real skill run"
   fi
