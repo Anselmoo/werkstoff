@@ -18,7 +18,11 @@ beats:
 grounding: "`.github/workflows/batch-release.yml` is `workflow_dispatch`-only and reaches the bump-and-tag loop through `workflow_call` into `auto-version-bump.yml`. That reuse path has a different trigger surface from the push path exercised on every merge, so its first real run is also its first test."
 ---
 
+<RecipeHeader />
+
 **No werkstoff fit — this is pure Superpowers.** `andon-verify` proves a wire from
 evidence that the wire has already produced. A release path that has never run has
 produced no evidence to route, so there is nothing for it to prove; and no werkstoff skill
 rehearses an unexercised path.
+
+<RecipeBeats />

@@ -16,7 +16,11 @@ beats:
 grounding: "a red `plugin-checks.yml` blocking every open pull request in this repo at once: the triage move is parallel investigators across the seven `continue-on-error` steps, not a tribunal on any one of them."
 ---
 
+<RecipeHeader />
+
 **No werkstoff fit — this is pure Superpowers.** Every werkstoff skill in the defect space
 is evidence-accumulating and gate-heavy by design — exactly right for a fix that must hold
 and exactly wrong for a page at 02:00. Force-fitting them here would be the catalog's
 worst advice.
+
+<RecipeBeats />

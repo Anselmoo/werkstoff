@@ -18,8 +18,12 @@ beats:
 grounding: "This is where plugins/takt/hooks/hooks.json belongs in the telling: one PreToolUse hook (matcher Skill|Task|Agent|Write|Edit|MultiEdit, inert until .claude/takt.local.md exists) that denies a dispatch running ahead of its declared beat -- a hook, not a skill, so it is named here in prose and never appears in a beats: list."
 ---
 
+<RecipeHeader />
+
 What can run in parallel here is derived from the dependency graph, not assumed from
 the plan's own layout — a workstream that waits on another's output is sequential work
 wearing a parallel label. Every dispatch, mechanical or architectural, carries an
 explicit model tier, and each workstream earns its own andon-verify proof rather than
 inheriting one from the aggregate result.
+
+<RecipeBeats />

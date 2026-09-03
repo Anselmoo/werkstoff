@@ -89,7 +89,14 @@ def write_surface(
     )
 
 
-def write_recipe(catalog_dir: Path, category: str, filename: str, frontmatter_yaml: str, body: str = "Body text.\n") -> Path:
+#: The default body mounts both required components. A recipe body without them
+#: is a real validation failure (the page would render missing the content those
+#: components produce), so a fixture omitting them silently would make every
+#: other assertion in this file test a broken recipe.
+DEFAULT_BODY = "<RecipeHeader />\n\nBody text.\n\n<RecipeBeats />\n"
+
+
+def write_recipe(catalog_dir: Path, category: str, filename: str, frontmatter_yaml: str, body: str = DEFAULT_BODY) -> Path:
     category_dir = catalog_dir / category
     category_dir.mkdir(parents=True, exist_ok=True)
     path = category_dir / filename
@@ -137,6 +144,64 @@ class ValidRecipeTest(unittest.TestCase):
 
             report = VALIDATOR.validate_catalog(catalog_dir, surface_path)
             self.assertTrue(report.ok)
+
+
+class BodyComponentsTest(unittest.TestCase):
+    """A recipe body must mount <RecipeHeader /> and <RecipeBeats />.
+
+    These render the page's h1/summary and its whole Beats section from the
+    frontmatter. They sit in the body rather than a VitePress layout slot
+    because no slot lands inside <main>: `doc-after` renders below the prev/next
+    footer, and `doc-footer-before` renders inside a contentinfo <footer>. A
+    recipe missing one renders nothing where its content should be, with no
+    error -- which is why this is a build failure and not a review note.
+    """
+
+    def _report(self, body: str):
+        # TemporaryDirectory, not mkdtemp: every other test in this file cleans up
+        # after itself, and a leaked dir per test run is the kind of small untidiness
+        # nobody notices until CI runs out of inodes.
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog_dir = Path(tmp) / "catalog"
+            surface_path = Path(tmp) / "surface.json"
+            write_recipe(catalog_dir, "before-any-code", "do-a-thing.md", VALID_FRONTMATTER, body=body)
+            write_surface(surface_path, {"fixture": {"skills": ["fixture-skill"]}})
+            return VALIDATOR.validate_catalog(catalog_dir, surface_path)
+
+    def test_body_with_both_components_passes(self) -> None:
+        report = self._report("<RecipeHeader />\n\nProse.\n\n<RecipeBeats />\n")
+        self.assertEqual(report.failures, [])
+        self.assertTrue(report.ok)
+
+    def test_missing_recipe_beats_fails(self) -> None:
+        report = self._report("<RecipeHeader />\n\nProse.\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 1)
+        self.assertIn("<RecipeBeats />", report.failures[0])
+
+    def test_missing_recipe_header_fails(self) -> None:
+        report = self._report("Prose.\n\n<RecipeBeats />\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 1)
+        self.assertIn("<RecipeHeader />", report.failures[0])
+
+    def test_missing_both_reports_both(self) -> None:
+        report = self._report("Prose only, no components at all.\n")
+        self.assertFalse(report.ok)
+        self.assertEqual(len(report.failures), 2)
+
+    def test_frontmatter_mention_does_not_satisfy_the_check(self) -> None:
+        """The check reads the BODY, not the whole file -- a component named in
+        frontmatter renders nothing, so it must not count."""
+        with tempfile.TemporaryDirectory() as tmp:
+            catalog_dir = Path(tmp) / "catalog"
+            surface_path = Path(tmp) / "surface.json"
+            fm = VALID_FRONTMATTER + '\ngrounding_note: "<RecipeBeats /> <RecipeHeader />"'
+            write_recipe(catalog_dir, "before-any-code", "do-a-thing.md", fm, body="Prose.\n")
+            write_surface(surface_path, {"fixture": {"skills": ["fixture-skill"]}})
+            report = VALIDATOR.validate_catalog(catalog_dir, surface_path)
+            self.assertFalse(report.ok)
+            self.assertEqual(len(report.failures), 2)
 
 
 class SkippedFilesTest(unittest.TestCase):

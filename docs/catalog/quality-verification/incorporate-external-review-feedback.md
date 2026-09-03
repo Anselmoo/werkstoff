@@ -16,7 +16,11 @@ beats:
 grounding: "applying a reviewer's finding to `docs/plugin-authoring/references/craft-standards.md` is the document case where `compass-draft-revise` genuinely applies; the same finding applied to a plugin's `SKILL.md` behavior is a code change and belongs in the review entry above."
 ---
 
+<RecipeHeader />
+
 **No werkstoff fit — this is pure Superpowers.** `superpowers:receiving-code-review` owns
 this task end to end: reading feedback without defensiveness, separating what must change
 from what is preference, and closing the loop. `compass:compass-draft-revise` is the
 nearest candidate but is scoped to prose, not code.
+
+<RecipeBeats />

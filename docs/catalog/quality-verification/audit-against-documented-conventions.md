@@ -19,7 +19,11 @@ beats:
 grounding: "plugins/codebase-consistency/README.md's own scope section routes documented conventions and version-deprecated idioms out of codebase-consistency and into self-assess -- beats 1-2 and 3-4 above sit on opposite sides of that line by design, and a recipe that blurs it double-reports the same finding from both plugins."
 ---
 
+<RecipeHeader />
+
 Documented rules and undocumented-but-real patterns are audited by different plugins on
 purpose. Run the documented half first against the repo's own house rules, then hand the
 undocumented half to codebase-consistency to find and canonize, and only simplify once
 both halves have settled -- blurring that line is how the same finding gets reported twice.
+
+<RecipeBeats />

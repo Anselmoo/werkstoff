@@ -16,6 +16,10 @@ beats:
 grounding: "`.github/workflows/auto-version-bump.yml` skips entirely when the head commit message does not start with a recognized conventional-commit type; its own header comment records that a plain-English PR title \"is silently skipped, by design\". The run is green and bumps nothing — the exact shape `silent-failure-hunter` is built for."
 ---
 
+<RecipeHeader />
+
 The most expensive CI defect is the green one. A job exits zero, the badge stays green,
 and the work it was supposed to do never happened. Conditional skips, swallowed errors,
 and unmatched patterns all produce this shape.
+
+<RecipeBeats />

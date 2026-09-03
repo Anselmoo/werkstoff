@@ -16,6 +16,8 @@ beats:
 grounding: "The unresolved self-assess:arch-health-auditor tool-grant anomaly recorded in this repo's own CLAUDE.md — it reports only {Read, Bash} against three different declared tools: formats tried, including in a fresh claude --print process. A live, currently-open case where a declared grant and the runtime grant disagree and no existing beat in this catalog would have caught it before this recipe existed."
 ---
 
+<RecipeHeader />
+
 This is the after-the-fact half of authoring, run against skills and agents that already
 exist. `confab:confab-agentic-reliability` sweeps four fixed categories with verification
 on by default; `confab:agentic-reliability-auditor` is deliberately read-only, so it cannot
@@ -23,3 +25,5 @@ paper over an excessive-tool-grant finding by widening its own grant. `plugin-de
 supplies the canonical `tools:`/`description:` spec a finding of "excessive" is judged
 against, and `andon:andon-verify` closes the gap between a guard that exists in prose and
 a guard that actually runs.
+
+<RecipeBeats />

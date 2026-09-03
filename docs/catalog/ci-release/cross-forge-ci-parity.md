@@ -16,6 +16,10 @@ beats:
 grounding: "this repo has two check surfaces and they are not aligned. `.pre-commit-config.yaml` runs three `rrt` hooks; `.github/workflows/plugin-checks.yml` runs pre-commit plus five further steps. Action pins drift across workflows too — `actions/checkout@v4` and `actions/setup-python@v5` in `plugin-checks.yml` against `actions/checkout@v7` and `actions/setup-python@v6` in `cicd.yml` and `auto-version-bump.yml`."
 ---
 
+<RecipeHeader />
+
 Two execution surfaces claiming to run "the same checks" drift silently, because nothing
 compares them. The trap is that both surfaces are green and neither is running what the
 documentation says it runs.
+
+<RecipeBeats />

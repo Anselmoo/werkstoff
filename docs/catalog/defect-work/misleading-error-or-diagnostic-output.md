@@ -16,6 +16,10 @@ beats:
 grounding: "the resolve step in `.github/workflows/plugin-release.yml` exits with `Unknown plugin group '$GROUP' from tag '$TAG'` — accurate, but silent on the fact that the allowed set is a hardcoded seven-name `case` list in the same file, which is what a reader actually needs to know."
 ---
 
+<RecipeHeader />
+
 An error message that names the wrong cause costs more than no message at all, because it
 buys a confident wrong hypothesis. This is the one commodity surface `cupertino` claims
 explicitly, and the pairing is easy to miss.
+
+<RecipeBeats />

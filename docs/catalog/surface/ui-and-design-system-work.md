@@ -16,6 +16,10 @@ beats:
 grounding: "the HTML surfaces this repo already ships — the andon board viewer built by `plugins/andon/scripts/build_board_html.py` and the branch-comparison viewer built by `plugins/compass/scripts/build_branch_comparison_html.py` — checked against the shared token set in `tools/design-tokens/tokens.css`."
 ---
 
+<RecipeHeader />
+
 Design work has a hard ordering constraint that most other tasks do not: the principled
 pass must precede the code, and the static audit must follow it. Running either in the
 wrong order produces the appearance of both with the value of neither.
+
+<RecipeBeats />

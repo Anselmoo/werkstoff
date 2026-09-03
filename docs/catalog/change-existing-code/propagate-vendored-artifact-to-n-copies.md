@@ -16,5 +16,9 @@ beats:
 grounding: "`inline-d3.html` exists in the seven `plugins/*/assets/` directories that carry one plus the canonical `tools/d3-subset/inline-d3.html`, and CI already carries the proof step: `plugin-checks.yml` runs `rrt artifacts --check --strict` specifically so a dropped copy fails a job instead of denying an edit months later."
 ---
 
+<RecipeHeader />
+
 Propagation is mechanical, parallel, and unforgiving: N-1 updated copies is a worse state
 than zero updated copies, because the drift is now invisible.
+
+<RecipeBeats />
