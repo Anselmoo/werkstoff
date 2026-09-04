@@ -29,6 +29,26 @@ BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 HTML_COMMENT_RE = re.compile(r"<!--(?!__).*?-->", re.DOTALL)
 # `//` only when it is not the tail of a scheme (http://), so a URL survives.
 LINE_COMMENT_RE = re.compile(r"(?<!:)//[^\n]*")
+SCRIPT_RE = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
+
+
+def class_token_re(token: str) -> re.Pattern:
+    """An OPENING TAG whose class attribute contains `token` as a whole word.
+
+    Not a substring search for the token anywhere in the file. `renderLegend()`
+    in a script, or the word "legend" in a comment, satisfied the old check --
+    so a viewer could delete its legend element, keep a dead helper, and stay
+    green. Same for class="verdict" quoted inside a script string.
+    """
+    return re.compile(
+        r"<[a-zA-Z][^>]*\bclass\s*=\s*[\"\']([^\"\']*\s)?" + token + r"(\s[^\"\']*)?[\"\']",
+        re.IGNORECASE,
+    )
+
+
+VERDICT_RE = class_token_re("verdict")
+LEGEND_RE = class_token_re("legend")
+NOTE_RE = class_token_re("note")
 TITLE_RE = re.compile(r"<title>(.*?)</title>", re.DOTALL | re.IGNORECASE)
 # U+2014 EM DASH. Written as an escape so a mangled encoding cannot silently
 # turn this into a pattern that matches nothing.
@@ -97,7 +117,10 @@ def check(plugin: str, path: str) -> list[str]:
     rel = os.path.relpath(path, REPO)
     with open(path, encoding="utf-8") as fh:
         raw = fh.read()
-    body = STYLE_RE.sub("", raw)
+    # Static markup only: <style> and <script> removed, then comments. R1 and R4
+    # are claims about the shell a reader gets before any code runs, so anything
+    # a script says about itself must not be able to satisfy them.
+    markup = strip_comments(SCRIPT_RE.sub(" ", STYLE_RE.sub(" ", raw)))
     errs = []
 
     # S2a -- CSP. .rrt.toml calls default-src 'none' the constraint every
@@ -129,14 +152,16 @@ def check(plugin: str, path: str) -> list[str]:
     if "61px" in strip_comments(raw):
         errs.append(f"{rel}: S1 -- hardcoded 61px header constant; use a token")
 
-    # R1 -- the verdict, in static markup, outside <style>.
-    if 'class="verdict"' not in body:
-        errs.append(f"{rel}: R1 -- no element with class=\"verdict\" stating the finding")
+    # R1 -- the verdict, as a real element in static markup.
+    if not VERDICT_RE.search(markup):
+        errs.append(f"{rel}: R1 -- no static element with class=\"verdict\" stating the finding")
 
-    # R4 -- a legend a reader gets WITHOUT interacting. Checked against the
-    # style-stripped document precisely because confab's .legend is CSS-only.
-    if "legend" not in body and 'class="note"' not in body:
-        errs.append(f"{rel}: R4 -- no legend or explanatory note outside <style>")
+    # R4 -- a legend a reader gets WITHOUT interacting. A real element, because
+    # confab shipped .legend CSS that nothing used and a dead renderLegend()
+    # would otherwise pass. A render-time-populated legend still qualifies: its
+    # CONTAINER is static markup, which is what this matches.
+    if not LEGEND_RE.search(markup) and not NOTE_RE.search(markup):
+        errs.append(f"{rel}: R4 -- no static legend or explanatory-note element")
 
     # C1/C2 -- the screenshot and its committed, cited demo data.
     shot = path[: -len(".html")] + "-screenshot.jpg"

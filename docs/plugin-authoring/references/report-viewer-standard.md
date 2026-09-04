@@ -210,9 +210,19 @@ The conformance check is therefore a separate lint,
 R1, R4, S1, S2, C1 and C2 and **deliberately does not attempt R2, R3 or R5** — a lint that
 pretended to decide those would report success on prose it cannot read.
 
-It runs every content check against the document with `<style>` blocks removed. That is
-load-bearing rather than tidy: confab defines `.legend`/`.legend .swatch` and uses neither,
-so a naive substring search for `legend` passes on a viewer that has none. On first run it
+It runs R1 and R4 against **static markup only** — `<style>` and `<script>` removed, then
+comments — and matches a real opening tag whose `class` attribute carries the token, not
+the token as a substring anywhere in the file. Both narrowings are load-bearing rather
+than tidy, and both were added after the guard mis-fired:
+
+- confab defines `.legend`/`.legend .swatch` and uses neither, so a substring search for
+  `legend` passed on a viewer that had none;
+- `renderLegend()` in a script, or `class="verdict"` quoted inside one, satisfied the same
+  search — so a viewer could delete the element, keep a dead helper, and stay green.
+
+A render-time-populated legend still qualifies: its **container** is static markup, which
+is what the check matches. Prose may substitute for swatches (lehre has a `.note` and no
+legend), so R4 accepts either — it fails only when both are absent. On first run it
 reported 36 violations across 8 viewers, independently reproducing findings that had been
 derived by reading — CSP absent in exactly confab/cupertino/lehre, `61px` in exactly
 andon/codebase-consistency/cupertino, R4 failing in exactly confab/self-assess. Three prior HTML-grep precedents
