@@ -14,7 +14,7 @@ beats:
   - skill: "superpowers:systematic-debugging"
     why: "Required before proposing any fix; a fix proposed ahead of a root cause is a second failure mode."
     prompt: "work the lint failure to root cause first — no fixes proposed until the cause is nailed down"
-grounding: "`.github/workflows/plugin-checks.yml` runs twelve checks with `continue-on-error: true` and collapses them into a single \"Fail the job if any check failed\" step. One red job can therefore mean any of twelve independent causes, which is exactly the shape this entry exists to untangle."
+grounding: "`.github/workflows/plugin-checks.yml` runs fourteen checks with `continue-on-error: true` and collapses them into a single \"Fail the job if any check failed\" step. One red job can therefore mean any of twelve independent causes, which is exactly the shape this entry exists to untangle."
 dos:
   - "Audit the CI config itself before looking at any individual failure -- a config-level defect can explain every symptom at once."
   - "Derive independent failure tracks from the actual dependency graph, not from how the jobs happen to be laid out."
