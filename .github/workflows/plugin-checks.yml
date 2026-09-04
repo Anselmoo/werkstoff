@@ -20,6 +20,7 @@ jobs:
       plugin_authors: ${{ steps.plugin_authors.outcome }}
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
+      viewer_conformance: ${{ steps.viewer_conformance.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       catalog_recipes: ${{ steps.catalog_recipes.outcome }}
       docs_ux_audit: ${{ steps.docs_ux_audit.outcome }}
@@ -113,6 +114,17 @@ jobs:
         continue-on-error: true
         run: ./scripts/ci/check-js-syntax.sh
 
+      - name: Check report-viewer conformance
+        id: viewer_conformance
+        continue-on-error: true
+        # docs/plugin-authoring/references/report-viewer-standard.md, mechanical
+        # rules only (R1, R4, S1, S2, C1, C2). The eight viewers shared a colour
+        # palette and nothing else -- three spellings of the tokens marker, CSP in
+        # five of eight, a 61px header constant copy-pasted into three files, and
+        # one viewer shipping .legend CSS that nothing used. None of that was
+        # visible to any existing check.
+        run: python3 scripts/ci/check_viewer_conformance.py
+
       - name: Run symbol-indexer test suite
         id: symbol_indexer_tests
         continue-on-error: true
@@ -191,6 +203,7 @@ jobs:
           steps.plugin_authors.outcome == 'failure' ||
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
+          steps.viewer_conformance.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.catalog_recipes.outcome == 'failure' ||
           steps.docs_ux_audit.outcome == 'failure' ||
@@ -241,6 +254,7 @@ jobs:
             row "Plugin author attribution vs. marketplace.json" "${{ needs.checks.outputs.plugin_authors }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
+            row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
             row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
