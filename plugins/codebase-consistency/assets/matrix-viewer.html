@@ -411,6 +411,14 @@ const CELLS = MATRIX.cells || [];
 const TOTAL_PAIRS = MATRIX.modules.length * MATRIX.dimensions.length;
 const TOTAL_SITES = CELLS.reduce((s, c) => s + (c.sites || 0), 0);
 const NO_DATA_PAIRS = TOTAL_PAIRS - CELLS.length;
+// CELLS is every pair with DATA, which is not the same as every pair that
+// diverges: a cell at conformance 1.0 is fully aligned and has nothing for an
+// alignment pass to do. Labelling CELLS.length "divergent" overstated the work
+// by every perfectly-conformant cell (2 of 21 in the committed fixture).
+// Before /consistency-canonize there is no canon to be distant from, so every
+// recorded cell IS a variant and the two counts legitimately coincide.
+const DIVERGENT_CELLS = CELLS.filter(
+  c => typeof c.conformance !== 'number' || c.conformance < 1);
 const WITH_CONF = CELLS.filter(c => typeof c.conformance === 'number');
 const AVG_CONF = WITH_CONF.length
   ? WITH_CONF.reduce((s, c) => s + c.conformance, 0) / WITH_CONF.length
@@ -424,8 +432,11 @@ function renderStatRow() {
   // context. Module/dimension counts are deliberately absent -- they are in
   // the subtitle (R2).
   const stats = [
-    ['Divergent cells', CELLS.length + ' / ' + TOTAL_PAIRS, CELLS.length > 0],
-    ['Divergent sites', TOTAL_SITES, false],
+    ['Divergent cells', DIVERGENT_CELLS.length + ' / ' + TOTAL_PAIRS,
+      DIVERGENT_CELLS.length > 0],
+    // Every site inside a cell that has data, aligned or not -- the denominator
+    // the verdict's percentage is taken against, not a count of sites to fix.
+    ['Sites counted', TOTAL_SITES, false],
     ['Cells with no data', NO_DATA_PAIRS, false],
   ];
   if (AVG_PCT !== null) {
@@ -517,7 +528,7 @@ function renderVerdict() {
     parts.push('Its worst cell is ' + worst.module + ' × ' + worst.dimension + ' — '
       + (worst.sites != null ? worst.sites : '?') + ' sites at '
       + Math.round((worst.conformance || 0) * 100) + '% conformance.');
-    parts.push('Across the area ' + CELLS.length + ' of ' + TOTAL_PAIRS
+    parts.push('Across the area ' + DIVERGENT_CELLS.length + ' of ' + TOTAL_PAIRS
       + ' module × dimension pairs carry a divergent variant, and mean conformance is '
       + AVG_PCT + '% — that average is the share of sites already matching the canon, so '
       + (100 - AVG_PCT) + '% of the ' + TOTAL_SITES
@@ -529,7 +540,7 @@ function renderVerdict() {
       + MATRIX.dimensions.length + ' convention dimensions have a variant recorded there, '
       + 'the largest being ' + worst.dimension + ' at '
       + (worst.sites != null ? worst.sites : '?') + ' sites.');
-    parts.push('Across the area ' + CELLS.length + ' of ' + TOTAL_PAIRS
+    parts.push('Across the area ' + DIVERGENT_CELLS.length + ' of ' + TOTAL_PAIRS
       + ' module × dimension pairs diverge, over ' + TOTAL_SITES + ' sites in total.');
     parts.push('No canon has been derived yet, so these cells are ranked by how much '
       + 'divergence they carry, not by distance from a chosen form — run '
