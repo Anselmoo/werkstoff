@@ -283,6 +283,12 @@
   <h2>Which module is furthest from the canon?</h2>
   <p class="verdict" id="verdict">No matrix has been loaded into this template yet, so no module can be named the worst; a rendered report replaces this sentence with the worst module, its worst cell, and what the area's mean conformance implies.</p>
   <p class="note">A red cell is not "a module with a different style". It is a module whose answer to a convention question an alignment pass has to rewrite at every site counted inside the cell — so a red cell with a large site count is the expensive one, and a red cell with two sites is nearly free.</p>
+  <!-- R4: the cell-colour key. It sits HERE, under the verdict, rather than in
+       the right-hand sidebar where it used to live: the sidebar is the last place
+       the eye goes, so the one paragraph that teaches a first-time reader how to
+       read the grid was the last thing they found. It is also outside any node
+       selectCell() clears, so it survives every interaction. -->
+  <p class="note colour-key" id="colourKey"><strong>Reading the cells.</strong> Once <code>/consistency-canonize</code> has run, a cell's colour is its distance from the chosen canon — green aligned, amber partial, red diverging, as labelled in the legend below. Before that it shows variant-cluster identity instead: one hue per distinct variant, with no ranking implied. A hatched cell means no data was found for that module × dimension pair. The number printed inside a cell is its site count.</p>
 </section>
 
 <div class="layout">
@@ -292,19 +298,6 @@
   <div class="sidebar" id="sidebar">
     <div id="sidebarDetail">
       <div class="placeholder">Click a cell to see its detail — module, dimension, variant in use, and site count.</div>
-    </div>
-    <!-- R4: this key explains the cell-colour encoding and must survive
-         interaction. It lives OUTSIDE #sidebarDetail precisely because
-         selectCell() clears that node on every click; the previous version
-         put the same explanation inside the placeholder and destroyed it on
-         the first click, so a reader who clicked once never saw it again. -->
-    <div class="note colour-key" id="colourKey">
-      <strong>Reading the cells.</strong> Once <code>/consistency-canonize</code> has run,
-      a cell's colour is its distance from the chosen canon — green aligned, amber
-      partial, red diverging, as labelled in the legend below. Before that it shows
-      variant-cluster identity instead: one hue per distinct variant, with no ranking
-      implied. A hatched cell means no data was found for that module × dimension pair.
-      The number printed inside a cell is its site count.
     </div>
   </div>
 </div>

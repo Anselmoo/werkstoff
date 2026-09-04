@@ -222,9 +222,10 @@ function drawVerdict() {
   bad.className = "bad";
   bad.appendChild(txt(leak + " of " + t.blocking + " blocking rules never deny a write"));
   v.appendChild(bad);
-  v.appendChild(txt(" \u2014 they are gauge-tier, caught only by a sweep and by CI, long "
-    + "after the write they were believed to stop. " + t.denied_at_write_time
-    + " rule(s) actually block at write time."));
+  v.appendChild(txt(" \u2014 they are gauge-tier, meaning a sweep or CI decides them "
+    + "rather than the hook, so they are caught long after the write they were "
+    + "believed to stop. " + t.denied_at_write_time
+    + " rule(s) actually deny a write, at the moment it is attempted."));
 }
 
 function drawFunnel() {
@@ -356,7 +357,7 @@ function drawSankey() {
       t1.appendChild(txt(n.label));
       const t2 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 + 11, class: "cnt" }, g);
       t2.setAttribute("text-anchor", anchor);
-      t2.appendChild(txt(n.count + (n.note ? " - " + n.note : "")));
+      t2.appendChild(txt(n.count + (n.note ? " \u00b7 " + n.note : "")));
       const act = () => setFilter(n);
       g.addEventListener("click", act);
       g.addEventListener("keydown", e => {
@@ -525,8 +526,8 @@ function hideTip() { el("tip").style.opacity = "0"; }
     return;
   }
   const t = DATA.totals;
-  el("sub").textContent = DATA.mode + " - " + t.rules + " rules - " +
-                          t.units + " units - generated from " + DATA.source;
+  el("sub").textContent = DATA.mode + " \u00b7 " + t.rules + " rules \u00b7 " +
+                          t.units + " units \u00b7 generated from " + DATA.source;
   if (DATA.intent) {
     el("intent").hidden = false;
     el("intent").textContent = "intent: " + DATA.intent;

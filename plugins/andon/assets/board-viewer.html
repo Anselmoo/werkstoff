@@ -119,9 +119,9 @@
          states what it is for, rather than only how to click it. -->
     <section class="panel wide verdict-panel" id="verdict-panel">
       <h2>Where is the line stopped, and why?</h2>
-      <p class="verdict" id="verdict">The line is stopped at the first handoff whose proof is red, hung, or absent — this board names that wire and refuses to call the stream converged while any gap behind it is still open.</p>
+      <p class="verdict" id="verdict">The line is stopped at the first wire whose proof is red, hung, or absent — this board names that wire and refuses to call the stream converged while any gap behind it is still open.</p>
       <p class="note">
-        A wire is green only because a linked evidence doc says so. Amber means
+        A wire is one stage's handoff to the next. A wire is green only because a linked evidence doc says so. Amber means
         verification was attempted and did not settle; a dashed edge means it was
         never attempted at all — the two are different failures, not degrees of
         one. Red tagged Tier 1 is the single verdict nobody can override. A tile
@@ -160,7 +160,7 @@ const BOARD = BOARD_DATA_RAW;
 // appears on both. The cycle/pass/total-passes trio used to be printed here
 // AND restated as three of the four tiles 200px lower.
 document.getElementById('subtitle').textContent =
-  BOARD.stages.length + ' stages · ' + Math.max(0, BOARD.stages.length - 1) + ' handoffs · cycle ' +
+  BOARD.stages.length + ' stages · ' + Math.max(0, BOARD.stages.length - 1) + ' wires · cycle ' +
   BOARD.counters.current_cycle + ', pass ' + BOARD.counters.pass_in_cycle +
   ' · ' + BOARD.counters.total_passes + ' passes on this ledger';
 
@@ -451,11 +451,11 @@ function renderVerdict() {
   } else if (unproven.length) {
     head = 'The line is stopped at ' + unproven[0].wireKey + ': ' + wireLabel(unproven[0].status) + '.';
   } else if (!wires.length) {
-    head = 'This stream is a single stage with no handoff to prove, so nothing here can hold the line.';
+    head = 'This stream is a single stage with no wire to prove, so nothing here can hold the line.';
   } else if (gaps.length) {
-    head = 'No handoff is holding the line — every one is proven green — but the stream has not converged.';
+    head = 'No wire is holding the line — every one is proven green — but the stream has not converged.';
   } else {
-    head = 'Nothing is holding the line: every handoff is proven green and no gap is open.';
+    head = 'Nothing is holding the line: every wire is proven green and no gap is open.';
   }
 
   // R2 again: the tail deliberately reports a number no tile carries — how
@@ -500,7 +500,7 @@ function render() {
   const statRow = el('div', 'stat-row');
   const stats = [
     ['Open gaps', (BOARD.open_gaps || []).length, true],
-    ['Handoffs without green proof', wires.filter(w => w.status !== 'green').length, true],
+    ['Wires without green proof', wires.filter(w => w.status !== 'green').length, true],
     ['Non-overridable holds', (BOARD.non_overridable_holds || []).length, true],
     ['Cycles converged', BOARD.counters.cycles_converged, false],
   ];

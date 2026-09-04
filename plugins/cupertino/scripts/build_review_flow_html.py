@@ -76,7 +76,12 @@ def build_flow(cupertino_dir):
     # this run was actually read from. The counts deliberately do NOT go in the
     # subtitle -- they belong to the verdict sentence, and printing a number on
     # two surfaces is what report-viewer-standard.md R2 forbids.
-    return {"source": flags_dir, "stages": stages}
+    # Shown verbatim in the subtitle, so keep it repo-shaped rather than an
+    # absolute path: every sibling viewer prints a relative provenance path,
+    # and a committed screenshot rendered from a temp dir otherwise leaks it.
+    parts = os.path.normpath(flags_dir).split(os.sep)
+    source = os.path.join(*parts[-2:]) if len(parts) >= 2 else flags_dir
+    return {"source": source, "stages": stages}
 
 
 def render_html(template_path, d3_path, tokens_path, flow):
