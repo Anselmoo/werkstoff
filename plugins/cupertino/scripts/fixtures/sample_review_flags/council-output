@@ -1,0 +1,16 @@
+{
+  "lenses": {
+    "Reduction": "One link, one page, no chrome. Anything that needs a legend does not belong on the client's first view.",
+    "Craft": "Version labels are typeset, not badged: the client should read 'v3, sent Tuesday' as a sentence, not decode a pill.",
+    "Hierarchy": "The work is the page. Comments are a layer the client summons, never a column competing with the work.",
+    "Usability": "A client who clicks a revoked link must be told it was revoked and by whom, not shown a generic error.",
+    "Metaphor": "A share link behaves like a courier envelope: it can be recalled, and the sender always knows if it was opened."
+  },
+  "tensionLog": [
+    "Usability > Reduction: kept the explicit 'this link was revoked by the studio' state even though it is a second page.",
+    "Reduction > Craft: dropped the animated version-diff transition; it was craft nobody asked for on a page seen once.",
+    "Craft > Hierarchy: kept the typeset version line above the fold even though hierarchy wanted the work alone up there.",
+    "Hierarchy > Metaphor: the envelope metaphor does not get its own illustration; it earns one line of copy."
+  ],
+  "tensionOrderRespected": true
+}

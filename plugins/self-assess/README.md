@@ -52,7 +52,31 @@ Alongside the JSON stage graph, this skill renders a self-contained HTML viewer
 instead of directory structure, so a tight interconnected core reads as a
 visible cluster and an unconnected module drifts off on its own.
 
-![Force-directed dependency graph rendered on canvas: a gold-outlined "core" god-module node sits at the center of a tight cluster of blue stage nodes (api, ui, cache, utils, legacy), two red nodes (auth, db) forming one real mutual-dependency cycle, two purple nodes (worker, queue) forming a second cycle, and an unconnected "sandbox" node drifted into the opposite corner of the canvas with no edges to the rest of the graph at all](assets/stage-map-viewer-screenshot.jpg)
+![Force-directed dependency graph rendered on canvas: a gold-outlined "core" god-module node sits at the center of a tight cluster of blue stage nodes (api, ui, cache, utils, legacy), two red nodes (auth, db) forming one real mutual-dependency cycle, two purple nodes (worker, queue) forming a second cycle, and an unconnected "sandbox" node drifted into the opposite corner of the canvas with no edges to the rest of the graph at all. A panel stack in the top-left corner states the scope (11 stages, 16 wires, 103 files), answers "Which stages can't be changed on their own?" in a sentence naming core as the god-module and auth/db and queue/worker as the two cycles, and carries an always-visible legend pairing each fill with the word for what it means -- ordinary stage, god-module, in a dependency cycle, dead-end, and circle area](assets/stage-map-viewer-screenshot.jpg)
+
+That picture is reproducible. The two inputs are committed beside the builder --
+`scripts/fixtures/sample_stage_graph.json` (11 stages, 16 wires) and
+`scripts/fixtures/sample_file_stage_index.json` (the partial `{file: stage}`
+lookup) -- and they are deliberately a *failing* repository, not a clean one:
+one god-module (`core`, fan-in 6, over this graph's threshold of 5), two real
+mutual-dependency cycles (`auth ⇄ db`, `queue ⇄ worker`), one dead-end that
+imports nothing outward (`utils`), and one stage wired to nothing at all
+(`sandbox`). The graph passes `self_assess_cli.py validate-artifact --kind
+stage_graph` unmodified.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py" \
+    --stage-graph "${CLAUDE_PLUGIN_ROOT}/scripts/fixtures/sample_stage_graph.json" \
+    --file-stage-index "${CLAUDE_PLUGIN_ROOT}/scripts/fixtures/sample_file_stage_index.json" \
+    --template "${CLAUDE_PLUGIN_ROOT}/assets/stage-map-viewer.html" \
+    --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
+    --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css" \
+    --out ./STAGE_MAP.html
+```
+
+`scripts/test_build_stage_map_html.py` re-derives those four findings from
+`lib.graph`'s own `find_cycles`/`find_god_modules` on every run, so the fixture
+cannot quietly become a clean, prettier, useless one.
 
 ##### Run the auto-pilot
 

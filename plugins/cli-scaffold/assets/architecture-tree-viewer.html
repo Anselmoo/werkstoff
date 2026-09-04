@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Scaffold Architecture</title>
+<title>cli-scaffold — architecture tree</title>
+<!--__DESIGN_TOKENS__-->
 <style>
-/*__TOKENS__*/
 :root {
   /* Role colors are specific to this viewer's five-pillar legend; no
      equivalent exists in the shared token file, so they stay local.
@@ -26,10 +26,19 @@ html, body { background: var(--bg); color: var(--text);
   font: var(--font-size-base)/var(--line-height-base) var(--font-sans); }
 body { max-width: 900px; margin: 0 auto; padding: var(--space-5); }
 .panel { background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--radius-panel); padding: var(--space-2) var(--space-3); }
-#title-panel { margin-bottom: var(--space-4); }
+  border-radius: var(--radius-panel); padding: var(--space-3); }
+main > .panel + .panel { margin-top: var(--space-3); }
 #title-panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
 #title-panel .sub { color: var(--muted); font-size: 12px; }
+#verdict-panel h2 { font-size: 13px; color: var(--text); margin-bottom: var(--space-2); }
+.verdict { font-size: 14px; line-height: 1.5; }
+/* R3 vocabulary: the verdict is the number you act on, so it is the only
+   text on the page rendered in the alarm colour when coverage is short.
+   .complete recolours it when nothing is missing -- the same sentence must
+   not look identical in both states. */
+.verdict { color: var(--status-warn); }
+.verdict.complete { color: var(--status-good); }
+.note { color: var(--muted); font-size: 12px; margin-top: var(--space-2); }
 #tree-wrap { position: relative; }
 #guides { position: absolute; top: 0; left: 0; pointer-events: none; }
 #tree { position: relative; }
@@ -39,27 +48,51 @@ body { max-width: 900px; margin: 0 auto; padding: var(--space-5); }
 .row-count { color: var(--muted); font-size: 11px; }
 .row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
 .badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm);
-  font-size: 10px; color: #fff; line-height: 1.5; cursor: default; }
-#legend { display: flex; gap: var(--space-3); font-size: 11px; color: var(--muted);
-  flex-wrap: wrap; margin-top: var(--space-5); border-top: 1px solid var(--border);
-  padding-top: var(--space-3); }
-#legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 50%;
-  margin-right: 5px; vertical-align: middle; }
+  font-size: 10px; color: #fff; line-height: 1.5; cursor: default;
+  border: 1px solid transparent; }
+/* A role no file claims is drawn hollow and dashed, so "absent" is legible
+   in the legend without reading the colour at all. */
+.badge.absent { background: transparent; color: var(--muted);
+  border: 1px dashed var(--muted); }
+#legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 11px;
+  color: var(--muted); flex-wrap: wrap; }
+#legend h2 { flex-basis: 100%; font-size: 11px; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.06em; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-item.absent { color: var(--status-warn); }
 </style>
 </head>
 <body>
 <main>
   <header class="panel" id="title-panel">
-    <h1 id="title">Scaffold Architecture</h1>
+    <h1>cli-scaffold — architecture tree</h1>
     <div class="sub" id="subtitle"></div>
   </header>
 
-  <div id="tree-wrap">
-    <svg id="guides"></svg>
-    <div id="tree"></div>
-  </div>
+  <section class="panel" id="verdict-panel">
+    <h2>Does every pillar the doctrine names have a file behind it?</h2>
+    <p class="verdict" id="verdict"></p>
+    <p class="note">
+      Each badge below is a role the scaffold's own
+      <code>cli-scaffold.manifest.json</code> declares for that file — the same
+      gating keys <code>verify_scaffold.py</code> reads to decide pass/fail, not
+      a guess made from the filename. A role with no file is drawn hollow and
+      dashed in the legend. The fifth pillar, <em>Unix composability</em>, is
+      behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so
+      no file can carry its badge and it is deliberately not counted here.
+    </p>
+  </section>
 
-  <div id="legend"></div>
+  <section class="panel">
+    <div id="tree-wrap">
+      <svg id="guides"></svg>
+      <div id="tree"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="legend">
+    <h2>Roles</h2>
+  </section>
 </main>
 <div id="err" class="panel" style="position:fixed;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
@@ -77,9 +110,6 @@ if (!DATA || !DATA.tree) {
   err.style.display = "grid";
   throw new Error("no data");
 }
-
-document.getElementById("title").textContent = "Scaffold Architecture — " + (DATA.appName || "");
-document.getElementById("subtitle").textContent = "language: " + (DATA.language || "?");
 
 // ── Layout: indented tree (directories genuinely nest, but at 5-15 files
 // and 1-3 levels a circle-pack buries the one thing that matters -- role
@@ -108,6 +138,63 @@ rows.forEach((d, i) => { d.rowIndex = i; });
 function rowMidY(d) { return d.rowIndex * ROW_H + ROW_H / 2; }
 function colX(depth) { return LEFT_PAD + depth * INDENT; }
 
+// ── Header + verdict ────────────────────────────────────────────────────
+// Every string below reaches the DOM through textContent, never innerHTML --
+// the second of the two independent barriers the builder's escaping pairs
+// with (S3).
+const fileCount = countLeaves(DATA.tree);
+const dirCount = rows.filter(d => d.data.type === "dir").length;
+document.getElementById("subtitle").textContent =
+  (DATA.appName || "?") + " · " + (DATA.language || "?") + " · " +
+  fileCount + " files across " + dirCount + " directories · generated from cli-scaffold.manifest.json";
+
+const roleOrder = Object.keys(DATA.roleLabels || {});
+const rolePillars = DATA.rolePillars || {};
+
+const presentRoles = new Set();
+root.each(d => { for (const r of (d.data.roles || [])) presentRoles.add(r); });
+
+const missingRoles = roleOrder.filter(r => !presentRoles.has(r));
+
+// A pillar counts as evidenced when ANY of its roles has a file. Reporting a
+// pillar as uncovered because one of its two roles is missing would be a
+// halt built on a value the code invented.
+const pillarHits = new Map();
+for (const role of roleOrder) {
+  const pillar = rolePillars[role];
+  if (!pillar) continue;
+  pillarHits.set(pillar, (pillarHits.get(pillar) || 0) + (presentRoles.has(role) ? 1 : 0));
+}
+const barePillars = [...pillarHits.entries()].filter(([, n]) => n === 0).map(([p]) => p);
+
+function joinList(items, conj) {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  return items.slice(0, -1).join(", ") + " " + conj + " " + items[items.length - 1];
+}
+
+const app = DATA.appName || "This scaffold";
+const verdictEl = document.getElementById("verdict");
+let verdict;
+if (missingRoles.length === 0) {
+  verdict = app + " claims all " + roleOrder.length +
+    " file-backed doctrine roles — every pillar a file can evidence is evidenced here.";
+  verdictEl.classList.add("complete");
+} else if (barePillars.length) {
+  verdict = app + " claims " + (roleOrder.length - missingRoles.length) + " of " +
+    roleOrder.length + " file-backed doctrine roles — nothing in this tree plays the " +
+    joinList(missingRoles, "or") + " role, leaving the " +
+    joinList(barePillars, "and") + " pillar" +
+    (barePillars.length > 1 ? "s" : "") + " with no file to point at.";
+} else {
+  verdict = app + " claims " + (roleOrder.length - missingRoles.length) + " of " +
+    roleOrder.length + " file-backed doctrine roles — nothing in this tree plays the " +
+    joinList(missingRoles, "or") + " role, though every pillar still has at " +
+    "least one file behind it.";
+}
+verdictEl.textContent = verdict;
+
+// ── Guide rails ─────────────────────────────────────────────────────────
 // One vertical rail per directory (parent row down to its last child row)
 // plus one horizontal tick per child, computed from d3.hierarchy()'s own
 // parent/children links -- real SVG lines, not CSS border tricks, so they
@@ -179,16 +266,28 @@ rowSel.each(function (d) {
 });
 
 // ── Legend ──────────────────────────────────────────────────────────────
+// The legend repeats the badge VERBATIM rather than showing a colour swatch:
+// the inline badge says "help" and so does the legend chip, so the mapping
+// from a badge to its long-form pillar meaning is read off the shared word,
+// not off matching two hues. tokens.css: never colour alone.
 (function renderLegend() {
   const legend = document.getElementById("legend");
   for (const [role, label] of Object.entries(DATA.roleLabels)) {
-    const span = document.createElement("span");
-    const sw = document.createElement("span");
-    sw.className = "swatch";
-    sw.style.background = "var(--role-" + role + ")";
-    span.appendChild(sw);
-    span.appendChild(document.createTextNode(label));
-    legend.appendChild(span);
+    const absent = !presentRoles.has(role);
+    const item = document.createElement("span");
+    item.className = "legend-item" + (absent ? " absent" : "");
+
+    const chip = document.createElement("span");
+    chip.className = "badge" + (absent ? " absent" : "");
+    if (!absent) chip.style.background = "var(--role-" + role + ")";
+    chip.textContent = role;
+    item.appendChild(chip);
+
+    const text = document.createElement("span");
+    text.textContent = label + (absent ? " — no file claims this role" : "");
+    item.appendChild(text);
+
+    legend.appendChild(item);
   }
 })();
 </script>

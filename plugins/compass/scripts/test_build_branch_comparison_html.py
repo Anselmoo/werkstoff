@@ -109,6 +109,22 @@ try:
     ok("rendered report embeds the winning branch's name",
        "Standalone D3 branch-comparison viewer" in html)
     ok("rendered report embeds the vendored d3 bundle", "var d3=" in html)
+    # report-viewer-standard.md S2: "<plugin> — <report noun>", lowercase plugin.
+    # The separator is written as — rather than a literal glyph so a re-encoded
+    # source file cannot turn this into an assertion that passes on the wrong dash.
+    ok("rendered report carries the standard <title> shape",
+       "<title>compass \u2014 branch comparison</title>" in html)
+    # report-viewer-standard.md R1: the verdict element must be in STATIC markup,
+    # so it survives into the file even before any script runs.
+    ok("rendered report keeps a static, empty class=\"verdict\" element filled via textContent",
+       '<p class="verdict" id="verdict"></p>' in html)
+    # S1: centered document, not a left-hugging max-width with no auto margin.
+    # Matched on the whole .wrap RULE, never on the bare string "margin: 0 auto":
+    # that substring also occurs in the prose comment explaining this rule, so the
+    # loose form passed on a viewer whose .wrap had been un-centered. Calibrated by
+    # deleting the declaration and confirming this assertion goes red.
+    ok("rendered report centers its content (S1, not a fourth archetype)",
+       ".wrap { max-width: 1180px; margin: 0 auto;" in html)
 
     # main() with no --run-id must fall back to find_latest_explore_run.
     rc2 = B.main([

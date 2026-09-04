@@ -1,14 +1,31 @@
 {
   "area": "billing",
-  "modules": ["billing", "shipping", "auth", "notifications"],
-  "dimensions": ["error-handling-style", "logging-style", "test-structure"],
+  "modules": ["billing", "shipping", "auth", "notifications", "search", "inventory"],
+  "dimensions": ["error-handling-style", "logging-style", "test-structure", "config-loading"],
   "cells": [
     { "module": "billing", "dimension": "error-handling-style", "variant": "return Result<T,E>", "sites": 41, "conformance": 1.0, "example": "src/billing/charge.py:88" },
     { "module": "shipping", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 17, "conformance": 0.0, "example": "src/shipping/label.py:22" },
     { "module": "auth", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 9, "conformance": 0.35, "example": "src/auth/session.py:14" },
+    { "module": "notifications", "dimension": "error-handling-style", "variant": "return Result<T,E>", "sites": 5, "conformance": 0.9, "example": "src/notifications/send.py:12" },
+    { "module": "search", "dimension": "error-handling-style", "variant": "bare except -> return None", "sites": 12, "conformance": 0.05, "example": "src/search/query.py:47" },
+    { "module": "inventory", "dimension": "error-handling-style", "variant": "return Result<T,E>", "sites": 19, "conformance": 0.95, "example": "src/inventory/stock.py:9" },
+
     { "module": "billing", "dimension": "logging-style", "variant": "structlog", "sites": 12, "conformance": 0.9, "example": "src/billing/ledger.py:5" },
+    { "module": "shipping", "dimension": "logging-style", "variant": "print()", "sites": 8, "conformance": 0.0, "example": "src/shipping/dispatch.py:63" },
+    { "module": "auth", "dimension": "logging-style", "variant": "logging.getLogger(__name__)", "sites": 11, "conformance": 0.6, "example": "src/auth/tokens.py:3" },
     { "module": "notifications", "dimension": "logging-style", "variant": "print()", "sites": 6, "conformance": 0.1, "example": "src/notifications/send.py:31" },
+    { "module": "search", "dimension": "logging-style", "variant": "structlog", "sites": 7, "conformance": 0.88, "example": "src/search/index.py:4" },
+
     { "module": "billing", "dimension": "test-structure", "variant": "pytest fixtures", "sites": 22, "conformance": 1.0, "example": "tests/billing/test_charge.py:1" },
-    { "module": "auth", "dimension": "test-structure", "variant": "unittest.TestCase", "sites": 14, "conformance": 0.2, "example": "tests/auth/test_session.py:1" }
+    { "module": "shipping", "dimension": "test-structure", "variant": "unittest.TestCase", "sites": 6, "conformance": 0.15, "example": "tests/shipping/test_label.py:1" },
+    { "module": "auth", "dimension": "test-structure", "variant": "unittest.TestCase", "sites": 14, "conformance": 0.2, "example": "tests/auth/test_session.py:1" },
+    { "module": "notifications", "dimension": "test-structure", "variant": "pytest fixtures", "sites": 9, "conformance": 0.92, "example": "tests/notifications/test_send.py:1" },
+    { "module": "inventory", "dimension": "test-structure", "variant": "pytest fixtures", "sites": 13, "conformance": 0.97, "example": "tests/inventory/test_stock.py:1" },
+
+    { "module": "billing", "dimension": "config-loading", "variant": "pydantic Settings", "sites": 6, "conformance": 0.95, "example": "src/billing/settings.py:11" },
+    { "module": "shipping", "dimension": "config-loading", "variant": "os.environ direct reads", "sites": 21, "conformance": 0.0, "example": "src/shipping/carrier.py:8" },
+    { "module": "auth", "dimension": "config-loading", "variant": "os.environ direct reads", "sites": 4, "conformance": 0.3, "example": "src/auth/oauth.py:19" },
+    { "module": "search", "dimension": "config-loading", "variant": "pydantic Settings", "sites": 5, "conformance": 0.9, "example": "src/search/settings.py:7" },
+    { "module": "inventory", "dimension": "config-loading", "variant": "module-level constants", "sites": 8, "conformance": 0.45, "example": "src/inventory/const.py:1" }
   ]
 }

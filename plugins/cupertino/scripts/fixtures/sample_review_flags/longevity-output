@@ -1,0 +1,18 @@
+{
+  "discipline": "longevity",
+  "dimensionScores": [3, 3, 2, 3, 2, 3],
+  "dimensions": {
+    "additiveChange": 3,
+    "versionedSurface": 3,
+    "reversibleDecisions": 2,
+    "dataMigrationPath": 3,
+    "consumerCoupling": 2,
+    "deprecationStory": 3
+  },
+  "total": 16,
+  "threshold": 18,
+  "rosettaRoadmapRequired": true,
+  "verdict": "Evolvable, but not yet: share links are minted with no version marker and no expiry field, so the first change to link semantics has to be a migration rather than an addition.",
+  "worstDimensions": ["reversibleDecisions", "consumerCoupling"],
+  "recommendation": "Put a version marker and an expiry field into the link payload before the first client ever receives one; both are free now and are a coordinated rewrite later."
+}

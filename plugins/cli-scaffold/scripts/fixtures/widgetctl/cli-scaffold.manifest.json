@@ -1,0 +1,25 @@
+{
+  "app_name": "widgetctl",
+  "language": "python",
+  "paradigm": "interpreted",
+  "core_files": [
+    "src/widgetctl/core.py",
+    "src/widgetctl/inventory.py"
+  ],
+  "entry_file": "src/widgetctl/cli.py",
+  "distribution_file": "pyproject.toml",
+  "snapshot_test": null,
+  "help_file": "docs/help.golden.txt",
+  "completion": {
+    "supported": false,
+    "note": "argcomplete is available for Python, but this scaffold has not wired it up yet — declared false rather than pointing at a file that does not exist."
+  },
+  "flags": [
+    {"name": "--json", "description": "emit machine-readable output on stdout"},
+    {"name": "--no-input", "description": "never prompt; fail with exit 2 instead"},
+    {"name": "--verbose", "description": "diagnostics to stderr"}
+  ],
+  "positional_args": [
+    {"name": "widget_id", "required": false, "description": "widget to inspect; omitted means list all"}
+  ]
+}

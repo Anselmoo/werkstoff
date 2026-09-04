@@ -1,0 +1,28 @@
+{
+  "inventory": [
+    "public review link",
+    "client accounts with roles",
+    "per-asset comment threads",
+    "email digest of client activity",
+    "white-label review portal",
+    "downloadable review PDF",
+    "in-app approval signatures"
+  ],
+  "survivors": [
+    {
+      "name": "public review link",
+      "description": "It is the only item that delivers the promised first five minutes without asking the client for anything."
+    },
+    {
+      "name": "per-asset comment threads",
+      "description": "Review without a place to say what is wrong is just a slideshow."
+    }
+  ],
+  "cut": [
+    {"name": "client accounts with roles", "why": "Reintroduces the sign-up the experience statement exists to remove."},
+    {"name": "email digest of client activity", "why": "Serves the studio's curiosity, not the client's review."},
+    {"name": "white-label review portal", "why": "A pricing-tier ambition wearing a feature costume."},
+    {"name": "downloadable review PDF", "why": "A second, immediately stale copy of the thing the link already shows."},
+    {"name": "in-app approval signatures", "why": "A legal product hiding inside a review product."}
+  ]
+}

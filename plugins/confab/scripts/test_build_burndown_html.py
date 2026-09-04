@@ -112,7 +112,7 @@ class InjectionContentTests(unittest.TestCase):
             self.assertIn(canonical, html)
         for legacy in ("--bg-panel:", "--text-dim:", "--bg-header:", "--cumulative:", "--closed:", "--outcomes:", "--open:", "--escalated:"):
             self.assertNotIn(legacy, html)
-        self.assertNotIn("/*__TOKENS__*/", html)
+        self.assertNotIn("<!--__DESIGN_TOKENS__-->", html)
 
     def test_data_payload_is_embedded(self):
         with Repo(THREE_PASS_LEDGER) as repo:
@@ -120,6 +120,49 @@ class InjectionContentTests(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             html = Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
         self.assertIn('"totalPasses": 3', html)
+
+
+class ReportConformanceTests(unittest.TestCase):
+    """docs/plugin-authoring/references/report-viewer-standard.md, the rules that
+    are cheap to assert from the rendered file rather than by reading it."""
+
+    def render(self, repo: Repo) -> str:
+        r = run_builder_with_both_flags(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
+
+    def test_head_carries_csp_and_canonical_title(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            html = self.render(repo)
+        self.assertIn("Content-Security-Policy", html)
+        self.assertIn("default-src 'none'", html)
+        # S2: "<plugin> — <report noun>", lowercase, U+2014 em dash.
+        self.assertIn("<title>confab \u2014 burndown</title>", html)
+
+    def test_verdict_and_legend_are_static_markup(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            html = self.render(repo)
+        # R1: a verdict element that exists before any script runs.
+        self.assertIn('class="verdict"', html)
+        # R4: every status colour named in an always-visible legend, each with a
+        # label and a glyph -- colour is never the only channel.
+        self.assertIn('<ul class="legend">', html)
+        for label in ("closed", "open", "escalated"):
+            self.assertIn('<span class="name">' + label + "</span>", html)
+
+    def test_actionable_tiles_are_distinguishable_from_inert_ones(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            html = self.render(repo)
+        # R3: a class meaning "this number needs action".
+        self.assertIn(".stat.alarm", html)
+        self.assertIn("'alarm'", html)
+
+    def test_chart_height_is_not_a_constant(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            html = self.render(repo)
+        # R5: no fixed pixel height for the trend panel, in CSS or in JS.
+        self.assertNotIn("height: 300px", html)
+        self.assertIn("const H = Math.max(180, maxCum", html)
 
 
 class SplitViewStructureTests(unittest.TestCase):

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Stage map</title>
+<title>self-assess — stage map</title>
 <!--__DESIGN_TOKENS__-->
 <style>
   :root {
@@ -22,22 +22,48 @@
     color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
   #map { position: absolute; inset: 0; cursor: grab; }
   #map.dragging { cursor: grabbing; }
+  /* R5 (report-viewer-standard): this viewer is the "absolute canvas"
+     archetype, so the canvas correctly fills the viewport -- but the chrome
+     floating over it must still never clip. The HUD is capped to the
+     viewport and scrolls internally rather than running off the bottom
+     edge; the sidebar and hint shrink rather than overhang a narrow one. */
   #hud { position: absolute; top: 12px; left: 12px; width: 280px;
+    max-width: calc(100vw - 24px); max-height: calc(100vh - 24px);
+    overflow-y: auto; overscroll-behavior: contain;
     display: flex; flex-direction: column; gap: 8px; z-index: 2; }
   .panel { background: var(--panel); border: 1px solid var(--border);
     border-radius: 8px; padding: 10px 12px; }
   .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
+  .panel h2 { font-size: 13px; color: var(--accent); margin-bottom: 5px; }
   .panel .sub { color: var(--muted); font-size: 12px; }
+  /* R1: the verdict sentence -- what this map FOUND, not how to drive it. */
+  .verdict { color: var(--text); font-size: 12px; line-height: 1.5; }
+  /* R4: a legend a reader gets without clicking anything. tokens.css's
+     mandate is "never color alone, always pair with an icon or a label" --
+     every swatch below is glued to the word for what that fill means, and
+     the two non-colour channels (amber ring, dashed ring) are drawn on the
+     swatch itself so they read the same way they do on the canvas. */
+  #legendpanel h3 { font-size: 11px; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+  .legend { list-style: none; padding: 0; display: flex; flex-direction: column;
+    gap: 6px; font-size: 12px; color: var(--muted); }
+  .legend li { display: flex; align-items: center; gap: 8px; }
+  .legend .swatch { flex: none; width: 15px; height: 15px; border-radius: 50%;
+    border: 1px solid var(--border); }
+  .legend .swatch.ring-god { border-color: var(--god); border-width: 2px; }
+  .legend .swatch.ring-dead { border-style: dashed; }
+  .legend .swatch.tiny { width: 8px; height: 8px; margin-right: -3px; }
   #search { width: 100%; padding: 6px 8px; border-radius: 6px;
     border: 1px solid var(--border); background: var(--panel-2);
     color: var(--text); font: inherit; outline: none; }
   #search:focus { border-color: var(--accent); }
-  #results { max-height: 180px; overflow-y: auto; margin-top: 4px; }
+  #results { max-height: min(180px, 22vh); overflow-y: auto; margin-top: 4px; }
   #results div { padding: 4px 6px; border-radius: 4px; cursor: pointer;
     font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #results div:hover { background: var(--panel-2); }
   #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
-    width: 320px; overflow-y: auto; z-index: 2; display: none; }
+    width: min(320px, calc(100vw - 24px)); overflow-y: auto; z-index: 2;
+    display: none; }
   #sidebar.open { display: block; }
   #sidebar h2 { font-size: 16px; word-break: break-word; }
   #sidebar .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
@@ -54,8 +80,9 @@
   .badge.cycle { border-color: var(--cycle); color: var(--cycle); }
   .badge.god { border-color: var(--god); color: var(--god); }
   #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    color: var(--muted); font-size: 12px; z-index: 2; background: var(--panel);
-    border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+    max-width: calc(100vw - 24px); color: var(--muted); font-size: 12px;
+    z-index: 2; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 12px; }
   #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
   #err .panel { max-width: 420px; text-align: center; }
 </style>
@@ -65,8 +92,25 @@
 
 <div id="hud">
   <div class="panel">
-    <h1 id="title">Stage map</h1>
+    <h1 id="title">self-assess — stage map</h1>
     <div class="sub" id="stats"></div>
+  </div>
+  <div class="panel">
+    <h2>Which stages can't be changed on their own?</h2>
+    <p class="verdict" id="verdict">The ones every other stage imports, and the
+      ones that import each other: everything downstream of a god-module has to
+      be re-tested with it, and a dependency cycle cannot be broken from one
+      side.</p>
+  </div>
+  <div class="panel" id="legendpanel">
+    <h3>What the colours mean</h3>
+    <ul class="legend" id="legend">
+      <li><span class="swatch" data-fill="stage"></span>ordinary stage</li>
+      <li><span class="swatch ring-god" data-fill="god"></span>god-module — most stages import it</li>
+      <li><span class="swatch" data-fill="cycle"></span>in a dependency cycle — one hue per cycle</li>
+      <li><span class="swatch ring-dead" data-fill="stage"></span>dead-end — imports nothing outward</li>
+      <li><span class="swatch tiny" data-fill="stage"></span><span class="swatch" data-fill="stage"></span>circle area — files in the stage</li>
+    </ul>
   </div>
   <div class="panel">
     <input id="search" type="search" placeholder="Search stages…" autocomplete="off">
@@ -131,11 +175,12 @@ const maxFileCount = Math.max(1, ...nodes.map(n => n.fileCount));
 const rScale = d3.scaleSqrt().domain([0, maxFileCount]).range([6, 40]).clamp(true);
 for (const n of nodes) n.r = rScale(n.fileCount);
 
-document.getElementById("title").textContent = "Stage map";
+// R2 (report-viewer-standard): one surface per number. The subtitle carries
+// SCOPE and provenance only -- the cycle and god-module counts are findings,
+// so they belong to the verdict below and are not restated here.
 document.getElementById("stats").textContent =
-  DATA.stats.stageCount + " stages · " + DATA.stats.edgeCount + " wires" +
-  (DATA.stats.cycleCount ? " · " + DATA.stats.cycleCount + " cycle(s)" : "") +
-  (DATA.stats.godModuleCount ? " · " + DATA.stats.godModuleCount + " god-module(s)" : "");
+  DATA.stats.stageCount + " stages · " + DATA.stats.edgeCount + " wires · " +
+  nodes.reduce((t, n) => t + n.fileCount, 0) + " files · from stage_graph.json";
 
 const edges = (DATA.edges || []).filter(e => byId.has(e.source) && byId.has(e.target));
 const adjacency = new Map();
@@ -176,6 +221,61 @@ function fillFor(n) {
   if (n.godModuleFanIn) return COLOR.godFill;
   return COLOR.stageFill;
 }
+
+// ── R4: persistent legend ────────────────────────────────────────────────
+// The static <ul class="legend"> already carries the WORDS; this only paints
+// each swatch, and it reads the fills straight out of the same COLOR /
+// CYCLE_PALETTE the canvas uses, so a legend swatch cannot drift from the
+// circle it explains the way a second hardcoded hex would.
+const LEGEND_FILL = {
+  stage: COLOR.stageFill,
+  god: COLOR.godFill,
+  cycle: CYCLE_PALETTE[0],
+};
+for (const sw of document.querySelectorAll("#legend .swatch")) {
+  sw.style.background = LEGEND_FILL[sw.dataset.fill] || COLOR.stageFill;
+}
+
+// ── R1: the verdict, in words ────────────────────────────────────────────
+// The static markup already states the general finding this map exists to
+// surface; this replaces it with THIS graph's actual one. textContent, never
+// innerHTML -- stage names are untrusted input (barrier two of S3; the
+// builder's \u003c/\u003e/\u0026 escaping is barrier one).
+const godModules = nodes.filter(n => n.godModuleFanIn)
+  .sort((a, b) => b.godModuleFanIn - a.godModuleFanIn);
+const realCycles = (DATA.cycles || []).filter(c => c.length > 1);
+const isolated = nodes.filter(n => !n.fanIn && !n.fanOut);
+const deadEnds = nodes.filter(n => n.deadEnd);
+const count = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
+
+function verdictText() {
+  const found = [];
+  if (godModules.length) {
+    found.push(count(godModules.length, "god-module") + " (" + godModules[0].name +
+      " alone absorbs " + godModules[0].godModuleFanIn + " of this graph's " +
+      edges.length + " wires)");
+  }
+  if (realCycles.length) {
+    const shown = realCycles.slice(0, 3).map(c => c.join(" ⇄ ")).join("; ");
+    found.push(count(realCycles.length, "dependency cycle") + " (" + shown +
+      (realCycles.length > 3 ? "; …" : "") + ")");
+  }
+  const loose = isolated.length
+    ? " " + count(isolated.length, "stage") + " (" +
+      isolated.map(n => n.name).join(", ") + ") " +
+      (isolated.length === 1 ? "is" : "are") + " wired to nothing at all."
+    : "";
+  if (!found.length) {
+    return "No god-module and no dependency cycle: each of these " + nodes.length +
+      " stages can be changed without dragging another along." +
+      (deadEnds.length ? " " + count(deadEnds.length, "stage") +
+        " import nothing outward (dashed ring)." : "") + loose;
+  }
+  return "This map found " + found.join(" and ") +
+    ". None of them can be changed alone: everything downstream of a god-module " +
+    "has to be re-tested with it, and a cycle cannot be broken from one side." + loose;
+}
+document.getElementById("verdict").textContent = verdictText();
 
 // ── Layout: force-directed graph ─────────────────────────────────────────
 // self-assess-stage-map's data is a FLAT list of stages with DIRECTED

@@ -1,0 +1,10 @@
+{
+  "scope": "let a studio share finished work with a client for review",
+  "experienceStatement": "A client opens one link and sees exactly the work they were promised, with no sign-up, no password, and no guessing about which version they are looking at.",
+  "customerBenefit": "The client's first five minutes are spent looking at the work, not proving who they are.",
+  "technologyDirection": "Whatever gets built has to make revoking one client's access instant and total, because the relationship ending is the moment this matters most.",
+  "driftRisks": [
+    "Starting from 'which auth provider' rather than from the client's first five minutes.",
+    "Treating revocation as an admin chore instead of part of the promised experience."
+  ]
+}

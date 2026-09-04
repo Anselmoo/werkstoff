@@ -105,7 +105,32 @@ Generation also writes `ARCHITECTURE.html` inside the scaffold itself: a
 self-contained report viewer rendering the scaffold's real directory tree,
 each file tagged with the five-pillar role(s) its manifest declares for it.
 
-![Self-contained HTML architecture viewer showing an indented file tree with directory nesting for a Python scaffold — completions/, docs/, src/widgetctl/, and tests/ subdirectories each expanded to their files, with inline colored badges marking each file's role (core, entry, distribution, test, help, completion) and README.md/LICENSE left unbadged](assets/architecture-tree-viewer-screenshot.jpg)
+It answers one question rather than merely drawing a tree — *does every pillar
+the doctrine names have a file behind it?* — and states the answer in a
+sentence at the top, derived from the manifest's own gating keys. Four of the
+five pillars are file-backed and therefore countable here; the fifth, Unix
+composability, is behavioural (exit codes 0/1/2, data on stdout, diagnostics on
+stderr), so no file can carry its badge and the viewer says so instead of
+scoring a pillar it cannot see.
+
+![Self-contained HTML architecture viewer for the widgetctl Python scaffold: a header reading "cli-scaffold — architecture tree", a verdict panel answering "Does every pillar the doctrine names have a file behind it?" with the sentence "widgetctl claims 4 of 6 file-backed doctrine roles — nothing in this tree plays the test or completion role, leaving the stability pillar with no file to point at", then an indented file tree with docs/, src/widgetctl/ and tests/ expanded to their files, inline coloured badges reading core, entry, distribution and help beside the files that play those roles, LICENSE/README.md/tests/test_core.py left unbadged, and a legend below repeating each badge word next to its long-form pillar meaning — with test and completion drawn as hollow dashed chips marked "no file claims this role"](assets/architecture-tree-viewer-screenshot.jpg)
+
+That image is reproducible rather than a one-off capture. The scaffold it shows
+is committed at `scripts/fixtures/widgetctl/` — a real directory tree plus its
+`cli-scaffold.manifest.json`, which is exactly what the builder consumes
+(the manifest supplies the roles, the walk supplies the tree). It is
+deliberately *incomplete*: it declares no `--help` snapshot test and no shell
+completion, so the report shows a partial-coverage verdict and two hollow
+legend chips rather than a clean sweep that would prove nothing. To rebuild it:
+
+```bash
+mkdir -p /tmp/cli-scaffold-demo
+cp -R plugins/cli-scaffold/scripts/fixtures/widgetctl /tmp/cli-scaffold-demo/widgetctl
+python3 plugins/cli-scaffold/scripts/build_architecture_tree.py /tmp/cli-scaffold-demo/widgetctl \
+    --template plugins/cli-scaffold/assets/architecture-tree-viewer.html \
+    --d3 plugins/cli-scaffold/assets/inline-d3.html \
+    --tokens plugins/cli-scaffold/assets/tokens.css
+```
 
 ### The 12 languages / 3 paradigms
 
@@ -165,6 +190,8 @@ scripts/
   report_validator.py          # validate report/ledger on read AND write
   check_doctrine_isolation.py  # fail if a paradigm skill duplicates the doctrine
   selftest.py                  # runnable proof the guards refuse what they must
+  build_architecture_tree.py   # renders ARCHITECTURE.html from the manifest + a real walk
+  fixtures/widgetctl/          # committed demo scaffold behind the screenshot above
 ```
 
 ## Enforcement is in code, not prose

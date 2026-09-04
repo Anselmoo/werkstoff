@@ -69,6 +69,26 @@ so the scores never live only in chat history:
 
 ![HTML report comparing four branches for how compass should persist and surface branch-comparison results — "Inline guard-only summary" (Total 14), "Standalone D3 branch-comparison viewer" (Total 19, highlighted WINNER with an orange border and badge), and "Radar chart for N-axis comparison" (Total 18) — each card showing grouped Feasibility/Impact/Risk bars alongside the branch's description and biggest blocker](assets/branch-comparison-viewer-screenshot.jpg)
 
+That image is reproducible rather than a one-off capture — the run it renders is
+committed at `scripts/fixtures/sample_explore_state.json` (four branches whose Totals
+are 14 / 19 / 18 / 13, so the winner takes it by a single point over the runner-up and
+the report's verdict has to name a blocker rather than a walkover). The builder reads a
+staged run at `<repo>/.compass/runs/<run-id>/state.json`, which is where the fixture has
+to be copied first:
+
+```bash
+RUN=9f2b6b1e-1c2b-4c3a-9c3e-2f6a2d6b7a10
+mkdir -p "/tmp/compass-demo/.compass/runs/$RUN"
+cp plugins/compass/scripts/fixtures/sample_explore_state.json \
+   "/tmp/compass-demo/.compass/runs/$RUN/state.json"
+python3 plugins/compass/scripts/build_branch_comparison_html.py /tmp/compass-demo \
+    --run-id "$RUN" \
+    --template plugins/compass/assets/branch-comparison-viewer.html \
+    --d3 plugins/compass/assets/inline-d3.html \
+    --tokens plugins/compass/assets/tokens.css
+# -> /tmp/compass-demo/.compass/runs/<run-id>/branch-comparison.html
+```
+
 ##### Clarify a fuzzy scope
 
 ````prompt

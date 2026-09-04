@@ -62,12 +62,8 @@ by intent.
 > open gap counts; nothing advances.
 
 Alongside the markdown board, `andon-status` can render the same evidence as a
-self-contained HTML report (`scripts/build_board_html.py`) -- a left-to-right
-value-stream flow diagram with stage nodes and wire edges colored by proof
-status, plus a click-driven sidebar that lists a stage's open gaps, each
-tagged with its kind and blast-radius badges, on demand:
-
-![Andon board HTML viewer showing a four-stage value-stream flow diagram with green, red, and dashed wire edges, red open-gap count badges on each stage, and a click-driven sidebar listing the selected stage's open gaps with kind and blast-radius badges](assets/board-viewer-screenshot.jpg)
+self-contained HTML report -- see [The board, as an HTML
+report](#the-board-as-an-html-report) below.
 
 ##### Propose a fix
 
@@ -100,6 +96,42 @@ tagged with its kind and blast-radius badges, on demand:
 Run `andon-preflight` first in any repo — it's read-only and never creates the
 ledger — then `andon-loop` to start a pass, and `andon-status` at any point to see
 the board without advancing anything.
+
+## The board, as an HTML report
+
+`scripts/build_board_html.py` renders the same evidence `andon-status` prints to
+the chat as one self-contained HTML file, written to `<ledger_dir>/ANDON_BOARD.html`.
+
+The report answers one question -- *where is the line stopped, and why?* -- and
+states its answer in a sentence before any chart appears. Below it, a left-to-right
+value-stream diagram carries a labelled edge per handoff: green when linked evidence
+says green, amber when verification was attempted and hung, and **dashed when no
+evidence doc exists at all**. Those last two are different failures, not degrees of
+one, so the edge label spells the state out in words rather than leaving it to
+colour. Stage nodes carry a red open-gap badge and open a sidebar listing that
+stage's gaps with kind and blast-radius badges.
+
+![andon board for a stopped five-stage feature pipeline: a verdict panel reading "The line is stopped at enrich->score by a Tier 1 structural-evidence contradiction — the one verdict nothing in this loop can override. 3 of 4 handoffs carry no green proof, and 7 gaps are open across 4 of 5 stages"; a red non-overridable-hold banner naming enrich->score; four tiles of which three are outlined in red — 7 open gaps, 3 handoffs without green proof, 1 non-overridable hold — beside an un-outlined 1 cycle converged; and a value-stream diagram of ingest, normalize, enrich, score and publish whose four edges are each labelled in words, ingest->normalize proven green, normalize->enrich verdict hung, enrich->score proven red, score->publish dashed with no evidence yet, with red gap-count badges on the first four stages and none on publish](assets/board-viewer-screenshot.jpg)
+
+That image is reproducible rather than a one-off capture — the ledger it shows is
+committed at `scripts/fixtures/sample_ledger/`, a real OKF directory tree
+(`log.md` + `stages/` + `gaps/` + `evidence/`) authored in the schema
+`render_board()` actually reads: `status`, `kind`, `blast_radius`, `verdict` and
+`tier` as first-class frontmatter keys, never buried in a `tags:` array. Its five
+stages are wired so that one handoff is proven, one hung, one contradicted by the
+structural index at Tier 1, and one never verified at all. To rebuild it:
+
+```bash
+python3 plugins/andon/scripts/build_board_html.py \
+    plugins/andon/scripts/fixtures sample_ledger \
+    --template plugins/andon/assets/board-viewer.html \
+    --d3 plugins/andon/assets/inline-d3.html \
+    --tokens plugins/andon/assets/tokens.css \
+    --out /tmp/andon-demo/ANDON_BOARD.html
+```
+
+`scripts/fixtures/sample_ledger/README.md` documents exactly which defect each
+stage, gap and evidence doc is there to expose.
 
 ## Skills (5)
 

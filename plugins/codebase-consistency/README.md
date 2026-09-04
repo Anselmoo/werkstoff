@@ -93,6 +93,23 @@ cells mean no divergence was found there.
 
 ![Consistency matrix viewer showing six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions, cells colored green/amber/red by conformance to the canonical pattern and hatched where no data exists, with the sidebar open on a selected shipping × error-handling-style cell showing its diverging variant and site count](assets/matrix-viewer-screenshot.jpg)
 
+That image is reproducible rather than a one-off capture — the matrix it shows is
+committed at `scripts/testdata/sample_matrix.json` (6 modules × 4 dimensions, chosen so
+`shipping` is unambiguously the worst module, three module × dimension pairs have no data
+at all and render hatched, and three distinct variants compete inside a single dimension).
+To rebuild it:
+
+```bash
+mkdir -p /tmp/cc-demo/analysis/billing
+cp plugins/codebase-consistency/scripts/testdata/sample_matrix.json \
+    /tmp/cc-demo/analysis/billing/matrix.json
+python3 plugins/codebase-consistency/scripts/build_matrix_html.py /tmp/cc-demo billing \
+    --template plugins/codebase-consistency/assets/matrix-viewer.html \
+    --d3 plugins/codebase-consistency/assets/inline-d3.html \
+    --tokens plugins/codebase-consistency/assets/tokens.css
+# -> /tmp/cc-demo/analysis/billing/CONSISTENCY_MATRIX.html
+```
+
 ##### Derive the canon
 
 ````prompt

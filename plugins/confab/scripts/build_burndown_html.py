@@ -81,10 +81,15 @@ def render_html(template_path, d3_path, tokens_path, burndown):
         raise ValueError(f"D3 injection marker not found in {template_path}")
     tpl = tpl.replace(d3_marker, open(d3_path, encoding="utf-8").read())
 
-    tokens_marker = "/*__TOKENS__*/"
+    # Canonical marker spelling, shared with every other report viewer in this
+    # marketplace (docs/plugin-authoring/references/report-viewer-standard.md,
+    # S2). It sits OUTSIDE any <style> block in the template, so the wrapper
+    # tags are supplied here rather than being hardcoded in the asset.
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
     if tokens_marker not in tpl:
-        raise ValueError(f"tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, open(tokens_path, encoding="utf-8").read())
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tokens_css = open(tokens_path, encoding="utf-8").read()
+    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
 
     data_marker = "/*__BURNDOWN_DATA__*/ null"
     if data_marker not in tpl:

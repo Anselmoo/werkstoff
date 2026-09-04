@@ -128,6 +128,22 @@ the one thing all eight viewers share.
 Click any node in the enforcement flow to filter the rule table; ribbons are grouped by
 full path tuple, so the filter is exact rather than approximate.
 
+![Doctrine map for an 11-rule brownfield ruleset: a funnel reading 11 declared, 8 blocking (-3), 5 denied at write time (-3), and a separate amber "3 believed to block" callout for the blocking rules that never deny a write; below it a Sankey carrying every rule from provenance through severity and check kind to enforcement outcome, with the three linter-kind ribbons draining amber into "sweep + CI only"; a build-order graph showing contracts validated, adapters and writer ready, and cli blocked by both; and a rule table listing all 11 rules with severity, provenance, check kind, enforcement badge and rationale](assets/doctrine-viewer-screenshot.jpg)
+
+That image is reproducible rather than a one-off capture — the doctrine it shows is
+committed at `scripts/fixtures/sample_doctrine_ruleset.json` (11 rules chosen so all four
+enforcement outcomes and all six check kinds appear, and so three blocking rules leak into
+amber). To rebuild it:
+
+```bash
+mkdir -p /tmp/lehre-demo/.lehre/units
+cp plugins/lehre/scripts/fixtures/sample_doctrine_ruleset.json /tmp/lehre-demo/.lehre/ruleset.json
+touch /tmp/lehre-demo/.lehre/units/contracts.done   # so `contracts` renders validated, `cli` blocked
+python3 plugins/lehre/scripts/build_doctrine_html.py /tmp/lehre-demo \
+    --template plugins/lehre/assets/doctrine-viewer.html \
+    --tokens plugins/lehre/assets/tokens.css
+```
+
 ## The guard protects its own control plane
 
 Gates on the tree are worth nothing if the agent can edit the state the gates read.

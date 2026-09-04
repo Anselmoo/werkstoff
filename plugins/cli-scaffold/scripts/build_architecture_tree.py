@@ -34,6 +34,20 @@ ROLE_LABELS = {
     "completion": "UX/discoverability (shell completion)",
 }
 
+# Which of cli-architecture's five pillars each role is evidence for. Only four
+# pillars appear: the fifth, Unix composability, is behavioural (exit codes
+# 0/1/2, data on stdout, diagnostics on stderr) and no file can carry its badge,
+# so the viewer states that in prose rather than scoring a pillar it cannot see.
+# A pillar counts as evidenced when ANY of its roles has a file behind it.
+ROLE_PILLARS = {
+    "core": "backend/core separation",
+    "entry": "backend/core separation",
+    "distribution": "idiomatic distribution",
+    "test": "stability",
+    "help": "UX/discoverability",
+    "completion": "UX/discoverability",
+}
+
 EXCLUDE_DIRS = {".git", "node_modules", "__pycache__", ".venv", "target", "dist", "build"}
 
 
@@ -97,10 +111,14 @@ def render_html(template_path, d3_path, tokens_path, payload):
     d3_snippet = open(d3_path, encoding="utf-8").read()
     tokens_css = open(tokens_path, encoding="utf-8").read()
 
-    tokens_marker = "/*__TOKENS__*/"
+    # One marker spelling across every werkstoff report viewer
+    # (report-viewer-standard.md S2). The marker sits OUTSIDE any <style>
+    # block; the builder supplies the wrapper, exactly as
+    # build_doctrine_html.py does.
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
     if tokens_marker not in tpl:
-        raise ValueError(f"tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, tokens_css)
+        raise ValueError(f"design-tokens injection marker not found in {template_path}")
+    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
 
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
@@ -134,6 +152,7 @@ def main(argv=None):
         "language": manifest.get("language"),
         "tree": tree,
         "roleLabels": ROLE_LABELS,
+        "rolePillars": ROLE_PILLARS,
     }
 
     out_path = args.out or os.path.join(args.scaffold_dir, "ARCHITECTURE.html")
