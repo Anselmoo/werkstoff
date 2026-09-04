@@ -30,6 +30,9 @@ HTML_COMMENT_RE = re.compile(r"<!--(?!__).*?-->", re.DOTALL)
 # `//` only when it is not the tail of a scheme (http://), so a URL survives.
 LINE_COMMENT_RE = re.compile(r"(?<!:)//[^\n]*")
 SCRIPT_RE = re.compile(r"<script\b.*?</script>", re.DOTALL | re.IGNORECASE)
+H1_RE = re.compile(r"<h1\b([^>]*)>(.*?)</h1>", re.DOTALL | re.IGNORECASE)
+ID_ATTR_RE = re.compile(r"\bid\s*=\s*[\"\']([^\"\']+)[\"\']", re.IGNORECASE)
+TAGS_RE = re.compile(r"<[^>]+>")
 
 
 def class_token_re(token: str) -> re.Pattern:
@@ -146,6 +149,32 @@ def check(plugin: str, path: str) -> list[str]:
             errs.append(f"{rel}: S2 -- title {title!r} is not '<plugin> — <report noun>'")
         elif shape.group(1) != plugin:
             errs.append(f"{rel}: S2 -- title names {shape.group(1)!r}, not the plugin {plugin!r}")
+
+        # The <title> is the machine-readable name; the <h1> is the one a reader
+        # actually sees, and they drifted freely while only the former was checked
+        # (codebase-consistency shipped "Consistency Matrix — billing" under a
+        # title of "codebase-consistency — consistency matrix").
+        h1 = H1_RE.search(markup)
+        if not h1:
+            errs.append(f"{rel}: S2 -- no static <h1>")
+        else:
+            heading = " ".join(TAGS_RE.sub(" ", h1.group(2)).split())
+            if heading != title:
+                errs.append(f"{rel}: S2 -- <h1> {heading!r} does not match <title> {title!r}")
+            # A static heading proves nothing if a script replaces it on load,
+            # which is exactly how the drift above was introduced.
+            h1_id = ID_ATTR_RE.search(h1.group(1))
+            scripts = strip_comments(" ".join(SCRIPT_RE.findall(raw)))
+            overwrite = [r"querySelector\(\s*[\"\'][^\"\']*h1[^\"\']*[\"\']\s*\)\s*\.textContent\s*="]
+            if h1_id:
+                overwrite.append(
+                    r"getElementById\(\s*[\"\']" + re.escape(h1_id.group(1))
+                    + r"[\"\']\s*\)\s*\.textContent\s*=")
+            for pattern in overwrite:
+                if re.search(pattern, scripts):
+                    errs.append(f"{rel}: S2 -- the <h1> is overwritten at run time; "
+                                f"the static heading is what this check can verify")
+                    break
 
     # S1 -- the header height was copy-pasted as a literal into three viewers.
     # Searched in code only: the comments explaining the fix name the old literal.

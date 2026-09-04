@@ -171,14 +171,17 @@ const ran = byStatus('ran');
 const skipped = byStatus('skipped');
 const notReached = byStatus('not-run');
 
-document.getElementById('title').textContent =
-  'cupertino — review flow' + (FLOW_DATA_RAW ? '' : ' (no data — template opened directly)');
-
+// The <h1> is static and stays identical to <title>. It used to be rewritten
+// here to append a no-data notice, which is S4's "fail visibly" and belongs on
+// the provenance line, not on the report's name -- a heading that changes with
+// the data is a heading that can drift from the document title unnoticed.
 // R2: the subtitle carries scope and provenance only. Every count lives in the
 // verdict sentence below and is printed exactly once.
 document.getElementById('subtitle').textContent =
-  FLOW.stages.length + ' stages · fixed cupertino-review pipeline · read from ' +
-  (FLOW.source || '.cupertino/flags/');
+  (FLOW_DATA_RAW
+    ? FLOW.stages.length + ' stages · fixed cupertino-review pipeline · read from '
+      + (FLOW.source || '.cupertino/flags/')
+    : 'no data — template opened directly, so no run is described below');
 
 // R1: the finding, in a sentence, naming which stages ran, which were skipped
 // on purpose, and which the run never reached -- and what that means for

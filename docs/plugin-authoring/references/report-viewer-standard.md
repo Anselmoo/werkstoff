@@ -148,6 +148,15 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
   **absent in `lehre`, `confab`, `cupertino`**.
 - **`<title>` as `<plugin> — <report noun>`**, lowercase plugin name. `lehre — doctrine map`
   is the model. Current titles are inconsistently cased and prefixed.
+- **The static `<h1>` must carry that same string, and must not be rewritten at run time.**
+  The title is the machine-readable name; the `<h1>` is the one a reader actually sees, and
+  while only the former was checked the two drifted: `codebase-consistency` shipped a
+  heading of "Consistency Matrix — billing" under a title of
+  "codebase-consistency — consistency matrix". Scope that varies with the data — an area
+  name, a "no data" notice — belongs on the subtitle, which is the provenance line. A
+  heading that changes with the data is a heading that can drift unnoticed, so
+  `check_viewer_conformance.py` fails both a mismatch and a run-time overwrite of the
+  `<h1>` (it caught a live one in `cupertino` the first time it ran).
 - **One tokens marker spelling: `<!--__DESIGN_TOKENS__-->`.** Three spellings are in use
   today — that comment form (five viewers), `/*__DESIGN_TOKENS__*/` (`cupertino`), and
   `/*__TOKENS__*/` (`confab`, `cli-scaffold`). The palette is shared; the pipeline

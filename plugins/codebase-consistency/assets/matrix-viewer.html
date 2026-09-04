@@ -265,7 +265,7 @@
 <body>
 
 <header>
-  <h1 id="title">Consistency Matrix</h1>
+  <h1 id="title">codebase-consistency — consistency matrix</h1>
   <span class="sub" id="subtitle"></span>
   <div class="controls">
     <input type="text" id="filterInput" placeholder="filter modules or dimensions…">
@@ -332,12 +332,16 @@ if (!MATRIX_DATA_RAW || !MATRIX_DATA_RAW.modules) {
 }
 const MATRIX = MATRIX_DATA_RAW;
 
-document.getElementById('title').textContent = 'Consistency Matrix — ' + (MATRIX.area || '');
+// The <h1> is static and identical to <title>, like the other seven viewers.
+// It used to be overwritten here with a differently-cased string plus the area,
+// so the heading a reader saw drifted from the document title and from every
+// sibling report. The area is scope, so it leads the subtitle instead.
 // R2: the subtitle carries scope and provenance and is the ONLY place the
 // module/dimension counts are printed. The tile row below carries findings,
 // and no number appears on both surfaces.
 document.getElementById('subtitle').textContent =
-  MATRIX.modules.length + ' modules × ' + MATRIX.dimensions.length + ' dimensions'
+  (MATRIX.area || '<area>') + ' · '
+  + MATRIX.modules.length + ' modules × ' + MATRIX.dimensions.length + ' dimensions'
   + ' · generated from analysis/' + (MATRIX.area || '<area>') + '/matrix.json';
 
 // ---- grid geometry -------------------------------------------------------
