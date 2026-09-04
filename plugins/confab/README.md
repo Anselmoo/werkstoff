@@ -188,10 +188,34 @@ it didn't specify something, these are the choices made and why:
   chart of cumulative closed findings, since `ledger.json`'s `passes` array is
   the only place pass-over-pass history actually exists:
 
-  ![Confab burndown viewer's Trend tab, showing a single D3 line chart of cumulative closed findings converging upward across five cleanup passes](assets/burndown-viewer-screenshot.jpg)
+  ![Confab burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last](assets/burndown-viewer-screenshot.jpg)
 
   The Breakdown tab adds by-status and by-domain bars plus a findings
   sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
+
+  That image is reproducible rather than a one-off capture — the ledger it
+  shows is committed at `scripts/fixtures/sample_burndown_ledger.json` (5
+  passes and 10 findings, chosen so the last pass closes nothing and one
+  finding sits `escalated` with `reopenCount: 4` — the thrash-guard
+  outcome this plugin exists to surface, and the one status that never
+  clears itself). To rebuild it:
+
+  ```bash
+  mkdir -p /tmp/confab-demo/analysis/confab
+  cp plugins/confab/scripts/fixtures/sample_burndown_ledger.json \
+      /tmp/confab-demo/analysis/confab/ledger.json
+  python3 plugins/confab/scripts/build_burndown_html.py /tmp/confab-demo \
+      --template plugins/confab/assets/burndown-viewer.html \
+      --d3 plugins/confab/assets/inline-d3.html \
+      --tokens plugins/confab/assets/tokens.css
+  ```
+
+  The report states its own verdict in words before any chart: whether the
+  cleanup converged, stalled, or is still closing findings, and what an
+  escalated finding means. Every status colour is named in a legend that is
+  visible without clicking anything, because `--status-good`/`--status-bad`
+  are not separable under deuteranopia — see the mandate at the top of
+  `tools/design-tokens/tokens.css`.
 - **First-pass constraint-domain tiebreak in `confab-cycle`**: when the
   ledger has no findings yet (first pass of a fresh cycle), there's no
   "most open High findings" signal to rank domains by. `cycle_engine.py`

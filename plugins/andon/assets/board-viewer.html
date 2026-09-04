@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Andon Board</title>
+<title>andon — value-stream board</title>
 <!--__DESIGN_TOKENS__-->
 <style>
   * { box-sizing: border-box; }
@@ -35,9 +35,9 @@
     padding: 18px;
     overflow-y: auto;
     flex-shrink: 0;
-    height: calc(100vh - 61px);
+    height: calc(100vh - var(--header-h));
     position: sticky;
-    top: 61px;
+    top: var(--header-h);
   }
   .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
   .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 40px; }
@@ -81,6 +81,17 @@
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
   .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* R3 -- a number that must reach zero before the stream can converge must not
+     be typographically identical to one that is merely context. Same vocabulary
+     as lehre's .fstep.terminal / .fstep.leak: a distinct outline plus a
+     recoloured value. Never colour alone -- the label also carries a glyph, and
+     the note under the verdict says what the outline means. */
+  .stat.holding { border-color: var(--status-bad); box-shadow: inset 0 0 0 1px var(--status-bad); }
+  .stat.holding .v { color: var(--status-bad); }
+  .stat .k .mark { margin-right: 4px; }
+  .verdict-panel h2 { text-transform: none; letter-spacing: 0; font-size: 15px; }
+  .verdict { font-size: 15px; line-height: 1.55; margin: 0; color: var(--text); }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.55; margin: var(--space-3) 0 0; }
   .constraint { font-size: 13px; line-height: 1.6; }
   .constraint .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
   #pipeline { width: 100%; }
@@ -95,12 +106,30 @@
 <body>
 
 <header>
-  <h1 id="title">Andon Board</h1>
+  <h1 id="title">andon — value-stream board</h1>
   <span class="sub" id="subtitle"></span>
 </header>
 
 <div class="layout">
-  <div class="main" id="content"></div>
+  <div class="main" id="content">
+    <!-- R1 -- the finding, in static markup, before any script runs. The
+         sentence below is true of any stopped stream; render() rewrites it via
+         textContent with the wire, the counts and the reason this ledger
+         actually recorded. If the data block is missing the report still
+         states what it is for, rather than only how to click it. -->
+    <section class="panel wide verdict-panel" id="verdict-panel">
+      <h2>Where is the line stopped, and why?</h2>
+      <p class="verdict" id="verdict">The line is stopped at the first wire whose proof is red, hung, or absent — this board names that wire and refuses to call the stream converged while any gap behind it is still open.</p>
+      <p class="note">
+        A wire is one stage's handoff to the next. A wire is green only because a linked evidence doc says so. Amber means
+        verification was attempted and did not settle; a dashed edge means it was
+        never attempted at all — the two are different failures, not degrees of
+        one. Red tagged Tier 1 is the single verdict nobody can override. A tile
+        outlined in red is a number that must reach zero before this stream can
+        converge.
+      </p>
+    </section>
+  </div>
   <div class="sidebar" id="sidebar">
     <div class="placeholder">Click a stage (or its open-gap badge) in the value stream below to see that stage's open gaps — kind, blast radius, and title.</div>
   </div>
@@ -125,10 +154,29 @@ if (!BOARD_DATA_RAW || !BOARD_DATA_RAW.stages) {
 }
 const BOARD = BOARD_DATA_RAW;
 
-document.getElementById('title').textContent = 'Andon Board';
+// R2 -- one surface per number. The subtitle owns scope and provenance (how
+// big the stream is, and which pass of which cycle produced this board); the
+// tiles below own findings (open gaps, unproven handoffs, holds). Nothing
+// appears on both. The cycle/pass/total-passes trio used to be printed here
+// AND restated as three of the four tiles 200px lower.
 document.getElementById('subtitle').textContent =
-  BOARD.stages.length + ' stages · cycle ' + BOARD.counters.current_cycle +
-  ' · pass ' + BOARD.counters.pass_in_cycle + ' · ' + BOARD.counters.total_passes + ' total passes';
+  BOARD.stages.length + ' stages · ' + Math.max(0, BOARD.stages.length - 1) + ' wires · cycle ' +
+  BOARD.counters.current_cycle + ', pass ' + BOARD.counters.pass_in_cycle +
+  ' · ' + BOARD.counters.total_passes + ' passes on this ledger';
+
+/* --header-h is a FALLBACK, not this header's measured height. andon's header is
+   ~88px and codebase-consistency's ~64px, so one global constant cannot be right
+   for both -- and a sticky sidebar offset by the wrong value slides under the
+   header exactly as the bare 61px literal used to. Re-point the token at what
+   this header actually measures. */
+function syncHeaderHeight() {
+  const h = document.querySelector('header');
+  if (!h) return;
+  document.documentElement.style.setProperty(
+    '--header-h', Math.round(h.getBoundingClientRect().height) + 'px');
+}
+syncHeaderHeight();
+window.addEventListener('resize', syncHeaderHeight);
 
 function el(tag, cls, html) {
   const e = document.createElement(tag);
@@ -142,6 +190,29 @@ function wireColor(status) {
   if (status === 'green') return 'var(--status-good)';
   if (status === 'red') return 'var(--status-bad)';
   return 'var(--status-unknown)';
+}
+
+// R4 -- the proof state of a handoff in words, so colour is never the only
+// channel carrying it. Used for the per-edge label AND for the verdict
+// sentence, so the two can never describe the same wire differently.
+const WIRE_LABELS = {
+  green: 'proven green',
+  red: 'proven red — line stopped',
+  unknown: 'verdict hung — unproven',
+};
+function wireLabel(status) { return WIRE_LABELS[status] || 'no evidence yet'; }
+
+// The stream's handoffs: one per consecutive stage pair, joined to whatever
+// evidence-derived status render_board() recorded for that wire id. Hoisted out
+// of renderPipeline so the verdict sentence and the diagram read the same
+// derivation rather than each computing its own.
+function streamWires() {
+  const byPair = {};
+  for (const w of (BOARD.wire_rows || [])) byPair[w.wire] = w.status;
+  return BOARD.stages.slice(0, -1).map((s, i) => {
+    const to = BOARD.stages[i + 1];
+    return { from: s, to: to, wireKey: s + '->' + to, status: byPair[s + '->' + to] };
+  });
 }
 
 // Ordinal severity ramp for blast radius, keyed to andon_core.py's REAL
@@ -202,21 +273,35 @@ function showGapsInSidebar(stageName) {
   }
 }
 
+// Greedy word wrap to a character budget. Deliberately a character estimate
+// rather than a measured getComputedTextLength(): this SVG is built detached
+// from the document, where every measurement returns 0 — which would silently
+// produce one line per label and a height that is a constant again.
+function wrapLabel(text, cols) {
+  const lines = [];
+  let line = '';
+  for (const word of String(text).split(' ')) {
+    const candidate = line ? line + ' ' + word : word;
+    if (candidate.length > cols && line) { lines.push(line); line = word; }
+    else { line = candidate; }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 // ── Value stream: real D3 selection/data-join, not string-templated coords ─
 function renderPipeline(parent) {
   const panel = el('div', 'panel wide');
   panel.appendChild(el('h2', null, 'Value stream'));
 
   const stages = BOARD.stages;
-  const wireByPair = {};
-  for (const w of BOARD.wire_rows) wireByPair[w.wire] = w.status;
   const cursorStage = (BOARD.cursor || '').split('::')[0];
   const openCountByStage = {};
   for (const g of (BOARD.open_gaps || [])) {
     openCountByStage[g.stage] = (openCountByStage[g.stage] || 0) + 1;
   }
 
-  const nodeW = 130, nodeH = 40, H = 90;
+  const nodeW = 130, nodeH = 40;
   const W = Math.max(nodeW + 20, stages.length * 190);
 
   // d3-scale's scalePoint spaces N stages evenly across the drawable width,
@@ -226,16 +311,32 @@ function renderPipeline(parent) {
     .domain(stages)
     .range([nodeW / 2 + 10, W - nodeW / 2 - 10]);
 
+  const edgeData = streamWires();
+
+  // R5 -- height derives from the data instead of the old `H = 90`. Each edge
+  // carries a wrapped label naming its wire and its proof state, so how tall
+  // the panel needs to be depends on the label text and on the per-edge width,
+  // which itself depends on how many stages this stream has. A single-stage
+  // stream has no handoffs, so it gets no label band and is shorter.
+  const CHAR_W = 5.1;   // ~advance width of the 10px label face below
+  const LABEL_ROW = 13;
+  const LABEL_GAP = 12;
+  const PAD_TOP = 18;   // the open-gap badge overhangs the node's top edge
+  const PAD_BOTTOM = 10;
+  for (const d of edgeData) {
+    const avail = (x(d.to) - x(d.from)) - 8;
+    d.lines = wrapLabel(d.wireKey + ' · ' + wireLabel(d.status), Math.max(8, Math.floor(avail / CHAR_W)));
+  }
+  const maxLines = edgeData.reduce((m, d) => Math.max(m, d.lines.length), 0);
+  const labelBand = maxLines ? LABEL_GAP + maxLines * LABEL_ROW : 0;
+  const H = PAD_TOP + nodeH + labelBand + PAD_BOTTOM;
+  const rowY = PAD_TOP + nodeH / 2;
+
   const svg = d3.select(document.createElementNS('http://www.w3.org/2000/svg', 'svg'))
     .attr('id', 'pipeline')
     .attr('viewBox', '0 0 ' + W + ' ' + H);
 
   // Edges: one data-join keyed by stage pair, drawn under the nodes.
-  const edgeData = stages.slice(0, -1).map((s, i) => {
-    const next = stages[i + 1];
-    const wireKey = s + '->' + next;
-    return { from: s, to: next, wireKey, status: wireByPair[wireKey] };
-  });
   const edges = svg.append('g').attr('class', 'edges')
     .selectAll('g.edge')
     .data(edgeData, d => d.wireKey)
@@ -243,20 +344,38 @@ function renderPipeline(parent) {
     .attr('class', 'edge');
   edges.append('line')
     .attr('x1', d => x(d.from) + nodeW / 2)
-    .attr('y1', H / 2)
+    .attr('y1', rowY)
     .attr('x2', d => x(d.to) - nodeW / 2)
-    .attr('y2', H / 2)
+    .attr('y2', rowY)
     .attr('stroke', d => wireColor(d.status))
     .attr('stroke-width', 3)
     .attr('stroke-dasharray', d => (d.status ? null : '4,3'));
   edges.append('polygon')
     .attr('points', d => {
       const ax = x(d.to) - nodeW / 2;
-      return ax + ',' + (H / 2 - 5) + ' ' + (ax + 8) + ',' + (H / 2) + ' ' + ax + ',' + (H / 2 + 5);
+      return ax + ',' + (rowY - 5) + ' ' + (ax + 8) + ',' + rowY + ' ' + ax + ',' + (rowY + 5);
     })
     .attr('fill', d => wireColor(d.status));
   edges.append('title')
-    .text(d => d.status ? (d.wireKey + ': ' + d.status) : (d.wireKey + ': no evidence yet'));
+    .text(d => d.wireKey + ': ' + wireLabel(d.status));
+
+  // R4 -- the same status the stroke colour encodes, spelled out under every
+  // edge. A reader who cannot separate the green from the red stroke still
+  // learns which handoff stopped the line, without clicking anything.
+  edges.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('font-size', 10)
+    .attr('fill', 'var(--smoke)')
+    .each(function (d) {
+      const mid = (x(d.from) + x(d.to)) / 2;
+      const t = d3.select(this);
+      d.lines.forEach((ln, i) => {
+        t.append('tspan')
+          .attr('x', mid)
+          .attr('y', PAD_TOP + nodeH + LABEL_GAP + i * LABEL_ROW)
+          .text(ln);
+      });
+    });
 
   // Stage nodes: one data-join keyed by stage title.
   const nodeSel = svg.append('g').attr('class', 'stages')
@@ -264,7 +383,7 @@ function renderPipeline(parent) {
     .data(stages, d => d)
     .join('g')
     .attr('class', 'stage-node')
-    .attr('transform', d => 'translate(' + (x(d) - nodeW / 2) + ',' + ((H - nodeH) / 2) + ')')
+    .attr('transform', d => 'translate(' + (x(d) - nodeW / 2) + ',' + PAD_TOP + ')')
     .on('click', (event, d) => { event.stopPropagation(); showGapsInSidebar(d); });
 
   nodeSel.append('rect')
@@ -297,19 +416,69 @@ function renderPipeline(parent) {
 
   panel.appendChild(svg.node());
   const legend = el('div', 'pipeline-legend');
+  // R4 -- amber carries two different meanings and the stroke pattern is what
+  // separates them, so the legend has to name both. It said only "no evidence
+  // yet (dashed)", which left a solid amber edge (a hung verdict) unexplained.
   legend.innerHTML =
     '<span><span class="swatch" style="background:var(--status-good)"></span>proven green</span>' +
-    '<span><span class="swatch" style="background:var(--status-bad)"></span>proven red</span>' +
-    '<span><span class="swatch" style="background:var(--status-unknown)"></span>no evidence yet (dashed)</span>' +
+    '<span><span class="swatch" style="background:var(--status-bad)"></span>proven red — line stopped</span>' +
+    '<span><span class="swatch" style="background:var(--status-unknown)"></span>solid amber: verdict hung — unproven</span>' +
+    '<span><span class="swatch" style="background:var(--status-unknown)"></span>dashed amber: no evidence yet</span>' +
     '<span>← current cursor</span>' +
     '<span><span class="swatch dot" style="background:var(--status-bad)"></span>open gap count — click stage or badge</span>';
   panel.appendChild(legend);
   parent.appendChild(panel);
 }
 
+// R1 -- rewrite the static verdict sentence with the wire, the reason and the
+// counts THIS ledger produced. textContent, never innerHTML: the wire ids and
+// stage titles come from ledger docs and are treated as untrusted, exactly as
+// the builder's escaping does on the way in.
+function renderVerdict() {
+  const wires = streamWires();
+  const gaps = BOARD.open_gaps || [];
+  const holds = BOARD.non_overridable_holds || [];
+  const unproven = wires.filter(w => w.status !== 'green');
+  const red = unproven.find(w => w.status === 'red');
+  const stagesWithGaps = new Set(gaps.map(g => g.stage)).size;
+
+  let head;
+  if (holds.length) {
+    head = 'The line is stopped at ' + holds[0].wire +
+      ' by a Tier 1 structural-evidence contradiction — the one verdict nothing in this loop can override.';
+  } else if (red) {
+    head = 'The line is stopped at ' + red.wireKey + ': its latest verdict came back red.';
+  } else if (unproven.length) {
+    head = 'The line is stopped at ' + unproven[0].wireKey + ': ' + wireLabel(unproven[0].status) + '.';
+  } else if (!wires.length) {
+    head = 'This stream is a single stage with no wire to prove, so nothing here can hold the line.';
+  } else if (gaps.length) {
+    head = 'No wire is holding the line — every one is proven green — but the stream has not converged.';
+  } else {
+    head = 'Nothing is holding the line: every wire is proven green and no gap is open.';
+  }
+
+  // R2 again: the tail deliberately reports a number no tile carries — how
+  // WIDE the damage is, not how much of it there is. Restating the open-gap
+  // total here would print the same integer twice on one screen.
+  let tail = '';
+  if (gaps.length) {
+    tail = ' Open gaps remain at ' + stagesWithGaps + ' of the ' + BOARD.stages.length + ' stages.';
+  } else if (unproven.length) {
+    tail = ' No stage has an open gap; it is the proof that is missing, not the work.';
+  }
+  document.getElementById('verdict').textContent = head + tail;
+}
+
 function render() {
   const content = document.getElementById('content');
-  content.innerHTML = '';
+  // The verdict panel is static markup (R1) and must survive a re-render;
+  // clear only what a previous render() appended after it.
+  const keep = document.getElementById('verdict-panel');
+  for (const node of Array.from(content.children)) {
+    if (node !== keep) content.removeChild(node);
+  }
+  renderVerdict();
 
   if (BOARD.non_overridable_holds && BOARD.non_overridable_holds.length) {
     const banner = el('div', 'hold-banner');
@@ -322,17 +491,27 @@ function render() {
     content.appendChild(banner);
   }
 
+  // R2/R3 -- tiles carry findings only; the cycle/pass/total-passes trio they
+  // used to restate now lives in the subtitle alone. The third column marks a
+  // number that must reach zero before this stream can converge, and `holding`
+  // is applied only when such a number is actually non-zero: a tile reading 0
+  // open gaps is good news and must not be outlined like a defect.
+  const wires = streamWires();
   const statRow = el('div', 'stat-row');
   const stats = [
-    ['Cycle', BOARD.counters.current_cycle],
-    ['Pass in cycle', BOARD.counters.pass_in_cycle],
-    ['Total passes', BOARD.counters.total_passes],
-    ['Cycles converged', BOARD.counters.cycles_converged],
+    ['Open gaps', (BOARD.open_gaps || []).length, true],
+    ['Wires without green proof', wires.filter(w => w.status !== 'green').length, true],
+    ['Non-overridable holds', (BOARD.non_overridable_holds || []).length, true],
+    ['Cycles converged', BOARD.counters.cycles_converged, false],
   ];
-  for (const [k, v] of stats) {
-    const stat = el('div', 'stat');
+  for (const [k, v, actionable] of stats) {
+    const holding = actionable && Number(v) > 0;
+    const stat = el('div', holding ? 'stat holding' : 'stat');
     stat.appendChild(el('div', 'v', escapeHtml(v)));
-    stat.appendChild(el('div', 'k', k));
+    const key = el('div', 'k');
+    if (holding) key.appendChild(el('span', 'mark', '⛔'));
+    key.appendChild(document.createTextNode(k));
+    stat.appendChild(key);
     statRow.appendChild(stat);
   }
   content.appendChild(statRow);

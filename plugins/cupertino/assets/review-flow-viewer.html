@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cupertino Review Flow</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>cupertino — review flow</title>
+<!--__DESIGN_TOKENS__-->
 <style>
-/*__DESIGN_TOKENS__*/
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -18,8 +19,11 @@
   header { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
   header h1 { font-size: 16px; margin: 0 0 var(--space-1); font-weight: 600; color: var(--accent); }
   header .sub { color: var(--muted); font-size: 12px; }
-  .layout { display: flex; }
-  .flow-wrap { flex: 1; padding: var(--space-5); overflow: auto; }
+  .layout { display: flex; align-items: flex-start; }
+  .flow-wrap { flex: 1; padding: var(--space-5); overflow: auto; min-width: 0; }
+  /* Full-bleed + sticky sidebar (S1). The header offset is var(--header-h),
+     never a bare literal -- a sidebar pinned to a number the header does not
+     actually measure drifts silently. */
   .sidebar {
     width: 400px;
     border-left: 1px solid var(--border);
@@ -27,13 +31,14 @@
     padding: var(--space-4);
     overflow-y: auto;
     flex-shrink: 0;
-    height: calc(100vh - 61px);
+    height: calc(100vh - var(--header-h));
     position: sticky;
-    top: 61px;
+    top: var(--header-h);
   }
   .sidebar h2 { font-size: 14px; margin: 0 0 var(--space-2); color: var(--accent); }
-  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; margin-top: 40px; }
-  .sidebar .status-line { font-size: 12px; color: var(--muted); margin-bottom: var(--space-3); }
+  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .sidebar .status-line { font-size: 12px; margin-bottom: var(--space-3); color: var(--muted); }
+  .sidebar .status-line .state { font-weight: 600; }
   .sidebar pre {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -44,23 +49,76 @@
     word-break: break-word;
     color: var(--text);
   }
+  .sidebar .back {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    padding: 2px 8px;
+    margin-bottom: var(--space-3);
+    cursor: pointer;
+  }
+  /* The roster is why this column is never a permanent empty 400px: a
+     selection-driven detail pane still has to say something before the first
+     click, so the default state is the whole run's state list, not a tooltip. */
+  .roster { list-style: none; margin: 0; padding: 0; }
+  .roster li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .roster .name { flex: 1; color: var(--text); }
+  .roster .state { font-size: 11px; white-space: nowrap; }
+  .roster .why { display: block; color: var(--muted); font-size: 11px; padding: 0 0 6px; border-bottom: 1px solid var(--border); }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    max-width: 900px;
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 var(--space-2); color: var(--accent); }
+  .verdict { margin: 0 0 var(--space-3); font-size: 13px; line-height: 1.55; }
+  /* R3's vocabulary, applied to the one sentence that carries the finding: an
+     incomplete run is not typographically identical to a complete one. */
+  .verdict.incomplete { border-left: 3px solid var(--status-warn); padding-left: var(--space-3); }
+  .note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
   #flow { width: 100%; }
   .legend { display: flex; gap: 14px; padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); align-items: center; flex-wrap: wrap; }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: var(--radius-sm); margin-right: 5px; vertical-align: middle; }
+  .legend .outline { border: 2px solid var(--border); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1 id="title">Cupertino Review Flow</h1>
+  <h1 id="title">cupertino — review flow</h1>
   <span class="sub" id="subtitle"></span>
 </header>
 
 <div class="layout">
-  <div class="flow-wrap" id="flowWrap"></div>
-  <div class="sidebar" id="sidebar">
-    <div class="placeholder">Click a stage to see its full persisted result.</div>
+  <div class="flow-wrap" id="flowWrap">
+    <section class="panel">
+      <h2>Did this review actually finish?</h2>
+      <p class="verdict" id="verdict">A stage nobody reached is not a stage somebody skipped: a skip is a recorded decision with a reason attached, an unreached stage is an unfinished review.</p>
+      <p class="note">
+        The nine stages are cupertino's design techniques, run in a fixed order because each decides something the next depends on — which is why a stage nobody reached leaves a real hole rather than a missing formality. A solid green outline is a stage that ran and persisted a result. A dashed
+        amber outline is a stage explicitly skipped — it carries its own recorded
+        reason, visible in the panel on the right. A muted grey stage was never
+        reached, so nothing was decided there at all and no reason exists to read.
+        Outline style says this as well as colour does; the legend at the foot of
+        the page repeats it in words.
+      </p>
+    </section>
+    <div id="flowChart"></div>
   </div>
+  <div class="sidebar" id="sidebar"></div>
 </div>
 
 <div class="legend" id="legend"></div>
@@ -75,6 +133,7 @@ const d3 = window.d3;
 const FLOW_DATA_RAW = /*__FLOW_DATA__*/ null;
 
 const FLOW = FLOW_DATA_RAW || {
+  source: "(fallback demo — no run was read)",
   stages: [
     { id: "backwards", label: "cupertino-backwards", lane: 0, status: "ran", content: { experienceStatement: "let a user undo any mistake without fear" } },
     { id: "focus", label: "cupertino-focus", lane: 0, status: "ran", content: { survivors: [{ name: "core flow" }] } },
@@ -88,13 +147,76 @@ const FLOW = FLOW_DATA_RAW || {
   ],
 };
 
-const ranCount = FLOW.stages.filter(s => s.status === 'ran').length;
-const skippedCount = FLOW.stages.filter(s => s.status === 'skipped').length;
-document.getElementById('title').textContent =
-  'Cupertino Review Flow' + (FLOW_DATA_RAW ? '' : ' — (no data — template opened directly)');
+const STATE_WORD = { 'ran': 'ran', 'skipped': 'explicitly skipped', 'not-run': 'never reached' };
+
+/* --header-h is a FALLBACK, not this header's measured height. andon's header is
+   ~88px and codebase-consistency's ~64px, so one global constant cannot be right
+   for both -- and a sticky sidebar offset by the wrong value slides under the
+   header exactly as the bare 61px literal used to. Re-point the token at what
+   this header actually measures. */
+function syncHeaderHeight() {
+  const h = document.querySelector('header');
+  if (!h) return;
+  document.documentElement.style.setProperty(
+    '--header-h', Math.round(h.getBoundingClientRect().height) + 'px');
+}
+syncHeaderHeight();
+window.addEventListener('resize', syncHeaderHeight);
+
+function shortLabel(s) { return s.label.replace('cupertino-', ''); }
+function byStatus(status) { return FLOW.stages.filter(s => s.status === status); }
+function joinNames(stages) { return stages.map(shortLabel).join(', '); }
+
+const ran = byStatus('ran');
+const skipped = byStatus('skipped');
+const notReached = byStatus('not-run');
+
+// The <h1> is static and stays identical to <title>. It used to be rewritten
+// here to append a no-data notice, which is S4's "fail visibly" and belongs on
+// the provenance line, not on the report's name -- a heading that changes with
+// the data is a heading that can drift from the document title unnoticed.
+// R2: the subtitle carries scope and provenance only. Every count lives in the
+// verdict sentence below and is printed exactly once.
 document.getElementById('subtitle').textContent =
-  ranCount + ' ran · ' + skippedCount + ' explicitly skipped · ' +
-  (FLOW.stages.length - ranCount - skippedCount) + ' not reached';
+  (FLOW_DATA_RAW
+    ? FLOW.stages.length + ' stages · fixed cupertino-review pipeline · read from '
+      + (FLOW.source || '.cupertino/flags/')
+    : 'no data — template opened directly, so no run is described below');
+
+// R1: the finding, in a sentence, naming which stages ran, which were skipped
+// on purpose, and which the run never reached -- and what that means for
+// whether the review is complete.
+function verdictSentence() {
+  const total = FLOW.stages.length;
+  if (!ran.length && !skipped.length) {
+    return 'No stage of this review has run: all ' + total + ' stages are unreached, so there is ' +
+      'nothing here to conclude from yet.';
+  }
+  const was = list => (list.length === 1 ? ' was ' : ' were ');
+  const named = list => list.length + ' (' + joinNames(list) + ')';
+  if (!notReached.length) {
+    const tail = skipped.length
+      ? named(skipped) + was(skipped) + 'explicitly skipped with a recorded reason'
+      : 'none were skipped';
+    return 'This review is complete: ' + ran.length + ' of ' + total + ' stages ran and ' + tail +
+      ', so every stage was decided rather than left out by omission.';
+  }
+  // The stages are stored in pipeline order, so the last non-"not-run" entry is
+  // as far as the run actually got.
+  let stoppedAt = null;
+  FLOW.stages.forEach(s => { if (s.status !== 'not-run') stoppedAt = s; });
+  const skipClause = skipped.length
+    ? ' and ' + named(skipped) + was(skipped) + 'explicitly skipped with a recorded reason'
+    : '';
+  return 'This review is incomplete: ' + ran.length + ' of ' + total + ' stages ran' + skipClause +
+    ', but ' + named(notReached) + was(notReached) + 'never reached at all — the run got no further than ' +
+    (stoppedAt ? shortLabel(stoppedAt) : 'the very first stage') + ', so nothing here covers what those ' +
+    'stages exist to decide.';
+}
+
+const verdictEl = document.getElementById('verdict');
+verdictEl.textContent = verdictSentence();
+verdictEl.classList.toggle('incomplete', notReached.length > 0);
 
 function statusColor(status) {
   if (status === 'ran') return 'var(--status-good)';
@@ -153,11 +275,36 @@ function buildEdges(stages) {
 }
 
 const COL_W = 150, NODE_W = 120, NODE_H = 44;
-const LANE_Y = { 0: 90, 1: 40, 2: 140 };
-const HEIGHT = 190;
+const LANE_GAP = 50;   // top-to-top distance between two adjacent lane rows
+const PAD_Y = 20;      // breathing room above the top row and below the bottom one
 
-function nodeCenter(s) {
-  return { x: 20 + s.col * COL_W + NODE_W / 2, y: LANE_Y[s.lane] + NODE_H / 2 };
+// R5: a lane number is not a row number, and the row count is not a constant.
+// Lane 0 is the main sequence spine; lanes 1 and 2 are the longevity/integrate
+// fork, drawn above and below it -- that is the whole reason the old fixed
+// HEIGHT = 190 happened to fit. Any lane the data introduces beyond those three
+// is appended below rather than silently drawn on top of lane 2, so a fourth
+// parallel branch moves the height instead of colliding.
+const LANE_ROW_ORDER = [1, 0, 2];
+
+function laneRows(stages) {
+  const present = [...new Set(stages.map(s => s.lane))];
+  const known = LANE_ROW_ORDER.filter(lane => present.includes(lane));
+  const unknown = present.filter(lane => !LANE_ROW_ORDER.includes(lane)).sort((a, b) => a - b);
+  return [...known, ...unknown];
+}
+
+function laneTops(stages) {
+  const tops = {};
+  laneRows(stages).forEach((lane, row) => { tops[lane] = PAD_Y + row * LANE_GAP; });
+  return tops;
+}
+
+function chartHeight(stages) {
+  return PAD_Y * 2 + (laneRows(stages).length - 1) * LANE_GAP + NODE_H;
+}
+
+function nodeCenter(tops, s) {
+  return { x: 20 + s.col * COL_W + NODE_W / 2, y: tops[s.lane] + NODE_H / 2 };
 }
 
 // The rendering layer: everything from here down is the part the council
@@ -169,20 +316,22 @@ function renderFlow(parent) {
   const edges = buildEdges(stages);
   const maxCol = Math.max(...stages.map(s => s.col));
   const width = (maxCol + 1) * COL_W + 40;
+  const tops = laneTops(stages);
+  const height = chartHeight(stages);
 
   const svg = d3.select(parent).append('svg')
     .attr('id', 'flow')
-    .attr('viewBox', `0 0 ${width} ${HEIGHT}`);
+    .attr('viewBox', `0 0 ${width} ${height}`);
 
   // Edges first so node rects paint on top of the connecting lines.
   svg.selectAll('line.edge')
     .data(edges)
     .join('line')
     .attr('class', 'edge')
-    .attr('x1', d => nodeCenter(d[0]).x + NODE_W / 2 - 4)
-    .attr('y1', d => nodeCenter(d[0]).y)
-    .attr('x2', d => nodeCenter(d[1]).x - NODE_W / 2 + 4)
-    .attr('y2', d => nodeCenter(d[1]).y)
+    .attr('x1', d => nodeCenter(tops, d[0]).x + NODE_W / 2 - 4)
+    .attr('y1', d => nodeCenter(tops, d[0]).y)
+    .attr('x2', d => nodeCenter(tops, d[1]).x - NODE_W / 2 + 4)
+    .attr('y2', d => nodeCenter(tops, d[1]).y)
     .attr('stroke', 'var(--border)')
     .attr('stroke-width', 2);
 
@@ -191,7 +340,7 @@ function renderFlow(parent) {
     .join('g')
     .attr('class', 'node')
     .attr('transform', d => {
-      const c = nodeCenter(d);
+      const c = nodeCenter(tops, d);
       return `translate(${c.x},${c.y})`;
     })
     .style('cursor', 'pointer')
@@ -214,21 +363,65 @@ function renderFlow(parent) {
     .attr('dy', 4)
     .attr('fill', 'var(--text)')
     .attr('font-size', 11)
-    .text(d => d.label.replace('cupertino-', ''));
+    .text(d => shortLabel(d));
+}
+
+// Every string below reaches the DOM through textContent, never innerHTML --
+// the builder's escaping of < > & is the other half of S3's pair, and neither
+// half is load-bearing alone.
+function renderRoster() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.replaceChildren();
+  sidebar.appendChild(Object.assign(document.createElement('h2'), { textContent: 'Every stage, and its state' }));
+  const list = document.createElement('ul');
+  list.className = 'roster';
+  for (const s of FLOW.stages) {
+    const li = document.createElement('li');
+    li.appendChild(Object.assign(document.createElement('span'), {
+      className: 'name', textContent: shortLabel(s),
+    }));
+    const state = document.createElement('span');
+    state.className = 'state';
+    state.style.color = statusColor(s.status);
+    state.textContent = STATE_WORD[s.status] || s.status;
+    li.appendChild(state);
+    list.appendChild(li);
+    if (s.status === 'skipped' && s.content && s.content.reason) {
+      list.appendChild(Object.assign(document.createElement('li'), {
+        className: 'why', textContent: 'reason: ' + s.content.reason,
+      }));
+    }
+  }
+  sidebar.appendChild(list);
+  sidebar.appendChild(Object.assign(document.createElement('p'), {
+    className: 'placeholder',
+    textContent: 'Click a stage in the flow for its full persisted result.',
+  }));
 }
 
 function selectStage(s) {
   const sidebar = document.getElementById('sidebar');
-  sidebar.innerHTML = '';
+  sidebar.replaceChildren();
+  const back = document.createElement('button');
+  back.className = 'back';
+  back.type = 'button';
+  back.textContent = '← every stage';
+  back.addEventListener('click', renderRoster);
+  sidebar.appendChild(back);
   sidebar.appendChild(Object.assign(document.createElement('h2'), { textContent: s.label }));
   const statusLine = document.createElement('div');
   statusLine.className = 'status-line';
-  statusLine.innerHTML = 'status: <span style="color:' + statusColor(s.status) + '">' + s.status + '</span>';
+  statusLine.appendChild(document.createTextNode('status: '));
+  const state = document.createElement('span');
+  state.className = 'state';
+  state.style.color = statusColor(s.status);
+  state.textContent = STATE_WORD[s.status] || s.status;
+  statusLine.appendChild(state);
   sidebar.appendChild(statusLine);
   if (s.content == null) {
-    sidebar.appendChild(Object.assign(document.createElement('div'), {
+    sidebar.appendChild(Object.assign(document.createElement('p'), {
       className: 'placeholder',
-      textContent: 'Not reached yet in this run.',
+      textContent: 'Never reached in this run, so no result was ever persisted for it.',
     }));
     return;
   }
@@ -237,21 +430,29 @@ function selectStage(s) {
   sidebar.appendChild(pre);
 }
 
+// R4: the encoding is readable without clicking anything.
 function renderLegend() {
   const legend = document.getElementById('legend');
-  const items = [['ran', 'ran'], ['skipped', 'explicitly skipped'], ['not-run', 'not reached yet']];
-  for (const [status, label] of items) {
+  const items = [
+    ['ran', 'ran — result persisted', false],
+    ['skipped', 'explicitly skipped — dashed outline, reason recorded', true],
+    ['not-run', 'never reached — muted, nothing decided', false],
+  ];
+  for (const [status, label, dashed] of items) {
     const span = document.createElement('span');
     const sw = document.createElement('span');
-    sw.className = 'swatch';
-    sw.style.background = statusColor(status);
+    sw.className = 'swatch outline';
+    sw.style.borderColor = statusColor(status);
+    sw.style.borderStyle = dashed ? 'dashed' : 'solid';
+    sw.style.opacity = status === 'not-run' ? '0.4' : '1';
     span.appendChild(sw);
     span.appendChild(document.createTextNode(label));
     legend.appendChild(span);
   }
 }
 
-renderFlow(document.getElementById('flowWrap'));
+renderFlow(document.getElementById('flowChart'));
+renderRoster();
 renderLegend();
 </script>
 </body>

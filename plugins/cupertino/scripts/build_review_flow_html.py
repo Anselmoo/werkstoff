@@ -72,7 +72,16 @@ def build_flow(cupertino_dir):
             "status": status,
             "content": content,
         })
-    return {"stages": stages}
+    # "source" is provenance for the viewer's subtitle: which flags directory
+    # this run was actually read from. The counts deliberately do NOT go in the
+    # subtitle -- they belong to the verdict sentence, and printing a number on
+    # two surfaces is what report-viewer-standard.md R2 forbids.
+    # Shown verbatim in the subtitle, so keep it repo-shaped rather than an
+    # absolute path: every sibling viewer prints a relative provenance path,
+    # and a committed screenshot rendered from a temp dir otherwise leaks it.
+    parts = os.path.normpath(flags_dir).split(os.sep)
+    source = os.path.join(*parts[-2:]) if len(parts) >= 2 else flags_dir
+    return {"source": source, "stages": stages}
 
 
 def render_html(template_path, d3_path, tokens_path, flow):
@@ -85,10 +94,15 @@ def render_html(template_path, d3_path, tokens_path, flow):
     tpl = tpl.replace(d3_marker, d3_snippet)
 
     tokens_css = open(tokens_path, encoding="utf-8").read()
-    tokens_marker = "/*__DESIGN_TOKENS__*/"
+    # The canonical spelling across every report viewer in the marketplace
+    # (report-viewer-standard.md S2). It sits OUTSIDE the template's <style>
+    # block, so the stylesheet is wrapped here rather than pasted raw -- a
+    # `<!-- ... -->` comment inside a CSS block is a CDO/CDC token pair, not a
+    # comment, and would swallow the marker name as a parse error.
+    tokens_marker = "<!--__DESIGN_TOKENS__-->"
     if tokens_marker not in tpl:
         raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, tokens_css)
+    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
 
     marker = "/*__FLOW_DATA__*/ null"
     if marker not in tpl:

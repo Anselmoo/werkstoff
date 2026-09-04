@@ -141,7 +141,14 @@ def main() -> int:
         out.append(f"[`plugins/{name}/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/{name}/README.md) — {len(prompts)} prompts.")
         out.append("")
         for prompt in prompts:
-            out.append(f"##### {prompt['label']}")
+            # h3, not the h5 the source READMEs use. PROMPT_LABEL above is the
+            # PARSER's pattern for reading those READMEs and is deliberately
+            # unchanged; this is the emitted level. At h5 the right-hand outline
+            # showed only the nine plugin names, so 98 prompts were unnavigable and
+            # the page was nine consecutive h2s with nothing between them -- which
+            # is what test/docs/docs_ux_audit.py's C4 flags once a ninth plugin
+            # exists (it did, from lehre onward, and had been red on main since).
+            out.append(f"### {prompt['label']}")
             out.append("")
             out.append(FENCE + "prompt")
             out.extend(prompt["body"])

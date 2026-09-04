@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
-<title>Consistency Matrix</title>
+<title>codebase-consistency — consistency matrix</title>
 <!--__DESIGN_TOKENS__-->
 <style>
   * { box-sizing: border-box; }
@@ -16,8 +16,16 @@
     font-size: var(--font-size-base);
   }
   header {
+    /* S1: the header's height is --header-h, not a pixel literal repeated in
+       a sibling's calc(). Everything that used to hardcode that number now
+       either derives from this box or reads the token directly. */
+    min-height: var(--header-h);
     padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 5;
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -58,10 +66,22 @@
   }
   .layout {
     display: flex;
-    height: calc(100vh - 61px);
+    align-items: flex-start;
+    /* No height and no min-height: .matrix-wrap sizes to its own grid, so a
+       tall matrix grows the page (nothing is hidden in an internal scroller)
+       and a short one leaves no dead space below it. A min-height of one
+       viewport did the latter -- it is what R5 forbids. */
   }
+  /* overflow:auto is here for the HORIZONTAL case -- a long dimension list is
+     what actually overflows. Because this box is not height-constrained it
+     never scrolls vertically, so .col-header's sticky offset only ever holds
+     the header above a horizontally-scrolled grid. A matrix taller than the
+     viewport therefore scrolls the PAGE and its header does not pin -- an
+     accepted trade for removing a forced viewport of dead space below every
+     short matrix. */
   .matrix-wrap {
     flex: 1;
+    min-width: 0;
     overflow: auto;
     padding: var(--space-4) var(--space-5);
   }
@@ -79,18 +99,32 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* top:0, NOT var(--header-h). These cells sit inside .matrix-wrap, whose
+     overflow:auto makes IT the scrollport; the page header is outside it and
+     irrelevant here. Offsetting by the page header pushed this row 64px down,
+     onto the first two module rows. */
   .corner {
     position: sticky;
     top: 0;
     left: 0;
     z-index: 4;
   }
+  /* Dimension labels are long ("error-handling-style", "config-loading") and
+     used to be silently truncated by the shared nowrap/ellipsis rule above at
+     a fixed 92px cell. Three independent defences now: the column width is
+     measured from the longest real label, the label wraps rather than
+     ellipsising when it exceeds the cap, and the full name is in `title`. */
   .col-header {
     position: sticky;
-    top: 0;
+    top: 0;   /* see .corner */
     z-index: 2;
     cursor: pointer;
     user-select: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    line-height: 1.2;
+    padding: 4px 10px;
   }
   .col-header:hover { color: var(--accent); }
   .row-label {
@@ -133,6 +167,10 @@
     padding: 18px;
     overflow-y: auto;
     flex-shrink: 0;
+    align-self: stretch;
+    position: sticky;
+    top: var(--header-h);
+    max-height: calc(100vh - var(--header-h));
   }
   .sidebar h2 {
     font-size: 14px;
@@ -182,6 +220,22 @@
     margin-right: 5px;
     vertical-align: middle;
   }
+  .verdict-panel {
+    margin: 0 20px 16px;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-panel);
+  }
+  .verdict-panel h2 { font-size: 14px; margin: 0 0 6px; color: var(--accent); }
+  .verdict { font-size: 13px; line-height: 1.5; margin: 0; color: var(--text); }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
+  .colour-key {
+    margin-top: 18px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
   .stat-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 20px 14px; }
   .stat {
     background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-control);
@@ -189,12 +243,29 @@
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
   .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* R3: a number you must act on must not render identically to one that is
+     context. Modelled on plugins/lehre/assets/doctrine-viewer.html's
+     .fstep.leak -- a distinct outline plus a recoloured value -- with a
+     written "needs action" flag so colour is never the only channel (R4). */
+  .stat.actionable { border-color: var(--status-bad); outline: 1px solid var(--status-bad); }
+  .stat.actionable .v { color: var(--ferria-light); }
+  .stat .flag {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 5px;
+    border: 1px solid var(--status-bad);
+    border-radius: var(--radius-sm);
+    color: var(--ferria-light);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
 </style>
 </head>
 <body>
 
 <header>
-  <h1 id="title">Consistency Matrix</h1>
+  <h1 id="title">codebase-consistency — consistency matrix</h1>
   <span class="sub" id="subtitle"></span>
   <div class="controls">
     <input type="text" id="filterInput" placeholder="filter modules or dimensions…">
@@ -208,12 +279,26 @@
 
 <div class="stat-row" id="statRow"></div>
 
+<section class="verdict-panel">
+  <h2>Which module is furthest from the canon?</h2>
+  <p class="verdict" id="verdict">No matrix has been loaded into this template yet, so no module can be named the worst; a rendered report replaces this sentence with the worst module, its worst cell, and what the area's mean conformance implies.</p>
+  <p class="note">A red cell is not "a module with a different style". It is a module whose answer to a convention question an alignment pass has to rewrite at every site counted inside the cell — so a red cell with a large site count is the expensive one, and a red cell with two sites is nearly free.</p>
+  <!-- R4: the cell-colour key. It sits HERE, under the verdict, rather than in
+       the right-hand sidebar where it used to live: the sidebar is the last place
+       the eye goes, so the one paragraph that teaches a first-time reader how to
+       read the grid was the last thing they found. It is also outside any node
+       selectCell() clears, so it survives every interaction. -->
+  <p class="note colour-key" id="colourKey"><strong>Reading the cells.</strong> Once <code>/consistency-canonize</code> has run, a cell's colour is its distance from the chosen canon — green aligned, amber partial, red diverging, as labelled in the legend below. Before that it shows variant-cluster identity instead: one hue per distinct variant, with no ranking implied. A hatched cell means no data was found for that module × dimension pair. The number printed inside a cell is its site count.</p>
+</section>
+
 <div class="layout">
   <div class="matrix-wrap">
     <div class="matrix-grid" id="matrixGrid"></div>
   </div>
   <div class="sidebar" id="sidebar">
-    <div class="placeholder">Click a cell to see its detail — module, dimension, variant in use, and site count. Once /consistency-canonize has run, cell color shows distance from the chosen canon; before that, color shows variant-cluster identity.</div>
+    <div id="sidebarDetail">
+      <div class="placeholder">Click a cell to see its detail — module, dimension, variant in use, and site count.</div>
+    </div>
   </div>
 </div>
 
@@ -240,18 +325,50 @@ if (!MATRIX_DATA_RAW || !MATRIX_DATA_RAW.modules) {
 }
 const MATRIX = MATRIX_DATA_RAW;
 
-document.getElementById('title').textContent = 'Consistency Matrix — ' + (MATRIX.area || '');
+// The <h1> is static and identical to <title>, like the other seven viewers.
+// It used to be overwritten here with a differently-cased string plus the area,
+// so the heading a reader saw drifted from the document title and from every
+// sibling report. The area is scope, so it leads the subtitle instead.
+// R2: the subtitle carries scope and provenance and is the ONLY place the
+// module/dimension counts are printed. The tile row below carries findings,
+// and no number appears on both surfaces.
 document.getElementById('subtitle').textContent =
-  MATRIX.modules.length + ' modules × ' + MATRIX.dimensions.length + ' dimensions';
+  (MATRIX.area || '<area>') + ' · '
+  + MATRIX.modules.length + ' modules × ' + MATRIX.dimensions.length + ' dimensions'
+  + ' · generated from analysis/' + (MATRIX.area || '<area>') + '/matrix.json';
 
 // ---- grid geometry -------------------------------------------------------
-// CELL_W/CELL_H match the original table's `min-width:92px; height:40px`
-// cell sizing exactly, so this rebuild changes rendering technique, not
-// visual density.
-const CELL_W = 92;
+// CELL_H/ROW_LABEL_W match the original table's `height:40px` row sizing, so
+// this rebuild changes rendering technique, not visual density. CELL_W does
+// NOT: the original fixed 92px silently truncated every dimension label
+// longer than ~11 characters ("error-handling-style", "config-loading"), with
+// nowrap + ellipsis hiding the loss. The width is now measured from the
+// longest real label instead of assumed, capped so a pathological name cannot
+// push the grid off-screen -- past the cap the header wraps to two lines.
 const CELL_H = 40;
-const HEADER_H = 40;
 const ROW_LABEL_W = 180;
+const CELL_W_MIN = 92;
+const CELL_W_MAX = 200;
+
+function measureLabelWidth(labels) {
+  const probe = document.createElement('span');
+  probe.style.cssText =
+    'position:absolute;visibility:hidden;white-space:pre;font-size:12px;left:-9999px;top:0;';
+  document.body.appendChild(probe);
+  let max = 0;
+  for (const l of labels) {
+    probe.textContent = String(l);
+    max = Math.max(max, probe.getBoundingClientRect().width);
+  }
+  probe.remove();
+  return Math.ceil(max);
+}
+// .col-header padding (10 + 10) plus its 1px borders.
+const LABEL_CHROME = 24;
+const WIDEST_LABEL = measureLabelWidth(MATRIX.dimensions) + LABEL_CHROME;
+const CELL_W = Math.max(CELL_W_MIN, Math.min(CELL_W_MAX, WIDEST_LABEL));
+// Two lines' worth of header only when something actually needs wrapping.
+const HEADER_H = WIDEST_LABEL > CELL_W_MAX ? 58 : 40;
 
 // ---- palette per variant (stable hash → hue) ------------------------------
 // Not part of the shared token system — these are arbitrary hashed hues for
@@ -287,25 +404,62 @@ for (const c of (MATRIX.cells || [])) {
 
 const hasConformance = (MATRIX.cells || []).some(c => typeof c.conformance === 'number');
 
+const CELLS = MATRIX.cells || [];
+const TOTAL_PAIRS = MATRIX.modules.length * MATRIX.dimensions.length;
+const TOTAL_SITES = CELLS.reduce((s, c) => s + (c.sites || 0), 0);
+const NO_DATA_PAIRS = TOTAL_PAIRS - CELLS.length;
+// CELLS is every pair with DATA, which is not the same as every pair that
+// diverges: a cell at conformance 1.0 is fully aligned and has nothing for an
+// alignment pass to do. Labelling CELLS.length "divergent" overstated the work
+// by every perfectly-conformant cell (2 of 21 in the committed fixture).
+// Before /consistency-canonize there is no canon to be distant from, so every
+// recorded cell IS a variant and the two counts legitimately coincide.
+const DIVERGENT_CELLS = CELLS.filter(
+  c => typeof c.conformance !== 'number' || c.conformance < 1);
+const WITH_CONF = CELLS.filter(c => typeof c.conformance === 'number');
+const AVG_CONF = WITH_CONF.length
+  ? WITH_CONF.reduce((s, c) => s + c.conformance, 0) / WITH_CONF.length
+  : null;
+const AVG_PCT = AVG_CONF === null ? null : Math.round(AVG_CONF * 100);
+
 function renderStatRow() {
   const row = document.getElementById('statRow');
-  const cells = MATRIX.cells || [];
-  const totalSites = cells.reduce((s, c) => s + (c.sites || 0), 0);
+  // [label, value, actionable]. `actionable` is the R3 distinction: a number
+  // an alignment pass has to act on renders differently from one that is
+  // context. Module/dimension counts are deliberately absent -- they are in
+  // the subtitle (R2).
   const stats = [
-    ['Modules', MATRIX.modules.length],
-    ['Dimensions', MATRIX.dimensions.length],
-    ['Divergent cells', cells.length],
-    ['Total sites', totalSites],
+    ['Divergent cells', DIVERGENT_CELLS.length + ' / ' + TOTAL_PAIRS,
+      DIVERGENT_CELLS.length > 0],
+    // Every site inside a cell that has data, aligned or not -- the denominator
+    // the verdict's percentage is taken against, not a count of sites to fix.
+    ['Sites counted', TOTAL_SITES, false],
+    ['Cells with no data', NO_DATA_PAIRS, false],
   ];
-  if (hasConformance) {
-    const withConf = cells.filter(c => typeof c.conformance === 'number');
-    const avg = withConf.length ? withConf.reduce((s, c) => s + c.conformance, 0) / withConf.length : 0;
-    stats.push(['Avg. conformance', Math.round(avg * 100) + '%']);
+  if (AVG_PCT !== null) {
+    stats.push(['Avg. conformance', AVG_PCT + '%', AVG_PCT < 85]);
   }
-  for (const [k, v] of stats) {
+  for (const [k, v, actionable] of stats) {
     const stat = document.createElement('div');
-    stat.className = 'stat';
-    stat.innerHTML = '<div class="v">' + v + '</div><div class="k">' + k + '</div>';
+    stat.className = actionable ? 'stat actionable' : 'stat';
+    const val = document.createElement('div');
+    val.className = 'v';
+    val.textContent = String(v);
+    const key = document.createElement('div');
+    key.className = 'k';
+    key.appendChild(document.createTextNode(k));
+    if (actionable) {
+      // A separating space, not just the CSS margin: the flag is the R4
+      // non-colour channel, and it has to read as its own word to a screen
+      // reader, not run into the label as "Divergent cellsneeds action".
+      key.appendChild(document.createTextNode(' '));
+      const flag = document.createElement('span');
+      flag.className = 'flag';
+      flag.textContent = 'needs action';
+      key.appendChild(flag);
+    }
+    stat.appendChild(val);
+    stat.appendChild(key);
     row.appendChild(stat);
   }
 }
@@ -330,6 +484,81 @@ function dimensionDivergenceScore(dim) {
   }
   return score;
 }
+
+// ---- R1: the verdict, in words ---------------------------------------------
+// The static <p class="verdict"> in the markup is the honest no-data
+// fallback; this replaces its text with the actual finding via textContent
+// (never innerHTML -- module, dimension and variant names come from source
+// file names and are untrusted, S3).
+function renderVerdict() {
+  const el = document.getElementById('verdict');
+  if (!CELLS.length) {
+    el.textContent = 'No divergent cell was recorded for any of the ' + TOTAL_PAIRS
+      + ' module × dimension pairs in ' + (MATRIX.area || 'this area')
+      + ' — either every module already answers each convention the same way, or '
+      + '/consistency-scan found nothing in scope to compare.';
+    return;
+  }
+  let worstMod = MATRIX.modules[0];
+  let worstModScore = -Infinity;
+  for (const m of MATRIX.modules) {
+    const score = moduleDivergenceScore(m);
+    if (score > worstModScore) { worstModScore = score; worstMod = m; }
+  }
+  // Worst single cell: furthest from canon, ties broken by how many sites
+  // that divergence actually costs.
+  const scored = CELLS.map(c => ({
+    c,
+    d: (hasConformance && typeof c.conformance === 'number') ? 1 - c.conformance : 1,
+  }));
+  scored.sort((a, b) => (b.d - a.d) || ((b.c.sites || 0) - (a.c.sites || 0)));
+  const worst = scored[0].c;
+
+  const parts = [];
+  if (hasConformance) {
+    const below = MATRIX.dimensions.filter(dim => {
+      const c = cellIndex.get(worstMod + '\u0000' + dim);
+      return c && typeof c.conformance === 'number' && c.conformance < 0.4;
+    }).length;
+    parts.push(worstMod + ' is the module furthest from the canon: ' + below + ' of its '
+      + MATRIX.dimensions.length + ' convention dimensions sit below 40% conformance.');
+    parts.push('Its worst cell is ' + worst.module + ' × ' + worst.dimension + ' — '
+      + (worst.sites != null ? worst.sites : '?') + ' sites at '
+      + Math.round((worst.conformance || 0) * 100) + '% conformance.');
+    parts.push('Across the area ' + DIVERGENT_CELLS.length + ' of ' + TOTAL_PAIRS
+      + ' module × dimension pairs carry a divergent variant, and mean conformance is '
+      + AVG_PCT + '% — that average is the share of sites already matching the canon, so '
+      + (100 - AVG_PCT) + '% of the ' + TOTAL_SITES
+      + ' sites counted here are what an alignment pass still has to rewrite.');
+  } else {
+    const diverging = MATRIX.dimensions.filter(
+      dim => cellIndex.get(worstMod + '\u0000' + dim)).length;
+    parts.push(worstMod + ' is the most divergent module: ' + diverging + ' of '
+      + MATRIX.dimensions.length + ' convention dimensions have a variant recorded there, '
+      + 'the largest being ' + worst.dimension + ' at '
+      + (worst.sites != null ? worst.sites : '?') + ' sites.');
+    parts.push('Across the area ' + DIVERGENT_CELLS.length + ' of ' + TOTAL_PAIRS
+      + ' module × dimension pairs diverge, over ' + TOTAL_SITES + ' sites in total.');
+    parts.push('No canon has been derived yet, so these cells are ranked by how much '
+      + 'divergence they carry, not by distance from a chosen form — run '
+      + '/consistency-canonize to turn this into a conformance verdict.');
+  }
+  el.textContent = parts.join(' ');
+}
+renderVerdict();
+
+// S1 again, from the other side: --header-h is the declared header height,
+// but the header's real box grows if the controls wrap. Sticky offsets read
+// the token, so the token is re-pointed at what the header actually measures
+// rather than left to drift from it -- which is the precise failure the
+// hardcoded literal caused. Re-run on resize because wrapping is width-driven.
+function syncHeaderHeight() {
+  const h = document.querySelector('header');
+  if (!h) return;
+  document.documentElement.style.setProperty('--header-h', Math.round(h.getBoundingClientRect().height) + 'px');
+}
+syncHeaderHeight();
+window.addEventListener('resize', syncHeaderHeight);
 
 let sortMode = 'worst-module';
 let filterText = '';
@@ -383,7 +612,7 @@ function render() {
     const h = document.createElement('div');
     h.className = 'col-header';
     h.textContent = dim;
-    h.title = 'click to sort by this dimension';
+    h.title = dim + ' — click to sort by this dimension';
     h.style.gridColumn = String(j + 2);
     h.style.gridRow = '1';
     h.onclick = () => { sortMode = 'worst-dimension'; document.getElementById('sortMode').value = 'worst-dimension'; render(); };
@@ -394,7 +623,7 @@ function render() {
     const label = document.createElement('div');
     label.className = 'row-label';
     label.textContent = mod;
-    label.title = 'click to sort by this module';
+    label.title = mod + ' — click to sort by this module';
     label.style.gridColumn = '1';
     label.style.gridRow = String(i + 2);
     label.onclick = () => { sortMode = 'worst-module'; document.getElementById('sortMode').value = 'worst-module'; render(); };
@@ -462,7 +691,10 @@ function selectCell(rectEl, mod, dim, cell) {
   rectEl.classList.add('selected');
   selectedRect = rectEl;
 
-  const sidebar = document.getElementById('sidebar');
+  // Clears ONLY the detail pane. #colourKey is a sibling and survives, which
+  // is the R4 fix: the cell-colour explanation used to live in the pane this
+  // line empties, so the first click destroyed it permanently.
+  const sidebar = document.getElementById('sidebarDetail');
   sidebar.innerHTML = '';
   const h = document.createElement('h2');
   h.textContent = dim;
@@ -479,7 +711,13 @@ function selectCell(rectEl, mod, dim, cell) {
   for (const [k, v] of rows) {
     const row = document.createElement('div');
     row.className = 'meta-row';
-    row.innerHTML = '<span class="k">' + k + '</span><span>' + escapeHtml(String(v)) + '</span>';
+    const kEl = document.createElement('span');
+    kEl.className = 'k';
+    kEl.textContent = k;
+    const vEl = document.createElement('span');
+    vEl.textContent = String(v);
+    row.appendChild(kEl);
+    row.appendChild(vEl);
     sidebar.appendChild(row);
   }
 
@@ -491,8 +729,14 @@ function selectCell(rectEl, mod, dim, cell) {
   }
 }
 
-function escapeHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function legendItem(background, label) {
+  const span = document.createElement('span');
+  const sw = document.createElement('span');
+  sw.className = 'swatch';
+  sw.style.background = background;
+  span.appendChild(sw);
+  span.appendChild(document.createTextNode(label));
+  return span;
 }
 
 function renderLegend() {
@@ -505,19 +749,20 @@ function renderLegend() {
       ['--status-bad', 'diverges from canon (<40%)'],
     ];
     for (const [varName, label] of items) {
-      const span = document.createElement('span');
-      const sw = document.createElement('span');
-      sw.className = 'swatch';
-      sw.style.background = getCss(varName);
-      span.appendChild(sw);
-      span.appendChild(document.createTextNode(label));
-      legend.appendChild(span);
+      legend.appendChild(legendItem(getCss(varName), label));
     }
   } else {
+    legend.appendChild(legendItem('', 'colours show variant identity, one hue per distinct variant — no ranking implied'));
     const note = document.createElement('span');
-    note.textContent = 'Colors show variant identity — run /consistency-canonize to switch this to a conformance-to-canon scale.';
+    note.textContent = 'Run /consistency-canonize to switch this to a conformance-to-canon scale.';
     legend.appendChild(note);
   }
+  // The hatched "no data" state is explained in both branches: it is a real
+  // encoding a reader meets on the grid, and a legend that omits it leaves
+  // colour (and texture) as the only channel.
+  legend.appendChild(legendItem(
+    'repeating-linear-gradient(45deg, ' + getCss('--panel-2') + ' 0 4px, ' + getCss('--status-unknown') + ' 4px 8px)',
+    'hatched — no data for that module × dimension pair'));
 }
 
 document.getElementById('filterInput').addEventListener('input', e => {

@@ -8,6 +8,7 @@ enforcement behaves; non-zero = a guard regressed. Intended for CI / a quick
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -114,7 +115,7 @@ def main():
         template = os.path.join(tmp, "template.html")
         with open(template, "w") as fh:
             fh.write(
-                "<html><head><style>/*__TOKENS__*/</style></head>"
+                "<html><head><!--__DESIGN_TOKENS__--></head>"
                 "<body><!--__D3_SUBSET__-->"
                 '<script type="module">const DATA = /*__TREE_DATA__*/ null;</script>'
                 "</body></html>"
@@ -133,7 +134,10 @@ def main():
         expect(code == 0, "build succeeds with --tokens supplied: " + stderr.strip())
         rendered = open(out).read() if os.path.exists(out) else ""
         expect("--status-good: #4c8d5a" in rendered, "tokens.css content injected")
-        expect("/*__TOKENS__*/" not in rendered, "tokens marker fully replaced")
+        expect("<!--__DESIGN_TOKENS__-->" not in rendered,
+               "canonical tokens marker fully replaced")
+        expect("/*__TOKENS__*/" not in rendered,
+               "the old non-canonical /*__TOKENS__*/ spelling is gone (S2)")
 
         code, _, err = run([bat, scaffold, "--template", template,
                              "--d3", d3_stub, "--out", out])
@@ -169,6 +173,37 @@ def main():
                "--bg no longer hand-duplicated in the viewer's own <style> block")
         expect("--role-core: #4c8d5a" in rendered,
                "viewer-local role colors preserved (no shared equivalent to migrate to)")
+
+    print("architecture tree — committed demo fixture "
+          "(report-viewer-standard.md R1/R4/S2/C2):")
+    FIXTURE = os.path.join(HERE, "fixtures", "widgetctl")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "widgetctl")
+        shutil.copytree(FIXTURE, scaffold)
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, _, err = run([bat, scaffold,
+                             "--template", os.path.join(ASSETS, "architecture-tree-viewer.html"),
+                             "--d3", os.path.join(ASSETS, "inline-d3.html"),
+                             "--tokens", os.path.join(ASSETS, "tokens.css"),
+                             "--out", out])
+        expect(code == 0, "committed fixture builds: " + err.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+        expect("<title>cli-scaffold \u2014 architecture tree</title>" in rendered,
+               "S2: title is '<plugin> \u2014 <report noun>', lowercase plugin, em dash")
+        expect('class="verdict" id="verdict"' in rendered,
+               "R1: a static class=\"verdict\" element is present")
+        expect('id="legend"' in rendered and "renderLegend" in rendered,
+               "R4: legend rendered without interaction")
+        expect('chip.textContent = role;' in rendered,
+               "R4: the legend chip carries the same word as the inline badge, "
+               "so badge->meaning is read off a shared key, not off matching hues")
+        expect('"rolePillars"' in rendered,
+               "verdict has the role->pillar map it needs to name an uncovered pillar")
+        # The fixture is deliberately short of two roles -- a uniformly complete
+        # tree would make a prettier report and a useless one (C3).
+        expect('"snapshot_test": null' in open(
+                   os.path.join(FIXTURE, "cli-scaffold.manifest.json")).read(),
+               "C3: fixture leaves the stability pillar with no file behind it")
 
     print("architecture tree — indented tree rebuild:")
     with tempfile.TemporaryDirectory() as tmp:

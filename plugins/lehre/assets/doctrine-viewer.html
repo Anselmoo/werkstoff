@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>lehre — doctrine map</title>
 <!--__DESIGN_TOKENS__-->
 <style>
@@ -29,6 +30,12 @@
     margin-bottom: var(--space-4);
   }
   .note { color: var(--muted); font-size: 0.78rem; margin: var(--space-2) 0 0; }
+  /* The answer to the question in the h2 above it. Deliberately heavier than
+     .note: a reader who reads exactly one sentence of this report should read
+     this one. */
+  .verdict { font-size: 0.95rem; color: var(--text); margin: 0 0 var(--space-3);
+             line-height: 1.45; }
+  .verdict .bad { color: var(--samaria-light); font-weight: 600; }
 
   /* ---- funnel strip ---- */
   .funnel { display: flex; gap: 2px; align-items: stretch; margin-bottom: var(--space-3);
@@ -116,6 +123,7 @@
 
   <section class="panel">
     <h2>Does the doctrine actually bite?</h2>
+    <p class="verdict" id="verdict"></p>
     <div class="funnel" id="funnel"></div>
     <p class="note">
       Every rule enters at the left and leaves at exactly one outcome on the right.
@@ -194,6 +202,32 @@ function txt(s) { return document.createTextNode(String(s)); }
 let filter = null;
 
 /* ---------------------------- funnel ---------------------------- */
+/* The one sentence this report exists to say. Built from the same totals the
+   funnel draws, so the prose and the picture cannot disagree. */
+function drawVerdict() {
+  const t = DATA.totals, v = el("verdict");
+  const leak = t.blocking - t.denied_at_write_time;
+  while (v.firstChild) v.removeChild(v.firstChild);
+  if (!t.blocking) {
+    v.appendChild(txt("This doctrine declares no blocking rule, so nothing here denies a "
+      + "write. Every rule is advisory or judgement-only."));
+    return;
+  }
+  if (!leak) {
+    v.appendChild(txt("All " + t.blocking + " blocking rule(s) are decidable by the hook, "
+      + "so every rule that claims to block actually denies a write."));
+    return;
+  }
+  const bad = document.createElement("span");
+  bad.className = "bad";
+  bad.appendChild(txt(leak + " of " + t.blocking + " blocking rules never deny a write"));
+  v.appendChild(bad);
+  v.appendChild(txt(" \u2014 they are gauge-tier, meaning a sweep or CI decides them "
+    + "rather than the hook, so they are caught long after the write they were "
+    + "believed to stop. " + t.denied_at_write_time
+    + " rule(s) actually deny a write, at the moment it is attempted."));
+}
+
 function drawFunnel() {
   const t = DATA.totals, f = el("funnel");
   /* A funnel asserts NESTING: every step must be a subset of the one before it.
@@ -323,7 +357,7 @@ function drawSankey() {
       t1.appendChild(txt(n.label));
       const t2 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 + 11, class: "cnt" }, g);
       t2.setAttribute("text-anchor", anchor);
-      t2.appendChild(txt(n.count + (n.note ? " - " + n.note : "")));
+      t2.appendChild(txt(n.count + (n.note ? " \u00b7 " + n.note : "")));
       const act = () => setFilter(n);
       g.addEventListener("click", act);
       g.addEventListener("keydown", e => {
@@ -492,12 +526,13 @@ function hideTip() { el("tip").style.opacity = "0"; }
     return;
   }
   const t = DATA.totals;
-  el("sub").textContent = DATA.mode + " - " + t.rules + " rules - " +
-                          t.units + " units - generated from " + DATA.source;
+  el("sub").textContent = DATA.mode + " \u00b7 " + t.rules + " rules \u00b7 " +
+                          t.units + " units \u00b7 generated from " + DATA.source;
   if (DATA.intent) {
     el("intent").hidden = false;
     el("intent").textContent = "intent: " + DATA.intent;
   }
+  drawVerdict();
   drawFunnel();
   drawSankey();
   drawDag();

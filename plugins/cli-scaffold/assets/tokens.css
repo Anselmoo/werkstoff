@@ -157,6 +157,20 @@
   --radius-control: 6px;
   --radius-panel: 8px;
 
+  /* Layout. --header-h was a bare `61px` literal copy-pasted into three
+   * viewers (andon, codebase-consistency, cupertino) and defined nowhere, so a
+   * sticky sidebar's `calc(100vh - 61px)` silently drifted from whatever the
+   * header actually measured.
+   *
+   * This value is a FALLBACK, not a truth: measured, andon's header is ~88px
+   * and codebase-consistency's ~64px, so no single constant is right for every
+   * viewer. Any viewer using it for a sticky offset must re-point it at its own
+   * header's measured height on load and resize -- all three that do (andon,
+   * codebase-consistency, cupertino) call a `syncHeaderHeight()` that does
+   * exactly that. The token exists so the value has ONE name, not so it has one
+   * number. */
+  --header-h: 61px;
+
   /* Motion */
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;

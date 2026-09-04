@@ -21,7 +21,8 @@ orchestrator-vs-leaf rule, a task-indexed prompt catalog, a routing table for
 the pipelines whose scopes overlap, and the composition hazards of running
 several hook-bearing plugins in one session.
 
-Before writing or editing a SKILL.md or agent file, read
+Before writing or editing a SKILL.md, an agent file, or a report viewer
+(`plugins/*/assets/*-viewer.html` and its `build_*_html.py`), read
 @docs/plugin-authoring/README.md — the craft/content-split entry point into
 `docs/plugin-authoring/references/craft-standards.md` (universal rules:
 frontmatter, anatomy, progressive disclosure, writing voice) and
@@ -29,7 +30,11 @@ frontmatter, anatomy, progressive disclosure, writing voice) and
 are strong on enforcement prose but were weak on showing output shape —
 `plugins/cupertino/agents/handbook-dimension-analyst.md` and
 `plugins/self-assess/agents/business-rules-miner.md` are the two files in
-this repo that already do it right).
+this repo that already do it right). The third reference,
+`docs/plugin-authoring/references/report-viewer-standard.md`, covers the eight HTML
+report viewers — and records the cupertino-council verdict that until now survived
+only in commit `821a14a`'s message, alongside the design rationale buried at the top
+of `tools/design-tokens/tokens.css` and linked from nothing.
 
 ## Use the MCPs — they are faster and more accurate than grep
 

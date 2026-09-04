@@ -226,6 +226,7 @@ export default defineConfig({
           { text: 'Overview', link: '/plugin-authoring/' },
           { text: 'Craft standards', link: '/plugin-authoring/references/craft-standards' },
           { text: 'Output-shape findings', link: '/plugin-authoring/references/output-shape-findings' },
+          { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
         ],
       },
       {

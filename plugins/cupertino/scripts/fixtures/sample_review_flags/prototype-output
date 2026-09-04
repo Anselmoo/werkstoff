@@ -1,0 +1,4 @@
+{
+  "skipped": true,
+  "reason": "No empirical uncertainty left to settle: the only open question was whether link revocation could be made instant, and integrate already resolved that by owning the seam rather than delegating it. Building a spike would have re-answered a decided question."
+}

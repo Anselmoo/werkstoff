@@ -1,177 +1,177 @@
 [meta]
-generated_at = "2026-09-03T17:45:45+00:00"
+generated_at = "2026-09-04T13:00:26+00:00"
 rrt_version = "1.15.0"
 
 [files."plugins/self-assess/scripts/build_symbol_index.py"]
 hash = "sha256:5f65d2f6829cc240bb7659bc91d392243ca5a9f3ab466bccb39685e52edf84fc"
 size = 32188
 description = "self-assess's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/andon/scripts/build_symbol_index.py"]
 hash = "sha256:5f65d2f6829cc240bb7659bc91d392243ca5a9f3ab466bccb39685e52edf84fc"
 size = 32188
 description = "andon's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/compass/scripts/build_symbol_index.py"]
 hash = "sha256:5f65d2f6829cc240bb7659bc91d392243ca5a9f3ab466bccb39685e52edf84fc"
 size = 32188
 description = "compass's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/confab/scripts/build_symbol_index.py"]
 hash = "sha256:5f65d2f6829cc240bb7659bc91d392243ca5a9f3ab466bccb39685e52edf84fc"
 size = 32188
 description = "confab's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cupertino/scripts/build_symbol_index.py"]
 hash = "sha256:5f65d2f6829cc240bb7659bc91d392243ca5a9f3ab466bccb39685e52edf84fc"
 size = 32188
 description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/self-assess/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "self-assess's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/andon/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "andon's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/compass/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "compass's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/confab/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "confab's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cupertino/references/parallel-safe-research-protocol.md"]
 hash = "sha256:47db0e37ea842dc05cf27abf6707e795e00ff8d49f9a7c8723063c4c22eee82e"
 size = 3807
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/self-assess/scripts/lib/README.md"]
 hash = "sha256:175c20b838f80e3705c2be26450c59b73190a3de9fc642d7328c3f355f227d4e"
 size = 1946
 description = "self-assess's synced copy of tools/plugin-lib-canary/README.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/confab/scripts/lib/README.md"]
 hash = "sha256:175c20b838f80e3705c2be26450c59b73190a3de9fc642d7328c3f355f227d4e"
 size = 1946
 description = "confab's synced copy of tools/plugin-lib-canary/README.md"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/self-assess/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "self-assess's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cli-scaffold/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "cli-scaffold's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/andon/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "andon's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/confab/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "confab's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cli-scaffold/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "cli-scaffold's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/codebase-consistency/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "codebase-consistency's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/lehre/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "lehre's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/self-assess/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "self-assess's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cupertino/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "cupertino's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/compass/assets/tokens.css"]
-hash = "sha256:2b8c2c7658dbe6a44cc03b1ddfdb8b45c1746505423f7d0918d2474bb2281861"
-size = 7316
+hash = "sha256:b6cd8d1788ae5a8bfeac487d132ad18c313b5c3904afcf21afe83dadc321515e"
+size = 8094
 description = "compass's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/andon/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "andon's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/confab/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "confab's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/codebase-consistency/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "codebase-consistency's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/cupertino/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "cupertino's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."plugins/compass/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "compass's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."docs/prompt-index.md"]
-hash = "sha256:74e117962051c6288e3e9a28a0c0806d5370c85093fa876da107f1f4fb9e424e"
-size = 22858
+hash = "sha256:b4981c094c8d9aa017f7a33bff1029e8bb73f92ed4335a16ceb944ba5afbfaa8"
+size = 22700
 description = "generated aggregate of every plugin README's Example Prompts section"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"
 
 [files."docs/.vitepress/data/surface.json"]
-hash = "sha256:d4adfac596b6757c21f9bf56506673810705b8e29eda4eb28f0106b0f7a0f75f"
+hash = "sha256:4c096070a19452e997884ea982d9d1e13ec45877cff1bacb68e356ee6d5e7ae6"
 size = 80954
 description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
-updated_at = "2026-09-03T17:45:45+00:00"
+updated_at = "2026-09-04T13:00:26+00:00"

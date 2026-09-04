@@ -1,0 +1,15 @@
+# Fixture only. This file is demo input for build_architecture_tree.py and is
+# never installed or built; see plugins/cli-scaffold/README.md.
+[project]
+name = "widgetctl"
+version = "0.1.0"
+description = "Inspect and list widgets from the command line."
+requires-python = ">=3.9"
+dependencies = ["click>=8.1"]
+
+[project.scripts]
+widgetctl = "widgetctl.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

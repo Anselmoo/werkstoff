@@ -59,7 +59,35 @@ pipeline as a self-contained HTML flow diagram — `.cupertino/CUPERTINO_REVIEW_
 built by `scripts/build_review_flow_html.py` from each stage's persisted `flags/<stage>-output`
 content, since that content is deleted once the run finishes.
 
-![Cupertino Review Flow diagram showing the fixed nine-stage pipeline — backwards, focus, a real fork into longevity and integrate that merges back into council, then prototype, elevate, unbox, and reveal — with a genuine mix of node states: most stages outlined green for ran, prototype shown dashed orange for explicitly skipped, and elevate shown muted for not yet reached](assets/review-flow-viewer-screenshot.jpg)
+It states one finding in a sentence at the top of the page — *did this review actually
+finish?* — because a nine-node diagram cannot answer that on its own. A stage that was
+never reached and a stage that was deliberately skipped both read as "not green", and they
+are not the same thing: a skip is a recorded decision carrying its own reason, an unreached
+stage is an unfinished review. Each node encodes that difference twice, in outline style as
+well as colour, and the legend at the foot of the page repeats it in words.
+
+![Cupertino review flow report. A verdict line reads "This review is incomplete: 5 of 9 stages ran and 1 (prototype) was explicitly skipped with a recorded reason, but 3 (elevate, unbox, reveal) were never reached at all — the run got no further than prototype." Below it the nine-stage pipeline runs left to right — backwards, focus, a real fork into longevity above and integrate below that merges back into council, then prototype, elevate, unbox, reveal — with five nodes outlined solid green, prototype outlined dashed amber, and the last three drawn muted grey. A right-hand sidebar lists every stage against its state and quotes the recorded skip reason for prototype; a footer legend names the three states in words](assets/review-flow-viewer-screenshot.jpg)
+
+That image is reproducible rather than a one-off capture — the run it shows is committed as
+a set of stage flag files at `scripts/fixtures/sample_review_flags/`, chosen so all three
+node states appear at once and the pipeline is not uniformly green: five stages ran,
+`prototype` was explicitly skipped with its reason recorded, and `elevate`, `unbox` and
+`reveal` are simply absent, so the review stops short of every ship-time stage it exists to
+end with. To rebuild it:
+
+```bash
+mkdir -p /tmp/cupertino-demo/.cupertino
+cp -R plugins/cupertino/scripts/fixtures/sample_review_flags /tmp/cupertino-demo/.cupertino/flags
+python3 plugins/cupertino/scripts/build_review_flow_html.py /tmp/cupertino-demo/.cupertino \
+    --template plugins/cupertino/assets/review-flow-viewer.html \
+    --d3 plugins/cupertino/assets/inline-d3.html \
+    --tokens plugins/cupertino/assets/tokens.css
+```
+
+Every stage payload in that fixture passes the plugin's own `scripts/validators.py` checks
+(zero tech nouns in the experience statement, one sentence per focus survivor, six 1–5
+evolution dimensions scoring 16 against the threshold of 18, exactly five council lenses in
+the fixed tension order), so it is a plausible run rather than lorem ipsum shaped like one.
 
 ##### Convene the council
 

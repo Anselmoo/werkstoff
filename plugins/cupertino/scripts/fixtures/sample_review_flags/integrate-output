@@ -1,0 +1,14 @@
+{
+  "discipline": "integrate",
+  "seam": "issuing and revoking the share link itself",
+  "verdict": "Own this seam. Revocation is the promise made in the experience statement, and a vendor's token lifetime is not something a studio can shorten mid-incident.",
+  "delegate": [
+    "asset storage and delivery",
+    "image transcoding"
+  ],
+  "own": [
+    "link issuance, expiry and revocation",
+    "the review page a client actually lands on"
+  ],
+  "tensionWithLongevity": "longevity wants the link payload versioned before launch; integrate wants it owned outright. Both point at the same file, and neither was averaged into a single score."
+}
