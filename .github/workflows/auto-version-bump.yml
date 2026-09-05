@@ -15,7 +15,18 @@ name: 🔢 Auto Version Bump
 # forward-merges that branch onto main, tags each bumped group
 # (`rrt tag create --group <g> --prefix '<g>-v' --push`), and pushes once,
 # per push event -- so a single push touching N groups produces N tags in
-# one CI run, each of which independently fans out to plugin-release.yml.
+# one CI run.
+#
+# THOSE TAG PUSHES TRIGGER NOTHING, and used not to be followed by anything
+# either. A push made with the default GITHUB_TOKEN does not create events
+# (GitHub's recursive-workflow guard), so a tag pushed here can never start
+# plugin-release.yml on its own -- confirmed against every plugin-release run
+# in this repo's history: all have actor=Anselmoo, none has
+# actor=github-actions[bot]. The 2026-09-03 round therefore left six tags
+# published with no release behind them and reported success. The `release`
+# job below closes that: it CALLS plugin-release.yml once per tag created
+# here, and a called workflow runs inside this same run, so no event has to
+# be created and the token rule never applies.
 #
 # Also callable as a reusable workflow (workflow_call) with an explicit
 # `groups_and_levels` input ("group:level,group:level", e.g. for a manual
@@ -52,6 +63,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       bumped_groups: ${{ steps.bump.outputs.bumped_groups }}
+      # JSON array of the `<group>-vX.Y.Z` tags this run actually created,
+      # consumed as the `release` job's matrix. Deliberately excludes
+      # werkstoff-cli's bare `vX.Y.Z` tag -- see the notice in the bump step.
+      plugin_tags: ${{ steps.bump.outputs.plugin_tags }}
     # Guard against re-triggering on the bump commit(s) this workflow itself
     # pushes -- rrt bump's generated commit message is always exactly
     # "chore: bump version to v<version>". Only applies to the push trigger;
@@ -194,6 +209,8 @@ jobs:
         run: |
           set -euo pipefail
           BUMPED=""
+          PLUGIN_TAGS=""
+          CLI_TAGS=""
           IFS=',' read -ra GROUP_LEVEL_PAIRS <<< "${{ steps.pairs.outputs.pairs }}"
           for PAIR in "${GROUP_LEVEL_PAIRS[@]}"; do
             GROUP="${PAIR%%:*}"
@@ -204,6 +221,24 @@ jobs:
             git checkout main
             git merge --ff-only "$BRANCH"
             git branch -D "$BRANCH"
+
+            # docs/.vitepress/data/surface.json is GENERATED FROM the plugin
+            # manifests this bump just rewrote, and `rrt artifacts --check`
+            # compares each file to its own recorded hash rather than to its
+            # inputs -- so a stale generated file passes that check forever.
+            # Only docs.yml regenerates and diffs, and it is path-filtered, so a
+            # bump-only commit never triggers it. The 2026-09-05 release left
+            # surface.json a full version behind for all eight plugins, and it
+            # surfaced days later on an unrelated PR that happened to touch
+            # docs/. Amended into the bump commit rather than appended after it,
+            # so the tag created below points at a commit whose generated
+            # artifacts match its own manifests.
+            rrt artifacts --regenerate
+            if ! git diff --quiet; then
+              git add -A
+              git commit --amend --no-edit --quiet
+              echo "Refreshed generated artifacts into the $GROUP bump commit"
+            fi
             echo "::endgroup::"
             echo "::group::Tagging $GROUP"
             # werkstoff-cli is the one group that MUST use the bare v<version>
@@ -214,11 +249,86 @@ jobs:
             # cicd.yml's PyPI publish job for a plugin bump.
             if [ "$GROUP" = "werkstoff-cli" ]; then
               rrt tag create --group "$GROUP" --push
+              PATTERN="v*"
             else
               rrt tag create --group "$GROUP" --prefix "$GROUP-v" --push
+              PATTERN="$GROUP-v*"
+            fi
+            # Read the tag back off the commit rrt just tagged rather than
+            # re-deriving the version from rrt's human-formatted output. HEAD
+            # is this group's own bump commit at this point in the loop, so
+            # the match is exact; an empty result means the tag step did not
+            # do what it claimed and must not be papered over.
+            CREATED=$(git tag --points-at HEAD --list "$PATTERN")
+            if [ -z "$CREATED" ]; then
+              echo "rrt tag create reported success for '$GROUP' but no '$PATTERN' tag points at $(git rev-parse --short HEAD)"
+              exit 1
+            fi
+            echo "Created tag(s): $CREATED"
+            if [ "$GROUP" = "werkstoff-cli" ]; then
+              CLI_TAGS="$CLI_TAGS $CREATED"
+            else
+              PLUGIN_TAGS="$PLUGIN_TAGS $CREATED"
             fi
             echo "::endgroup::"
             BUMPED="$BUMPED $GROUP"
           done
           git push origin main
           echo "bumped_groups=$(echo "$BUMPED" | xargs)" >> "$GITHUB_OUTPUT"
+
+          # Matrix input for the `release` job. `jq -R . | jq -sc .` turns the
+          # whitespace-separated list into a JSON array; an empty list must
+          # serialize as `[]`, not `""`, or `fromJSON` in the job's matrix
+          # errors out instead of the job simply being skipped.
+          if [ -n "$(echo "$PLUGIN_TAGS" | xargs)" ]; then
+            PLUGIN_TAGS_JSON=$(printf '%s\n' $PLUGIN_TAGS | jq -R . | jq -sc .)
+          else
+            PLUGIN_TAGS_JSON="[]"
+          fi
+          echo "plugin_tags=$PLUGIN_TAGS_JSON" >> "$GITHUB_OUTPUT"
+          echo "Plugin tags to release: $PLUGIN_TAGS_JSON"
+
+          # werkstoff-cli is NOT covered by the `release` job: its bare
+          # `vX.Y.Z` tag belongs to cicd.yml, whose PyPI publish is gated on
+          # `github.event_name == 'push' && startsWith(github.ref,
+          # 'refs/tags/v')` -- conditions a workflow_call cannot satisfy,
+          # because a called workflow sees the CALLER's event and ref. So the
+          # same GITHUB_TOKEN blind spot still applies to that one group, and
+          # this says so out loud instead of skipping it in silence.
+          if [ -n "$(echo "$CLI_TAGS" | xargs)" ]; then
+            CLI_TAGS="$(echo "$CLI_TAGS" | xargs)"
+            echo "::warning title=werkstoff-cli release needs a manual push::Tagged $CLI_TAGS, but a CI-pushed bare tag cannot trigger cicd.yml. Nothing has been published to PyPI. Re-push the tag from a developer machine: git push origin :refs/tags/$CLI_TAGS && git push origin $CLI_TAGS"
+            {
+              echo "### ⚠️ werkstoff-cli was tagged but NOT published"
+              echo
+              echo "\`$CLI_TAGS\` exists as a tag, but \`cicd.yml\` was not triggered:"
+              echo "a tag pushed with \`GITHUB_TOKEN\` creates no event, and unlike"
+              echo "\`plugin-release.yml\` that workflow's publish jobs are gated on a real"
+              echo "tag \`push\`, so they cannot be reached by a \`workflow_call\` either."
+              echo
+              echo "To publish, re-push the tag from a developer machine (one tag per push"
+              echo "-- more than three at once creates no event at all):"
+              echo
+              echo "\`\`\`bash"
+              echo "git push origin :refs/tags/$CLI_TAGS && git push origin $CLI_TAGS"
+              echo "\`\`\`"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  release:
+    name: 🎁 Release ${{ matrix.tag }}
+    needs: bump
+    # `[]` is the empty case; `''` covers the bump job's own `if:` not firing.
+    if: needs.bump.outputs.plugin_tags != '' && needs.bump.outputs.plugin_tags != '[]'
+    strategy:
+      # One failed release must not cancel the others: each tag is already
+      # pushed and public, so a sibling's failure is not a reason to leave the
+      # rest unpublished.
+      fail-fast: false
+      matrix:
+        tag: ${{ fromJSON(needs.bump.outputs.plugin_tags) }}
+    uses: ./.github/workflows/plugin-release.yml
+    with:
+      tag: ${{ matrix.tag }}
+    permissions:
+      contents: write

@@ -3,7 +3,7 @@
   "plugins": [
     {
       "name": "andon",
-      "version": "0.9.0",
+      "version": "0.10.0",
       "description": "Walks a repository's value stream stage-by-stage, proposing fixes for discovered gaps, proving each wire before advancing via seven evidence-grounded strategies, and halting rather than passing broken or unproven handoffs.",
       "skills": [
         {
@@ -86,7 +86,7 @@
     },
     {
       "name": "cli-scaffold",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
       "skills": [
         {
@@ -138,7 +138,7 @@
     },
     {
       "name": "codebase-consistency",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
       "skills": [],
       "agents": [
@@ -223,7 +223,7 @@
     },
     {
       "name": "compass",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
       "skills": [
         {
@@ -344,7 +344,7 @@
     },
     {
       "name": "confab",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
       "skills": [
         {
@@ -452,7 +452,7 @@
     },
     {
       "name": "cupertino",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, applied through a fixed, sequenced lifecycle pipeline rather than a menu of individually-selectable design techniques.",
       "skills": [
         {
@@ -589,7 +589,7 @@
     },
     {
       "name": "lehre",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Researches a code style, pattern and architecture doctrine, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, rather than describing the violation afterwards. Works from a blank page (greenfield project initialization, decomposed into units and seams whose build order is itself enforced) as well as over an existing codebase.",
       "skills": [
         {
@@ -733,7 +733,7 @@
     },
     {
       "name": "self-assess",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
       "skills": [
         {

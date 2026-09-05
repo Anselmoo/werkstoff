@@ -14,7 +14,7 @@ beats:
   - skill: "superpowers:verification-before-completion"
     why: "\"The alert cleared\" and \"the cause is gone\" are different claims."
     prompt: "before we close this out, show me the cause is actually gone — not just that the alert stopped"
-grounding: "a red `plugin-checks.yml` blocking every open pull request in this repo at once: the triage move is parallel investigators across the fourteen `continue-on-error` steps, not a tribunal on any one of them."
+grounding: "a red `plugin-checks.yml` blocking every open pull request in this repo at once: the triage move is parallel investigators across the fifteen `continue-on-error` steps, not a tribunal on any one of them."
 dos:
   - "Work the root cause fast, but work it -- the pressure to skip this step is exactly what turns one incident into three."
   - "Send multiple investigators in the same dispatch message -- that's what makes them parallel under time pressure, not sequential."

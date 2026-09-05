@@ -1,11 +1,50 @@
 name: 🏷️ Plugin Release
 
+# Publishes one plugin's GitHub release (notes + zip + SBOM) for one
+# `<group>-vX.Y.Z` tag.
+#
+# THREE ENTRY POINTS, because the tag-push one cannot work from CI. A push
+# made with the default GITHUB_TOKEN does not create events, so a tag pushed
+# by auto-version-bump.yml can never start this workflow -- confirmed against
+# every one of this repo's plugin-release runs: all of them have
+# actor=Anselmoo, not one has actor=github-actions[bot]. The consequence was
+# silent: the 2026-09-03 round left six tags (andon-v0.9.0, compass-v0.5.0,
+# confab-v0.7.0, cupertino-v0.7.0, lehre-v0.2.0, self-assess-v0.7.0) published
+# as tags with no release behind them, and nothing reported an error.
+#
+#   push        a human (or any non-GITHUB_TOKEN credential) pushing the tag
+#   workflow_call  auto-version-bump.yml, once per group it just tagged --
+#                  a called workflow runs INSIDE the caller's run, so no
+#                  event needs to be created and the token rule never applies
+#   workflow_dispatch  manual recovery for a tag whose release is missing,
+#                  without having to delete and re-push the tag (which is
+#                  what this repo had to do by hand on 2026-09-05, and which
+#                  silently does nothing at all past three tags in one push)
+
 on:
   push:
     tags: ["*-v*.*.*"]
+  workflow_call:
+    inputs:
+      tag:
+        description: "Plugin tag to release, e.g. andon-v0.10.0"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Plugin tag to release, e.g. andon-v0.10.0"
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+# Keyed on the tag rather than the ref, so a dispatch-based recovery run for a
+# tag that is already being released does not race the original.
+concurrency:
+  group: plugin-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   release:
@@ -14,17 +53,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # On a tag push these are the same ref; on a call/dispatch,
+          # github.ref is the CALLER's (refs/heads/main), so the tag has to be
+          # named explicitly or the changelog would be read from whatever main
+          # happens to hold rather than from the tagged commit.
+          ref: ${{ inputs.tag || github.ref_name }}
 
       - name: Resolve plugin group and version from tag
         id: resolve
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          set -euo pipefail
           GROUP="${TAG%-v*}"
           VERSION="${TAG##*-v}"
+          # Rejects a bare `vX.Y.Z` tag too: with no `-v` in it, `${TAG%-v*}`
+          # returns the whole string, which matches no group below. That
+          # matters -- a bare tag belongs to cicd.yml's PyPI publish, never
+          # here.
           case "$GROUP" in
             self-assess|confab|compass|cupertino|andon|cli-scaffold|codebase-consistency|lehre|takt) ;;
             *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
           esac
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "Tag '$TAG' does not carry an X.Y.Z version"; exit 1
+          fi
           echo "group=$GROUP" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -50,6 +104,9 @@ jobs:
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
+          # Explicit on a call/dispatch for the same reason the checkout is:
+          # the action defaults to github.ref, which is the caller's branch.
+          tag_name: ${{ inputs.tag || github.ref_name }}
           name: "${{ steps.resolve.outputs.group }} v${{ steps.resolve.outputs.version }}"
           body_path: release-notes.md
           append_body: true
