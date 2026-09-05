@@ -1,6 +1,6 @@
 {
   "name": "compass",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
   "author": {
     "name": "Anselm Hahn",
