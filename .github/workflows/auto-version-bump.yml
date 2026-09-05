@@ -221,6 +221,24 @@ jobs:
             git checkout main
             git merge --ff-only "$BRANCH"
             git branch -D "$BRANCH"
+
+            # docs/.vitepress/data/surface.json is GENERATED FROM the plugin
+            # manifests this bump just rewrote, and `rrt artifacts --check`
+            # compares each file to its own recorded hash rather than to its
+            # inputs -- so a stale generated file passes that check forever.
+            # Only docs.yml regenerates and diffs, and it is path-filtered, so a
+            # bump-only commit never triggers it. The 2026-09-05 release left
+            # surface.json a full version behind for all eight plugins, and it
+            # surfaced days later on an unrelated PR that happened to touch
+            # docs/. Amended into the bump commit rather than appended after it,
+            # so the tag created below points at a commit whose generated
+            # artifacts match its own manifests.
+            rrt artifacts --regenerate
+            if ! git diff --quiet; then
+              git add -A
+              git commit --amend --no-edit --quiet
+              echo "Refreshed generated artifacts into the $GROUP bump commit"
+            fi
             echo "::endgroup::"
             echo "::group::Tagging $GROUP"
             # werkstoff-cli is the one group that MUST use the bare v<version>
