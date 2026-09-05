@@ -28,6 +28,7 @@ jobs:
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
       release_wiring: ${{ steps.release_wiring.outcome }}
+      tag_releases: ${{ steps.tag_releases.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
     steps:
@@ -197,6 +198,31 @@ jobs:
         # source going undetected all the way to release.
         run: rrt docs inject --check
 
+      - name: Verify every release tag has a GitHub Release
+        id: tag_releases
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Both release paths are `on: push: tags`, and a tag pushed with
+        # GITHUB_TOKEN creates no event -- so for two months every tag
+        # auto-version-bump.yml created was a tag nobody released, with CI green
+        # throughout. auto-version-bump now CALLS plugin-release.yml instead of
+        # relying on that push, but the invariant itself was unguarded, and
+        # cicd.yml's bare-tag path still cannot be reached from CI at all.
+        #
+        # The calibration runs first, for the reason release_wiring states
+        # above: this one is sabotage-tested (blank out the `missing` list and
+        # 4 of its 13 cases go red), because a guard whose failure path has
+        # never executed is a guard nobody has actually seen work.
+        #
+        # Tags are fetched explicitly: the checkout above is shallow and carries
+        # none, and "no tags" is indistinguishable from "nothing released" --
+        # which the guard treats as an error rather than a pass.
+        run: |
+          git fetch --tags --quiet origin
+          python3 test/plugins/test-lint-tag-releases.py
+          python3 test/plugins/lint-tag-releases.py
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
@@ -210,6 +236,7 @@ jobs:
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.release_wiring.outcome == 'failure' ||
+          steps.tag_releases.outcome == 'failure' ||
           steps.docs_inject_check.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure'
@@ -261,6 +288,7 @@ jobs:
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
+            row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             echo "</tbody></table>"
             echo

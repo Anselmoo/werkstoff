@@ -97,6 +97,7 @@ node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
+python3 test/plugins/lint-tag-releases.py                 # every release tag actually has a GitHub Release (needs network)
 ```
 
 `rrt artifacts --check` matters for the same reason as everything else in
@@ -114,6 +115,16 @@ entry when a new plugin gains one of its own.
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never
 triggers and nothing reports an error.
+
+`lint-tag-releases.py` exists because **a tag is not a release**, and for two
+months this repo could not tell the difference. Both release paths are `on:
+push: tags`, and a tag pushed with `GITHUB_TOKEN` creates no event, so every tag
+`auto-version-bump.yml` made was a tag nothing published — 21 of them, plus six
+more from the 2026-09-03 round, with CI green the whole time. Those 21 are
+exempted by name in `test/plugins/tag-releases-baseline.txt`, a list that may
+only shrink; anything new that lacks a release is a failure. Its calibration,
+`test-lint-tag-releases.py`, is sabotage-tested: blank out the guard's `missing`
+list and 4 of its 13 cases go red.
 
 `lint-release-wiring.py` exists because adding a plugin means adding its name to
 **four** separate lists — `.rrt.toml`'s `version_groups` and `field_targets`,
@@ -220,6 +231,20 @@ rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1
 rrt tag create --group <name> --prefix '<name>-v' --push   # plugins
 rrt tag create --group werkstoff-cli --push                # ONLY this one uses bare v<version>
 ```
+
+Releases publish themselves now, but only for plugins. `auto-version-bump.yml`
+**calls** `plugin-release.yml` (a `workflow_call` matrix over the tags it just
+created) rather than relying on the tag push to trigger it, because that push
+never could: a push made with the default `GITHUB_TOKEN` creates no events at
+all. `werkstoff-cli` is still exposed — `cicd.yml`'s PyPI publish is gated on
+`github.event_name == 'push'` plus a `refs/tags/v` ref, which a called workflow
+cannot satisfy, so a CI-tagged `werkstoff-cli` prints a loud warning and needs
+its tag re-pushed by hand.
+
+**Pushing tags by hand: one tag per push.** GitHub creates no event at all when
+more than three tags arrive in a single push — not "the first three win",
+*none*. A fourteen-tag recovery push in one command produced zero release runs;
+the same tags pushed one at a time produced fourteen.
 
 **Never tag a plugin group without `--prefix`.** `.github/workflows/cicd.yml`
 fires on any `v*.*.*` tag and always publishes `tools/werkstoff-cli` regardless

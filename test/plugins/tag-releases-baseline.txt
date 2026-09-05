@@ -1,0 +1,33 @@
+# Known-unreleased tags: the baseline lint-tag-releases.py is allowed to ignore.
+#
+# Every tag here was pushed before this repo's release path was fixed
+# (fix/ci-tag-push-never-publishes-releases) and never got a GitHub Release.
+# The cause is the same one that fix addresses: `on: push: tags` never fires for
+# a tag pushed with GITHUB_TOKEN, and for two months nothing noticed.
+#
+# These versions are all superseded, so they are exempted rather than
+# retroactively published. THE LIST IS ONLY ALLOWED TO SHRINK: an entry that
+# gains a release is reported as stale and must be deleted from here. Nothing
+# may be added -- a new tag with no release is the failure this guard exists to
+# catch.
+andon-v0.4.0
+andon-v0.5.0
+andon-v0.6.0
+andon-v0.7.0
+andon-v0.7.1
+cli-scaffold-v0.3.0
+cli-scaffold-v0.3.2
+cli-scaffold-v0.4.0
+cli-scaffold-v0.5.0
+cli-scaffold-v0.5.1
+codebase-consistency-v0.1.1
+compass-v0.3.0
+compass-v0.3.1
+compass-v0.3.3
+confab-v0.4.0
+confab-v0.5.0
+confab-v0.5.1
+cupertino-v0.4.0
+cupertino-v0.5.0
+self-assess-v0.4.0
+self-assess-v0.5.0
