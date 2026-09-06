@@ -171,7 +171,26 @@ class TestPublishedPages(unittest.TestCase):
         published = {p.relative_to(AUDIT.DOCS).as_posix() for p in AUDIT.published_pages()}
         self.assertIn("index.md", published)
         self.assertIn("orchestration/README.md", published)
-        self.assertNotIn("", {p for p in published if p.startswith(".vitepress/")})
+
+    def test_vitepress_internals_are_never_published(self) -> None:
+        """The `.vitepress/` skip, exercised against a tree where it can fire.
+
+        Asserting this over the live docs/ proves nothing: there are no .md
+        files under docs/.vitepress/ today, so rglob("*.md") yields none and the
+        assertion passes whether or not the guard exists -- confirmed by
+        deleting the guard and watching the suite stay green. A config or theme
+        dir picking up a README.md later is exactly when this must hold, so the
+        test builds that tree instead of hoping for it.
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            docs = Path(tmp)
+            (docs / ".vitepress").mkdir()
+            (docs / "keep.md").write_text("# keep\n", encoding="utf-8")
+            (docs / ".vitepress" / "README.md").write_text("# internal\n", encoding="utf-8")
+            with mock.patch.object(AUDIT, "DOCS", docs), \
+                 mock.patch.object(AUDIT, "src_exclude", list):
+                published = {p.relative_to(docs).as_posix() for p in AUDIT.published_pages()}
+        self.assertEqual(published, {"keep.md"})
 
     def test_a_directory_glob_excludes_the_whole_directory(self) -> None:
         """A future `'superpowers/**'` in config.mjs must take effect with no
