@@ -6,6 +6,7 @@ first two exist yet.
 | Layer | What it checks | Cost | Status |
 |---|---|---|---|
 | 1. `docs_ux_audit.py` | Do the docs' own CLAIMS (counts, orderings, category sets) match the filesystem? | Free, instant, no LLM | Built |
+| 1a. `test_docs_ux_audit.py` | Does the audit's own srcExclude parse actually agree with `config.mjs`? | Free, instant, no LLM | Built |
 | 2. `journeys.tsv` + `run-journeys.sh` | Given a real user goal in plain language, does the site LEAD a reader to the right page? | Real tokens, one `claude --print` process per case | Built (this directory) |
 | 3. DOM tests | Does the rendered VitePress site actually navigate the way the source implies (sidebar, search, links render and click through)? | Real browser automation | Not yet built |
 
@@ -26,6 +27,15 @@ Free and instant -- no LLM, no network. See its own docstring for what it checks
 the four existing gates (`validate_catalog.py`, `buildCatalogSidebar()`,
 `ignoreDeadLinks`, regenerate-and-diff) all check referential integrity and none of them
 check a claim.
+
+Its published-page set is derived by parsing `srcExclude` out of
+`docs/.vitepress/config.mjs` rather than duplicating that list here, and the parser has
+its own calibration -- run it first, for the reason every guard in this repo is
+calibrated before it is trusted:
+
+```bash
+cd test/docs && python3 -m unittest test_docs_ux_audit -v
+```
 
 ## Layer 2 -- journey tests (this directory)
 
