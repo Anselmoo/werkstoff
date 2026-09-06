@@ -23,6 +23,7 @@ jobs:
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       catalog_recipes: ${{ steps.catalog_recipes.outcome }}
+      docs_audit_tests: ${{ steps.docs_audit_tests.outcome }}
       docs_ux_audit: ${{ steps.docs_ux_audit.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
@@ -142,6 +143,19 @@ jobs:
         # otherwise silently strand a recipe pointing at nothing.
         run: python3 tools/catalog-validator/validate_catalog.py
 
+      - name: Run docs-audit srcExclude parser tests
+        id: docs_audit_tests
+        continue-on-error: true
+        working-directory: test/docs
+        # Calibration for the audit's own srcExclude derivation, and it runs
+        # BEFORE the audit for the reason lint-release-wiring.py's does: a guard
+        # that cannot fail reports success every run and nobody looks again.
+        # published_pages() used to keep a second copy of config.mjs's
+        # srcExclude list while claiming to honour it -- the release-wiring
+        # drift shape (#46 takt, then lehre) in a second place, and it had
+        # already bitten, reporting C3 orphans for pages the site never builds.
+        run: python3 -m unittest test_docs_ux_audit -v
+
       - name: Verify docs artifacts are up to date
         id: docs_ux_audit
         continue-on-error: true
@@ -232,6 +246,7 @@ jobs:
           steps.viewer_conformance.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.catalog_recipes.outcome == 'failure' ||
+          steps.docs_audit_tests.outcome == 'failure' ||
           steps.docs_ux_audit.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
@@ -284,6 +299,7 @@ jobs:
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
+            row "docs-audit srcExclude tests" "${{ needs.checks.outputs.docs_audit_tests }}"
             row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"

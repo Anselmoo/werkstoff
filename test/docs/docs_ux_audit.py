@@ -53,6 +53,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import re
 import sys
 from dataclasses import dataclass, field
@@ -132,13 +133,100 @@ def parse_number(token: str) -> int | None:
     return NUMBER_WORDS.get(token)
 
 
+def js_string_array(source: str, key: str, where: Path) -> list[str]:
+    """The string literals of a `<key>: [ ... ]` array in JS source.
+
+    A hand-rolled scanner, not a regex over the whole array. CLAUDE.md's defect
+    table is a list of patterns that matched nothing and reported success, and
+    every one of them was a regex asked to span content it could not model --
+    here, a `]` inside a quoted glob (`'draft/[0-9]*.md'`) or an apostrophe
+    inside a double-quoted one. The scanner tracks quoting explicitly, so those
+    are decided rather than guessed.
+
+    `source` must already be comment-stripped by js_code(): a commented-out
+    `srcExclude: [...]` would otherwise be indistinguishable from the live one.
+
+    Every failure is an audit-cannot-run error, never a default. A silently
+    empty result would make the audit grade pages the site never builds; a
+    silently truncated one would make it skip pages the site does build. Both
+    are the drift this function exists to remove, so neither may be survivable.
+    """
+    # Line-anchored on purpose. The `\s*` after the colon can only ever cross
+    # whitespace, so it cannot span into unrelated content the way the defect
+    # table's patterns did.
+    openers = list(re.finditer(rf"^\s*{re.escape(key)}:\s*\[", source, re.M))
+    if not openers:
+        raise DocsAuditError(f"{where}: cannot find `{key}: [` -- the exclusion set would be "
+                             f"empty and every unbuilt page would be graded as published")
+    if len(openers) > 1:
+        raise DocsAuditError(f"{where}: found {len(openers)} `{key}: [` declarations -- "
+                             f"ambiguous, and picking the first would be a guess")
+
+    i = openers[0].end()  # first character after the '['
+    items: list[str] = []
+    closed = False
+    while i < len(source):
+        char = source[i]
+        if char == "]":
+            closed = True
+            break
+        if char in "\"'`":
+            quote, i, buf = char, i + 1, []
+            while i < len(source) and source[i] != quote:
+                if source[i] == "\\":
+                    i += 1
+                    if i >= len(source):
+                        break
+                buf.append(source[i])
+                i += 1
+            if i >= len(source):
+                break  # unterminated literal -- reported as an unclosed array below
+            items.append("".join(buf))
+        i += 1
+
+    if not closed:
+        raise DocsAuditError(f"{where}: `{key}: [` is never closed -- the array cannot be read, "
+                             f"and a partial read would silently under-exclude")
+    if not items:
+        raise DocsAuditError(f"{where}: `{key}` parsed as empty -- either the array really is "
+                             f"empty (delete this call site) or the scan is broken; an empty "
+                             f"exclusion set makes the audit grade pages VitePress never builds")
+    return items
+
+
+def src_exclude() -> list[str]:
+    """VitePress's `srcExclude` patterns, read live from config.mjs.
+
+    Not copied into this file. config.mjs is the authority -- it is what the
+    build actually honours -- and a Python duplicate of the list is two lists
+    that must be hand-edited together, which is CLAUDE.md's release-wiring
+    drift (#46 takt, then lehre) in a second place. It had already bitten once:
+    adding pages under a new excluded directory needed both edits, and doing
+    only the config.mjs half left this audit reporting C3 orphan failures for
+    pages the site does not build.
+    """
+    if not CONFIG.is_file():
+        raise DocsAuditError(f"{CONFIG.relative_to(REPO)} is missing -- the set of published "
+                             "pages cannot be determined")
+    return js_string_array(js_code(CONFIG), "srcExclude", CONFIG.relative_to(REPO))
+
+
 def published_pages() -> list[Path]:
-    """Markdown pages VitePress actually builds (srcExclude honoured)."""
-    excluded = {"andon-pilot-findings.md", "andon-pilot-handoff.md", "catalog/_UNRESOLVED.md"}
+    """Markdown pages VitePress actually builds (srcExclude honoured).
+
+    Patterns are matched as globs, because that is what VitePress does with
+    them -- so a directory-wide exclusion added to config.mjs (`'drafts/**'`)
+    takes effect here with no second edit. fnmatchcase, not fnmatch: the latter
+    folds case via os.path.normcase and would grade differently on a
+    case-insensitive filesystem than in CI.
+    """
+    patterns = src_exclude()
     pages = []
     for path in sorted(DOCS.rglob("*.md")):
         rel = path.relative_to(DOCS).as_posix()
-        if rel.startswith(".vitepress/") or rel in excluded:
+        if rel.startswith(".vitepress/"):
+            continue
+        if any(fnmatch.fnmatchcase(rel, pattern) for pattern in patterns):
             continue
         pages.append(path)
     return pages
