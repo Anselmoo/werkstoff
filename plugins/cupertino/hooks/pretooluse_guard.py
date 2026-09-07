@@ -28,6 +28,7 @@ from typing import NoReturn
 PLUGIN_ROOT = os.environ.get("CLAUDE_PLUGIN_ROOT", os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(PLUGIN_ROOT, "scripts"))
 
+_validators_import_error: Exception | None = None
 try:
     import validators  # type: ignore  # noqa: E402
 except Exception as exc:

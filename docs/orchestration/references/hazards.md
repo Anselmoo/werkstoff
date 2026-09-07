@@ -40,21 +40,21 @@ card, rather than buried in the third column of a five-column table.
 <div class="hz-card">
 <div class="hz-head"><code>cupertino</code><span class="hz-chip">Skill|Task|Agent|Write|Edit|Bash</span></div>
 <p class="hz-script"><code>hooks/pretooluse_guard.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>no <code>.cupertino/</code> state directory exists</p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a <code>.cupertino/</code> state directory exists</p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>CUPERTINO_DISABLE_GUARD=1</code></p>
 </div>
 
 <div class="hz-card">
 <div class="hz-head"><code>self-assess</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
 <p class="hz-script"><code>hooks/guard_target_edit.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>no self-assess edit-scope lock is open at <code>analysis/self-assess/edit_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a self-assess edit-scope lock is open at <code>analysis/self-assess/edit_scope.json</code></p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span>named in the hook's own deny message</p>
 </div>
 
 <div class="hz-card">
 <div class="hz-head"><code>takt</code><span class="hz-chip">Skill|Task|Agent|Write|Edit|MultiEdit</span></div>
 <p class="hz-script"><code>hooks/takt_guard.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>no beat declaration exists at <code>.claude/takt.local.md</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a beat declaration exists at <code>.claude/takt.local.md</code></p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>TAKT_DISABLE_GUARD=1</code></p>
 </div>
 
