@@ -185,10 +185,10 @@ export default defineConfig({
     logo: '/logo.svg',
 
     nav: [
+      { text: 'Plugins', link: '/plugins/' },
       { text: 'Prompt catalog', link: '/catalog/' },
       { text: 'Orchestration', link: '/orchestration/' },
       { text: 'Authoring', link: '/plugin-authoring/' },
-      { text: 'Plugins', link: '/plugins/' },
     ],
 
     sidebar: [
