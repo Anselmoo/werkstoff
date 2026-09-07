@@ -30,8 +30,9 @@ sys.path.insert(0, os.path.join(PLUGIN_ROOT, "scripts"))
 
 try:
     import validators  # type: ignore  # noqa: E402
-except Exception:
+except Exception as exc:
     validators = None  # handled defensively below; schema checks degrade to "deny" on write, not "skip"
+    _validators_import_error = exc
 
 ESCAPE_HATCH = "set CUPERTINO_DISABLE_GUARD=1 to bypass this guard, or remove .cupertino/ if this repo no longer uses cupertino"
 
@@ -132,7 +133,10 @@ def check_handbook_schema(file_path, content):
     if not (is_draft_summary or is_check_summary):
         return
     if validators is None:
-        deny("cupertino: validator module failed to load; refusing to write unvalidated persisted state. " + ESCAPE_HATCH)
+        deny(
+            f"cupertino: validator module failed to load ({type(_validators_import_error).__name__}: "
+            f"{_validators_import_error}); refusing to write unvalidated persisted state. " + ESCAPE_HATCH
+        )
     try:
         obj = json.loads(content)
         if is_draft_summary:

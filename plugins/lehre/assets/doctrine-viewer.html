@@ -82,7 +82,7 @@
   .unode text { font-size: 11px; fill: var(--text); pointer-events: none; }
   .unode .st { font-size: 9px; fill: var(--muted); }
   .uedge { fill: none; stroke: var(--border); stroke-width: 1.5; marker-end: url(#arrow); }
-  .uedge.blocked { stroke: var(--ferria-deep); stroke-dasharray: 4 3; }
+  .uedge.blocked { stroke: var(--ferria); stroke-dasharray: 4 3; }
 
   /* ---- table ---- */
   table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
@@ -170,9 +170,9 @@ const OUTCOME_COLOR = {
   "judgement only":       "var(--neodymia)"
 };
 const NODE_COLOR = {
-  "provenance:evidence-backed":    "var(--chromia-deep)",
-  "provenance:intent-derived":     "var(--silica-deep)",
-  "provenance:scaffolded-default": "var(--neodymia-deep)",
+  "provenance:evidence-backed":    "var(--chromia)",
+  "provenance:intent-derived":     "var(--silica)",
+  "provenance:scaffolded-default": "var(--neodymia)",
   "severity:blocking":             "var(--silica)",
   "severity:advisory":             "var(--muted)",
   "kind:forbid-path":              "var(--cat-1)",
@@ -521,9 +521,9 @@ function hideTip() { el("tip").style.opacity = "0"; }
   if (!DATA) {
     const p = document.createElement("p");
     p.className = "empty";
-    p.appendChild(txt("No doctrine data was injected into this template."));
+    p.appendChild(txt("No doctrine data was injected into this template. Regenerate it with: python3 plugins/lehre/scripts/build_doctrine_html.py . --template plugins/lehre/assets/doctrine-viewer.html --tokens plugins/lehre/assets/tokens.css"));
     document.querySelector(".wrap").appendChild(p);
-    return;
+    throw new Error('no data');
   }
   const t = DATA.totals;
   el("sub").textContent = DATA.mode + " \u00b7 " + t.rules + " rules \u00b7 " +

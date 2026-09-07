@@ -1,0 +1,160 @@
+{
+  "domain": "testing",
+  "generatedAt": "2026-09-07T06:07:11Z",
+  "findings": [
+    {
+      "file": "test/plugins/lint-frontmatter.py",
+      "line": 1,
+      "severity": "High",
+      "title": "lint-frontmatter.py has no companion calibration test",
+      "evidence": "test/plugins/lint-frontmatter.py is a real gate (\"Gate 0 \u2014 every skill/agent frontmatter must parse as YAML\", CLAUDE.md lists it first in the mandatory static-check sequence run on every change) but no test-lint-frontmatter.py, cases in cases.tsv, or fixtures under test/plugins/fixtures/ exercise it at all. A repo-wide search for any reference to its logic (`grep -rn \"lint_frontmatter\\|lint-frontmatter\" test/plugins/`) turns up only the script itself. There is no fabricated-fixture case proving it goes red (e.g. malformed YAML, missing `---` header, or a missing `description` key), and no case exercising the silent-pass branch at line 17-21 (`except ImportError: ... sys.exit(0)`), which is itself exactly the kind of \"looks correct, does nothing\" defect this repo's own CLAUDE.md warns about.",
+      "mechanical": false,
+      "suggestedFix": "Add test/plugins/test-lint-frontmatter.py that builds fabricated plugin-dir fixtures (valid frontmatter, malformed YAML, missing `---`, missing `description`) in a tempdir, invokes lint()/main() against them, and asserts both a passing case and at least one case that produces a nonzero exit / failure line. Also add a case that simulates the `ImportError` path to make the silent-pass behavior an explicit, asserted decision rather than an untested one.",
+      "rule": "Every guard, oracle, or lint script that gates CI or a hook (e.g. test/plugins/lint-*.py, test/docs/*oracle* checks) must ship a companion calibration test, written against fabricated fixtures/cases before the guard is ever pointed at real repo data, that includes at least one case proving the guard actually goes red (not only cases proving it passes) \u2014 a guard with no such calibration test, or one whose cases are all pass-only, does not satisfy this project's testing bar regardless of how much of the guard's code a coverage percentage would report as exercised.",
+      "dimension": "coverage-expectations"
+    },
+    {
+      "file": "test/plugins/lint-plugin-authors.py",
+      "line": 170,
+      "severity": "High",
+      "title": "lint-plugin-authors.py has no companion calibration test",
+      "evidence": "lint-plugin-authors.py is wired directly into CI as a gating step (.github/workflows/plugin-checks.yml, step id `plugin_authors`, line ~107: `run: python3 test/plugins/lint-plugin-authors.py`), and its own docstring recounts the real drift it was written to catch (three plugins shipping scaffold placeholder authors). Despite that, no test-lint-plugin-authors.py exists anywhere under test/plugins/, and no cases.tsv/fixtures entry exercises it \u2014 a repo-wide grep for `lint_plugin_authors`/`lint-plugin-authors` outside the script itself returns nothing. The guard's `lint()` function (line 170) also reads hardcoded module-level paths (`PLUGINS_DIR`, `MARKETPLACE_PATH`, lines 57-59) rather than accepting an injectable root, so it cannot currently be pointed at fabricated fixtures without a refactor \u2014 compounding the missing-calibration gap.",
+      "mechanical": false,
+      "suggestedFix": "Refactor discover_plugin_manifests()/load_marketplace_entries()/lint() to accept an injectable plugins_dir/marketplace_path (defaulting to the real repo paths), then add test/plugins/test-lint-plugin-authors.py that builds fabricated marketplace.json + plugin.json fixtures covering: matching authors (pass), a disk-only plugin with no marketplace entry (red), a marketplace-only entry with no disk plugin (red), a placeholder author name/email (red), and a name mismatch between the two files (red) \u2014 mirroring the sabotage-tested style of test-lint-tag-releases.py.",
+      "rule": "Every guard, oracle, or lint script that gates CI or a hook (e.g. test/plugins/lint-*.py, test/docs/*oracle* checks) must ship a companion calibration test, written against fabricated fixtures/cases before the guard is ever pointed at real repo data, that includes at least one case proving the guard actually goes red (not only cases proving it passes) \u2014 a guard with no such calibration test, or one whose cases are all pass-only, does not satisfy this project's testing bar regardless of how much of the guard's code a coverage percentage would report as exercised.",
+      "dimension": "coverage-expectations"
+    },
+    {
+      "file": "plugins/lehre/hooks/test_lehre_guard.py",
+      "line": 1,
+      "severity": "High",
+      "title": "Test file has zero pytest-discoverable test functions",
+      "evidence": "The whole file (260 lines) is a flat script: helper functions `run()` (line 55), `make_repo()` (line 65), `expect_deny()` (line 78), `expect_allow()` (line 100), `write()` (line 105) are called at module level to drive assertions. `grep -c '^def test'` returns 0 -- there is not a single function named `def test_<behavior>`.",
+      "mechanical": false,
+      "suggestedFix": "Restructure into individually named pytest functions (e.g. `def test_bare_except_denies():`, `def test_layering_violation_denies():`, `def test_clean_file_allows():`), one per current expect_deny/expect_allow call, so pytest's default discovery collects and reports each case independently instead of pytest finding 0 tests in a file literally named test_lehre_guard.py.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "plugins/compass/scripts/test_build_branch_comparison_html.py",
+      "line": 1,
+      "severity": "High",
+      "title": "Test file has zero pytest-discoverable test functions",
+      "evidence": "141-line file driven entirely by module-level calls to the local `ok(label, cond)` helper (defined line 20) and `_write_state()` (line 57); no function anywhere is named `def test_...`. Under pytest's default discovery this file would be collected (it matches `test_*.py`) but yield zero test items.",
+      "mechanical": false,
+      "suggestedFix": "Convert each `ok(\"label\", cond)` call into its own `def test_<snake_case_label>():` function containing a plain `assert cond`, so pytest reports each check individually instead of silently collecting no tests.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "plugins/compass/scripts/test_compass.py",
+      "line": 1,
+      "severity": "High",
+      "title": "Test file has zero pytest-discoverable test functions",
+      "evidence": "292-line file whose assertions all run through module-level calls to `ok(label, fn)` (line 20) and `refuses(label, fn)` (line 30), e.g. `ok(\"dag 2 stages\", lambda: C.validate_dag(...))` at line 49. No `def test_...` function exists anywhere in the file.",
+      "mechanical": false,
+      "suggestedFix": "Turn each ok()/refuses() call site into a dedicated `def test_<snake_case_condition>():` function using plain asserts (or pytest.raises for the refuses() cases), so the file's test cases are individually named and discoverable.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "plugins/lehre/scripts/test_lehre_core.py",
+      "line": 1,
+      "severity": "High",
+      "title": "Test file has zero pytest-discoverable test functions",
+      "evidence": "189-line file consists of module-level calls to `check(label, got, want)` (line 28) and `expect_raises(label, exc, fn, *a)` (line 33), e.g. `check(\"basename glob on nested path\", C.matches(...), True)` at line 52, with a bare `if FAILS: ... sys.exit(1)` at line 185-188 run at import time. No function is named `def test_...`.",
+      "mechanical": false,
+      "suggestedFix": "Split the check()/expect_raises() call sites into named functions such as `def test_basename_glob_on_nested_path():`, `def test_unparseable_python_raises():`, using plain asserts / pytest.raises, so pytest discovers and reports each case rather than finding no tests in this file.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "test/plugins/test-lint-release-wiring.py",
+      "line": 1,
+      "severity": "Medium",
+      "title": "Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions",
+      "evidence": "Filename is `test-lint-release-wiring.py` (hyphen, not underscore) and is invoked directly via `python3 test/plugins/test-lint-release-wiring.py` (see .github/workflows/plugin-checks.yml:190), never through pytest. Its cases are driven by a `case(label, mutate, want_rc, want_text)` helper (line ~54) appending to a module-level `FAILURES` list, not by `def test_*` functions. Because the name doesn't match pytest's default `test_*.py`/`*_test.py` glob, pytest would never even attempt to collect it -- which appears to be intentional (it's documented in CLAUDE.md as a standalone calibration script run by hand/CI, not as part of the pytest suite), but it still diverges from the rule's literal naming requirement for a file whose purpose is testing.",
+      "mechanical": false,
+      "suggestedFix": "Either rename to `test_lint_release_wiring.py` and convert each `case(...)` call into a `def test_<snake_case_mutation>():` function so it becomes a real pytest module, or, if it must stay a standalone CLI calibration script outside pytest by design, rename off the `test` prefix entirely (e.g. `calibrate_lint_release_wiring.py`) to avoid the ambiguous half-matching name.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "test/plugins/test-lint-tag-releases.py",
+      "line": 1,
+      "severity": "Medium",
+      "title": "Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions",
+      "evidence": "Filename is `test-lint-tag-releases.py` (hyphen, not underscore) and is invoked directly via `python3 test/plugins/test-lint-tag-releases.py` (see .github/workflows/plugin-checks.yml:237), never through pytest. Cases are driven by a `run_case(label, tags, releases, grace, want_rc, want_text, baseline=())` helper (line ~46) appending to a module-level `FAILURES` list, not by `def test_*` functions.",
+      "mechanical": false,
+      "suggestedFix": "Either rename to `test_lint_tag_releases.py` and convert each `run_case(...)` call into a `def test_<snake_case_case>():` function, or rename off the `test` prefix (e.g. `calibrate_lint_tag_releases.py`) if it is meant to stay a standalone script outside pytest discovery.",
+      "rule": "Every test file must be named `test_<subject>.py` and every test function within it must be named `def test_<snake_case_behavior_or_condition>(...)`, describing the specific behavior/condition being verified (e.g. `test_missing_blast_radius_denies`, not `test_case_1` or `test_it_works`), matching pytest's default discovery convention with no custom `python_files`/`python_functions` override.",
+      "dimension": "test-naming"
+    },
+    {
+      "file": "test/docs/test_docs_ux_audit.py",
+      "line": 152,
+      "severity": "Medium",
+      "title": "mock.patch.object used to redirect a module-internal path constant instead of exercising a real missing-file path",
+      "evidence": "absent = AUDIT.DOCS / \".vitepress\" / \"config.deleted.mjs\"\n        self.assertFalse(absent.exists())\n        with mock.patch.object(AUDIT, \"CONFIG\", absent):\n            with self.assertRaises(AUDIT.DocsAuditError) as caught:\n                AUDIT.src_exclude()",
+      "mechanical": false,
+      "suggestedFix": "Instead of patching the module's CONFIG global, give src_exclude() (or a thin wrapper) an injectable path parameter defaulting to the real CONFIG, and call it with a tmp-directory path that genuinely does not exist -- exercising real filesystem state rather than redirecting a module internal via mock.patch.object.",
+      "rule": "Tests must exercise real filesystem/git state (via tmp_path or a throwaway git repo) rather than mocking filesystem or module internals; unittest.mock/monkeypatch may only patch genuine external-process boundaries (e.g. shutil.which, subprocess exit codes), and process calls under test must be injected as a plain callable (dependency injection, e.g. a hand-written fake `run` function) rather than patched via mock.patch.",
+      "dimension": "fixture-and-mocking-policy"
+    },
+    {
+      "file": "test/docs/test_docs_ux_audit.py",
+      "line": 190,
+      "severity": "Medium",
+      "title": "mock.patch.object used to swap module globals DOCS and src_exclude rather than injecting the real fixture path",
+      "evidence": "with mock.patch.object(AUDIT, \"DOCS\", docs), \\\n                 mock.patch.object(AUDIT, \"src_exclude\", list):\n                published = {p.relative_to(docs).as_posix() for p in AUDIT.published_pages()}",
+      "mechanical": false,
+      "suggestedFix": "Refactor published_pages() to accept a docs-root and an exclude-list as parameters (defaulting to the module globals), then call it directly with the tmp_path fixture and a literal exclude list, instead of patching AUDIT.DOCS/AUDIT.src_exclude via mock.patch.object.",
+      "rule": "Tests must exercise real filesystem/git state (via tmp_path or a throwaway git repo) rather than mocking filesystem or module internals; unittest.mock/monkeypatch may only patch genuine external-process boundaries (e.g. shutil.which, subprocess exit codes), and process calls under test must be injected as a plain callable (dependency injection, e.g. a hand-written fake `run` function) rather than patched via mock.patch.",
+      "dimension": "fixture-and-mocking-policy"
+    },
+    {
+      "file": "test/docs/test_docs_ux_audit.py",
+      "line": 204,
+      "severity": "Medium",
+      "title": "mock.patch.object used to swap module globals DOCS and src_exclude rather than injecting the real fixture path",
+      "evidence": "with mock.patch.object(AUDIT, \"DOCS\", docs), \\\n                 mock.patch.object(AUDIT, \"src_exclude\", lambda: [\"superpowers/**\"]):\n                published = {p.relative_to(docs).as_posix() for p in AUDIT.published_pages()}",
+      "mechanical": false,
+      "suggestedFix": "Same as the prior occurrence: make published_pages() take docs-root/exclude-list as explicit arguments and call it directly with the tmp_path tree and a literal exclude list, rather than patching module internals.",
+      "rule": "Tests must exercise real filesystem/git state (via tmp_path or a throwaway git repo) rather than mocking filesystem or module internals; unittest.mock/monkeypatch may only patch genuine external-process boundaries (e.g. shutil.which, subprocess exit codes), and process calls under test must be injected as a plain callable (dependency injection, e.g. a hand-written fake `run` function) rather than patched via mock.patch.",
+      "dimension": "fixture-and-mocking-policy"
+    },
+    {
+      "file": "tools/surface-index/test_build_surface_index.py",
+      "line": 381,
+      "severity": "Medium",
+      "title": "Test manually overwrites and restores module-internal globals (REPO/PLUGINS/OUTPUT) instead of injecting paths",
+      "evidence": "self._orig_repo = INDEXER.REPO\n        self._orig_plugins = INDEXER.PLUGINS\n        self._orig_output = INDEXER.OUTPUT\n        INDEXER.REPO = self.repo\n        INDEXER.PLUGINS = self.plugins\n        INDEXER.OUTPUT = self.repo / \"docs\" / \".vitepress\" / \"data\" / \"surface.json\"\n        self.addCleanup(self._restore_globals)  -- class docstring at line 371-373 self-describes this as \"monkeypatching the module's REPO/PLUGINS/OUTPUT globals\"",
+      "mechanical": false,
+      "suggestedFix": "Have discover_plugins()/build_surface() accept repo/plugins/output paths as parameters (defaulting to the module globals for CLI use), and call them directly with the tmp_path fixture in tests instead of saving/overwriting/restoring the module's internal globals.",
+      "rule": "Tests must exercise real filesystem/git state (via tmp_path or a throwaway git repo) rather than mocking filesystem or module internals; unittest.mock/monkeypatch may only patch genuine external-process boundaries (e.g. shutil.which, subprocess exit codes), and process calls under test must be injected as a plain callable (dependency injection, e.g. a hand-written fake `run` function) rather than patched via mock.patch.",
+      "dimension": "fixture-and-mocking-policy"
+    },
+    {
+      "file": "test/plugins/fixtures/ui-missing-alt/index.html",
+      "line": 40,
+      "severity": "High",
+      "title": "Answer key embedded inline in the audited file itself, not in a stripped _EXPECTED.md",
+      "evidence": "Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points self-assess-ui-audit at this exact directory. run.sh (line 139) only does `rm -f \"$tmp/_EXPECTED.md\"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.",
+      "mechanical": true,
+      "suggestedFix": "Move the 'SEEDED-DEFECT FIXTURE' / 'EXPECTED FINDINGS' / 'EXPECTED NON-FINDINGS' commentary out of index.html into a new test/plugins/fixtures/ui-missing-alt/_EXPECTED.md, leaving index.html containing only the seeded HTML defects (and non-defects) with no narration of what is expected, since run.sh only strips a file literally named _EXPECTED.md.",
+      "rule": "Any fixture that seeds a defect for a headless behavioral test case must live under test/plugins/fixtures/ (never nested inside the plugin it exercises, so fixtures stay arm-independent and reusable across legacy/rebuilt/official arms of the same case), must document the seeded defect and expected finding in a checked-in `_EXPECTED.md` in that fixture directory, and the harness that copies the fixture into the subject-under-test's working directory must strip `_EXPECTED.md` before invoking the tool, so the answer key is never handed to the system being graded.",
+      "dimension": "test-data-management"
+    },
+    {
+      "file": "test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json",
+      "line": 1,
+      "severity": "Low",
+      "title": "Seeded-defect-shaped fixture has no checked-in _EXPECTED.md",
+      "evidence": "The fixture directory test/plugins/fixtures/confab-burndown-pseudo-ledger/ contains only analysis/confab/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'confab-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.",
+      "mechanical": false,
+      "suggestedFix": "Either add a test/plugins/fixtures/confab-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.",
+      "rule": "Any fixture that seeds a defect for a headless behavioral test case must live under test/plugins/fixtures/ (never nested inside the plugin it exercises, so fixtures stay arm-independent and reusable across legacy/rebuilt/official arms of the same case), must document the seeded defect and expected finding in a checked-in `_EXPECTED.md` in that fixture directory, and the harness that copies the fixture into the subject-under-test's working directory must strip `_EXPECTED.md` before invoking the tool, so the answer key is never handed to the system being graded.",
+      "dimension": "test-data-management"
+    }
+  ]
+}
