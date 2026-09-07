@@ -35,5 +35,9 @@ select = ["E", "F", "I", "UP", "B", "C901", "PLR0915", "PLR0912", "PLR0913", "D1
 # in the function signature — that's a call-in-default by design, not a bug.
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# Test names are the documentation; a docstring would just repeat the name.
+"tests/*" = ["D101", "D102", "D103"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -28,6 +28,8 @@ class WerkstoffError(RuntimeError):
 
 @dataclass(frozen=True)
 class Plugin:
+    """One marketplace.json plugin entry."""
+
     name: str
     description: str
     source: str
@@ -36,11 +38,14 @@ class Plugin:
 
 @dataclass(frozen=True)
 class Marketplace:
+    """A parsed .claude-plugin/marketplace.json and the repo root it lives in."""
+
     name: str
     root: Path
     plugins: tuple[Plugin, ...]
 
     def plugin(self, name: str) -> Plugin:
+        """Look up a plugin by name, raising WerkstoffError if it's unknown."""
         for candidate in self.plugins:
             if candidate.name == name:
                 return candidate
@@ -62,6 +67,7 @@ def find_repo_root(start: Path | None = None) -> Path:
 
 
 def load_marketplace(repo_root: Path) -> Marketplace:
+    """Parse .claude-plugin/marketplace.json under `repo_root`."""
     manifest_path = repo_root / MARKETPLACE_REL_PATH
     try:
         raw = json.loads(manifest_path.read_text())
@@ -90,11 +96,13 @@ def load_marketplace(repo_root: Path) -> Marketplace:
 
 
 def unknown_plugin_names(marketplace: Marketplace, names: tuple[str, ...]) -> list[str]:
+    """Return the subset of `names` that aren't in `marketplace`."""
     known = {p.name for p in marketplace.plugins}
     return [n for n in names if n not in known]
 
 
 def ensure_claude_cli() -> str:
+    """Return the path to the `claude` CLI, raising WerkstoffError if it's missing."""
     path = shutil.which("claude")
     if path is None:
         raise WerkstoffError("the 'claude' CLI was not found on PATH")
@@ -112,6 +120,7 @@ def _run(argv: list[str], run: Runner) -> subprocess.CompletedProcess[str]:
 def add_marketplace(
     marketplace: Marketplace, run: Runner = subprocess.run
 ) -> subprocess.CompletedProcess[str]:
+    """Run `claude plugin marketplace add` for `marketplace`'s repo root."""
     claude = ensure_claude_cli()
     return _run([claude, "plugin", "marketplace", "add", str(marketplace.root)], run)
 
@@ -119,6 +128,7 @@ def add_marketplace(
 def update_marketplace(
     marketplace: Marketplace, run: Runner = subprocess.run
 ) -> subprocess.CompletedProcess[str]:
+    """Run `claude plugin marketplace update` for `marketplace`."""
     claude = ensure_claude_cli()
     return _run([claude, "plugin", "marketplace", "update", marketplace.name], run)
 
@@ -129,6 +139,7 @@ def install_plugin(
     scope: str = DEFAULT_SCOPE,
     run: Runner = subprocess.run,
 ) -> subprocess.CompletedProcess[str]:
+    """Run `claude plugin install` for one named plugin in `marketplace`."""
     plugin = marketplace.plugin(plugin_name)  # validates the name first
     claude = ensure_claude_cli()
     return _run(
