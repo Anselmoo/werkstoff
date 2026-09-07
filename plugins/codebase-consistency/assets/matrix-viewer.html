@@ -754,6 +754,24 @@ function renderLegend() {
     }
   } else {
     legend.appendChild(legendItem('', 'colours show variant identity, one hue per distinct variant — no ranking implied'));
+    // R4 follow-through: a legend that only explains the ENCODING, without naming
+    // which hue is which variant, still leaves colour as the sole visible-without-
+    // interaction channel for telling two cells apart. Count occurrences straight
+    // from CELLS -- the same module-level source render() reads -- so this never
+    // drifts from what the grid actually shows, and sort by frequency so the
+    // variants a reader is most likely to be scanning for come first. (Not `flat`:
+    // that array is local to render()'s closure and out of scope here.)
+    const counts = new Map();
+    for (const c of CELLS) {
+      if (typeof c.conformance !== 'number' || !hasConformance) {
+        const v = c.variant || '?';
+        counts.set(v, (counts.get(v) || 0) + 1);
+      }
+    }
+    const byFrequency = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    for (const [variant, count] of byFrequency) {
+      legend.appendChild(legendItem(colorForVariant(variant), variant + ' (' + count + ')'));
+    }
     const note = document.createElement('span');
     note.textContent = 'Run /consistency-canonize to switch this to a conformance-to-canon scale.';
     legend.appendChild(note);

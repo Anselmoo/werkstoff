@@ -122,30 +122,33 @@
 </div>
 
 <div class="legend" id="legend"></div>
+<div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;max-width:none;"><p></p></div>
 
 <!--__D3_SUBSET__-->
 <script type="module">
 const d3 = window.d3;
 
 // build_review_flow_html.py replaces everything from the marker onward on
-// this line with the real JSON literal. Left unmodified (template opened
-// directly), the fallback demo below is used instead.
+// this line with the real JSON literal.
 const FLOW_DATA_RAW = /*__FLOW_DATA__*/ null;
 
-const FLOW = FLOW_DATA_RAW || {
-  source: "(fallback demo — no run was read)",
-  stages: [
-    { id: "backwards", label: "cupertino-backwards", lane: 0, status: "ran", content: { experienceStatement: "let a user undo any mistake without fear" } },
-    { id: "focus", label: "cupertino-focus", lane: 0, status: "ran", content: { survivors: [{ name: "core flow" }] } },
-    { id: "longevity", label: "cupertino-longevity", lane: 1, status: "ran", content: { verdict: "incremental, no rewrite risk" } },
-    { id: "integrate", label: "cupertino-integrate", lane: 2, status: "ran", content: { verdict: "own this seam, do not delegate" } },
-    { id: "council", label: "cupertino-council", lane: 0, status: "ran", content: { tensionLog: ["Usability > Reduction: kept the confirm step"] } },
-    { id: "prototype", label: "cupertino-prototype", lane: 0, status: "skipped", content: { skipped: true, reason: "no empirical uncertainty identified for this scope" } },
-    { id: "elevate", label: "cupertino-elevate", lane: 0, status: "not-run", content: null },
-    { id: "unbox", label: "cupertino-unbox", lane: 0, status: "not-run", content: null },
-    { id: "reveal", label: "cupertino-reveal", lane: 0, status: "not-run", content: null },
-  ],
-};
+// S4: a template opened directly (or a build that failed to inject data) must
+// fail visibly, not render a chart full of plausible-looking fake stage names
+// that could be mistaken for a real run. A prior version of this file did
+// exactly that via a nine-stage hardcoded fallback dataset -- removed per the
+// cupertino-council verdict on this file (Usability over the convenience of a
+// local-preview demo mode): no fabricated data ships, ever. Matches the same
+// #err-panel-then-throw pattern board-viewer.html and matrix-viewer.html use.
+if (!FLOW_DATA_RAW || !FLOW_DATA_RAW.stages) {
+  const err = document.getElementById('err');
+  err.querySelector('p').innerHTML =
+    'No review-flow data found in this file.<br>Re-run <code>cupertino-review</code> to regenerate it.';
+  err.style.display = 'grid';
+  document.querySelector('.layout').style.display = 'none';
+  document.getElementById('legend').style.display = 'none';
+  throw new Error('no data');
+}
+const FLOW = FLOW_DATA_RAW;
 
 const STATE_WORD = { 'ran': 'ran', 'skipped': 'explicitly skipped', 'not-run': 'never reached' };
 
@@ -173,15 +176,14 @@ const notReached = byStatus('not-run');
 
 // The <h1> is static and stays identical to <title>. It used to be rewritten
 // here to append a no-data notice, which is S4's "fail visibly" and belongs on
-// the provenance line, not on the report's name -- a heading that changes with
-// the data is a heading that can drift from the document title unnoticed.
+// the #err panel now (see the guard clause above), not on the report's name --
+// a heading that changes with the data is a heading that can drift from the
+// document title unnoticed.
 // R2: the subtitle carries scope and provenance only. Every count lives in the
 // verdict sentence below and is printed exactly once.
 document.getElementById('subtitle').textContent =
-  (FLOW_DATA_RAW
-    ? FLOW.stages.length + ' stages · fixed cupertino-review pipeline · read from '
-      + (FLOW.source || '.cupertino/flags/')
-    : 'no data — template opened directly, so no run is described below');
+  FLOW.stages.length + ' stages · fixed cupertino-review pipeline · read from '
+  + (FLOW.source || '.cupertino/flags/');
 
 // R1: the finding, in a sentence, naming which stages ran, which were skipped
 // on purpose, and which the run never reached -- and what that means for

@@ -4,6 +4,10 @@ Checked against `.cupertino/design-handbook.md`'s 6 dimensions. 18 finding(s) su
 
 **Resolved since this report** (not re-run through the check workflow; noted by hand): 10/12 mechanical findings applied via `cupertino-handbook-fix`; the remaining 2 (`board-viewer.html:270` --ferria-deep badge text, and the `ui-missing-alt` test-data-management finding tracked separately) were blocked by the remediator for exceeding its single-file-line scope and applied directly instead. `board-viewer.html`'s `RADIUS_COLORS['shared-state-visible']` now uses `var(--ferria)`.
 
+Both of the two remaining non-mechanical findings are now also resolved, via a `cupertino-council` pass (Council Brief → Tension Log, both tensions resolved as Usability):
+- `matrix-viewer.html:665` (accessibility-baseline) — the legend now dynamically enumerates every distinct variant actually present, sorted by frequency, pairing each hue to its label; no longer requires clicking every cell to identify a variant.
+- `review-flow-viewer.html:133` (empty-and-error-states) — the nine-entry fabricated demo dataset was deleted outright; missing/invalid data now shows the same `#err`-panel-then-throw pattern as board-viewer.html/matrix-viewer.html/doctrine-viewer.html, naming `cupertino-review` as the regenerate command. Verified visually: opening the raw template shows the error panel with no leaked fake stage data and no console errors.
+
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
 | High | yes | color-and-contrast | `plugins/andon/assets/board-viewer.html:270` | --ferria-deep used as text color for the 'shared-state-visible' badge label |
