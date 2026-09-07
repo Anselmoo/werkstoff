@@ -810,7 +810,7 @@ div[class*='language-prompt'] {
   border: 1px solid var(--vp-c-divider);
   border-radius: var(--wk-radius-panel);
   background: var(--vp-c-bg-soft);
-  padding: 1rem 1.25rem;
+  padding: var(--wk-space-4) var(--wk-space-6);
 }
 
 .hz-head {
@@ -818,7 +818,7 @@ div[class*='language-prompt'] {
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 0.6rem;
+  margin-bottom: var(--wk-space-2);
 }
 
 .hz-head code {
@@ -829,7 +829,7 @@ div[class*='language-prompt'] {
 .hz-chip {
   border: 1px solid var(--vp-c-divider);
   border-radius: 4px;
-  padding: 0.1rem 0.5rem;
+  padding: var(--wk-space-1) var(--wk-space-1);
   font-size: 0.68rem;
   font-family: var(--vp-font-family-mono);
   color: var(--vp-c-text-2);
@@ -846,12 +846,12 @@ div[class*='language-prompt'] {
 .hz-row {
   border-top: 1px solid var(--vp-c-divider);
   margin: 0;
-  padding: 0.6rem 0 0;
+  padding: var(--wk-space-2) 0 0;
   font-size: 0.88rem;
   line-height: 1.5;
 }
 .hz-row + .hz-row {
-  margin-top: 0.6rem;
+  margin-top: var(--wk-space-2);
 }
 
 .hz-row-label {
@@ -861,5 +861,5 @@ div[class*='language-prompt'] {
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--vp-c-text-3);
-  margin: 0 0 0.3rem;
+  margin: 0 0 var(--wk-space-1);
 }

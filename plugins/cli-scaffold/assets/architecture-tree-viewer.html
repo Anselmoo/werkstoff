@@ -28,7 +28,7 @@ body { max-width: 900px; margin: 0 auto; padding: var(--space-5); }
 .panel { background: var(--panel); border: 1px solid var(--border);
   border-radius: var(--radius-panel); padding: var(--space-3); }
 main > .panel + .panel { margin-top: var(--space-3); }
-#title-panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
+#title-panel h1 { font-size: 15px; color: var(--accent); margin-bottom: var(--space-1); }
 #title-panel .sub { color: var(--muted); font-size: 12px; }
 #verdict-panel h2 { font-size: 13px; color: var(--text); margin-bottom: var(--space-2); }
 .verdict { font-size: 14px; line-height: 1.5; }
@@ -47,7 +47,7 @@ main > .panel + .panel { margin-top: var(--space-3); }
 .row-name { font-size: 13px; }
 .row-count { color: var(--muted); font-size: 11px; }
 .row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
-.badge { display: inline-block; padding: 1px 6px; border-radius: var(--radius-sm);
+.badge { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
   font-size: 10px; color: #fff; line-height: 1.5; cursor: default;
   border: 1px solid transparent; }
 /* A role no file claims is drawn hollow and dashed, so "absent" is legible
@@ -58,7 +58,7 @@ main > .panel + .panel { margin-top: var(--space-3); }
   color: var(--muted); flex-wrap: wrap; }
 #legend h2 { flex-basis: 100%; font-size: 11px; color: var(--text);
   text-transform: uppercase; letter-spacing: 0.06em; }
-.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-item { display: flex; align-items: center; gap: var(--space-2); }
 .legend-item.absent { color: var(--status-warn); }
 </style>
 </head>

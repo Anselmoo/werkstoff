@@ -38,13 +38,13 @@
   .verdict .bad { color: var(--samaria-light); font-weight: 600; }
 
   /* ---- funnel strip ---- */
-  .funnel { display: flex; gap: 2px; align-items: stretch; margin-bottom: var(--space-3);
+  .funnel { display: flex; gap: var(--space-1); align-items: stretch; margin-bottom: var(--space-3);
             flex-wrap: wrap; }
   .fstep { flex: 1 1 150px; min-width: 0; padding: var(--space-2); background: var(--panel-2);
            border-radius: var(--radius-sm); }
   .fstep .n { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
   .fstep .l { font-size: 0.72rem; color: var(--muted); text-transform: uppercase;
-              letter-spacing: 0.06em; margin-top: 2px; }
+              letter-spacing: 0.06em; margin-top: var(--space-1); }
   .fstep .d { font-size: 0.75rem; color: var(--smoke); margin-top: var(--space-1); }
   .fstep.terminal { outline: 1px solid var(--chromia-deep); }
   .fstep.leak { outline: 1px solid var(--samaria-deep); }
@@ -86,12 +86,12 @@
 
   /* ---- table ---- */
   table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border);
+  th, td { text-align: left; padding: var(--space-2) var(--space-2); border-bottom: 1px solid var(--border);
            vertical-align: top; }
   th { color: var(--muted); font-weight: 600; text-transform: uppercase;
        font-size: 0.68rem; letter-spacing: 0.06em; }
   td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; }
-  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px;
+  .pill { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: 999px;
           font-size: 0.68rem; font-weight: 600; white-space: nowrap; }
   .why { color: var(--muted); font-size: 0.75rem; }
   .bar { display: flex; align-items: center; justify-content: space-between;
@@ -107,7 +107,7 @@
   #tip {
     position: fixed; pointer-events: none; opacity: 0; z-index: 9;
     background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.75rem;
+    border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); font-size: 0.75rem;
     max-width: 340px; white-space: pre-line; box-shadow: 0 4px 16px rgba(0,0,0,0.5);
     transition: opacity var(--transition-fast);
   }
@@ -250,7 +250,7 @@ function drawFunnel() {
     if (i > 0 && steps[i - 1].n > s.n) {
       const drop = document.createElement("span");
       drop.style.cssText =
-        "font-size:.75rem;font-weight:500;color:var(--samaria-light);margin-left:6px";
+        "font-size:.75rem;font-weight:500;color:var(--samaria-light);margin-left:var(--space-2)";
       drop.appendChild(txt("-" + (steps[i - 1].n - s.n)));
       n.appendChild(drop);
     }

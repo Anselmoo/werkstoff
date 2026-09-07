@@ -32,7 +32,7 @@
   .legend { display: flex; gap: var(--space-4); font-size: 11px; color: var(--muted);
     margin: var(--space-3) 0 var(--space-5); flex-wrap: wrap; }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px;
-    margin-right: 5px; vertical-align: middle; }
+    margin-right: var(--space-1); vertical-align: middle; }
   .rows { display: flex; flex-direction: column; gap: var(--space-3); }
   /* Column budget, rebalanced (R5): the description is the part a reader spends
      time in and the bars are the part that carries the comparison, so both get
@@ -49,7 +49,7 @@
   .row .name { font-weight: 600; }
   .row .badge {
     display: inline-block; margin-left: var(--space-2); font-size: 10px; color: var(--accent-2);
-    border: 1px solid var(--accent-2); border-radius: var(--radius-sm); padding: 1px 5px;
+    border: 1px solid var(--accent-2); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-1);
     vertical-align: middle;
   }
   .row .desc { color: var(--muted); font-size: 12px; margin-top: var(--space-1); line-height: 1.4; }

@@ -22,21 +22,21 @@
   .tabs { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
   .tab-btn {
     background: var(--panel); color: var(--muted); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: 6px 14px; font: inherit; font-size: 12px;
+    border-radius: var(--radius-control); padding: var(--space-2) var(--space-4); font: inherit; font-size: 12px;
     cursor: pointer; transition: var(--transition-fast);
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--accent); border-color: var(--accent); background: var(--panel-2); }
-  .stat-row { padding: var(--space-4) var(--space-5) 0; display: flex; gap: 14px; flex-wrap: wrap; }
+  .stat-row { padding: var(--space-4) var(--space-5) 0; display: flex; gap: var(--space-4); flex-wrap: wrap; }
   .stat {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: var(--radius-control);
-    padding: 12px 18px;
+    padding: var(--space-3) var(--space-5);
     min-width: 110px;
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat .k { font-size: 11px; color: var(--muted); margin-top: var(--space-1); }
   .stat .need { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; }
   /* R3: an actionable number must not be typographically identical to an inert
      one. `.watch` is queued work, `.alarm` is work the cycle refuses to retry
@@ -84,7 +84,7 @@
     display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin: 12px 0 0;
     flex-wrap: wrap; list-style: none; padding: 0;
   }
-  .legend li { display: flex; align-items: center; gap: 5px; }
+  .legend li { display: flex; align-items: center; gap: var(--space-1); }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; flex-shrink: 0; }
   .legend .swatch.line { width: 18px; height: 3px; border-radius: 2px; }
   .legend .swatch.open { background: var(--status-warn); }
@@ -93,7 +93,7 @@
   .legend .swatch.trend { background: var(--accent-2); }
   .legend .glyph { font-size: 11px; color: var(--smoke); width: 1em; text-align: center; }
   .legend .name { color: var(--smoke); }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 12px; cursor: pointer; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: var(--space-2) 0; font-size: 12px; cursor: pointer; }
   .bar-row:hover .label { color: var(--accent); }
   .bar-row .label { width: 100px; flex-shrink: 0; color: var(--muted); }
   .bar-row .track { flex: 1; background: var(--panel-2); border-radius: var(--radius-sm); height: 16px; overflow: hidden; }
@@ -109,14 +109,14 @@
     padding: var(--space-4); overflow-y: auto; flex-shrink: 0;
     position: sticky; top: var(--space-3); max-height: calc(100vh - 2 * var(--space-3));
   }
-  .sidebar h2 { font-size: 14px; margin: 0 0 10px; color: var(--accent); }
-  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: var(--line-height-base); margin-top: 40px; }
+  .sidebar h2 { font-size: 14px; margin: 0 0 var(--space-3); color: var(--accent); }
+  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: var(--line-height-base); margin-top: calc(var(--space-5) * 2); }
   .sidebar .finding-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
   .sidebar .finding-item .id { font-weight: 500; }
-  .sidebar .finding-item .meta { color: var(--muted); margin-top: 2px; }
+  .sidebar .finding-item .meta { color: var(--muted); margin-top: var(--space-1); }
   .sidebar .finding-item .evidence {
     margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: 5px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+    padding: var(--space-1) var(--space-2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
     word-break: break-word;
   }
   [hidden] { display: none !important; }

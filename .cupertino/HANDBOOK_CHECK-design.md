@@ -8,6 +8,10 @@ Both of the two remaining non-mechanical findings are now also resolved, via a `
 - `matrix-viewer.html:665` (accessibility-baseline) — the legend now dynamically enumerates every distinct variant actually present, sorted by frequency, pairing each hue to its label; no longer requires clicking every cell to identify a variant.
 - `review-flow-viewer.html:133` (empty-and-error-states) — the nine-entry fabricated demo dataset was deleted outright; missing/invalid data now shows the same `#err`-panel-then-throw pattern as board-viewer.html/matrix-viewer.html/doctrine-viewer.html, naming `cupertino-review` as the regenerate command. Verified visually: opening the raw template shows the error panel with no leaked fake stage data and no console errors.
 
+All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cupertino-council` pass on the policy question (not per-value — 60+ declarations across 9 files all reduced to two decisions: mid-scale tie-break direction, and how to handle 40px vs. the scale's 20px ceiling). Both tensions resolved as Usability: ties round up (favor more room over less); 40px becomes `calc(var(--space-5) * 2)` rather than lossily collapsing to a single token, preserving the visual weight of a real section break. Applied across `board-viewer.html`, `architecture-tree-viewer.html`, `matrix-viewer.html`, `branch-comparison-viewer.html`, `burndown-viewer.html`, `review-flow-viewer.html`, `doctrine-viewer.html`, `stage-map-viewer.html`, and `docs/.vitepress/theme/werkstoff.css`'s `.hz-*` rules (rem-based, mapped onto the `--wk-space-*` scale by the same policy). Verified: brace-balance check on every edited `<style>` block, `node --check` on every edited inline script, `npm run docs:build` + `docs_ux_audit.py` (0 findings), and a live computed-style check confirming `.hz-card` now resolves to `16px 24px`.
+
+**Design domain: 18/18 findings resolved.**
+
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
 | High | yes | color-and-contrast | `plugins/andon/assets/board-viewer.html:270` | --ferria-deep used as text color for the 'shared-state-visible' badge label |
