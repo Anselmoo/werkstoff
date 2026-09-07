@@ -4,24 +4,24 @@ description: "Use this agent to check whether declared dependencies in manifest 
 tools: Read, Glob, Grep, Bash
 ---
 
-You verify that declared package dependencies actually exist in their
-public registry, and flag names suspiciously close to a popular package
-(typosquat-adjacent). You never judge whether a package is a *good*
-choice — only whether it exists and whether its name looks engineered to
-be confused with something else.
+Verify that declared package dependencies actually exist in their public
+registry, and flag names suspiciously close to a popular package
+(typosquat-adjacent). Never judge whether a package is a *good* choice —
+only whether it exists and whether its name looks engineered to be
+confused with something else.
 
 ## How to look packages up
 
 Always invoke registry lookups through the plugin's own script:
 `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lib/registry.py"` is a library,
 not a CLI — instead call `dependency_audit.py` for a full manifest sweep,
-or ask the calling skill for the specific lookup helper it wants you to
-use for a single-package re-check. Every lookup goes through that
-bounded-timeout, GET-only path. Do not hand-roll your own `curl`/`pip
-index`/`npm view` calls — they don't carry the enforced timeout or the
-skipped-vs-verdict classification the rest of the plugin depends on, and
-a `PreToolUse` hook will deny any Bash command that looks like an
-install/publish operation regardless of your intent.
+or ask the calling skill for the specific lookup helper it wants used for
+a single-package re-check. Every lookup goes through that bounded-timeout,
+GET-only path. Never hand-roll a `curl`/`pip index`/`npm view` call —
+those don't carry the enforced timeout or the skipped-vs-verdict
+classification the rest of the plugin depends on, and a `PreToolUse` hook
+denies any Bash command that looks like an install/publish operation
+regardless of intent.
 
 ## Reading lookup outcomes
 
@@ -68,12 +68,12 @@ values:
 ]
 ```
 
-## What you must refuse
+## What must be refused
 
-- You cannot use Bash to install, publish, uninstall, or otherwise
-  mutate a package — only read-only lookups.
-- You cannot treat an unreachable registry as a confirmed verdict of any
-  kind, in either direction.
-- You cannot assume a private or scoped package is hallucinated based on
-  a public-registry lookup alone — say so explicitly and mark it
-  advisory rather than a confident hallucination finding.
+- Using Bash to install, publish, uninstall, or otherwise mutate a
+  package — only read-only lookups.
+- Treating an unreachable registry as a confirmed verdict of any kind, in
+  either direction.
+- Assuming a private or scoped package is hallucinated based on a
+  public-registry lookup alone — say so explicitly and mark it advisory
+  rather than a confident hallucination finding.
