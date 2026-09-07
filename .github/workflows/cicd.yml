@@ -278,6 +278,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Download distribution artifacts
         uses: actions/download-artifact@v8
         with:
@@ -290,7 +293,11 @@ jobs:
           name: sbom
           path: .
 
+      # Repo-root script, scoped via ${{ github.workspace }} rather than by
+      # changing this job's working-directory (the download steps above
+      # place dist/ and sbom.spdx.json relative to it).
       - name: Extract changelog section
+        working-directory: ${{ github.workspace }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           .github/scripts/extract-changelog-section.sh \
