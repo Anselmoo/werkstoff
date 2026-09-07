@@ -188,7 +188,7 @@ export default defineConfig({
       { text: 'Prompt catalog', link: '/catalog/' },
       { text: 'Orchestration', link: '/orchestration/' },
       { text: 'Authoring', link: '/plugin-authoring/' },
-      { text: 'Plugins', link: '/plugins/andon' },
+      { text: 'Plugins', link: '/plugins/' },
     ],
 
     sidebar: [
@@ -223,6 +223,7 @@ export default defineConfig({
         text: 'Plugins',
         collapsed: true,
         items: [
+          { text: 'Overview', link: '/plugins/' },
           { text: 'andon', link: '/plugins/andon' },
           { text: 'cli-scaffold', link: '/plugins/cli-scaffold' },
           { text: 'codebase-consistency', link: '/plugins/codebase-consistency' },

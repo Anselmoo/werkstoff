@@ -7,6 +7,7 @@ import RecipeBeats from './components/RecipeBeats.vue'
 import DocEnd from './components/DocEnd.vue'
 import CatalogGrid from './components/CatalogGrid.vue'
 import PairingCards from './components/PairingCards.vue'
+import PluginGrid from './components/PluginGrid.vue'
 import { applyBreathers, docBlockRoot } from './composables/useBreathers.js'
 import { PROSE_PAGE_KEY } from './composables/useProsePage.js'
 
@@ -120,5 +121,6 @@ export default {
     app.component('RecipeBeats', RecipeBeats)
     app.component('CatalogGrid', CatalogGrid)
     app.component('PairingCards', PairingCards)
+    app.component('PluginGrid', PluginGrid)
   },
 }
