@@ -1,0 +1,106 @@
+# documentation handbook
+
+Drafted by `cupertino-handbook-draft` (domain: `documentation`) via one dimension-analyst dispatch per
+dimension, each independently re-verified by a second, blind dispatch of the same agent type.
+
+## Dimensions
+
+### structure-and-navigation — CONFIRMED
+
+**Rule:** Any docs/ entry-point file (README.md or index.md) that owns a references/ subdirectory must link every file in that subdirectory, each with a one-line note on when to read it (a '## Resources'-style list, or inline pointers at point of use); a file left deliberately unlinked must say so and why in its own body rather than dangling silently.
+
+**Source:** `analyzed`
+
+**Evidence:** docs/plugin-authoring/README.md:27-46 (Resources section linking all 3 files in docs/plugin-authoring/references/ with a description each); docs/orchestration/README.md:201-211 (links 6 of the 7 files in docs/orchestration/references/); docs/plugin-authoring/references/craft-standards.md:144-148 (the rule stated explicitly: "Every bundled file must be linked from SKILL.md... End the body with a `## Resources` section listing each file and one line on when to read it"); the one exception is self-documenting rather than silent — docs/orchestration/references/catalog.md:1-10 states it is "kept, unindexed from primary navigation, only so that external links made against the old URL still resolve," and docs/catalog/_UNRESOLVED.md:15 cross-references that same deliberate omission.
+
+**Verification verdict:** `confirmed`
+
+**Verification note:** Re-verified independently. All four evidence citations check out: (1) docs/plugin-authoring/README.md:27-46 does contain a `## Resources` section (line 25 heading, entries at 27,33,40) linking all 3 files actually present in docs/plugin-authoring/references/ (craft-standards.md, output-shape-findings.md, report-viewer-standard.md), each with a descriptive note. (2) docs/orchestration/README.md:199-212 links 6 of the 7 files actually present in docs/orchestration/references/ (routing, gates, delegation, hazards, pairings, claude-md-block are linked; catalog.md is the omitted one) — confirmed by directly globbing the references/ directory. (3) craft-standards.md:144-148 is quoted verbatim correctly ("Every bundled file must be linked from `SKILL.md`... End the body with a `## Resources` section listing each file and one line on when to read it") — though this specific passage's *subject* is SKILL.md wiring (and the same file candidly notes 0/63 SKILL.md files complied before one fix), not docs/README.md wiring, so it's better read as the general principle the two docs/README.md instances independently uphold for themselves rather than as direct evidence of the docs/-entry-point-specific rule. That's a minor scope conflation but not fabrication. (4) docs/orchestration/references/catalog.md:1-10 does self-declare its deliberate omission ('kept, unindexed from primary navigation, only so that external links... still resolve'), and docs/catalog/_UNRESOLVED.md:15 does reference the old catalog.md by path in a verification context. I also independently swept all docs/**/references directories (there are exactly 3: plugin-authoring/references, orchestration/references, plugins/references) and confirmed docs/plugins/ has no README.md/index.md entry point at all (only per-plugin pages plus a vitepress sidebar link), so it correctly falls outside the rule's stated scope rather than being an uncited counterexample. The two instances that do qualify (plugin-authoring, orchestration) both genuinely comply (full linking, and linking-with-a-stated-exception respectively), so sourceMode 'analyzed' is honest — this is a real, if small-N, verified pattern, not invented. The rule itself is concrete and mechanically checkable: for any docs/*/README.md or index.md with a sibling references/ dir, diff the directory listing against the README's links, and check any gap for a self-documented reason in the unlinked file's own body.</note>
+</invoke>
+
+
+### code-example-freshness — CONFIRMED
+
+**Rule:** Any runnable code example in a plugin README that builds an artifact from a script (e.g. a `build_*_html.py` command producing a report-viewer screenshot) must commit its exact fixture input beside the builder (never under a gitignored path like `/analysis/`) and reproduce the literal runnable command in the README text, so the example can be re-run and its output diffed before merging any change to the builder, the viewer, or the README; a README code example with no committed fixture, or whose cited command no longer matches the script's actual arguments, is a code-example-freshness violation.
+
+**Source:** `analyzed`
+
+**Evidence:** docs/plugin-authoring/references/report-viewer-standard.md:191-196 (C2: "Commit the input beside the builder and cite it from the plugin README with a runnable command -- `plugins/lehre/scripts/fixtures/sample_doctrine_ruleset.json` and the block under 'The doctrine map' in `plugins/lehre/README.md` are the pattern"), confirmed live at plugins/lehre/README.md:96,134,140,142; failure case documented at report-viewer-standard.md:247-255 (`plugins/self-assess/assets/stage-map-viewer-screenshot.jpg` silently drifted a year out of sync with its own viewer's tokens because no committed fixture/command existed to re-run and diff); counter-example of an uncited, rotting fixture at report-viewer-standard.md:195-196 (`plugins/codebase-consistency/scripts/testdata/sample_matrix.json`); also mirrored for andon at plugins/andon/README.md:116-134 (build_board_html.py command against committed `plugins/andon/scripts/fixtures/sample_ledger/`).
+
+**Verification verdict:** `confirmed`
+
+**Verification note:** sourceMode "analyzed" is honest: docs/plugin-authoring/references/report-viewer-standard.md:191-196 states the C2 convention verbatim, and it is genuinely followed at plugins/lehre/README.md:96,134,140-144 (fixture at scripts/fixtures/sample_doctrine_ruleset.json + runnable rebuild command) and plugins/andon/README.md:116-131 (fixture at scripts/fixtures/sample_ledger/ + runnable build_board_html.py command). The failure case cited (report-viewer-standard.md:247-255, self-assess stage-map screenshot drifting a year unnoticed) is accurately described. /analysis/ is confirmed gitignored at .gitignore:23. A real, partially-automated enforcement of this already exists at scripts/ci/check_viewer_conformance.py:195-211 (checks the README cites 'scripts/fixtures/' or 'scripts/testdata/' as a substring), which further corroborates this is a genuine, load-bearing convention rather than invented evidence. One minor flaw inherited from the source doc rather than fabricated by the candidate: its counter-example at report-viewer-standard.md:195-196 calls plugins/codebase-consistency/scripts/testdata/sample_matrix.json 'referenced by nothing,' but plugins/codebase-consistency/README.md:96-110 now does cite it with a runnable rebuild command -- that specific counter-example is stale in the standards doc itself, though it doesn't undermine the rule's core claim since the candidate quoted the doc accurately rather than inventing the claim. The rule is concrete and mechanically checkable: for each plugin README containing a runnable build-artifact example, verify (1) a fixture file is committed at a non-gitignored path beside the builder script, and (2) the README's literal command matches the script's actual current CLI arguments -- both are things a script can diff against the filesystem and the builder's argparse definition, extending (not just restating) the existing partial lint.</note>
+</invoke>
+
+
+### api-reference-completeness — CONFIRMED
+
+**Rule:** Every plugin's README.md must include a Skills/Commands section and an Agents section (each labeled with its exact count where a count is used, e.g. "## Skills (16)") that enumerates every skill, command, and agent file actually shipped under that plugin's skills/, commands/, and agents/ directories — no shipped skill, command, or agent may be omitted, and no documented one may be missing from disk.
+
+**Source:** `analyzed`
+
+**Evidence:** plugins/self-assess/README.md:362 ("## Skills (16)") and :371 ("## Agents (11)") match exactly the 16 files under plugins/self-assess/skills/*/SKILL.md and 11 files under plugins/self-assess/agents/*.md; plugins/andon/README.md:136 ("## Skills (5)") and :146 ("## Agents (4, ...)") match exactly the 5 SKILL.md files and 4 agent files under plugins/andon/skills/ and plugins/andon/agents/; plugins/codebase-consistency/README.md:183-263 ("## Commands" / "## Agents") lists exactly the 8 files in plugins/codebase-consistency/commands/ and 5 files in plugins/codebase-consistency/agents/ with no additions or omissions.
+
+**Verification verdict:** `confirmed`
+
+**Verification note:** Evidence checks out. Verified exact counts/enumeration on disk against README claims for all three cited plugins: self-assess (16 skills under plugins/self-assess/skills/*/SKILL.md, 11 agents under plugins/self-assess/agents/*.md, matching README.md:362/:371); andon (5 skills, 4 agents, matching README.md:136/:146); codebase-consistency (8 files in commands/, 5 in agents/, matching README.md:183-263 listing exactly those with no additions/omissions). Extended the check to the other plugins not cited and found the convention holds even more broadly than claimed: compass (14/3), cupertino (15/4), confab (8/5), and cli-scaffold (5/1) all also carry accurate '## Skills (N)' / '## Agents (N)' headers matching their actual file counts — so sourceMode 'analyzed' is honest and, if anything, under-cited (7 of 9 plugins comply, not just the 3 named). takt legitimately has neither section since it ships zero skills/agents/commands by design (README.md states 'It owns no skills and no agents'), so it's not a counter-example. However, lehre IS a genuine counter-example the candidate did not surface: it has 9 skills (plugins/lehre/skills/*/SKILL.md) and 8 agents (plugins/lehre/agents/*.md) but its README.md has no '## Skills' or '## Agents' heading at all (grepped all '^## ' headings, none present). This doesn't make the candidate's evidence dishonest, but it does mean the rule as stated would immediately flag a real, pre-existing drift case (lehre) — which is fine for an enforceable rule (drift-audits are supposed to catch exactly this), but the analyst should know current compliance is 7/8 documentable plugins, not universal. The rule itself is concrete and mechanically checkable: for a given plugin, list skills/*/SKILL.md, commands/*, agents/*.md on disk, parse the README's declared count and enumerated names, and diff — no subjective judgment required.</note>
+</invoke>
+
+
+### changelog-discipline — CONFIRMED
+
+**Rule:** Before tagging any version group's release, its CHANGELOG.md must move the relevant entries out of the leading `## [Unreleased]` section into a new `## [X.Y.Z] - YYYY-MM-DD` heading whose version exactly matches the tag/plugin.json version, grouped under `### Added` / `### Fixed` / `### Changed` / `### Documentation` bullets that cite the PR number in parentheses where one exists — because the release pipeline's `.github/scripts/extract-changelog-section.sh` does a literal `## [<version>]` match to build the GitHub release body and silently emits "_No CHANGELOG.md entry found for version X.Y.Z._" instead of failing when the heading is missing or mismatched.
+
+**Source:** `analyzed`
+
+**Evidence:** .github/scripts/extract-changelog-section.sh:7-13 (awk matches literal "## [<version>]"); .github/workflows/plugin-release.yml:85-89 (calls the script to build release-notes.md from `plugins/<group>/CHANGELOG.md`); plugins/andon/CHANGELOG.md:5-7 (`## [Unreleased]` followed by `## [0.10.0] - 2026-09-05` with `### Added`/`### Fixed`/`### Documentation` bullets citing `(#NN)`); same Unreleased+dated-heading+category pattern repeated in plugins/lehre/CHANGELOG.md:3-7 and tools/werkstoff-cli/CHANGELOG.md:1-10, the latter also stating "The format is based on Keep a Changelog"
+
+**Verification verdict:** `confirmed`
+
+**Verification note:** sourceMode "analyzed" is honest and the rule is concrete/checkable. Verified independently: .github/scripts/extract-changelog-section.sh:7-13 does a literal awk `\[<version>\]` match and lines 14-15 confirm it silently emits a "_No CHANGELOG.md entry found..._" placeholder instead of failing on a missing/mismatched heading, exactly as claimed. .github/workflows/plugin-release.yml:85-89 calls that script against plugins/<group>/CHANGELOG.md with the tag-resolved version. plugins/andon/CHANGELOG.md:5-7 and plugins/lehre/CHANGELOG.md:3-7 show the exact Unreleased -> `## [X.Y.Z] - YYYY-MM-DD` -> `### Added`/`### Fixed`/`### Documentation` bullets-with-`(#NN)` pattern; I independently found the identical pattern in plugins/cupertino/CHANGELOG.md:5-15 and plugins/self-assess/CHANGELOG.md:5-15, and confirmed .rrt.toml wires a distinct `changelog_file` per version group (lines 19,28,37,46,55,64,73,82,91,100) for all nine plugins plus werkstoff-cli, so the convention is repo-wide and load-bearing, not cherry-picked. One minor inaccuracy in the candidate's evidence: it cites tools/werkstoff-cli/CHANGELOG.md:1-10 as showing "the same Unreleased+dated-heading+category pattern," but that file's actual entry (`## [0.1.0]`, no date, no category subheadings, plain "- Initial release." bullet) does not match the pattern -- only its stated Keep-a-Changelog adherence (lines 5-6) is accurate. This does not undermine the rule since andon/lehre (and cupertino/self-assess) are genuine, on-point citations for the full pattern. The rule's requirements (exact version-matched dated heading, required category set, PR-number-where-available) are all objectively testable against a diff and a tag, so a later audit could mechanically enforce it.
+
+### tone-and-audience — CONFIRMED
+
+**Rule:** Skill/agent frontmatter `description` fields must be written in third person and trigger-rich (describing when/why to invoke), while the SKILL.md/agent body must be written in imperative/infinitive mood addressed to the acting agent, never second person ("you") — e.g. "Compose the five phases in order," not "You route a scaffold request... You never generate code yourself."
+
+**Source:** `analyzed`
+
+**Evidence:** docs/plugin-authoring/references/craft-standards.md:109-121 (rule statement, plus good example verified at plugins/compass/skills/compass-solve/SKILL.md and bad/second-person example verified at plugins/cli-scaffold/skills/scaffold-cli/SKILL.md)
+
+**Note:** The craft-standards.md doc itself flags enforcement as currently inconsistent across the repo (andon-loop and scaffold-cli use second person; compass-solve and confab-cycle are already imperative) -- but the rule and both cited examples are real, not fabricated, and this dispatch proposes converging future skill/agent edits on the already-documented convention rather than inventing a new one.</note>
+</invoke>
+
+
+**Verification verdict:** `confirmed`
+
+**Verification note:** Verified independently. docs/plugin-authoring/references/craft-standards.md:109-121 ("### Writing style — two voices") states exactly the two-voice rule cited: description fields third-person/trigger-rich (line 111), body imperative/infinitive not second-person (line 112), with the "Good" example "Compose the five phases in order." and "Bad" example "You route a scaffold request... You never generate code yourself...". Both examples are real, verbatim quotes: plugins/compass/skills/compass-solve/SKILL.md:16 reads exactly "Compose the five phases in order." and plugins/cli-scaffold/skills/scaffold-cli/SKILL.md:8-9 reads exactly "You route a scaffold request to the correct paradigm skill. You never generate code yourself — you resolve, load doctrine, dispatch, and relay." The doc itself (lines 116-121) also honestly flags that enforcement is currently inconsistent (andon-loop and scaffold-cli use second person; compass-solve and confab-cycle are already imperative), which the candidate's note accurately reproduces rather than overstating. sourceMode "analyzed" is honest — this is a real, already-documented convention, not fabricated. The rule is mechanically checkable: grep skill/agent body text (excluding frontmatter) for second-person pronouns ("you"/"your") as a violation signal, and check description fields for third-person phrasing and a "when to use" trigger clause. No changes needed.</note>
+</invoke>
+
+
+### versioning-of-docs — NEEDS REVISION
+
+**Rule:** Any documentation claim that measures, counts, or characterizes the current state of the codebase (character/word counts, tool-grant lists, hook/enforcement inventories, third-party plugin behavior) must be pinned to the commit hash or checked-date it was measured against (e.g. "as of `1cd5d07`", "commit `0c10fa0`", "checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`") rather than stated as a timeless fact, so a later drift is visible as staleness instead of silently becoming false.
+
+**Source:** `analyzed`
+
+**Evidence:** docs/plugin-authoring/references/craft-standards.md:10 ("commit `11427384c7609227f20c1d57e6c39de47ccf73c5`"), :89 and :102 ("as of `1cd5d07`"); docs/plugin-rebuild-findings.md:135-141 (claim pinned to "commit `0c10fa0`", later corrected with "Current inventory (checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`)" once the original claim went stale); docs/plugin-benchmark-plan.md:170 ("factually wrong as of this checkout")
+
+**Verification verdict:** `revise`
+
+**Verification note:** The three citations are real (verified): docs/plugin-authoring/references/craft-standards.md:10 pins to commit `11427384c7609227...`, :89 and :101-102 say "as of `1cd5d07`"; docs/plugin-rebuild-findings.md:134-141 does show a stale unpinned claim corrected with "checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`"; docs/plugin-benchmark-plan.md:170 does say "factually wrong as of this checkout." So the candidate did not fabricate evidence.
+
+But two problems undercut "analyzed" as meaning an established, consistently-followed convention rather than a handful of isolated self-corrections:
+
+1. The very same craft-standards.md file that supplies two of the three positive examples also contains multiple unpinned measurement claims of the identical kind the rule targets — "across all 63 SKILL.md files" appears unpinned at lines 88, 150, and 155, right alongside the pinned word-count claim at 101-102. docs/orchestration/README.md similarly states "It ships 14 skills, zero agents, zero commands" (line 26) and "`pr-review-toolkit` holds 6 agents behind one command" (line 36) with no commit/date pin at all. So pinning is not the repo's norm for this category of claim — it's something that happened in two or three specific places, mostly right after a stale claim was caught, not a habit applied broadly even within the cited documents.
+
+2. The third citation actually contradicts the rule as worded: plugin-benchmark-plan.md:170 says "factually wrong as of this checkout" — no commit hash, no checked-date, just a vague "this checkout." The candidate rule requires pinning to "the commit hash or checked-date it was measured against," and this cited example does neither, yet is offered as supporting evidence.
+
+Given that most comparable claims across these same docs are unpinned, and one of the three supporting examples doesn't even match the rule's own required format, "analyzed" overstates this as an established convention. The underlying observation (a couple of docs were caught stating stale facts and were subsequently corrected with a pin) is real and worth keeping, but the rule should either be scoped down (e.g., limited to claims previously caught going stale, or framed as scaffolded best-practice going forward) or the note should acknowledge the inconsistency rather than presenting three citations as if they uniformly demonstrate the practice. The rule's phrasing itself is concrete/checkable, but as written it would flag the very craft-standards.md and orchestration/README.md sections used as its own evidence.
+
+## Exceptions & waivers
+
+_None recorded yet._
+
+## Change log
+
+- 2026-09-07: Drafted via `cupertino-handbook-draft` (domain: `documentation`). 5/6 dimensions confirmed on independent re-verification; the rest are flagged `NEEDS REVISION` above and should be tightened (narrower scope, corrected evidence) before being treated as enforceable.

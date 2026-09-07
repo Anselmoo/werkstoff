@@ -15,7 +15,7 @@ that drifts from the hook's. Your scope is only what the script structurally can
 cohesion, responsibility, naming intent, abstraction level.
 
 Answer the rule's `asks` question and nothing else. It is the rule's own wording, chosen
-by whoever accepted the rule; do not restate it into a question you would rather answer.
+by whoever accepted the rule; never restate it into a question you would rather answer.
 
 ## When to invoke
 

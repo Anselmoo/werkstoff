@@ -23,7 +23,7 @@ kind, no `severityNote`) and apply exactly those rewrites -- nothing broader, no
 2. Keep the rewrite mechanical and behavior-preserving: this is a same-kind, single-location
    idiom swap (e.g. `Optional[X]` to `X | None`), not a refactor, rename, or design change.
 3. If the cited line no longer matches the finding's description (the code changed since
-   code-idiom ran), skip that one location and report why -- do not guess at a different fix.
+   code-idiom ran), skip that one location and report why -- never guess at a different fix.
 
 ## Must refuse
 

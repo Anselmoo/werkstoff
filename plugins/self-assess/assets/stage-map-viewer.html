@@ -19,7 +19,7 @@
   }
   * { box-sizing: border-box; margin: 0; }
   html, body { height: 100%; overflow: hidden; background: var(--bg);
-    color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+    color: var(--text); font: var(--font-size-base)/var(--line-height-base) var(--font-sans); }
   #map { position: absolute; inset: 0; cursor: grab; }
   #map.dragging { cursor: grabbing; }
   /* R5 (report-viewer-standard): this viewer is the "absolute canvas"
@@ -32,9 +32,9 @@
     overflow-y: auto; overscroll-behavior: contain;
     display: flex; flex-direction: column; gap: 8px; z-index: 2; }
   .panel { background: var(--panel); border: 1px solid var(--border);
-    border-radius: 8px; padding: 10px 12px; }
-  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: 2px; }
-  .panel h2 { font-size: 13px; color: var(--accent); margin-bottom: 5px; }
+    border-radius: 8px; padding: var(--space-3) var(--space-3); }
+  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: var(--space-1); }
+  .panel h2 { font-size: 13px; color: var(--accent); margin-bottom: var(--space-1); }
   .panel .sub { color: var(--muted); font-size: 12px; }
   /* R1: the verdict sentence -- what this map FOUND, not how to drive it. */
   .verdict { color: var(--text); font-size: 12px; line-height: 1.5; }
@@ -44,21 +44,21 @@
      the two non-colour channels (amber ring, dashed ring) are drawn on the
      swatch itself so they read the same way they do on the canvas. */
   #legendpanel h3 { font-size: 11px; text-transform: uppercase;
-    letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; }
+    letter-spacing: .05em; color: var(--muted); margin-bottom: var(--space-2); }
   .legend { list-style: none; padding: 0; display: flex; flex-direction: column;
-    gap: 6px; font-size: 12px; color: var(--muted); }
+    gap: var(--space-2); font-size: 12px; color: var(--muted); }
   .legend li { display: flex; align-items: center; gap: 8px; }
   .legend .swatch { flex: none; width: 15px; height: 15px; border-radius: 50%;
     border: 1px solid var(--border); }
   .legend .swatch.ring-god { border-color: var(--god); border-width: 2px; }
   .legend .swatch.ring-dead { border-style: dashed; }
-  .legend .swatch.tiny { width: 8px; height: 8px; margin-right: -3px; }
-  #search { width: 100%; padding: 6px 8px; border-radius: 6px;
+  .legend .swatch.tiny { width: 8px; height: 8px; margin-right: calc(var(--space-1) * -1); }
+  #search { width: 100%; padding: var(--space-2) var(--space-2); border-radius: 6px;
     border: 1px solid var(--border); background: var(--panel-2);
     color: var(--text); font: inherit; outline: none; }
   #search:focus { border-color: var(--accent); }
   #results { max-height: min(180px, 22vh); overflow-y: auto; margin-top: 4px; }
-  #results div { padding: 4px 6px; border-radius: 4px; cursor: pointer;
+  #results div { padding: var(--space-1) var(--space-2); border-radius: 4px; cursor: pointer;
     font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #results div:hover { background: var(--panel-2); }
   #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
@@ -66,16 +66,16 @@
     display: none; }
   #sidebar.open { display: block; }
   #sidebar h2 { font-size: 16px; word-break: break-word; }
-  #sidebar .meta { color: var(--muted); font-size: 12px; margin: 2px 0 10px; }
+  #sidebar .meta { color: var(--muted); font-size: 12px; margin: var(--space-1) 0 var(--space-3); }
   #sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
     color: var(--muted); margin: 12px 0 4px; }
   #sidebar .link { color: #5ba0e0; cursor: pointer; display: block;
-    padding: 2px 0; font-size: 13px; white-space: nowrap; overflow: hidden;
+    padding: var(--space-1) 0; font-size: 13px; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; }
   #sidebar .link:hover { color: var(--accent); }
   #sidebar .closebtn { float: right; cursor: pointer; color: var(--muted);
     font-size: 18px; line-height: 1; } #sidebar .closebtn:hover { color: var(--text); }
-  .badge { display: inline-block; padding: 1px 7px; border-radius: 9px;
+  .badge { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: 9px;
     font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
   .badge.cycle { border-color: var(--cycle); color: var(--cycle); }
   .badge.god { border-color: var(--god); color: var(--god); }

@@ -17,7 +17,7 @@ Always invoke registry lookups through the plugin's own script:
 not a CLI — instead call `dependency_audit.py` for a full manifest sweep,
 or ask the calling skill for the specific lookup helper it wants you to
 use for a single-package re-check. Every lookup goes through that
-bounded-timeout, GET-only path. Do not hand-roll your own `curl`/`pip
+bounded-timeout, GET-only path. Never hand-roll your own `curl`/`pip
 index`/`npm view` calls — they don't carry the enforced timeout or the
 skipped-vs-verdict classification the rest of the plugin depends on, and
 a `PreToolUse` hook will deny any Bash command that looks like an

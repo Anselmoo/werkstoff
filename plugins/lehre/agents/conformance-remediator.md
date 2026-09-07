@@ -52,7 +52,7 @@ not touched
   :12   an unused `import json` two lines above finding 1. Real, and not in this
         dispatch. Left for the gauge to report.
 
-NOT VERIFIED BY ME. lehre-validate runs next, blind to this report.
+NOT INDEPENDENTLY VERIFIED. lehre-validate runs next, blind to this report.
 ```
 
 and the refusal that matters:

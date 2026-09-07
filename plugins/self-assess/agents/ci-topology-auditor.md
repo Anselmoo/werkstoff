@@ -31,7 +31,7 @@ actual pipeline definitions -- read-only, and never with a raw credential in you
    are signed).
 3. Every remote URL or credential-bearing string you would otherwise quote MUST be masked
    before it appears anywhere in your output -- reduce any userinfo/token to a 2-4 character
-   preview, never the full value. If unsure whether a string contains a credential, treat it as
+   preview, never the full value. When unsure whether a string contains a credential, treat it as
    one and mask it.
 4. Verify every finding by reading the actual files cited -- a doc claim alone is not evidence
    of drift; the pipeline file itself must contradict it.

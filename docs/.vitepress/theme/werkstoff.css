@@ -598,14 +598,13 @@ div[class*='language-prompt'] {
   transition: color var(--wk-transition-fast);
 }
 
-/* The rhythm, rule and palette work above introduces ZERO motion -- no
- * transition, no animation, no transform. That is a claim, and an unstated
- * claim is the failure mode this repo documents, so it is stated: the only
- * motion this file has ever declared is the link-colour transition directly
- * above. It is neutralised here for readers who ask for reduced motion, which
- * is the honest reading of "prefer no motion" for a token this file owns.
- * If any later pass animates a breather, the terminal node, or an h2 rule,
- * that zero-motion claim expires and this block needs revisiting. */
+/* UPDATE to the claim below: the rhythm, rule and palette work above still
+ * introduces zero motion, but the home hero and its cards no longer do (see
+ * "Home hero: entrance motion" further down) -- that zero-motion claim about
+ * THIS SECTION expires there, not here, and is restated at that section's
+ * own reduced-motion carve-out instead of pretending it still holds
+ * site-wide. The only motion this rule ever governed is the link-colour
+ * transition directly below, and it still neutralises exactly that. */
 @media (prefers-reduced-motion: reduce) {
   .VPLink,
   .vp-doc a {
@@ -787,3 +786,175 @@ div[class*='language-prompt'] {
   background: rgba(52, 138, 217, 0.14);
   color: var(--wk-text);
 }
+
+/* ---- Hazard cards: hazards.md's "Five hooks" grid ----
+ * The same field-note vocabulary PairingCards.vue proved out (border, chip,
+ * uppercase row-label), reproduced here as plain global classes rather than a
+ * Vue component -- see the cupertino-council brief that shipped alongside
+ * this rule (docs/orchestration/references/hazards.md, "Five hooks already
+ * arbitrate every edit"): six rows that never change need no filter UI or
+ * data loader, and a registered component tag would flip this page's
+ * `isProsePage` verdict off for the substantial prose that follows it
+ * (see theme/composables/useProsePage.js), silently dropping the long-page
+ * treatment from a page that still needs it. Plain markup with global
+ * classes costs neither. */
+.hz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.hz-card {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--wk-radius-panel);
+  background: var(--vp-c-bg-soft);
+  padding: var(--wk-space-4) var(--wk-space-6);
+}
+
+.hz-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--wk-space-2);
+}
+
+.hz-head code {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.hz-chip {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  padding: var(--wk-space-1) var(--wk-space-1);
+  font-size: 0.68rem;
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-2);
+}
+
+.hz-script {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+}
+.hz-script code {
+  color: var(--vp-c-text-2);
+}
+
+.hz-row {
+  border-top: 1px solid var(--vp-c-divider);
+  margin: 0;
+  padding: var(--wk-space-2) 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.hz-row + .hz-row {
+  margin-top: var(--wk-space-2);
+}
+
+.hz-row-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  margin: 0 0 var(--wk-space-1);
+}
+
+/* ---- Home hero: entrance motion ----
+ * Restraint, not spectacle: a single fade-and-rise, staggered by section
+ * (name -> text -> tagline -> actions, then the feature cards, then the
+ * plugin cards), each running once on load. No loop, no parallax, no
+ * scroll-linked JS -- the difference between a considered reveal and a
+ * busy one is how little moves, not how much.
+ *
+ * This is the site's first declared motion outside a hover transition (see
+ * the "UPDATE to the claim below" comment above), so it earns its own
+ * reduced-motion carve-out rather than folding into that one: a reader who
+ * asked for reduced motion gets the finished page immediately, with zero
+ * animation-caused delay to any content becoming visible. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wk-rise-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .VPHero .name,
+  .VPHero .text,
+  .VPHero .tagline,
+  .VPHero .actions,
+  .VPHero .image {
+    opacity: 0;
+    animation: wk-rise-in 0.6s ease-out forwards;
+  }
+  .VPHero .name {
+    animation-delay: 0.05s;
+  }
+  .VPHero .text {
+    animation-delay: 0.15s;
+  }
+  .VPHero .tagline {
+    animation-delay: 0.25s;
+  }
+  .VPHero .actions {
+    animation-delay: 0.35s;
+  }
+  .VPHero .image {
+    animation-delay: 0.2s;
+  }
+
+  .VPFeatures .item,
+  .plugin-grid .plugin-card {
+    opacity: 0;
+    animation: wk-rise-in 0.5s ease-out forwards;
+  }
+  /* Staggered per card, capped at 8 steps -- a 9th-and-beyond card (this
+     page has exactly 4 features and 9 plugins) shares the last step rather
+     than the stagger growing unbounded with the grid size. */
+  .VPFeatures .item:nth-child(1),
+  .plugin-grid .plugin-card:nth-child(1) {
+    animation-delay: 0.4s;
+  }
+  .VPFeatures .item:nth-child(2),
+  .plugin-grid .plugin-card:nth-child(2) {
+    animation-delay: 0.46s;
+  }
+  .VPFeatures .item:nth-child(3),
+  .plugin-grid .plugin-card:nth-child(3) {
+    animation-delay: 0.52s;
+  }
+  .VPFeatures .item:nth-child(4),
+  .plugin-grid .plugin-card:nth-child(4) {
+    animation-delay: 0.58s;
+  }
+  .plugin-grid .plugin-card:nth-child(5) {
+    animation-delay: 0.64s;
+  }
+  .plugin-grid .plugin-card:nth-child(6) {
+    animation-delay: 0.7s;
+  }
+  .plugin-grid .plugin-card:nth-child(7) {
+    animation-delay: 0.76s;
+  }
+  .plugin-grid .plugin-card:nth-child(n + 8) {
+    animation-delay: 0.82s;
+  }
+}
+
+/* ---- Home hero: the pre-existing background blob, actually used ----
+ * --vp-home-hero-image-background-image and --vp-home-hero-image-filter
+ * were already defined above (the "duality, scattered blue into transmitted
+ * warmth" block) but rendered nothing: VitePress only mounts the blurred
+ * `.image-bg` element when `hero.image` is set in frontmatter, and no
+ * `image:` key existed until this pass added one (docs/index.md, using the
+ * existing logo.svg). Finishing that wiring is the whole change here --
+ * no new gradient, no new token, just the one frontmatter key that activates
+ * what this file already declared. */

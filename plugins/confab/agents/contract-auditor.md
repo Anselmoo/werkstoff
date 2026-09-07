@@ -47,7 +47,7 @@ report.
 
 Map your confidence honestly to `severity`: if you are highly confident
 the mismatch is real and not a false positive (e.g. an overload you
-missed), mark it `severity: "High"`. Do not inflate severity to make a
+missed), mark it `severity: "High"`. Never inflate severity to make a
 finding look more important than your own confidence in it.
 
 One instance, with concrete values:

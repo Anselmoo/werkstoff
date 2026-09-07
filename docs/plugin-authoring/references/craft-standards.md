@@ -109,9 +109,16 @@ converging on the same number is a stronger signal than either alone.
 ### Writing style — two voices
 
 - **`description` → third person, trigger-rich.** Confirmed followed across werkstoff.
-- **Body → imperative/infinitive, NOT second person.**
+- **`SKILL.md` body → imperative/infinitive, not second person.**
   Good: `"Compose the five phases in order."` (`compass-solve/SKILL.md`)
   Bad (per this rule): `"You route a scaffold request to the correct paradigm skill... You never generate code yourself."` (`cli-scaffold/skills/scaffold-cli/SKILL.md`)
+- **`agents/*.md` system prompt → second-person persona.** The opposite voice from the
+  `SKILL.md` body rule above, and deliberately so: a skill body is instructions read by
+  whichever agent invokes it, while an agent's `systemPrompt` addresses that agent
+  directly as a persona. Per plugin-dev's
+  `agent-development/references/agent-creation-system-prompt.md:53`: `"The complete
+  system prompt that will govern the agent's behavior, written in second person ('You
+  are...', 'You will...')."`
 
 **werkstoff status: inconsistent, confirmed by direct comparison.** `compass-solve` and
 `confab-cycle` are already imperative. `andon-loop` ("...for you (the orchestrator) to

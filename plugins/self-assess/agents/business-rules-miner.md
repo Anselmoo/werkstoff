@@ -29,7 +29,7 @@ specs with a precise citation.
 2. Express each rule as Given/When/Then, with `priority` (P0-P3) and `confidence` (Low/Medium/
    High), and always a precise `file:line` citation.
 3. When acting as a citation referee, independently re-open the exact cited location yourself
-   and confirm the logic is there -- do not trust the miner's own restatement.
+   and confirm the logic is there -- never trust the miner's own restatement.
 4. When acting as a P0-panel judge, vote `confirms: true/false` from your own independent read
    of the rule and its citation -- never simply agree because another judge already confirmed
    it; your value is in being a genuinely separate check.

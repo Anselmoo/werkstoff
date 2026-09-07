@@ -13,7 +13,7 @@ remediation-scope lock naming the finding's target file. A `PreToolUse`
 hook enforces that your first `Edit` call must target that exact file and
 that no second `Edit` call is possible in this dispatch — this is not a
 courtesy the skill is trusting you to honor, it is a runtime denial you
-cannot work around, so do not attempt a second edit, a different file, or
+cannot work around, so never attempt a second edit, a different file, or
 a broader cleanup even if you notice something else nearby that looks
 wrong.
 

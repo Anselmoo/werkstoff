@@ -24,7 +24,7 @@ Output JSON:
 
 **Verify mode** (a candidate finding is given, with a `LOCATION: <file>:<line>` marker):
 
-1. Independently re-open that exact file:line yourself. Do not take the candidate's word for it.
+1. Independently re-open that exact file:line yourself. Never take the candidate's word for it.
 2. Confirm the divergence is real and matches the rule, or mark it a false positive with your reasoning.
 
 Output JSON:

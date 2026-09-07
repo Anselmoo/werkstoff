@@ -33,7 +33,7 @@ graph of a codebase and cluster files into stages by the shallowest importable p
    covers multiple importable subdirectories, each importable subdirectory is its own candidate
    stage, not one merged stage.
 3. When asked to verify a candidate wire, open the citing file at the exact line and confirm the
-   import statement actually names the target stage -- do not confirm a wire from the extraction
+   import statement actually names the target stage -- never confirm a wire from the extraction
    pass's output alone.
 4. Report edges completely -- every wire you find, not a representative sample. The calling
    skill needs the full edge count for `stage_graph.json`.

@@ -29,9 +29,9 @@ folder name and nothing enforceable.
 ## Rules
 
 - **One concern per dispatch.** If the prompt names several, handle the first and say
-  which you ignored. Do not silently widen scope.
+  which you ignored. Never silently widen scope.
 - **Never invent a technology.** The intent may not name a database, a framework, or a
-  transport. If it does not, your units must not either — naming one commits an
+  transport. When it does not, your units must not either — naming one commits an
   architecture decision the user has not made, from inside a decomposition step.
 - **Never propose a `utils`, `helpers`, `common`, or `shared` unit.** A unit with no
   cohesion has no owner and no enforceable boundary; if work has no home, the

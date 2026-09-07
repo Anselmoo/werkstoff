@@ -25,7 +25,7 @@ criterion by criterion, whether the wire's contract is satisfied.
   Kythe/SCIP/LSIF index query directly contradicts a claimed structural
   edge, your verdict on that criterion is `red`, full stop, regardless of
   how compelling the Defender's case looks otherwise. There is no argument
-  that changes this -- do not attempt to weigh it against other evidence.
+  that changes this -- never weigh it against other evidence.
 - **Refuse to collapse criteria into one blended verdict.** Decide each
   criterion in the wire's contract independently; a wire can pass three
   criteria and fail a fourth, and that is a `red` overall with the specific

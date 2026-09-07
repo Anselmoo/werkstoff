@@ -10,18 +10,57 @@ happens once those dispatches — or a direct edit — land while a guard is wat
 
 Five werkstoff plugins register a `PreToolUse` hook, and all five are inert until the
 repository shows a specific piece of state — none of them polices an unrelated
-project the moment it happens to be installed.
+project the moment it happens to be installed. The fact a reader actually scans for
+first — will this fire on my repo, right now — is called out as its own line on every
+card, rather than buried in the third column of a five-column table.
 
-| plugin | matcher | script | inert unless | escape hatch |
-|---|---|---|---|---|
-| andon | `Write\|Edit` | `hooks/andon_enforce.py` | a ledger exists in the current working directory | `enforcement: off` in `.claude/andon.local.md` |
-| confab | `Edit\|Write` | `scripts/hooks/guard_edit_scope.py` | a remediation-scope lock is open at `analysis/confab/remediation_scope.json` | delete the lock file, or run without `--fix` |
-| confab | `Bash` | `scripts/hooks/guard_bash_scope.py` | `analysis/confab/` does not exist in the repo | run the command outside a confab-managed session, or remove `analysis/confab/` |
-| cupertino | `Skill\|Task\|Agent\|Write\|Edit\|Bash` | `hooks/pretooluse_guard.py` | no `.cupertino/` state directory exists | `CUPERTINO_DISABLE_GUARD=1` |
-| self-assess | `Write\|Edit\|MultiEdit` | `hooks/guard_target_edit.py` | no self-assess edit-scope lock is open at `analysis/self-assess/edit_scope.json` | named in the hook's own deny message |
-| takt | `Skill\|Task\|Agent\|Write\|Edit\|MultiEdit` | `hooks/takt_guard.py` | no beat declaration exists at `.claude/takt.local.md` | `TAKT_DISABLE_GUARD=1` |
+<div class="hz-grid">
 
-Two details matter beyond the table. First, andon's matcher covers `Write` and `Edit`
+<div class="hz-card">
+<div class="hz-head"><code>andon</code><span class="hz-chip">Write|Edit</span></div>
+<p class="hz-script"><code>hooks/andon_enforce.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a ledger exists in the current working directory</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>enforcement: off</code> in <code>.claude/andon.local.md</code></p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>confab</code><span class="hz-chip">Edit|Write</span></div>
+<p class="hz-script"><code>scripts/hooks/guard_edit_scope.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a remediation-scope lock is open at <code>analysis/confab/remediation_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span>delete the lock file, or run without <code>--fix</code></p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>confab</code><span class="hz-chip">Bash</span></div>
+<p class="hz-script"><code>scripts/hooks/guard_bash_scope.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/confab/</code> does not exist in the repo</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span>run the command outside a confab-managed session, or remove <code>analysis/confab/</code></p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>cupertino</code><span class="hz-chip">Skill|Task|Agent|Write|Edit|Bash</span></div>
+<p class="hz-script"><code>hooks/pretooluse_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a <code>.cupertino/</code> state directory exists</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>CUPERTINO_DISABLE_GUARD=1</code></p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>self-assess</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/guard_target_edit.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a self-assess edit-scope lock is open at <code>analysis/self-assess/edit_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span>named in the hook's own deny message</p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>takt</code><span class="hz-chip">Skill|Task|Agent|Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/takt_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a beat declaration exists at <code>.claude/takt.local.md</code></p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>TAKT_DISABLE_GUARD=1</code></p>
+</div>
+
+</div>
+
+Two details matter beyond the cards above. First, andon's matcher covers `Write` and `Edit`
 only — it does not list `MultiEdit`, unlike self-assess's matcher on the same three
 tool names. Second, two matchers reach upstream of the edit itself by covering
 `Skill|Task|Agent`, so they can intercept a dispatch and not only a file write.

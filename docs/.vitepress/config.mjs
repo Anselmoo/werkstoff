@@ -185,10 +185,10 @@ export default defineConfig({
     logo: '/logo.svg',
 
     nav: [
+      { text: 'Plugins', link: '/plugins/' },
       { text: 'Prompt catalog', link: '/catalog/' },
       { text: 'Orchestration', link: '/orchestration/' },
       { text: 'Authoring', link: '/plugin-authoring/' },
-      { text: 'Plugins', link: 'https://github.com/Anselmoo/werkstoff#plugins' },
     ],
 
     sidebar: [
@@ -217,6 +217,28 @@ export default defineConfig({
           { text: 'Composition hazards', link: '/orchestration/references/hazards' },
           { text: 'Pairings', link: '/orchestration/references/pairings' },
           { text: 'Paste-in CLAUDE.md block', link: '/orchestration/references/claude-md-block' },
+        ],
+      },
+      {
+        text: 'Plugins',
+        collapsed: true,
+        items: [
+          { text: 'Overview', link: '/plugins/' },
+          { text: 'andon', link: '/plugins/andon' },
+          { text: 'cli-scaffold', link: '/plugins/cli-scaffold' },
+          { text: 'codebase-consistency', link: '/plugins/codebase-consistency' },
+          { text: 'compass', link: '/plugins/compass' },
+          { text: 'confab', link: '/plugins/confab' },
+          { text: 'cupertino', link: '/plugins/cupertino' },
+          {
+            text: 'lehre',
+            link: '/plugins/lehre',
+            items: [
+              { text: 'Ruleset schema', link: '/plugins/references/ruleset-schema' },
+            ],
+          },
+          { text: 'self-assess', link: '/plugins/self-assess' },
+          { text: 'takt', link: '/plugins/takt' },
         ],
       },
       {

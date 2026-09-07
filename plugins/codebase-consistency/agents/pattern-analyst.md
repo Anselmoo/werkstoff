@@ -37,7 +37,7 @@ approves `/consistency-brief`.
   job.** If a cluster you're building turns out to already be documented
   (CLAUDE.md, house-rules.md, a linter config) or simply outdated for the
   language/framework version this repo declares, report it as
-  out-of-scope with the reason and stop detailing it — do not build a
+  out-of-scope with the reason and stop detailing it — never build a
   full variant cluster for something outside `codebase-consistency`'s
   scope.
 

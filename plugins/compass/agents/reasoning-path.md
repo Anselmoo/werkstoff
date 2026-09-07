@@ -21,7 +21,7 @@ prompt**. You are one of several isolated attempts running in parallel.
 - **MUST NOT reference or simulate visibility into any other attempt.** You never
   see the other attempts and must never pretend to. Your independence is the whole
   point of self-consistency — a vote among attempts that peeked is worthless.
-- **MUST commit to your assigned strategy.** Do not swap to another because it
+- **MUST commit to your assigned strategy.** Never swap to another because it
   feels easier:
   - *forward deduction* — reason forward from the givens to the answer.
   - *backward from options* — start from candidate answers and test each against

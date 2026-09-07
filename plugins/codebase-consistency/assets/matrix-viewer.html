@@ -14,6 +14,7 @@
     color: var(--text);
     font-family: var(--font-sans);
     font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
   }
   header {
     /* S1: the header's height is --header-h, not a pixel literal repeated in
@@ -51,7 +52,7 @@
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 6px 10px;
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     font-size: 13px;
     width: 200px;
@@ -60,7 +61,7 @@
     background: var(--panel);
     border: 1px solid var(--border);
     color: var(--text);
-    padding: 6px 8px;
+    padding: var(--space-2) var(--space-2);
     border-radius: var(--radius-sm);
     font-size: 13px;
   }
@@ -94,7 +95,7 @@
     border: 1px solid var(--border);
     display: flex;
     align-items: center;
-    padding: 0 10px;
+    padding: 0 var(--space-3);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -124,7 +125,7 @@
     overflow-wrap: anywhere;
     text-overflow: clip;
     line-height: 1.2;
-    padding: 4px 10px;
+    padding: var(--space-1) var(--space-3);
   }
   .col-header:hover { color: var(--accent); }
   .row-label {
@@ -164,7 +165,7 @@
     width: 340px;
     border-left: 1px solid var(--border);
     background: var(--panel);
-    padding: 18px;
+    padding: var(--space-5);
     overflow-y: auto;
     flex-shrink: 0;
     align-self: stretch;
@@ -180,7 +181,7 @@
   .sidebar .meta-row {
     display: flex;
     justify-content: space-between;
-    padding: 6px 0;
+    padding: var(--space-2) 0;
     border-bottom: 1px solid var(--border);
     font-size: 12px;
   }
@@ -190,7 +191,7 @@
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 8px 10px;
+    padding: var(--space-2) var(--space-3);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11px;
     color: var(--text);
@@ -200,12 +201,12 @@
     color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
-    margin-top: 40px;
+    margin-top: calc(var(--space-5) * 2);
   }
   .legend {
     display: flex;
-    gap: 14px;
-    padding: 10px 20px;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-5);
     border-top: 1px solid var(--border);
     font-size: 11px;
     color: var(--muted);
@@ -217,32 +218,32 @@
     height: 12px;
     display: inline-block;
     border-radius: 2px;
-    margin-right: 5px;
+    margin-right: var(--space-1);
     vertical-align: middle;
   }
   .verdict-panel {
     margin: 0 20px 16px;
-    padding: 14px 16px;
+    padding: var(--space-4) var(--space-4);
     background: var(--panel);
     border: 1px solid var(--border);
     border-left: 3px solid var(--accent);
     border-radius: var(--radius-panel);
   }
-  .verdict-panel h2 { font-size: 14px; margin: 0 0 6px; color: var(--accent); }
+  .verdict-panel h2 { font-size: 14px; margin: 0 0 var(--space-2); color: var(--accent); }
   .verdict { font-size: 13px; line-height: 1.5; margin: 0; color: var(--text); }
   .note { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 8px 0 0; }
   .colour-key {
-    margin-top: 18px;
+    margin-top: var(--space-5);
     padding-top: 12px;
     border-top: 1px solid var(--border);
   }
-  .stat-row { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 20px 14px; }
+  .stat-row { display: flex; gap: var(--space-4); flex-wrap: wrap; padding: 0 var(--space-5) var(--space-4); }
   .stat {
     background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-control);
-    padding: 12px 18px; min-width: 110px;
+    padding: var(--space-3) var(--space-5); min-width: 110px;
   }
   .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat .k { font-size: 11px; color: var(--muted); margin-top: var(--space-1); }
   /* R3: a number you must act on must not render identically to one that is
      context. Modelled on plugins/lehre/assets/doctrine-viewer.html's
      .fstep.leak -- a distinct outline plus a recoloured value -- with a
@@ -251,8 +252,8 @@
   .stat.actionable .v { color: var(--ferria-light); }
   .stat .flag {
     display: inline-block;
-    margin-left: 6px;
-    padding: 0 5px;
+    margin-left: var(--space-2);
+    padding: 0 var(--space-1);
     border: 1px solid var(--status-bad);
     border-radius: var(--radius-sm);
     color: var(--ferria-light);
@@ -753,6 +754,24 @@ function renderLegend() {
     }
   } else {
     legend.appendChild(legendItem('', 'colours show variant identity, one hue per distinct variant — no ranking implied'));
+    // R4 follow-through: a legend that only explains the ENCODING, without naming
+    // which hue is which variant, still leaves colour as the sole visible-without-
+    // interaction channel for telling two cells apart. Count occurrences straight
+    // from CELLS -- the same module-level source render() reads -- so this never
+    // drifts from what the grid actually shows, and sort by frequency so the
+    // variants a reader is most likely to be scanning for come first. (Not `flat`:
+    // that array is local to render()'s closure and out of scope here.)
+    const counts = new Map();
+    for (const c of CELLS) {
+      if (typeof c.conformance !== 'number' || !hasConformance) {
+        const v = c.variant || '?';
+        counts.set(v, (counts.get(v) || 0) + 1);
+      }
+    }
+    const byFrequency = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    for (const [variant, count] of byFrequency) {
+      legend.appendChild(legendItem(colorForVariant(variant), variant + ' (' + count + ')'));
+    }
     const note = document.createElement('span');
     note.textContent = 'Run /consistency-canonize to switch this to a conformance-to-canon scale.';
     legend.appendChild(note);

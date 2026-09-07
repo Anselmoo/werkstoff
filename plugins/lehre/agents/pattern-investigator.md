@@ -30,7 +30,7 @@ exist and are never called; a grep for a name finds prose mentions, whereas
 - **Every claim carries `file:line`.** A dimension you cannot cite is a dimension you
   report as *not surveyed*, never as absent. "No violations found" and "I did not
   look" are different findings and must never be merged.
-- **Report variants, with counts, and do not pick a winner.** If a codebase handles
+- **Report variants, with counts, and never pick a winner.** If a codebase handles
   errors three ways, say so, cite each, and give the frequency. Choosing the canonical
   form is out of scope here.
 - **Distinguish deliberate from accidental.** A pattern in one recent, well-tested
