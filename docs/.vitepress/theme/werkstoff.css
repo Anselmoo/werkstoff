@@ -787,3 +787,79 @@ div[class*='language-prompt'] {
   background: rgba(52, 138, 217, 0.14);
   color: var(--wk-text);
 }
+
+/* ---- Hazard cards: hazards.md's "Five hooks" grid ----
+ * The same field-note vocabulary PairingCards.vue proved out (border, chip,
+ * uppercase row-label), reproduced here as plain global classes rather than a
+ * Vue component -- see the cupertino-council brief that shipped alongside
+ * this rule (docs/orchestration/references/hazards.md, "Five hooks already
+ * arbitrate every edit"): six rows that never change need no filter UI or
+ * data loader, and a registered component tag would flip this page's
+ * `isProsePage` verdict off for the substantial prose that follows it
+ * (see theme/composables/useProsePage.js), silently dropping the long-page
+ * treatment from a page that still needs it. Plain markup with global
+ * classes costs neither. */
+.hz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.hz-card {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: var(--wk-radius-panel);
+  background: var(--vp-c-bg-soft);
+  padding: 1rem 1.25rem;
+}
+
+.hz-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.hz-head code {
+  font-weight: 700;
+  font-size: 0.98rem;
+}
+
+.hz-chip {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.68rem;
+  font-family: var(--vp-font-family-mono);
+  color: var(--vp-c-text-2);
+}
+
+.hz-script {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+}
+.hz-script code {
+  color: var(--vp-c-text-2);
+}
+
+.hz-row {
+  border-top: 1px solid var(--vp-c-divider);
+  margin: 0;
+  padding: 0.6rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.hz-row + .hz-row {
+  margin-top: 0.6rem;
+}
+
+.hz-row-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vp-c-text-3);
+  margin: 0 0 0.3rem;
+}

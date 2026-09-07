@@ -91,23 +91,24 @@ const pluginRequirements = computed(() => {
         <BeatSkillRefs :skill="beat.skill" />
         <p class="beat-why">{{ beat.why }}</p>
         <!--
-          Demoted, not deleted: the per-beat prompt stays in the DOM (a closed
-          <details> still renders its text for in-page find and the local search
-          index) but no longer competes with the opening prompt for "which of
-          these do I paste?". The summary names the job rather than saying "Show
-          more" -- this prompt is for running the beat standalone, a real and
-          different use from the opening prompt.
+          Always rendered, not hidden behind a disclosure: a reader arriving at
+          beat N (via search, a direct link, or `BeatSkillRefs`' cross-reference
+          list) needs this prompt immediately, the same way the opening prompt
+          above is never toggled shut. A closed <details> here cost three
+          actions -- notice the toggle exists, click it, then find the fence --
+          to do the one thing this page exists for. See "Run this beat on its
+          own" in git history for the prior demoted-disclosure version and why
+          it was replaced.
 
           The body is a PromptFence, not a blockquote: prompts render as real
           `language-prompt` code fences, the convention werkstoff.css calls the
           docs' signature element, and that is what carries a working copy
-          button. Native <details>/<summary> keeps it keyboard-operable and
-          screen-reader-announced with no ARIA of our own.
+          button.
         -->
-        <details v-if="beat.prompt" class="disclosure beat-prompt-disclosure">
-          <summary>Run this beat on its own</summary>
+        <div v-if="beat.prompt" class="beat-prompt">
+          <span class="row-label">Run this beat on its own</span>
           <PromptFence :text="beat.prompt" />
-        </details>
+        </div>
       </li>
     </ol>
 
@@ -194,10 +195,10 @@ const pluginRequirements = computed(() => {
   margin: 0.5rem 0 0;
 }
 
-/* Shared by the per-beat prompt disclosure and the grounding disclosure.
-   Kept visually quiet -- no border, no background -- so a closed summary
-   reads as a small text affordance next to `beat-why`/the "Worked example"
-   heading rather than as a competing card. */
+/* Owned by the grounding disclosure only now -- the per-beat prompt (below)
+   dropped its <details> wrapper entirely and is always visible. Kept visually
+   quiet -- no border, no background -- so a closed summary reads as a small
+   text affordance next to the "Worked example" heading rather than a card. */
 .disclosure > summary {
   cursor: pointer;
   color: var(--vp-c-text-3);
@@ -212,11 +213,15 @@ const pluginRequirements = computed(() => {
   outline-offset: 2px;
 }
 
-.beat-prompt-disclosure {
-  margin-top: 0.4rem;
+.grounding-disclosure > summary {
+  margin-top: 0.5rem;
 }
 
-.grounding-disclosure > summary {
+/* Quieter than `.opening-prompt` on purpose -- see the Council's Reduction/
+   Hierarchy tension: this repeats once per beat (up to 5x a page), so it
+   keeps the plain row-label instead of the opening prompt's colored
+   border-left treatment, while still never requiring a click to reveal. */
+.beat-prompt {
   margin-top: 0.5rem;
 }
 

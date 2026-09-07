@@ -38,15 +38,16 @@ features:
 ## Nine plugins, one job each
 
 Pick by problem, not by feature list — each plugin targets one distinct failure mode
-and refuses to speak outside it. Full descriptions, install instructions, and licensing
-live in the [repo README](https://github.com/Anselmoo/werkstoff#plugins).
+and refuses to speak outside it. Every card below opens its full README in this
+site — same install instructions and licensing as the [repo](https://github.com/Anselmoo/werkstoff),
+without leaving for it.
 
-- **[`self-assess`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/self-assess/README.md)** — codebase self-assessment: stage/wire mapping, docs-vs-code drift, CI/CD topology, house-rules enforcement, multi-repo dashboard.
-- **[`confab`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/confab/README.md)** — catches AI confabulation: hallucinated dependencies, assertion-less tests, contract drift, unreliable agentic loops.
-- **[`compass`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/compass/README.md)** — a prompt-engineering technique library composed by `compass-solve` into a clarify → explore → decompose → execute → revise pipeline.
-- **[`cupertino`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/README.md)** — a Steve-Jobs-grounded design and craft discipline for a project's whole lifecycle.
-- **[`andon`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/andon/README.md)** — an evidence-grounded harden-and-advance loop: propose maximally, verify adversarially, never advance past an unproven wire.
-- **[`cli-scaffold`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cli-scaffold/README.md)** — scaffolds production-grade CLIs across 12 languages against a frozen five-pillar doctrine.
-- **[`codebase-consistency`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/codebase-consistency/README.md)** — harmonizes undocumented pattern variants in an already-modern, live codebase.
-- **[`takt`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/takt/README.md)** — enforces declared beat order at the tool-call layer; inert until a repo declares its beats.
-- **[`lehre`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/lehre/README.md)** — researches a code style, pattern and architecture doctrine, then denies the write that would violate it.
+- **[`self-assess`](/plugins/self-assess)** — codebase self-assessment: stage/wire mapping, docs-vs-code drift, CI/CD topology, house-rules enforcement, multi-repo dashboard.
+- **[`confab`](/plugins/confab)** — catches AI confabulation: hallucinated dependencies, assertion-less tests, contract drift, unreliable agentic loops.
+- **[`compass`](/plugins/compass)** — a prompt-engineering technique library composed by `compass-solve` into a clarify → explore → decompose → execute → revise pipeline.
+- **[`cupertino`](/plugins/cupertino)** — a Steve-Jobs-grounded design and craft discipline for a project's whole lifecycle.
+- **[`andon`](/plugins/andon)** — an evidence-grounded harden-and-advance loop: propose maximally, verify adversarially, never advance past an unproven wire.
+- **[`cli-scaffold`](/plugins/cli-scaffold)** — scaffolds production-grade CLIs across 12 languages against a frozen five-pillar doctrine.
+- **[`codebase-consistency`](/plugins/codebase-consistency)** — harmonizes undocumented pattern variants in an already-modern, live codebase.
+- **[`takt`](/plugins/takt)** — enforces declared beat order at the tool-call layer; inert until a repo declares its beats.
+- **[`lehre`](/plugins/lehre)** — researches a code style, pattern and architecture doctrine, then denies the write that would violate it.
