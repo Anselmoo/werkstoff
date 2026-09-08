@@ -93,6 +93,8 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
+python3 test/plugins/test-lint-prompts.py                # prompt-quality linter asserts itself (sabotage-tested) -- run before trusting lint_prompts
+python3 tools/prompt-review/lint_prompts.py plugins/*     # mechanical M-* rules of docs/plugin-authoring/references/prompt-quality-rubric.md
 node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock

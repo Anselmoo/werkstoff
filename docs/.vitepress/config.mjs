@@ -247,6 +247,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/plugin-authoring/' },
           { text: 'Craft standards', link: '/plugin-authoring/references/craft-standards' },
+          { text: 'Prompt-quality rubric', link: '/plugin-authoring/references/prompt-quality-rubric' },
           { text: 'Output-shape findings', link: '/plugin-authoring/references/output-shape-findings' },
           { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
         ],
@@ -256,6 +257,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Plugin rebuild findings', link: '/plugin-rebuild-findings' },
+          { text: 'Prompt-quality findings', link: '/prompt-quality-findings' },
           { text: 'Benchmark plan', link: '/plugin-benchmark-plan' },
           { text: 'Benchmark phase 1 results', link: '/plugin-benchmark-phase1-results' },
           { text: 'Benchmark phase 2 results', link: '/plugin-benchmark-phase2-results' },

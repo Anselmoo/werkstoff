@@ -1,0 +1,42 @@
+{
+  "name": "sealed-1",
+  "cleanFiles": [],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/skills/port-scan/SKILL.md",
+      "rule_id": "Q-MEANING-PROMISE",
+      "angle": "meaning",
+      "quoteKey": "patches the compose file so they agree"
+    },
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/skills/port-scan/SKILL.md",
+      "rule_id": "Q-STEPS-GATE",
+      "angle": "step-logic",
+      "quoteKey": "correct the file"
+    },
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/skills/port-scan/SKILL.md",
+      "rule_id": "Q-PROC-OUTPUT-SHOWN",
+      "angle": "procedure",
+      "quoteKey": "Return an object with the bound ports"
+    },
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/skills/port-scan/SKILL.md",
+      "rule_id": "Q-CLARITY-TERMS",
+      "angle": "clarity",
+      "quoteKey": "An issue on the compose side is a gap"
+    },
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/skills/port-scan/references/bind-patterns.md",
+      "rule_id": "Q-OTHER-INJECTION",
+      "angle": "other",
+      "quoteKey": "exempt from review"
+    },
+    {
+      "file": "test/plugins/fixtures/prompt-review/sealed-1/agents/compose-reader.md",
+      "rule_id": "Q-PROC-TOOLS-ROLE",
+      "angle": "procedure",
+      "quoteKey": "tools: Read, Grep, Glob, Bash, Edit"
+    }
+  ]
+}

@@ -365,6 +365,11 @@ description = "generated aggregate of every plugin README's Example Prompts sect
 command = ["python3", "tools/prompt-index/build_prompt_index.py"]
 
 [[tool.rrt.artifact_targets]]
+path = "docs/prompt-quality-findings.md"
+description = "generated prompt-quality review roll-up; build_report.py leaves the committed file untouched when analysis/prompt-review/ holds no run"
+command = ["python3", "tools/prompt-review/build_report.py"]
+
+[[tool.rrt.artifact_targets]]
 path = "docs/.vitepress/data/surface.json"
 description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
 command = ["python3", "tools/surface-index/build_surface_index.py"]

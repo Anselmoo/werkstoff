@@ -37,6 +37,12 @@ these six plugins, restructured to match `prp-meta-skill`'s anatomy (a lean entr
   instead of showing it) with real file citations on both sides. Read this when you want
   the evidence behind a craft-standards.md rule, or when deciding whether a *new*
   skill/agent needs a fenced output example.
+- [`references/prompt-quality-rubric.md`](references/prompt-quality-rubric.md) — the frozen
+  rule set `tools/prompt-review/` grades every skill, agent, command, and workflow prompt
+  against: 25 mechanical rules a sabotage-tested linter enforces, 28 judgement rules a
+  calibrated finder applies, and the settled answers to the seven places the official and
+  third-party sources disagree. Read this before arguing about a finding in
+  `docs/prompt-quality-findings.md`, and change it (not the finder) when a rule is wrong.
 - [`references/report-viewer-standard.md`](references/report-viewer-standard.md) — the
   rules for the eight self-contained HTML reports under `plugins/*/assets/*-viewer.html`:
   state the verdict in words, never print a number twice, an actionable number must not
