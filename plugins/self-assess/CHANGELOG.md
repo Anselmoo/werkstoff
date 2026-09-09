@@ -4,6 +4,12 @@ All notable changes to the `self-assess` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-09-09
+
+### Fixed
+- **ci**: install PyYAML in auto-version-bump.yml (#57)
+- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
+
 ## [0.9.0] - 2026-09-07
 
 ### Added
