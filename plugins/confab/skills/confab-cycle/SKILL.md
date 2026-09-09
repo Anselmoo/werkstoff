@@ -43,21 +43,35 @@ Repeat the following until the engine tells you to stop:
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" plan-next-pass <repo_root> \
        --max-passes <max_passes> --mode <mode>
    ```
-   If this exits non-zero, the pass cap is already reached — stop the
-   loop immediately and go to "Wrap up" below. Otherwise it prints
+   If this exits 2 with a stderr JSON object naming `"maxPasses"`
+   (`{"error": "...", "maxPasses": N}`), the pass cap is already
+   reached — stop the loop immediately and go to "Wrap up" below. Any
+   other non-zero exit is a different failure (a bad `repo_root`, a
+   corrupted ledger, an invalid `--mode`) surfacing as an uncaught
+   crash rather than this deliberate refusal — surface that error to
+   the user and stop; do not treat it as "cap reached" or proceed to
+   "Wrap up" as if the loop finished normally. Otherwise it prints
    `{"passNumber": N, "domain": "...", "mode": "..."}`.
 4. Run that domain's audit skill's Find (and, per that domain's own
    rules, Verify) phase, scoped efficiently since you likely already have
    recent findings from a prior invocation — reuse `analysis/confab/<domain>_summary.json`
    if it's fresh, otherwise re-run the audit as that skill's own SKILL.md
-   describes. Do not weaken that domain's own mandatory-verification rules
+   describes. "Fresh" means the same check `scripts/status_dashboard.py`
+   already implements: the summary file's mtime is not older than
+   `git -C <repo_root> log -1 --format=%ct` (its
+   `staleRelativeToLatestCommit` field) — not a recorded commit or
+   fingerprint field, which no domain `*_summary.json` stores. Do not weaken that domain's own mandatory-verification rules
    just because you're inside a cycle pass — `assertion_audit` still runs
    its Verify phase unconditionally, `contract_drift` and
    `agentic_reliability` still run theirs unless explicitly skipped.
 5. For each open finding in the constraint domain, decide its handling:
    - **mode is `"propose"`**: never apply anything. For a fixable finding
      (see below), still just describe the proposed fix in your report —
-     do not dispatch `confab-remediator` at all in propose mode.
+     do not dispatch `confab-remediator` at all in propose mode. Record
+     that finding's outcome (step 6) as `"blocked"` with a `blockReason`
+     of `"not applied: cycle is in propose mode"` — there is no separate
+     outcome for "described but not fixed"; `"blocked"` is the existing
+     value that keeps the finding open without claiming a fix happened.
    - **mode is `"fix"` and the finding IS in confab's fixable set**
      (`dependency_audit` any category, `contract_drift` any category,
      `agentic_reliability` category `excessive-tool-grant` only — check
@@ -119,7 +133,12 @@ Repeat the following until the engine tells you to stop:
    `shouldContinue` is `false`, stop the loop — either the pass cap was
    reached or the pass converged (closed zero findings and produced zero
    fix/draft outcomes). Do not start another `plan-next-pass` call after
-   `shouldContinue: false`.
+   `shouldContinue: false`. In `"propose"` mode, `"blocked"` outcomes never
+   count toward fix/draft outcomes, so a propose-mode pass can report
+   `"converged": true` on its very first pass regardless of how many
+   findings were described — do not read that as "nothing needs
+   attention" when summarizing for the user; report the open findings
+   themselves.
 
 ## Wrap up
 

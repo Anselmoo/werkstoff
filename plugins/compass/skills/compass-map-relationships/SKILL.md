@@ -7,7 +7,12 @@ description: >-
   through named entities and relationships: "how does A affect D through the
   chain", "trace the dependency path", "who reports to whom", "what causes what
   here", multi-hop "why" questions, or a compass-solve stage that needs graph
-  traversal.
+  traversal. Not for deriving a repository's real import/module graph from source
+  — "map this repo's architecture", "show me the real module boundaries", "map
+  stages and wires" belong to self-assess-stage-map, which parses imports per
+  language and writes the stage graph other skills consume. Use this skill only
+  to reason over a relationship graph whose entities are already established, in
+  code or any other domain.
 ---
 
 # compass-map-relationships

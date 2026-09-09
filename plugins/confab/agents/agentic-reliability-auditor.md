@@ -1,6 +1,6 @@
 ---
 name: agentic-reliability-auditor
-description: "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when confab-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, and workflows/* files."
+description: "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when confab-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, commands/*, and workflows/* files."
 tools: Read, Glob, Grep
 ---
 

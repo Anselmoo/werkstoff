@@ -69,6 +69,12 @@ const targetFiles = NORMALIZED_ARGS && NORMALIZED_ARGS.targetFiles
 if (!Array.isArray(rules) || rules.length === 0) {
   throw new Error('cupertino-handbook-check: no rules supplied (read the handbook first and extract its rule list)')
 }
+for (let i = 0; i < rules.length; i++) {
+  const r = rules[i]
+  if (!r || typeof r.rule !== 'string' || !r.rule.trim()) {
+    throw new Error(`cupertino-handbook-check: rules[${i}] is missing a non-empty 'rule' field`)
+  }
+}
 if (!Array.isArray(targetFiles) || targetFiles.length === 0) {
   throw new Error('cupertino-handbook-check: no targetFiles supplied')
 }
@@ -115,6 +121,11 @@ const perRule = await pipeline(
       )
     )
 )
+
+const droppedRules = perRule.filter((r) => r == null).length
+if (droppedRules > 0) {
+  log(`${droppedRules} rule(s)' find-step failed and were dropped.`)
+}
 
 const allFindings = perRule.filter(Boolean).flat().filter(Boolean)
 const confirmed = allFindings.filter((f) => f.verification && f.verification.verdict === 'confirmed')

@@ -1,11 +1,7 @@
 ---
 name: andon-verifier
 description: "Converts andon-defender and andon-challenger claims into reproduced facts by running deterministic checks -- tests, greps, execution -- as the fact-finding third leg of andon-verify's tribunal strategy (strategy a), so both cases rest on evidence rather than assertion. Read and execute only; never edits the artifact under review; never renders a pass/fail verdict itself."
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Grep, Glob, Bash
 ---
 
 # andon-verifier
@@ -44,3 +40,18 @@ factual claims.
 For each claim from the Defender or Challenger you were asked to check: the
 exact command/check run, its exact output (fenced and credential-masked),
 and whether it reproduces the claim, contradicts it, or is unverifiable.
+
+```
+Claim (Defender): "the added nil check at payment.go:142 prevents the crash."
+Check run: go test ./internal/payment/... -run TestNilCustomerID -v
+Output:
+    === RUN   TestNilCustomerID
+    --- PASS: TestNilCustomerID (0.00s)
+    PASS
+    ok      internal/payment       0.004s
+Verdict: reproduces.
+```
+
+When a claim cannot be checked this way, say so instead of guessing: "Claim
+(Defender): 'the fix improves latency in production.' Check: unverifiable --
+no production traffic available in this sandbox."

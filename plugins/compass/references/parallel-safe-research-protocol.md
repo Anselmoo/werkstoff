@@ -81,6 +81,6 @@ the audit explicitly requires an exhaustive sweep.
 ## Guardrails
 
 Never write, promote, or overwrite a shared analysis artifact from an agent
-— return structured results to the run coordinator instead. If assigned
+— return structured results to the calling skill or agent instead. If assigned
 source edits, work in the assigned Git worktree only; do not edit the shared
 working tree.

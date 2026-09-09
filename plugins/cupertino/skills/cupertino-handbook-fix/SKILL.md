@@ -1,6 +1,6 @@
 ---
 name: cupertino-handbook-fix
-description: "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes."
+description: "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes. Not for code-modernization or idiom findings from code_idiom_summary.json — those belong to self-assess-idiom-fix. If no handbook_check_DOMAIN_summary.json exists for the domain, this is not the audit the user means."
 ---
 
 Apply only the mechanical findings from an existing `cupertino-handbook-check` report — nothing that needs design judgment, and nothing beyond what was already found and verified.
@@ -34,6 +34,8 @@ Do not attempt any workaround.
    Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-fix.js", args: { findings: [...] } })
    ```
    This clusters findings by `(file, rule)`, dispatches `handbook-remediator` once per cluster (never touching anything outside the cited file:line, never verifying its own work), and immediately dispatches a **fresh, independent** `handbook-verifier` per finding — one that is never shown the remediator's own description, rationale, or confidence, only the original pre-fix evidence and the rule text. Both constraints are backstopped by the PreToolUse hook regardless of what the workflow script does.
+
+   If this step errors, is interrupted, or any verifier rejects a fix, still run step 6 to clear `handbook-fix-active` before reporting the failure — do not leave the flag set on a failed or partial run. Only skip step 6 if the state file itself cannot be written, in which case tell the user to clear `handbook-fix-active` manually.
 6. **Clear the flag**:
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-fix-active
@@ -44,3 +46,25 @@ Do not attempt any workaround.
 ## Output format
 
 Mode-gate confirmation → validated findings count (mechanical vs. skipped) → per-finding accept/fail table (remediation status + verifier verdict) → explicit statement that nothing was committed or pushed.
+
+```
+Mode gate: handbook.fix.mode = fix (confirmed)
+Findings: 4 mechanical, 2 skipped (design judgment required)
+
+| finding            | file:line              | remediation | verifier verdict |
+|---------------------|-------------------------|-------------|-------------------|
+| spacing-token-4pt   | src/Card.swift:82       | fixed       | accepted          |
+| color-literal-hex   | src/Card.swift:104      | fixed       | rejected          |
+
+Nothing was committed or pushed.
+```
+
+When the summary has no `mechanical: true` findings:
+
+```
+Mode gate: handbook.fix.mode = fix (confirmed)
+Findings: 0 mechanical, 3 skipped (design judgment required)
+
+Nothing to fix — no mechanical findings in this report.
+Nothing was committed or pushed.
+```

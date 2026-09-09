@@ -1,6 +1,6 @@
 ---
 name: self-assess-idiom-fix
-description: This skill should be used when the user explicitly asks to "apply the modernization findings", "fix the idiom findings", or "auto-fix what code-idiom found". Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode="fix", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying.
+description: Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode="fix", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying. Use when the user explicitly asks to "apply the modernization findings", "fix the idiom findings", or "auto-fix what code-idiom found". Not for design-handbook conformance findings from a cupertino-handbook-check pass -- use cupertino-handbook-fix for those. If no code_idiom_summary.json exists, this is not the audit the user means.
 ---
 
 # self-assess-idiom-fix
@@ -63,7 +63,10 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py close-edit-scope --repo
 
 Rule `verify-dispatch-handoff`: after the remediators finish, tell the user explicitly this
 change is unverified and hand off to `andon:andon-verify` (or `andon:andon-loop` for an OKF
-ledger). Do not run any self-check of correctness in this skill.
+ledger). Do not run any self-check of correctness in this skill. If neither `andon:andon-verify`
+nor `andon:andon-loop` is installed, report plainly that the remediator edits have already been
+applied to the working tree but remain unverified, and stop -- do not attempt any self-check as
+a substitute.
 
 ## Never commit or push
 

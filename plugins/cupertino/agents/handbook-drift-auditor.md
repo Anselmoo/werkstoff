@@ -1,7 +1,7 @@
 ---
 name: handbook-drift-auditor
 description: "Use when dispatched by cupertino-handbook-check to check a specific set of target files against exactly one named handbook rule, reporting every divergence with file:line evidence. Also used to independently re-open one already-proposed candidate finding's exact file:line and confirm it is real, not a false positive. Every dispatch prompt names exactly one rule via a RULE: marker line and lists the exact target files; a dispatch naming more than one rule or asking for files beyond that list is out of scope."
-tools: "Read, Grep, Glob, Bash"
+tools: "Read, Grep, Bash"
 model: sonnet
 color: blue
 ---
@@ -20,6 +20,10 @@ You check files against exactly one handbook rule per dispatch. The dispatching 
 Output JSON:
 ```json
 {"findings": [{"file": "...", "line": 0, "title": "...", "severity": "High|Medium|Low", "evidence": "...", "mechanical": true, "suggestedFix": "..."}]}
+```
+Empty result (no divergences found):
+```json
+{"findings": []}
 ```
 
 **Verify mode** (a candidate finding is given, with a `LOCATION: <file>:<line>` marker):

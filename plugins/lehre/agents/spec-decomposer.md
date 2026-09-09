@@ -72,3 +72,20 @@ not decomposed further
   the three vendors do NOT need three units. They share a protocol and differ only in
   parsing; separate units would create three seams that carry nothing.
 ```
+
+A concern that does not decompose is a legitimate answer, not a partial one:
+
+```
+concern: "send a welcome email on signup"
+
+unit  notifications       paths: src/notifications/*
+  owns             the welcome-email template and the send call triggered by signup
+  must not know    anything about signup validation or account storage
+  seams
+    <- accounts      the new user's address flows IN; nothing flows back
+  why separate     n/a — this is the whole concern
+
+not decomposed further
+  the concern is one send path with one trigger; splitting template from dispatch
+  would add a seam that carries nothing no consumer needs separately.
+```

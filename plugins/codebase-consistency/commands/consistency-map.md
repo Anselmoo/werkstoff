@@ -1,5 +1,5 @@
 ---
-description: Render the divergence inventory as a module × convention consistency matrix — not a dependency graph
+description: 'Renders an existing divergence inventory (analysis/<area>/consistency.json, written by /consistency-scan) as a module × convention consistency matrix — rows are modules, columns are convention dimensions — not a dependency graph. Use after a scan has completed, when the question is how divergence is distributed across modules and which dimension affects most of the area. Not for finding divergence in the first place: "where does this repo do the same thing two different ways" is /consistency-scan''s job, and this command has no inventory to render until that has run.'
 argument-hint: <area-dir>
 ---
 
@@ -25,7 +25,7 @@ group A always uses variant X, group B always uses variant Y — usually
 because they were written by different teams or at different times). Treat
 that as an **optional secondary view** (see below), not the default.
 
-## Build the matrix data
+## Step 1 — Build the matrix data
 
 From `consistency.json`, derive per-module rows: for each in-scope
 dimension, which variant(s) that module's files use, and the site count.
@@ -49,7 +49,7 @@ divergent, fractional = mixed within the module). Before canonize has run,
 omit the field — the map still renders, just without the "distance from
 canon" color scale; render cells by variant-cluster color instead.
 
-## Render
+## Step 2 — Render
 
 `analysis/$1/CONSISTENCY_MATRIX.html` — a self-contained, offline-capable,
 D3/SVG-rendered consistency matrix (no external CDN dependency, matching the

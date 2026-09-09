@@ -1,6 +1,6 @@
 ---
 name: self-assess-docs-drift
-description: This skill should be used when the user asks to "check documentation accuracy", "find doc drift", "verify our docs match the code", or as part of self-assess-autopilot's CHECK phase. Extracts falsifiable claims from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code.
+description: Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to "check documentation accuracy", "find doc drift", "verify our docs match the code", or as part of self-assess-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by self-assess-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift.
 ---
 
 # self-assess-docs-drift
@@ -43,8 +43,19 @@ Unless `skip_verification` is set, dispatch the `docs-drift-auditor` agent to re
 code for every claim and confirm or refute it by static comparison only -- never by executing
 example code from the docs. Each verified claim gets a `status` in
 `{"confirmed", "contradicted", "unverifiable"}` and, when contradicted, a `code_citation`
-showing exactly where the code diverges. When `skip_verification` is true, label every claim
-`verification_label: "unverified"` via:
+showing exactly where the code diverges. A contradicted claim looks like:
+
+```json
+{
+  "text": "All API requests are rate-limited to 100 requests per minute.",
+  "doc_citation": "README.md:42",
+  "status": "contradicted",
+  "code_citation": "src/middleware/rate_limit.py:18"
+}
+```
+
+`confirmed` and `unverifiable` claims use the same shape without `code_citation`. When
+`skip_verification` is true, label every claim `verification_label: "unverified"` via:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py label-findings --repo <repo_root> --findings <json>

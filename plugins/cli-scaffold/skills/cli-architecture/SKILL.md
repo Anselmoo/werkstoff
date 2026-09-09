@@ -1,6 +1,6 @@
 ---
 name: cli-architecture
-description: The single source of truth for what "production-grade" means for every CLI this plugin generates, in any of the 12 supported languages. Load this doctrine BEFORE any paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) generates a scaffold. Defines the five-pillar architecture, the frozen 0/1/2 exit-code contract, and the discoverability, composability, stability, and distribution requirements that the cli-scaffold-verifier checks. Never duplicate this doctrine into paradigm skills — reference it.
+description: The single source of truth for what "production-grade" means for every CLI this plugin generates, in any of the 12 languages plus the POSIX sh dialect. Load this doctrine BEFORE any paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) generates a scaffold. Defines the five-pillar architecture, the frozen 0/1/2 exit-code contract, and the discoverability, composability, stability, and distribution requirements that the cli-scaffold-verifier checks. Never duplicate this doctrine into paradigm skills — reference it.
 ---
 
 # CLI Architecture Doctrine
@@ -35,7 +35,7 @@ Every generated CLI, regardless of language, must satisfy all five. The
 
 ## The Frozen Exit-Code Contract
 
-Identical in all 12 languages, no exceptions. Enforced by
+Identical in all 12 languages plus the POSIX sh dialect, no exceptions. Enforced by
 `EXIT_SUCCESS`/`EXIT_RUNTIME_ERROR`/`EXIT_USAGE_ERROR` in `scripts/constants.py`
 and checked by `verify_scaffold.py`:
 
@@ -117,7 +117,7 @@ the file roles the verifier needs:
 For a language with no native completion mechanism, declare it honestly:
 `"completion": {"supported": false, "note": "Perl has no native completion mechanism"}`.
 
-## The 12 languages and 3 paradigms
+## The 12 languages plus the POSIX sh dialect, and 3 paradigms
 
 - **compiled** → Rust, Go, .NET — handled by `cli-scaffold-compiled`
 - **interpreted** → Python, TypeScript, JavaScript, Ruby, PHP, Perl — handled by

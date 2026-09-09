@@ -19,8 +19,7 @@ framework and never reads `ARGV`**.
 
 ## Help & completions (Pillar 1)
 OptionParser renders `--help` (Usage banner, then Options; document positional
-Arguments in the banner). **No first-party completion mechanism** — document the
-limitation honestly, or ship an optional hand-written bash-completion file.
+Arguments in the banner). **No first-party completion mechanism** — declare `completion.supported: false` in the manifest (as in perl.md/posix-sh.md); a hand-written bash-completion file may optionally be shipped on top of that default, not in place of it.
 
 ## NO_COLOR (Pillar 3)
 Gate ANSI on `ENV["NO_COLOR"]` being nil/empty.

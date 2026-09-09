@@ -19,11 +19,10 @@ lets `lehre-codify` tell an authority-backed rule from a description of the stat
 
 ## How to survey
 
-Prefer the `serena` MCP over grep whenever the question is structural —
-`find_symbol`, `get_symbols_overview`, and especially `find_referencing_symbols` for
-"what actually calls this". This repository has been burned repeatedly by guards that
-exist and are never called; a grep for a name finds prose mentions, whereas
-`find_referencing_symbols` finds call sites.
+Grep for the symbol or convention name across the target codebase, then Read each
+match in its surrounding context. A grep hit alone cannot tell a real call site from
+a prose mention, a comment, or a stale reference — only reading the lines around it
+can, so never report a grep count as a usage count without opening the file.
 
 ## Rules
 

@@ -31,8 +31,8 @@ by whoever accepted the rule; never restate it into a question you would rather 
 
 - **One rule per dispatch.** If the prompt names several, audit the first and say which
   you ignored.
-- **Every finding carries `file:line` and a quoted span.** A finding a reader cannot
-  navigate to is not a finding.
+- **Every violation carries `file:line` and a quoted span.** A violation a reader cannot
+  navigate to is not a violation.
 - **Report confidence, and separate certain from arguable.** A rule with no predicate
   is a rule with a judgement boundary; pretending every hit is equally certain hides
   where that boundary is.

@@ -27,13 +27,7 @@ one. Every full pipeline run starts from a clean slate — `cupertino-backwards`
 time, never reused across separate `cupertino-review` invocations even on a similar-sounding
 scope.
 
-Setting `review-pipeline-active` is what makes the PreToolUse hook refuse an automatic dispatch of `cupertino-cannibalize` for the duration of this pipeline — that refusal is intentional, not a bug to route around. Clear every flag when you finish (success, early stop, or the user cancels) — leaving them set would let a future run wrongly treat this one's stages as already done:
-
-```bash
-for f in review-pipeline-active backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
-  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
-done
-```
+Setting `review-pipeline-active` is what makes the PreToolUse hook refuse an automatic dispatch of `cupertino-cannibalize` for the duration of this pipeline — that refusal is intentional, not a bug to route around.
 
 ## Thread each stage's real content into the next dispatch — never re-send only the original scope
 
@@ -94,8 +88,11 @@ next stage on an incomplete handoff.
    empty stage. Persist the result to `elevate-output` if it ran; if skipped, persist
    `{"skipped": true, "reason": "<why>"}` to the same flag, same reason as step 5.
 7. **cupertino-unbox** — dispatch with every prior stage's content included. For the first five
-   minutes of the resulting build, if applicable to this scope. Persist the result to
-   `unbox-output`.
+   minutes of the resulting build, if this scope actually produces a build with a first-run
+   experience to unbox. If not applicable, **report this stage as explicitly skipped**
+   ("<why>") — never omit it silently. Persist the result to `unbox-output` if it ran; if
+   skipped, persist `{"skipped": true, "reason": "<why>"}` to the same flag instead of leaving
+   it absent, same rule as steps 5 and 6.
 8. **cupertino-reveal** — the final automatic stage, dispatched with every prior stage's content
    included — the one built suggestion must actually draw on what the whole pipeline decided,
    not re-derive it from the original scope alone. Exactly one built suggestion. Persist the
@@ -115,9 +112,24 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_review_flow_html.py" "$(python3 "${
     --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
 ```
 
+If this command exits non-zero, stop here and report the failure before running the end-of-run
+flag cleanup below — do not clear the flags on a failed render, since that would discard the
+only remaining copy of every stage's persisted content.
+
 Writes `.cupertino/CUPERTINO_REVIEW_FLOW.html` — outside `flags/`, so the cleanup step below
 (which only ever removes files under `flags/`) never touches it. Mention this path when
 presenting the review's results.
+
+## Clear every flag when you finish
+
+Clear every flag when you finish (success, early stop, or the user cancels) — leaving them set
+would let a future run wrongly treat this one's stages as already done:
+
+```bash
+for f in review-pipeline-active backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
+  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
+done
+```
 
 ## Cannibalization — never automatic
 
@@ -125,4 +137,34 @@ Do not invoke `cupertino-cannibalize` as part of this pipeline, ever — it is u
 
 ## Output format
 
-Present each stage's result in sequence, in the fixed order above. For stage 3, use the explicit side-by-side attribution format. For stages 5 and 6, report "skipped" plainly wherever they don't apply. End with the built reveal, and the cannibalization flag if one emerged.
+Present each stage's result in sequence, in the fixed order above. For stage 3, use the explicit side-by-side attribution format. For stages 5, 6, and 7, report "skipped" plainly wherever they don't apply. End with the built reveal, and the cannibalization flag if one emerged.
+
+```
+## cupertino-backwards
+<result>
+
+## cupertino-focus
+<result>
+
+## cupertino-longevity / cupertino-integrate
+longevity says: <result>
+integrate says: <result>
+
+## cupertino-council
+<result>
+
+## cupertino-prototype
+cupertino-prototype: skipped — no empirical uncertainty identified for this scope
+
+## cupertino-elevate
+<result>
+
+## cupertino-unbox
+<result>
+
+## cupertino-reveal
+<built reveal>
+
+## Cannibalization flag (only if one emerged)
+<flag text>
+```

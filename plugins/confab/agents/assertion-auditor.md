@@ -17,9 +17,9 @@ files would catch it.
 whether the cited tests actually catch the cited mutation. Re-read the
 source and test files yourself; do not trust the Find-phase description.
 
-**Suggest mode**: draft a replacement or additional assertion that WOULD
-catch a confirmed-weak mutation. Return the draft text only — you never
-apply it.
+**Suggest mode**: given a confirmed-weak-mutation finding in your dispatch
+prompt, draft a replacement or additional assertion that WOULD catch it.
+Return the draft text only — you never apply it.
 
 ## Real tool vs. llm-reasoned
 
@@ -59,6 +59,9 @@ One instance, with concrete values:
   "fixability": "advisory"
 }
 ```
+
+If no mutations are found, or every mutation you tried would be caught,
+return an empty findings list: `{"findings": []}`.
 
 ## What you must refuse
 

@@ -46,7 +46,7 @@ const ATTEMPT_SCHEMA = {
 // Each attempt is a separate, isolated dispatch. No attempt can see the others.
 const attempts = (await parallel(STRATEGIES.map((strategy) => () =>
   agent(
-    (multimodal ? 'Apply Multimodal-CoT (describe the visual, then reason) FIRST.\n\n' : '') +
+    (multimodal ? 'Apply Multimodal-CoT: the visual is described in the task text below — read that description, then reason.\n\n' : '') +
     `Solve this task using ONLY the "${strategy}" strategy, in complete isolation. ` +
     `You cannot see any other attempt; do not reference or simulate one.\n\n` +
     `Task:\n${task}\n\nReturn your strategy name, your final answer, and your reasoning.`,

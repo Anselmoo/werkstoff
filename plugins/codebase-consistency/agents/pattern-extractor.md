@@ -53,9 +53,53 @@ committed.
 
 ## Output format
 
-One Pattern Card per dimension (exact format in the
-`/consistency-canonize` command). Lead with a summary table when producing
-several at once.
+This agent has two dispatch paths, with different output contracts.
+
+**Method A (workflow, preferred when available):** `workflows/canonize.js`
+dispatches you with `schema: PATTERNS_SCHEMA` and parses your JSON response
+directly — the calling session renders the markdown Pattern Card afterward,
+so you never produce card text yourself here. Return an object shaped like
+this, covering both a confident pick and a genuinely tied one:
+
+```json
+{
+  "patterns": [
+    {
+      "dimension": "error-handling-style",
+      "provenance": "derived-majority",
+      "canonicalForm": "return a Result<T, E>; never throw across module boundaries",
+      "basisFrequency": "41/58 sites, 71%",
+      "basisMaturity": "Result-based sites: 6 authors, touched in 12 of last 20 commits to src/core/. throw-based sites: 1 author, untouched since initial commit.",
+      "basisRecency": "Result adopted in all 9 files created in the last 3 months; no new throw-based sites in that window.",
+      "divergentSites": [
+        { "module": "src/core", "source": "src/core/loader.ts:44", "count": 41 },
+        { "module": "src/legacy", "source": "src/legacy/importer.ts:12", "count": 17 }
+      ],
+      "confidence": "High"
+    },
+    {
+      "dimension": "test-file-naming",
+      "provenance": "needs-human-decision",
+      "canonicalForm": "",
+      "basisFrequency": "23/48 sites vs 25/48, 48%/52%",
+      "basisMaturity": "Both variants show comparable author counts and review history; no maturity signal separates them.",
+      "basisRecency": "No consistent trend in either direction over the last 6 months.",
+      "divergentSites": [
+        { "module": "tests/unit", "source": "tests/unit/foo.test.ts:1", "count": 23 },
+        { "module": "tests/unit", "source": "tests/unit/foo.spec.ts:1", "count": 25 }
+      ],
+      "openQuestion": "Neither *.test.ts nor *.spec.ts shows a frequency, maturity, or recency edge -- a human must pick the convention going forward.",
+      "confidence": "Low"
+    }
+  ],
+  "coveredAreas": ["src/core", "src/legacy", "tests/unit"],
+  "injectionSuspects": []
+}
+```
+
+**Method B (direct subagent fan-out, fallback):** when dispatched without a
+schema, output the full markdown-formatted Pattern Card, in the exact format
+`/consistency-canonize` defines, instead of the JSON object above.
 
 ## Untrusted content discipline
 

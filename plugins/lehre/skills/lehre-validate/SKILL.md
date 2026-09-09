@@ -79,9 +79,6 @@ next: lehre-conform adapters — add the vendor_c adapter, then re-validate.
 
 ## Rules
 
-- **Close on a clean result only.** A unit closed with a known gap silently
-  unblocks every dependent, and the guarantee the build order provides is gone
-  for the rest of the project.
 - **Never close a unit because the user asked you to.** If they want the gate
   lifted, that is `LEHRE_DISABLE_GUARD=1` — visible, temporary, and theirs.
   A done-marker written to satisfy a request is a permanent false record.

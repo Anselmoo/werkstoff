@@ -48,7 +48,37 @@ variant cluster — label, representative `file:line`, site count
 (approximate flagged as such), and a maturity/recency note. Always include
 a "Confidence & Gaps" footer: what you couldn't determine (thin git
 history, ambiguous clustering, a site you weren't sure which cluster it
-belonged to) and what you'd ask a human.
+belonged to) and what you'd ask a human. For example:
+
+```markdown
+### Variant: try/except with logged re-raise
+- Representative: `src/api/client.py:142`
+- Sites: 6 (verified)
+- Maturity: present since `a3f9c2e` (2023-01), touched by 4 authors, most
+  recent change 3 weeks ago — established pattern.
+
+**Confidence & Gaps**
+- Could not determine which cluster `src/legacy/importer.py:88` belongs to
+  (mixes try/except and manual status-code checks in the same function).
+- Git history for `src/api/` was squashed in a 2022 migration — the
+  maturity read for pre-2022 sites is a gap, not evidence of youth.
+- Ask a human: is `src/legacy/importer.py` in scope, or slated for removal?
+
+---
+### No variants found for dimension "retry-backoff strategy"
+(No variant-cluster entries — nothing worth flagging.)
+
+**Confidence & Gaps**
+- Only checked `src/api/`; did not sweep `tests/` or `scripts/` — the
+  search was narrower than the requested dimension.
+- Ask a human: should the sweep include `scripts/` before this dimension
+  is called clean?
+```
+
+If a requested dimension turns up no variants worth flagging, say so
+directly with the empty-cluster shape above — an empty cluster list plus a
+"Confidence & Gaps" footer naming how narrow the search was — rather than
+omitting the section.
 
 ## Untrusted content discipline
 

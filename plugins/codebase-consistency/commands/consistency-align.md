@@ -4,10 +4,11 @@ argument-hint: <area-dir> [dimension]
 ---
 
 Execute one phase of `analysis/$1/CONSISTENCY_BRIEF.md` — align every
-divergent site for `[dimension]` (or the brief's next unstarted phase, if
-omitted) onto its approved canonical form. **Requires an approved brief**;
+divergent site for `[dimension]` (`$2`; or the brief's next unstarted phase,
+if omitted) onto its approved canonical form. **Requires an approved brief**;
 stop and say so if `CONSISTENCY_BRIEF.md` has no filled Approval Block, or
-if the requested dimension's phase entry criteria aren't met.
+if the requested dimension's phase entry criteria aren't met — run
+`/consistency-brief $1` to produce and get one approved.
 
 Unlike a legacy-modernization transform, this is **in-place, not a parallel
 tree**: there is no `legacy/` vs `modernized/` split, because there is no
@@ -30,7 +31,10 @@ it, run the module's own tests, and write `analysis/$1/PLAYBOOK.md`: the
 exact edit pattern, every snag hit and how it was resolved (an import that
 had to move, a signature that needed an adapter, a test fixture that
 assumed the old shape), and the precise command that proves a module is
-done. **This playbook is what every later batch follows — do not skip the
+done. If the pilot's tests fail, do not write `PLAYBOOK.md` yet — revise
+the canonical-form choice, or escalate to the human who approved the
+brief, before proceeding; Step 2's fan-out must not start from an unproven
+pilot. **This playbook is what every later batch follows — do not skip the
 pilot even under time pressure; a wrong assumption caught here costs one
 module, not the whole area.**
 
@@ -44,7 +48,7 @@ Workflow({
   scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/align.js",
   args: {
     area: "$1",
-    dimension: "<dimension>",
+    dimension: "$2",
     units: [ { name: "<module>", path: "<repo-relative path>", deps: ["<sibling module names this one's canonical form depends on>"] } ]
   }
 })
@@ -52,7 +56,12 @@ Workflow({
 
 Enumerate the remaining divergent modules from `CANON.json`'s
 `divergentSites` first (the workflow script has no filesystem access).
-`deps` matters here more than it does in a version uplift: if module B's
+Each unit's `deps` must be derived by inspecting that module's actual
+references onto the canonical form the pilot introduced (imports, shared
+types or utilities it now depends on) — not read out of `CANON.json`,
+whose documented `divergentSites` schema is `{ module, files, count }` and
+carries no dependency data. `deps` matters here more than it does in a
+version uplift: if module B's
 canonical form calls into a shared type or utility that module A's
 alignment introduces, B must not be batched until A has landed — get this
 wrong and the fan-out either fails B for a reason that has nothing to do

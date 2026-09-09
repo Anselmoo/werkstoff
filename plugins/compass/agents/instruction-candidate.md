@@ -49,7 +49,20 @@ mutually compatible? any instruction two-ways-interpretable?
 - Mark each item pass/fail with a one-line reason.
 - **MUST NOT rewrite the candidate wholesale.** Touch only the failing items;
   leave passing text exactly as-is.
-- Return the checklist and the `final_prompt`.
+- Return the checklist and the `final_prompt`. Normal shape, all items passing
+  (no rewrite needed):
+
+  ```json
+  {
+    "checklist": [
+      { "item": "behavioral rules unambiguous", "verdict": "pass", "reason": "Each rule names its trigger condition explicitly." },
+      { "item": "handles out-of-scope requests", "verdict": "pass", "reason": "Fallback clause covers inputs outside the stated task." },
+      { "item": "output-format rules mutually compatible", "verdict": "pass", "reason": "Only one format is specified; no conflict possible." },
+      { "item": "any instruction two-ways-interpretable", "verdict": "pass", "reason": "No pronoun or term has more than one referent." }
+    ],
+    "final_prompt": "<candidate text unchanged>"
+  }
+  ```
 
 ## Output
 

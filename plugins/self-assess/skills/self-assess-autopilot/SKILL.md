@@ -1,6 +1,6 @@
 ---
 name: self-assess-autopilot
-description: This skill should be used when the user asks to "run the auto-pilot", "check, plan, fix and validate this repo", or wants the full self-assess value stream run end to end. Conducts CHECK (read-only findings) -> PLAN (modernization brief) -> a hard approval gate -> FIX+VALIDATE (handed to andon-loop), halting on any unproven wire or unmet blocker.
+description: Runs self-assess's full workflow (CHECK → PLAN → approval gate → FIX+VALIDATE) with andon-loop, halting on unproven wires or unmet blockers. Use when the user asks to "run the auto-pilot", "check, plan, fix and validate this repo", or wants the full self-assess value stream.
 ---
 
 # self-assess-autopilot
@@ -30,7 +30,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py stage-map-fresh-check -
   a prior run left it incomplete, or the repo has changed since it last ran. This is also true
   the first time autopilot ever runs in a repo (nothing to reuse yet).
 
-Rule `autopilot-stage-map-first` (unchanged): whichever branch above applies, stage-map's
+Rule `autopilot-stage-map-first`: whichever branch above applies, stage-map's
 outputs (fresh or reused) MUST be settled before any other finding domain starts — it writes
 `stage_graph.json` and `file_stage_index.json`, which `self-assess-arch-health` and
 `self-assess-transform-brief` both require. Do not parallelize stage-map with the rest.

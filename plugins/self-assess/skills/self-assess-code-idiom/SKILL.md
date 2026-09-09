@@ -1,6 +1,6 @@
 ---
 name: self-assess-code-idiom
-description: This skill should be used when the user asks to "find modernization opportunities", "check for deprecated idioms", "find code smells", or as part of self-assess-autopilot's CHECK phase. Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell.
+description: Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell. Use when the user asks to "find modernization opportunities", "check for deprecated idioms", "find code smells", or as part of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-code-idiom
@@ -44,6 +44,10 @@ Dispatch `idiom-auditor` with the detected version per language and (if present)
 Findings ambiguous enough that a mechanical fix could be wrong (e.g. the "modern" idiom would
 change behavior in this codebase's edge case) MUST carry a `severityNote` -- this is the flag
 `self-assess-idiom-fix` uses later to skip auto-applying them.
+
+Every `modernization` finding MUST also carry `kind` (an idiom-pattern slug, e.g.
+`optional-union-syntax`) -- `self-assess-idiom-fix` clusters remediation work by `(file, kind)`
+and cannot group findings that omit it.
 
 ## Step 3: Verify
 

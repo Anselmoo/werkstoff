@@ -1,6 +1,6 @@
 ---
 name: lehre-codify
-description: "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused."
+description: "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused. Not for mining the business or domain logic the code already implements — calculations, validations, state transitions — use self-assess-extract-rules for that. Not for a standalone, human-readable per-domain handbook (code, design, testing, documentation) recording what a project already does, one rule per dimension — use cupertino:cupertino-handbook-draft for that. This skill governs how code is written, not what the code decides."
 ---
 
 Produce the doctrine. A rule reaches `.lehre/ruleset.json` only if it names an
@@ -41,7 +41,9 @@ Read `references/ruleset-schema.md` before writing anything.
 5. **Dispatch `rule-critic` over the whole candidate set.** It re-derives each
    `sourceMode` claim independently and hunts for forced consistency — a rule
    imposing uniformity where genuine variation was warranted. Drop or downgrade
-   what it refutes. Do not argue with it on the strength of your own draft.
+   what it refutes. Do not argue with it on the strength of your own draft. If
+   the dispatch errors or is unreachable, stop and report — do not write the
+   ruleset unreviewed.
 
 6. **Assign severity by what the predicate can actually decide.**
    `blocking` only where a deterministic check exists in the closed vocabulary
@@ -56,12 +58,18 @@ Read `references/ruleset-schema.md` before writing anything.
 
 7. **Write and validate.**
 
+   Serialize the candidate rules — plus any pre-existing rules/units already in
+   `.lehre/ruleset.json`, per the Rules section's amend-don't-rewrite requirement —
+   into the file per `references/ruleset-schema.md`, then run:
+
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
    ```
 
    Show its output verbatim, including the gauge-tier note. If it fails, fix the
-   ruleset before finishing — the hook fails closed on an unparseable file.
+   ruleset before finishing — the hook fails closed on an unparseable file. If
+   one fix attempt still fails to validate, stop and show the validator error to
+   the user rather than retrying indefinitely.
 
 ## Output format
 

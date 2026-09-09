@@ -1,6 +1,6 @@
 ---
 name: self-assess-complexity-score
-description: This skill should be used when the user asks "which module needs attention first", "score complexity per stage", "what's our tech debt hotspot", or as part of self-assess-autopilot's CHECK phase. Computes a relative complexity index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers.
+description: Computes a relative complexity/attention-priority index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers. Use when the user asks "which module needs attention first", "score complexity per stage", "what's our tech debt hotspot", or as part of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-complexity-score
@@ -51,6 +51,17 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kin
 The validator recomputes `2.94 x (KSLOC)^1.10` for every non-`unmeasured` stage and rejects the
 artifact if the persisted `complexity_index` does not match to within floating-point tolerance
 -- a hand-typed or LLM-guessed number cannot pass.
+
+A `complexity_score_summary.json` stage entry looks like this -- one measured, one not:
+
+```json
+{
+  "stages": [
+    {"stage": "api", "sloc": 4200, "complexity_index": 187.3, "unmeasured": false},
+    {"stage": "legacy-perl", "sloc": 0, "complexity_index": null, "unmeasured": true}
+  ]
+}
+```
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename COMPLEXITY_SCORE.md

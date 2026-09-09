@@ -30,10 +30,13 @@ the specific `confab-*-audit` skill instead.
    to the user verbatim and stop; there is nothing to review.
 3. For each matched domain printed in step 2's `matchedDomains`, produce a
    lightweight findings JSON scoped to only the matched files:
-   - `dependency_audit`: only if a manifest file changed. Dispatch the
-     `dependency-auditor` agent (or, more simply, run
-     `scripts/dependency_audit.py <repo_root>` — it's fast enough for a
-     pre-commit check and already does the full bounded-timeout lookup).
+   - `dependency_audit`: only if a manifest file changed. Run
+     `scripts/dependency_audit.py <repo_root> --skip-verification` — it
+     performs the real bounded-timeout registry lookup and typosquat
+     heuristic without the mandatory independent re-check, matching this
+     pass's single-check, advisory rigor. Optionally supplement it with the
+     `dependency-auditor` agent in Find mode for ambiguous names — a
+     supplement to the script's findings, never a replacement for it.
    - `assertion_audit`: dispatch `assertion-auditor` in Find mode only,
      scoped to the changed source/test files.
    - `contract_drift`: dispatch `contract-auditor` in Find mode only,

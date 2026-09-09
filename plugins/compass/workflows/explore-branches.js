@@ -80,20 +80,30 @@ const SCORE_SCHEMA = {
   properties: {
     feasibility: { type: 'integer', minimum: SCORE_MIN, maximum: SCORE_MAX },
     impact: { type: 'integer', minimum: SCORE_MIN, maximum: SCORE_MAX },
-    risk: { type: 'integer', minimum: SCORE_MIN, maximum: SCORE_MAX },
+    risk: { type: 'integer', minimum: SCORE_MIN, maximum: SCORE_MAX, description: 'higher = more dangerous' },
     biggest_blocker: { type: 'string' },
   },
 }
 const scored = (await parallel(branches.map((b) => () =>
   agent(
-    `Score exactly ONE branch on Feasibility, Impact, and Risk, each ${SCORE_MIN}-${SCORE_MAX}. ` +
+    `Score exactly ONE branch on Feasibility, Impact, and Risk, each ${SCORE_MIN}-${SCORE_MAX} ` +
+    `(Risk: higher = more dangerous). ` +
     `Do NOT compare it against any other branch — score it on its own merits — and name its biggest blocker.\n\n` +
     `Branch "${b.name}": ${b.description}`,
     { label: `score:${b.name}`, phase: 'Score', agentType: 'compass:branch-proposer', schema: SCORE_SCHEMA },
   ).then((s) => ({ name: b.name, description: b.description, ...s })),
 ))).filter(Boolean)
 
-// SELECT — Total = raw sum (Risk NOT inverted). Highest total; tie -> lower risk.
+if (scored.length < branches.length) {
+  const scoredNames = new Set(scored.map((s) => s.name))
+  const dropped = branches.filter((b) => !scoredNames.has(b.name)).map((b) => b.name)
+  log(`Dropped ${dropped.length} branch(es) whose scoring dispatch failed: ${dropped.join(', ')}`)
+}
+if (scored.length < 2) throw new Error('explore-branches: fewer than 2 branches scored successfully')
+
+// SELECT — Total = raw sum (Risk NOT inverted; compass-explore-branches/SKILL.md and
+// branch-proposer.md both state this, so the code must not decide otherwise). Highest total;
+// tie -> lower risk.
 phase('Select')
 for (const s of scored) {
   for (const axis of AXES) requireScore(s[axis], `${s.name}.${axis}`)

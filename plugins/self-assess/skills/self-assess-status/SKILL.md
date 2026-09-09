@@ -1,6 +1,6 @@
 ---
 name: self-assess-status
-description: This skill should be used when the user asks "where does self-assess stand", "what's stale in our analysis", "what should we run next", or "self-assess status". Reports which artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run.
+description: Reports which self-assess artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run. Use when the user asks "where does self-assess stand", "what's stale in our analysis", "what should we run next", or "self-assess status".
 ---
 
 # self-assess-status
@@ -20,7 +20,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <r
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py status-present-artifacts --repo <repo_root>
 ```
 
-The `present` map contains a key ONLY for a finding-producing skill whose sidecar JSON file
+The `present` map contains a key ONLY for a finding-producing skill whose artifact
 exists on disk right now. Rule `status-no-fabrication`: never add a key with an empty object,
 a placeholder, or a guessed status for a skill that has not run -- if it is not in `present`,
 omit it from the dashboard entirely.
@@ -50,7 +50,7 @@ report it as "staleness unknown," never guess `stale: false`.
 ## Step 3: Recommend transform-brief when warranted
 
 The same `status-present-artifacts` call returns `recommend_transform_brief: true` when at
-least one reporting sidecar exists but `MODERNIZATION_BRIEF.md` does not. Surface this
+least one artifact exists but `MODERNIZATION_BRIEF.md` does not. Surface this
 recommendation prominently when true.
 
 ## Step 4: Write outputs
@@ -62,6 +62,33 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --r
 
 Write `findings-dashboard.html` (a static HTML summary) and `findings_dashboard_data.json`
 (only the keys actually present, plus staleness and the transform-brief recommendation).
+
+Before any finding-producing skill has run, `present` is empty and there is nothing to add
+staleness for -- write the object as-is rather than fabricating an entry:
+
+```json
+{
+  "present": {},
+  "structural": {},
+  "recommend_transform_brief": false
+}
+```
+
+Once a skill has run, its key carries the artifact path and staleness for that path (omit any
+skill not in `present`/`structural`, per `status-no-fabrication` above):
+
+```json
+{
+  "present": {
+    "self-assess-lint-audit": {
+      "artifact": "analysis/self-assess/lint-audit.json",
+      "stale": false
+    }
+  },
+  "structural": {},
+  "recommend_transform_brief": true
+}
+```
 
 ## Read-only constraint
 

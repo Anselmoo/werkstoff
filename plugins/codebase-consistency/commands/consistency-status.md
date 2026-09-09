@@ -35,8 +35,26 @@ inspect, never modify.
 
 End with three lines:
 - **Where you are** — furthest completed stage, and roughly how much of
-  the area it covers (e.g. "3 of 6 dimensions canonized, 1 of those
+  the area it covers (e.g. "3 of 5 dimensions canonized, 1 of those
   aligned and verified").
 - **What's stale** — or "nothing".
 - **Next command** — the single most useful next step, with a one-line
   reason.
+
+## Example
+
+```
+| Stage | Artifacts |
+|---|---|
+| preflight | PREFLIGHT.md (Check 0 answered, Check 6 scope note present) |
+| scan | CONSISTENCY_SCAN.md, consistency.json |
+| map | matrix.json, CONSISTENCY_MATRIX.html |
+| canonize | PATTERN_CARDS.md, CANON.json (3 of 5 dimensions canonized) |
+| brief | CONSISTENCY_BRIEF.md (Approval Block signed for phases 1-2) |
+| align | PLAYBOOK.md, ALIGN_NOTES.md (phase 1: pilot done, fan-out complete; phase 2: not started) |
+| verify | VERIFICATION.md (phase 1: clean) |
+
+**Where you are** — 3 of 5 dimensions canonized, 1 of those aligned and verified.
+**What's stale** — nothing.
+**Next command** — `/consistency-align` for phase 2; its playbook is signed but unapplied.
+```

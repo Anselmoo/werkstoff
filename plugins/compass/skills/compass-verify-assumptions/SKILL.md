@@ -52,5 +52,17 @@ The guard refuses: more than 3 steps, a list of assumptions, a `confidence_raise
 below 90, or a resolved outcome with no citation. A non-zero exit means an outcome
 was accepted that shouldn't be — keep it `still_unresolved`.
 
+A `still_unresolved` outcome needs no `confidence` or `citations` field:
+
+```
+echo '{
+  "assumption":"target env is prod",
+  "steps":[
+    {"reasoning":"need to know which env the config targets","action":"read config","observation":"config.yaml has no env key"}
+  ],
+  "outcome":{"kind":"still_unresolved"}
+}' | $GUARD verify -
+```
+
 ## Output
 - one outcome: confidence raised (>=90), reading changed, or still_unresolved

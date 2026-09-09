@@ -11,7 +11,7 @@ until a person has approved the brief.
 1. **Refuse without inputs.** Requires `.lehre/ruleset.json` and a gauge result
    from this session. If either is missing, say so and stop — do not re-derive
    a violation set from memory or from a stale report. A brief built on
-   remembered findings plans work against a tree that may no longer exist.
+   remembered violations plans work against a tree that may no longer exist.
 
 2. **Guard provenance before writing.** If `LEHRE_BRIEF.md` already exists, read
    its header. Proceed only if it carries `provenance: lehre`. If the header is
@@ -26,18 +26,21 @@ until a person has approved the brief.
    smallest blast radius first — bank the certain wins before the contested
    ones. This is deliberately *not* largest-first.
 
-4. **Separate mechanical from judgement, per finding.** Mechanical means the
+4. **Separate mechanical from judgement, per violation.** Mechanical means the
    fix is fully determined by the rule and the location — an import moved, a
    file relocated, a construct swapped. Everything else needs a person. Label
-   each item; `lehre-conform` dispatches only the mechanical ones to an agent
-   and brings the rest to the user.
+   each violation; `lehre-conform` dispatches only the mechanical ones to an
+   agent and brings the rest to the user.
 
 5. **Name what each phase does NOT cover.** Bounded scope stated up front, not
    discovered when the phase ends.
 
 6. **Write `LEHRE_BRIEF.md` with a `provenance: lehre` header**, then **stop at
    the approval gate.** State explicitly that no code changes until the user
-   approves, and name the exact next command.
+   approves, and name the exact next command. Approval happens in chat, not by
+   a direct edit to the file: when this skill resumes after the user approves,
+   it is `lehre-brief` itself that rewrites the header's `approved_phases`
+   list and `status` field before handing off — nothing else touches them.
 
 ## Output format
 
@@ -49,6 +52,7 @@ provenance: lehre
 ruleset: .lehre/ruleset.json
 gauge_run: 27 violations across 412 files
 status: awaiting-approval
+approved_phases: []
 ---
 ```
 
@@ -88,4 +92,5 @@ APPROVAL GATE
 - **Never write a brief without the provenance header** — it is what the next
   run's guard reads.
 - If the user approves only part of the brief, record which phases are approved
-  in the header. `lehre-conform` applies exactly one approved phase per run.
+  in the header's `approved_phases` list. `lehre-conform` applies exactly one
+  approved phase per run.

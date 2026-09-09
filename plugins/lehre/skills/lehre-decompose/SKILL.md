@@ -30,7 +30,12 @@ to remove.
    whose seam it consumes. Contracts before the things written against them;
    transport last, so it cannot shape the domain. Reject any ordering that needs
    a cycle — `lehre_core` refuses a cyclic graph at validation time anyway, and
-   catching it here is cheaper than catching it at the first denial.
+   catching it here is cheaper than catching it at the first denial. If no
+   acyclic ordering exists, return to step 3 and re-derive the seams — a cycle
+   usually means a seam was drawn in the wrong direction or two units were
+   split along the wrong boundary; if re-deriving still cannot break the cycle,
+   surface the conflicting units and their seams to the user instead of forcing
+   an order.
 
 5. **Write the units into `.lehre/ruleset.json`.** If the file does not exist,
    create it with `"rules": []` — `lehre-codify` fills those in. Record the

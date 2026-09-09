@@ -61,10 +61,26 @@ Guessing wrong is worse than blocking.
 
 ## Output contract
 
-Return `{"status": "applied", "findingId": "...", "file": "...",
-"summary": "one sentence describing the exact edit made"}` on success, or
-`{"status": "blocked", "findingId": "...", "reason": "..."}` when you
-refuse to guess.
+On success:
+
+```json
+{
+  "status": "applied",
+  "findingId": "confab-dependency_audit-0031",
+  "file": "requirements.txt",
+  "summary": "Removed the typosquat entry `reqeusts==2.31.0` at line 12; the real dependency `requests==2.31.0` was already declared at line 7."
+}
+```
+
+When you refuse to guess:
+
+```json
+{
+  "status": "blocked",
+  "findingId": "confab-contract_drift-0104",
+  "reason": "declaredLocation src/api/users.py:14 types id as int, but the finding's actual-usage evidence shows callers passing both int and str -- fixing the declaration requires choosing which type is correct, a design judgment, not a mechanical alignment."
+}
+```
 
 ## What you must refuse
 

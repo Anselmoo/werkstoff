@@ -1,7 +1,7 @@
 ---
 name: andon-verify
-description: "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified."
-allowed-tools: "Read, Grep, Glob, Bash, Agent"
+description: "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use confab:confab-assertion-audit for that."
+allowed-tools: "Read, Grep, Glob, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Agent"
 argument-hint: "<wire-id>"
 ---
 

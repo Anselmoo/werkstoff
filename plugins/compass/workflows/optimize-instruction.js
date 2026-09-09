@@ -66,14 +66,18 @@ const SCORE_SCHEMA = {
   type: 'object', required: ['passed'],
   properties: { passed: { type: 'integer', minimum: 0, maximum: testCases.length } },
 }
-const scored = await parallel(candidates.map((c) => () =>
+const scored = (await parallel(candidates.map((c) => () =>
   agent(
     `Score this candidate instruction against the EXACT test cases below — do not invent, drop, ` +
     `or adjust any test case or expected outcome. Report how many of the ${testCases.length} it passes.\n\n` +
     `Candidate (${c.framing}):\n${c.prompt}\n\nTest cases:\n${JSON.stringify(testCases, null, 2)}`,
     { label: `score:${c.framing}`, phase: 'Score', agentType: 'compass:instruction-candidate', schema: SCORE_SCHEMA },
   ).then((s) => ({ ...c, score: s.passed })),
-))
+))).filter(Boolean)
+
+if (scored.length !== CANDIDATE_COUNT) {
+  throw new Error(`optimize-instruction: expected exactly ${CANDIDATE_COUNT} scored candidates, got ${scored.length}`)
+}
 
 // Highest score; ties broken by framing precedence order.
 scored.sort((a, b) => (b.score - a.score) || (FRAMING_ORDER[a.framing] - FRAMING_ORDER[b.framing]))

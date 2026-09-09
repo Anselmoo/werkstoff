@@ -39,7 +39,14 @@ fixed — never report a fifth category, and never rename one.
    `excessive-tool-grant`, and writes
    `analysis/confab/reports/AGENTIC_RELIABILITY.md` (grouped into four sections,
    one per category, plus a separate trivial-exceptions section) and
-   `analysis/confab/agentic_reliability_summary.json`.
+   `analysis/confab/agentic_reliability_summary.json`. A rejected finding is
+   dropped silently from the script's own perspective: it prints
+   `WARNING: dropping invalid finding: ...` to stderr and still exits 0, so
+   the finding count alone will not reveal the drop.
+   Check the script's stderr for any `WARNING: dropping invalid finding`
+   lines before trusting the reported finding count as complete. If any
+   appear, re-dispatch Find mode with the category constraint restated
+   rather than accepting the count as-is.
 5. Report the per-category finding counts to the user. Call out
    `excessive-tool-grant` findings specifically as "auto-fixable via
    `confab-cycle` in fix mode" since that's the only category

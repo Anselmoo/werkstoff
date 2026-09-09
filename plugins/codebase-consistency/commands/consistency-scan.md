@@ -1,6 +1,6 @@
 ---
-description: Inventory internal pattern/style/architecture divergence across the area — excludes documented conventions and version-deprecated idioms, which are out of scope
-argument-hint: <area-dir> [convention-pattern]
+description: Inventory internal pattern/style/architecture divergence — excludes documented conventions and version-deprecated idioms
+argument-hint: <area-dir> [dimension-pattern]
 ---
 
 Build an inventory of **undocumented, non-deprecated divergence** in `$1` —
@@ -28,7 +28,7 @@ is deliberately narrower than a general code-quality audit:
   valid, all currently in use, none documented as the standard.** That is
   the entire scope.
 
-If a `[convention-pattern]` was given (`$2`), scope the scan to dimensions
+If a `[dimension-pattern]` was given (`$2`), scope the scan to dimensions
 matching it (e.g. `error-handling`, `docstrings`); otherwise cover the
 default dimension set below.
 

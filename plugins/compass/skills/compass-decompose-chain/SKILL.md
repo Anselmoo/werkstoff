@@ -50,3 +50,8 @@ graph.
 ## Output
 - the stage table
 - the parallel-safe wave grouping (from the guard's `waves`)
+
+This stage/wave output is not separately persisted by this skill — it is captured
+only inside compass-solve's single end-of-pipeline state write. Unlike Clarify and
+Explore, compass-solve's Decompose step performs no prior-run reuse check, so a
+prior Decompose pass cannot be resumed the way Clarify or Explore can.

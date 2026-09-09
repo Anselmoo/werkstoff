@@ -1,6 +1,6 @@
 ---
 name: confab-assertion-audit
-description: "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Verification is mandatory and cannot be skipped by any setting; every finding is labeled real-tool or llm-reasoned."
+description: "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests. Every finding is labeled real-tool or llm-reasoned."
 ---
 
 Check whether the given test files would actually catch plausible
@@ -21,7 +21,9 @@ this run faster by skipping it; the capability does not exist.
    target files for the agent to use as evidence.
 3. Dispatch the `assertion-auditor` agent in **Find mode**: give it the
    target files, test files, the named tool (if any), and the symbol
-   index. Ask for `{"findings": [...]}` where each finding has
+   index (if built) — if step 2 was skipped, tell the agent no symbol
+   index exists and it should read the target files directly instead.
+   Ask for `{"findings": [...]}` where each finding has
    `toolSource` set (`"real-tool"` if the named tool actually ran and
    covered that finding, `"llm-reasoned"` with an explicit
    `fallbackReason` otherwise). Write its output to a scratch JSON file.

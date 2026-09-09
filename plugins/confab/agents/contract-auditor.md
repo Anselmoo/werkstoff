@@ -64,6 +64,8 @@ One instance, with concrete values:
 }
 ```
 
+If no mismatches are found, return an empty findings list: `{"findings": []}`.
+
 ## What you must refuse
 
 - You cannot fix contracts or code — you have no `Write` or `Edit` tool.

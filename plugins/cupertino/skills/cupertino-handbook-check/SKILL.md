@@ -1,6 +1,6 @@
 ---
 name: cupertino-handbook-check
-description: "Use when the user wants to compare new or changed work against an existing domain handbook to find divergence. Trigger on 'does this comply with our handbook', 'check this against our standards', 'audit these files against the code handbook'. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
+description: "Use when the user wants to compare new or changed work against an existing domain handbook at .cupertino/DOMAIN-handbook.md (one file per domain) to find divergence. Trigger on 'does this comply with our handbook', 'audit these files against the code handbook', 'check this against the code handbook'. Requires a handbook previously produced by cupertino-handbook-draft. Not for repo-wide conventions written in CLAUDE.md or .claude/house-rules.md — use self-assess:self-assess-lint-audit for those. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
 ---
 
 Check files against an existing handbook, one rule at a time, verifying every finding independently. Never touch the target files.
@@ -19,11 +19,20 @@ Check files against an existing handbook, one rule at a time, verifying every fi
    Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-check.js", args: { rules: [...], targetFiles: [...] } })
    ```
    This dispatches `handbook-drift-auditor` once per rule (never bundling rules), then independently re-verifies every individual finding at its exact `file:line` before it counts — a PreToolUse hook backstops both the one-rule-per-dispatch and one-location-per-verify constraints regardless of what the workflow script does. Findings that don't survive re-verification are dropped, not reported.
-6. **Clear the active flag** when done:
+6. **Clear the active flag** when done — and immediately, before stopping, if step 4 or step 5 fails or is interrupted, rather than leaving it set:
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-check-active
    ```
 7. **Write the report** at `.cupertino/HANDBOOK_CHECK-<domain>.md` — a findings table with severity (High/Medium/Low), evidence (`file:line`), and whether each finding is mechanical (fixable without design judgment) or not — plus the sidecar `.cupertino/handbook_check_<domain>_summary.json`, whose schema is validated on write by the same PreToolUse hook (a finding missing `severity`, `mechanical`, or `line` is rejected outright, never defaulted). Both files live under `.cupertino/`, the plugin's one declared output directory — a PreToolUse hook denies either write if it targets anywhere else.
+
+   Sidecar shape, populated:
+   ```json
+   {"findings": [{"rule": "no-inline-styles", "file": "src/Card.tsx", "line": 42, "severity": "Medium", "mechanical": true}]}
+   ```
+   Sidecar shape, zero findings:
+   ```json
+   {"findings": []}
+   ```
 8. **If there are zero findings, say so plainly and stop there.** That is a valid, expected outcome. Never lower the severity bar or manufacture a marginal finding just to avoid reporting an empty result — an honest "no divergence found" is the correct output, not a failure to explain away.
 
 ## Output format

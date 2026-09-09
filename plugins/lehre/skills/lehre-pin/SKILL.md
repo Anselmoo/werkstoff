@@ -1,6 +1,6 @@
 ---
 name: lehre-pin
-description: "Use once a unit or phase is validated, to make its rules survive without the plugin: emit a CI check that runs the doctrine with no agent in the loop, and write behaviour tests around the code that was changed to conform. Trigger on 'make this stick', 'add CI for our standards', 'pin these rules', 'test the conformance changes', or 'lehre pin'. Two phases — the durable rule check, then the regression net."
+description: "Use once a unit or phase is validated, to make its rules survive without the plugin: emit a CI check that runs the doctrine with no agent in the loop, and write behaviour tests around the code that was changed to conform. Covers CI pinning of the ruleset, durable enforcement once the plugin is uninstalled, and regression tests for conformance edits. Two phases — the durable rule check, then the regression net."
 ---
 
 Make the doctrine outlive the session. Every enforcement layer above this one
@@ -9,6 +9,17 @@ depends on an agent being in the loop; this one does not.
 Two phases, both run:
 
 ## Phase 1 — pin the rules
+
+0. **Confirm the unit is validated before pinning anything.** Check that
+   `.lehre/units/<unit-id>.done` exists, or run:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
+   ```
+
+   and confirm the unit's state is `validated`. If the marker is absent, stop —
+   do not emit the CI check — and name `lehre-validate` as the skill to run
+   first.
 
 1. **Emit a CI invocation of the real gauge**, not a reimplementation:
 
@@ -41,9 +52,10 @@ Two phases, both run:
    call behind a service is exactly the kind of change that compiles, passes
    every rule, and silently changes semantics.
 
-5. **Target the seams the decomposition declared.** A test at a seam catches a
-   later unit violating the contract long before a rule could; a test buried
-   inside one unit's internals catches only that unit's refactors.
+5. **Target the seams the decomposition declared**, as read from
+   `.lehre/ruleset.json` (the same source `lehre-validate` names). A test at a
+   seam catches a later unit violating the contract long before a rule could; a
+   test buried inside one unit's internals catches only that unit's refactors.
 
 6. **Prove the test can fail.** State, per test, the mutation it would catch.
    A test written after the fact that passes against both the old and the new
