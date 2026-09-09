@@ -1,0 +1,13 @@
+{
+  "name": "probe",
+  "version": "0.1.0",
+  "description": "Finds broken relative links in a docs tree. Read-only; writes nothing.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "probe"
+  ],
+  "license": "MIT"
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>burn — burndown</title>
+<style>
+<!--__DESIGN_TOKENS__-->
+.header { height: var(--header-h); }
+body { height: 100vh; overflow: hidden; }
+</style>
+</head><body>
+<h1>burn — burndown</h1>
+<p class="verdict" id="verdict">Loading…</p>
+<div class="legend">green = within budget · red = over (also marked ▲)</div>
+<div id="body"></div>
+<script>
+const data = window.__DATA__;
+const verdict = document.getElementById('verdict');
+if (!data) { verdict.textContent = 'No data — re-run scripts/build_burn_html.py to regenerate.'; }
+else {
+  const total = data.findings.length;
+  verdict.textContent = total === 0 ? 'Nothing left to burn down.' : `${total} findings remain.`;
+  const kpi = document.createElement('div'); kpi.className = 'kpi'; kpi.textContent = `${total}`;
+  const sub = document.createElement('p'); sub.textContent = `of ${total} findings, ${data.findings.filter(f => f.open).length} still open`;
+  document.getElementById('body').append(kpi, sub);
+}
+</script>
+</body></html>

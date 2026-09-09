@@ -1,0 +1,25 @@
+{
+  "name": "sealed-scripts-1",
+  "kind": "scripts",
+  "cleanFiles": [],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-scripts-1/scripts/weigh_lint.py",
+      "rule_id": "SQ-STALE-OUTPUT",
+      "angle": "contract",
+      "quoteKey": "truncate the report first"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-scripts-1/scripts/weigh_lint.py",
+      "rule_id": "SQ-FAIL-LOUD",
+      "angle": "step-logic",
+      "quoteKey": "unreadable config: nothing is over budget"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-scripts-1/scripts/weigh_lint.py",
+      "rule_id": "SQ-SELF-ASSERT",
+      "angle": "other",
+      "quoteKey": "Fails the build when a bundle weight is over budget."
+    }
+  ]
+}

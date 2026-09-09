@@ -1,0 +1,27 @@
+{
+  "name": "tune-hooks-2",
+  "kind": "hooks",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-hooks-2/hooks/hooks.json"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-2/hooks/sentry_guard.py",
+      "rule_id": "HQ-INERT-MATCHES",
+      "angle": "meaning",
+      "quoteKey": "os.path.join(cwd, \".sentry.json\")"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-2/README.md",
+      "rule_id": "HQ-README-HOOK",
+      "angle": "procedure",
+      "quoteKey": "See the source for what the hook does and when"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-2/hooks/sentry_guard.py",
+      "rule_id": "HQ-DENY-NOT-RECIPE",
+      "angle": "other",
+      "quoteKey": "touch .sentry/ok to proceed with this write"
+    }
+  ]
+}

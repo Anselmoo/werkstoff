@@ -1,0 +1,17 @@
+{
+ "description": "gatekeep: denies a write to a generated file while a review is open. Inert until a .gatekeep/ directory exists.",
+ "hooks": {
+  "PreToolUse": [
+   {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/gatekeep_guard.py\"",
+      "timeout": 15
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>drift — doctrine drift</title>
+<style>
+<!--__DESIGN_TOKENS__-->
+.header { height: var(--header-h); }
+#body { min-height: 900px; }
+</style>
+</head><body>
+<h1>drift — doctrine drift</h1>
+<p class="verdict" id="verdict">Loading…</p>
+<div class="legend">green = within budget · red = over (also marked ▲)</div>
+<div id="body"></div>
+<script>
+const data = window.__DATA__;
+const verdict = document.getElementById('verdict');
+if (!data) { verdict.textContent = 'No data — re-run scripts/build_drift_html.py to regenerate.'; }
+else {
+  const count = data.violations.length;
+  const blockers = data.violations.filter(v => v.severity === 'blocking').length;
+  verdict.textContent = blockers ? `${blockers} blocking violations.` : 'No blocking violation.';
+  const h = document.createElement('p'); h.textContent = `Violations (${count} total)`;
+  const s = document.createElement('small'); s.textContent = `${blockers} blockers`;
+  const foot = document.createElement('p'); foot.textContent = `${count} items listed above`;
+  document.getElementById('body').append(h, s, foot);
+}
+</script>
+</body></html>

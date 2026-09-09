@@ -1,0 +1,27 @@
+{
+  "name": "tune-manifest-2",
+  "kind": "manifest",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-manifest-2/skills/ledgerly-reconcile/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-2/README.md",
+      "rule_id": "PQ-NARRATIVE",
+      "angle": "other",
+      "quoteKey": "Yesterday I ran this on my laptop and it took 4 minutes"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-2/.claude-plugin/plugin.json",
+      "rule_id": "PQ-WRITE-SURFACE",
+      "angle": "contract",
+      "quoteKey": "Reconciles a ledger directory against its index."
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-2/.claude-plugin/plugin.json",
+      "rule_id": "PQ-THESIS",
+      "angle": "meaning",
+      "quoteKey": "Reconciles a ledger directory against its index."
+    }
+  ]
+}

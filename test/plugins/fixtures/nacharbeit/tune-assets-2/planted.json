@@ -1,0 +1,27 @@
+{
+  "name": "tune-assets-2",
+  "kind": "assets",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-assets-2/scripts/build_drift_html.py"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-2/assets/drift-viewer.html",
+      "rule_id": "AQ-R3-ACTIONABLE",
+      "angle": "clarity",
+      "quoteKey": "foot.className = 'muted'; foot.textContent = `${n} rows \u00b7 ${overdue} overdue`"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-2/assets/drift-viewer.html",
+      "rule_id": "AQ-R2-ONCE",
+      "angle": "clarity",
+      "quoteKey": "`${n} rows"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-2/README.md",
+      "rule_id": "AQ-C3-SHOWS-FAILURE",
+      "angle": "meaning",
+      "quoteKey": "The demo report is empty by design"
+    }
+  ]
+}

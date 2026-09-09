@@ -1,0 +1,25 @@
+{
+ "runStamp": "2026-09-08T17:57:42Z",
+ "rubricHash": "abc",
+ "completed": false,
+ "failures": [
+  "find:demo:skills:procedure",
+  "synth:demo"
+ ],
+ "calibration": {
+  "rounds": [
+   {
+    "round": 1,
+    "recall": 0.8
+   }
+  ]
+ },
+ "sealedRecall": 0.75,
+ "counts": {
+  "lint": 0,
+  "verified": 1,
+  "plugins": 1,
+  "collisionPairs": 0,
+  "judged": 0
+ }
+}

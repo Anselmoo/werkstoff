@@ -1,0 +1,13 @@
+{
+  "name": "spool",
+  "version": "0.1.0",
+  "description": "Queues long-running checks and reports their results as they finish. Read-only except analysis/spool/.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "spool"
+  ],
+  "license": "MIT"
+}

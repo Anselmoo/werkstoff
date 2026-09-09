@@ -1,0 +1,13 @@
+{
+  "name": "weigh",
+  "version": "0.1.0",
+  "description": "Checks bundle weights against a budget and fails the build when one is over. Writes only analysis/weigh/.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "weigh"
+  ],
+  "license": "MIT"
+}

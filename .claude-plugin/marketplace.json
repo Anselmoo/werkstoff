@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "self-assess",
-      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard \u2014 almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
+      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard — almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -19,7 +19,7 @@
     },
     {
       "name": "confab",
-      "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (confab-code-change), and a bounded autonomous self-optimization cycle (confab-cycle) with a persistent ledger and an opt-in propose/fix mode \u2014 read-only except a scoped output directory, one skill (confab-dependency-audit) with read-only network egress to public package registries, and one skill (confab-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
+      "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (confab-code-change), and a bounded autonomous self-optimization cycle (confab-cycle) with a persistent ledger and an opt-in propose/fix mode — read-only except a scoped output directory, one skill (confab-dependency-audit) with read-only network egress to public package registries, and one skill (confab-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -49,7 +49,7 @@
     },
     {
       "name": "andon",
-      "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) \u2014 never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
+      "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) — never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -59,7 +59,7 @@
     },
     {
       "name": "cli-scaffold",
-      "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time \u2014 no stored boilerplate \u2014 guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
+      "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time — no stored boilerplate — guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -69,7 +69,7 @@
     },
     {
       "name": "codebase-consistency",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent \u2014 divergent architecture, docs, code patterns, and style across modules \u2014 with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope \u2014 see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -89,13 +89,23 @@
     },
     {
       "name": "lehre",
-      "description": "Researches a code style, pattern and architecture doctrine from external authority plus real repository evidence, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, quoting its own rationale, rather than describing the violation after the fact. Works from a blank page as well as over an existing tree \u2014 greenfield project initialization is decomposed into units and seams, and a write into a unit whose dependencies are not yet validated is denied just as a rule violation is. Nine skills spanning evaluate / research / investigate / suggest / implement / validate / test, eight agents, one PreToolUse hook, and a closed deterministic check vocabulary (fnmatch and Python ast, never regex) whose enforcement tier is derived from the check kind rather than declared \u2014 so a rule cannot claim to block and silently fail to. Inert until a repository declares a doctrine.",
+      "description": "Researches a code style, pattern and architecture doctrine from external authority plus real repository evidence, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, quoting its own rationale, rather than describing the violation after the fact. Works from a blank page as well as over an existing tree — greenfield project initialization is decomposed into units and seams, and a write into a unit whose dependencies are not yet validated is denied just as a rule violation is. Nine skills spanning evaluate / research / investigate / suggest / implement / validate / test, eight agents, one PreToolUse hook, and a closed deterministic check vocabulary (fnmatch and Python ast, never regex) whose enforcement tier is derived from the check kind rather than declared — so a rule cannot claim to block and silently fail to. Inert until a repository declares a doctrine.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
       },
       "category": "development",
       "source": "./plugins/lehre"
+    },
+    {
+      "name": "nacharbeit",
+      "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
+      "author": {
+        "name": "Anselm Hahn",
+        "email": "anselm.hahn@gmail.com"
+      },
+      "category": "development",
+      "source": "./plugins/nacharbeit"
     }
   ]
 }

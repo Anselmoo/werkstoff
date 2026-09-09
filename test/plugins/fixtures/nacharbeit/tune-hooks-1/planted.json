@@ -1,0 +1,28 @@
+{
+  "name": "tune-hooks-1",
+  "kind": "hooks",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-hooks-1/README.md",
+    "test/plugins/fixtures/nacharbeit/tune-hooks-1/hooks/hooks.json"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-1/hooks/gatekeep_guard.py",
+      "rule_id": "HQ-LOCK-SCOPE",
+      "angle": "contract",
+      "quoteKey": "any edit in a repository that has a .gatekeep directory"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-1/hooks/gatekeep_guard.py",
+      "rule_id": "HQ-EMPTY-SET-DENY",
+      "angle": "step-logic",
+      "quoteKey": "nothing to check, so nothing to deny"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-hooks-1/hooks/gatekeep_guard.py",
+      "rule_id": "HQ-DENY-NOT-RECIPE",
+      "angle": "other",
+      "quoteKey": "create .gatekeep/approved to let this write through"
+    }
+  ]
+}

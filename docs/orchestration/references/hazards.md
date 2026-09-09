@@ -6,9 +6,9 @@ ambient plugins actually do when they overlap, grounded in hook source rather th
 what a README implies. `delegation.md` covers the dispatch side; this page covers what
 happens once those dispatches — or a direct edit — land while a guard is watching.
 
-## Five hooks already arbitrate every edit
+## Seven hooks already arbitrate every edit
 
-Five werkstoff plugins register a `PreToolUse` hook, and all five are inert until the
+Seven werkstoff plugins register a `PreToolUse` hook, and all seven are inert until the
 repository shows a specific piece of state — none of them polices an unrelated
 project the moment it happens to be installed. The fact a reader actually scans for
 first — will this fire on my repo, right now — is called out as its own line on every
@@ -58,6 +58,20 @@ card, rather than buried in the third column of a five-column table.
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>TAKT_DISABLE_GUARD=1</code></p>
 </div>
 
+<div class="hz-card">
+<div class="hz-head"><code>lehre</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/lehre_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a doctrine is declared at <code>.lehre/ruleset.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>LEHRE_DISABLE_GUARD=1</code></p>
+</div>
+
+<div class="hz-card">
+<div class="hz-head"><code>nacharbeit</code><span class="hz-chip">Write|Edit|MultiEdit|Bash</span></div>
+<p class="hz-script"><code>hooks/nacharbeit_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a fix pass has opened the lock at <code>analysis/nacharbeit/fix_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>NACHARBEIT_DISABLE_GUARD=1</code>, or <code>post_fix_check.py --release-lock</code></p>
+</div>
+
 </div>
 
 Two details matter beyond the cards above. First, andon's matcher covers `Write` and `Edit`
@@ -67,13 +81,16 @@ tool names. Second, two matchers reach upstream of the edit itself by covering
 cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
 `cupertino-longevity`, `cupertino-integrate`, or `cupertino-council` before
 `cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. takt's matcher is the
-widest of the five, adding `MultiEdit` on top of the same dispatch tools, and it
-gates declared beat order across plugins rather than within one. The other three
-reach only the write tools.
+widest of the seven, adding `MultiEdit` on top of the same dispatch tools, and it
+gates declared beat order across plugins rather than within one. nacharbeit is the
+only one besides confab and cupertino that watches `Bash`, and for one reason: while
+its fix lock is open, a `git commit`, `push`, `reset` or `checkout` from inside the
+pass is refused, so a half-applied rework is never committed by the thing applying
+it. The other four reach only the write tools.
 
-## All five fail closed, with one shared exception
+## All seven fail closed, with one shared exception
 
-Every one of these five hooks fails closed: an unexpected internal error — a
+Every one of these seven hooks fails closed: an unexpected internal error — a
 malformed JSON payload, a filesystem error, anything the hook did not anticipate —
 denies the tool call rather than silently allowing it, and the deny message always
 names the escape hatch. andon's own docstring states the reasoning plainly: a hook
@@ -108,14 +125,21 @@ the question a hook is answering is "did the currently-in-flight remediation iss
 this specific edit." self-assess's `edit_scope.json` and confab's
 `remediation_scope.json` both do exactly that now — opened immediately before a
 remediator agent is dispatched, holding the specific file(s) that dispatch is allowed
-to touch, and closed after.
+to touch, and closed after. nacharbeit's `fix_scope.json` is the third and the
+widest-reaching, because its remediators edit *other plugins'* files: it lists every
+file the review touched with its fix tier, so the guard can refuse an opus- or
+human-tier file by name rather than as "unknown", and it is released only by a
+post-check script that has re-run every test and diffed every contract.
 
 That rule does not extend to every hook in the table. andon's and cupertino's guards
 answer a different question — "is the ledger in a stop state" and "has the required
 ordering step already run" — which is legitimately repo-level state rather than a
-per-dispatch attribution problem. Only self-assess and confab's edit-scope guards are
+per-dispatch attribution problem. Only self-assess's, confab's and nacharbeit's edit-scope guards are
 solving the "whose edit is this" problem the quoted constraint describes, and only
-those two need a per-dispatch lock rather than a durable flag.
+those three need a per-dispatch lock rather than a durable flag. lehre's, like
+andon's, answers a repo-level question ("does this write violate the declared
+doctrine, or run ahead of a unit that has not been validated"), which is why its
+marker is a durable ruleset rather than a lock.
 
 ## Two diff baselines
 

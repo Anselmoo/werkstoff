@@ -1,0 +1,13 @@
+{
+  "name": "burn",
+  "version": "0.1.0",
+  "description": "Renders a burndown of open findings as one static page. Writes only the page it is asked to write.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "burn"
+  ],
+  "license": "MIT"
+}

@@ -4,9 +4,17 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — nine plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `lehre`, `self-assess`, `takt`. Each is independently versioned;
-`marketplace.json` and `.rrt.toml` both point here.
+`plugins/<name>/` — ten plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
+`compass`, `confab`, `cupertino`, `lehre`, `nacharbeit`, `self-assess`, `takt`. Each is
+independently versioned; `marketplace.json` and `.rrt.toml` both point here.
+
+`nacharbeit` is the tenth and the odd one out: its object is the other nine. It carries
+the calibrated review instrument PR #56 built (`scripts/nacharbeit_lint.py`,
+`workflows/{review,fix}.js`, `references/rubric.md` — moved there from
+`tools/prompt-review/`, `.claude/workflows/` and `docs/plugin-authoring/references/`),
+extended to hooks, scripts, viewers, manifests, READMEs and docs wiring, with a
+PreToolUse hook that holds the fix scope. Before editing any plugin file by hand, run
+`python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/<name> --docs-root docs`.
 
 The first six (all but `codebase-consistency`, added later) were run through a
 behavior-specification rebuild; four (`andon`, `self-assess`, `cli-scaffold`,
@@ -50,7 +58,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the nine-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the eleven-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 
@@ -93,8 +101,9 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
-python3 test/plugins/test-lint-prompts.py                # prompt-quality linter asserts itself (sabotage-tested) -- run before trusting lint_prompts
-python3 tools/prompt-review/lint_prompts.py plugins/*     # mechanical M-* rules of docs/plugin-authoring/references/prompt-quality-rubric.md
+python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (90 rules planted + blanked) -- run before trusting it
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
+python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
 node --check plugins/<name>/workflows/<file>.js
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
@@ -225,7 +234,7 @@ column), not in anything the rebuild pipeline itself added.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Ten independent version groups in `.rrt.toml` (9 plugins + `tools/werkstoff-cli`).
+Eleven independent version groups in `.rrt.toml` (10 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

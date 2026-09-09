@@ -1,0 +1,27 @@
+{
+  "name": "tune-scripts-1",
+  "kind": "scripts",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-scripts-1/skills/tally-ledger/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-1/scripts/tally.py",
+      "rule_id": "SQ-INTENT",
+      "angle": "procedure",
+      "quoteKey": "Does the tally."
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-1/scripts/tally.py",
+      "rule_id": "SQ-FAIL-LOUD",
+      "angle": "step-logic",
+      "quoteKey": "print(\"nothing found\")"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-1/scripts/tally.py",
+      "rule_id": "SQ-STALE-OUTPUT",
+      "angle": "contract",
+      "quoteKey": "clear, then fill"
+    }
+  ]
+}

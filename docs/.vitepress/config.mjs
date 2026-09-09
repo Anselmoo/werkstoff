@@ -237,6 +237,14 @@ export default defineConfig({
               { text: 'Ruleset schema', link: '/plugins/references/ruleset-schema' },
             ],
           },
+          {
+            text: 'nacharbeit',
+            link: '/plugins/nacharbeit',
+            items: [
+              { text: 'Rubric', link: '/plugins/references/rubric' },
+              { text: 'Fix lock schema', link: '/plugins/references/fix-scope-schema' },
+            ],
+          },
           { text: 'self-assess', link: '/plugins/self-assess' },
           { text: 'takt', link: '/plugins/takt' },
         ],
@@ -247,7 +255,6 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/plugin-authoring/' },
           { text: 'Craft standards', link: '/plugin-authoring/references/craft-standards' },
-          { text: 'Prompt-quality rubric', link: '/plugin-authoring/references/prompt-quality-rubric' },
           { text: 'Output-shape findings', link: '/plugin-authoring/references/output-shape-findings' },
           { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
         ],

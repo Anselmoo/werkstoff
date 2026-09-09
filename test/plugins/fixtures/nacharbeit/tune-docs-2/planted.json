@@ -1,0 +1,28 @@
+{
+  "name": "tune-docs-2",
+  "kind": "docs",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-docs-2/README.md",
+    "test/plugins/fixtures/nacharbeit/tune-docs-2/skills/quill-lint/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-2/docs/plugins/quill.md",
+      "rule_id": "DQ-DOCS-MATCH",
+      "angle": "meaning",
+      "quoteKey": "runs as a PreToolUse hook and denies a write"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-2/docs/orchestration/references/routing.md",
+      "rule_id": "DQ-ROUTING-STATED",
+      "angle": "cannibalization",
+      "quoteKey": "a session may use either for tone"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-2/docs/orchestration/references/routing.md",
+      "rule_id": "DQ-ROUTING-STATED",
+      "angle": "cannibalization",
+      "quoteKey": "both can run on the same file"
+    }
+  ]
+}

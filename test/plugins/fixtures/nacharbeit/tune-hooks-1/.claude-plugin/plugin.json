@@ -1,0 +1,13 @@
+{
+  "name": "gatekeep",
+  "version": "0.1.0",
+  "description": "Freezes generated files while a review is open: a PreToolUse hook denies the write. Inert until .gatekeep/ exists; writes nothing itself.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "gatekeep"
+  ],
+  "license": "MIT"
+}

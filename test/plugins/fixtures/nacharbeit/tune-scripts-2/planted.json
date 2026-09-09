@@ -1,0 +1,25 @@
+{
+  "name": "tune-scripts-2",
+  "kind": "scripts",
+  "cleanFiles": [],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-2/scripts/check_links.py",
+      "rule_id": "SQ-SELF-ASSERT",
+      "angle": "other",
+      "quoteKey": "Reports every broken link in a docs tree."
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-2/scripts/check_links.py",
+      "rule_id": "SQ-FAIL-LOUD",
+      "angle": "step-logic",
+      "quoteKey": "no docs, no broken links"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-scripts-2/skills/probe-links/SKILL.md",
+      "rule_id": "SQ-INTENT",
+      "angle": "procedure",
+      "quoteKey": "see scripts/check_links.py for details"
+    }
+  ]
+}

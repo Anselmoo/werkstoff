@@ -1,0 +1,25 @@
+{
+  "name": "sealed-hooks-1",
+  "kind": "hooks",
+  "cleanFiles": [],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-hooks-1/hooks/lockstep_guard.py",
+      "rule_id": "HQ-LOCK-SCOPE",
+      "angle": "contract",
+      "quoteKey": "whenever analysis/lockstep/ exists a beat run is in progress"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-hooks-1/hooks/lockstep_guard.py",
+      "rule_id": "HQ-EMPTY-SET-DENY",
+      "angle": "step-logic",
+      "quoteKey": "no path, nothing to gate"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-hooks-1/hooks/lockstep_guard.py",
+      "rule_id": "HQ-INERT-MATCHES",
+      "angle": "meaning",
+      "quoteKey": "\".lockstep\", \"beats.yaml\""
+    }
+  ]
+}

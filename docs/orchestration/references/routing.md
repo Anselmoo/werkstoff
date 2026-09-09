@@ -74,9 +74,28 @@ extract-rules -> brief -> align/transform -> verify/harden`. Shared mechanics, d
 problem. Do not read the resemblance as redundancy, and do not run both pipelines over
 one area expecting them to agree.
 
-## Two honest overlaps
+## Two honest overlaps, and one that only looks like one
 
-Everything above separates cleanly. Two things genuinely do not.
+Everything above separates cleanly. Two things genuinely do not, and a third looks
+like a fifth "audit then fix" pipeline until the object is named.
+
+**Same shape, different object.** `nacharbeit-review` and `nacharbeit-fix` read like
+`cupertino-handbook-check` and `cupertino-handbook-fix`, like `self-assess-idiom-fix`,
+like `lehre-conform` and `/consistency-align`: an audit that writes findings, then a
+fix pass that applies the mechanical subset and refuses the rest. The discriminator is
+what is on the bench. Every one of those four is pointed at the *application* a plugin
+is installed against; nacharbeit is pointed at the *plugin* — its SKILL.md files,
+agents, hooks.json, guard scripts, report viewer, manifest, README and the docs that
+wire it in — and grades them against a fixed, externally sourced rubric rather than
+against a doctrine or handbook the repository itself declared. A prompt that names a
+skill, a hook, a plugin's README or "the Anthropic standard" belongs to nacharbeit; a
+prompt that names a module, a layer or a convention of the codebase belongs to one of
+the four. The one place they can collide is a plugin's own `scripts/`: nacharbeit's
+`S-*` rules grade a bundled script as plugin surface (shebang, usage, silent-regex
+forms, swallowed exceptions), while `lehre-gauge` would grade the same file against
+whatever doctrine the repository declared. Run nacharbeit first there; a doctrine
+violation in a plugin script is a lehre finding on a file nacharbeit has already
+judged fit to ship.
 
 **Same vocabulary, opposite direction.** `self-assess-code-idiom` and
 `/modernize-uplift` both talk about deprecated idioms and version targets.

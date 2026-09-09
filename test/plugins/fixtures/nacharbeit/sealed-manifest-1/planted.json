@@ -1,0 +1,28 @@
+{
+  "name": "sealed-manifest-1",
+  "kind": "manifest",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/sealed-manifest-1/skills/spool-run/SKILL.md",
+    "test/plugins/fixtures/nacharbeit/sealed-manifest-1/.claude-plugin/plugin.json"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-manifest-1/README.md",
+      "rule_id": "PQ-NOT-SECTION",
+      "angle": "cannibalization",
+      "quoteKey": "- Not a scheduler."
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-manifest-1/README.md",
+      "rule_id": "PQ-PROMPTS-ROUTE",
+      "angle": "cannibalization",
+      "quoteKey": "Triggers `andon-loop`"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-manifest-1/README.md",
+      "rule_id": "PQ-NARRATIVE",
+      "angle": "other",
+      "quoteKey": "Last Tuesday the queue got stuck behind a 40-minute check"
+    }
+  ]
+}

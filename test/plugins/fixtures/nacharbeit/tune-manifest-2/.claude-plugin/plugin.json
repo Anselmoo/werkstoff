@@ -1,0 +1,13 @@
+{
+  "name": "ledgerly",
+  "version": "0.1.0",
+  "description": "Reconciles a ledger directory against its index.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "ledgerly"
+  ],
+  "license": "MIT"
+}

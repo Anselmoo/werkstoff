@@ -326,6 +326,24 @@ pairings:
     grounding: ".rrt.toml declares [[tool.rrt.docs.shared_blocks]], which regenerates the rrt:auto:start:example-prompts-intro block in every plugin README -- a drift sweep must distinguish generated prose from hand-written prose before reporting either."
     recipeTask: "Sweep documentation drift after a change"
     recipeUrl: "/catalog/surface/documentation-drift-after-a-change"
+  - id: "nacharbeit-fix-plugin-validator"
+    skillA: "nacharbeit:nacharbeit-fix"
+    skillB: "plugin-dev:plugin-validator"
+    source: "claude-plugins-official"
+    beat: "verify"
+    why: "nacharbeit's blind verifier checks that each entry was applied and runs the file's post-checks, but it reads one file at a time; the runtime's own validator is the only thing that judges the reworked plugin as a whole -- manifest, structure, every component present -- and it has to run on the tree after the pass, not on the plan before it."
+    how: "nacharbeit-fix runs first: it opens the fix lock, applies the haiku and sonnet tiers file by file, and releases the lock only after post_fix_check.py has re-run every post-check and diffed contracts against the pre-fix snapshot. plugin-dev:plugin-validator then runs once on the released tree; a failure there is a regression the single-file verifier could not see, and goes back into a new fix pass, never into a hand edit under the lock."
+    prompt: "apply the haiku and sonnet findings from the review, one file at a time, and tell me what's left for me"
+    dos:
+      - "Validate after the lock is released, on the reworked tree -- nacharbeit's post-checks already call the same validator per file, so a whole-plugin failure here means a cross-file regression."
+      - "Read the opus- and human-tier entries the fix pass listed before validating -- a validator cannot tell a deliberate hold from an omission."
+    donts:
+      - "Don't validate before the pass and call it done -- the files the validator would judge have not changed yet."
+      - "Don't fix a validator failure by editing under the lock with NACHARBEIT_DISABLE_GUARD=1 -- open a new pass so the edit is verified like every other."
+    grounding: "PR #56's fix pass applied 274 of 297 entries and still needed three hand fixes for what a single-file blind verifier cannot see (a risk inversion in explore-branches.js, a confirmed-only gate in handbook-fix.js, a deleted tools line); the pairing exists because a whole-tree validator runs after the pass, where those would have surfaced."
+    recipeTask: "Rework a plugin to the official Anthropic standard"
+    recipeUrl: "/catalog/plugin-authoring/rework-a-plugin-to-the-anthropic-standard"
+
 ---
 
 # Pairings: which two skills combine, and why

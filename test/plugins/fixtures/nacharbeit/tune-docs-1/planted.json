@@ -1,0 +1,28 @@
+{
+  "name": "tune-docs-1",
+  "kind": "docs",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-docs-1/docs/orchestration/README.md",
+    "test/plugins/fixtures/nacharbeit/tune-docs-1/README.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-1/docs/plugins/wick.md",
+      "rule_id": "DQ-DOCS-MATCH",
+      "angle": "meaning",
+      "quoteKey": "fixes every violation it finds"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-1/docs/orchestration/references/routing.md",
+      "rule_id": "DQ-ROUTING-STATED",
+      "angle": "cannibalization",
+      "quoteKey": "pick whichever is installed"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-docs-1/docs/plugins/wick.md",
+      "rule_id": "DQ-DOCS-MATCH",
+      "angle": "meaning",
+      "quoteKey": "so a formatting review never needs a person"
+    }
+  ]
+}

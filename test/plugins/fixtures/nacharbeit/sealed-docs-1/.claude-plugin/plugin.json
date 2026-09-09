@@ -1,0 +1,13 @@
+{
+  "name": "tether",
+  "version": "0.1.0",
+  "description": "Ties each test to the requirement it covers and writes analysis/tether/coverage.json. Writes only that directory.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "tether"
+  ],
+  "license": "MIT"
+}
