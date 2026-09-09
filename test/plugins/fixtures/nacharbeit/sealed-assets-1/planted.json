@@ -1,0 +1,28 @@
+{
+  "name": "sealed-assets-1",
+  "kind": "assets",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/sealed-assets-1/README.md",
+    "test/plugins/fixtures/nacharbeit/sealed-assets-1/scripts/build_gauge_html.py"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-assets-1/assets/gauge-viewer.html",
+      "rule_id": "AQ-R5-HEIGHT",
+      "angle": "procedure",
+      "quoteKey": "min-height: 900px"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-assets-1/assets/gauge-viewer.html",
+      "rule_id": "AQ-R2-ONCE",
+      "angle": "clarity",
+      "quoteKey": "${count} items listed above"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-assets-1/assets/gauge-viewer.html",
+      "rule_id": "AQ-R3-ACTIONABLE",
+      "angle": "clarity",
+      "quoteKey": "s.textContent = `${blockers} blockers`"
+    }
+  ]
+}

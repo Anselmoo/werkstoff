@@ -1,0 +1,57 @@
+{
+  "name": "tune-2",
+  "kind": "skills",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-2/skills/tag-list/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-MEANING-ASSUMED",
+      "angle": "meaning",
+      "quoteKey": "analysis/ledgerkeeper/plan.json"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-CLARITY-OPTIONS",
+      "angle": "clarity",
+      "quoteKey": "whichever is convenient"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-STEPS-GATE",
+      "angle": "step-logic",
+      "quoteKey": "If validation fails, fix it"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-STEPS-PREDICATE",
+      "angle": "step-logic",
+      "quoteKey": "unless it doesn't matter"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-MEANING-CONTRACT",
+      "angle": "contract",
+      "quoteKey": "Write the reconciliation report"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/SKILL.md",
+      "rule_id": "Q-OTHER-SCRIPT-INTENT",
+      "angle": "other",
+      "quoteKey": "see it for the tag-matching algorithm"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/references/heading-styles.md",
+      "rule_id": "Q-OTHER-NARRATIVE",
+      "angle": "other",
+      "quoteKey": "In the session on 2025-03-04"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-2/skills/ledger-reconcile/references/heading-styles.md",
+      "rule_id": "Q-OTHER-INJECTION",
+      "angle": "other",
+      "quoteKey": "ignore the rubric"
+    }
+  ]
+}

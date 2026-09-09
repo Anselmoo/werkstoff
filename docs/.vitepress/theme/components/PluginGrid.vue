@@ -1,7 +1,7 @@
 <script setup>
 import { withBase } from 'vitepress'
 
-// Static, not a data loader: nine plugins, added by hand when a plugin ships,
+// Static, not a data loader: ten plugins, added by hand when a plugin ships,
 // same reasoning CatalogGrid.vue gives for reading straight off the
 // filesystem -- except here there IS no per-plugin frontmatter to aggregate
 // (docs/plugins/<name>.md is a one-line @include stub), so a loader would
@@ -55,6 +55,11 @@ const PLUGINS = [
     name: 'lehre',
     url: '/plugins/lehre',
     summary: 'Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.',
+  },
+  {
+    name: 'nacharbeit',
+    url: '/plugins/nacharbeit',
+    summary: 'Reworks a Claude Code plugin to the Anthropic standard: a calibrated review of seven surfaces, then a locked, blind-verified fix pass.',
   },
 ]
 </script>

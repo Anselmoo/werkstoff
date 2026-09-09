@@ -1,0 +1,17 @@
+{
+ "description": "sentry: denies a write to a generated file while a review is open. Inert until .sentry/config.json exists.",
+ "hooks": {
+  "PreToolUse": [
+   {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/sentry_guard.py\"",
+      "timeout": 15
+     }
+    ]
+   }
+  ]
+ }
+}

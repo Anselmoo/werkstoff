@@ -1,0 +1,34 @@
+{
+  "name": "tune-manifest-1",
+  "kind": "manifest",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-manifest-1/skills/fence-audit/SKILL.md",
+    "test/plugins/fixtures/nacharbeit/tune-manifest-1/CHANGELOG.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/.claude-plugin/plugin.json",
+      "rule_id": "PQ-THESIS",
+      "angle": "meaning",
+      "quoteKey": "and fixes them automatically"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/README.md",
+      "rule_id": "PQ-NOT-SECTION",
+      "angle": "cannibalization",
+      "quoteKey": "Not many things."
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/README.md",
+      "rule_id": "PQ-PROMPTS-ROUTE",
+      "angle": "cannibalization",
+      "quoteKey": "Triggers `confab-dependency-audit`"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/.claude-plugin/plugin.json",
+      "rule_id": "PQ-WRITE-SURFACE",
+      "angle": "contract",
+      "quoteKey": "Audits code fences in Markdown for a missing language tag"
+    }
+  ]
+}

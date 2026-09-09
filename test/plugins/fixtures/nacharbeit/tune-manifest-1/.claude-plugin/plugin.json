@@ -1,0 +1,13 @@
+{
+  "name": "fence",
+  "version": "0.1.0",
+  "description": "Audits code fences in Markdown for a missing language tag and fixes them automatically.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "fence"
+  ],
+  "license": "MIT"
+}

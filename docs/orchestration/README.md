@@ -1,6 +1,6 @@
 # Orchestrating werkstoff with superpowers and the official plugins
 
-werkstoff's nine plugins, `obra/superpowers`, and Anthropic's official plugin set were
+werkstoff's ten plugins, `obra/superpowers`, and Anthropic's official plugin set were
 built independently, and they overlap far less than their descriptions suggest. This
 catalog records how they compose in one session: which pieces own a whole task, which
 drop into somebody else's workflow, and which handoffs are already wired so nobody
@@ -10,18 +10,22 @@ orchestrates them twice by hand.
 
 Three different things are installed, and they stack rather than compete.
 
-**werkstoff plugins are specialised inspectors and enforcers.** Seven of the nine
+**werkstoff plugins are specialised inspectors and enforcers.** Eight of the ten
 target one distinct failure mode and refuse to speak outside it — `andon` on
 handoffs between stages that were never proven, `self-assess` on a repo that cannot
 describe its own health, `confab` on assertions, contracts and dependency manifests
 that look right and are not, `compass` on reasoning stages silently skipped under
 pressure, `cupertino` on interfaces decorated instead of designed, `cli-scaffold` on
 CLIs that are not production-grade, and `codebase-consistency` on the narrow case of
-two or more valid, undocumented variants of the same convention coexisting. The
-eighth, `takt`, ships no skills at all: it is one `PreToolUse` hook that denies an
+two or more valid, undocumented variants of the same convention coexisting, and
+`lehre` on code written against a doctrine nothing enforced at write time. The ninth,
+`takt`, ships no skills at all: it is one `PreToolUse` hook that denies an
 edit or a dispatch running ahead of a beat the repository declared it depends on,
 turning the sequencing this catalog documents into a refusal rather than a
-suggestion.
+suggestion. The tenth, `nacharbeit`, points the same discipline at the other nine: it
+reviews and reworks a plugin's own skills, agents, hooks, scripts, viewers, manifest
+and docs against the official Anthropic standard, and is the only plugin whose object
+is a plugin rather than the application it is installed against.
 
 **superpowers is process discipline.** It ships 14 skills, zero agents, zero commands,
 and one `SessionStart` hook — so any agent, in any plugin's workflow, can execute it.
@@ -67,12 +71,17 @@ into another workflow's beats and gates.
 |`compass-solve`|Clarify -> Explore -> Decompose -> Execute -> Revise as one fixed pipeline|
 |`cupertino-handbook-fix`|Applies mechanical findings from a prior `cupertino-handbook-check` pass|
 |`/consistency-map`, `/consistency-canonize`, `/consistency-brief`, `/consistency-align`, `/consistency-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
-|`andon-status`, `confab-status`, `self-assess-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
+|`nacharbeit-review`|Bakes its args, calibrates a finder against planted fixtures and a sealed hold-out, then finds, routes, verifies and synthesizes; every later step reads what the calibration froze|
+|`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
+|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
 
 Everything else in werkstoff is a leaf. That covers all of `compass`'s reasoning
 skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
-paradigm and doctrine skills, `self-assess`'s finding skills, every `*-preflight`, and
-every named agent across all nine plugins.
+paradigm and doctrine skills, `self-assess`'s finding skills, `lehre`'s gauge and
+validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), every
+`*-preflight`, and every named agent across all ten plugins — including nacharbeit's
+`component-finder` and `fix-verifier`, which exist precisely so a session without the
+Workflow tool can still dispatch one batch or verify one file from a scoped prompt.
 
 Two leaves deserve calling out by name, because they are usually assumed to be
 pipeline-bound and are not. `andon-verify` states "Never write to the ledger" and

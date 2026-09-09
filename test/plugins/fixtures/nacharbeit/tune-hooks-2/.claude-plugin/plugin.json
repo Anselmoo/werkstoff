@@ -1,0 +1,13 @@
+{
+  "name": "sentry",
+  "version": "0.1.0",
+  "description": "Freezes generated files while a review is open via a PreToolUse hook. Inert until .sentry/config.json exists; writes nothing itself.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "sentry"
+  ],
+  "license": "MIT"
+}

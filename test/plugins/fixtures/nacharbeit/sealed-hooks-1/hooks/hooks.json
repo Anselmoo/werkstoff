@@ -1,0 +1,17 @@
+{
+ "description": "lockstep: denies a write that runs ahead of a declared beat. Inert until .lockstep/beats.json exists.",
+ "hooks": {
+  "PreToolUse": [
+   {
+    "matcher": "Write|Edit|MultiEdit",
+    "hooks": [
+     {
+      "type": "command",
+      "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/lockstep_guard.py\"",
+      "timeout": 15
+     }
+    ]
+   }
+  ]
+ }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "lockstep",
+  "version": "0.1.0",
+  "description": "Denies a write that runs ahead of a declared beat, at the tool-call layer. Inert until .lockstep/beats.json exists; writes nothing itself.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "lockstep"
+  ],
+  "license": "MIT"
+}

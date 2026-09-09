@@ -731,6 +731,72 @@
       "workflows": []
     },
     {
+      "name": "nacharbeit",
+      "version": "0.1.0",
+      "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
+      "skills": [
+        {
+          "id": "nacharbeit:nacharbeit-fix",
+          "name": "nacharbeit-fix",
+          "description": "Use to apply the haiku- and sonnet-tier backlog of a completed nacharbeit review: one remediator per file at the file's tier, a blind sonnet verifier that re-reads the file and runs the post-checks its kind needs (py_compile, node --check, the hook test, the viewer standard), one repair round on rejection, all under a PreToolUse hook that denies every edit outside the fix lock. Trigger on 'apply the nacharbeit findings', 'fix what the review found', 'rework these plugins to the standard', 'nacharbeit fix'. Requires a persisted, calibrated review in analysis/nacharbeit/; opus- and human-tier entries are listed for a person and never applied; never commits."
+        },
+        {
+          "id": "nacharbeit:nacharbeit-lint",
+          "name": "nacharbeit-lint",
+          "description": "Use to run the mechanical half of the nacharbeit rubric — 90 script-checkable rules over a plugin's skills, agents, commands, workflows, hooks, scripts, report viewers, manifest, README, CHANGELOG and docs wiring — with no model in the loop and no tokens spent. Trigger on 'lint this plugin', 'does this plugin meet the Anthropic standard mechanically', 'check the frontmatter and hooks.json', 'nacharbeit lint'. Reports findings by rule; never fixes anything (that is nacharbeit-fix) and never judges prose (that is nacharbeit-review)."
+        },
+        {
+          "id": "nacharbeit:nacharbeit-preflight",
+          "name": "nacharbeit-preflight",
+          "description": "Use FIRST, before any other nacharbeit skill, to inventory what the target plugin directories contain (skills, agents, hooks, scripts, viewers, manifest, docs wiring), which checkers this environment can run, which other plugins' guard hooks are live in the repository, and whether a nacharbeit fix lock is already open. Trigger on 'what would nacharbeit check here', 'is this plugin ready for a review', 'nacharbeit preflight', or as the automatic first step of nacharbeit-review and nacharbeit-fix. Read-only — writes nothing, grades nothing; grading is nacharbeit-lint and nacharbeit-review."
+        },
+        {
+          "id": "nacharbeit:nacharbeit-review",
+          "name": "nacharbeit-review",
+          "description": "Use to run the calibrated judgement review of one or more Claude Code plugins against the nacharbeit rubric: a sonnet finder tuned on planted-defect fixtures until it clears a recall floor for every rule family, measured once on a sealed hold-out, then two-lens finders with gap rounds per (plugin, kind) batch, a haiku routing simulation for cannibalization, an adversarial refuter, and an opus synthesis into a tiered backlog and a findings report. Trigger on 'review this plugin against the Anthropic standard', 'where do these skills and hooks fall short', 'run the nacharbeit review', 'prompt-quality review'. Runs nacharbeit-lint first; never applies a fix (that is nacharbeit-fix). Writes only analysis/nacharbeit/ and, inside werkstoff, the generated findings report."
+        },
+        {
+          "id": "nacharbeit:nacharbeit-status",
+          "name": "nacharbeit-status",
+          "description": "Use to report what nacharbeit has already run in this repository — the last lint, the last calibrated review with its sealed recall per family and blind spots, the backlog by tier with every opus- and human-tier entry named, the last fix pass and its post-check result, and an open fix lock with its age. Trigger on 'nacharbeit status', 'what did the plugin review find', 'is a fix pass still open', 'which findings need a human'. Read-only; reports on nacharbeit's own state only and has nothing to say about a repository nacharbeit has not run in."
+        }
+      ],
+      "agents": [
+        {
+          "id": "nacharbeit:component-finder",
+          "name": "component-finder",
+          "description": "Use this agent when the nacharbeit-review skill has no Workflow tool and one batch of plugin files (one plugin, one kind — skills, agents, commands, workflows, hooks, scripts, assets, manifest or docs) must be graded against the judgement rules of the nacharbeit rubric for one lens. Returns findings that quote the file verbatim and cite a rule id; every result it returns is uncalibrated, because no planted-defect calibration and no refuter ran around it. Never modifies a file, never reports a mechanical rule id, and is never dispatched by anything but nacharbeit-review. Not for reviewing application code (self-assess, lehre) or for judging a report viewer's rendered output (the AQ-* rules need the demo data).",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "nacharbeit:fix-verifier",
+          "name": "fix-verifier",
+          "description": "Use this agent when the nacharbeit-fix skill has no Workflow tool and one file has just been edited to resolve a list of review entries; it re-reads that file blind, decides per entry whether the cited rule is now satisfied, runs the file's post-checks (py_compile, node --check, the hook unit test, the viewer standard) and lists regressions. Returns verdicts only; never edits the file, never edits any other file, and is never dispatched for more than one file at a time. Not for verifying application-code changes (andon-verify) and not for the calibrated fix pass, whose verifier lives in workflows/fix.js.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": [
+        "nacharbeit-fix",
+        "nacharbeit-review"
+      ]
+    },
+    {
       "name": "self-assess",
       "version": "0.9.0",
       "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
@@ -1014,6 +1080,11 @@
     "lehre:lehre-preflight",
     "lehre:lehre-status",
     "lehre:lehre-validate",
+    "nacharbeit:nacharbeit-fix",
+    "nacharbeit:nacharbeit-lint",
+    "nacharbeit:nacharbeit-preflight",
+    "nacharbeit:nacharbeit-review",
+    "nacharbeit:nacharbeit-status",
     "self-assess:self-assess-arch-health",
     "self-assess:self-assess-autopilot",
     "self-assess:self-assess-ci-topology",
@@ -1062,6 +1133,8 @@
     "lehre:spec-fidelity-auditor",
     "lehre:violation-auditor",
     "lehre:violation-verifier",
+    "nacharbeit:component-finder",
+    "nacharbeit:fix-verifier",
     "self-assess:arch-health-auditor",
     "self-assess:business-rules-miner",
     "self-assess:ci-topology-auditor",

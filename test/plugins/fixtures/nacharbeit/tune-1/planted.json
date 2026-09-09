@@ -1,0 +1,57 @@
+{
+  "name": "tune-1",
+  "kind": "skills",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-1/skills/soil-report/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-MEANING-PROMISE",
+      "angle": "meaning",
+      "quoteKey": "fixes them by removing the declarations"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-STEPS-TERMINATION",
+      "angle": "step-logic",
+      "quoteKey": "until the tool reports that nothing else can be pruned"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-STEPS-INPUTS",
+      "angle": "step-logic",
+      "quoteKey": "candidates.json` from step 8"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-PROC-OUTPUT-SHOWN",
+      "angle": "procedure",
+      "quoteKey": "Return a JSON object with fields"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-CLARITY-TERMS",
+      "angle": "clarity",
+      "quoteKey": "Each violation should carry the manifest line"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-audit/SKILL.md",
+      "rule_id": "Q-CANN-NEGATIVE",
+      "angle": "cannibalization",
+      "quoteKey": "find unused packages"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/skills/prune-check/SKILL.md",
+      "rule_id": "Q-CANN-INTERNAL",
+      "angle": "cannibalization",
+      "quoteKey": "find unused packages"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/agents/branch-lister.md",
+      "rule_id": "Q-PROC-TOOLS-ROLE",
+      "angle": "procedure",
+      "quoteKey": "tools: Read, Grep, Glob, Bash, WebFetch, Write"
+    }
+  ]
+}

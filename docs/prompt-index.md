@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 9 plugin READMEs, 79 in
+Every example prompt shipped by the 10 plugin READMEs, 84 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -516,6 +516,50 @@ we actually do, and make the important ones actually enforced"
 ````prompt
 "lehre status — what can I build next?"
 ````
+
+## nacharbeit
+
+[`plugins/nacharbeit/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/nacharbeit/README.md) — 5 prompts.
+
+### See what a review would measure here
+
+````prompt
+"what would nacharbeit check in this repo, and is anything blocking a run?"
+````
+
+> Triggers `nacharbeit-preflight`: units per plugin by kind, which checkers exist, which other guards are live, and whether a fix lock is open.
+
+### Lint a plugin against the standard, for free
+
+````prompt
+"lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
+````
+
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 90 mechanical rules; findings by rule and file, nothing applied.
+
+### Run the calibrated review
+
+````prompt
+"review our plugins against the nacharbeit rubric and give me the backlog by model tier"
+````
+
+> Triggers `nacharbeit-review`: calibration per family, sealed hold-out, two-lens finders, routing simulation, refuter, opus synthesis, and the findings report.
+
+### Apply what a model can apply, under the lock
+
+````prompt
+"apply the haiku and sonnet findings from the review, one file at a time, and tell me what's left for me"
+````
+
+> Triggers `nacharbeit-fix`: the lock opens, the guard denies everything outside it, each file is reworked and blind-verified, the opus and human entries are listed for you.
+
+### Find out what is waiting on a person
+
+````prompt
+"nacharbeit status — which findings need a human, and is a fix pass still open?"
+````
+
+> Triggers `nacharbeit-status`: the last run, the held entries verbatim, and a stale lock with its release command.
 
 ## self-assess
 

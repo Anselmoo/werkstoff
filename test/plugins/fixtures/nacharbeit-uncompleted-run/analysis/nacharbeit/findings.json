@@ -1,0 +1,18 @@
+{
+ "runStamp": "2026-09-08T17:57:42Z",
+ "lint": [],
+ "verified": [
+  {
+   "file": "plugins/demo/skills/demo-check/SKILL.md",
+   "line": 8,
+   "quote": "Report the ones whose mtime is newer",
+   "rule_id": "Q-STEPS-GATE",
+   "angle": "step-logic",
+   "severity": "major",
+   "claim": "no gate when .demo/last-run is absent",
+   "suggested_fix": "state what happens when the marker is missing",
+   "fix_tier": "sonnet",
+   "plugin": "demo"
+  }
+ ]
+}

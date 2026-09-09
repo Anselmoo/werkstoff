@@ -1,0 +1,4 @@
+{
+  "description": "demo: denies a write to a generated file while a review is open. Inert until .demo/ exists.",
+  "hooks": {"PreToolUse": [{"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/demo_guard.py\"", "timeout": 15}]}]}
+}

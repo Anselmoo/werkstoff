@@ -1,0 +1,22 @@
+{
+ "runStamp": "2026-09-08T17:57:42Z",
+ "perPlugin": [
+  {
+   "plugin": "demo",
+   "verdict": "needs-work",
+   "summary": "x",
+   "backlog": [
+    {
+     "file": "plugins/demo/skills/demo-check/SKILL.md",
+     "rule_ids": [
+      "Q-STEPS-GATE"
+     ],
+     "fix_tier": "sonnet",
+     "action": "state what happens when .demo/last-run is missing",
+     "severity": "major"
+    }
+   ]
+  }
+ ],
+ "cross": "x"
+}

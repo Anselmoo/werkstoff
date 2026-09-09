@@ -1,0 +1,27 @@
+{
+  "name": "tune-assets-1",
+  "kind": "assets",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-assets-1/scripts/build_burn_html.py"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-1/assets/burn-viewer.html",
+      "rule_id": "AQ-R2-ONCE",
+      "angle": "clarity",
+      "quoteKey": "of ${total} findings"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-1/assets/burn-viewer.html",
+      "rule_id": "AQ-R5-HEIGHT",
+      "angle": "procedure",
+      "quoteKey": "height: 100vh; overflow: hidden"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-assets-1/README.md",
+      "rule_id": "AQ-C3-SHOWS-FAILURE",
+      "angle": "meaning",
+      "quoteKey": "shows a clean run with nothing left to burn down"
+    }
+  ]
+}

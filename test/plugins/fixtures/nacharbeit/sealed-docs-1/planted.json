@@ -1,0 +1,27 @@
+{
+  "name": "sealed-docs-1",
+  "kind": "docs",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/sealed-docs-1/docs/orchestration/README.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-docs-1/docs/plugins/tether.md",
+      "rule_id": "DQ-DOCS-MATCH",
+      "angle": "meaning",
+      "quoteKey": "tether writes nothing"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-docs-1/docs/orchestration/references/routing.md",
+      "rule_id": "DQ-ROUTING-STATED",
+      "angle": "cannibalization",
+      "quoteKey": "either one is fine for a requirements review"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/sealed-docs-1/docs/plugins/tether.md",
+      "rule_id": "DQ-DOCS-MATCH",
+      "angle": "meaning",
+      "quoteKey": "leaves no file behind"
+    }
+  ]
+}

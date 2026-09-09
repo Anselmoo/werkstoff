@@ -4,7 +4,7 @@ layout: home
 hero:
   name: werkstoff
   text: A workshop of Claude Code plugins
-  tagline: Nine plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
+  tagline: Ten plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
   image:
     src: /logo.svg
     alt: werkstoff
@@ -24,11 +24,11 @@ hero:
 
 features:
   - title: Indexed by task, not by plugin
-    details: Thirty-seven development tasks, each broken into beats naming the skill that fires there and why it belongs there rather than later. Ninety-eight copy-paste prompts.
+    details: 38 development tasks, each broken into beats naming the skill that fires there and why it belongs there rather than later. 102 copy-paste prompts.
     link: /catalog/
     linkText: Open the catalog
   - title: Every prompt each plugin answers
-    details: The example prompts from all nine plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
+    details: The example prompts from all ten plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
     link: /prompt-index
     linkText: Browse by plugin
   - title: Which pipeline owns the task
@@ -41,7 +41,7 @@ features:
     linkText: Read the hazards
 ---
 
-## Nine plugins, one job each
+## Ten plugins, one job each
 
 Pick by problem, not by feature list — each plugin targets one distinct failure mode
 and refuses to speak outside it. Every card opens its full README in this

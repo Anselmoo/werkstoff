@@ -1,0 +1,1 @@
+{"name": "demo", "version": "0.1.0", "description": "Denies writes to generated files while a review is open. Inert until .demo/ exists.", "author": {"name": "Fixture Author"}, "keywords": ["demo"], "license": "MIT"}

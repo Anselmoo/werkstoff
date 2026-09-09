@@ -76,7 +76,7 @@ fi
 CLEAN_BOX="${CLEAN_BOX:-1}"
 SETTINGS_FLAGS=()
 if [[ "$CLEAN_BOX" == "1" ]]; then
-  CLEAN_BOX_JSON="${CLEAN_BOX_JSON:-$(mktemp -t cleanbox).json}"
+  CLEAN_BOX_JSON="${CLEAN_BOX_JSON:-$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX").json}"
   if python3 "$HERE/make-clean-box.py" "$CLEAN_BOX_JSON"; then
     SETTINGS_FLAGS=(--settings "$CLEAN_BOX_JSON")
   else

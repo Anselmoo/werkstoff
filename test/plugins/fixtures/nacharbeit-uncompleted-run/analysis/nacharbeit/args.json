@@ -1,0 +1,15 @@
+{
+ "runStamp": "2026-09-08T17:57:42Z",
+ "rubricHash": "abc",
+ "corpus": {
+  "skill": {
+   "demo-check": {
+    "plugin": "demo",
+    "kind": "skill",
+    "description": "x",
+    "path": "plugins/demo/skills/demo-check/SKILL.md"
+   }
+  },
+  "agent": {}
+ }
+}

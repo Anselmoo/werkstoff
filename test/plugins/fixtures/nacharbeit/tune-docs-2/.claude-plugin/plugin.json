@@ -1,0 +1,13 @@
+{
+  "name": "quill",
+  "version": "0.1.0",
+  "description": "Checks prose for passive voice and nominalisations and reports them by sentence. Read-only; writes nothing.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "quill"
+  ],
+  "license": "MIT"
+}

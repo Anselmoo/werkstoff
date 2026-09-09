@@ -1,0 +1,13 @@
+{
+  "name": "wick",
+  "version": "0.1.0",
+  "description": "Reports formatting violations in Markdown against a style file. Read-only; writes nothing.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "wick"
+  ],
+  "license": "MIT"
+}

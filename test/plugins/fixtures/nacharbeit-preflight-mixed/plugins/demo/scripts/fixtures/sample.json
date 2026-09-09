@@ -1,0 +1,9 @@
+{
+ "violations": [
+  {
+   "rule": "no-api-to-db",
+   "severity": "blocking",
+   "file": "src/api/handler.py"
+  }
+ ]
+}

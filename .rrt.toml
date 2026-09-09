@@ -1,6 +1,6 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# Nine independently-versioned units: eight plugins under plugins/<name>/ (each
+# Eleven independently-versioned units: ten plugins under plugins/<name>/ (each
 # with its own .claude-plugin/plugin.json) plus the werkstoff-cli installer
 # under tools/werkstoff-cli/ (pyproject.toml). There is deliberately NO
 # repo-wide version — bump one unit with `rrt bump <bump> --group <name>`.
@@ -95,6 +95,15 @@ changelog_file = "plugins/takt/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
+name = "nacharbeit"
+release_branch = "release/nacharbeit/v{version}"
+changelog_file = "plugins/nacharbeit/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/nacharbeit/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
 name = "werkstoff-cli"
 release_branch = "release/werkstoff-cli/v{version}"
 changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
@@ -173,6 +182,13 @@ source = "plugins/takt/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=takt].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/nacharbeit/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=nacharbeit].description" },
 ]
 
 # Partially-standardized README section: the "## Example Prompts" heading and its
@@ -366,8 +382,22 @@ command = ["python3", "tools/prompt-index/build_prompt_index.py"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/prompt-quality-findings.md"
-description = "generated prompt-quality review roll-up; build_report.py leaves the committed file untouched when analysis/prompt-review/ holds no run"
-command = ["python3", "tools/prompt-review/build_report.py"]
+description = "generated nacharbeit findings roll-up; build_report.py leaves the committed file untouched when analysis/nacharbeit/ holds no run"
+command = ["python3", "plugins/nacharbeit/scripts/build_report.py", "--vitepress"]
+
+# nacharbeit vendors the two CI checkers it delegates to, so the plugin works when
+# installed outside this repo while werkstoff CI keeps calling the originals. The
+# lock proves the copies never drift; edit scripts/ci/ and test/plugins/, never these.
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/scripts/check_viewer_conformance.py"
+description = "nacharbeit's synced copy of scripts/ci/check_viewer_conformance.py"
+command = ["cp", "scripts/ci/check_viewer_conformance.py", "plugins/nacharbeit/scripts/check_viewer_conformance.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/scripts/verify_hooks_deny.py"
+description = "nacharbeit's synced copy of test/plugins/verify-hooks-deny.py"
+command = ["cp", "test/plugins/verify-hooks-deny.py", "plugins/nacharbeit/scripts/verify_hooks_deny.py"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/.vitepress/data/surface.json"

@@ -1,0 +1,13 @@
+{
+  "name": "gauge",
+  "version": "0.1.0",
+  "description": "Renders doctrine violations as one static page. Writes only the page it is asked to write.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "gauge"
+  ],
+  "license": "MIT"
+}

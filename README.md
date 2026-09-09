@@ -63,6 +63,19 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   ahead of the step it depends on, so cross-plugin sequencing is a
   runtime gate rather than a sentence a model may skip. Inert until a
   repository declares its beats.
+- **[`lehre`](plugins/lehre/README.md)** — researches a code style,
+  pattern and architecture doctrine from external authority plus real
+  repository evidence, then enforces it at the tool-call layer: a
+  blocking rule denies the write that would violate it. Works from a
+  blank page as well as over an existing tree. Inert until a repository
+  declares a doctrine.
+- **[`nacharbeit`](plugins/nacharbeit/README.md)** — reworks a Claude
+  Code plugin to the official Anthropic standard: a calibrated review of
+  its skills, agents, hooks, scripts, viewers, manifest, README and docs
+  wiring (a sabotage-tested linter plus a finder that must pass a sealed
+  hold-out per rule family), then a tier-gated fix pass under a
+  PreToolUse hook that denies every edit outside the fix lock. Opus- and
+  human-tier findings are surfaced, never auto-applied.
 
 ## Install
 
@@ -72,7 +85,8 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 ```
 
 Swap `self-assess` for any plugin name above (`confab`, `compass`,
-`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`, `takt`) to install
+`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`, `takt`, `lehre`,
+`nacharbeit`) to install
 a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin
@@ -100,8 +114,14 @@ cc --plugin-dir /path/to/werkstoff/plugins/self-assess
 Scaffold it under `plugins/<name>/` (own `.claude-plugin/plugin.json`,
 own `README.md`) and add an entry to the root
 `.claude-plugin/marketplace.json`'s `plugins` array with
-`"source": "./plugins/<name>"`. Each plugin is independent — no shared
-code between them beyond convention. The root `LICENSE` (MIT) covers it;
+`"source": "./plugins/<name>"`. Then run
+`python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/<name> --docs-root docs`:
+its `P-*` and `D-*` rules name every other place a plugin has to be
+registered (`.rrt.toml` version group and field target, the two release
+workflows' allowlists, the docs stub, sidebar and grid, this README, the
+count words, the orchestration references) and fail loudly for each one
+still missing. Each plugin is independent — no shared code between them
+beyond convention. The root `LICENSE` (MIT) covers it;
 add a plugin-local `LICENSE` only if it carries forward a different
 license, as `codebase-consistency` does (see License below).
 

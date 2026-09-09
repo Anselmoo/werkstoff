@@ -1,0 +1,63 @@
+{
+  "name": "tune-3",
+  "kind": "skills",
+  "cleanFiles": [
+    "test/plugins/fixtures/nacharbeit/tune-3/skills/fence-count/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-PROC-WHATWHEN",
+      "angle": "procedure",
+      "quoteKey": "Use when the user says"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-PROC-FORK-TASK",
+      "angle": "procedure",
+      "quoteKey": "context: fork"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-OTHER-STATEFUL",
+      "angle": "other",
+      "quoteKey": "Status: DRAFT"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-CLARITY-CONCISE",
+      "angle": "clarity",
+      "quoteKey": "which stands for JavaScript Object Notation"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-STEPS-NUMBERED",
+      "angle": "step-logic",
+      "quoteKey": "then check each heading level"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-CLARITY-AMBIG",
+      "angle": "clarity",
+      "quoteKey": "then delete it"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-PROC-DISCLOSURE",
+      "angle": "procedure",
+      "quoteKey": "| h6 | h5 | 80 | never |"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/skills/doc-shape/SKILL.md",
+      "rule_id": "Q-CLARITY-EXAMPLE",
+      "angle": "clarity",
+      "quoteKey": "<problem-kind>: <file>:<line>"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-3/agents/heading-checker.md",
+      "rule_id": "Q-STEPS-TERMINATION",
+      "angle": "step-logic",
+      "quoteKey": "re-reading it from the top after every violation"
+    }
+  ]
+}

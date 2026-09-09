@@ -1,0 +1,13 @@
+{
+  "name": "tally",
+  "version": "0.1.0",
+  "description": "Totals a ledger directory by record kind into analysis/tally/report.json. Writes only that directory.",
+  "author": {
+    "name": "Fixture Author",
+    "email": "fixture@example.org"
+  },
+  "keywords": [
+    "tally"
+  ],
+  "license": "MIT"
+}
