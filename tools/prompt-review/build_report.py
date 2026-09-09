@@ -33,8 +33,24 @@ def load(name: str):
     return json.loads(p.read_text(encoding="utf-8")) if p.is_file() else None
 
 
+_CODE_SPAN = re.compile(r"(`+)(.+?)\1")
+
+
+def escape_angles(text: str) -> str:
+    """Escape `<`/`>` outside inline code spans. VitePress hands the page to Vue's template
+    compiler, which reads a bare `<domain>` in a finding's prose as an unclosed element and
+    fails the whole site build. Inside backticks markdown-it already escapes them."""
+    out, pos = [], 0
+    for m in _CODE_SPAN.finditer(text):
+        out.append(text[pos:m.start()].replace("<", "&lt;").replace(">", "&gt;"))
+        out.append(m.group(0))
+        pos = m.end()
+    out.append(text[pos:].replace("<", "&lt;").replace(">", "&gt;"))
+    return "".join(out)
+
+
 def md_escape(s) -> str:
-    return str(s if s is not None else "").replace("|", "\\|").replace("\n", " ").strip()
+    return escape_angles(str(s if s is not None else "").replace("|", "\\|").replace("\n", " ").strip())
 
 
 def loc(f: dict) -> str:
@@ -168,7 +184,14 @@ def render(run, findings, routing, synth) -> str:
     cross = (synth.get("cross") or "").strip()
     # the opus prose uses H2 headings; nest them under this section
     cross = re.sub(r"^## ", "### ", cross, flags=re.M)
-    L.append(cross + "\n")
+    safe, in_fence = [], False
+    for ln in cross.splitlines():
+        if ln.strip().startswith("```"):
+            in_fence = not in_fence
+            safe.append(ln)
+        else:
+            safe.append(ln if in_fence else escape_angles(ln))
+    L.append("\n".join(safe) + "\n")
 
     # ---- appendix
     L.append("## Appendix — coverage\n")
