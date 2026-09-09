@@ -77,7 +77,13 @@ CLEAN_BOX="${CLEAN_BOX:-1}"
 SETTINGS_FLAGS=()
 if [[ "$CLEAN_BOX" == "1" ]]; then
   CLEAN_BOX_JSON="${CLEAN_BOX_JSON:-$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX").json}"
-  if python3 "$HERE/make-clean-box.py" "$CLEAN_BOX_JSON"; then
+  # Under root the acceptEdits fallback above denies every Bash call a headless
+  # run cannot approve, so a skill that runs its own scripts hand-reads the
+  # fixture instead and can pass an oracle by luck (nacharbeit-lint-hooks-shape's
+  # first run did). Grant the interpreters, and only the interpreters, there.
+  BOX_FLAGS=()
+  [[ "${EUID:-$(id -u)}" -eq 0 ]] && BOX_FLAGS=(--allow-interpreters)
+  if python3 "$HERE/make-clean-box.py" "$CLEAN_BOX_JSON" "${BOX_FLAGS[@]}"; then
     SETTINGS_FLAGS=(--settings "$CLEAN_BOX_JSON")
   else
     echo "ERROR: could not build the clean-box settings; refusing to run contaminated." >&2

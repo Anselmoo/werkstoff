@@ -190,6 +190,15 @@ claude plugin validate plugins/nacharbeit --strict
 python3 plugins/nacharbeit/scripts/build_args.py               # bakes analysis/nacharbeit/run.js without launching it
 ```
 
+Measurement history, kept because the corrections matter more than the numbers:
+
+- `nacharbeit-lint-hooks-shape`'s first real run scored PASS on a transcript that opened
+  "I couldn't run the actual scripts here". Under root, `run.sh`'s `acceptEdits` fallback
+  denied every Bash call, the model hand-read the guard, and happened to name the right
+  rule. The tally said pass; the transcript said luck. `run.sh` now grants the
+  interpreters in the clean box under root, and the oracle rejects the admission itself
+  (recorded in `cases.tsv` and as a must-FAIL case in the calibration script).
+
 `test_nacharbeit_lint.py` runs first because an instrument must prove it can fail before
 its silence means anything. Its first run against the ten plugins caught three rules
 that matched themselves — a `shell=True` regex flagged the linter's own pattern, the
@@ -209,7 +218,7 @@ bash test/plugins/run.sh nacharbeit-lint-hooks-shape
 
 | case | seeded defect |
 |---|---|
-| `nacharbeit-lint-hooks-shape` | a hooks.json whose guard emits `systemMessage` — a deny the runtime ignores |
+| `nacharbeit-lint-hooks-shape` | a hooks.json whose guard emits `systemMessage` — a deny the runtime ignores; its anti-pattern rejects a transcript that admits it never ran the linter |
 | `nacharbeit-preflight-inventory` | a plugin with a hook, a viewer and no `node`-free way to check its workflow; the report must name what it cannot measure |
 | `nacharbeit-status-stale-lock` | a two-day-old `fix_scope.json`; the answer must lead with the release command |
 | `nacharbeit-fix-refuses-uncompleted` | a `run.json` with `completed: false`; nothing may be applied |

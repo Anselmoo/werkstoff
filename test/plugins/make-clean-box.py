@@ -28,7 +28,16 @@ Two levers, both non-destructive and per-run (nothing in ~/.claude is modified):
 (`strictPluginOnlyCustomization` looks like the intended lever but had no effect
 when passed via --settings here, so skillOverrides is used instead.)
 
-Usage: make-clean-box.py <out.json>
+--allow-interpreters adds a permissions.allow list for python3/node/bash. run.sh
+passes it only under root, where the CLI refuses bypassPermissions and the
+acceptEdits fallback denies every Bash call a headless run cannot approve. Without
+it a skill whose steps run its own scripts cannot run them, hand-reads the fixture
+instead, and can PASS an oracle by luck — nacharbeit-lint-hooks-shape did exactly
+that on its first run, with a transcript that opened "I couldn't run the actual
+scripts here". The allow list is the narrowest grant that lets the instrument run;
+it does not touch Write/Edit, which acceptEdits already covers.
+
+Usage: make-clean-box.py <out.json> [--allow-interpreters]
 """
 
 from __future__ import annotations
@@ -68,7 +77,9 @@ def personal_skill_names() -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
+    allow = "--allow-interpreters" in argv
+    args = [a for a in argv[1:] if a != "--allow-interpreters"]
+    if len(args) != 1:
         print(__doc__.strip().splitlines()[-1], file=sys.stderr)
         return 2
     plugins = installed_plugin_ids()
@@ -77,7 +88,9 @@ def main(argv: list[str]) -> int:
         "enabledPlugins": {i: False for i in plugins},
         "skillOverrides": {s: "off" for s in skills},
     }
-    Path(argv[1]).write_text(json.dumps(cfg, indent=1))
+    if allow:
+        cfg["permissions"] = {"allow": ["Bash(python3:*)", "Bash(node:*)", "Bash(bash:*)"]}
+    Path(args[0]).write_text(json.dumps(cfg, indent=1))
     print(f"clean box: {len(plugins)} plugins disabled, {len(skills)} personal skills off",
           file=sys.stderr)
     return 0

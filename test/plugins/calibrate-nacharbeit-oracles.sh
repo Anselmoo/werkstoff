@@ -47,7 +47,7 @@ expect() { # expect <want> <case> <label> <regex> <anti> <transcript>
 
 # ─────────────────────────────────────────────────────────────────────────
 R1='H-DENY-SHAPE@@AND@@systemMessage'
-A1=''
+A1='could ?n.?t run|manual read|not reachable|aren.?t reachable|without running|unable to run'
 expect PASS nacharbeit-lint-hooks-shape "correct: rule id and the offending key" "$R1" "$A1" \
 "Calibration GREEN (90 rules planted, blanked, synced). Lint of plugins/demo:
 
@@ -69,6 +69,14 @@ consider checking the hooks documentation. Otherwise the plugin looks fine.
 expect FAIL nacharbeit-lint-hooks-shape "violation: right rule, wrong cause" "$R1" "$A1" \
 "- [major] H-DENY-SHAPE  plugins/demo/hooks/demo_guard.py:1
     the script never emits a deny decision JSON
+"
+# The real first-run transcript (2026-09-09): right words, instrument never ran.
+expect FAIL nacharbeit-lint-hooks-shape "violation: right words, never ran the linter" "$R1" "$A1" \
+"I couldn't run the actual nacharbeit-lint scripts here — this sandbox only has
+plugins/demo mounted, so test_nacharbeit_lint.py and nacharbeit_lint.py aren't
+reachable. I read demo_guard.py directly and evaluated it against the rule the
+fixture is built to trip: **H-DENY-SHAPE**. It prints {\"systemMessage\": reason}
+and exits 2. Note: this is a manual read, not a linter-verified finding.
 "
 
 # ─────────────────────────────────────────────────────────────────────────
