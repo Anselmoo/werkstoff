@@ -66,7 +66,8 @@ def split_files(field: str) -> list[str]:
         elif ch == "}":
             depth -= 1
         if ch == "," and depth == 0:
-            out.append(cur); cur = ""
+            out.append(cur)
+            cur = ""
         else:
             cur += ch
     out.append(cur)
@@ -138,15 +139,15 @@ def main(argv: list[str] | None = None) -> int:
                 it["entries"].append({"source": "backlog", "tier": b["fix_tier"], "rule_ids": b["rule_ids"], "severity": b.get("severity"), "action": b["action"], "findings": backing})
 
     # 2. lint findings (all haiku-tier by construction)
-    for l in findings["lint"]:
-        if l["rule_id"] in SKIP_LINT:
-            excluded.append({"file": l["file"], "reason": "duplicate-content cluster is a human decision"})
+    for lf in findings["lint"]:
+        if lf["rule_id"] in SKIP_LINT:
+            excluded.append({"file": lf["file"], "reason": "duplicate-content cluster is a human decision"})
             continue
-        path = redirect(l["file"], excluded)
+        path = redirect(lf["file"], excluded)
         if not path:
             continue
         it = item(path)
-        it["entries"].append({"source": "lint", "tier": "haiku", "rule_ids": [l["rule_id"]], "severity": l["severity"], "action": f"{l['claim']} — {l['suggested_fix']}", "findings": [{"rule_id": l["rule_id"], "line": l.get("line"), "quote": l["quote"], "claim": l["claim"], "suggested_fix": l["suggested_fix"]}]})
+        it["entries"].append({"source": "lint", "tier": "haiku", "rule_ids": [lf["rule_id"]], "severity": lf["severity"], "action": f"{lf['claim']} — {lf['suggested_fix']}", "findings": [{"rule_id": lf["rule_id"], "line": lf.get("line"), "quote": lf["quote"], "claim": lf["claim"], "suggested_fix": lf["suggested_fix"]}]})
 
     # 3. collision judge: proposed negative-trigger descriptions
     corpus = {**args["corpus"]["skill"], **args["corpus"]["agent"]}

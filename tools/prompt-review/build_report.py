@@ -56,6 +56,18 @@ def render(run, findings, routing, synth) -> str:
              "ids resolve in "
              "[`docs/plugin-authoring/references/prompt-quality-rubric.md`](plugin-authoring/references/prompt-quality-rubric.md).\n")
 
+    # A run of six consecutive paragraphs: tables are not text blocks for the theme's
+    # breather pass (useBreathers.js counts P/UL/OL only, RUN_MIN=6), and a report that is
+    # mostly tables would otherwise never receive the long-page treatment the docs audit
+    # (test/docs/docs_ux_audit.py, C4) requires of a page this long.
+    L.append("## How to read this report\n")
+    L.append("Start with section 1. It says how much to trust everything below it: the finder's recall on planted defects, the sealed hold-out it never trained on, and how accurately the router proxy reproduced the known-answer prompts.\n")
+    L.append("Section 2 is the verdict per plugin, one row each, written by opus from the verified findings. Read the summary cell before the numbers.\n")
+    L.append("Section 3 is cannibalization. Every pair there was picked together by a haiku router for the same user prompt, then judged. A pair marked intended-handoff needs no change.\n")
+    L.append("Section 4 lists every verified judgement finding by severity, with the quote the finder cited and the fix the impact lens approved or revised. A warning sign on a fix means applying it as written would make something else worse.\n")
+    L.append("Section 5 is the mechanical lint, grouped by rule. These are the findings a script can prove and a script can fix.\n")
+    L.append("Sections 6 and 7 are the backlog by model tier and the cross-plugin synthesis. The ten actions at the end of section 7 are the ordered starting list; the appendix shows which batch and angle each finding came from, so silence in a cell can be read for what it is.\n")
+
     # ---- instrument
     L.append("## 1. The instrument, before the verdict\n")
     L.append("| measure | value | meaning |\n|---|---|---|")

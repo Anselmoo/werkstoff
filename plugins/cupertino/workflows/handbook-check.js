@@ -124,7 +124,7 @@ const perRule = await pipeline(
 
 const droppedRules = perRule.filter((r) => r == null).length
 if (droppedRules > 0) {
-  log(`${droppedRules} rule(s)' find-step failed and were dropped.`)
+  log(`${droppedRules} rule(s) whose find-step failed were dropped.`)
 }
 
 const allFindings = perRule.filter(Boolean).flat().filter(Boolean)

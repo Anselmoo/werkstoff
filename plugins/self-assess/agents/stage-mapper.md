@@ -50,7 +50,9 @@ graph of a codebase and cluster files into stages by the shallowest importable p
 ## Output format
 
 Return a JSON-shaped report: `stages` (list of stage ids with their file sets), `wires` (every
-wire as `{from_stage, to_stage, citation}`, where `citation` is the citing `file:line`), and `deadEnds` (stages with no
+wire as a `[from_stage, to_stage]` pair -- the shape `stage_graph.json` consumers such as
+`build_stage_map_html.py` iterate), `wireEvidence` (one `{from_stage, to_stage, citation}` per
+wire, where `citation` is the citing `file:line`), and `deadEnds` (stages with no
 outgoing wires). For a verification request, return `{"wire": [...], "verified": true/false,
 "evidence": "file:line quote"}`.
 
@@ -65,7 +67,8 @@ wires it reported:
       { "id": "auth", "files": ["src/auth/session.py", "src/auth/tokens.py"] },
       { "id": "billing", "files": ["src/billing/invoices.py", "src/billing/plans.py"] }
     ],
-    "wires": [
+    "wires": [["billing", "auth"]],
+    "wireEvidence": [
       { "from_stage": "billing", "to_stage": "auth", "citation": "src/billing/invoices.py:14" }
     ],
     "deadEnds": ["billing"]

@@ -58,52 +58,75 @@ def build_positive(root: Path) -> dict[str, str]:
     P = "plugins/bad"
     exp: dict[str, str] = {}
     # M-FM-PARSE: no frontmatter
-    w(root, f"{P}/skills/no-fm/SKILL.md", "# no frontmatter\nbody\n"); exp["M-FM-PARSE"] = f"{P}/skills/no-fm/SKILL.md"
+    w(root, f"{P}/skills/no-fm/SKILL.md", "# no frontmatter\nbody\n")
+    exp["M-FM-PARSE"] = f"{P}/skills/no-fm/SKILL.md"
     # M-DESC-LEN + M-DESC-XML
-    skill(root, P, "long-desc", desc="'" + ("Checks scaffolds. Use when asked. " * 40) + "<example>x</example>'"); exp["M-DESC-LEN"] = exp["M-DESC-XML"] = f"{P}/skills/long-desc/SKILL.md"
+    skill(root, P, "long-desc", desc="'" + ("Checks scaffolds. Use when asked. " * 40) + "<example>x</example>'")
+    exp["M-DESC-LEN"] = exp["M-DESC-XML"] = f"{P}/skills/long-desc/SKILL.md"
     # M-DESC-PERSON
-    skill(root, P, "first-person", desc="I can help you audit things when you ask."); exp["M-DESC-PERSON"] = f"{P}/skills/first-person/SKILL.md"
+    skill(root, P, "first-person", desc="I can help you audit things when you ask.")
+    exp["M-DESC-PERSON"] = f"{P}/skills/first-person/SKILL.md"
     # M-DESC-VAGUE
-    skill(root, P, "vague", desc="Helps with documents."); exp["M-DESC-VAGUE"] = f"{P}/skills/vague/SKILL.md"
+    skill(root, P, "vague", desc="Helps with documents.")
+    exp["M-DESC-VAGUE"] = f"{P}/skills/vague/SKILL.md"
     # M-DESC-WHENONLY
-    skill(root, P, "whenonly", desc='This skill should be used when the user asks to "audit"'); exp["M-DESC-WHENONLY"] = f"{P}/skills/whenonly/SKILL.md"
+    skill(root, P, "whenonly", desc='This skill should be used when the user asks to "audit"')
+    exp["M-DESC-WHENONLY"] = f"{P}/skills/whenonly/SKILL.md"
     # M-NAME-FORMAT: name mismatches dir
-    skill(root, P, "named-wrong", fm_override=FM.format(name="Named_Wrong", desc=GOOD_DESC, extra="")); exp["M-NAME-FORMAT"] = f"{P}/skills/named-wrong/SKILL.md"
+    skill(root, P, "named-wrong", fm_override=FM.format(name="Named_Wrong", desc=GOOD_DESC, extra=""))
+    exp["M-NAME-FORMAT"] = f"{P}/skills/named-wrong/SKILL.md"
     # M-BODY-LINES
-    skill(root, P, "too-long", body="\n# T\n" + "line\n" * 520); exp["M-BODY-LINES"] = f"{P}/skills/too-long/SKILL.md"
+    skill(root, P, "too-long", body="\n# T\n" + "line\n" * 520)
+    exp["M-BODY-LINES"] = f"{P}/skills/too-long/SKILL.md"
     # M-REF-TOC + M-REF-DEPTH: a long reference with no TOC that links to a sibling reference
     skill(root, P, "refs", body=GOOD_BODY + "Also [deep](references/deep.md) and [other](references/other.md).\n")
     w(root, f"{P}/skills/refs/references/deep.md", "# Deep\n\nSee [other](other.md).\n" + "x\n" * 120)
     w(root, f"{P}/skills/refs/references/other.md", "# Other\n\nfine\n")
     exp["M-REF-TOC"] = exp["M-REF-DEPTH"] = f"{P}/skills/refs/references/deep.md"
     # M-REF-UNWIRED: a reference nobody names
-    skill(root, P, "unwired"); w(root, f"{P}/skills/unwired/references/orphan.md", "# Orphan\n"); exp["M-REF-UNWIRED"] = f"{P}/skills/unwired/SKILL.md"
+    skill(root, P, "unwired")
+    w(root, f"{P}/skills/unwired/references/orphan.md", "# Orphan\n")
+    exp["M-REF-UNWIRED"] = f"{P}/skills/unwired/SKILL.md"
     # M-LINK-BROKEN
-    skill(root, P, "broken-link", body=GOOD_BODY + "Run [it](scripts/missing.py).\n"); exp["M-LINK-BROKEN"] = f"{P}/skills/broken-link/SKILL.md"
+    skill(root, P, "broken-link", body=GOOD_BODY + "Run [it](scripts/missing.py).\n")
+    exp["M-LINK-BROKEN"] = f"{P}/skills/broken-link/SKILL.md"
     # M-DUP-CONTENT: same reference in two plugins
-    w(root, f"{P}/references/proto.md", "# Protocol\n\nidentical\n"); w(root, "plugins/bad2/references/proto.md", "# Protocol\n\nidentical\n"); exp["M-DUP-CONTENT"] = f"{P}/references/proto.md"
+    w(root, f"{P}/references/proto.md", "# Protocol\n\nidentical\n")
+    w(root, "plugins/bad2/references/proto.md", "# Protocol\n\nidentical\n")
+    exp["M-DUP-CONTENT"] = f"{P}/references/proto.md"
     # M-SKILL-VOICE
-    skill(root, P, "you-voice", body="\n# T\n\nYou should read the file first.\n"); exp["M-SKILL-VOICE"] = f"{P}/skills/you-voice/SKILL.md"
+    skill(root, P, "you-voice", body="\n# T\n\nYou should read the file first.\n")
+    exp["M-SKILL-VOICE"] = f"{P}/skills/you-voice/SKILL.md"
     # M-AGENT-VOICE
-    agent(root, P, "me-voice", body="\nI will audit the code and I will report.\n"); exp["M-AGENT-VOICE"] = f"{P}/agents/me-voice.md"
+    agent(root, P, "me-voice", body="\nI will audit the code and I will report.\n")
+    exp["M-AGENT-VOICE"] = f"{P}/agents/me-voice.md"
     # M-AGENT-MODEL
-    agent(root, P, "bad-model", extra="tools: Read\nmodel: gpt-5\n"); exp["M-AGENT-MODEL"] = f"{P}/agents/bad-model.md"
+    agent(root, P, "bad-model", extra="tools: Read\nmodel: gpt-5\n")
+    exp["M-AGENT-MODEL"] = f"{P}/agents/bad-model.md"
     # M-AGENT-TOOLS-SHAPE: YAML list
-    agent(root, P, "list-tools", extra="tools:\n  - Read\n  - Grep\n"); exp["M-AGENT-TOOLS-SHAPE"] = f"{P}/agents/list-tools.md"
+    agent(root, P, "list-tools", extra="tools:\n  - Read\n  - Grep\n")
+    exp["M-AGENT-TOOLS-SHAPE"] = f"{P}/agents/list-tools.md"
     # M-AGENT-TOOLS-VERBS: body edits, tools read-only
-    agent(root, P, "edits-no-edit", body="\nYou are a remediator. Apply the fix at the cited line, then stop.\n", extra="tools: Read, Grep\n"); exp["M-AGENT-TOOLS-VERBS"] = f"{P}/agents/edits-no-edit.md"
+    agent(root, P, "edits-no-edit", body="\nYou are a remediator. Apply the fix at the cited line, then stop.\n", extra="tools: Read, Grep\n")
+    exp["M-AGENT-TOOLS-VERBS"] = f"{P}/agents/edits-no-edit.md"
     # M-VERSION-FIELD
-    skill(root, P, "versioned", extra="version: 0.1.0\n"); exp["M-VERSION-FIELD"] = f"{P}/skills/versioned/SKILL.md"
+    skill(root, P, "versioned", extra="version: 0.1.0\n")
+    exp["M-VERSION-FIELD"] = f"{P}/skills/versioned/SKILL.md"
     # M-CMD-ARGHINT + M-CMD-DESC-LEN
-    w(root, f"{P}/commands/cmd.md", "---\ndescription: " + "A very long command description that keeps going. " * 5 + "\n---\n\nScan `$1` now.\n"); exp["M-CMD-ARGHINT"] = exp["M-CMD-DESC-LEN"] = f"{P}/commands/cmd.md"
+    w(root, f"{P}/commands/cmd.md", "---\ndescription: " + "A very long command description that keeps going. " * 5 + "\n---\n\nScan `$1` now.\n")
+    exp["M-CMD-ARGHINT"] = exp["M-CMD-DESC-LEN"] = f"{P}/commands/cmd.md"
     # M-TIME-SENSITIVE
-    skill(root, P, "dated", body="\n# T\n\nBefore August 2025 use the old API.\n"); exp["M-TIME-SENSITIVE"] = f"{P}/skills/dated/SKILL.md"
+    skill(root, P, "dated", body="\n# T\n\nBefore August 2025 use the old API.\n")
+    exp["M-TIME-SENSITIVE"] = f"{P}/skills/dated/SKILL.md"
     # M-WIN-PATHS
-    skill(root, P, "winpath", body="\n# T\n\nRun scripts\\helper.py first.\n"); exp["M-WIN-PATHS"] = f"{P}/skills/winpath/SKILL.md"
+    skill(root, P, "winpath", body="\n# T\n\nRun scripts\\helper.py first.\n")
+    exp["M-WIN-PATHS"] = f"{P}/skills/winpath/SKILL.md"
     # M-BASH-WILDCARD
-    skill(root, P, "wild-bash", extra="allowed-tools: Read, Bash(*)\n"); exp["M-BASH-WILDCARD"] = f"{P}/skills/wild-bash/SKILL.md"
+    skill(root, P, "wild-bash", extra="allowed-tools: Read, Bash(*)\n")
+    exp["M-BASH-WILDCARD"] = f"{P}/skills/wild-bash/SKILL.md"
     # M-SECRETS
-    skill(root, P, "leaky", body="\n# T\n\nexport KEY=sk-abcdefghijklmnopqrstuvwxyz0123\n"); exp["M-SECRETS"] = f"{P}/skills/leaky/SKILL.md"
+    skill(root, P, "leaky", body="\n# T\n\nexport KEY=sk-abcdefghijklmnopqrstuvwxyz0123\n")
+    exp["M-SECRETS"] = f"{P}/skills/leaky/SKILL.md"
     assert set(exp) == set(lp.RULES), f"fixture does not plant every rule: {set(lp.RULES) ^ set(exp)}"
     return exp
 
@@ -137,7 +160,8 @@ def main() -> int:
         for rid, f in exp.items():
             hits = [x for x in findings if x["rule_id"] == rid and x["file"] == f]
             if not hits:
-                print(f"RED  positive: {rid} did not fire on {f}"); red += 1
+                print(f"RED  positive: {rid} did not fire on {f}")
+                red += 1
         print(f"     positive: {len(exp)} rules checked, {len(findings)} findings")
 
         # 2. negative
@@ -156,19 +180,22 @@ def main() -> int:
             after = run(root, ["plugins/bad", "plugins/bad2"])
             lp.RULES[rid] = saved[rid]
             if any(x["rule_id"] == rid for x in after):
-                print(f"RED  sabotage: blanking {rid} did not remove its findings — the check is not load-bearing"); red += 1
+                print(f"RED  sabotage: blanking {rid} did not remove its findings — the check is not load-bearing")
+                red += 1
         print(f"     sabotage: {len(saved)} rules blanked, each went red")
 
     # 4. rubric ↔ META sync
     rubric_ids = set(re.findall(r"^\| `(M-[A-Z-]+)` \|", RUBRIC.read_text(encoding="utf-8"), re.M))
     if rubric_ids != set(lp.META):
-        print(f"RED  sync: rubric M-* ids {sorted(rubric_ids ^ set(lp.META))} differ from lint META"); red += 1
+        print(f"RED  sync: rubric M-* ids {sorted(rubric_ids ^ set(lp.META))} differ from lint META")
+        red += 1
     else:
         print(f"     sync: rubric and lint agree on {len(rubric_ids)} M-* ids")
     for rid, (sev, _) in lp.META.items():
         m = re.search(rf"^\| `{re.escape(rid)}` \|.*?\|.*?\| (blocker|major|minor|nit) \|", RUBRIC.read_text(encoding="utf-8"), re.M)
         if m and m.group(1) != sev:
-            print(f"RED  sync: {rid} severity is {sev} in lint but {m.group(1)} in rubric"); red += 1
+            print(f"RED  sync: {rid} severity is {sev} in lint but {m.group(1)} in rubric")
+            red += 1
 
     print("GREEN" if not red else f"RED ({red})")
     return 1 if red else 0
