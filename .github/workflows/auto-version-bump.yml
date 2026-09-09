@@ -89,6 +89,17 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install PyYAML
+        # rrt artifacts --regenerate shells out to plain `python3` for
+        # tools/surface-index/build_surface_index.py (and other artifact
+        # targets), which needs PyYAML to parse plugin frontmatter. Without
+        # it, build_surface_index.py silently falls back to a minimal parser
+        # that cannot handle this repo's `description: >-` folded-scalar
+        # style and aborts the whole bump loop before anything is pushed.
+        # plugin-checks.yml already carries this exact step for the same
+        # reason -- this workflow was missing it.
+        run: pip install pyyaml
+
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
         with:
