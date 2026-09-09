@@ -1,6 +1,6 @@
 ---
 name: confab-contract-drift
-description: "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Verification runs by default and only skips if the user explicitly says skip_verification."
+description: "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use self-assess-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
 ---
 
 Find drift between machine-checkable contracts (type hints, function
@@ -19,7 +19,9 @@ documentation — only structural, machine-checkable declarations.
    `confab-assertion-audit`'s SKILL.md — the same single-flight rule
    applies here).
 3. Dispatch the `contract-auditor` agent in **Find mode**: give it the
-   contract source files and symbol index. Ask for `{"findings": [...]}`
+   contract source files and symbol index (if built) — if step 2 was
+   skipped, tell the agent no symbol index exists and it should read the
+   contract source files directly instead. Ask for `{"findings": [...]}`
    where each finding includes `declaredLocation` and
    `actualUsageLocation` (both `file:line`) in addition to the shared
    schema fields. Write its output to a scratch JSON file.

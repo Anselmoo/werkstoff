@@ -30,6 +30,11 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lang_router.py" "<language-as-given>"
   (the paradigm skill to dispatch to). Continue.
 - **Exit 1, `AMBIGUOUS:`** → do not proceed. Ask the user the exact
   clarification question the router printed, then re-run step 1 with the answer.
+  Allow exactly one clarification retry: if that second run also exits
+  `AMBIGUOUS:`, or the user's reply matches none of the printed options, stop
+  clarifying and fall through to the `UNSUPPORTED:` handling below — list the
+  supported options via `lang_router.py`'s `_supported_list()` and ask for an
+  exact match.
 - **Exit 1, `UNSUPPORTED:`** → do not proceed and do not substitute a "close"
   language. Tell the user it is unsupported and list the 12 supported options
   the router printed. Stop.

@@ -59,6 +59,13 @@ values:
     "fixability": "fixable"
   },
   {
+    "severity": "Medium",
+    "title": "declared dependency 'python-dateutil-utils' is one character from popular 'python-dateutil'",
+    "evidence": "requirements.txt:14",
+    "category": "typosquat-adjacent",
+    "fixability": "advisory"
+  },
+  {
     "severity": "Low",
     "title": "PyPI lookup for 'internal-toolkit' timed out",
     "evidence": "requirements.txt:12",

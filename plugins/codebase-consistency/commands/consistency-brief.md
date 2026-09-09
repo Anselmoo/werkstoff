@@ -34,6 +34,12 @@ confidence. Pull `needs-human-decision` dimensions into their own
 called-out block — **the plan does not include a phase for these until a
 person answers the open question.**
 
+```
+| dimension  | provenance         | canonical form              | sites | confidence |
+|------------|---------------------|------------------------------|-------|------------|
+| error-type | derived-majority    | `AppError` wraps all errors  | 14    | Medium     |
+```
+
 ### 3. Phased Sequence
 Order phases **dependency-first, not size-first**: if dimension A's
 canonical form is a shared base class, interface, or utility that
@@ -54,6 +60,15 @@ For each phase:
 - Risk + top risk + mitigation (a `derived-majority` phase with High
   confidence is low-risk; a `synthesized-new` phase is inherently higher —
   say so plainly)
+
+```
+Phase 1 — Unify error type
+Scope: error-type dimension, `src/api/`, `src/workers/`
+Entry: none (first phase)
+Exit: `/consistency-verify` shows all 14 sites raising `AppError`; existing tests pass
+Scale: 14 sites
+Risk: Low — derived-majority, High confidence. Mitigation: pilot on `src/api/` first.
+```
 
 Render as a Mermaid `flowchart LR` showing phase sequence and
 dependencies. No `gantt` chart — this plan makes no time claims.

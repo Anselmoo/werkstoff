@@ -62,14 +62,43 @@ function fence(label, value) {
 
 const NORMALIZED_ARGS = normalizeArgs(args)
 
-// Only mechanical:true findings are eligible -- this is the code-level gate
-// for "MUST only apply mechanical: true findings, never touch mechanical: false".
-const findings = (NORMALIZED_ARGS && NORMALIZED_ARGS.findings ? NORMALIZED_ARGS.findings : []).filter((f) => f.mechanical === true)
-const skippedCount = (NORMALIZED_ARGS && NORMALIZED_ARGS.findings ? NORMALIZED_ARGS.findings.length : 0) - findings.length
+// A caller who forgot to pass findings must not silently produce the same
+// empty-result path as a legitimate "zero findings were mechanical" outcome.
+if (!NORMALIZED_ARGS || !Array.isArray(NORMALIZED_ARGS.findings)) {
+  throw new Error("cupertino-handbook-fix: no findings supplied (args.findings must be an array)")
+}
+const allFindings = NORMALIZED_ARGS.findings
+
+// Only mechanical:true findings that also survived handbook-check.js's own
+// independent re-verification are eligible -- this is the code-level gate for
+// "MUST only apply mechanical: true findings, never touch mechanical: false"
+// combined with "never remediate a finding that wasn't independently confirmed".
+// The check summary's validator (scripts/validators.py handbook-check-summary) does not
+// require a `verification` field -- handbook-check already drops refuted findings before
+// writing the summary. So the verdict is checked only when the field is present; an absent
+// field must not silently turn every finding into "unconfirmed".
+const isConfirmed = (f) => !f.verification || f.verification.verdict === "confirmed"
+const findings = allFindings.filter((f) => f.mechanical === true && isConfirmed(f))
+const nonMechanicalCount = allFindings.filter((f) => f.mechanical !== true).length
+const unconfirmedCount = allFindings.filter((f) => f.mechanical === true && !isConfirmed(f)).length
+const skippedCount = nonMechanicalCount + unconfirmedCount
 
 if (findings.length === 0) {
-  log(`No mechanical findings to fix (${skippedCount} non-mechanical finding(s) require design judgment and were skipped).`)
+  log(
+    `No mechanical, independently-confirmed findings to fix ` +
+      `(${nonMechanicalCount} non-mechanical, ${unconfirmedCount} not independently confirmed finding(s) skipped).`
+  )
   return { clusters: [], skipped: skippedCount }
+}
+
+// `.rule` is not enforced by any schema this workflow controls (it is only
+// present today because handbook-check.js's pipeline happens to merge it in),
+// so a finding missing it would otherwise silently produce a `file::undefined`
+// cluster key and a `RULE: undefined` prompt.
+for (const f of findings) {
+  if (typeof f.rule !== "string" || f.rule.length === 0) {
+    throw new Error(`cupertino-handbook-fix: finding missing required 'rule' field (${f.file}:${f.line})`)
+  }
 }
 
 const clusters = {}
@@ -114,13 +143,28 @@ const results = await pipeline(
     }),
   (remediation, c) =>
     parallel(
+      // Verification stays blind to the remediator's self-report: every item in
+      // c.items (the pre-remediation cluster) is checked unconditionally. The
+      // matching remediation.results status is attached after the fact only so
+      // reporting can separate "attempted and still non-compliant" from "never
+      // attempted" -- it never filters or skips a check.
       c.items.map((f) => () =>
         agent(verifyFixPrompt(f), {
           label: `verify:${f.file}:${f.line}`,
           phase: 'Verify',
           schema: VERIFY_FIX_SCHEMA,
           agentType: 'cupertino:handbook-verifier',
-        }).then((v) => ({ file: f.file, line: f.line, verification: v }))
+        }).then((v) => {
+          const remediationResult = (remediation.results || []).find(
+            (r) => r.file === f.file && r.line === f.line
+          )
+          return {
+            file: f.file,
+            line: f.line,
+            verification: v,
+            remediationStatus: remediationResult ? remediationResult.status : 'missing',
+          }
+        })
       )
     ).then((verifications) => ({ cluster: c.key, file: c.file, rule: c.rule, remediation, verifications }))
 )

@@ -67,7 +67,6 @@ const DIMENSIONS_SCHEMA = {
         },
       },
     },
-    toolReport: { type: 'string', description: 'Summary of any linter/formatter run in check-only mode, or "no tool available/installed"' },
     injectionSuspects: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -83,6 +82,7 @@ const VERDICT_SCHEMA = {
     },
     reason: { type: 'string' },
     correctedOutOfScopeReason: { type: 'string' },
+    injectionSuspects: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -115,6 +115,10 @@ const found = await parallel(
 Your category this pass: ${c.brief}
 
 For each dimension you survey: FIRST check whether it is already documented somewhere (CLAUDE.md, house-rules.md, CONTRIBUTING, a linter/formatter config, an ADR) — if so, set inScope=false with outOfScopeReason citing the source; do not detail variants further. THEN check whether the divergence is actually just an old idiom deprecated for the version this codebase declares — if so, also inScope=false, reason "version-deprecated, see idiom-auditor". ONLY if genuinely undocumented AND every variant is still valid for the declared version does this dimension belong in the inventory with inScope=true — cluster its variants with file:line evidence and approximate site counts (be accurate; the count drives majority weighting downstream).
+
+Example dimension cards (illustrative only — do not copy these site counts or paths):
+IN-SCOPE: {"id":"error-handling-style","inScope":true,"variants":[{"label":"try/except with logged re-raise","sites":14,"example":"src/ingest/loader.py:88"},{"label":"bare return None on failure","sites":6,"example":"src/ingest/parser.py:41"}]}
+OUT-OF-SCOPE: {"id":"docstring-format","inScope":false,"outOfScopeReason":"documented in CONTRIBUTING.md#docstrings","variants":[]}
 ${UNTRUSTED}`,
       {
         agentType: 'codebase-consistency:pattern-analyst',
@@ -127,10 +131,8 @@ ${UNTRUSTED}`,
 )
 
 const injectionFlags = []
-const toolReports = []
 const all = found.filter(Boolean).flatMap(r => {
   for (const s of r.injectionSuspects || []) injectionFlags.push(s)
-  if (r.toolReport) toolReports.push(r.toolReport)
   return r.dimensions || []
 })
 
@@ -170,6 +172,7 @@ const dropped = []
 for (const item of verdicts.filter(Boolean)) {
   const { d, v } = item
   if (!v) continue
+  for (const s of v.injectionSuspects || []) injectionFlags.push(s)
   if (v.verdict === 'confirmed-in-scope') {
     inScope.push(d)
   } else if (v.verdict === 'confirmed-out-of-scope') {
@@ -188,7 +191,6 @@ return {
   inScopeDimensions: inScope,
   outOfScopeDimensions: outOfScope,
   droppedDimensions: dropped,
-  toolReports,
   injectionFlags: [...new Set(injectionFlags)],
   stats: {
     inScope: inScope.length,

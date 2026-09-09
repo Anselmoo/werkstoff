@@ -1,6 +1,6 @@
 ---
 name: self-assess-preflight
-description: This skill should be used when the user asks to "check if this repo is ready for self-assess", "run preflight", "can self-assess analyze this codebase", or before any other self-assess-* skill runs for the first time in a repo. Also invoked at the start of self-assess-autopilot's CHECK phase. Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill.
+description: Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill. Use when the user asks to "check if this repo is ready for self-assess", "run preflight", "can self-assess analyze this codebase", or before any other self-assess-* skill runs for the first time in a repo; also invoked at the start of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-preflight
@@ -46,7 +46,8 @@ next from running:
    `best-effort` label if absent.
 5. **git_remotes_ci** -- check for a `.git` directory and at least one CI config file
    (`.github/workflows/*`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/config.yml`,
-   `azure-pipelines.yml`).
+   `azure-pipelines.yml`). Status is `fail` when no `.git` directory is found, `partial` when
+   `.git` is present but no CI config file is found, and `pass` when both are present.
 6. **docs** -- check for `README.md`, `ARCHITECTURE.md`, `DECISIONS.md`, or ADR files.
 
 Record each check's `name` (matching exactly: `languages`, `tools`, `smoke_parse`,
@@ -58,8 +59,8 @@ of outcome.
 Using the check results, assign each downstream skill a verdict in
 `{"Ready", "Ready-with-gaps", "Not-ready"}`:
 
-- `self-assess-ci-topology` is `Not-ready` if `git_remotes_ci`'s git-presence sub-check fails
-  (the skill's own rule refuses to run outside git).
+- `self-assess-ci-topology` is `Not-ready` if `git_remotes_ci`'s status is `fail` (no `.git`
+  directory found) -- the skill's own rule refuses to run outside git.
 - `self-assess-ui-audit` is `Ready-with-gaps` (never `Not-ready`) when no UI files are found --
   it degrades to "Not applicable" itself, this skill just flags the gap in advance.
 - Any skill whose language was detected only via extension count (not manifest) is
@@ -78,6 +79,48 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kin
 This rejects the artifact if any of the 6 required checks is missing or any verdict is outside
 the three allowed values -- it is not enough to intend to run all 6 checks, the validator
 confirms all 6 are actually present.
+
+Two worked instances of `preflight_summary.json`. All 6 checks passing:
+
+```json
+{
+  "checks": [
+    {"name": "languages", "status": "pass"},
+    {"name": "tools", "status": "pass"},
+    {"name": "smoke_parse", "status": "pass"},
+    {"name": "house_rules", "status": "pass"},
+    {"name": "git_remotes_ci", "status": "pass"},
+    {"name": "docs", "status": "pass"}
+  ],
+  "verdicts": {
+    "self-assess-arch-health": "Ready",
+    "self-assess-ci-topology": "Ready",
+    "self-assess-ui-audit": "Ready"
+  }
+}
+```
+
+With a gap -- no `.git` directory found, so `git_remotes_ci` is `fail` and
+`self-assess-ci-topology` drops to `Not-ready` per Step 2's rule, while unrelated skills stay
+`Ready`:
+
+```json
+{
+  "checks": [
+    {"name": "languages", "status": "pass"},
+    {"name": "tools", "status": "pass"},
+    {"name": "smoke_parse", "status": "pass"},
+    {"name": "house_rules", "status": "pass"},
+    {"name": "git_remotes_ci", "status": "fail"},
+    {"name": "docs", "status": "pass"}
+  ],
+  "verdicts": {
+    "self-assess-arch-health": "Ready",
+    "self-assess-ci-topology": "Not-ready",
+    "self-assess-ui-audit": "Ready"
+  }
+}
+```
 
 ## Step 4: Write outputs
 

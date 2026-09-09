@@ -1,6 +1,6 @@
 ---
 name: self-assess-ci-topology
-description: This skill should be used when the user asks to "audit our git remotes", "check CI setup", "find redundant mirrors", "verify docs about CI/CD are accurate", or as part of self-assess-autopilot's CHECK phase. Audits git remote topology and CI configuration for redundancy, mirror risk, and doc-vs-config drift, masking every credential to a short preview.
+description: Audits git remote topology and CI/CD configuration for redundancy, mirror risk, doc-vs-config drift, and commit-signing inconsistencies, masking every credential to a short preview. Use when the user asks to "audit our git remotes", "check CI setup", "find redundant mirrors", "verify docs about CI/CD are accurate", or as part of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-ci-topology

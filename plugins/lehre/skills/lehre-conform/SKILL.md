@@ -17,9 +17,12 @@ this skill has to remember.
      ```
 
      A unit shown as `blocked` cannot be built — its dependency has not been
-     validated. Say which, and stop.
-   - *Brownfield*: read `LEHRE_BRIEF.md`. Proceed only if its header says the
-     phase is approved. **One phase per run.** An unapproved brief is a stop,
+     validated. Say which, and stop. If the named unit does not appear among
+     the printed rows, or the ruleset has no units at all, say so and stop —
+     do not proceed to step 2.
+   - *Brownfield*: read `LEHRE_BRIEF.md`. Proceed only if the current phase
+     number appears in its header's `approved_phases` list (written by
+     lehre-brief when the human approves). **One phase per run.** An unapproved brief is a stop,
      not a prompt to ask again.
 
 2. **Pull only the rules that bear on this unit.** Filter `.lehre/ruleset.json`

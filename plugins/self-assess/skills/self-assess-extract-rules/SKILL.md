@@ -1,6 +1,6 @@
 ---
 name: self-assess-extract-rules
-description: This skill should be used when the user asks to "extract business logic", "document the domain rules hidden in this code", "turn tribal knowledge into a spec", or as part of self-assess-autopilot's CHECK phase. Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule.
+description: Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule. Use when the user asks to "extract business logic", "document the domain rules hidden in this code", "turn tribal knowledge into a spec", or as part of self-assess-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written.
 ---
 
 # self-assess-extract-rules

@@ -113,7 +113,20 @@ across an owned boundary to "fix" someone else's area.
 
 Write `analysis/$1/PREFLIGHT.md`: the Check 0 answers verbatim, a status
 table (✅/⚠️/❌ per check, what was found, the fix for anything not green),
-and a **Ready / Ready-with-gaps / Not ready** verdict per command:
+and a **Ready / Ready-with-gaps / Not ready** verdict per command. For
+example:
+
+| Check | Status | Found | Fix |
+|---|---|---|---|
+| 2 — Analysis tooling | ✅ | `ruff`, `git` (312 commits) present | — |
+| 3 — Build & test | ⚠️ | tests pass (48/48, 6.2s); linter has no config | run `ruff check --fix` once to establish a baseline |
+| 5 — Git history depth | ❌ | shallow clone, 1 commit | re-clone with full history before `canonize` |
+
+- `scan` + `map`: **Ready**
+- `canonize`: **Ready-with-gaps** — every derived Pattern Card will be flagged lower-confidence until Check 5 is fixed
+- `align`: **Not ready** — Check 3's missing linter config means no free formatting pass is possible yet
+
+The per-command verdict rule:
 
 - `scan` + `map` — need Check 1 and a rough Check 2 pass; degrade gracefully otherwise
 - `canonize` — needs Check 4 (documented sources) and benefits heavily from Check 5 (git history); a red Check 5 downgrades every derived Pattern Card's confidence, not the command itself

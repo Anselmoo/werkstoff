@@ -1,7 +1,7 @@
 ---
 name: andon-status
-description: "Reports the current andon board -- stream table, wire statuses, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix -- without running a new pass. Use when the user asks for the current andon board, wire statuses, cycle or pass counters, the active constraint, or what to do next, without wanting a new pass run."
-allowed-tools: "Read, Bash, Glob"
+description: "Reports the current andon board -- stream table, wire statuses, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix -- without running a new pass. Use when the user asks for the current andon board, wire statuses, cycle or pass counters, the active constraint, or what to do next, without wanting a new pass run (not `andon-loop`, which advances the ledger)."
+allowed-tools: "Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py:*), Bash(okf:*), Glob"
 argument-hint: ""
 ---
 

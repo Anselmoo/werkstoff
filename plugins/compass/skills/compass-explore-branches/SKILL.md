@@ -29,9 +29,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --pl
 
 This is a no-op if `analysis/compass/current.json`'s `source_fingerprint` already
 matches the repo (see `references/parallel-safe-research-protocol.md`). Skip this
-step for a repository well under roughly 50 tracked files, where the build's own
-overhead may exceed what a direct `Grep` would cost — the script makes no such
-size check itself, so this is your judgment call, not its.
+step for a repository well under roughly 50 tracked files — this is a judgment call
+the script itself does not make (see "Scale guidance" in references/parallel-safe-research-protocol.md).
 
 ## Preferred path: the workflow
 When the Workflow tool is available, run
@@ -42,8 +41,8 @@ comparison-free dispatch, and selects the winner — all bounds enforced in code
 
 **Workflow scripts have no filesystem access.** The workflow returns
 `{ branches, scores, selected, rationale }` in memory and stops there — it
-cannot write `state.json` and cannot render a report. **You must still run
-the Persist and Render steps below yourself** after it returns; skipping them
+cannot write `state.json` and cannot render a report. **Run
+the Persist and Render steps below** after it returns; do not skip them
 because "the workflow already did the work" silently drops both the
 persisted run and its report, the same "ends without a trace" failure the
 Manual path would have if its own step 5 were skipped.

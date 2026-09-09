@@ -22,9 +22,15 @@ an ADR merged this week). If found, this dimension is **not derived** —
 report it as `documented`, cite the source, and move on. Do not produce a
 Pattern Card that duplicates a written rule.
 
-**Step 2 — Mine and weight the variants.** For each remaining dimension,
-gather every site implementing each variant (from the scan's clusters),
-then weight by:
+**Step 2 — Mine and weight the variants.** Before weighting, read
+`analysis/$1/PREFLIGHT.md`'s Check 5 verdict if it exists. If it is red, or
+the file is absent, skip the maturity signal, weight by frequency only, and
+cap that dimension's Pattern Card confidence at Medium — the same fallback
+`/consistency-preflight` already states: canonize falls back to
+frequency-only weighting and flags every derived rule as lower-confidence.
+
+For each remaining dimension, gather every site implementing each variant
+(from the scan's clusters), then weight by:
 
 - **Frequency** — raw site count per variant. The starting hypothesis.
 - **Maturity** — for each variant, pull the touched files' commit

@@ -8,13 +8,13 @@ Judge whether this architecture can evolve, or whether it is quietly building to
 ## Steps
 
 1. **Vista Trap Table**: list concrete decisions under consideration or already made, and for each, name the specific way it could force a rewrite rather than an incremental upgrade (a hardcoded assumption, a leaky abstraction, a dependency with no exit path).
-2. **Evolution Readiness Score** — exactly 6 dimensions, each scored 1–5:
-   - API/interface stability
-   - Data model flexibility
-   - Dependency exit costs
-   - Test/characterization coverage of current behavior
-   - Deployment/rollback reversibility
-   - Team knowledge concentration (bus-factor risk)
+2. **Evolution Readiness Score** — exactly 6 dimensions, each scored 1–5, where 5 always means *most evolution-ready* on that dimension:
+   - API/interface stability — 1 = no versioning strategy at all, 5 = full semver with deprecation windows
+   - Data model flexibility — 1 = schema changes require coordinated downtime/migration, 5 = additive changes ship without touching existing consumers
+   - Dependency exit costs — 1 = locked into a single vendor/format with no migration path, 5 = swappable behind a stable interface with a documented exit route
+   - Test/characterization coverage of current behavior — 1 = no tests capture current behavior, 5 = current behavior is fully characterized so a rewrite could be verified against it
+   - Deployment/rollback reversibility — 1 = a bad deploy requires manual data repair to undo, 5 = any deploy can be rolled back automatically with no data loss
+   - Team knowledge concentration (bus-factor risk) — 1 = one person can explain the design, 5 = the design is documented and understood across the team
 
    Compute the total mechanically — do not eyeball whether the roadmap is needed:
    ```bash

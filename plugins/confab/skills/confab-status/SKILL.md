@@ -20,6 +20,40 @@ latest commit, and the single most useful next action.
    itself. It writes `analysis/confab/findings_dashboard_data.json` and
    `analysis/confab/reports/findings-dashboard.html`, and prints the same data
    plus a `suggestion` field to stdout.
+
+   `findings_dashboard_data.json` looks like this — one populated domain next
+   to one that has never run, plus the "nothing pending" empty branch a fully
+   fresh, converged repo would show instead:
+   ```json
+   {
+     "domains": {
+       "dependency_audit": {
+         "skill": "confab-dependency-audit",
+         "hasRun": true,
+         "lastRunEpoch": 1717000000,
+         "staleRelativeToLatestCommit": false,
+         "findingCount": 3
+       },
+       "assertion_audit": {
+         "skill": "confab-assertion-audit",
+         "hasRun": false,
+         "lastRunEpoch": null,
+         "staleRelativeToLatestCommit": null,
+         "findingCount": null
+       }
+     },
+     "ledgerPresent": true,
+     "cycleConverged": true,
+     "suggestion": {
+       "action": "confab-assertion-audit",
+       "reason": "assertion_audit has never been run"
+     }
+   }
+   ```
+   Empty branch (nothing left to suggest):
+   ```json
+   "suggestion": { "action": null, "reason": "all domains fresh and cycle converged; nothing pending" }
+   ```
 3. If `analysis/confab/ledger.json` exists (a `confab-cycle` has run at
    least once), also render its pass history as a burndown chart —
    separate from the snapshot dashboard above, purely additive:

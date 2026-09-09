@@ -1,6 +1,6 @@
 ---
 name: self-assess-ui-audit
-description: This skill should be used when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", or as part of self-assess-autopilot's CHECK phase. Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app.
+description: Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", "review this UI before we ship", or as part of self-assess-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review.
 ---
 
 # self-assess-ui-audit
@@ -12,6 +12,8 @@ Statically audit UI source for accessibility, semantic markup, and hardcoded des
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <repo_root> --skill self-assess-ui-audit
 ```
+
+Stop on non-zero exit. Carry the returned `skip_verification` through to Step 3.
 
 ## Step 1: Detect UI files, degrade if none found
 
@@ -51,6 +53,11 @@ The validator rejects any `contrast`-kind finding that does not carry `heuristic
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename UI_AUDIT.md
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename ui_audit_summary.json
 ```
+
+Write `UI_AUDIT.md` with the Write tool at its resolved path, with one section per finding
+category (Accessibility, Semantic markup, Hardcoded design values, Contrast) listing each
+verified finding's location and description. Write `ui_audit_summary.json` alongside it at its
+own resolved path.
 
 ## Read-only constraint
 

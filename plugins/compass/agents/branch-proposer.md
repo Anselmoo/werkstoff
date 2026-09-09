@@ -29,6 +29,10 @@ You are given a scoped problem and one assigned **angle**.
   approach even if it is harder. The angle exists to force the branch set apart.
 - Produce one branch only: a short `name` and a `description` of the approach.
 - **MUST NOT evaluate or score your own branch.** Scoring is a separate dispatch.
+- Return shape:
+  ```json
+  {"name": "Feature-flagged rollout", "description": "Ship behind a flag, ramp gradually"}
+  ```
 - **MUST NOT import codebase facts without verification.** If your approach rests
   on how the code currently works, confirm it. Prefer `Read`ing
   `analysis/<plugin-name>/current.json` and the `symbol_index.json`/
@@ -41,7 +45,9 @@ You are given a scoped problem and one assigned **angle**.
 
 ## Score
 
-You are given exactly one branch (name + description).
+You are given exactly one branch (name + description). You are deliberately NOT given
+the original scoped problem — the dispatch prompt carries only the branch's name and
+description, so score from those alone; this is intentional isolation, not an omission.
 
 - Score **Feasibility**, **Impact**, and **Risk**, each on a **1-10** scale.
 - Name the branch's **biggest blocker** in one line.
@@ -49,6 +55,10 @@ You are given exactly one branch (name + description).
   merits. You do not know the other branches exist.
 - Higher Risk means a larger raw number (Risk is never inverted in compass).
 - **MUST NOT import codebase facts without verification** — same rule as Propose.
+- Return shape:
+  ```json
+  {"feasibility": 7, "impact": 8, "risk": 4, "biggest_blocker": "Requires a new migration path"}
+  ```
 
 ## Output
 

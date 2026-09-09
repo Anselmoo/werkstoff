@@ -6,6 +6,14 @@ that `scripts/andon_core.py`'s `validate_doc()` **enforces mechanically** on
 every write -- this file explains the shape; the script is what actually
 rejects a bad doc. If the two ever disagree, the script is authoritative.
 
+## Contents
+
+- Settings file: `.claude/andon.local.md`
+- Doc types
+- Tags
+- Cross-links
+- `log.md`
+
 ## Settings file: `.claude/andon.local.md`
 
 Optional. YAML frontmatter, no required fields (every field has a documented
@@ -14,8 +22,8 @@ default). Read by every andon skill via `andon_core.py load-settings`.
 | Field | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | `false` halts every andon skill immediately. |
-| `output_dir` | `analysis/andon` | Where `ANDON_BOARD.md`, `PREFLIGHT.md`, etc. live. |
-| `ledger_dir` | `analysis/andon/ledger` | Where the OKF ledger (`stages/`, `gaps/`, `evidence/`, `log.md`) lives. |
+| `output_dir` | `analysis/andon` | Where `PREFLIGHT.md`, etc. live. |
+| `ledger_dir` | `analysis/andon/ledger` | Where the OKF ledger (`stages/`, `gaps/`, `evidence/`, `log.md`) lives, plus the rendered `ANDON_BOARD.html`. |
 | `authorization_level` | `local+reversible` | Ceiling for auto-advancing past a proposal's blast radius. |
 | `skip_verification` | `false` | If `true`, skips the adversarial re-verification pass where a skill offers one. |
 | `gap_source` | `self-scan` | `self-scan` or `self-assess-brief` (ingest mode). |
@@ -46,6 +54,28 @@ patched.
   of `local+reversible`, `hard-to-reverse`, `shared-state-visible`.
 - Optional: `on_constraint` (bool), `proposal` (object).
 
+Example (`gaps/ingest-retry-storm-on-429.md`):
+
+```markdown
+---
+type: gap
+title: "ingest retries a 429 immediately, with no backoff"
+stage: ingest
+kind: bug
+status: open
+blast_radius: local+reversible
+proposal: {"summary": "Add exponential backoff with jitter to the partner-feed fetcher.", "touches": ["ingest/fetch.py"]}
+tags:
+  - kind:bug
+  - status:open
+  - blast-radius:local+reversible
+---
+
+Contained entirely inside the fetcher and trivially revertible -- the reason
+this one is `local+reversible` while the provenance gap two stages down is
+not.
+```
+
 ### `evidence` doc (`evidence/<slug>.md`)
 
 - `title` (str), `wire` (str, `from-stage->to-stage`).
@@ -56,6 +86,8 @@ patched.
 - `non_overridable` -- required `true` when `tier == 1` and the index query
   contradicts the claimed edge; this is the andon rule's one non-overridable
   stop condition.
+- Optional: `lane` -- one of `fast`, `slow`. Not currently validated; used
+  only to emit the `lane:` tag.
 
 ## Tags
 

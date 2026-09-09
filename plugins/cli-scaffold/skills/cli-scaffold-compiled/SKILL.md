@@ -1,6 +1,6 @@
 ---
 name: cli-scaffold-compiled
-description: Generate a production-grade CLI scaffold in a compiled language — Rust, Go, or .NET. Use when the user requests a CLI in one of those three (dispatched here by scaffold-cli). Produces a lib+binary split where the core library has zero CLI-framework imports, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies.
+description: Generate a production-grade CLI scaffold in a compiled language — Rust, Go, or .NET. Use when the user requests a CLI in one of those three languages. Not the entry point — scaffold-cli resolves the language and dispatches here; a raw request such as "scaffold a new command-line tool in Rust" should go to scaffold-cli first. Produces a lib+binary split where the core library has zero CLI-framework imports, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies.
 ---
 
 # Compiled CLI scaffold (Rust / Go / .NET)
@@ -8,6 +8,19 @@ description: Generate a production-grade CLI scaffold in a compiled language —
 You generate a CLI in Rust, Go, or .NET. All rules come from the
 **`cli-architecture`** doctrine — load it first and follow it; this skill does
 not restate it.
+
+## Precondition — invoked via scaffold-cli
+
+This skill assumes `scaffold-cli` has already resolved the language and
+dispatched here with `paradigm: compiled` (Rust, Go, or .NET). If invoked
+directly and no resolved language was handed off, do not resolve it
+yourself — stop and tell the user to invoke `scaffold-cli` instead. If you
+must confirm ambiguity, you may re-run
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lang_router.py" "<language-as-given>"`,
+but only continue if its JSON `paradigm` is `compiled`; on `AMBIGUOUS:`,
+`UNSUPPORTED:`, or any other `paradigm`, refuse and name `scaffold-cli` as the
+correct entry point — mirroring `scaffold-cli`'s own AMBIGUOUS/UNSUPPORTED
+handling rather than scaffolding anyway.
 
 ## Step 1 — Load doctrine
 
@@ -60,10 +73,30 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<la
   finding with `disposition: fixable`, fix it and re-run the verifier. Only
   findings marked `disposition: needs-human-judgment` are surfaced to the user
   unmodified. The verifier bounds the loop itself: after
-  `MAX_FIX_ITERATIONS` it HALTs — if that happens, surface the remaining gaps
-  to the user instead of looping.
+  `MAX_FIX_ITERATIONS` it HALTs — if that happens, surface the remaining
+  findings to the user instead of looping.
 
-Never present a scaffold that still has fixable gaps.
+A report with both kinds of finding looks like this:
+
+```json
+{
+  "verdict": "gaps",
+  "findings": [
+    {
+      "disposition": "fixable",
+      "rule": "snapshot-test-missing",
+      "detail": "No snapshot test found for `--help` output."
+    },
+    {
+      "disposition": "needs-human-judgment",
+      "rule": "packaging-channel-ambiguous",
+      "detail": "Both a workspace Cargo.toml and a standalone one are plausible; pick one."
+    }
+  ]
+}
+```
+
+Never present a scaffold that still has fixable findings.
 
 ## Step 6 — Render the architecture tree
 

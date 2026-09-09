@@ -3,18 +3,18 @@
   "plugins": [
     {
       "name": "andon",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "description": "Walks a repository's value stream stage-by-stage, proposing fixes for discovered gaps, proving each wire before advancing via seven evidence-grounded strategies, and halting rather than passing broken or unproven handoffs.",
       "skills": [
         {
           "id": "andon:andon-loop",
           "name": "andon-loop",
-          "description": "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on."
+          "description": "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use self-assess-transform-execute for that, then return here (or to andon-verify) for the proof."
         },
         {
           "id": "andon:andon-preflight",
           "name": "andon-preflight",
-          "description": "Checks whether a repository is ready for andon-loop, andon-propose, or andon-verify without touching any files beyond testing ledger-directory writability. Use when the user asks if a repo is ready for andon, or before the first run of any andon skill in a new repository."
+          "description": "Checks whether a repository is ready for andon-loop, andon-propose, or andon-verify. The only files it writes are its own report -- PREFLIGHT.md and preflight_summary.json in the given output_dir -- plus testing ledger-directory writability; nothing else is touched. Use when the user asks if a repo is ready for andon, or before the first run of any andon skill in a new repository."
         },
         {
           "id": "andon:andon-propose",
@@ -24,12 +24,12 @@
         {
           "id": "andon:andon-status",
           "name": "andon-status",
-          "description": "Reports the current andon board -- stream table, wire statuses, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix -- without running a new pass. Use when the user asks for the current andon board, wire statuses, cycle or pass counters, the active constraint, or what to do next, without wanting a new pass run."
+          "description": "Reports the current andon board -- stream table, wire statuses, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix -- without running a new pass. Use when the user asks for the current andon board, wire statuses, cycle or pass counters, the active constraint, or what to do next, without wanting a new pass run (not `andon-loop`, which advances the ledger)."
         },
         {
           "id": "andon:andon-verify",
           "name": "andon-verify",
-          "description": "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified."
+          "description": "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use confab:confab-assertion-audit for that."
         }
       ],
       "agents": [
@@ -86,18 +86,18 @@
     },
     {
       "name": "cli-scaffold",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
       "skills": [
         {
           "id": "cli-scaffold:cli-architecture",
           "name": "cli-architecture",
-          "description": "The single source of truth for what \"production-grade\" means for every CLI this plugin generates, in any of the 12 supported languages. Load this doctrine BEFORE any paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) generates a scaffold. Defines the five-pillar architecture, the frozen 0/1/2 exit-code contract, and the discoverability, composability, stability, and distribution requirements that the cli-scaffold-verifier checks. Never duplicate this doctrine into paradigm skills — reference it."
+          "description": "The single source of truth for what \"production-grade\" means for every CLI this plugin generates, in any of the 12 languages plus the POSIX sh dialect. Load this doctrine BEFORE any paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, cli-scaffold-shell) generates a scaffold. Defines the five-pillar architecture, the frozen 0/1/2 exit-code contract, and the discoverability, composability, stability, and distribution requirements that the cli-scaffold-verifier checks. Never duplicate this doctrine into paradigm skills — reference it."
         },
         {
           "id": "cli-scaffold:cli-scaffold-compiled",
           "name": "cli-scaffold-compiled",
-          "description": "Generate a production-grade CLI scaffold in a compiled language — Rust, Go, or .NET. Use when the user requests a CLI in one of those three (dispatched here by scaffold-cli). Produces a lib+binary split where the core library has zero CLI-framework imports, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies."
+          "description": "Generate a production-grade CLI scaffold in a compiled language — Rust, Go, or .NET. Use when the user requests a CLI in one of those three languages. Not the entry point — scaffold-cli resolves the language and dispatches here; a raw request such as \"scaffold a new command-line tool in Rust\" should go to scaffold-cli first. Produces a lib+binary split where the core library has zero CLI-framework imports, packaging metadata for the language's idiomatic channel, and a snapshot test for --help. Loads the cli-architecture doctrine first, generates freeform from the per-language reference, then hands the scaffold to the cli-scaffold-verifier before presenting; fixes any fixable gaps and re-verifies."
         },
         {
           "id": "cli-scaffold:cli-scaffold-interpreted",
@@ -119,7 +119,7 @@
         {
           "id": "cli-scaffold:cli-scaffold-verifier",
           "name": "cli-scaffold-verifier",
-          "description": "Use this agent when a paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, or cli-scaffold-shell) has just generated a CLI scaffold and it must be checked against the cli-architecture five-pillar doctrine and the per-language reference before being shown to the user. It is read-only: it runs the verification engine and reports gaps as either \"fixable\" or \"needs-human-judgment\" — it never edits, writes, publishes, installs, or builds the scaffold.\n\n<example> Context: cli-scaffold-compiled just wrote a Rust scaffold and reached its Step 5. user: \"Verify the scaffold at generated-clis/myapp for language rust.\" assistant: \"I'll run the read-only verifier against the doctrine and report the verdict and any gaps.\" <commentary>Step-5 handoff — the exact trigger for this agent.</commentary> </example>\n\n<example> Context: The paradigm skill fixed the fixable gaps this agent previously flagged. user: \"Re-verify generated-clis/myapp (rust) after the fixes.\" assistant: \"I'll re-run the verifier; the engine tracks the bounded attempt count itself.\" <commentary>Re-verification pass after fixes.</commentary> </example>\n\n<example> Context: A user is unsure a generated CLI meets the doctrine. user: \"Does this generated CLI actually satisfy the five pillars?\" assistant: \"I'll verify it read-only and map each finding back to a pillar.\" </example>",
+          "description": "Use this agent when a paradigm skill (cli-scaffold-compiled, cli-scaffold-interpreted, or cli-scaffold-shell) has just generated a CLI scaffold and it must be checked against the cli-architecture five-pillar doctrine and the per-language reference before being shown to the user, or when a user directly asks whether an existing generated CLI satisfies the doctrine. It is read-only: it runs the verification engine and reports findings as either \"fixable\" or \"needs-human-judgment\" — it never edits, writes, publishes, installs, or builds the scaffold.",
           "tools": [
             "Read",
             "Glob",
@@ -138,7 +138,7 @@
     },
     {
       "name": "codebase-consistency",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
       "skills": [],
       "agents": [
@@ -223,13 +223,13 @@
     },
     {
       "name": "compass",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
       "skills": [
         {
           "id": "compass:compass-calibrate-format",
           "name": "compass-calibrate-format",
-          "description": "Pins down an ambiguous output format, style, tone, or schema by anchoring it to 2-5 concrete input/output examples instead of more prose. Use when prose keeps under- or over-specifying the target shape: \"match this format\", \"I can't describe it but here's an example\", \"make it look like these\", a non-standard schema, tone, or layout that's hard to state in words, or a compass-solve stage whose output shape is fuzzy."
+          "description": "Pins down an ambiguous output format, style, tone, or schema by anchoring it to 2-5 concrete input/output examples instead of more prose. Use when prose keeps under- or over-specifying the target shape: when the target cannot be described in words, is non-standard, or involves subtle tone or layout choices, or when a compass-solve stage output shape is fuzzy."
         },
         {
           "id": "compass:compass-clarify-scope",
@@ -264,7 +264,7 @@
         {
           "id": "compass:compass-map-relationships",
           "name": "compass-map-relationships",
-          "description": "Answers a question that turns on entity/dependency/causal structure by extracting indexed relationship triples and traversing them hop by hop, citing the triple index at every hop. Use when the answer requires following a chain through named entities and relationships: \"how does A affect D through the chain\", \"trace the dependency path\", \"who reports to whom\", \"what causes what here\", multi-hop \"why\" questions, or a compass-solve stage that needs graph traversal."
+          "description": "Answers a question that turns on entity/dependency/causal structure by extracting indexed relationship triples and traversing them hop by hop, citing the triple index at every hop. Use when the answer requires following a chain through named entities and relationships: \"how does A affect D through the chain\", \"trace the dependency path\", \"who reports to whom\", \"what causes what here\", multi-hop \"why\" questions, or a compass-solve stage that needs graph traversal. Not for deriving a repository's real import/module graph from source — \"map this repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\" belong to self-assess-stage-map, which parses imports per language and writes the stage graph other skills consume. Use this skill only to reason over a relationship graph whose entities are already established, in code or any other domain."
         },
         {
           "id": "compass:compass-negotiate-tradeoffs",
@@ -289,7 +289,7 @@
         {
           "id": "compass:compass-summarize-trace",
           "name": "compass-summarize-trace",
-          "description": "After a compass-solve pipeline finishes, produces a compact written record for handoff, PR comment, or documentation — exactly 7 sections covering what was asked, assumed, weighed, run, produced, revised, and NOT done. Use when a finished multi-stage run needs to be captured: \"summarize what we did\", \"write this up for the PR\", \"hand this off\", \"document the run\", after compass-solve completes."
+          "description": "After a compass-solve pipeline finishes, produces a compact written record for handoff, PR comment, or documentation — 7 sections (6 if Explore did not run) covering what was asked, assumed, weighed, run, produced, revised, and NOT done. Use when a finished multi-stage run needs to be captured: \"summarize what we did\", \"write this up for the PR\", \"hand this off\", \"document the run\", after compass-solve completes."
         },
         {
           "id": "compass:compass-verify-assumptions",
@@ -344,7 +344,7 @@
     },
     {
       "name": "confab",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
       "skills": [
         {
@@ -355,7 +355,7 @@
         {
           "id": "confab:confab-assertion-audit",
           "name": "confab-assertion-audit",
-          "description": "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Verification is mandatory and cannot be skipped by any setting; every finding is labeled real-tool or llm-reasoned."
+          "description": "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests. Every finding is labeled real-tool or llm-reasoned."
         },
         {
           "id": "confab:confab-code-change",
@@ -365,7 +365,7 @@
         {
           "id": "confab:confab-contract-drift",
           "name": "confab-contract-drift",
-          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Verification runs by default and only skips if the user explicitly says skip_verification."
+          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use self-assess-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
         },
         {
           "id": "confab:confab-cycle",
@@ -392,7 +392,7 @@
         {
           "id": "confab:agentic-reliability-auditor",
           "name": "agentic-reliability-auditor",
-          "description": "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when confab-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, and workflows/* files.",
+          "description": "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when confab-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, commands/*, and workflows/* files.",
           "tools": [
             "Read",
             "Glob",
@@ -452,7 +452,7 @@
     },
     {
       "name": "cupertino",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, applied through a fixed, sequenced lifecycle pipeline rather than a menu of individually-selectable design techniques.",
       "skills": [
         {
@@ -468,12 +468,12 @@
         {
           "id": "cupertino:cupertino-council",
           "name": "cupertino-council",
-          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose."
+          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for reviewing an interface that already exists: for accessibility, semantic-markup or hardcoded-design-value problems in shipped source use self-assess-ui-audit, and for a full-lifecycle design pass over an existing project use cupertino-review."
         },
         {
           "id": "cupertino:cupertino-elevate",
           "name": "cupertino-elevate",
-          "description": "Use at build-time, ONLY when a low-status commodity feature already in scope for the current build — error messages, logs, config, settings, onboarding, migrations, loading states, empty states, backups, status output — could be transfigured into something beloved, the way Apple turned boring backup into Time Machine. Trigger on 'this feature is boring', 'nobody uses this', 'make this delightful', 'elevate this'. Never seek out a commodity feature independently or apply this to a brand-new capability not already being worked on — if nothing already in scope qualifies, say so and skip."
+          "description": "Use at build-time, ONLY when a low-status commodity feature already in scope for the current build — error messages, logs, config, settings, onboarding, migrations, loading states, empty states, backups, status output — could be transfigured into something beloved, the way Apple turned boring backup into Time Machine. Trigger on 'this feature is boring', 'nobody uses this', 'make this delightful', 'elevate this'. Never seek out a commodity feature independently or apply this to a brand-new capability not already being worked on — route a brand-new capability to cupertino-backwards instead; if nothing already in scope qualifies, say so and skip."
         },
         {
           "id": "cupertino:cupertino-focus",
@@ -488,17 +488,17 @@
         {
           "id": "cupertino:cupertino-handbook-check",
           "name": "cupertino-handbook-check",
-          "description": "Use when the user wants to compare new or changed work against an existing domain handbook to find divergence. Trigger on 'does this comply with our handbook', 'check this against our standards', 'audit these files against the code handbook'. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
+          "description": "Use when the user wants to compare new or changed work against an existing domain handbook at .cupertino/DOMAIN-handbook.md (one file per domain) to find divergence. Trigger on 'does this comply with our handbook', 'audit these files against the code handbook', 'check this against the code handbook'. Requires a handbook previously produced by cupertino-handbook-draft. Not for repo-wide conventions written in CLAUDE.md or .claude/house-rules.md — use self-assess:self-assess-lint-audit for those. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
         },
         {
           "id": "cupertino:cupertino-handbook-draft",
           "name": "cupertino-handbook-draft",
-          "description": "Use when the user wants to create and persist a durable handbook for one domain — design, code, testing, or documentation — capturing the project's actual conventions (or honest scaffolded defaults where none exist) as a checkable rule per dimension. Trigger on 'write a code handbook', 'draft our design standards', 'create a testing handbook', or similar requests naming a domain and asking for a persisted, checkable artifact rather than a one-off answer."
+          "description": "Use when the user wants to create and persist a durable handbook for one domain — design, code, testing, or documentation — capturing the project's actual conventions (or honest scaffolded defaults where none exist) as a checkable rule per dimension. Trigger on 'write a code handbook', 'draft our design standards', 'create a testing handbook', or similar requests naming a domain and asking for a persisted, checkable artifact rather than a one-off answer. Not for researching what a stack *should* adopt from external authority, and not for producing the machine-checkable .lehre/ruleset.json a lehre run enforces — use lehre-codify for those. This skill describes one domain as it already is, in a human-readable per-dimension handbook."
         },
         {
           "id": "cupertino:cupertino-handbook-fix",
           "name": "cupertino-handbook-fix",
-          "description": "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes."
+          "description": "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes. Not for code-modernization or idiom findings from code_idiom_summary.json — those belong to self-assess-idiom-fix. If no handbook_check_DOMAIN_summary.json exists for the domain, this is not the audit the user means."
         },
         {
           "id": "cupertino:cupertino-integrate",
@@ -549,14 +549,13 @@
           "tools": [
             "Read",
             "Grep",
-            "Glob",
             "Bash"
           ]
         },
         {
           "id": "cupertino:handbook-remediator",
           "name": "handbook-remediator",
-          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true finding's exact rewrite at its cited file:line, and nothing else. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch may cover several findings if they cluster on the same (file, rule); it touches only the exact locations cited and never anything else.",
+          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true design-handbook finding's exact rewrite at its cited file:line, and nothing else. Findings originate only from cupertino-handbook-check's design/UI handbook rules — not for language-idiom or modernization rewrites, which belong to self-assess's idiom-remediator. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch may cover several findings if they cluster on the same (file, rule); it touches only the exact locations cited and never anything else. Not selected from a bare \"apply this mechanical fix\" request — dispatch always comes from cupertino-handbook-fix.",
           "tools": [
             "Read",
             "Edit"
@@ -589,7 +588,7 @@
     },
     {
       "name": "lehre",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Researches a code style, pattern and architecture doctrine, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, rather than describing the violation afterwards. Works from a blank page (greenfield project initialization, decomposed into units and seams whose build order is itself enforced) as well as over an existing codebase.",
       "skills": [
         {
@@ -600,7 +599,7 @@
         {
           "id": "lehre:lehre-codify",
           "name": "lehre-codify",
-          "description": "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused."
+          "description": "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused. Not for mining the business or domain logic the code already implements — calculations, validations, state transitions — use self-assess-extract-rules for that. Not for a standalone, human-readable per-domain handbook (code, design, testing, documentation) recording what a project already does, one rule per dimension — use cupertino:cupertino-handbook-draft for that. This skill governs how code is written, not what the code decides."
         },
         {
           "id": "lehre:lehre-conform",
@@ -620,7 +619,7 @@
         {
           "id": "lehre:lehre-pin",
           "name": "lehre-pin",
-          "description": "Use once a unit or phase is validated, to make its rules survive without the plugin: emit a CI check that runs the doctrine with no agent in the loop, and write behaviour tests around the code that was changed to conform. Trigger on 'make this stick', 'add CI for our standards', 'pin these rules', 'test the conformance changes', or 'lehre pin'. Two phases — the durable rule check, then the regression net."
+          "description": "Use once a unit or phase is validated, to make its rules survive without the plugin: emit a CI check that runs the doctrine with no agent in the loop, and write behaviour tests around the code that was changed to conform. Covers CI pinning of the ruleset, durable enforcement once the plugin is uninstalled, and regression tests for conformance edits. Two phases — the durable rule check, then the regression net."
         },
         {
           "id": "lehre:lehre-preflight",
@@ -642,7 +641,7 @@
         {
           "id": "lehre:conformance-remediator",
           "name": "conformance-remediator",
-          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Typical triggers include lehre-conform dispatching one remediator per (file, rule) cluster after the approval gate closes. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Typical triggers include lehre-conform dispatching one remediator per (file, rule) cluster after the approval gate closes. Only ever dispatched by lehre-conform against a lehre rule-card finding — not for self-assess-code-idiom \"modernization\" findings (self-assess's idiom-remediator) and not for cupertino-handbook-check mechanical findings (cupertino's handbook-remediator), and not from a bare user request carrying no pipeline context. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output. See \"When to invoke\" in the agent body for worked scenarios.",
           "tools": [
             "Read",
             "Edit"
@@ -733,88 +732,88 @@
     },
     {
       "name": "self-assess",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
       "skills": [
         {
           "id": "self-assess:self-assess-arch-health",
           "name": "self-assess-arch-health",
-          "description": "This skill should be used when the user asks to \"find architecture deficiencies\", \"find god-objects or god-modules\", \"detect dependency cycles\", \"check for layering violations\", or as part of self-assess-autopilot's CHECK phase. Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code."
+          "description": "Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code. Use when the user asks to \"find architecture deficiencies\", \"find god-objects or god-modules\", \"detect dependency cycles\", \"check for layering violations\", or as part of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-autopilot",
           "name": "self-assess-autopilot",
-          "description": "This skill should be used when the user asks to \"run the auto-pilot\", \"check, plan, fix and validate this repo\", or wants the full self-assess value stream run end to end. Conducts CHECK (read-only findings) -> PLAN (modernization brief) -> a hard approval gate -> FIX+VALIDATE (handed to andon-loop), halting on any unproven wire or unmet blocker."
+          "description": "Runs self-assess's full workflow (CHECK → PLAN → approval gate → FIX+VALIDATE) with andon-loop, halting on unproven wires or unmet blockers. Use when the user asks to \"run the auto-pilot\", \"check, plan, fix and validate this repo\", or wants the full self-assess value stream."
         },
         {
           "id": "self-assess:self-assess-ci-topology",
           "name": "self-assess-ci-topology",
-          "description": "This skill should be used when the user asks to \"audit our git remotes\", \"check CI setup\", \"find redundant mirrors\", \"verify docs about CI/CD are accurate\", or as part of self-assess-autopilot's CHECK phase. Audits git remote topology and CI configuration for redundancy, mirror risk, and doc-vs-config drift, masking every credential to a short preview."
+          "description": "Audits git remote topology and CI/CD configuration for redundancy, mirror risk, doc-vs-config drift, and commit-signing inconsistencies, masking every credential to a short preview. Use when the user asks to \"audit our git remotes\", \"check CI setup\", \"find redundant mirrors\", \"verify docs about CI/CD are accurate\", or as part of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-code-idiom",
           "name": "self-assess-code-idiom",
-          "description": "This skill should be used when the user asks to \"find modernization opportunities\", \"check for deprecated idioms\", \"find code smells\", or as part of self-assess-autopilot's CHECK phase. Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell."
+          "description": "Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell. Use when the user asks to \"find modernization opportunities\", \"check for deprecated idioms\", \"find code smells\", or as part of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-complexity-score",
           "name": "self-assess-complexity-score",
-          "description": "This skill should be used when the user asks \"which module needs attention first\", \"score complexity per stage\", \"what's our tech debt hotspot\", or as part of self-assess-autopilot's CHECK phase. Computes a relative complexity index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers."
+          "description": "Computes a relative complexity/attention-priority index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers. Use when the user asks \"which module needs attention first\", \"score complexity per stage\", \"what's our tech debt hotspot\", or as part of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-docs-drift",
           "name": "self-assess-docs-drift",
-          "description": "This skill should be used when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of self-assess-autopilot's CHECK phase. Extracts falsifiable claims from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code."
+          "description": "Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of self-assess-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by self-assess-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift."
         },
         {
           "id": "self-assess:self-assess-extract-rules",
           "name": "self-assess-extract-rules",
-          "description": "This skill should be used when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of self-assess-autopilot's CHECK phase. Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule."
+          "description": "Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule. Use when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of self-assess-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written."
         },
         {
           "id": "self-assess:self-assess-idiom-fix",
           "name": "self-assess-idiom-fix",
-          "description": "This skill should be used when the user explicitly asks to \"apply the modernization findings\", \"fix the idiom findings\", or \"auto-fix what code-idiom found\". Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode=\"fix\", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying."
+          "description": "Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode=\"fix\", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying. Use when the user explicitly asks to \"apply the modernization findings\", \"fix the idiom findings\", or \"auto-fix what code-idiom found\". Not for design-handbook conformance findings from a cupertino-handbook-check pass -- use cupertino-handbook-fix for those. If no code_idiom_summary.json exists, this is not the audit the user means."
         },
         {
           "id": "self-assess:self-assess-lint-audit",
           "name": "self-assess-lint-audit",
-          "description": "This skill should be used when the user asks to \"check our conventions\", \"audit against house rules\", \"verify code follows CLAUDE.md\", or as part of self-assess-autopilot's CHECK phase. Extracts discrete rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and verifies violations, capping finder dispatch at lint_max_rules."
+          "description": "Extracts discrete, checkable rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and dispatches finders to verify violations against the actual code, capping dispatch at lint_max_rules. Reports violations only -- for mechanical fixes see self-assess-idiom-fix. Use when the user asks to \"check our conventions\", \"check this code against our standards\", \"does the code follow the conventions we wrote down\", \"audit against house rules\", \"verify code follows CLAUDE.md\", or as part of self-assess-autopilot's CHECK phase. Not for auditing work against a cupertino domain handbook under .cupertino/ -- use cupertino:cupertino-handbook-check for that."
         },
         {
           "id": "self-assess:self-assess-portfolio",
           "name": "self-assess-portfolio",
-          "description": "This skill should be used when the user asks to \"sweep multiple repos\", \"assess our whole portfolio\", \"grade all our projects\", or names a parent directory containing several git repositories. Grades each repo Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo."
+          "description": "Grades each repo in a directory of git repositories Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo. Use when the user asks to \"sweep multiple repos\", \"assess our whole portfolio\", \"grade all our projects\", or names a parent directory containing several git repositories."
         },
         {
           "id": "self-assess:self-assess-preflight",
           "name": "self-assess-preflight",
-          "description": "This skill should be used when the user asks to \"check if this repo is ready for self-assess\", \"run preflight\", \"can self-assess analyze this codebase\", or before any other self-assess-* skill runs for the first time in a repo. Also invoked at the start of self-assess-autopilot's CHECK phase. Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill."
+          "description": "Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill. Use when the user asks to \"check if this repo is ready for self-assess\", \"run preflight\", \"can self-assess analyze this codebase\", or before any other self-assess-* skill runs for the first time in a repo; also invoked at the start of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-stage-map",
           "name": "self-assess-stage-map",
-          "description": "This skill should be used when the user asks to \"map the repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\", or as the first step of self-assess-autopilot's CHECK phase. Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on."
+          "description": "Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on. Use when the user asks to \"map the repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\", or as the first step of self-assess-autopilot's CHECK phase."
         },
         {
           "id": "self-assess:self-assess-status",
           "name": "self-assess-status",
-          "description": "This skill should be used when the user asks \"where does self-assess stand\", \"what's stale in our analysis\", \"what should we run next\", or \"self-assess status\". Reports which artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run."
+          "description": "Reports which self-assess artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run. Use when the user asks \"where does self-assess stand\", \"what's stale in our analysis\", \"what should we run next\", or \"self-assess status\"."
         },
         {
           "id": "self-assess:self-assess-transform-brief",
           "name": "self-assess-transform-brief",
-          "description": "This skill should be used after self-assess's finding skills have run, when the user asks to \"synthesize the findings into a plan\", \"write the modernization brief\", \"what should we fix and in what order\", or as the PLAN step of self-assess-autopilot. Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan."
+          "description": "Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan. Use after self-assess's finding skills have run, when the user asks to \"synthesize the findings into a plan\", \"write the modernization brief\", \"what should we fix and in what order\", or as the PLAN step of self-assess-autopilot."
         },
         {
           "id": "self-assess:self-assess-transform-execute",
           "name": "self-assess-transform-execute",
-          "description": "This skill should be used when the user explicitly asks to \"execute phase N from the modernization brief\", \"apply this transform phase\", or \"run the merge/split transform-execute proposed\". Applies exactly one human-authorized phase from MODERNIZATION_BRIEF.md, gated behind transform.mode=\"execute\", a clean tree, and every Open Question resolved -- then hands off to andon-verify without self-verifying."
+          "description": "Applies exactly one human-authorized phase of MODERNIZATION_BRIEF.md to the codebase. Use when the user explicitly asks to \"execute phase N from the modernization brief\", \"apply this transform phase\", or \"run the merge/split transform-execute proposed\". It applies exactly one human-authorized phase from MODERNIZATION_BRIEF.md, gated behind transform.mode=\"execute\", a clean tree, and every Open Question resolved -- then hands off to andon-verify without self-verifying. Not for applying a set of approved fixes across a repo, or for proving each fix as it lands -- that is andon-loop; this skill requires a numbered phase in MODERNIZATION_BRIEF.md and refuses without one."
         },
         {
           "id": "self-assess:self-assess-ui-audit",
           "name": "self-assess-ui-audit",
-          "description": "This skill should be used when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", or as part of self-assess-autopilot's CHECK phase. Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app."
+          "description": "Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", \"review this UI before we ship\", or as part of self-assess-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review."
         }
       ],
       "agents": [
@@ -825,8 +824,7 @@
           "tools": [
             "Read",
             "Glob",
-            "Grep",
-            "Bash"
+            "Grep"
           ]
         },
         {
@@ -836,8 +834,7 @@
           "tools": [
             "Read",
             "Glob",
-            "Grep",
-            "Bash"
+            "Grep"
           ]
         },
         {
@@ -868,8 +865,7 @@
           "tools": [
             "Read",
             "Glob",
-            "Grep",
-            "Bash"
+            "Grep"
           ]
         },
         {
@@ -890,14 +886,13 @@
           "tools": [
             "Read",
             "Glob",
-            "Grep",
-            "Bash"
+            "Grep"
           ]
         },
         {
           "id": "self-assess:idiom-remediator",
           "name": "idiom-remediator",
-          "description": "Use this agent when a single, already-verified self-assess-code-idiom \"modernization\"-category finding needs exactly that one mechanical rewrite applied at its cited location, and nothing else. Typical triggers include self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a cluster of same-file, same-idiom-kind, already-verified self-assess-code-idiom \"modernization\"-category findings needs exactly those mechanical rewrites applied at their cited locations, and nothing else. Typical trigger is self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. Only ever dispatched by self-assess-idiom-fix against code-idiom findings -- not for lehre rule-card conformance findings (lehre's conformance-remediator), not for cupertino handbook findings (cupertino's handbook-remediator), not for `smell`-category or `severityNote`-flagged findings, and not from a bare user request carrying no pipeline context. See \"When to invoke\" in the agent body for worked scenarios.",
           "tools": [
             "Read",
             "Edit"
@@ -933,8 +928,7 @@
           "tools": [
             "Read",
             "Glob",
-            "Grep",
-            "Bash"
+            "Grep"
           ]
         }
       ],

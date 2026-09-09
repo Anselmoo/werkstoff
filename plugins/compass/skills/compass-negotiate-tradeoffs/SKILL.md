@@ -27,7 +27,15 @@ guard rejects the call if `explore_winner_selected` is false.
 ## Process
 
 1. Build a **trade-off matrix**: for each source branch, what it gives up and what
-   the hybrid preserves.
+   the hybrid preserves. For example:
+
+   ```markdown
+   | source branch | gives up | hybrid preserves |
+   |---|---|---|
+   | Winner | its narrower impact | Winner's higher feasibility |
+   | Runner | its lower feasibility | Runner's higher impact |
+   ```
+
 2. Name and describe the **hybrid approach**.
 3. Score the hybrid on **Feasibility, Impact, Risk, each 1-10, against the same
    rubric** used in Explore.

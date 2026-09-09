@@ -3,7 +3,7 @@ description: Prove an alignment pass changed nothing observable — test-suite e
 argument-hint: <area-dir> [dimension]
 ---
 
-Verify that `/consistency-align` on `[dimension]` (or every aligned
+Verify that `/consistency-align` on `[dimension]` (`$2`; or every aligned
 dimension, if omitted) changed **only** what the Pattern Card said it
 would — same behavior, same public surface, and docs that still describe
 the code accurately.
@@ -46,9 +46,20 @@ If the **Workflow tool** is available in this session:
 ```
 Workflow({
   scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/verify.js",
-  args: { area: "$1", dimension: "<dimension>" }
+  args: {
+    area: "$1",
+    dimension: "$2",
+    units: [ { name: "<module>", path: "<repo-relative path>" } ]
+  }
 })
 ```
+
+Enumerate the aligned modules from `analysis/$1/ALIGN_NOTES.md` first (the
+workflow script has no filesystem access) — one entry per module per
+align.md's Write contract. Unlike `/consistency-align`'s `units`, omit a
+`deps` field: verify's fan-out re-checks each aligned module's diff
+independently, not in dependency-ordered batches, so carrying over align's
+`deps` semantics here would misrepresent how this fan-out actually runs.
 
 This fans out one **equivalence-verifier** per aligned module, each
 re-reading its diff against the Pattern Card's canonical form and the

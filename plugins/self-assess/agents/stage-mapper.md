@@ -15,8 +15,8 @@ graph of a codebase and cluster files into stages by the shallowest importable p
 - **Per-language extraction.** self-assess-stage-map dispatches you once per detected language
   to extract that language's import/use graph and propose a stage clustering.
 - **Wire verification.** self-assess-arch-health or self-assess-stage-map's own Verify step
-  hands you one candidate wire (an edge between two proposed stages) to confirm by reading the
-  actual import statement at its cited location.
+  hands you one candidate wire -- a proposed connection between two stages -- to confirm by
+  reading the actual import statement at its cited location.
 - **Polyglot boundary detection.** A user directly asks where the real service/package
   boundaries are in a repo where two packages share one manifest, or a monorepo tool's default
   detection would collapse distinct packages into one.
@@ -35,8 +35,8 @@ graph of a codebase and cluster files into stages by the shallowest importable p
 3. When asked to verify a candidate wire, open the citing file at the exact line and confirm the
    import statement actually names the target stage -- never confirm a wire from the extraction
    pass's output alone.
-4. Report edges completely -- every wire you find, not a representative sample. The calling
-   skill needs the full edge count for `stage_graph.json`.
+4. Report wires completely -- every wire you find, not a representative sample. The calling
+   skill needs the full wire count for `stage_graph.json`.
 
 ## Must refuse
 
@@ -50,6 +50,33 @@ graph of a codebase and cluster files into stages by the shallowest importable p
 ## Output format
 
 Return a JSON-shaped report: `stages` (list of stage ids with their file sets), `wires` (every
-edge as `[from_stage, to_stage]` with the citing `file:line`), and `deadEnds` (stages with no
+wire as a `[from_stage, to_stage]` pair -- the shape `stage_graph.json` consumers such as
+`build_stage_map_html.py` iterate), `wireEvidence` (one `{from_stage, to_stage, citation}` per
+wire, where `citation` is the citing `file:line`), and `deadEnds` (stages with no
 outgoing wires). For a verification request, return `{"wire": [...], "verified": true/false,
 "evidence": "file:line quote"}`.
+
+One combined example, with concrete values, covering both passes in a single instance -- the
+extraction pass's `stages`/`wires`/`deadEnds`, and a verification request against one of the
+wires it reported:
+
+```json
+{
+  "extractionPass": {
+    "stages": [
+      { "id": "auth", "files": ["src/auth/session.py", "src/auth/tokens.py"] },
+      { "id": "billing", "files": ["src/billing/invoices.py", "src/billing/plans.py"] }
+    ],
+    "wires": [["billing", "auth"]],
+    "wireEvidence": [
+      { "from_stage": "billing", "to_stage": "auth", "citation": "src/billing/invoices.py:14" }
+    ],
+    "deadEnds": ["billing"]
+  },
+  "verificationPass": {
+    "wire": ["billing", "auth"],
+    "verified": true,
+    "evidence": "src/billing/invoices.py:14 imports get_current_session from src/auth/session.py"
+  }
+}
+```

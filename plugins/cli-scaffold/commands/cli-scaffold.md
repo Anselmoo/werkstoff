@@ -2,7 +2,7 @@
 name: cli-scaffold
 description: Scaffold a production-grade CLI in one of 12 languages, verified against the five-pillar doctrine.
 argument-hint: <language> called <app-name> [functionality...]
-allowed-tools: Skill, Bash, Read
+allowed-tools: Skill, Bash(python3:*), Read
 ---
 
 The user invoked `/cli-scaffold` with arguments: `$ARGUMENTS`

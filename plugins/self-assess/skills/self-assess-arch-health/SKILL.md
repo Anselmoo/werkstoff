@@ -1,6 +1,6 @@
 ---
 name: self-assess-arch-health
-description: This skill should be used when the user asks to "find architecture deficiencies", "find god-objects or god-modules", "detect dependency cycles", "check for layering violations", or as part of self-assess-autopilot's CHECK phase. Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code.
+description: Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code. Use when the user asks to "find architecture deficiencies", "find god-objects or god-modules", "detect dependency cycles", "check for layering violations", or as part of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-arch-health
@@ -14,9 +14,15 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py check-enabled --repo <r
 ```
 
 Check whether `<output_dir>/stage_graph.json` exists. If it does not, this skill degrades to
-`Ready-with-gaps` -- write a short `ARCH_HEALTH.md` and `arch_health_summary.json` (empty
-`findings`, a note that `self-assess-stage-map` has not run) and stop. This is a degrade, not
-an error: do not fail the skill invocation, just produce a minimal, honest artifact.
+`Ready-with-gaps` -- write a short `ARCH_HEALTH.md` and an `arch_health_summary.json` with empty
+`findings` and a note that `self-assess-stage-map` has not run, then stop:
+
+```json
+{"findings": [], "note": "self-assess-stage-map has not run; no stage_graph.json to analyze"}
+```
+
+This is a degrade, not an error: do not fail the skill invocation, just produce a minimal,
+honest artifact.
 
 ## Step 1: Read the full graph
 
@@ -47,7 +53,8 @@ Before dispatching `arch-health-auditor`, resolve the shared symbol-index snapsh
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py --repo-path . --plugin-name self-assess
 ```
 
-(single-flight lock makes concurrent callers safe). For a repo well under ~50 tracked files the
+(single-flight lock makes concurrent callers safe -- see
+`references/parallel-safe-research-protocol.md`). For a repo well under ~50 tracked files the
 build overhead may not be worth it -- skip this and dispatch without it.
 
 Dispatch `arch-health-auditor` to confirm each mechanically-flagged candidate against the
@@ -68,7 +75,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kin
 ```
 
 The validator rejects any `type` outside `{god-module, cycle, layering-violation}` and any
-`cycle` finding whose `members` list has fewer than 2 entries.
+`cycle` finding whose `members` list has fewer than 2 entries. The artifact wraps the per-finding
+shape `arch-health-auditor` already returns (see that agent's "Output format" section) in a
+top-level `findings` array: `{"findings": [<agent findings>]}`.
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename ARCH_HEALTH.md

@@ -11,6 +11,18 @@ Validate any edit to it with:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
 ```
 
+## Contents
+
+- [Worked instance](#worked-instance)
+- [Fields](#fields)
+  - [A rule](#a-rule)
+  - [sourceMode — and why it is policed](#sourcemode--and-why-it-is-policed)
+  - [`check.kind` — the closed vocabulary](#checkkind--the-closed-vocabulary)
+  - [Named constructs for `python-construct`](#named-constructs-for-python-construct)
+  - [Matching rules](#matching-rules)
+- [Units and build order](#units-and-build-order)
+  - [Unit fields](#unit-fields)
+
 ## Worked instance
 
 ```json
@@ -128,7 +140,7 @@ schema will invent a plausible citation before it will downgrade its own claim.
 
 ## `check.kind` — the closed vocabulary
 
-Five kinds. An unknown kind is a **schema error**, never a skipped rule.
+Six kinds. An unknown kind is a **schema error**, never a skipped rule.
 
 | kind | tier | fields | decides |
 |---|---|---|---|

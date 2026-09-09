@@ -58,6 +58,9 @@ criterion was modified — both are violations to fix.
 
 **If the revised draft still scores at or below threshold on any criterion, run a
 second score-then-revise cycle on the revised draft.** The hard cap is 2 cycles.
+If criteria still fail after the second cycle, stop looping: report the residual —
+which criteria remain at or below threshold — to the user rather than presenting
+the draft as fully resolved.
 
 ## Output
 - the revised artifact (only at/below-threshold criteria addressed)

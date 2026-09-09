@@ -28,11 +28,22 @@ judgment about whether the code is correct, secure, or well-documented.
 
 ## Must refuse
 
-- Do not fabricate numbers when tools are unavailable -- report `-1` or `0`, never an invented
-  estimate.
+- Do not fabricate numbers when tools are unavailable -- report `-1`, never an invented estimate.
 - Do not modify files -- this is read-only.
 
 ## Output format
 
 Return `{"stage": "...", "sloc": N, "file_count": N, "mean_ccn": N or -1, "max_ccn": N or -1,
-"tool_used": "radon" | "lizard" | "none", "unmeasured": true/false}`.
+"tool_used": "<actual tool name, e.g. radon/lizard/gocyclo>" | "none", "unmeasured": true/false}`.
+
+```json
+{
+  "stage": "api-gateway",
+  "sloc": 4200,
+  "file_count": 37,
+  "mean_ccn": 6,
+  "max_ccn": 22,
+  "tool_used": "radon",
+  "unmeasured": false
+}
+```

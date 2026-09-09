@@ -1,7 +1,7 @@
 ---
 name: andon-preflight
-description: "Checks whether a repository is ready for andon-loop, andon-propose, or andon-verify without touching any files beyond testing ledger-directory writability. Use when the user asks if a repo is ready for andon, or before the first run of any andon skill in a new repository."
-allowed-tools: "Read, Bash, Glob, Grep"
+description: "Checks whether a repository is ready for andon-loop, andon-propose, or andon-verify. The only files it writes are its own report -- PREFLIGHT.md and preflight_summary.json in the given output_dir -- plus testing ledger-directory writability; nothing else is touched. Use when the user asks if a repo is ready for andon, or before the first run of any andon skill in a new repository."
+allowed-tools: "Read, Bash(python3:*), Glob, Grep"
 argument-hint: ""
 ---
 
@@ -63,9 +63,28 @@ schema: `stageLegibility`, `stageCountEstimate`, `ledgerDirWritable`,
      <output_dir>/PREFLIGHT.md <repo_root> <output_dir>
    ```
 
+   If this exits non-zero or raises an `AndonError`
+   (`WRITE_SCOPE_ABSOLUTE`, `WRITE_SCOPE_TRAVERSAL`, or
+   `WRITE_SCOPE_OUTSIDE`), the write must not proceed: stop, report the
+   error message verbatim to the user as "output_dir appears
+   misconfigured", and do not write `PREFLIGHT.md`. Do not recompute the
+   path and retry -- these are caller misconfigurations (in particular
+   `WRITE_SCOPE_OUTSIDE`, meaning `output_dir` itself resolves outside
+   `repo_root`) that a fresh guess cannot fix.
+
 2. `<output_dir>/preflight_summary.json` -- the exact JSON object from Step 2,
    unmodified (do not paraphrase or drop fields; the schema is load-bearing
-   for `andon-status` and any external tooling that reads it later).
+   for `andon-status` and any external tooling that reads it later). Gate
+   this write the same way as item 1 -- confirm the path first:
+
+   ```
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-write-path \
+     <output_dir>/preflight_summary.json <repo_root> <output_dir>
+   ```
+
+   and apply the same handling on failure: stop, report the `AndonError`
+   message verbatim as "output_dir appears misconfigured", and do not
+   write `preflight_summary.json`.
 
 ## Verdict semantics (already computed by the script -- report, don't re-derive)
 

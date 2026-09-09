@@ -3,10 +3,9 @@ name: compass-calibrate-format
 description: >-
   Pins down an ambiguous output format, style, tone, or schema by anchoring it to
   2-5 concrete input/output examples instead of more prose. Use when prose keeps
-  under- or over-specifying the target shape: "match this format", "I can't
-  describe it but here's an example", "make it look like these", a non-standard
-  schema, tone, or layout that's hard to state in words, or a compass-solve stage
-  whose output shape is fuzzy.
+  under- or over-specifying the target shape: when the target cannot be described
+  in words, is non-standard, or involves subtle tone or layout choices, or when a
+  compass-solve stage output shape is fuzzy.
 ---
 
 # compass-calibrate-format

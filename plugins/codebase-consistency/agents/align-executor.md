@@ -27,8 +27,14 @@ to invent your own interpretation of the canonical form.
    This holds no matter how you were invoked — fan-out workflow or direct.
 2. `analysis/<area>/CANON.json` — the specific canonical form you're
    converting this module *to*, and the confidence/provenance behind it.
+
+   **If `CANON.json` does not exist, STOP and align nothing** — report
+   that the canonical form for this module has not been determined and
+   do not edit a file.
+
    A `needs-human-decision` dimension must never reach you as a task; if
-   it does, refuse.
+   it does, report that the dimension is undecided and do not edit any
+   file for that module.
 
 ## What you produce
 

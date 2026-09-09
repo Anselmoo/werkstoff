@@ -58,8 +58,9 @@ rung's reasoning** (`multimodal_cot_first: true`), regardless of the rung chosen
 ## Self-consistency (Rung 2a)
 
 Prefer the workflow `${CLAUDE_PLUGIN_ROOT}/workflows/reason-verify.js` (args
-`{ task, hasImageOrDiagram? }`) — it dispatches three isolated `reasoning-path`
-agents in parallel and votes. Otherwise dispatch three isolated attempts yourself
+`{ task, hasImageOrDiagram? }`; when `hasImageOrDiagram` is true, `task` must already
+contain a textual description of the image or diagram, because the agents receive
+only text) — it dispatches three isolated `reasoning-path` agents in parallel and votes. Otherwise dispatch three isolated attempts yourself
 and validate:
 ```
 echo '{"attempts":[
@@ -67,7 +68,11 @@ echo '{"attempts":[
   {"strategy":"backward from options"},
   {"strategy":"constraint mapping"}]}' | $GUARD self-consistency -
 ```
-The guard requires **exactly 3** attempts covering all three strategies.
+The guard requires **exactly 3** attempts covering all three strategies. A
+non-zero exit means a strategy is missing or duplicated — the guard's stderr
+names which. Re-dispatch only that missing or duplicated attempt once, then
+re-validate. If the guard rejects it again, stop and report the guard's error
+instead of proceeding to a majority vote.
 
 ## Output
 - reasoning structured to the selected rung

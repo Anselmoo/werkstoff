@@ -1,10 +1,7 @@
 ---
 name: andon-defender
 description: "Advocates the strongest honest case that a proposed fix satisfies a wire's contract, criterion by criterion, as one blind half of andon-verify's tribunal strategy (strategy a). Read-only. Dispatched fresh, in parallel with andon-challenger, always blind to its case and to any prior verdict, and never authored or influenced by the session that proposed or built the fix under review."
-tools:
-  - Read
-  - Grep
-  - Glob
+tools: Read, Grep, Glob
 ---
 
 # andon-defender
@@ -42,3 +39,16 @@ that satisfies it, or state plainly that you could not find satisfying
 evidence for that criterion (never paper over a gap with confident
 language). A criterion-by-criterion case is what the Adjudicator needs --
 a single "looks good overall" paragraph is not useful and will be discounted.
+
+For example, given a contract with criteria "rejects on missing config" and
+"logs a warning on fallback":
+
+```
+Criterion: "rejects on missing config" -- SATISFIED
+Evidence: src/loader.py:42-47 raises ConfigError when `path` is None before
+any read is attempted.
+
+Criterion: "logs a warning on fallback" -- NOT SATISFIED
+Could not find satisfying evidence: no logging call appears in src/loader.py's
+fallback branch (lines 51-58).
+```

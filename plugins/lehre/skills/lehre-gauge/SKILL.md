@@ -61,7 +61,7 @@ swept 412 file(s) against 9 rule(s)          [complete]
 27 violation(s): 22 blocking · 5 advisory    3 file(s) could not be evaluated
 
 blocking
-  no-api-to-db                    18 hits    unit: api
+  no-api-to-db                    18 violations    unit: api
       src/api/orders.py:3         imports 'src.db.session'
       src/api/users.py:7          imports 'src.db.session'
       ... 16 more
@@ -69,20 +69,33 @@ blocking
       why: an API handler reaching the session directly makes the transport
            layer un-testable without a database.
 
-  no-utils-dumping-ground          1 hit     unit: —
+  no-utils-dumping-ground          1 violation     unit: —
       src/utils.py                path matches a forbidden pattern
       verified: re-confirmed
 
-  ruff-clean                       3 hits    [gauge-tier — never denied at write time]
+  ruff-clean                       3 violations    [gauge-tier — never denied at write time]
       src/adapters/vendor_b.py     F401 'os' imported but unused
 
 advisory
-  prefer-logging                   5 hits    unit: adapters
+  prefer-logging                   5 violations    unit: adapters
+
+judgement
+  no-premature-abstraction   asks: does this factory have >=2 real call sites?
+      src/factories/widget.py   auditor: no — single call site, inline it
 
 UNEVALUATED — not clean, not judged
   src/adapters/vendor_c.py   would not parse (rule no-bare-except)
 
 next: lehre-brief — 22 blocking violations across 2 units need an order before anything is touched
+```
+
+A clean sweep looks like this — no rule sections, nothing left unevaluated:
+
+```
+swept 412 file(s) against 9 rule(s)          [complete]
+0 violation(s): 0 blocking · 0 advisory      0 file(s) could not be evaluated
+
+next: nothing to hand off — repo matches doctrine
 ```
 
 ## Rules

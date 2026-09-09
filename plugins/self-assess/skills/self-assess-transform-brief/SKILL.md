@@ -1,6 +1,6 @@
 ---
 name: self-assess-transform-brief
-description: This skill should be used after self-assess's finding skills have run, when the user asks to "synthesize the findings into a plan", "write the modernization brief", "what should we fix and in what order", or as the PLAN step of self-assess-autopilot. Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan.
+description: Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan. Use after self-assess's finding skills have run, when the user asks to "synthesize the findings into a plan", "write the modernization brief", "what should we fix and in what order", or as the PLAN step of self-assess-autopilot.
 ---
 
 # self-assess-transform-brief
@@ -25,7 +25,9 @@ stop.
 Read `arch_health_summary.json`. Every phase's structural decision (`Keep`, `Keep(1:1)`,
 `Merge`, `Split`, `Layering-fix`) MUST derive from arch-health's findings -- never from a
 freestanding architectural opinion formed here. No arch-health finding touching a stage means
-that stage's decision is `Keep(1:1)`.
+that stage's decision is `Keep(1:1)`. A missing `arch_health_summary.json` is treated as zero
+findings for every stage, so this same default applies to all phases; note in the brief that
+arch-health did not run this pass.
 
 ## Step 2: Order phases leaf-first
 
@@ -78,7 +80,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py flag-p0-blockers --rule
 
 Any P0 rule with `confidence` other than `"High"` becomes a phase blocker -- record it in the
 phase's Open Questions, not as an ordinary work item, since a low-confidence P0 business rule
-means the phase risks breaking behavior nobody is sure about yet.
+means the phase risks breaking behavior nobody is sure about yet. If `business_rules_summary.json`
+does not exist, skip P0-blocker flagging entirely and note in the brief that it is unavailable
+this run (self-assess-extract-rules has not run).
 
 ## Step 7: Write outputs
 
@@ -87,7 +91,26 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py validate-artifact --kin
 ```
 
 Every phase requires `phase_number`, a `decision` from the fixed set, `open_questions`
-(possibly empty), and `work_items` (ranked). Then resolve and write:
+(possibly empty), and `work_items` (ranked). For example, a phase with one ranked work item
+and no open blockers:
+
+```json
+{
+  "phase_number": 1,
+  "decision": "Keep(1:1)",
+  "open_questions": [],
+  "work_items": [
+    {
+      "citation": "src/parser/tokenize.py:42",
+      "rank": 6,
+      "severity": "High",
+      "description": "Split oversized tokenizer function per arch-health finding"
+    }
+  ]
+}
+```
+
+Then resolve and write:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --repo <repo_root> --filename MODERNIZATION_BRIEF.md
@@ -99,7 +122,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --r
 
 `TRANSFORM_SEQUENCE.mmd` is a Mermaid graph of phase order; `TRANSFORM_MAPPING.mmd` maps old
 stages to new ones per phase. Update `stage_map.json` with a `flows` field describing the
-planned transformation, without altering its existing stage/wire data.
+planned transformation, without altering its existing stage/wire data. If `stage_map.json`
+does not yet exist, create it here containing only the `flows` field, leaving stage/wire
+population to self-assess-stage-map.
 
 ## Read-only constraint
 

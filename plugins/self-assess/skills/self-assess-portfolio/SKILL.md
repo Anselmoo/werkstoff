@@ -1,6 +1,6 @@
 ---
 name: self-assess-portfolio
-description: This skill should be used when the user asks to "sweep multiple repos", "assess our whole portfolio", "grade all our projects", or names a parent directory containing several git repositories. Grades each repo Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo.
+description: Grades each repo in a directory of git repositories Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo. Use when the user asks to "sweep multiple repos", "assess our whole portfolio", "grade all our projects", or names a parent directory containing several git repositories.
 ---
 
 # self-assess-portfolio
@@ -25,8 +25,17 @@ directory.
 
 ## Step 3: Grade each repo, worst-signal-wins
 
-For each repo, check whether `<repo>/analysis/self-assess/` (or its configured `output_dir`) has any
-artifacts. Then:
+For each repo, resolve its configured `output_dir` first:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py get-settings --repo <repo>
+```
+
+This reads and returns the repo's settings (including `output_dir`) without gating on
+whether self-assess is enabled there -- do not use `check-enabled` for this, since it hard-fails
+on any repo where self-assess is disabled, which is exactly a repo this sweep must still be able
+to grade `Gray` rather than abort on. Then check whether `<repo>/analysis/self-assess/` (or the
+`output_dir` this call returned) has any artifacts. Then:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py grade-repo --has-artifacts --has-high --has-medium-or-gaps

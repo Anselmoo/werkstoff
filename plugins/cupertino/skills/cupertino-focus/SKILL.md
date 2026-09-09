@@ -11,7 +11,19 @@ This skill is gated: a PreToolUse hook blocks it until `cupertino-backwards` has
 
 1. **Enumerate the full portfolio**: every shipped and planned product, feature line, mode, and variant, without editorializing yet.
 2. **Build a grid**: pick the 2 (or 3) structural axes that actually matter for this portfolio — not generic axes, the ones where item placement reveals real overlap or gaps. Place every enumerated item on the grid.
-3. **Cut list**: sort every item into killed, merged, or surviving. For every item you cut or merge, state the cost explicitly — what capability, audience, or revenue is actually lost, not just what is gained by focusing. A cut with no acknowledged cost is a cut nobody has actually thought through.
+3. **Cut list**: sort every item into killed, merged, or surviving. For every item you cut or merge, state the cost explicitly — what capability, audience, or revenue is actually lost, not just what is gained by focusing. A cut with no acknowledged cost is a cut nobody has actually thought through. Shape (the axes and items are illustrative, not prescriptive):
+
+   ```
+   - item: "Offline sync mode"
+     disposition: killed
+     cost: "loses the 2% of users on unreliable connections; no other item covers this case"
+   - item: "Team workspaces"
+     disposition: merged (into "Projects")
+     cost: "loses the distinct team-vs-personal mental model; some enterprise buyers picked us for that separation"
+   - item: "Core editor"
+     disposition: surviving
+     cost: null
+   ```
 4. **One-sentence test for survivors**: every surviving product or feature line must be describable in exactly one sentence.
 
 ## Validate mechanically

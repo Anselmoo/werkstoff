@@ -12,9 +12,10 @@ description: >-
 
 # compass-clarify-scope
 
-Produce four structured outputs, then **validate them with the guard**. The guard
-enforces the confidence gates in code — a missing `confidence` or `blocking` field
-is rejected, never defaulted.
+Produce four structured outputs; validate `known_facts` and `flagged_uncertainties`
+with the guard (`scoped_task` and `success_criteria` have no code-level check — get
+them right by inspection). The guard enforces the confidence gates in code — a
+missing `confidence` or `blocking` field is rejected, never defaulted.
 
 `GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/compass.py"`
 
@@ -34,10 +35,14 @@ is rejected, never defaulted.
 - **Any uncertainty with confidence below 70 MUST be flagged.** The guard's
   `clarify` check computes `flagged` per entry — you do not eyeball it.
 - **Any known fact below 90% confidence MUST be marked ⚠️.**
-- **MUST NOT silently adopt a default interpretation for a flagged item.** Present
-  it.
 - **MUST pause and wait for user input if any flagged uncertainty is load-bearing**
   (`blocking: true`) for the deliverable. The guard returns `must_pause`.
+
+## The rules (discipline, not guard-checkable)
+
+- **MUST NOT silently adopt a default interpretation for a flagged item.** Present
+  it. The guard has no way to check whether you actually presented a flagged item
+  to the user rather than silently defaulting it — this is on you, not the guard.
 
 ## Validate
 

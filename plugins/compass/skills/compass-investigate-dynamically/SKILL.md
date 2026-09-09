@@ -34,8 +34,10 @@ unknown blocks the answer", not a fixed step count.
 - **Look up factual claims rather than guess.** When a step needs a fact, get it
   with a tool. **Never fill a gap with plausible prior knowledge** — that defeats
   the point of investigating.
-- If you catch yourself about to act without a named gap, stop and write the
-  Reasoning first. If you can't name the gap, you don't need the action.
+- **If a step's Reasoning names a remaining unknown but no available Action can
+  close it, stop the loop.** Report the blocking unknown and hand off to
+  `compass-ground-evidence` (stronger sourcing) or `compass-verify-assumptions`
+  (one bounded check) rather than guessing or looping on the same gap.
 
 ## Output
 - the full step-by-step loop in Reasoning / Action / Observation format

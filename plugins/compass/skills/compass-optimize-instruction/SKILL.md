@@ -49,7 +49,10 @@ echo '{"candidates":[
 ```
 The guard requires exactly 5 candidates covering all 5 framings and **breaks ties
 by framing precedence: rule → example → definition → question → CoT.** Use its
-`winner`.
+`winner`. If the guard rejects the set (wrong count, missing/duplicate framing,
+or malformed JSON), regenerate only the missing/duplicate framing(s) and
+re-validate. If the guard still rejects after 2 attempts, stop and report which
+framing(s) could not be produced rather than looping indefinitely.
 
 4. **Critique the winner only** with meta-prompting's 4-item checklist, revising
    only failing items:
@@ -67,3 +70,37 @@ echo '{"checklist":[
 - winner + why
 - critique checklist: pass/fail per criterion
 - the final prompt, ready to use
+
+Example (task: "triage inbound support tickets by urgency"):
+
+```
+| framing              | score |
+|----------------------|-------|
+| rule-based           | 4/5   |
+| example-based        | 4/5   |
+| definition-based     | 3/5   |
+| question-based       | 2/5   |
+| chain-of-thought-based | 4/5 |
+
+Winner: rule-based (tie with example-based and chain-of-thought-based at 4/5;
+framing precedence picks rule-based)
+
+Critique:
+- [x] rules unambiguous
+- [ ] handles out-of-scope -> revised: added an explicit "no urgency signal
+      found" fallback clause
+- [x] format rules compatible
+- [x] no two-way readings
+
+Final prompt:
+"""
+Classify this support ticket's urgency as high, medium, or low.
+
+- high: mentions data loss, outage, or a billing failure blocking checkout
+- medium: a broken feature with a workaround, or a repeat complaint
+- low: a question, a feature request, or cosmetic issue
+- if no urgency signal is present, classify as low and note "no signal found"
+
+Ticket: {ticket_text}
+"""
+```

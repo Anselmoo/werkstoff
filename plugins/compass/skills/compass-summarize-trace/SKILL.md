@@ -2,11 +2,11 @@
 name: compass-summarize-trace
 description: >-
   After a compass-solve pipeline finishes, produces a compact written record for
-  handoff, PR comment, or documentation — exactly 7 sections covering what was
-  asked, assumed, weighed, run, produced, revised, and NOT done. Use when a
-  finished multi-stage run needs to be captured: "summarize what we did",
-  "write this up for the PR", "hand this off", "document the run", after
-  compass-solve completes.
+  handoff, PR comment, or documentation — 7 sections (6 if Explore did not run)
+  covering what was asked, assumed, weighed, run, produced, revised, and NOT
+  done. Use when a finished multi-stage run needs to be captured: "summarize
+  what we did", "write this up for the PR", "hand this off", "document the
+  run", after compass-solve completes.
 ---
 
 # compass-summarize-trace
@@ -15,6 +15,14 @@ Turn a completed `compass-solve` run into a fixed 7-section record, then
 **validate structure with the guard**.
 
 `GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/compass.py"`
+
+## Input
+
+Read `.compass/runs/<id>/state.json`, written by `compass-solve`'s state-write
+step — it is the source of `dag.stages`, `explore_ran`, and the content each
+section below summarizes. If it is missing, ask the user for the run id or the
+path to its state file; do not infer `dag.stages` or `explore_ran` from
+conversation context.
 
 ## The 7 sections (exact order)
 
@@ -28,7 +36,21 @@ Turn a completed `compass-solve` run into a fixed 7-section record, then
    nothing changed, say so explicitly.**
 7. **What was NOT done**
 
-Follow with a **completeness score table**.
+Follow with a **completeness score table**: one row per section (7, or 6 if
+Explore was skipped), scoring whether it is present and non-empty against the
+rule for that section above.
+
+```
+| Section              | Present | Notes                                  |
+|----------------------|---------|-----------------------------------------|
+| What was asked       | yes     |                                         |
+| What was assumed     | yes     |                                         |
+| Approaches weighed   | omitted | Explore did not run                    |
+| What ran             | yes     | 3/3 dag_stages listed                  |
+| What was produced    | yes     |                                         |
+| What was revised     | yes     | explicitly states nothing was revised  |
+| What was NOT done    | yes     |                                         |
+```
 
 ## Validate
 
@@ -39,7 +61,7 @@ echo '{
   "explore_ran": false,
   "dag_stages": ["gather","draft","check"],
   "sections": [
-    {"title":"What was asked","body":"…"},
+    {"title":"What was asked","body":"Add retry-with-backoff to the webhook dispatcher."},
     {"title":"What was assumed","body":"…"},
     {"title":"What ran","body":"…","stage_ids":["gather","draft","check"]},
     {"title":"What was produced","body":"…"},

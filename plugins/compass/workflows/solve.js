@@ -19,7 +19,15 @@ const REVISE_MAX = 5
 const REVISE_THRESHOLD = 3
 const MAX_REVISION_CYCLES = 2
 const PHASE_ORDER = ['Clarify', 'Explore', 'Decompose', 'Execute', 'Revise']
-const MODES = ['reason-verify', 'investigate-dynamically', 'ground-evidence', 'calibrate-format']
+// Informal self-report categories for how a stage approached its own output — NOT invocations
+// of the like-named compass-* skills/workflows (this script only ever makes one generic agent()
+// call per stage; it never dispatches those skills' own multi-attempt or majority-vote mechanisms).
+const MODES = ['self-consistency-check', 'dynamic-investigation', 'evidence-grounding', 'format-calibration']
+const MODE_DEFINITIONS =
+  'self-consistency-check: you sanity-checked your own output for internal consistency before finalizing. ' +
+  'dynamic-investigation: you had to look up or reason through unfamiliar specifics as you went. ' +
+  'evidence-grounding: you anchored claims to specific facts or sources named in the input. ' +
+  "format-calibration: you adjusted the output's structure/format to match what the contract implied."
 
 // Kahn's algorithm: returns topological waves AND detects cycles/dangling refs.
 function computeWaves(stages) {
@@ -100,17 +108,20 @@ const CLARIFY_SCHEMA = {
         },
       },
     },
-    success_criteria: { type: 'array', items: { type: 'object' } },
+    success_criteria: {
+      type: 'array',
+      items: { type: 'object', required: ['criterion'], properties: { criterion: { type: 'string' } } },
+    },
   },
 }
-const clarify = args?.priorClarify ?? await agent(
+const clarify = parsedArgs?.priorClarify ?? await agent(
   `Scope this task. Restate it with every default interpretation stated inline. List known facts ` +
-  `(mark any below 90% confidence with the warning marker). For each uncertainty give ` +
+  `(prefix any fact below 90% confidence with the literal marker "[LOW-CONFIDENCE]"). For each uncertainty give ` +
   `{element, default_interpretation, confidence 0-100, blocking}. Any uncertainty with confidence ` +
   `below ${CLARIFY_FLAG_THRESHOLD} MUST be flagged. State success criteria.\n\nTask:\n${rawTask}`,
   { label: 'clarify', phase: 'Clarify', schema: CLARIFY_SCHEMA },
 )
-if (args?.priorClarify) log('Clarify: reusing a prior compass-clarify-scope run (args.priorClarify).')
+if (parsedArgs?.priorClarify) log('Clarify: reusing a prior compass-clarify-scope run (args.priorClarify).')
 
 // Enforce the flag gate and the blocking-pause in code.
 const flagged = clarify.flagged_uncertainties.filter((u) => u.confidence < CLARIFY_FLAG_THRESHOLD)
@@ -136,12 +147,12 @@ const hasStrategicFork = !!parsedArgs?.multipleApproaches
 if (hasStrategicFork) {
   phase('Explore')
   phasesRun.push('Explore')
-  if (args?.priorExplore) {
-    explore = args.priorExplore
+  if (parsedArgs?.priorExplore) {
+    explore = parsedArgs.priorExplore
     log(`Explore: reusing a prior compass-explore-branches run (args.priorExplore). Selected: ${explore.selected}`)
   } else {
     explore = await workflow('compass-explore-branches', { problem: clarify.scoped_task,
-      requestedBranches: args?.requestedBranches, maxBranchCount: args?.maxBranchCount })
+      requestedBranches: parsedArgs?.requestedBranches, maxBranchCount: parsedArgs?.maxBranchCount })
     log(`Explore selected: ${explore.selected}`)
   }
 } else {
@@ -168,10 +179,17 @@ const DECOMPOSE_SCHEMA = {
   },
 }
 const approach = explore ? `Selected approach: ${explore.selected}` : clarify.scoped_task
+// Scoped task is already the entire prompt when there's no strategic fork (approach ===
+// clarify.scoped_task above); only repeat it when `approach` is the separate explore summary.
+const scopedTaskLine = explore ? `\n\nScoped task:\n${clarify.scoped_task}` : ''
+const DECOMPOSE_EXAMPLE = '[{"id":"a","name":"Gather inputs","input_contract":"raw task text",' +
+  '"output_contract":"list of facts","dependsOn":[]},{"id":"b","name":"Draft answer",' +
+  '"input_contract":"list of facts from stage a","output_contract":"final draft","dependsOn":["a"]}]'
 const decomposed = await agent(
   `Break this into ${MIN_STAGES}-${MAX_STAGES} stages. Each stage: {id, name, input_contract, ` +
   `output_contract, dependsOn:[stage ids]}. At least one stage must have dependsOn: []. No cycles, ` +
-  `no dangling references.\n\n${approach}\n\nScoped task:\n${clarify.scoped_task}`,
+  `no dangling references. Example of a valid 2-stage array:\n${DECOMPOSE_EXAMPLE}` +
+  `\n\n${approach}${scopedTaskLine}`,
   { label: 'decompose', phase: 'Decompose', schema: DECOMPOSE_SCHEMA },
 )
 const waves = computeWaves(decomposed.stages) // throws on any graph violation
@@ -194,7 +212,7 @@ for (let w = 0; w < waves.length; w++) {
     const upstream = s.dependsOn.map((d) => `${d} -> ${results[d]?.output ?? ''}`).join('\n')
     return agent(
       `Execute stage "${s.name}". FIRST decide your execution mode at runtime from this stage's ` +
-      `content — one of: ${MODES.join(', ')} — then produce the output.\n\n` +
+      `content — one of: ${MODES.join(', ')}, defined as follows: ${MODE_DEFINITIONS} — then produce the output.\n\n` +
       `Input contract: ${s.input_contract}\nOutput contract: ${s.output_contract}\n` +
       (upstream ? `Upstream outputs:\n${upstream}\n` : ''),
       { label: `exec:${id} (wave ${w + 1})`, phase: 'Execute', schema: STAGE_SCHEMA },
@@ -207,11 +225,17 @@ for (let w = 0; w < waves.length; w++) {
 }
 
 // ---------- REVISE ----------
+// Two possible output contracts leave this function, and both are documented here
+// (rather than only where each `return` sits) so a caller can find them together:
+//   - PAUSED_AWAITING_USER (returned early from Clarify, above): { status, reason,
+//     scoped_task, blocking_uncertainties, next }
+//   - COMPLETE (returned at the bottom of this file): { status, scoped_task, explore,
+//     stage_plan, waves, composed_result, revised, revise_converged, phases_run }
 phase('Revise')
-phasesRun.push('Revise')
 const composed = Object.values(results).map((r) => `## ${byId[r.id].name} [${r.mode}]\n${r.output}`).join('\n\n')
 const criteria = parsedArgs?.successCriteria ?? clarify.success_criteria?.map((c) => c.criterion ?? c) ?? []
 let revision = null
+let reviseConverged = null // null: Revise did not run; true/false: whether it converged within the cycle cap
 if (Array.isArray(criteria) && criteria.length >= 3) {
   const REVISE_SCHEMA = {
     type: 'object', required: ['scores', 'revised', 'changes'],
@@ -235,9 +259,13 @@ if (Array.isArray(criteria) && criteria.length >= 3) {
       throw new Error('revise: revision presented without a changes list')
     }
     draft = revision.revised
-    if (failing.length === 0) break // converged; no second cycle needed
-    if (cycle === MAX_REVISION_CYCLES) log(`revise: still failing after ${MAX_REVISION_CYCLES} cycles`)
+    if (failing.length === 0) { reviseConverged = true; break } // converged; no second cycle needed
+    if (cycle === MAX_REVISION_CYCLES) {
+      reviseConverged = false
+      log(`revise: still failing after ${MAX_REVISION_CYCLES} cycles`)
+    }
   }
+  phasesRun.push('Revise')
 }
 
 // Final phase-order assertion in code.
@@ -254,5 +282,6 @@ return {
   waves,
   composed_result: composed,
   revised: revision ? { scores: revision.scores, changes: revision.changes, result: revision.revised } : null,
+  revise_converged: reviseConverged,
   phases_run: phasesRun,
 }

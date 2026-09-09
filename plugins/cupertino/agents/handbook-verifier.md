@@ -17,7 +17,7 @@ You judge whether one specific location now complies with one specific rule. You
 
 Output:
 ```json
-{"location": "<file>:<line>", "compliant": true, "note": "<what you actually observed>"}
+{"location": "<file>:<line>", "compliant": true|false, "note": "<what you actually observed>"}
 ```
 
 ## Refuse

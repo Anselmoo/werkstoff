@@ -38,6 +38,14 @@ Every strategy-b evidence doc body must include:
 - **Significant-digit count**: how many digits of agreement were required
   and achieved (or the relation's tolerance, for metamorphic checks).
 
+Example (synthetic recovery):
+
+```
+Quantity checked: recovered decay-rate parameter k
+Technique used: Synthetic recovery
+Significant-digit count: 4 digits required, 5 achieved (k_fit = 0.03421 vs k_true = 0.03420)
+```
+
 A strategy-b evidence doc missing any of these three is incomplete -- do not
 write `green` without them; the `verdict` alone is not sufficient evidence
 for a numerical claim.

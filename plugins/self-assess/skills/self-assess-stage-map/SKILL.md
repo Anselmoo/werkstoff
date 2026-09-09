@@ -1,6 +1,6 @@
 ---
 name: self-assess-stage-map
-description: This skill should be used when the user asks to "map the repo's architecture", "show me the real module boundaries", "map stages and wires", or as the first step of self-assess-autopilot's CHECK phase. Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on.
+description: Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on. Use when the user asks to "map the repo's architecture", "show me the real module boundaries", "map stages and wires", or as the first step of self-assess-autopilot's CHECK phase.
 ---
 
 # self-assess-stage-map
@@ -83,9 +83,18 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py resolve-output-path --r
 ```
 
 Write `STAGE_MAP.md`, `stage_graph.json`, `file_stage_index.json`, and `stage_map_summary.json`
-to their resolved paths. `stage_map.json` (viewer format, sampled edges) may also be written
-here for `self-assess-transform-brief` to later append a `flows` field to -- that is its own,
-separate consumer, unrelated to the HTML viewer below.
+to their resolved paths. `stage_map_summary.json` is a reporting sidecar, not a load-bearing
+artifact: it records a short run summary -- stage/wire counts and a timestamp -- that
+`self-assess-status` reads only as a presence flag for its dashboard. No other self-assess skill
+depends on its schema, so it is written directly here and never passed through
+`validate-artifact`.
+
+`stage_map.json` (viewer format, sampled edges) is not written by this skill at all: no step
+above resolves a path for it or builds it, and `STAGE_MAP.html` below renders from the full
+`stage_graph.json` directly, never from `stage_map.json`'s sampled edges. `self-assess-transform-brief`
+is the sole producer of `stage_map.json` -- it creates the file, containing only a `flows` field,
+when it finds the file absent, and appends that same field without altering existing stage/wire
+data when the file already exists.
 
 Then render `STAGE_MAP.html` -- a real canvas-based D3 viewer (force-directed graph layout,
 pan/zoom, search, drag-to-reposition), not the old "simple static graph render":

@@ -24,3 +24,30 @@ Settle one specific empirical question by building and running something real �
 ## Output format
 
 The question → the spike code → the actual run output (via the script above) → the observation → the explicit fate decision. If the script reports a non-zero exit or "no runner registered," that failure *is* the empirical observation — report it as such rather than fixing the spike until it passes, unless fixing it is itself what the question was about.
+
+Worked example (discard fate):
+
+```
+Question: Will the queue client retry with jittered backoff, or fail fast on the first timeout?
+Spike:
+    client = QueueClient(timeout_ms=50)
+    client.connect("unreachable-host:9999")
+    print(client.send({"id": 1}))
+Run: exit 1, stderr: "ConnectionError after 1 attempt (0 retries)"
+Observation: no retry occurs — the client fails on the first timeout, contrary to what the docs implied.
+Fate: Discard. The question is answered; the spike has no further purpose.
+```
+
+Worked example (promote fate):
+
+```
+Question: Can the CSV parser handle the malformed rows in last week's export without crashing?
+Spike:
+    for row in csv.reader(open("bad_export.csv")):
+        try: parse_row(row)
+        except Exception as e: print(row, e)
+Run: exit 0, stdout: 3 rows printed with "IndexError: missing column 4"
+Observation: the parser survives but silently drops the 3 malformed rows.
+Fate: Deliberately promote: the try/except row-skip logic. It still needs error logging, a
+row-count assertion, and tests before it enters production code.
+```

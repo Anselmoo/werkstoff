@@ -1,7 +1,7 @@
 ---
 name: andon-propose
 description: "Proposes a fix for one gap by reading the ledger and codebase first, then grilling the user one question at a time only on genuinely load-bearing forks. Use when andon-loop dispatches it to propose a fix, or when the user directly asks what to fix for a named gap, or asks to be grilled on a decision."
-allowed-tools: "Read, Grep, Glob, Bash"
+allowed-tools: "Read, Grep, Glob, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*)"
 argument-hint: "<gap-description-or-slug>"
 ---
 
@@ -15,13 +15,15 @@ into busywork for the user instead of a real proposal to react to.
 
 1. Read the gap's stage doc and any docs it links to (prior gap/evidence
    docs in the same stage or wire).
-2. Read `.claude/house-rules.md` (or the path in `house_rules_path`
-   settings) if `andon-preflight` reported it present. Ground every default
+2. Check whether `.claude/house-rules.md` (or the path in `house_rules_path`
+   settings) exists on disk, and read it if it does -- this check happens
+   regardless of whether `andon-preflight` ran earlier in the session, since
+   this skill can also be dispatched directly. Ground every default
    choice in it -- **never invent a convention the repo already wrote down**,
    and never ask the user something the house-rules file already answers.
-   If absent, fall back to codebase-only defaults (read real symbols/patterns
-   in the touched stage) without inventing or generating a house-rules file
-   yourself.
+   If the file does not exist, fall back to codebase-only defaults (read real
+   symbols/patterns in the touched stage) without inventing or generating a
+   house-rules file yourself.
 3. Explore the codebase enough to draft a concrete fix: what changes, which
    files, and why this approach over the obvious alternatives.
 4. Choose the `andon-verify` strategy letter this fix should be proven with,
