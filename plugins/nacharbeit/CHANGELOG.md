@@ -4,6 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-09
 ### Added
 - the instrument PR #56 built as repo-internal tooling (`tools/prompt-review/`,
   `.claude/workflows/prompt-quality-{review,fix}.js`, the rubric under `docs/`), moved
