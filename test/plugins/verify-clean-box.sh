@@ -19,7 +19,10 @@ CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 arms=("$@")
 [[ ${#arms[@]} -eq 0 ]] && arms=("plugins/andon" "pilot-armc/andon-official")
 
-box="$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX").json"
+box="$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX")"
+mv "$box" "$box.json"   # one temp file: rename the one mktemp made, do not append a suffix to its path
+box="$box.json"
+trap 'rm -f "$box"' EXIT
 python3 "$HERE/make-clean-box.py" "$box" || exit 2
 
 Q="List the exact names of every skill and agent available to you. Output ONLY a comma-separated list of names."

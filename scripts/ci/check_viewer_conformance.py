@@ -210,13 +210,14 @@ def check(plugin: str, path: str, plugin_dir: str | None = None) -> list[str]:
             errs.append(f"{os.path.relpath(shot, base)}: C1 -- width {width}, expected 1600")
 
     readme = os.path.join(plugin_dir, "README.md") if plugin_dir else os.path.join(REPO, "plugins", plugin, "README.md")
+    readme_rel = os.path.relpath(readme, base)
     if os.path.isfile(readme):
         with open(readme, encoding="utf-8") as fh:
             text = fh.read()
         if "scripts/fixtures/" not in text and "scripts/testdata/" not in text:
-            errs.append(f"plugins/{plugin}/README.md: C2 -- no committed demo data cited")
+            errs.append(f"{readme_rel}: C2 -- no committed demo data cited")
     else:
-        errs.append(f"plugins/{plugin}/README.md: C2 -- README missing")
+        errs.append(f"{readme_rel}: C2 -- README missing")
 
     return errs
 

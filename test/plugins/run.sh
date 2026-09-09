@@ -76,7 +76,15 @@ fi
 CLEAN_BOX="${CLEAN_BOX:-1}"
 SETTINGS_FLAGS=()
 if [[ "$CLEAN_BOX" == "1" ]]; then
-  CLEAN_BOX_JSON="${CLEAN_BOX_JSON:-$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX").json}"
+  # One temp file, not two: mktemp creates cleanbox.XXXXXX, and the settings
+  # file must end in .json, so rename the file mktemp made rather than appending
+  # the suffix to its path (which left the original behind on every run).
+  if [[ -z "${CLEAN_BOX_JSON:-}" ]]; then
+    CLEAN_BOX_JSON="$(mktemp "${TMPDIR:-/tmp}/cleanbox.XXXXXX")"
+    mv "$CLEAN_BOX_JSON" "$CLEAN_BOX_JSON.json"
+    CLEAN_BOX_JSON="$CLEAN_BOX_JSON.json"
+    trap 'rm -f "$CLEAN_BOX_JSON"' EXIT   # only the file this run created; a caller-supplied one is theirs
+  fi
   # Under root the acceptEdits fallback above denies every Bash call a headless
   # run cannot approve, so a skill that runs its own scripts hand-reads the
   # fixture instead and can pass an oracle by luck (nacharbeit-lint-hooks-shape's
