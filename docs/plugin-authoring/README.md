@@ -17,7 +17,7 @@ authoring/refactoring skills that ships inside the `prp-core` plugin already ins
 this Claude Code session (pinned to commit `11427384c7609227f20c1d57e6c39de47ccf73c5` —
 see [`references/output-shape-findings.md`](references/output-shape-findings.md) §2e for
 how that identity was confirmed). The dispatchable form of these standards is the
-[`nacharbeit`](../plugins/nacharbeit) plugin: its rubric turns the rules below into 90
+[`nacharbeit`](../plugins/nacharbeit.md) plugin: its rubric turns the rules below into 90
 script-checked and 48 model-judged rules over seven surfaces, and its fix pass applies
 the tiers a model can apply. This document stays the craft rationale behind that rubric,
 restructured to match `prp-meta-skill`'s anatomy (a lean entry point + `references/`)
@@ -39,7 +39,7 @@ structure" pattern the craft rules below argue against.
   instead of showing it) with real file citations on both sides. Read this when you want
   the evidence behind a craft-standards.md rule, or when deciding whether a *new*
   skill/agent needs a fenced output example.
-- [`plugins/nacharbeit/references/rubric.md`](../plugins/references/rubric) — the
+- [`plugins/nacharbeit/references/rubric.md`](../plugins/references/rubric.md) — the
   frozen rule set nacharbeit grades every skill, agent, command, workflow prompt, hook,
   script, viewer, manifest, README and docs page against: 90 mechanical rules a
   sabotage-tested linter enforces, 48 judgement rules a calibrated finder applies, and the

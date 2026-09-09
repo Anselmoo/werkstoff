@@ -88,7 +88,7 @@ def render(run, findings, routing, synth) -> str:
              "file and searched for the quote. Mechanical findings come from "
              "`plugins/nacharbeit/scripts/nacharbeit_lint.py` (one sabotage-tested check per rule). The rule "
              "ids resolve in the nacharbeit rubric, "
-             "[`plugins/nacharbeit/references/rubric.md`](plugins/references/rubric).\n")
+             "[`plugins/nacharbeit/references/rubric.md`](plugins/references/rubric.md).\n")
 
     # A run of six consecutive paragraphs: tables are not text blocks for the theme's
     # breather pass (useBreathers.js counts P/UL/OL only, RUN_MIN=6), and a report that is
