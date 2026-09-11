@@ -14,6 +14,10 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `scripts/retrofit_css.py`, `scripts/emit_css.py` and `scripts/prove_retrofit.py` — the
+  first formatter pair and the three-arm equivalence proof. Verified end to end on
+  `tools/design-tokens/tokens.css`: 50 declarations, 10 aliases, **zero visual diff and
+  structure preserved**
 - a **secondary-source** case in the reliability rubric, capped at grade B and required
   to name what it `describes` — a third party's description of someone else's design
   system underwrites "one documented interpretation", never "this is what that vendor

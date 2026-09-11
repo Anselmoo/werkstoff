@@ -206,6 +206,39 @@ by intent.
 > Triggers `matrize-emit`: headless Chrome print-to-pdf honouring `@page`, with the
 > approval block that names the decision-maker and the gate criteria.
 
+## The retrofit proof, on this repository's own tokens
+
+`retrofit` is proven, not asserted, and on real material: `tools/design-tokens/tokens.css`
+— 50 declarations, eight synced consumers.
+
+```bash
+python3 plugins/matrize/scripts/retrofit_css.py tools/design-tokens/tokens.css --out /tmp/tokens.json
+python3 plugins/matrize/scripts/prove_retrofit.py tools/design-tokens/tokens.css /tmp/tokens.json
+```
+
+Three arms, because one is not enough:
+
+| arm | asserts | catches |
+|---|---|---|
+| **1 textual** | every declaration reappears with an identical value | a dropped, added or altered token |
+| **2 structural** | every `var(--x)` round-trips as a DTCG *reference* | a retrofit whose output is right and whose source of truth is wrong |
+| **3 visual** | renders byte-identical at 1600×900 | cascade effects the first two cannot see |
+
+Arm 2 is the one worth explaining. Arm 1 does catch crude flattening — rewriting
+`--accent: var(--silica)` as a hex is a textual change. What it cannot see is a token
+file storing the *literal string* `"var(--silica)"` instead of the reference
+`{color.silica}`: the CSS is byte-identical, the render is byte-identical, and the token
+file now holds an opaque string with no edge in it. The system has forgotten that accent
+**is** silica — which is the answer to "what breaks if I change silica?" — and every
+non-CSS formatter emits that string into a target where `var()` means nothing.
+
+Arm 3 carries its own instrument check, because **two blank pages are also
+byte-identical**. The fixture must render differently with and without the tokens, or the
+pass is vacuous.
+
+Current result on this repo: **zero visual diff, structure preserved**, all 10 aliases
+intact.
+
 ## Hooks
 
 One `PreToolUse` hook, `hooks/matrize_guard.py`, `type: "command"`. It is **inert unless
