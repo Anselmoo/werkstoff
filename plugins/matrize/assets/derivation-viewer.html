@@ -3,45 +3,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <title>matrize — derivation health</title>
-<style>
 <!--__DESIGN_TOKENS__-->
+<style>
+/* A LEDGER: a finite list of measured claims against fixed thresholds. Print-first, and
+   entirely static — no script at all. I7's test is falsifiable: print it, and if nothing
+   is lost it should not have been interactive. Nothing is lost here, so the two XSS
+   barriers the house viewers need collapse into something better than both — there is no
+   injection surface, because there is no script. */
+@page { size: A4; margin: 14mm; }
+
 * { box-sizing: border-box; }
 body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-sans);
-  font-size: var(--font-size-base);
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-sans); font-size: var(--font-size-base);
   line-height: var(--line-height-base);
 }
 .wrap { max-width: 1100px; margin: 0 auto; padding: 0 var(--space-4) var(--space-5); }
 header {
-  height: var(--header-h);
-  display: flex; align-items: center;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-4);
+  height: var(--header-h); display: flex; align-items: center;
+  border-bottom: 1px solid var(--border); margin-bottom: var(--space-4);
 }
 h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: .01em; }
 h2 {
   font-size: .95rem; font-weight: 600; margin: var(--space-5) 0 var(--space-2);
   color: var(--smoke); text-transform: uppercase; letter-spacing: .08em;
+  break-after: avoid;
 }
 .subtitle { color: var(--muted); margin: 0 0 var(--space-4); font-size: .9rem; }
 .verdict {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--status-warn, var(--cat-4));
-  background: var(--panel);
-  border-radius: var(--radius-panel);
-  padding: var(--space-3) var(--space-4);
-  margin: 0 0 var(--space-4);
-  font-size: 1.02rem;
+  border: 1px solid var(--border); border-left: 3px solid var(--status-warn, var(--cat-4));
+  background: var(--panel); border-radius: var(--radius-panel);
+  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); font-size: 1.02rem;
+  break-inside: avoid;
 }
 .legend {
   display: flex; flex-wrap: wrap; gap: var(--space-3);
-  color: var(--muted); font-size: .82rem;
-  margin: var(--space-2) 0 var(--space-3);
+  color: var(--muted); font-size: .82rem; margin: var(--space-2) 0 var(--space-3);
 }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -52,133 +51,75 @@ th, td {
 }
 th { color: var(--muted); font-weight: 500; font-size: .78rem;
      text-transform: uppercase; letter-spacing: .06em; }
+tr { break-inside: avoid; }
 td.num { font-variant-numeric: tabular-nums; }
 .grade { font-weight: 600; }
 .grade-a { color: var(--status-good, var(--cat-2)); }
 .grade-b { color: var(--cat-4); }
 .grade-c { color: var(--status-bad, var(--cat-5)); }
-/* R3: an actionable number must not look like an inert one. `.blocking` is the
-   only class that renders a figure as something someone has to act on -- it is
-   deliberately not byte-identical to the ordinary figure style. */
+/* R3: an actionable number must not look like an inert one. */
 .blocking { color: var(--status-bad, var(--cat-5)); font-weight: 700; }
 .blocking::after { content: " ✗"; font-weight: 700; }
-.ok::after { content: " ✓"; color: var(--status-good, var(--cat-2)); }
-.tag {
-  display: inline-block; border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 1px 6px; font-size: .74rem; color: var(--muted); white-space: nowrap;
-}
 .note { color: var(--muted); font-size: .84rem; margin: var(--space-2) 0 0; }
 .empty { color: var(--muted); padding: var(--space-4); border: 1px dashed var(--border);
          border-radius: var(--radius-panel); }
+figure { margin: var(--space-3) 0 0; break-inside: avoid; }
+
+/* The threshold chart, shared with the sketchbook. Colour is redundant to position,
+   shape and a printed value throughout. */
+.chart { display: block; max-width: 100%; }
+.chart .rule { stroke: var(--border); stroke-width: 1; }
+.chart .rule-pass { stroke: var(--smoke); }
+.chart .rule-label { font-size: 9px; fill: var(--muted); }
+.chart .stem { stroke: var(--border); stroke-width: 2; }
+.chart .stem-short { stroke: var(--status-bad, var(--cat-5)); }
+.chart .head-clears { fill: var(--smoke); }
+.chart .head-short { fill: var(--status-bad, var(--cat-5)); }
+.chart .mark-label { font-size: 11px; fill: var(--text); }
+.chart .mark-value { font-size: 10.5px; fill: var(--text); font-variant-numeric: tabular-nums; }
+
+@media print {
+  body { background: #fff; color: #111; }
+  .wrap { max-width: none; padding: 0; }
+  header { border-color: #ccc; }
+  th, td { border-color: #ddd; }
+  .verdict { background: #f6f6f6; border-color: #ccc; }
+  .chart .mark-label, .chart .mark-value { fill: #111; }
+  .chart .head-clears { fill: #111; }
+  .chart .stem { stroke: #bbb; }
+}
 </style>
 </head>
 <body>
 <header><div class="wrap"><h1>matrize — derivation health</h1></div></header>
 <div class="wrap">
 
-  <p class="verdict" id="verdict">This report has not been generated yet. Run
-    <code>python3 plugins/matrize/scripts/build_derivation_html.py</code> against a
-    decode run to fill it in.</p>
-
-  <p class="subtitle" id="subtitle">No derivation loaded.</p>
+  <p class="verdict"><!--__VERDICT__--></p>
+  <p class="subtitle"><!--__SCOPE__--></p>
 
   <p class="legend">
     <span><i class="swatch grade-a" style="background:currentColor"></i> grade A — usable as stated</span>
     <span><i class="swatch grade-b" style="background:currentColor"></i> grade B — ratios only</span>
     <span><i class="swatch grade-c" style="background:currentColor"></i> grade C — direction only, cannot set a token alone</span>
     <span>✗ blocks a token or fails a threshold</span>
-    <span>✓ clears it</span>
   </p>
 
   <h2>References</h2>
-  <table id="refs"><thead><tr>
-    <th>Reference</th><th>Method</th><th>Reliability</th><th>Rights</th><th>Cards</th>
-  </tr></thead><tbody></tbody></table>
+  <!--__REFERENCES__-->
 
   <h2>Tokens resting on grade-C evidence alone</h2>
-  <div id="cwrap"></div>
+  <!--__GRADE_C__-->
   <p class="note">Each of these is an open question, not a value. A value supported
     solely by a screenshot is not a token — corroborate it with an A or B source, or
     carry it to the brief for a human to settle.</p>
 
   <h2>Computed contrast</h2>
-  <table id="contrast"><thead><tr>
-    <th>Role</th><th>Pair</th><th>Ratio</th><th>Body text (AA 4.5)</th><th>Large text (AA 3.0)</th>
-  </tr></thead><tbody></tbody></table>
-  <p class="note">Ratios are computed by <code>scripts/contrast.py</code>, never asserted.</p>
+  <!--__CONTRAST__-->
+  <p class="note">Ratios are computed by <code>scripts/contrast.py</code> and cannot be
+    supplied; the builder rejects input that states one. The chart shows <em>margin</em>,
+    which a table flattens: a pair just short of 4.5 is a near miss fixed by darkening a
+    few percent, and one near 1.0 is a different colour.</p>
 
 </div>
-<script type="application/json" id="payload">{}</script>
-<script>
-(function () {
-  var raw = document.getElementById('payload').textContent;
-  var data;
-  try { data = JSON.parse(raw); } catch (e) { data = null; }
-
-  // S4 -- fail visibly. A blank page reads as "nothing wrong".
-  if (!data || !data.references) {
-    document.getElementById('subtitle').textContent =
-      'Could not read the derivation payload. Re-run build_derivation_html.py to regenerate this report.';
-    return;
-  }
-
-  function cell(row, text, cls) {
-    var td = document.createElement('td');
-    td.textContent = text;              // S3 -- textContent, never innerHTML
-    if (cls) { td.className = cls; }
-    row.appendChild(td);
-    return td;
-  }
-
-  document.getElementById('verdict').textContent = data.verdict;
-  document.getElementById('subtitle').textContent = data.scope;
-
-  var refs = document.querySelector('#refs tbody');
-  data.references.forEach(function (r) {
-    var tr = document.createElement('tr');
-    cell(tr, r.name);
-    cell(tr, r.method);
-    cell(tr, r.reliability, 'grade grade-' + String(r.reliability).toLowerCase());
-    cell(tr, r.rights, 'tagcell');
-    cell(tr, String(r.cards), 'num');
-    refs.appendChild(tr);
-  });
-
-  var cwrap = document.getElementById('cwrap');
-  if (!data.gradeCOnly.length) {
-    var ok = document.createElement('p');
-    ok.className = 'empty';
-    ok.textContent = 'None — every token rests on at least one grade-A or grade-B source.';
-    cwrap.appendChild(ok);
-  } else {
-    var t = document.createElement('table');
-    var head = document.createElement('thead');
-    var hr = document.createElement('tr');
-    ['Token', 'Reference', 'What it would have set', 'Status'].forEach(function (h) {
-      var th = document.createElement('th'); th.textContent = h; hr.appendChild(th);
-    });
-    head.appendChild(hr); t.appendChild(head);
-    var tb = document.createElement('tbody');
-    data.gradeCOnly.forEach(function (c) {
-      var tr = document.createElement('tr');
-      cell(tr, c.token); cell(tr, c.reference); cell(tr, c.wouldSet);
-      cell(tr, 'blocked', 'blocking');
-      tb.appendChild(tr);
-    });
-    t.appendChild(tb); cwrap.appendChild(t);
-  }
-
-  var ct = document.querySelector('#contrast tbody');
-  data.contrast.forEach(function (c) {
-    var tr = document.createElement('tr');
-    cell(tr, c.role);
-    cell(tr, c.fg + ' on ' + c.bg);
-    cell(tr, c.ratio.toFixed(2) + ':1', 'num' + (c.passesAA ? '' : ' blocking'));
-    cell(tr, c.passesAA ? 'passes' : 'FAILS', c.passesAA ? 'ok' : 'blocking');
-    cell(tr, c.passesAALarge ? 'passes' : 'FAILS', c.passesAALarge ? 'ok' : 'blocking');
-    ct.appendChild(tr);
-  });
-})();
-</script>
 </body>
 </html>

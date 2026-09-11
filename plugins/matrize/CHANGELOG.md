@@ -4,6 +4,12 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
 ### Changed
+- the derivation-health report is now a **Ledger**: print-first, entirely static, with
+  the shared threshold chart server-rendered into it — and no script, so the two XSS
+  barriers a client-rendered viewer needs collapse into having no injection surface
+- its builder now follows the house convention it had diverged from: a `--tokens`
+  argument rather than a hardcoded path, and the tokens marker replaced by a whole
+  `<style>` block rather than sitting inside one; CSP gained `base-uri` and `form-action`
 - renamed from `vorbild` to `matrize` — the die a form is struck from, which is the
   architecture rather than a metaphor for it, and which sits in the same shop-floor
   register as `werkstoff`, `andon`, `takt`, `lehre` and `nacharbeit`

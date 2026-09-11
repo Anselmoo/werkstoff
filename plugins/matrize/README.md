@@ -315,6 +315,24 @@ are delivered whole, `drawn` classes only as a system plus seeds and a growth ru
 `captured` and `shot` classes as rules and never as assets. That is the honest reason
 this plugin ships an icon *system* rather than an icon library.
 
+## Three presentation classes, chosen by the shape of the question
+
+| class | form | answers |
+|---|---|---|
+| **Ledger** | static document, print-first, no script at all | a finite list of measured claims against fixed thresholds |
+| **Specimen** | static document, landscape, set in the system's own tokens | what the design looks like |
+| **Viewer** | interactive, screen only | where a value came from and what depends on it |
+
+The test that sorts them is falsifiable: **print it**. If nothing is lost, it should not
+have been interactive. The derivation-health report loses nothing, so it is a Ledger —
+and a finite ledger has a property a screen destroys, in that it is complete and it ends.
+A reader who can click no longer knows whether they have seen everything.
+
+Being a Ledger has a pleasant consequence. The two independent XSS barriers a
+client-rendered viewer needs collapse into something stronger than either: there is no
+script, so there is no injection surface. The contrast chart is server-rendered SVG and
+prints with the rest.
+
 ## The provenance graph — the one interactive artefact
 
 ![A dark three-column graph: one reference node on the left, a column of Design Cards,
