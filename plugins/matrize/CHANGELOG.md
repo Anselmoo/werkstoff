@@ -4,6 +4,21 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
 ### Changed
+- **the vocabulary now enforces.** It reached the pipeline only as prose in four
+  `SKILL.md` files, which this workshop has measured as the weakest enforcement layer
+  there is — so the plugin's most load-bearing content was its least enforced.
+  `scripts/vocabulary.py` compiles `references/vocabulary/` into a registry (223 dimension
+  terms, 31 asset classes), `scripts/validate_tokens.py` gained twelve rules against it,
+  and guard **rule 4** refuses a write to `<root>/system/tokens.json` that contradicts it
+- **Design Card schema v3**: every card names the `**Concept:**` it measured — a
+  vocabulary term plus its dimension. The dimension is required because homonyms are real:
+  `Opacity` is `derived` in `color-system.md` and `property` in `motion.md`, and a bare
+  term naming two dimensions is refused rather than resolved to whichever parsed first
+- the derivation Ledger gained a **Concepts this system names** section and a mandatory
+  **appearance-mode** column on the contrast table. `color-system.md` calls a mode-less
+  contrast table "the shape of the error that hides a role behaving differently in the two
+  modes" — and the first version of this report's own fixture mixed `#FFFFFF` and
+  `#0a0d10` backgrounds with no mode anywhere. The builder now refuses input without one
 - the derivation-health report is now a **Ledger**: print-first, entirely static, with
   the shared threshold chart server-rendered into it — and no script, so the two XSS
   barriers a client-rendered viewer needs collapse into having no injection surface
@@ -20,6 +35,21 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `scripts/vocabulary.py` — the vocabulary compiler, with `--audit` and a 35-check
+  selftest. Parsed at runtime rather than compiled to a committed JSON, so there is no
+  second copy to drift; per-file term counts are asserted against figures counted by hand,
+  because a parser extracting zero terms makes every rule downstream pass vacuously
+- `references/vocabulary/README.md` — the canonical kind legend (authored inline in only
+  one of the six files until now, and checked for drift against it) and the **grade
+  ceilings**, bound to terms in writing and checked against the Decoding-notes bullets
+  they quote. Deriving that binding by matching prose against 223 names would produce a
+  confidently wrong ceiling, which is the unsound move invariant I8 already rejects
+- twelve validator rules: `V-VOCAB-{MISSING,UNKNOWN,KIND-MISMATCH,NOT-A-TOKEN,
+  RULE-NO-ANTIRULE,GRADE-CEILING,COLLISION,CONFUSED-PAIR,REGISTRY}`,
+  `V-ASSET-{UNKNOWN,ORIGIN-OVERREACH}`, `V-COVERAGE-MANDATORY` and `V-CONTRAST-NO-MODE`,
+  each with a planted defect and a negative control. `V-VOCAB-REGISTRY` fails **closed**:
+  a registry that cannot be built would otherwise make eleven rules vanish silently, and
+  "no findings" and "no checks" look identical from the outside
 - `scripts/cvd.py` — CIEDE2000 under a Viénot-1999 dichromat simulation, calibrated
   against the published test set and corroborated to 0.01 against a figure `tokens.css`
   measured years earlier

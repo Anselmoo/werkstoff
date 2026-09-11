@@ -47,6 +47,22 @@ listing:
 Also list every open question carried from `preflight`, `decode` (grade-C-only findings)
 and `brief`, since those are what a human still owes the pipeline.
 
+Run the vocabulary audit and report what it finds — it is cheap and it names a gate that
+is otherwise invisible until a write is refused:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
+```
+
+Three things belong in status from it:
+
+- **tokens naming no concept** — the `PreToolUse` guard will refuse the next write
+- **declared extensions** — concepts the project needed and the vocabulary does not have.
+  These are the vocabulary's backlog, not failures; list them with the card that declared
+  each one so a human can decide whether the vocabulary should grow
+- **mandatory asset classes with no coverage** — empty state, error state, Open Graph
+  image, per `references/vocabulary/visual-asset-taxonomy.md`
+
 ## 4 — verdict
 
 End with three lines, and no more:

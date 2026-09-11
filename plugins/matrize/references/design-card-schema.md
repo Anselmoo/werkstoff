@@ -25,6 +25,7 @@ be argued with on taste, it belongs in `LEXIKON.md` instead.
 **Method:** declared CSS from a fetched page
 **Reliability:** B — declared, not rendered; usable as a ratio, not as an absolute
 **Rights:** R3 — all rights reserved; values measured and cited, nothing reproduced
+**Concept:** Type scale (typography) — kind `token`
 **Measured:** body 1.0625rem, h2 2rem, h1 2.5rem against a 1rem root
 **As a relation:** body : h2 : h1 = 1 : 1.88 : 2.35, stepping by ~1.25 between levels
 **Holds across:** 4 of 5 collected pages; the marketing page steps by 1.33 instead
@@ -45,6 +46,7 @@ And one that does not clear the bar, which is just as important to write down:
 **Method:** screenshot measurement
 **Reliability:** C — read off an image; direction only
 **Rights:** R3 — screenshot of a proprietary interface
+**Concept:** Corner radius (icon-system) — kind `token`
 **Measured:** approximately 12-14px at 2x, so ~6-7px at 1x
 **As a relation:** roughly 0.4× the 16px base unit; the series looks like 1×/2×/3× of ~6px
 **Holds across:** 1 page
@@ -54,6 +56,40 @@ And one that does not clear the bar, which is just as important to write down:
 **Edges:**
   - competitor-app -> CARD-021 (grade C)
 ```
+
+## Every card names the concept it measured
+
+`**Concept:**` is the vocabulary term the card is a measurement *of*, plus the dimension
+file that defines it. It is not decoration and it is not a synonym for the token name:
+`--space-1` is a **role**, `Spacing step` is the **concept**, and the vocabulary is the
+registry of concepts.
+
+Measured against this repository's own 50 declarations, matching a CSS custom-property
+name to a vocabulary term binds **one**. So the concept cannot be derived from the name —
+it is a judgement the decoder makes and the referee re-derives, exactly like the
+measurement itself.
+
+What the concept buys, mechanically, is in `scripts/validate_tokens.py`:
+
+| the vocabulary says | consequence |
+|---|---|
+| kind `token` | may live in `tokens.json` |
+| kind `derived` | computed from tokens; storing it makes a second copy that drifts (`V-VOCAB-NOT-A-TOKEN`) |
+| kind `property` | observed, never stored (`V-VOCAB-NOT-A-TOKEN`) |
+| kind `rule` | a lexicon entry, and it needs an anti-rule (`V-VOCAB-RULE-NO-ANTIRULE`) |
+| a written grade ceiling | the card may not claim a better grade (`V-VOCAB-GRADE-CEILING`) |
+| no such term | blocked, unless the card declares the extension and says why (`V-VOCAB-UNKNOWN`) |
+
+A concept the vocabulary does not name is allowed, and it is never silent:
+
+```
+**Concept:** Density bias — NOT IN THE VOCABULARY
+**Extends:** no vocabulary term names a per-surface density offset; grid-and-spacing.md
+  has `Density` as a global multiplier, which this is not
+```
+
+`matrize-status` reports every declared extension. They are the vocabulary's backlog, not
+a loophole.
 
 ## Edges are written, never reconstructed
 

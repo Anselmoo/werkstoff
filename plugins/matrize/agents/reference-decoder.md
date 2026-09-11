@@ -49,9 +49,34 @@ sets one — with the grade each edge was derived under. Do not leave them for s
 downstream to infer: a graph rebuilt by matching values merges two roles that happen to
 share a number, and that is precisely what a provenance graph is for catching.
 
+## Name the concept you measured
+
+Every card carries `**Concept:**` — the vocabulary term the measurement is *of*, plus the
+dimension file that defines it, from
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/`.
+
+The dimension is load-bearing, not padding. `Opacity` is `derived` in `color-system.md`
+and `property` in `motion.md`; a bare term naming two dimensions is refused rather than
+resolved to whichever comes first.
+
+Do not infer the concept from the name you found. Names are roles — `--space-1`, `--bg` —
+and the vocabulary names concepts; matching one against the other binds 1 of 50 on real
+material. The concept is a judgement you make, and the referee re-derives it from your
+cited source like any other claim.
+
+If nothing in the vocabulary names what you measured, say so in `**Extends:**` with the
+reason, and name the nearest term you rejected and why. Coining a near-synonym instead
+looks like coverage and is a second name for something that already has one.
+
 ## The ceiling you may not exceed
 
 > A value supported solely by a screenshot is not a token.
+
+Some concepts carry a **written grade ceiling** in
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/README.md`, lifted from each dimension's
+Decoding notes. A baseline grid is grade C at best because it lives in computed line
+boxes; a growth rule is not recoverable from a reference at any grade, because it is a
+decision rather than a measurement. Your confidence does not lift a ceiling.
 
 A grade-C reference yields **direction only**. Its cards set `Sets a token: NO` and state
 the open question a human must answer. Do not round an estimate into a number that looks

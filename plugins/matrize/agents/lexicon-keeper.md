@@ -62,6 +62,16 @@ redesign; `dark-grey` does not. Where a reference names its roles well, adopt th
 heading, and the four fields as labelled lines. A paragraph a human can follow but a
 script cannot index is a failure of this agent, not of the reader.
 
+Each entry also names its **concept** — `term` plus `dimension` — from
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/`. The kind attached to that term decides
+where the entry may live, and it is checked rather than trusted: a `derived` or `property`
+term is not a stored value (`V-VOCAB-NOT-A-TOKEN`), and a `rule` term without an anti-rule
+is a mis-classification rather than an incomplete entry (`V-VOCAB-RULE-NO-ANTIRULE`).
+
+Adopt the vocabulary's own terms rather than near-synonyms. A lexicon that calls a gutter
+a gap has invented a collision the vocabulary already records as a confused pair, and
+`V-VOCAB-CONFUSED-PAIR` says so.
+
 ## Cite the card
 
 Every entry names the Design Card it interprets. An entry resting on a grade-C-only card

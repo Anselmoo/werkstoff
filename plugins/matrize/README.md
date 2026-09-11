@@ -299,12 +299,12 @@ finding* — without rediscovering it per run.
 
 Every term carries a **kind**, and the kind is a routing rule rather than a note:
 
-| kind | where it goes |
-|---|---|
-| `token` | a stored value — `tokens.json` |
-| `derived` | computed from tokens; never stored separately |
-| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** |
-| `property` | observed or measured; not stored at all |
+| kind | where it goes | what refuses it |
+|---|---|---|
+| `token` | a stored value — `tokens.json` | — |
+| `derived` | computed from tokens; never stored separately | `V-VOCAB-NOT-A-TOKEN` |
+| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** | `V-VOCAB-RULE-NO-ANTIRULE` |
+| `property` | observed or measured; not stored at all | `V-VOCAB-NOT-A-TOKEN` |
 
 A `rule`-kind term with no anti-rule is mis-classified, not merely incomplete. A `derived`
 or `property` term sitting in `tokens.json` is a value that will drift from whatever it
@@ -314,6 +314,57 @@ The taxonomy's **Origin** column bounds what can be promised at all: `derivable`
 are delivered whole, `drawn` classes only as a system plus seeds and a growth rule,
 `captured` and `shot` classes as rules and never as assets. That is the honest reason
 this plugin ships an icon *system* rather than an icon library.
+
+### The vocabulary is compiled, and it refuses
+
+Until it was compiled, all of the above reached the pipeline as prose inside four
+`SKILL.md` files — which the werkstoff workshop has measured as the weakest enforcement
+layer there is, beneath a fenced command. So the most load-bearing content in the plugin
+was the least enforced content in it.
+
+`scripts/vocabulary.py` parses the six files into a registry — **223 dimension terms**
+(`token` 78 · `rule` 65 · `property` 62 · `derived` 18) and **31 asset classes** — and
+`scripts/validate_tokens.py` checks every token against it. The `PreToolUse` guard then
+refuses a write to `<root>/system/tokens.json` that contradicts it, because a rule that
+must hold regardless of model cooperation belongs in a hook.
+
+```bash
+python3 plugins/matrize/scripts/vocabulary.py --selftest          # 35 checks
+python3 plugins/matrize/scripts/vocabulary.py --audit <tokens.json>
+python3 plugins/matrize/scripts/validate_tokens.py <tokens.json>  # 36 cases
+```
+
+Three properties are worth stating because each is a trap this plugin walked into first.
+
+**It is parsed at runtime, never compiled to a committed JSON.** One source, so there is
+no second copy to drift.
+
+**A parser that extracts nothing makes every rule pass vacuously.** The selftest asserts
+per-file counts measured by hand (46 / 38 / 36 / 46 / 57), and a file yielding zero terms
+is a parser failure rather than an empty file. The same discipline covers the validator:
+if the registry cannot be built, `V-VOCAB-REGISTRY` fails closed instead of letting twelve
+rules quietly disappear. *No findings* and *no checks* look identical from the outside.
+
+**Headers are found by the separator row, never by the first cell.** `motion.md`'s
+Principles table carries an ordinary data row beginning `| Origin | Motion emanates…`, and
+a parser that whitelists first cells re-latches there, invents a table boundary, and drops
+two thirds of that table — raising nothing. The selftest keeps the wrong parser executable
+and fails if it does not misbehave.
+
+### What the vocabulary does NOT do
+
+It does not propose a term for a token. Matching custom-property names against the
+registry binds **1** of this repository's own 50 declarations, because names are *roles*
+(`--space-1`, `--bg`) and the vocabulary names *concepts* (`Spacing step`, `Surface /
+background`). The binding is interpretation, and invariant I3 keeps interpretation in a
+separate artefact written by a separate agent. `--audit` reports what is named and what is
+not, and proposes nothing.
+
+Homonyms are real and are reported rather than resolved: `Opacity` is `derived` in
+`color-system.md` and `property` in `motion.md`, so every concept is addressed as
+`term` + `dimension`. A project that genuinely needs a concept the vocabulary lacks
+declares the extension with its reason and the card that decided it; `matrize-status`
+reports those as the vocabulary's backlog.
 
 ## Three presentation classes, chosen by the shape of the question
 

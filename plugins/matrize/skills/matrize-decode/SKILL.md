@@ -65,6 +65,23 @@ live in JavaScript. Timing by eye is grade C, always.
 Record ratios, not absolutes: "section spacing is 2× card padding" survives a rescale
 and "48px" does not.
 
+## Name the concept, and respect its ceiling
+
+Every card carries `**Concept:**` — the vocabulary term it is a measurement *of*, plus the
+dimension that defines it. It cannot be derived from the value or from the CSS name:
+matching custom-property names against the vocabulary binds 1 of this repository's 50
+declarations, because names are roles and the vocabulary names concepts.
+
+Some concepts carry a **written grade ceiling** in
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/README.md`, taken from the Decoding notes. A
+card claiming a better grade is rejected by `V-VOCAB-GRADE-CEILING`, whatever its
+confidence says — a baseline grid is grade C at best, a growth rule is not recoverable
+from a reference at all.
+
+A concept the vocabulary does not name is allowed only as a declared extension carrying
+its reason. Coining a near-synonym instead is the failure mode: it looks like coverage and
+is a second name for something that already has one.
+
 ## Fan out, with a breaker
 
 Dispatch one `reference-decoder` per reference. First batch 4, then ×2, then ×4, hard

@@ -20,6 +20,12 @@ What it denies — exactly three things
    ``spread`` choice record is unanswered. An n-proposal portfolio with no forced
    choice is a procrastination machine; the choice is the point of the phase.
 3. A write that introduces a **colour-only categorical encoding** into a file the project
+4. deny a write to ``<root>/system/tokens.json`` whose resulting document contradicts
+   ``references/vocabulary/`` -- a token naming no concept, an unknown concept, the wrong
+   kind, a ``derived``/``property`` term stored as a value, a grade above the dimension's
+   written ceiling, or a contrast record with no appearance mode. An Edit whose result is
+   not parseable JSON is ALLOWED, because a half-written file is not a violation.
+
    has explicitly declared a branded surface (``surfaces:`` in the settings file). Not a
    hue count: measured with ``scripts/cvd.py``, every categorical palette in this
    workshop is below the dichromacy separation floor *including the five-hue scale*, so
@@ -271,6 +277,56 @@ def colour_only_sites(blob: str, whole_file: bool) -> list[str]:
     return [f"line {s.line}: {s.detail}" for s in sites if s.verdict == "COLOUR-ONLY"]
 
 
+def resulting_document(tool_input: dict, target: Path) -> tuple[dict | None, str | None]:
+    """(the JSON this write would leave on disk, why-not). Never guesses.
+
+    A `Write` carries the whole file. An `Edit`/`MultiEdit` carries a FRAGMENT, which
+    cannot be validated on its own -- so the replacement is applied to the file on disk in
+    memory and the result is parsed. If the result is not JSON, the answer is None and the
+    write is ALLOWED: a half-written file mid-stream is not a vocabulary violation, and
+    denying there would make the guard unusable rather than strict.
+    """
+    content = tool_input.get("content")
+    if isinstance(content, str):
+        text = content
+    else:
+        try:
+            text = target.read_text(encoding="utf-8")
+        except OSError:
+            return None, "target not readable"
+        edits = tool_input.get("edits")
+        if not isinstance(edits, list):
+            edits = [tool_input]
+        applied = 0
+        for edit in edits:
+            if not isinstance(edit, dict):
+                continue
+            old, new = edit.get("old_string"), edit.get("new_string")
+            if not isinstance(old, str) or not isinstance(new, str) or old not in text:
+                continue
+            text = text.replace(old, new, -1 if edit.get("replace_all") else 1)
+            applied += 1
+        if not applied:
+            return None, "no edit could be applied"
+    try:
+        doc = json.loads(text)
+    except (ValueError, TypeError):
+        return None, "result is not parseable JSON"
+    return (doc, None) if isinstance(doc, dict) else (None, "result is not an object")
+
+
+def vocabulary_blockers(doc: dict) -> list[str]:
+    """Blocker-severity vocabulary findings, as lines. Import is lazy and local: the
+    guard must stay cheap and must not fail to load because a sibling script moved."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    import validate_tokens  # noqa: PLC0415
+
+    watched = ("V-VOCAB", "V-ASSET", "V-CONTRAST-NO-MODE")
+    return [f"{f.rule}  {f.path}\n      {f.message}"
+            for f in validate_tokens.validate(doc)
+            if f.severity == "blocker" and f.rule.startswith(watched)]
+
+
 def main() -> int:
     try:
         raw = sys.stdin.read()
@@ -328,6 +384,25 @@ def main() -> int:
                     f"(matrize guard. Override with {ESCAPE}, or `enforcement: off` in "
                     f"{SETTINGS}.)"
                 )
+
+        # --- rule 4: the vocabulary decides what may be a token -----------------------
+        # Scoped to exactly one file. `out/` is emitted output and is not the schema.
+        if any(t == tokens for t in targets):
+            doc, why = resulting_document(tool_input, tokens)
+            if doc is not None:
+                blockers = vocabulary_blockers(doc)
+                if blockers:
+                    return deny(
+                        f"matrize: this write to {tokens} contradicts "
+                        f"references/vocabulary/.\n\n"
+                        + "\n".join(f"  - {b}" for b in blockers)
+                        + "\n\nThe vocabulary is the domain layer, not advice: it decides "
+                        "which concepts exist, which of them may be stored at all, and how "
+                        "far a reference can be trusted for each. A token naming no "
+                        "concept cannot be told apart from an invention.\n\n"
+                        f"(matrize guard. Override with {ESCAPE}, or `enforcement: off` in "
+                        f"{SETTINGS}.)"
+                    )
 
         # --- rule 3: colour is never the only channel, on a declared surface ----------
         declared = [g.strip() for g in (cfg.get(SURFACES_KEY) or "").split(",") if g.strip()]

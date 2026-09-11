@@ -54,16 +54,30 @@ a collision the vocabulary already warns about.
 Each term carries a **kind**, and the kind decides where it belongs. This is a routing
 rule, not a note:
 
-| kind | where it goes |
-|---|---|
-| `token` | a stored value — `tokens.json` |
-| `derived` | computed from tokens; **never stored separately** |
-| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** |
-| `property` | observed or measured; not stored at all |
+| kind | where it goes | what refuses it |
+|---|---|---|
+| `token` | a stored value — `tokens.json` | — |
+| `derived` | computed from tokens; **never stored separately** | `V-VOCAB-NOT-A-TOKEN` |
+| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** | `V-VOCAB-RULE-NO-ANTIRULE` |
+| `property` | observed or measured; not stored at all | `V-VOCAB-NOT-A-TOKEN` |
 
 So a `rule`-kind term with no anti-rule is not an incomplete entry, it is a
 mis-classified one. And a `derived` or `property` term appearing in `tokens.json` is a
 value that will drift from the thing it was derived from.
+
+**This table is enforced, not suggested.** `scripts/vocabulary.py` compiles the six files
+into a registry, `scripts/validate_tokens.py` checks every token against it, and the
+`PreToolUse` guard refuses a write to `<root>/system/tokens.json` that contradicts it.
+Run the checks yourself rather than discovering them at write time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validate_tokens.py" <root>/system/tokens.json
+```
+
+Every entry names its concept as `term` + `dimension`. The dimension is not optional
+padding: `Opacity` is `derived` in `color-system.md` and `property` in `motion.md`, so a
+bare term naming two dimensions is refused rather than resolved to whichever comes first.
 
 Two collisions the vocabulary names, worth checking every lexicon against: **margin** is
 both a page concept and a box concept — if both appear, rename one — and **gutter** is a

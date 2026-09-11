@@ -141,6 +141,89 @@ def main() -> int:
         code, out = run(corrupt, ".design/system/tokens.json")
         case("rule2: unparseable record denies (not 'no decision made')", DENY, code, out)
 
+        # --- rule 4: the vocabulary decides what may be a token ---------------
+        # The guard's scope claim is that it polices ONE file. Every case below is
+        # paired with the same bad document written somewhere else, which must pass.
+        def tok(vocab: dict | None, **over) -> str:
+            ext = {
+                "role": "dominant-action", "card": "CARD-007",
+                "reliability": "A", "rights": "R1",
+                "edge": {"from": "CARD-007", "grade": "A"},
+                "contrast": {"ratio": 3.84, "passesAA": False, "passesAALarge": True,
+                             "mode": "light"},
+            }
+            if vocab is not None:
+                ext["vocab"] = vocab
+            ext.update(over)
+            return json.dumps({"color": {"action": {
+                "$type": "color",
+                "$value": {"colorSpace": "srgb", "components": [0.98, 0.18, 0.10],
+                           "hex": "#FA2E1A"},
+                "$extensions": {"com.werkstoff.matrize": ext}}}})
+
+        GOOD = tok({"term": "Action / interactive", "dimension": "color-system",
+                    "kind": "token"})
+        NO_VOCAB = tok(None)
+        PROPERTY_TERM = tok({"term": "Stacking context", "dimension": "grid-and-spacing"})
+        NO_MODE = tok({"term": "Action / interactive", "dimension": "color-system"},
+                      contrast={"ratio": 3.84, "passesAA": False, "passesAALarge": True})
+
+        r4 = design_repo(tmp / "r4", choice={"id": "spread-01", "chosen": "b"})
+        (r4 / ".design/system/tokens.json").write_text(GOOD)
+
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "content": GOOD}, "Write")
+        case("rule4: a conforming tokens.json is allowed", ALLOW, code, out)
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "content": NO_VOCAB}, "Write")
+        case("rule4: a token naming no concept is denied", DENY, code, out,
+             "V-VOCAB-MISSING")
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "content": PROPERTY_TERM}, "Write")
+        case("rule4: a `property` term stored as a value is denied", DENY, code, out,
+             "V-VOCAB-NOT-A-TOKEN")
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "content": NO_MODE}, "Write")
+        case("rule4: a contrast record with no appearance mode is denied", DENY, code,
+             out, "V-CONTRAST-NO-MODE")
+
+        # Scope, both directions. The same bad document elsewhere must pass.
+        code, out = run_input(r4, {"file_path": ".design/out/tokens.json",
+                                   "content": NO_VOCAB}, "Write")
+        case("rule4: scope -- the same document in out/ is allowed", ALLOW, code, out)
+        code, out = run_input(r4, {"file_path": ".design/system/draft.json",
+                                   "content": NO_VOCAB}, "Write")
+        case("rule4: scope -- another system/ json is allowed", ALLOW, code, out)
+        code, out = run_input(r4, {"file_path": "package.json", "content": NO_VOCAB},
+                              "Write")
+        case("rule4: scope -- a repo json outside the root is allowed", ALLOW, code, out)
+
+        # An Edit carries a fragment. Applied to the file it produces a whole document;
+        # if the result is not JSON the guard must ALLOW rather than guess.
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "old_string": '"kind": "token"',
+                                   "new_string": '"kind": "rule"'}, "Edit")
+        case("rule4: an Edit that breaks the schema is denied", DENY, code, out,
+             "V-VOCAB-KIND-MISMATCH")
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "old_string": '{"color"', "new_string": "not json at all"},
+                              "Edit")
+        case("rule4: an Edit whose result is not JSON is allowed, not guessed at",
+             ALLOW, code, out)
+        code, out = run_input(r4, {"file_path": ".design/system/tokens.json",
+                                   "old_string": "text that is not in the file",
+                                   "new_string": "x"}, "Edit")
+        case("rule4: an Edit that cannot be applied is allowed", ALLOW, code, out)
+        code, out = run_input(r4, {"edits": [
+            {"file_path": ".design/system/tokens.json",
+             "old_string": '"dimension": "color-system"',
+             "new_string": '"dimension": "grid-and-spacing"'}]})
+        case("rule4: a MultiEdit payload is validated too", DENY, code, out,
+             "V-VOCAB-UNKNOWN")
+        code, out = run_env(r4, {"file_path": ".design/system/tokens.json",
+                                 "content": NO_VOCAB}, {"MATRIZE_DISABLE_GUARD": "1"})
+        case("rule4: escape hatch releases the deny", ALLOW, code, out)
+
         # --- rule 3: colour is never the only channel, on a DECLARED surface ---
         BARE = ("<style>.sw-1{background:#5b7fa6}.sw-2{background:#7a9e6b}"
                 ".sw-3{background:#c98f4a}</style>\n" + "\n" * 40 +

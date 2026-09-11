@@ -15,6 +15,13 @@ who can click no longer knows whether they have seen everything.
 The pleasant consequence: the two independent XSS barriers a client-rendered viewer needs
 collapse into something stronger than either, because there is no injection surface left.
 
+Nor can it omit the appearance mode
+-----------------------------------
+`references/vocabulary/color-system.md` makes the mode a MANDATORY column, and says why: a
+table mixing light-mode and dark-mode pairs "looks complete and is not -- it is the shape
+of the error that hides a role behaving differently in the two modes". The first version of
+this report's own fixture mixed `#FFFFFF` and `#0a0d10` backgrounds with no mode anywhere.
+
 The fixture cannot state a contrast ratio
 -----------------------------------------
 Input colour pairs carry `fg` and `bg` only. Every ratio and every pass/fail flag is
@@ -39,6 +46,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import chart as chartlib  # noqa: E402
 import contrast  # noqa: E402
+import vocabulary as vocablib  # noqa: E402
 
 TEMPLATE = HERE.parent / "assets" / "derivation-viewer.html"
 DEFAULT_TOKENS = HERE.parent / "assets" / "tokens.css"
@@ -50,9 +58,11 @@ MARKERS = {
     "references": "<!--__REFERENCES__-->",
     "gradec": "<!--__GRADE_C__-->",
     "contrast": "<!--__CONTRAST__-->",
+    "vocabulary": "<!--__VOCABULARY__-->",
 }
 
-REQUIRED = ("scope", "verdict", "references", "gradeCOnly", "contrast")
+REQUIRED = ("scope", "verdict", "references", "gradeCOnly", "contrast", "vocabulary")
+MODES = ("light", "dark", "forced")
 
 
 def esc(text) -> str:
@@ -73,9 +83,16 @@ def build_payload(data: dict) -> dict:
                     f"contrast entry for role {entry.get('role')!r} states {stated!r}. "
                     "Contrast is computed here, never supplied — remove it from the input."
                 )
+        if entry.get("mode") not in MODES:
+            raise ValueError(
+                f"contrast entry for role {entry.get('role')!r} states no appearance mode "
+                f"(expected one of {', '.join(MODES)}). A contrast table that mixes light "
+                f"and dark pairs without saying which is which looks complete and is not."
+            )
         computed = contrast.verdict(contrast.ratio(entry["fg"], entry["bg"]))
         pairs.append({
             "role": entry["role"], "fg": entry["fg"], "bg": entry["bg"],
+            "mode": entry["mode"],
             "ratio": computed["ratio"],
             "passesAA": computed["passesAA"],
             "passesAALarge": computed["passesAALarge"],
@@ -84,7 +101,32 @@ def build_payload(data: dict) -> dict:
     return {
         "scope": data["scope"], "verdict": data["verdict"],
         "references": data["references"], "gradeCOnly": data["gradeCOnly"],
-        "contrast": pairs,
+        "contrast": pairs, "vocabulary": vocabulary_block(data["vocabulary"]),
+    }
+
+
+def vocabulary_block(declared: dict) -> dict:
+    """What the system names, measured against the live registry rather than trusted.
+
+    The input says which concepts the system uses; everything else here -- whether each
+    one exists, which mandatory classes are uncovered, how large the vocabulary is -- is
+    COMPUTED from references/vocabulary/. An input that asserted its own coverage would be
+    the same defect as one asserting its own contrast ratio.
+    """
+    reg = vocablib.load()
+    if reg.problems:
+        raise ValueError("the vocabulary registry has problems: "
+                         + "; ".join(reg.problems[:3]))
+    named, unknown = [], []
+    for entry in declared.get("terms", []):
+        term, why = reg.lookup(vocablib.slug(entry["term"]), entry.get("dimension"))
+        (named if term else unknown).append(term.display if term else f"{entry['term']} — {why}")
+    covered = {vocablib.slug(c) for c in declared.get("assetClasses", [])}
+    missing = [reg.classes[s].display for s in reg.mandatory
+               if s not in covered and s in reg.classes]
+    return {
+        "total": len(reg.terms), "named": sorted(named), "unknown": sorted(unknown),
+        "extensions": declared.get("extensions", []), "missingMandatory": missing,
     }
 
 
@@ -133,16 +175,45 @@ def contrast_block(pairs: list[dict]) -> str:
     body = "".join(
         "<tr>"
         f"<td>{esc(p['role'])}</td><td>{esc(p['fg'])} on {esc(p['bg'])}</td>"
+        f"<td class=\"mode mode-{esc(p['mode'])}\">{esc(p['mode'])}</td>"
         f"<td{'' if p['passesAA'] else ' class=\"blocking\"'}>"
         f"{'passes' if p['passesAA'] else 'FAILS'}</td>"
         f"<td{'' if p['passesAALarge'] else ' class=\"blocking\"'}>"
         f"{'passes' if p['passesAALarge'] else 'FAILS'}</td>"
         "</tr>" for p in pairs
     )
-    table = ("<table><thead><tr><th>Role</th><th>Pair</th>"
+    # The mode column is mandatory, per color-system.md. Without it this very table mixes
+    # a white-background pair with three dark-background ones and reads as one population.
+    table = ("<table><thead><tr><th>Role</th><th>Pair</th><th>Mode</th>"
              "<th>Body text (AA 4.5)</th><th>Large text (AA 3.0)</th></tr></thead>"
              f"<tbody>{body}</tbody></table>")
     return f"<figure>{svg}</figure>{table}"
+
+
+def vocabulary_table(block: dict) -> str:
+    rows = []
+    for display in block["named"]:
+        rows.append(f"<tr><td>{esc(display)}</td><td>vocabulary</td><td>—</td></tr>")
+    for entry in block["extensions"]:
+        rows.append(
+            f"<tr><td>{esc(entry['term'])}</td>"
+            f"<td class=\"extension\">declared extension</td>"
+            f"<td>{esc(entry.get('why', ''))} "
+            f"({esc(entry.get('card', 'no card'))})</td></tr>")
+    for text in block["unknown"]:
+        rows.append(f"<tr><td>{esc(text)}</td><td class=\"blocking\">unknown</td>"
+                    f"<td>neither a vocabulary term nor a declared extension</td></tr>")
+    if not rows:
+        return '<p class="empty">This system names no concepts at all.</p>'
+    table = ("<table><thead><tr><th>Concept</th><th>Standing</th><th>Note</th></tr></thead>"
+             f"<tbody>{''.join(rows)}</tbody></table>")
+    if block["missingMandatory"]:
+        items = "".join(f"<li>{esc(name)}</li>" for name in block["missingMandatory"])
+        table += ('<p class="note blocking">Mandatory asset classes with no coverage:</p>'
+                  f'<ul class="gaps">{items}</ul>')
+    else:
+        table += ('<p class="note">Every mandatory asset class is covered.</p>')
+    return table
 
 
 def render(payload: dict, tokens_path: Path) -> str:
@@ -162,6 +233,7 @@ def render(payload: dict, tokens_path: Path) -> str:
     out = out.replace(MARKERS["references"], references_table(payload["references"]), 1)
     out = out.replace(MARKERS["gradec"], gradec_table(payload["gradeCOnly"]), 1)
     out = out.replace(MARKERS["contrast"], contrast_block(payload["contrast"]), 1)
+    out = out.replace(MARKERS["vocabulary"], vocabulary_table(payload["vocabulary"]), 1)
     return out
 
 
@@ -169,13 +241,28 @@ def selftest() -> int:
     sample = {
         "scope": "s", "verdict": "v", "references": [],
         "gradeCOnly": [],
-        "contrast": [{"role": "dominant-action", "fg": "#FA2E1A", "bg": "#FFFFFF"}],
+        "contrast": [{"role": "dominant-action", "fg": "#FA2E1A", "bg": "#FFFFFF",
+                      "mode": "light"}],
+        "vocabulary": {
+            "terms": [{"term": "Action / interactive", "dimension": "color-system"}],
+            "extensions": [{"term": "Density bias", "why": "no term for it",
+                            "card": "CARD-031"}],
+            "assetClasses": ["Open Graph image"],
+        },
     }
     checks: list[tuple[str, bool]] = []
 
     got = build_payload(sample)["contrast"][0]
     checks.append(("computes the ratio",
                    got["ratio"] == 3.84 and not got["passesAA"] and got["passesAALarge"]))
+
+    modeless = json.loads(json.dumps(sample))
+    modeless["contrast"][0].pop("mode")
+    try:
+        build_payload(modeless)
+        checks.append(("refuses a contrast pair with no appearance mode", False))
+    except ValueError:
+        checks.append(("refuses a contrast pair with no appearance mode", True))
 
     lying = json.loads(json.dumps(sample))
     lying["contrast"][0]["ratio"] = 9.99
@@ -219,8 +306,8 @@ def selftest() -> int:
 
     # R2, asserted rather than trusted: each ratio appears exactly once in the document.
     multi = {**sample, "contrast": [
-        {"role": "a", "fg": "#FA2E1A", "bg": "#FFFFFF"},
-        {"role": "b", "fg": "#8b9aa4", "bg": "#0a0d10"},
+        {"role": "a", "fg": "#FA2E1A", "bg": "#FFFFFF", "mode": "light"},
+        {"role": "b", "fg": "#8b9aa4", "bg": "#0a0d10", "mode": "dark"},
     ]}
     # Scoped to what a reader actually SEES. The injected tokens.css carries its own
     # measured ratios in a header comment — 6.73:1 among them — and counting those as
@@ -230,6 +317,22 @@ def selftest() -> int:
     visible = page3.split("</style>")[-1]
     checks.append(("no ratio is printed twice in the report body (R2)",
                    visible.count("3.84") == 1 and visible.count("6.73") == 1))
+
+    # The vocabulary block is COMPUTED against the live registry, never trusted.
+    block = build_payload(sample)["vocabulary"]
+    checks.append(("a named concept is resolved against the real registry",
+                   block["named"] == ["Action / interactive"] and not block["unknown"]))
+    checks.append(("a declared extension is shown as such, not as a term",
+                   len(block["extensions"]) == 1 and not block["unknown"]))
+    checks.append(("uncovered mandatory classes are computed, not supplied",
+                   set(block["missingMandatory"]) ==
+                   {"Empty state illustration", "Error state illustration"}))
+    made_up = json.loads(json.dumps(sample))
+    made_up["vocabulary"]["terms"] = [{"term": "Vibe", "dimension": "color-system"}]
+    checks.append(("a concept the vocabulary does not name is reported, not accepted",
+                   build_payload(made_up)["vocabulary"]["unknown"] != []))
+    checks.append(("the mode is rendered as a word, not only as a colour",
+                   ">light<" in page and 'class="mode' in page))
 
     checks.append(("deterministic", render(build_payload(sample), DEFAULT_TOKENS) == page))
 

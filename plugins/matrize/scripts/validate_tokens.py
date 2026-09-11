@@ -20,6 +20,17 @@ prose a model can be talked out of:
   * a SECONDARY source -- a third party's description of someone else's system -- is
     capped at grade B and must name what it describes. Grading it A because it is
     published is the trap the cap exists for.
+  * every token names the VOCABULARY TERM it instantiates, and the vocabulary decides
+    whether it may be a token at all. `references/vocabulary/` calls `Padding` a `derived`
+    term and `Stacking context` a `property`; either one sitting in tokens.json is a value
+    that will drift from the thing it was derived from. This was prose in a SKILL.md, which
+    this repository has measured as the weakest enforcement layer there is.
+
+Failing closed on the registry
+------------------------------
+If `vocabulary.py` cannot build a registry, every vocabulary rule below would pass
+vacuously and the file would go green with no vocabulary enforcement at all. That is
+reported as `V-VOCAB-REGISTRY`, a blocker, rather than skipped.
 
 Usage:
     validate_tokens.py <tokens.json>
@@ -35,6 +46,10 @@ import json
 import re
 import sys
 from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+import vocabulary as vocablib  # noqa: E402
 
 EXT = "com.werkstoff.matrize"
 REF = re.compile(r"^\{([A-Za-z0-9_.-]+)\}$")
@@ -60,6 +75,18 @@ SHAPES: dict[str, str] = {
 
 # Roles whose colour can end up behind text, so a contrast figure is mandatory.
 TEXT_BEARING = {"ink", "text", "muted", "dominant-action", "quiet-action", "alert", "link"}
+
+# color-system.md states this as a MANDATORY column, and says why: a table mixing light
+# and dark pairs "looks complete and is not -- it is the shape of the error that hides a
+# role behaving differently in the two modes".
+APPEARANCE_MODES = ("light", "dark", "forced")
+
+# A reference cannot be graded above its dimension's written ceiling. Higher letter = more
+# trusted, so "better than the cap" is a smaller index here.
+GRADE_ORDER = {"A": 0, "B": 1, "C": 2}
+
+# How much of an asset class a design system may promise, per the taxonomy's Origin column.
+DELIVERY = ("asset", "system", "rules")
 
 
 class Finding:
@@ -124,8 +151,171 @@ def check_shape(kind: str, value) -> str | None:
     return None
 
 
-def validate(doc: dict) -> list[Finding]:
+def load_registry() -> tuple[object | None, str | None]:
+    """(registry, why-not). Never swallows the failure -- see V-VOCAB-REGISTRY."""
+    try:
+        reg = vocablib.load()
+    except (OSError, ValueError) as exc:
+        return None, f"{type(exc).__name__}: {exc}"
+    if reg.problems:
+        return None, "; ".join(reg.problems[:3])
+    return reg, None
+
+
+def check_vocab(path: str, ext: dict, reg, findings: list[Finding]) -> str | None:
+    """The vocabulary rules for one token. Returns the resolved term key, or None."""
+    spec = ext.get("vocab")
+    if not isinstance(spec, dict) or not spec.get("term"):
+        findings.append(Finding(
+            "V-VOCAB-MISSING", path,
+            "no com.werkstoff.matrize.vocab.term: the token instantiates no named concept. "
+            "references/vocabulary/ names 223 of them; a value that matches none of them "
+            "is either a new concept (declare it) or a misunderstanding.",
+            "blocker"))
+        return None
+
+    term_slug = vocablib.slug(spec["term"])
+    term, why = reg.lookup(term_slug, spec.get("dimension"))
+    if term is None:
+        if spec.get("extends") and spec.get("declaredBy"):
+            return None          # a declared extension: allowed, and reported by `status`
+        findings.append(Finding(
+            "V-VOCAB-UNKNOWN", path,
+            f"{why}. If the project genuinely needs a concept the vocabulary lacks, say so "
+            f"in vocab.extends and name the Design Card in vocab.declaredBy.",
+            "blocker"))
+        return None
+
+    declared = spec.get("kind")
+    if declared and term.kind and declared != term.kind:
+        findings.append(Finding(
+            "V-VOCAB-KIND-MISMATCH", path,
+            f"declares kind {declared!r}, but {term.display!r} is {term.kind!r} in "
+            f"{term.dimension}.md:{term.line}",
+            "blocker"))
+
+    if term.kind in ("derived", "property"):
+        findings.append(Finding(
+            "V-VOCAB-NOT-A-TOKEN", path,
+            f"{term.display!r} is {term.kind!r} in {term.dimension}.md:{term.line}. A "
+            f"'derived' term is computed from tokens and never stored separately; a "
+            f"'property' is observed, not stored. Storing it makes a second copy that "
+            f"drifts from the thing it was derived from.",
+            "blocker"))
+
+    if term.kind == "rule" and not ext.get("antiRule"):
+        findings.append(Finding(
+            "V-VOCAB-RULE-NO-ANTIRULE", path,
+            f"{term.display!r} is a 'rule' term, and a rule with no stated failure case is "
+            f"decoration. This fires on the KIND, so it catches an entry that omitted the "
+            f"rule text as well as one that omitted the anti-rule.",
+            "blocker"))
+
+    if term.key in reg.ceilings:
+        cap = reg.ceilings[term.key]
+        grade = ext.get("reliability")
+        if cap is None:
+            findings.append(Finding(
+                "V-VOCAB-GRADE-CEILING", path,
+                f"{term.display!r} is not recoverable from a reference at any grade -- it "
+                f"is a decision, not a measurement, and must be authored. See the ceilings "
+                f"table in references/vocabulary/README.md.",
+                "blocker"))
+        elif grade in GRADE_ORDER and GRADE_ORDER[grade] < GRADE_ORDER[cap]:
+            findings.append(Finding(
+                "V-VOCAB-GRADE-CEILING", path,
+                f"graded {grade} , but {term.dimension}.md caps {term.display!r} at "
+                f"{cap}. Confidence is not evidence.",
+                "blocker"))
+    return term.key
+
+
+def check_naming(tokens: list[tuple[str, dict]], terms: dict[str, str], reg,
+                 findings: list[Finding]) -> None:
+    """Two name-level collisions the vocabulary explicitly warns about."""
+    by_leaf: dict[str, list[tuple[str, str]]] = {}
+    for path, _ in tokens:
+        key = terms.get(path)
+        if key:
+            by_leaf.setdefault(path.split(".")[-1], []).append((path, key))
+    for leaf, entries in sorted(by_leaf.items()):
+        distinct = {key for _, key in entries}
+        if len(distinct) > 1:
+            findings.append(Finding(
+                "V-VOCAB-COLLISION", ", ".join(p for p, _ in entries),
+                f"{len(entries)} tokens are all named {leaf!r} but instantiate different "
+                f"concepts ({', '.join(sorted(distinct))}). The vocabulary names this case "
+                f"outright: margin is both a page concept and a box concept -- if both "
+                f"appear, rename one."))
+
+    # A token named after the thing it is NOT: `vocab.term` is one half of a recorded
+    # confused pair and the token's own leaf name is the other half.
+    halves: dict[str, tuple[str, str]] = {}
+    for a, b, heading in reg.pairs:
+        halves.setdefault(a, (b, heading))
+        halves.setdefault(b, (a, heading))
+    for path, _ in tokens:
+        key = terms.get(path)
+        if not key:
+            continue
+        term_slug, leaf = key.split("/", 1)[1], vocablib.slug(path.split(".")[-1])
+        other = halves.get(term_slug)
+        if other and leaf == other[0]:
+            findings.append(Finding(
+                "V-VOCAB-CONFUSED-PAIR", path,
+                f"instantiates {term_slug!r} but is named {leaf!r}, and the vocabulary "
+                f"records those two as a confused pair ({other[1]!r}). Adopting the "
+                f"near-synonym is how a lexicon invents a collision the vocabulary "
+                f"already warns about."))
+
+
+def check_assets(doc: dict, reg, findings: list[Finding]) -> None:
+    """The asset inventory, bounded by the taxonomy's Origin column."""
+    declared = ((doc.get("$extensions") or {}).get(EXT) or {}).get("assets")
+    if not isinstance(declared, list):
+        return                       # a token file need not carry an asset inventory
+    present: set[str] = set()
+    for entry in declared:
+        if not isinstance(entry, dict):
+            continue
+        cls_slug = vocablib.slug(str(entry.get("class", "")))
+        cls = reg.classes.get(cls_slug)
+        if cls is None:
+            findings.append(Finding(
+                "V-ASSET-UNKNOWN", f"assets/{entry.get('class')}",
+                f"{entry.get('class')!r} is not a class in visual-asset-taxonomy.md",
+                "blocker"))
+            continue
+        present.add(cls_slug)
+        if entry.get("delivered") == "asset" and not cls.deliverable_whole:
+            findings.append(Finding(
+                "V-ASSET-ORIGIN-OVERREACH", f"assets/{cls.display}",
+                f"promised as a delivered asset, but its origin is {cls.origin_raw!r}. A "
+                f"'drawn' class yields a system plus a seed set and a growth rule; "
+                f"'captured' and 'shot' yield rules only. Promising the artwork is a "
+                f"promise that cannot be kept.",
+                "blocker"))
+    for cls_slug in reg.mandatory:
+        if cls_slug not in present:
+            cls = reg.classes.get(cls_slug)
+            findings.append(Finding(
+                "V-COVERAGE-MANDATORY", "assets",
+                f"{(cls.display if cls else cls_slug)!r} is not covered. The taxonomy names "
+                f"it among the classes missing from almost every design system and almost "
+                f"always needed in practice."))
+
+
+def validate(doc: dict, reg=None) -> list[Finding]:
     findings: list[Finding] = []
+    if reg is None:
+        reg, why = load_registry()
+        if reg is None:
+            findings.append(Finding(
+                "V-VOCAB-REGISTRY", "(root)",
+                f"the vocabulary registry could not be built ({why}). Every vocabulary "
+                f"rule would pass vacuously, so this fails closed instead. Run "
+                f"scripts/vocabulary.py --selftest.",
+                "blocker"))
     tokens = walk(doc)
     if not tokens:
         findings.append(Finding("V-EMPTY", "(root)", "no tokens found", "blocker"))
@@ -133,6 +323,7 @@ def validate(doc: dict) -> list[Finding]:
 
     names = {path for path, _ in tokens}
 
+    term_keys: dict[str, str] = {}
     for path, token in tokens:
         kind = token.get("$type") or inherited_type(doc, path.split("."))
         ext = (token.get("$extensions") or {}).get(EXT) or {}
@@ -219,12 +410,31 @@ def validate(doc: dict) -> list[Finding]:
                     "V-NO-CONTRAST", path,
                     f"role {ext.get('role')!r} can carry text but has no computed contrast "
                     f"block; run scripts/contrast.py rather than asserting it"))
+            elif contrast.get("mode") not in APPEARANCE_MODES:
+                findings.append(Finding(
+                    "V-CONTRAST-NO-MODE", path,
+                    f"contrast block states no appearance mode (expected one of "
+                    f"{', '.join(APPEARANCE_MODES)}). color-system.md makes the mode a "
+                    f"mandatory column: a contrast record without one looks complete and "
+                    f"is not -- it is the shape of the error that hides a role behaving "
+                    f"differently in light and dark.",
+                    "blocker"))
 
         # 6. a rule needs its anti-rule, or it is decoration
         if ext.get("rule") and not ext.get("antiRule"):
             findings.append(Finding("V-NO-ANTIRULE", path,
                                     "has a rule but no antiRule; a rule with no stated "
                                     "failure case is decoration and is not emitted"))
+
+        # 7. the vocabulary decides whether this may be a token at all
+        if reg is not None:
+            key = check_vocab(path, ext, reg, findings)
+            if key:
+                term_keys[path] = key
+
+    if reg is not None:
+        check_naming(tokens, term_keys, reg, findings)
+        check_assets(doc, reg, findings)
     return findings
 
 
@@ -238,12 +448,43 @@ SELFTEST_CLEAN = {
                 "role": "dominant-action", "card": "CARD-007",
                 "reliability": "A", "rights": "R1",
                 "edge": {"from": "CARD-007", "grade": "A"},
+                "vocab": {"term": "Action / interactive", "dimension": "color-system",
+                          "kind": "token"},
                 "rule": "Exactly one dominant action colour per view.",
                 "antiRule": "Two dominants and neither reads as the action.",
-                "contrast": {"ratio": 3.84, "passesAA": False, "passesAALarge": True},
+                "contrast": {"ratio": 3.84, "passesAA": False, "passesAALarge": True,
+                             "mode": "light"},
             }},
         }
     }
+}
+
+
+def _with(**over):
+    """SELFTEST_CLEAN with the action token's matrize extension updated."""
+    import copy
+    doc = copy.deepcopy(SELFTEST_CLEAN)
+    doc["color"]["action"]["$extensions"][EXT].update(over)
+    return doc
+
+
+def _twin(group: str, leaf: str, vocab: dict):
+    """A second token at `<group>.<leaf>`, so the naming rules have two to compare."""
+    import copy
+    doc = copy.deepcopy(SELFTEST_CLEAN)
+    twin = copy.deepcopy(doc["color"]["action"])
+    twin["$extensions"][EXT]["vocab"] = vocab
+    doc[group] = {leaf: twin}
+    return doc
+
+
+SELFTEST_ASSETS = {
+    "$extensions": {EXT: {"assets": [
+        {"class": "Empty state illustration", "delivered": "system"},
+        {"class": "Error state illustration", "delivered": "system"},
+        {"class": "Open Graph image", "delivered": "asset"},
+    ]}},
+    "color": SELFTEST_CLEAN["color"],
 }
 
 
@@ -262,6 +503,25 @@ def selftest() -> int:
 
     def ext(tok):
         return tok["$extensions"][EXT]
+
+    def mutate_rule_term():
+        """A `rule`-kind term with the anti-rule removed."""
+        doc = copy.deepcopy(SELFTEST_CLEAN)
+        e = doc["color"]["action"]["$extensions"][EXT]
+        e["vocab"] = {"term": "Brand", "dimension": "color-system"}
+        e.pop("antiRule")
+        return doc
+
+    def assets_with(entry):
+        doc = copy.deepcopy(SELFTEST_ASSETS)
+        doc["$extensions"][EXT]["assets"].append(entry)
+        return doc
+
+    def assets_without(display):
+        doc = copy.deepcopy(SELFTEST_ASSETS)
+        doc["$extensions"][EXT]["assets"] = [
+            a for a in doc["$extensions"][EXT]["assets"] if a["class"] != display]
+        return doc
 
     cases = [
         ("clean document is silent", SELFTEST_CLEAN, None),
@@ -284,6 +544,47 @@ def selftest() -> int:
         ("V-SECONDARY-NO-SUBJECT",
          mutate(lambda t: ext(t).update({"secondary": True, "reliability": "B"})),
          "V-SECONDARY-NO-SUBJECT"),
+
+        # --- the vocabulary rules ---
+        ("V-VOCAB-MISSING", mutate(lambda t: ext(t).pop("vocab")), "V-VOCAB-MISSING"),
+        ("V-VOCAB-UNKNOWN",
+         _with(vocab={"term": "Vibe", "dimension": "color-system"}), "V-VOCAB-UNKNOWN"),
+        ("V-VOCAB-UNKNOWN (bare homonym)",
+         _with(vocab={"term": "Opacity"}), "V-VOCAB-UNKNOWN"),
+        ("V-VOCAB-KIND-MISMATCH",
+         _with(vocab={"term": "Action / interactive", "dimension": "color-system",
+                      "kind": "rule"}), "V-VOCAB-KIND-MISMATCH"),
+        ("V-VOCAB-NOT-A-TOKEN (derived)",
+         _with(vocab={"term": "Padding", "dimension": "grid-and-spacing"}),
+         "V-VOCAB-NOT-A-TOKEN"),
+        ("V-VOCAB-NOT-A-TOKEN (property)",
+         _with(vocab={"term": "Stacking context", "dimension": "grid-and-spacing"}),
+         "V-VOCAB-NOT-A-TOKEN"),
+        ("V-VOCAB-RULE-NO-ANTIRULE", mutate_rule_term(), "V-VOCAB-RULE-NO-ANTIRULE"),
+        ("V-VOCAB-GRADE-CEILING (capped at C)",
+         _with(vocab={"term": "Baseline grid", "dimension": "grid-and-spacing"},
+               reliability="A"), "V-VOCAB-GRADE-CEILING"),
+        ("V-VOCAB-GRADE-CEILING (never recoverable)",
+         _with(vocab={"term": "Growth rule", "dimension": "icon-system"}),
+         "V-VOCAB-GRADE-CEILING"),
+        ("V-CONTRAST-NO-MODE", mutate(lambda t: ext(t)["contrast"].pop("mode")),
+         "V-CONTRAST-NO-MODE"),
+        # Same leaf name under two groups, two different concepts -- the `margin` case the
+        # vocabulary names outright. A twin in the SAME group cannot reproduce it: two keys
+        # of one object cannot share a name.
+        ("V-VOCAB-COLLISION",
+         _twin("brand", "action", {"term": "Accent", "dimension": "color-system"}),
+         "V-VOCAB-COLLISION"),
+        ("V-VOCAB-CONFUSED-PAIR",
+         _twin("space", "gap", {"term": "Gutter", "dimension": "grid-and-spacing"}),
+         "V-VOCAB-CONFUSED-PAIR"),
+        ("V-ASSET-UNKNOWN", assets_with({"class": "Mood board", "delivered": "system"}),
+         "V-ASSET-UNKNOWN"),
+        ("V-ASSET-ORIGIN-OVERREACH",
+         assets_with({"class": "Logo / wordmark", "delivered": "asset"}),
+         "V-ASSET-ORIGIN-OVERREACH"),
+        ("V-COVERAGE-MANDATORY", assets_without("Error state illustration"),
+         "V-COVERAGE-MANDATORY"),
     ]
 
     failures = 0
@@ -305,6 +606,44 @@ def selftest() -> int:
     else:
         print("  corroborated grade C passes  ok")
 
+    # --- negative controls for the vocabulary rules. A rule that only ever fires is
+    # --- indistinguishable from a rule that always fires.
+    def silent(label: str, doc, prefix: str) -> None:
+        nonlocal failures
+        hits = sorted(f.rule for f in validate(doc) if f.rule.startswith(prefix))
+        ok = not hits
+        print(f"  {label:<52} {'ok' if ok else 'FAIL  got ' + str(hits)}")
+        failures += 0 if ok else 1
+
+    silent("a declared extension passes",
+           _with(vocab={"term": "Density bias", "extends": "no vocabulary term for a "
+                        "per-surface density offset", "declaredBy": "CARD-031"}),
+           "V-VOCAB")
+    silent("a token AT its written ceiling passes",
+           _with(vocab={"term": "Baseline grid", "dimension": "grid-and-spacing"},
+                 reliability="C", corroboratedBy="CARD-012"),
+           "V-VOCAB-GRADE")
+    silent("the same leaf name for the SAME concept is not a collision",
+           _twin("brand", "action",
+                 {"term": "Action / interactive", "dimension": "color-system",
+                  "kind": "token"}),
+           "V-VOCAB-COLLISION")
+    silent("a complete asset inventory passes", SELFTEST_ASSETS, "V-ASSET")
+    silent("and covers the three mandatory classes", SELFTEST_ASSETS, "V-COVERAGE")
+
+    # Fail closed: a registry that cannot be built must NOT let the vocabulary rules
+    # quietly disappear. This is the difference between 'no findings' and 'no checks'.
+    real_dir = vocablib.VOCAB_DIR
+    try:
+        vocablib.VOCAB_DIR = real_dir.parent / "__no_such_vocabulary__"
+        rules = {f.rule for f in validate(SELFTEST_CLEAN)}
+    finally:
+        vocablib.VOCAB_DIR = real_dir
+    ok = "V-VOCAB-REGISTRY" in rules
+    print(f"  {'an unbuildable registry fails closed':<52} "
+          f"{'ok' if ok else 'FAIL  got ' + str(sorted(rules))}")
+    failures += 0 if ok else 1
+
     ok_secondary = _c.deepcopy(SELFTEST_CLEAN)
     e2 = ok_secondary["color"]["action"]["$extensions"][EXT]
     e2.update({"secondary": True, "reliability": "B", "describes": "Apple HIG"})
@@ -314,7 +653,7 @@ def selftest() -> int:
     else:
         print("  secondary at B with a subject passes  ok")
 
-    print(f"\n{len(cases) + 2} case(s), {failures} failure(s)")
+    print(f"\n{len(cases) + 8} case(s), {failures} failure(s)")
     print("RED" if failures else "GREEN")
     return 1 if failures else 0
 

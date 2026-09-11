@@ -57,6 +57,13 @@ td.num { font-variant-numeric: tabular-nums; }
 .grade-a { color: var(--status-good, var(--cat-2)); }
 .grade-b { color: var(--cat-4); }
 .grade-c { color: var(--status-bad, var(--cat-5)); }
+/* The appearance mode a contrast pair belongs to. Not colour-coded alone: the word is
+   the channel, and the tint only reinforces it. */
+td.mode { font-variant: small-caps; letter-spacing: .04em; color: var(--smoke); }
+td.mode-dark { color: var(--muted); }
+.extension { color: var(--cat-4); }
+ul.gaps { margin: var(--space-2) 0 0; padding-left: 1.1rem; color: var(--text); }
+ul.gaps li { margin: 2px 0; }
 /* R3: an actionable number must not look like an inert one. */
 .blocking { color: var(--status-bad, var(--cat-5)); font-weight: 700; }
 .blocking::after { content: " ✗"; font-weight: 700; }
@@ -102,6 +109,7 @@ figure { margin: var(--space-3) 0 0; break-inside: avoid; }
     <span><i class="swatch grade-b" style="background:currentColor"></i> grade B — ratios only</span>
     <span><i class="swatch grade-c" style="background:currentColor"></i> grade C — direction only, cannot set a token alone</span>
     <span>✗ blocks a token or fails a threshold</span>
+    <span>mode — the appearance a contrast pair was measured in</span>
   </p>
 
   <h2>References</h2>
@@ -112,6 +120,16 @@ figure { margin: var(--space-3) 0 0; break-inside: avoid; }
   <p class="note">Each of these is an open question, not a value. A value supported
     solely by a screenshot is not a token — corroborate it with an A or B source, or
     carry it to the brief for a human to settle.</p>
+
+  <h2>Concepts this system names</h2>
+  <!--__VOCABULARY__-->
+  <p class="note">Every token instantiates a concept from
+    <code>references/vocabulary/</code>, and the vocabulary decides which concepts may be
+    stored at all — a <em>derived</em> term is computed from tokens and never kept
+    separately, a <em>property</em> is observed and not kept at all. A concept the
+    vocabulary does not name is allowed only as a declared extension carrying its reason
+    and the card that decided it. Checked by
+    <code>scripts/validate_tokens.py</code> and refused by the PreToolUse guard.</p>
 
   <h2>Computed contrast</h2>
   <!--__CONTRAST__-->
