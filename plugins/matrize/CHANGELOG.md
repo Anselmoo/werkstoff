@@ -14,6 +14,13 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- the **Specimen**: `assets/sketchbook-template.html` + `scripts/build_sketchbook_html.py`,
+  landscape A4 at √2 measured off a real reference, with approval and handoff modes
+- `scripts/chart.py` — one threshold-chart primitive, four call sites (contrast, motion,
+  type scale, spacing); dot-with-stem, log axis for ratios, colour always redundant to
+  position, shape and a printed value
+- text-into-illustration: an over-budget note becomes a do/don't figure when it has a
+  structured rule/anti-rule pair, and is flagged rather than invented when it does not
 - `scripts/retrofit_css.py`, `scripts/emit_css.py` and `scripts/prove_retrofit.py` — the
   first formatter pair and the three-arm equivalence proof. Verified end to end on
   `tools/design-tokens/tokens.css`: 50 declarations, 10 aliases, **zero visual diff and

@@ -206,6 +206,49 @@ by intent.
 > Triggers `matrize-emit`: headless Chrome print-to-pdf honouring `@page`, with the
 > approval block that names the decision-maker and the gate criteria.
 
+## The sketchbook — the Specimen
+
+![A landscape sketchbook spread titled Kontrast: a threshold chart plots six contrast
+pairs against rules at 3.0, 4.5 and 7.0, with square red heads for pairs that fall short
+and round dark heads for pairs that clear, beside an ANMERKUNGEN margin carrying two
+rules with their anti-rules.](assets/sketchbook-screenshot.jpg)
+
+Landscape A4 at **√2**, measured off a real reference rather than assumed — a generic
+landscape scaffold uses 16:10, and the reference does not. One building block per spread,
+a 66/34 split between specimen canvas and `ANMERKUNGEN` margin, numbered callouts in two
+weights (filled pins the artwork, outlined opens the margin entry), a tinted box for the
+derived observation, and the approval block that makes the whole thing a gate rather than
+a gallery.
+
+```bash
+python3 plugins/matrize/scripts/build_sketchbook_html.py \
+  --data plugins/matrize/scripts/fixtures/sketchbook-demo.json --out /tmp/sketchbook.html
+```
+
+**Two modes.** `approval` (default) is the reference's shape — no code anywhere, because
+it goes in front of a decision-maker. `handoff` adds a bottom-anchored snippet per spread
+and an export control, which is what a developer needs and a client does not.
+
+**Charts, where a measured value meets a fixed threshold.** One primitive, four call
+sites — contrast, motion, type scale, spacing. Dot with a stem, never a bar, because a
+bar implies a meaningful zero and contrast's floor is 1.0. Log axis for ratios, because
+linearly a 15:1 pair eats the axis and squeezes the interesting 2.5–5 band into a sliver.
+Colour is always redundant to position *and* shape *and* a printed value.
+
+What the chart adds over a table is **margin**: 3.44 against a 4.5 threshold is a near
+miss fixed by darkening a few percent, and 1.20 is a different colour. A table prints
+"FAILS" for both.
+
+**Text into illustration.** Prose past its slot budget stops being read, so an over-budget
+`ANMERKUNG` is rendered as a do/don't figure instead — but only when the entry carries a
+structured rule and anti-rule to draw. With nothing to draw it flags the overrun and
+leaves the prose alone. Inventing a figure the lexicon never described is the same defect
+as a rule with no card behind it.
+
+The demo data is committed and deliberately shows a **failing** system: the action red
+clears AA only at large sizes, one duration sits past the Doherty threshold, one spacing
+step is off the grid, and one note runs past its budget with nothing to draw.
+
 ## The retrofit proof, on this repository's own tokens
 
 `retrofit` is proven, not asserted, and on real material: `tools/design-tokens/tokens.css`

@@ -1,0 +1,255 @@
+{
+  "_why": "Committed demo data for the Specimen, so the screenshot in the README is reproducible. It carries a deliberately failing system rather than a clean one: the dominant action colour clears AA only at large sizes, one motion duration sits past the Doherty threshold, one spacing step is off the grid, and one ANMERKUNG runs past its character budget with nothing structured to draw. A demo in which nothing is wrong demonstrates nothing.",
+  "system": "Tennisschule — Neues Designkonzept",
+  "kicker": "Sketchbook — Neues Designkonzept",
+  "footerLabel": "Beispielprojekt — Design Sketchbook",
+  "philosophy": "Eine dominante Aktionsfarbe. Drei Register statt einer Stimme überall. Weiche Radien, mit genau einer Ausnahme.",
+  "spreads": [
+    {
+      "title": "Farbe",
+      "canvas": {
+        "kind": "colour",
+        "colours": [
+          {
+            "name": "Aktion",
+            "hex": "#FA2E1A",
+            "on": "#ffffff"
+          },
+          {
+            "name": "Tinte",
+            "hex": "#1a1a1a",
+            "on": "#ffffff"
+          },
+          {
+            "name": "Papier",
+            "hex": "#f4f2f0",
+            "on": "#1a1a1a"
+          },
+          {
+            "name": "Haarlinie",
+            "hex": "#e2ded9",
+            "on": "#ffffff"
+          },
+          {
+            "name": "Anfänger-Grün",
+            "hex": "#4c8d5a",
+            "on": "#ffffff"
+          }
+        ]
+      },
+      "notes": [
+        {
+          "pin": true,
+          "text": "Rot bleibt die einzige dominante Aktionsfarbe pro View.",
+          "rule": "Eine dominante Aktionsfarbe pro View",
+          "antiRule": "nie zwei gleichzeitig"
+        },
+        {
+          "pin": true,
+          "text": "Alert-Grün nie im selben View wie Anfänger-Grün.",
+          "antiRule": "zwei Grüntöne, die dasselbe zu bedeuten scheinen"
+        }
+      ],
+      "observation": "Das Aktionsrot erreicht auf Weiss 3,84:1 — genug für grosse Schrift und Rahmen, zu wenig für Fliesstext. Ein Ghost-Button mit rotem Label in Textgrösse fällt durch.",
+      "snippet": "--action: #FA2E1A;  /* large text and borders only */\n--ink: #1a1a1a;\n--paper: #f4f2f0;"
+    },
+    {
+      "title": "Kontrast",
+      "canvas": {
+        "kind": "contrast",
+        "pairs": [
+          {
+            "role": "Aktion auf Papier",
+            "fg": "#FA2E1A",
+            "bg": "#f4f2f0"
+          },
+          {
+            "role": "Tinte auf Papier",
+            "fg": "#1a1a1a",
+            "bg": "#f4f2f0"
+          },
+          {
+            "role": "Haarlinie auf Papier",
+            "fg": "#e2ded9",
+            "bg": "#f4f2f0"
+          },
+          {
+            "role": "Anfänger-Grün auf Weiss",
+            "fg": "#4c8d5a",
+            "bg": "#ffffff"
+          },
+          {
+            "role": "Tinte auf Weiss",
+            "fg": "#1a1a1a",
+            "bg": "#ffffff",
+            "mode": "hell"
+          },
+          {
+            "role": "Papier auf Tinte",
+            "fg": "#f4f2f0",
+            "bg": "#1a1a1a",
+            "mode": "dunkel",
+            "unproven": true
+          }
+        ]
+      },
+      "notes": [
+        {
+          "text": "Gemessen, nicht behauptet. Die Schwellen zeigen den Abstand: 3,44 gegen 4,5 ist ein Streifschuss, 1,20 ist eine andere Farbe.",
+          "antiRule": "Kontrast nach Augenmass beurteilen"
+        },
+        {
+          "text": "Die gestrichelte Linie markiert einen Wert, dessen Herkunft nur Grad C ist — Richtung, kein Tokenwert.",
+          "antiRule": "einen geschätzten Wert als gemessen ausgeben"
+        }
+      ],
+      "observation": "Haarlinie ist als Trennlinie gedacht und nicht als Text. Bei 1,20:1 ist das eine Regel, keine Beobachtung.",
+      "snippet": "/* body text needs >= 4.5:1 */"
+    },
+    {
+      "title": "Typografie",
+      "canvas": {
+        "kind": "type",
+        "steps": [
+          {
+            "label": "Display — Anton",
+            "px": 46,
+            "specimen": "Wir leben Tennis"
+          },
+          {
+            "label": "UI & Fliesstext — Plus Jakarta Sans",
+            "px": 19,
+            "specimen": "Regular  Medium  Semibold  Bold"
+          },
+          {
+            "label": "Eyebrow / Sektionslabel",
+            "px": 12,
+            "specimen": "MARKENZEICHEN & SLOGAN"
+          }
+        ]
+      },
+      "notes": [
+        {
+          "text": "Drei Register statt einer Stimme überall: Anton für Plakat-Headlines, höchstens ein- bis zweimal pro Seite, Plus Jakarta Sans für alles andere.",
+          "antiRule": "Anton als Fliesstext"
+        },
+        {
+          "text": "Diese Anmerkung ist absichtlich zu lang geraten und läuft weit über das Zeichenbudget hinaus, ohne dass ihr eine saubere Regel mit Gegenregel beiliegt, an der sich eine Zeichnung überhaupt festmachen liesse; sie beschreibt stattdessen in vielen Nebensätzen, was eine Schriftfamilie alles leisten soll, und verliert dabei genau die Leserin, für die das Sketchbook gemacht ist."
+        }
+      ],
+      "observation": "Eyebrows bleiben Grossbuchstaben; nur die Schriftstärke wird leichter."
+    },
+    {
+      "title": "Zustände",
+      "canvas": {
+        "kind": "states",
+        "states": [
+          {
+            "kind": "default",
+            "text": "Kurs buchen"
+          },
+          {
+            "kind": "ghost",
+            "text": "Mehr erfahren"
+          },
+          {
+            "kind": "focus",
+            "text": "Kurs buchen"
+          },
+          {
+            "kind": "disabled",
+            "text": "Ausgebucht"
+          }
+        ]
+      },
+      "notes": [
+        {
+          "text": "Fokus ist nicht kosmetisch — ohne ihn ist das System mit der Tastatur unbenutzbar.",
+          "rule": "Jedes interaktive Element hat einen sichtbaren Fokus",
+          "antiRule": "outline: none ohne Ersatz"
+        },
+        {
+          "text": "Leer- und Ladezustand fehlen hier noch und sind damit offene Fragen, keine Auslassungen.",
+          "antiRule": "einen fehlenden Zustand als Entscheidung ausgeben"
+        }
+      ],
+      "observation": "Ghost-Button trägt das Aktionsrot als Rahmen, nicht als Label in Textgrösse — genau der Fall, den die Kontrastseite ausschliesst."
+    },
+    {
+      "title": "Bewegung",
+      "canvas": {
+        "kind": "motion",
+        "durations": [
+          {
+            "name": "Hover",
+            "ms": 120
+          },
+          {
+            "name": "Eintritt",
+            "ms": 200
+          },
+          {
+            "name": "Panel",
+            "ms": 320
+          },
+          {
+            "name": "Seitenwechsel",
+            "ms": 520
+          }
+        ]
+      },
+      "notes": [
+        {
+          "text": "Die 400-ms-Linie ist die Doherty-Schwelle: darüber wirkt die Oberfläche träge statt ruhig.",
+          "rule": "Übergänge bleiben unter 400 ms",
+          "antiRule": "Dauer als Gestaltungsmittel dehnen"
+        }
+      ],
+      "observation": "Seitenwechsel liegt bei 520 ms und ist damit der einzige Wert jenseits der Schwelle."
+    },
+    {
+      "title": "Raster",
+      "canvas": {
+        "kind": "spacing",
+        "base": 4,
+        "steps": [
+          {
+            "name": "space-1",
+            "px": 4
+          },
+          {
+            "name": "space-2",
+            "px": 8
+          },
+          {
+            "name": "space-3",
+            "px": 12
+          },
+          {
+            "name": "space-4",
+            "px": 18
+          },
+          {
+            "name": "space-5",
+            "px": 32
+          }
+        ]
+      },
+      "notes": [
+        {
+          "text": "Alle Schritte sind Vielfache der Basis — bis auf einen.",
+          "rule": "Abstände sind ganzzahlige Vielfache von 4px",
+          "antiRule": "ein Zwischenwert, der einmal gepasst hat"
+        }
+      ],
+      "observation": "space-4 liegt bei 18px und damit auf 4,5× der Basis. Entweder 16 oder 20 — oder die Basis stimmt nicht."
+    }
+  ],
+  "approval": {
+    "framing": "Diskussionsgrundlage, kein fertiges Regelwerk.",
+    "criteria": "Rückmeldung zu Farbe, Bildsprache und den vier Templates — vor der Produktion.",
+    "decisionMaker": "",
+    "covers": "Richtung | Richtung und Taxonomie | das ganze System"
+  },
+  "markdown": "# Tennisschule — Neues Designkonzept\n\nEine dominante Aktionsfarbe. Drei Register. Weiche Radien mit einer Ausnahme.\n"
+}
