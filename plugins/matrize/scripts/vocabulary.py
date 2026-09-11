@@ -549,7 +549,7 @@ def selftest() -> int:
                    any("VOCAB-CEILING-UNSOURCED" in p for p in bad)))
     good = _check_ceiling("Baseline grid", "grid-and-spacing.md", "C",
                           "Baseline grid — grade C at best", 1)
-    checks.append(("a ceiling whose bullet is intact is NOT reported", good == [])) 
+    checks.append(("a ceiling whose bullet is intact is NOT reported", good == []))
 
     checks.append(("the kind legend in README and grid-and-spacing agree",
                    reg.legend.get(README) == reg.legend.get("grid-and-spacing")))

@@ -89,8 +89,12 @@ def render_note(note: dict, index: int | None) -> str:
     """One ANMERKUNG. Over budget with a structured pair -> figure; otherwise flagged."""
     text = note.get("text", "")
     rule, anti = note.get("rule"), note.get("antiRule")
-    num = (f'<span class="note-num">{index}</span>' if index else
-           '<span class="note-num" aria-hidden="true"></span>' if False else "")
+    # Only the OUTLINED margin callout ships. The reference's other state — a FILLED
+    # circle pinning the same number onto the artwork (`.pin` in the template) — has its
+    # style and no emitter, because the canvas is addressed by key rather than authored as
+    # SVG here, so there is nowhere to put coordinates. Recorded as a gap rather than left
+    # as an `if False` branch that reads like a feature.
+    num = f'<span class="note-num">{index}</span>' if index else ""
 
     over = len(text) > NOTE_BUDGET
     if over and rule and anti:

@@ -215,10 +215,15 @@ rules with their anti-rules.](assets/sketchbook-screenshot.jpg)
 
 Landscape A4 at **√2**, measured off a real reference rather than assumed — a generic
 landscape scaffold uses 16:10, and the reference does not. One building block per spread,
-a 66/34 split between specimen canvas and `ANMERKUNGEN` margin, numbered callouts in two
-weights (filled pins the artwork, outlined opens the margin entry), a tinted box for the
-derived observation, and the approval block that makes the whole thing a gate rather than
-a gallery.
+a 66/34 split between specimen canvas and `ANMERKUNGEN` margin, numbered callouts in the
+margin, a tinted box for the derived observation, and the approval block that makes the
+whole thing a gate rather than a gallery.
+
+The reference uses the callout number in **two** weights — filled pins the artwork,
+outlined opens the margin entry. Only the outlined half ships: the filled `.pin` has a
+style and no emitter, because a spread addresses its canvas by key rather than authoring
+it as SVG here, so there is nowhere to carry the coordinates. Named as a gap rather than
+described as if it worked.
 
 ```bash
 python3 plugins/matrize/scripts/build_sketchbook_html.py \
@@ -342,8 +347,8 @@ no second copy to drift.
 **A parser that extracts nothing makes every rule pass vacuously.** The selftest asserts
 per-file counts measured by hand (46 / 38 / 36 / 46 / 57), and a file yielding zero terms
 is a parser failure rather than an empty file. The same discipline covers the validator:
-if the registry cannot be built, `V-VOCAB-REGISTRY` fails closed instead of letting twelve
-rules quietly disappear. *No findings* and *no checks* look identical from the outside.
+if the registry cannot be built, `V-VOCAB-REGISTRY` fails closed instead of letting the
+other twelve rules quietly disappear. *No findings* and *no checks* look identical from the outside.
 
 **Headers are found by the separator row, never by the first cell.** `motion.md`'s
 Principles table carries an ordinary data row beginning `| Origin | Motion emanates…`, and
