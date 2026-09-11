@@ -14,6 +14,15 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `scripts/cvd.py` — CIEDE2000 under a Viénot-1999 dichromat simulation, calibrated
+  against the published test set and corroborated to 0.01 against a figure `tokens.css`
+  measured years earlier
+- `scripts/redundancy.py` — finds categorical encodings carried by colour alone, checked
+  at the point the category is RENDERED rather than where the colour is declared
+- guard rule 3: denies colour-only encoding on a declared branded surface; inert unless
+  `surfaces:` names some
+- `scripts/emit_vitepress.py` — turns a theme's hand-copied literals into references,
+  reporting ambiguities and orphans instead of resolving them
 - `references/vocabulary/` — the domain layer, authored by the plugin's owner: one file
   per dimension (colour, grid and spacing, typography, motion, icons) plus
   `visual-asset-taxonomy.md`, the parent taxonomy. Each carries a **kind** per term

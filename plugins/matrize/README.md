@@ -249,6 +249,42 @@ The demo data is committed and deliberately shows a **failing** system: the acti
 clears AA only at large sizes, one duration sits past the Doherty threshold, one spacing
 step is off the grid, and one note runs past its budget with nothing to draw.
 
+## Branding a surface, and what gets enforced
+
+The question "may we have six or eight categorical hues?" turned out to be the wrong one.
+Measured with `scripts/cvd.py` — CIEDE2000 under a Viénot-1999 dichromat simulation, the
+metric this workshop's own token file already names — **every** categorical palette here
+sits below the separation floor, the five-hue scale included:
+
+| palette | n | worst deuteranopia | worst protanopia |
+|---|---|---|---|
+| the shipped five-hue scale | 5 | 5.70 | 5.30 |
+| a six-fill canvas set | 6 | 3.40 | 3.41 |
+| a seven-role set | 7 | 4.10 | 3.96 |
+| an eight-entry hashed palette | 8 | 3.50 | **1.96** |
+
+Widening the cap does not fix that; it makes the worst pair monotonically worse. What
+carries the accessibility claim is the rule the token file already states — **colour is
+never the only channel** — and unlike a hue count, that is decidable.
+
+`scripts/redundancy.py` decides it, narrowly: a palette indexed by a computed key, or
+three-plus sibling rules setting nothing but colour, with no second channel **where the
+category is rendered**. A legend does not count — a legend maps name to hue, and reading
+a chart requires the inverse. Anything it cannot decide returns `undecided`, which is
+never reported as a violation.
+
+The hook's third rule denies a write introducing colour-only encoding into a file the
+project has **declared** a branded surface (`surfaces:` in `.claude/matrize.local.md`).
+It never sweeps a repository it was not pointed at. A `Write` carries the whole file so
+the full check runs; an `Edit` carries a fragment with no use sites, so only the
+self-contained palette-index pattern is checked there — stated rather than implied.
+
+`scripts/emit_vitepress.py` is the applying half: it turns a theme's hand-copied literals
+into references to the token set. It proposes the mapping by value-matching, which the
+provenance graph refuses to do — the difference is what the result is used for. There a
+match became an asserted edge; here it is a proposal a human reviews, and every ambiguity
+is reported rather than resolved.
+
 ## The vocabulary
 
 `references/vocabulary/` carries the domain layer: one file per dimension — colour, grid

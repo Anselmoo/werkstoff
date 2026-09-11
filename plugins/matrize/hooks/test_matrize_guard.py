@@ -49,6 +49,13 @@ def run_input(cwd: Path, tool_input: dict, tool: str = "MultiEdit") -> tuple[int
     return proc.returncode, (proc.stdout + proc.stderr)
 
 
+def run_env(cwd: Path, tool_input: dict, env: dict) -> tuple[int, str]:
+    event = json.dumps({"cwd": str(cwd), "tool_name": "Write", "tool_input": tool_input})
+    proc = subprocess.run([sys.executable, str(GUARD)], input=event, capture_output=True,
+                          text=True, env={"PATH": "/usr/bin:/bin", **env})
+    return proc.returncode, (proc.stdout + proc.stderr)
+
+
 def design_repo(tmp: Path, *, choice: dict | None = None, root: str = ".design") -> Path:
     (tmp / root / "references" / "hig").mkdir(parents=True, exist_ok=True)
     (tmp / root / "references" / "hig" / "type.css").write_text(":root{}\n")
@@ -133,6 +140,56 @@ def main() -> int:
         (corrupt / ".design/system/spread-choice.json").write_text("{not json")
         code, out = run(corrupt, ".design/system/tokens.json")
         case("rule2: unparseable record denies (not 'no decision made')", DENY, code, out)
+
+        # --- rule 3: colour is never the only channel, on a DECLARED surface ---
+        BARE = ("<style>.sw-1{background:#5b7fa6}.sw-2{background:#7a9e6b}"
+                ".sw-3{background:#c98f4a}</style>\n" + "\n" * 40 +
+                "<td class=\"sw-1\"></td><td class=\"sw-2\"></td><td class=\"sw-3\"></td>")
+        LABELLED = ("<style>.sw-1{background:#5b7fa6}.sw-2{background:#7a9e6b}"
+                    ".sw-3{background:#c98f4a}</style>\n" + "\n" * 40 +
+                    "<li><span class=\"sw-1\"></span><span>alpha</span></li>"
+                    "<li><span class=\"sw-2\"></span><span>beta</span></li>"
+                    "<li><span class=\"sw-3\"></span><span>gamma</span></li>")
+
+        r3 = design_repo(tmp / "r3")
+        (r3 / ".claude").mkdir(parents=True, exist_ok=True)
+        (r3 / ".claude/matrize.local.md").write_text(
+            "---\nsurfaces: docs/**/*.html\n---\n")
+        (r3 / "docs").mkdir(parents=True, exist_ok=True)
+
+        code, out = run_input(r3, {"file_path": "docs/chart.html", "content": BARE}, "Write")
+        case("rule3: colour-only on a declared surface denied", DENY, code, out,
+             "colour alone")
+        code, out = run_input(r3, {"file_path": "docs/chart.html", "content": LABELLED}, "Write")
+        case("rule3: the same swatches WITH labels allowed", ALLOW, code, out)
+        code, out = run_input(r3, {"file_path": "src/chart.html", "content": BARE}, "Write")
+        case("rule3: same content OUTSIDE a declared surface allowed", ALLOW, code, out)
+
+        # Undeclared project: the rule does not exist at all.
+        r3b = design_repo(tmp / "r3b")
+        code, out = run_input(r3b, {"file_path": "docs/chart.html", "content": BARE}, "Write")
+        case("rule3: inert when no surfaces are declared", ALLOW, code, out)
+
+        # Undecidable content is allowed, which is NOT the same as failing closed.
+        code, out = run_input(r3, {"file_path": "docs/chart.html",
+                                   "content": "<p>ordinary prose, no categories</p>"}, "Write")
+        case("rule3: content with no categorical encoding allowed", ALLOW, code, out)
+        code, out = run_input(r3, {"file_path": "docs/chart.html",
+                                   "new_string": "<td class=\"sw-1\"></td>"}, "Edit")
+        case("rule3: an Edit fragment with no palette is not guessed at", ALLOW, code, out)
+
+        # A self-contained palette-index IS decidable in a fragment.
+        PAL = ("const P = ['#5b7fa6','#7a9e6b','#c98f4a'];\n"
+               "var c = P[h % P.length];\nnode.setAttribute('fill', c);")
+        code, out = run_input(r3, {"file_path": "docs/chart.html", "new_string": PAL}, "Edit")
+        case("rule3: a hashed palette in an Edit fragment is denied", DENY, code, out,
+             "colour alone")
+
+        code, out = run_input(r3, {"file_path": "docs/chart.html", "content": BARE},
+                              "Write")
+        case("rule3: escape hatch still releases it", ALLOW,
+             *run_env(r3, {"file_path": "docs/chart.html", "content": BARE},
+                      {"MATRIZE_DISABLE_GUARD": "1"}))
 
         # --- settings: configurable root, enforcement off -------------------
         custom = tmp / "custom"
