@@ -1,6 +1,6 @@
 # Orchestrating werkstoff with superpowers and the official plugins
 
-werkstoff's ten plugins, `obra/superpowers`, and Anthropic's official plugin set were
+werkstoff's eleven plugins, `obra/superpowers`, and Anthropic's official plugin set were
 built independently, and they overlap far less than their descriptions suggest. This
 catalog records how they compose in one session: which pieces own a whole task, which
 drop into somebody else's workflow, and which handoffs are already wired so nobody
@@ -73,13 +73,17 @@ into another workflow's beats and gates.
 |`/consistency-map`, `/consistency-canonize`, `/consistency-brief`, `/consistency-align`, `/consistency-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
 |`nacharbeit-review`|Bakes its args, calibrates a finder against planted fixtures and a sealed hold-out, then finds, routes, verifies and synthesizes; every later step reads what the calibration froze|
 |`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
-|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
+|`vorbild-decode`|Fans reference-decoders out under a circuit breaker, then has each card re-derived from its cited source by a blind referee; a card that skips the referee is an unverified claim|
+|`vorbild-brief`|Stops outright if any discovery artefact is missing, and its signed approval block is what the three build methods read as their entry gate|
+|`vorbild-emit`|Runs the committed formatters against a `tokens.json` the earlier phases wrote; there is nothing to format before they have|
+|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`, `vorbild-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
 
 Everything else in werkstoff is a leaf. That covers all of `compass`'s reasoning
 skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
 paradigm and doctrine skills, `self-assess`'s finding skills, `lehre`'s gauge and
-validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), every
-`*-preflight`, and every named agent across all ten plugins — including nacharbeit's
+validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `vorbild`'s `collect`, `name`,
+`retrofit` and `dolmetsch`, every
+`*-preflight`, and every named agent across all eleven plugins — including nacharbeit's
 `component-finder` and `fix-verifier`, which exist precisely so a session without the
 Workflow tool can still dispatch one batch or verify one file from a scoped prompt.
 

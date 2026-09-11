@@ -6,9 +6,9 @@ ambient plugins actually do when they overlap, grounded in hook source rather th
 what a README implies. `delegation.md` covers the dispatch side; this page covers what
 happens once those dispatches — or a direct edit — land while a guard is watching.
 
-## Seven hooks already arbitrate every edit
+## Eight hooks already arbitrate every edit
 
-Seven werkstoff plugins register a `PreToolUse` hook, and all seven are inert until the
+Eight werkstoff plugins register a `PreToolUse` hook, and all eight are inert until the
 repository shows a specific piece of state — none of them polices an unrelated
 project the moment it happens to be installed. The fact a reader actually scans for
 first — will this fire on my repo, right now — is called out as its own line on every
@@ -72,6 +72,14 @@ card, rather than buried in the third column of a five-column table.
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>NACHARBEIT_DISABLE_GUARD=1</code>, or <code>post_fix_check.py --release-lock</code></p>
 </div>
 
+
+<div class="hz-card">
+<div class="hz-head"><code>vorbild</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/vorbild_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>the configured design root exists (<code>.design/</code> by default, or <code>root:</code> in <code>.claude/vorbild.local.md</code>)</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>VORBILD_DISABLE_GUARD=1</code>, or <code>enforcement: off</code> in <code>.claude/vorbild.local.md</code></p>
+</div>
+
 </div>
 
 Two details matter beyond the cards above. First, andon's matcher covers `Write` and `Edit`
@@ -81,16 +89,16 @@ tool names. Second, two matchers reach upstream of the edit itself by covering
 cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
 `cupertino-longevity`, `cupertino-integrate`, or `cupertino-council` before
 `cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. takt's matcher is the
-widest of the seven, adding `MultiEdit` on top of the same dispatch tools, and it
+widest of the eight, adding `MultiEdit` on top of the same dispatch tools, and it
 gates declared beat order across plugins rather than within one. nacharbeit is the
 only one besides confab and cupertino that watches `Bash`, and for one reason: while
 its fix lock is open, a `git commit`, `push`, `reset` or `checkout` from inside the
 pass is refused, so a half-applied rework is never committed by the thing applying
 it. The other four reach only the write tools.
 
-## All seven fail closed, with one shared exception
+## All eight fail closed, with one shared exception
 
-Every one of these seven hooks fails closed: an unexpected internal error — a
+Every one of these eight hooks fails closed: an unexpected internal error — a
 malformed JSON payload, a filesystem error, anything the hook did not anticipate —
 denies the tool call rather than silently allowing it, and the deny message always
 names the escape hatch. andon's own docstring states the reasoning plainly: a hook

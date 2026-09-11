@@ -4,9 +4,10 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — ten plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `lehre`, `nacharbeit`, `self-assess`, `takt`. Each is
-independently versioned; `marketplace.json` and `.rrt.toml` both point here.
+`plugins/<name>/` — eleven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
+`compass`, `confab`, `cupertino`, `lehre`, `nacharbeit`, `self-assess`, `takt`,
+`vorbild`. Each is independently versioned; `marketplace.json` and `.rrt.toml` both
+point here.
 
 `nacharbeit` is the tenth and the odd one out: its object is the other nine. It carries
 the calibrated review instrument PR #56 built (`scripts/nacharbeit_lint.py`,
@@ -58,7 +59,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the eleven-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the twelve-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 
@@ -234,7 +235,7 @@ column), not in anything the rebuild pipeline itself added.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Eleven independent version groups in `.rrt.toml` (10 plugins + `tools/werkstoff-cli`).
+Twelve independent version groups in `.rrt.toml` (11 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

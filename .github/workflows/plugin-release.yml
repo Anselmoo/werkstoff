@@ -73,7 +73,7 @@ jobs:
           # matters -- a bare tag belongs to cicd.yml's PyPI publish, never
           # here.
           case "$GROUP" in
-            self-assess|confab|compass|cupertino|andon|cli-scaffold|codebase-consistency|nacharbeit|lehre|takt) ;;
+            self-assess|confab|compass|cupertino|andon|cli-scaffold|codebase-consistency|nacharbeit|lehre|takt|vorbild) ;;
             *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
           esac
           if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then

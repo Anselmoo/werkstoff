@@ -4,7 +4,7 @@ layout: home
 hero:
   name: werkstoff
   text: A workshop of Claude Code plugins
-  tagline: Ten plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
+  tagline: Eleven plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
   image:
     src: /logo.svg
     alt: werkstoff
@@ -41,7 +41,7 @@ features:
     linkText: Read the hazards
 ---
 
-## Ten plugins, one job each
+## Eleven plugins, one job each
 
 Pick by problem, not by feature list — each plugin targets one distinct failure mode
 and refuses to speak outside it. Every card opens its full README in this

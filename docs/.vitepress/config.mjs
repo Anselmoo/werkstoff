@@ -247,6 +247,7 @@ export default defineConfig({
           },
           { text: 'self-assess', link: '/plugins/self-assess' },
           { text: 'takt', link: '/plugins/takt' },
+          { text: 'vorbild', link: '/plugins/vorbild' },
         ],
       },
       {
