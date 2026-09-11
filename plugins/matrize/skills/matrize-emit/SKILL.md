@@ -1,7 +1,7 @@
 ---
 name: matrize-emit
-description: "Use to render a derived design system to a concrete target by running the plugin's committed formatter scripts against its DTCG token file — html and pdf produce the landscape sketchbook that carries the approval block, css/tailwind/scss/json/toml produce platform output. Trigger on 'emit the design system as CSS', 'produce the sketchbook PDF', 'generate the Tailwind config', 'matrize emit'. One neutral source, N formatters: nothing here is authored per run, so the same tokens regenerate byte-stable, and prose from an R2 or R3 reference is refused rather than reproduced."
-argument-hint: "--target <html|pdf|css|tailwind|scss|json|toml>"
+description: "Use to render a derived design system to a concrete target by running the plugin's committed formatter scripts against its DTCG token file — html and pdf produce the landscape sketchbook that carries the approval block, css and vitepress produce platform output, and provenance produces the graph viewer. Trigger on 'emit the design system as CSS', 'produce the sketchbook PDF', 'regenerate the docs theme from tokens', 'matrize emit'. One neutral source, N formatters: nothing here is authored per run, so the same tokens regenerate byte-stable, and prose from an R2 or R3 reference is refused rather than reproduced."
+argument-hint: "--target <html|pdf|css|vitepress|provenance>"
 ---
 
 Run a formatter. Do not author one at run time.
@@ -52,9 +52,26 @@ speculation, and re-acquiring them would be a choice.
 looks fine in a page count and is invisible in a thumbnail. Also confirm the page count
 and reading order.
 
-**`css`, `tailwind`, `scss`, `json`, `toml`** are platform output. None of them is ever
-an input: if a change needs making, it is made in `tokens.json` and re-emitted. A hand
-edit to emitted output is lost on the next run, and worse, it makes the source untrue.
+## The targets that exist, and the ones that do not
+
+A target is real when a committed script emits it. Anything else is a plan, and naming it
+here as though it worked would be the same defect as a rule with no card behind it.
+
+| target | script | status |
+|---|---|---|
+| `css` | `scripts/emit_css.py` | ships |
+| `vitepress` | `scripts/emit_vitepress.py` | ships |
+| `html` | `scripts/build_sketchbook_html.py` | ships |
+| `pdf` | the `html` output through headless Chromium | ships |
+| `provenance` | `scripts/build_provenance_html.py` | ships |
+| `tailwind`, `scss`, `json`, `toml` | — | **not built.** Do not offer them |
+
+If a user asks for one of the last row, say it is not implemented and name what is. A
+formatter is a small, well-specified piece of work; pretending one exists is not.
+
+**`css` and `vitepress`** are platform output. Neither is ever an input: if a change needs
+making, it is made in `tokens.json` and re-emitted. A hand edit to emitted output is lost
+on the next run, and worse, it makes the source untrue.
 
 ## Report
 

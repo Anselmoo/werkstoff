@@ -127,11 +127,31 @@ do not manufacture cards to fill the batch.`,
       continue
     }
     const cards = (r.cards || []).map(c => ({ ...c, reference: r.ref.slug, rights: r.ref.rights }))
-    // A card claiming to set a token on grade-C evidence alone is rejected here, before
-    // the referee ever sees it: that rule is mechanical, so it is not a judgement call.
+    // Two mechanical rules, applied before the referee ever sees a card. Both were prose
+    // in the decoder's prompt first, which is the weakest enforcement layer there is.
+    //
+    // 1. A card may not claim a better grade than its REFERENCE can support. The prompt
+    //    said so; nothing checked it, so a grade-C reference could return an A card and
+    //    walk straight into `accepted` -- screenshot evidence becoming a token by
+    //    relabelling, which is exactly what the grading rubric exists to stop.
+    // 2. A card claiming to set a token on grade-C evidence alone is rejected.
+    const RANK = { A: 0, B: 1, C: 2 }
     for (const c of cards) {
-      if (c.reliability === 'C' && c.setsToken) rejected.push(c)
-      else accepted.push(c)
+      const ceiling = RANK[r.ref.reliability]
+      const claimed = RANK[c.reliability]
+      if (ceiling === undefined || claimed === undefined) {
+        c.rejectedBecause = `ungradeable: reference ${r.ref.reliability}, card ${c.reliability}`
+        rejected.push(c)
+      } else if (claimed < ceiling) {
+        c.rejectedBecause =
+          `claims grade ${c.reliability} from a grade-${r.ref.reliability} reference`
+        rejected.push(c)
+      } else if (c.reliability === 'C' && c.setsToken) {
+        c.rejectedBecause = 'would set a token from grade-C evidence alone'
+        rejected.push(c)
+      } else {
+        accepted.push(c)
+      }
     }
   }
 
@@ -185,14 +205,23 @@ had to use: a grade is wrong even when the number is right.`,
 )
 
 const byId = new Map(referee.filter(Boolean).map(v => [v.cardId, v]))
-const confirmed = accepted.filter(c => {
-  const v = byId.get(c.id)
-  return v && v.verdict !== 'not_reproduced' && v.verdict !== 'cannot_reproduce'
-})
+// An ALLOWLIST, deliberately. The denylist here admitted anything the referee did not
+// explicitly reject -- including `reproduced_different_relation`, which means the raw
+// values agree while the stated ratio, series or role does NOT. The relation is the part
+// `name` and the emitters consume, so letting it through feeds a token an invalid
+// relation under a confirmed card. A new referee verdict must now be opted IN, rather
+// than silently inheriting confirmation by not being on a list.
+const confirmed = accepted.filter(c => byId.get(c.id)?.verdict === 'reproduced')
+const relationDisputed = accepted.filter(
+  c => byId.get(c.id)?.verdict === 'reproduced_different_relation',
+)
 const dropped = accepted.filter(c => !confirmed.includes(c))
 
 return {
   confirmed,
+  // Surfaced as its own bucket rather than buried in `dropped`: the values reproduced
+  // and only the relation is contested, which is a finding a human can act on.
+  relationDisputed,
   dropped,
   rejectedGradeC: rejected,
   unreadable,

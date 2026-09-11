@@ -305,6 +305,38 @@ def check_assets(doc: dict, reg, findings: list[Finding]) -> None:
                 f"always needed in practice."))
 
 
+def alias_cycles(tokens: list[tuple[str, dict]]) -> list[list[str]]:
+    """Every alias cycle, as a path. `V-REF-SELF` only ever caught `a -> a`.
+
+    Two tokens aliasing each other pass a self-reference check, a dangling check, and a
+    shape check -- then emit `--a: var(--b)` and `--b: var(--a)`, which resolves to
+    nothing at every use site. The whole point of an alias graph is that it terminates,
+    so it has to be walked, not spot-checked.
+    """
+    edges: dict[str, str] = {}
+    for path, token in tokens:
+        value = token.get("$value")
+        match = REF.match(value) if isinstance(value, str) else None
+        if match:
+            edges[path] = match.group(1)
+
+    cycles: list[list[str]] = []
+    seen: set[str] = set()
+    for start in edges:
+        if start in seen:
+            continue
+        trail: list[str] = []
+        node: str | None = start
+        while node is not None and node not in seen and node in edges:
+            if node in trail:                       # closed a loop
+                cycles.append(trail[trail.index(node):] + [node])
+                break
+            trail.append(node)
+            node = edges.get(node)
+        seen.update(trail)
+    return cycles
+
+
 def validate(doc: dict, reg=None) -> list[Finding]:
     findings: list[Finding] = []
     if reg is None:
@@ -432,6 +464,14 @@ def validate(doc: dict, reg=None) -> list[Finding]:
             if key:
                 term_keys[path] = key
 
+    for cycle in alias_cycles(tokens):
+        findings.append(Finding(
+            "V-REF-CYCLE", " -> ".join(cycle),
+            "these aliases form a cycle, so none of them resolves to a value. Emitted as "
+            "CSS they are mutually-referential var() calls that fall back to nothing at "
+            "every use site. V-REF-SELF only catches a token aliasing itself.",
+            "blocker"))
+
     if reg is not None:
         check_naming(tokens, term_keys, reg, findings)
         check_assets(doc, reg, findings)
@@ -512,6 +552,19 @@ def selftest() -> int:
         e.pop("antiRule")
         return doc
 
+    def cycle_doc(n: int):
+        """n tokens aliasing round in a ring. Every one passes the dangling check, the
+        self-reference check and the shape check, and none of them resolves."""
+        doc = copy.deepcopy(SELFTEST_CLEAN)
+        ext_src = doc["color"]["action"]["$extensions"][EXT]
+        for i in range(n):
+            doc["color"][f"ring{i}"] = {
+                "$type": "color",
+                "$value": f"{{color.ring{(i + 1) % n}}}",
+                "$extensions": {EXT: copy.deepcopy(ext_src)},
+            }
+        return doc
+
     def assets_with(entry):
         doc = copy.deepcopy(SELFTEST_ASSETS)
         doc["$extensions"][EXT]["assets"].append(entry)
@@ -585,6 +638,8 @@ def selftest() -> int:
          "V-ASSET-ORIGIN-OVERREACH"),
         ("V-COVERAGE-MANDATORY", assets_without("Error state illustration"),
          "V-COVERAGE-MANDATORY"),
+        ("V-REF-CYCLE (two tokens)", cycle_doc(2), "V-REF-CYCLE"),
+        ("V-REF-CYCLE (three tokens)", cycle_doc(3), "V-REF-CYCLE"),
     ]
 
     failures = 0
@@ -628,6 +683,15 @@ def selftest() -> int:
                  {"term": "Action / interactive", "dimension": "color-system",
                   "kind": "token"}),
            "V-VOCAB-COLLISION")
+    # A legitimate alias CHAIN that terminates must not be reported as a cycle.
+    chain = copy.deepcopy(SELFTEST_CLEAN)
+    src = chain["color"]["action"]["$extensions"][EXT]
+    chain["color"]["mid"] = {"$type": "color", "$value": "{color.action}",
+                             "$extensions": {EXT: copy.deepcopy(src)}}
+    chain["color"]["leaf"] = {"$type": "color", "$value": "{color.mid}",
+                              "$extensions": {EXT: copy.deepcopy(src)}}
+    silent("a terminating alias chain is not a cycle", chain, "V-REF-CYCLE")
+
     silent("a complete asset inventory passes", SELFTEST_ASSETS, "V-ASSET")
     silent("and covers the three mandatory classes", SELFTEST_ASSETS, "V-COVERAGE")
 
@@ -653,7 +717,7 @@ def selftest() -> int:
     else:
         print("  secondary at B with a subject passes  ok")
 
-    print(f"\n{len(cases) + 8} case(s), {failures} failure(s)")
+    print(f"\n{len(cases) + 9} case(s), {failures} failure(s)")
     print("RED" if failures else "GREEN")
     return 1 if failures else 0
 

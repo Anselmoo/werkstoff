@@ -276,11 +276,13 @@ def selftest() -> int:
     first_key = next(iter(hostile["color"]))
     hostile["color"][first_key]["$extensions"][EXT]["cssName"] = "--</script><img src=x>&"
     hostile_page = render(hostile, "selftest")
-    # render() replaces the WHOLE marker, comment included, so splitting on the comment
-    # finds nothing and silently yields the entire page -- which of course contains raw
-    # `<` from the surrounding HTML. Slice the payload by where it actually begins.
+    # Extract the payload EXACTLY. render() replaces the whole marker, comment included,
+    # so splitting on the comment yields the entire page; slicing to the next "</script>"
+    # over-reaches into the surrounding JS, where an ordinary code comment mentioning a
+    # tag name reads as a raw `<`. raw_decode returns the JSON value's true end offset.
     start = hostile_page.index('{"nodes"')
-    payload = hostile_page[start:hostile_page.index("</script>", start)]
+    _, length = json.JSONDecoder().raw_decode(hostile_page, start)
+    payload = hostile_page[start:length]
     checks.append(("payload: `<` is escaped, and no raw `<` survives in it",
                    "\\u003c" in payload and "<" not in payload))
     checks.append(("payload: `>` and `&` are escaped too",

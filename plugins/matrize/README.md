@@ -42,6 +42,12 @@ So the two invariants that shape everything below:
 Tailwind, SCSS, JSON for Sphinx, TOML for a Rust server — all of these are *formatter
 output*, never input.
 
+That is the architecture. The **formatters that actually ship** are `css`, `vitepress`,
+`html` and `pdf` (the sketchbook), and `provenance` (the graph viewer). Tailwind, SCSS,
+JSON and TOML are the same shape of work and are *not built* — named here as absent
+rather than listed as though `emit` could produce them, which is the same discipline the
+plugin applies to a rule with no card behind it.
+
 **Measurement and interpretation are separate phases.** `decode` measures and cites;
 `name` interprets and justifies. Merging them makes a claim indistinguishable from a
 measurement, and the whole point is being able to tell those apart later.
@@ -82,7 +88,7 @@ preflight → survey → collect → decode → name → brief ⟨approval gate�
                                                   ↓
                              tokens.json (DTCG) + asset manifest
                                                   ↓
-             emit --target ⟨ html | pdf | css | tailwind | vitepress | sphinx | … ⟩
+             emit --target ⟨ html | pdf | css | vitepress | provenance ⟩
 dolmetsch   cross-cutting, callable from any phase, reads LEXIKON.md
 status      read-only, any time
 ```

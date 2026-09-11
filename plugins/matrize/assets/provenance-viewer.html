@@ -49,6 +49,14 @@ h2 {
 
 svg { display: block; }
 .node rect { cursor: pointer; }
+/* Focus must be visible, or "focusable" is a claim rather than a feature. `outline` on
+   an SVG child is unreliable across engines, so the ring is drawn as a stroke. */
+.node:focus { outline: none; }
+.node:focus rect { stroke: var(--status-warn, var(--cat-4)); stroke-width: 3; }
+.node:focus-visible rect { stroke: var(--status-warn, var(--cat-4)); stroke-width: 3; }
+@media (forced-colors: active) {
+  .node:focus rect { stroke: Highlight; stroke-width: 3; }
+}
 .node text { font-size: 11px; fill: var(--text); pointer-events: none; }
 .node .sub { font-size: 9px; fill: var(--muted); }
 .n-ref rect { fill: var(--panel-2); stroke: var(--cat-1); }
@@ -179,7 +187,17 @@ var DATA = /*__PROVENANCE_DATA__*/ null;
 
   DATA.nodes.forEach(function (n) {
     var p = pos[n.id];
-    var g = el('g', { 'class': 'node n-' + n.kind, transform: 'translate(' + p.x + ',' + p.y + ')' });
+    // Focusable, named, and operable from the keyboard. A plain <g> with a click
+    // handler is invisible to keyboard and screen-reader users, which in a viewer whose
+    // ONLY function is "click a node to trace it" means the artefact has no non-mouse
+    // path to its content at all.
+    var g = el('g', {
+      'class': 'node n-' + n.kind,
+      transform: 'translate(' + p.x + ',' + p.y + ')',
+      tabindex: '0',
+      role: 'button',
+      'aria-label': n.label + ' — ' + (n.sub || n.kind) + '. Trace its provenance.'
+    });
     g.appendChild(el('rect', { width: W, height: H, rx: 6 }));
     var t = el('text', { x: 10, y: 15 });
     t.textContent = n.label;              // textContent, never innerHTML
@@ -188,6 +206,12 @@ var DATA = /*__PROVENANCE_DATA__*/ null;
     s.textContent = n.sub || '';
     g.appendChild(s);
     g.addEventListener('click', function () { select(n.id); });
+    g.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
+        ev.preventDefault();            // Space would otherwise scroll the page
+        select(n.id);
+      }
+    });
     nodeEls[n.id] = g;
     svg.appendChild(g);
   });
