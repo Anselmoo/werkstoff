@@ -119,7 +119,8 @@ case("missing .rrt.toml field_targets",
 
 case("missing plugin-release.yml allowlist entry",
      lambda b: edit(b, RELEASE,
-                    lambda t: edit_allowlist(t, lambda l: l.replace(f"|{PROBE}", "", 1))),
+                    lambda t: edit_allowlist(
+                        t, lambda line: line.replace(f"|{PROBE}", "", 1))),
      1, "plugin-release.yml")
 
 case("missing auto-version-bump.yml matcher",
@@ -128,8 +129,8 @@ case("missing auto-version-bump.yml matcher",
 
 case("stale name in allowlist (no plugin dir)",
      lambda b: edit(b, RELEASE,
-                    lambda t: edit_allowlist(t, lambda l: l.replace(f"|{PROBE}",
-                                                                    f"|{PROBE}|ghost", 1))),
+                    lambda t: edit_allowlist(
+                        t, lambda line: line.replace(f"|{PROBE}", f"|{PROBE}|ghost", 1))),
      1, "no plugins/ghost/")
 
 # Structural changes must fail LOUDLY. A guard that silently finds zero names in
