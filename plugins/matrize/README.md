@@ -249,6 +249,39 @@ The demo data is committed and deliberately shows a **failing** system: the acti
 clears AA only at large sizes, one duration sits past the Doherty threshold, one spacing
 step is off the grid, and one note runs past its budget with nothing to draw.
 
+## The icon system, and gradients
+
+![A sketchbook spread titled Icon-System showing twelve stroke icons on a 24 grid with
+their keyline named under each, a row demonstrating optical stroke at 24, 16 and 12px,
+and margin notes stating the grid is derived from the spacing base and that the wordmark
+is not part of the set.](assets/icon-system-screenshot.jpg)
+
+**The grid is derived, not decreed.** Grid = 6× the system's spacing base, live area 5×,
+padding 0.5×, stroke = base/2. A 4px base lands on the 24/20/2/2 convention Feather,
+Lucide and Tabler already share — so the derivation agrees with the ecosystem instead of
+fighting it, and an 8px base yields a 48 grid without anyone re-deciding.
+
+**A brand mark is not an icon.** A logo is drawn once at one size and may keep its own
+geometry; an icon set is rendered at many sizes, so it needs uniform stroke and shared
+keylines or it stops reading as one family. This repo's own mark is 32-grid at 2.75
+stroke and deliberately sits outside the system.
+
+**Geometry is checked, not asserted.** Every seed is defined as primitives rather than a
+path string, so the same data renders *and* validates: inside the live area, on the
+subdivision, filling one of four keylines. `icons.py --selftest` plants an off-grid point,
+an off-subdivision point and a bad keyline, and requires each to be caught.
+
+**Twelve seeds, never a library.** The growth rule is the deliverable. Until a
+brand-owned set exists, adopt one open family wholesale — mixing two is visible
+immediately at the terminals — and record it as a reference with its rights grade.
+
+**Gradients are tokens, and they carry the exception.** Stops are *references* to roles,
+so changing a role changes the gradient. Nothing is invented: a role set with no deeper
+step yields no gradient and a **finding** saying why. A gradient whose endpoints are
+indistinguishable is caught as a flat fill, and a third stop is challenged in its own
+purpose text. Every one ships the anti-rule that matters here — **never in an
+illustration zone**, where tone comes from flat colour and overlap rather than a blend.
+
 ## The retrofit proof, on this repository's own tokens
 
 `retrofit` is proven, not asserted, and on real material: `tools/design-tokens/tokens.css`

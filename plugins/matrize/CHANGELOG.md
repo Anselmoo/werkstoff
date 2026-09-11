@@ -14,6 +14,13 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `scripts/icons.py` — an icon *system*: grid, live area, padding and stroke all derived
+  from the spacing base; four shared keylines; optical stroke; `~dark` naming; twelve
+  seed icons defined as primitives so the same data renders and validates
+- `scripts/gradients.py` — native DTCG `gradient` tokens whose stops are role
+  *references*, each carrying the illustration anti-rule; absent gradients are reported
+  as findings rather than invented
+- icon and gradient spreads in the Specimen
 - the **Specimen**: `assets/sketchbook-template.html` + `scripts/build_sketchbook_html.py`,
   landscape A4 at √2 measured off a real reference, with approval and handoff modes
 - `scripts/chart.py` — one threshold-chart primitive, four call sites (contrast, motion,

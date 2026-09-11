@@ -44,6 +44,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import chart as chartlib  # noqa: E402
+import gradients as gradlib  # noqa: E402
+import icons as iconlib  # noqa: E402
 import contrast as contrastlib  # noqa: E402
 
 TEMPLATE = HERE.parent / "assets" / "sketchbook-template.html"
@@ -153,6 +155,45 @@ def type_canvas(steps: list[dict]) -> str:
     return "".join(rows)
 
 
+def icons_canvas(c: dict) -> str:
+    """Seeds at the design size, one at a reduced size to show optical stroke, and the
+    keylines they were drawn against — the system, not a contact sheet."""
+    system = iconlib.IconSystem(base=c.get("base", 4))
+    names = c.get("names") or list(iconlib.SEEDS)
+    cells = "".join(
+        f'<div class="icon-cell">{iconlib.render(n, system=system)}'
+        f'<div class="icon-name">{esc(iconlib.naming(n))}</div>'
+        f'<div class="icon-key">{esc(iconlib.SEEDS[n]["keyline"])}</div></div>'
+        for n in names if n in iconlib.SEEDS
+    )
+    small = "".join(
+        f'<div class="icon-cell">{iconlib.render("search", size=px, system=system)}'
+        f'<div class="icon-key">{px:g}px · stroke {system.optical_stroke(px):g}</div></div>'
+        for px in (system.grid, system.grid * 2 / 3, system.grid / 2)
+    )
+    return (f'<div class="icon-grid">{cells}</div>'
+            f'<p class="eyebrow" style="margin-top:1.1rem">Optische Grösse</p>'
+            f'<div class="icon-grid">{small}</div>')
+
+
+def gradient_canvas(c: dict) -> str:
+    """Derived gradients, each shown as the real blend beside the roles it came from."""
+    roles = c["roles"]
+    derived = gradlib.derive(roles)
+    if not derived:
+        return '<p class="empty">Keine Rolle stützt einen Verlauf. Das ist ein Befund.</p>'
+    cards = []
+    for name, tok in derived.items():
+        ends = [roles[st["color"].strip("{}").split(".", 1)[-1]] for st in tok["$value"]]
+        chain = " → ".join(st["color"].strip("{}").split(".", 1)[-1] for st in tok["$value"])
+        cards.append(
+            f'<div class="grad"><div class="grad-sw" style="background:linear-gradient('
+            f'90deg,{ends[0]},{ends[-1]})"></div>'
+            f'<div class="nm">{esc(name)}</div><div class="vl">{esc(chain)}</div></div>'
+        )
+    return f'<div class="grads">{"".join(cards)}</div>'
+
+
 def states_canvas(states: list[dict]) -> str:
     cells = []
     for s in states:
@@ -192,6 +233,10 @@ def build(data: dict, mode: str = "approval") -> str:
             canvas = type_canvas(c["steps"])
         elif kind == "states":
             canvas = states_canvas(c["states"])
+        elif kind == "icons":
+            canvas = icons_canvas(c)
+        elif kind == "gradient":
+            canvas = gradient_canvas(c)
         elif kind == "contrast":
             # Computed here, never supplied. A hand-typed ratio in a fixture is exactly
             # the "asserted rather than computed" defect this spread exists to expose,

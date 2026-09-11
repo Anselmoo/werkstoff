@@ -1,5 +1,5 @@
 {
-  "_why": "Committed demo data for the Specimen, so the screenshot in the README is reproducible. It carries a deliberately failing system rather than a clean one: the dominant action colour clears AA only at large sizes, one motion duration sits past the Doherty threshold, one spacing step is off the grid, and one ANMERKUNG runs past its character budget with nothing structured to draw. A demo in which nothing is wrong demonstrates nothing.",
+  "_why": "Committed demo data for the Specimen, so the screenshot in the README is reproducible. It carries a deliberately failing system rather than a clean one: the dominant action colour clears AA only at large sizes, one motion duration sits past the Doherty threshold, one spacing step is off the grid, one ANMERKUNG runs past its character budget with nothing structured to draw, and the icon and gradient spreads show the SYSTEM (grid, keylines, optical stroke, derived stops) rather than a contact sheet. A demo in which nothing is wrong demonstrates nothing.",
   "system": "Tennisschule — Neues Designkonzept",
   "kicker": "Sketchbook — Neues Designkonzept",
   "footerLabel": "Beispielprojekt — Design Sketchbook",
@@ -105,6 +105,61 @@
       ],
       "observation": "Haarlinie ist als Trennlinie gedacht und nicht als Text. Bei 1,20:1 ist das eine Regel, keine Beobachtung.",
       "snippet": "/* body text needs >= 4.5:1 */"
+    },
+    {
+      "title": "Icon-System",
+      "canvas": {
+        "kind": "icons",
+        "base": 4
+      },
+      "notes": [
+        {
+          "pin": true,
+          "text": "24er Raster, 20er Live-Fläche, Strich 2 — abgeleitet aus der Basis 4, nicht gesetzt.",
+          "rule": "Jedes Icon füllt eine der vier Keylines",
+          "antiRule": "ein Icon, das in keiner Keyline sitzt, liest sich neben seinen Nachbarn anders gross"
+        },
+        {
+          "pin": true,
+          "text": "Icons stehen nie allein.",
+          "antiRule": "ein Icon ohne Label als einzige Bedeutung"
+        },
+        {
+          "text": "Die Wortmarke gehört nicht dazu: ein Logo wird einmal gezeichnet, ein Icon-Set wird in vielen Grössen gerendert.",
+          "antiRule": "die Logo-Geometrie auf Icons übertragen"
+        }
+      ],
+      "observation": "Zwölf Saatkörner, keine Bibliothek. Die Wachstumsregel ist das Lieferobjekt — bis ein eigenes Set existiert, wird ein offenes Set vollständig übernommen, nie zwei gemischt.",
+      "snippet": "python3 scripts/icons.py --sprite   # 12 seeds, checked against the grid"
+    },
+    {
+      "title": "Verläufe",
+      "canvas": {
+        "kind": "gradient",
+        "roles": {
+          "ink": "#1a1a1a",
+          "paper": "#f4f2f0",
+          "action": "#FA2E1A",
+          "action-deep": "#a81f10"
+        }
+      },
+      "notes": [
+        {
+          "pin": true,
+          "text": "Beide Endpunkte sind Rollen, keine Literale — ändert sich die Rolle, ändert sich der Verlauf mit.",
+          "rule": "Verlaufsstopps referenzieren Rollen",
+          "antiRule": "Hex-Werte direkt in den Verlauf schreiben"
+        },
+        {
+          "text": "Der Aktionsverlauf bleibt in einem Farbton. Zwei Farbtöne wären eine zweite dominante Aktionsfarbe durch die Hintertür.",
+          "antiRule": "Verlauf über zwei Farbfamilien"
+        },
+        {
+          "text": "Nur auf UI-Flächen. In Illustrationen entsteht Ton aus flachen Zonen und deren Überlappung, nicht aus einer Mischung.",
+          "antiRule": "Verlauf in einer Illustrationszone"
+        }
+      ],
+      "observation": "Ein dritter Stopp ist eine Entscheidung, die begründet werden muss — meist sind es zwei Verläufe unter einem Namen."
     },
     {
       "title": "Typografie",
