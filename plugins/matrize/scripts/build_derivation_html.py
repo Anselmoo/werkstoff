@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -62,6 +63,9 @@ MARKERS = {
 }
 
 REQUIRED = ("scope", "verdict", "references", "gradeCOnly", "contrast", "vocabulary")
+# `</style`, in any casing. CSS treats `<\/style` as the same token sequence; HTML does not
+# see a closing tag in it.
+CLOSING_STYLE = re.compile(r"</(style)", re.IGNORECASE)
 MODES = ("light", "dark", "forced")
 
 
@@ -225,9 +229,13 @@ def render(payload: dict, tokens_path: Path) -> str:
     # House convention: the marker is REPLACED by a whole <style> block, rather than
     # sitting inside one. Matching it means a builder and a template from two different
     # plugins stay interchangeable.
-    out = template.replace(
-        TOKENS_MARKER, "<style>\n" + tokens_path.read_text(encoding="utf-8") + "\n</style>", 1
-    )
+    # The Ledger's whole claim is that it has no injection surface because it has no
+    # script. That holds only if the injected CSS cannot close its own element: a token
+    # value is a string the validator does not constrain (fontFamily is "any string"), and
+    # HTML closes a raw-text element case-INSENSITIVELY, so `</StYlE>` would end the block
+    # and everything after it becomes markup.
+    css = CLOSING_STYLE.sub(r"<\\/\1", tokens_path.read_text(encoding="utf-8"))
+    out = template.replace(TOKENS_MARKER, "<style>\n" + css + "\n</style>", 1)
     out = out.replace(MARKERS["verdict"], esc(payload["verdict"]), 1)
     out = out.replace(MARKERS["scope"], esc(payload["scope"]), 1)
     out = out.replace(MARKERS["references"], references_table(payload["references"]), 1)
@@ -333,6 +341,22 @@ def selftest() -> int:
                    build_payload(made_up)["vocabulary"]["unknown"] != []))
     checks.append(("the mode is rendered as a word, not only as a colour",
                    ">light<" in page and 'class="mode' in page))
+
+    # The Ledger's class claim is "no script, therefore no injection surface". That holds
+    # only if the injected token CSS cannot close its own <style> -- and HTML closes a
+    # raw-text element case-insensitively, so a lowercase-only replace is not enough.
+    import tempfile
+    for variant in ("</style>", "</StYlE>", "</SCRIPT></style>"):
+        tf = tempfile.NamedTemporaryFile("w", suffix=".css", delete=False, encoding="utf-8")
+        tf.write(f':root {{ --font-sans: "{variant}<img src=x onerror=alert(1)>"; }}\n')
+        tf.close()
+        injected = render(build_payload(sample), Path(tf.name))
+        # An injected closer shows up as one more </style> than there are <style>.
+        opens = len(re.findall(r"<style\b", injected, re.IGNORECASE))
+        closers = len(re.findall(r"</style\b", injected, re.IGNORECASE))
+        checks.append((f"token CSS cannot close its own <style> ({variant})",
+                       opens == closers))
+        Path(tf.name).unlink()
 
     checks.append(("deterministic", render(build_payload(sample), DEFAULT_TOKENS) == page))
 

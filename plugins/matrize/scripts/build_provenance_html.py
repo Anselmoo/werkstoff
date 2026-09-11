@@ -127,6 +127,13 @@ def dependents(graph: dict, node_id: str) -> set[str]:
     return out
 
 
+def esc(text) -> str:
+    """HTML-escape. The Viewer's CSP permits inline script, so its static markup is the
+    one place in this plugin where an unescaped input-derived string is an XSS payload."""
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
 def verdict(graph: dict) -> str:
     tokens = [n for n in graph["nodes"] if n["kind"] == "token"]
     refs = [n for n in graph["nodes"] if n["kind"] == "reference"]
@@ -196,7 +203,9 @@ def render(doc: dict, scope: str) -> str:
             raise ValueError(f"template has no {marker}")
 
     page = template.replace(TOKENS_MARKER, TOKENS_CSS.read_text(encoding="utf-8"), 1)
-    page = page.replace(VERDICT_MARKER, verdict(graph), 1)
+    # The verdict names a token label taken from the document's own cssName, so it is
+    # input-derived and must be escaped before it becomes markup.
+    page = page.replace(VERDICT_MARKER, esc(verdict(graph)), 1)
     blob = json.dumps(graph, ensure_ascii=False)
     # House convention: escape the delimiters that could close the script element.
     # Barrier two is the template, which renders every label via textContent.
@@ -258,8 +267,50 @@ def selftest() -> int:
     checks.append(("tokens injected", TOKENS_MARKER not in page))
     checks.append(("verdict is in STATIC markup, not written by script",
                    VERDICT_MARKER not in page and "tokens trace to" in page.split("<script>")[0]))
-    checks.append(("script delimiters escaped in the payload", "\\u003c" in page or "<" not in
-                   page.split(DATA_MARKER.split("null")[0])[-1][:0] or True))
+    # This check used to read `... or True`, with its middle term sliced to [:0] as well:
+    # unconditionally true twice over, so deleting the payload escaping entirely still
+    # printed GREEN. It is the defect this repository is named for -- code that looks
+    # correct and cannot fail -- sitting inside the calibration meant to prevent it.
+    # Now: plant the delimiters in a real label and require the escaped form.
+    hostile = json.loads(json.dumps(doc))
+    first_key = next(iter(hostile["color"]))
+    hostile["color"][first_key]["$extensions"][EXT]["cssName"] = "--</script><img src=x>&"
+    hostile_page = render(hostile, "selftest")
+    # render() replaces the WHOLE marker, comment included, so splitting on the comment
+    # finds nothing and silently yields the entire page -- which of course contains raw
+    # `<` from the surrounding HTML. Slice the payload by where it actually begins.
+    start = hostile_page.index('{"nodes"')
+    payload = hostile_page[start:hostile_page.index("</script>", start)]
+    checks.append(("payload: `<` is escaped, and no raw `<` survives in it",
+                   "\\u003c" in payload and "<" not in payload))
+    checks.append(("payload: `>` and `&` are escaped too",
+                   "\\u003e" in payload and "\\u0026" in payload))
+
+    # The verdict is STATIC markup in a page whose CSP allows inline script, so an
+    # input-derived label reaching it unescaped is an XSS payload, not a cosmetic bug.
+    # It must go through render(), not through esc() directly: a first draft asserted on
+    # `esc(verdict(...))` and therefore tested the fix rather than the code -- reverting
+    # the escaping left it green.
+    #
+    # The verdict only names a label when a source has several dependents, so the payload
+    # goes on whichever token the fan-out actually reports.
+    evil = json.loads(json.dumps(doc))
+    fan: dict[str, int] = defaultdict(int)
+    for e in build_graph(evil)["edges"]:
+        if e["kind"] == "alias":
+            fan[e["from"]] += 1
+    shared = max(fan.items(), key=lambda kv: kv[1], default=(None, 0))
+    if shared[1] > 1:
+        target = shared[0].split(":", 1)[-1]
+        node = evil
+        for part in target.split("."):
+            node = node[part]
+        node["$extensions"][EXT]["cssName"] = '--x"><img src=x onerror=alert(1)>'
+        head = render(evil, "selftest").split("<script>")[0]
+        checks.append(("verdict: markup in a shared label cannot form a tag",
+                       "<img" not in head and "&lt;img" in head))
+    else:
+        checks.append(("a shared source exists to carry the verdict payload", False))
 
     for label, ok in checks:
         print(f"  {label:<52} {'ok' if ok else 'FAIL'}")

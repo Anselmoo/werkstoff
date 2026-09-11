@@ -9,8 +9,8 @@ about 1 run in 3, a guard inside a Workflow script gets dispatched about 1 run i
 and a PreToolUse `type: "command"` hook blocks on the first attempt. So the two rules
 that must hold regardless of model cooperation live here and nowhere else.
 
-What it denies — exactly three things
--------------------------------------
+What it denies — exactly four things
+------------------------------------
 1. Any write or edit under ``<root>/references/``. Invariant I1: references are
    read-only. This is how the copyright boundary is carried mechanically instead of by
    good intentions — values and rules may be extracted from a reference, assets may
@@ -20,17 +20,17 @@ What it denies — exactly three things
    ``spread`` choice record is unanswered. An n-proposal portfolio with no forced
    choice is a procrastination machine; the choice is the point of the phase.
 3. A write that introduces a **colour-only categorical encoding** into a file the project
-4. deny a write to ``<root>/system/tokens.json`` whose resulting document contradicts
-   ``references/vocabulary/`` -- a token naming no concept, an unknown concept, the wrong
-   kind, a ``derived``/``property`` term stored as a value, a grade above the dimension's
-   written ceiling, or a contrast record with no appearance mode. An Edit whose result is
-   not parseable JSON is ALLOWED, because a half-written file is not a violation.
-
    has explicitly declared a branded surface (``surfaces:`` in the settings file). Not a
    hue count: measured with ``scripts/cvd.py``, every categorical palette in this
    workshop is below the dichromacy separation floor *including the five-hue scale*, so
    a cap would enforce a safety claim the numbers do not support. What does carry it is
    "colour is never the only channel", and that is decidable.
+
+4. A write to ``<root>/system/tokens.json`` whose resulting document contradicts
+   ``references/vocabulary/`` — a token naming no concept, an unknown one, the wrong
+   kind, a ``derived``/``property`` term stored as a value, a grade above the dimension's
+   written ceiling, or a contrast record with no appearance mode. An Edit whose result is
+   not parseable JSON is ALLOWED: a half-written file is not a violation.
 
    Scope, stated rather than implied: a ``Write`` carries the whole file, so the full
    check runs. An ``Edit`` carries a fragment with no use sites in it, so only the
@@ -186,6 +186,26 @@ def raw_targets(tool_input: dict) -> list[str]:
     return found
 
 
+def lexical_target(cwd: Path, raw: str) -> Path | None:
+    """The path as WRITTEN, normalised without following symlinks.
+
+    ``Path.resolve()`` follows symlinks before any scope check runs, so a symlink planted
+    at ``<root>/references/x.css`` pointing outside the design root resolves to somewhere
+    that is not under ``references/`` — the scope check misses it, while writing through
+    it still changes what reading that reference yields. Every scope test therefore runs
+    against BOTH spellings and denies on either.
+    """
+    if not raw:
+        return None
+    try:
+        candidate = Path(raw)
+        if not candidate.is_absolute():
+            candidate = cwd / candidate
+        return Path(os.path.normpath(str(candidate)))
+    except (OSError, ValueError):
+        return None
+
+
 def resolve_target(cwd: Path, raw: str) -> Path | None:
     if not raw:
         return None
@@ -264,11 +284,13 @@ def colour_only_sites(blob: str, whole_file: bool) -> list[str]:
     palette-index pattern is decidable and the rule-based check is skipped rather than
     guessed at.
     """
-    try:
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
-        import redundancy
-    except Exception:
-        return []          # the detector is unavailable; this rule simply does not apply
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
+    # Deliberately NOT wrapped: an ImportError here means the detector is missing or
+    # broken, which is a different thing from "it ran and found nothing". Swallowing it
+    # returned [] and silently allowed every colour-only write on a declared surface --
+    # a guard that fails OPEN, which is the one shape this hook may not have. The
+    # exception propagates to main()'s fail-closed handler, which denies and says why.
+    import redundancy
     sites = redundancy.audit(blob) if whole_file else redundancy.find_palette_indexing(blob)
     if not whole_file:
         for s in sites:
@@ -348,7 +370,11 @@ def main() -> int:
             return allow()  # not a matrize project — say nothing at all
 
         tool_input = event.get("tool_input") or {}
-        targets = [t for t in (resolve_target(cwd, r) for r in raw_targets(tool_input)) if t]
+        raws = raw_targets(tool_input)
+        # Both spellings: resolved (follows symlinks) and lexical (does not). A scope
+        # check that sees only one of them can be walked around with a symlink.
+        targets = [t for t in (resolve_target(cwd, r) for r in raws) if t]
+        targets += [t for t in (lexical_target(cwd, r) for r in raws) if t]
         if not targets:
             return allow()
 

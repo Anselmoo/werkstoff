@@ -5,9 +5,12 @@ Format
 ------
 Measured off the reference artefact rather than invented: landscape A4 at **root-2**
 (1.414), a 66/34 split between a rounded specimen canvas and an `ANMERKUNGEN` margin,
-numbered callouts in two weights (FILLED pins the artwork, OUTLINED opens the margin
-entry), a tinted observation box for the derived note, and a hairline footer carrying
-`NN / TT — block name`.
+numbered callouts in the OUTLINED margin weight, a tinted observation box for the derived
+note, and a hairline footer carrying `NN / TT — block name`.
+
+The reference also pins the same number onto the artwork as a FILLED circle. That half is
+not emitted — see `render_note` for why — and is named as a gap rather than described here
+as if it worked.
 
 Note the reference uses 1.414, not the 16:10 a generic landscape scaffold assumes. Its
 pages carry /Rotate 90 over a portrait MediaBox, so reading the MediaBox alone says
@@ -38,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -54,6 +58,37 @@ TOKENS = HERE.parent / "assets" / "tokens.css"
 # Character budget per ANMERKUNG. Past this the entry becomes a figure — see the
 # module docstring for why this is a rule rather than a preference.
 NOTE_BUDGET = 240
+
+
+CLOSING_SCRIPT = re.compile(r"</(script)", re.IGNORECASE)
+# A CSS colour as a design system emits one. Anything else is input pretending to be one.
+SAFE_COLOUR = re.compile(
+    r"^(?:#[0-9a-fA-F]{3,8}"                                   # hex
+    r"|[a-zA-Z][\w-]{0,31}"                                    # a named colour or keyword
+    r"|(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch|color)"        # a functional notation,
+    r"\([^()<>\"'\\]{0,120}\))$"                               # with no quote or bracket
+)
+
+
+def num(value, field: str) -> str:
+    """A finite number, or a refusal. These land inside a style attribute, where a string
+    such as `12px" onmouseover="...` breaks out of the attribute and adds markup."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{field} must be a number, got {value!r}") from None
+    if out != out or out in (float("inf"), float("-inf")):
+        raise ValueError(f"{field} must be finite, got {value!r}")
+    return f"{out:g}"
+
+
+def colour(value) -> str:
+    """A colour literal, or a refusal. Same attribute-escape hazard as `num`, and the
+    values come from the input document's own roles."""
+    text = str(value).strip()
+    if not SAFE_COLOUR.match(text):
+        raise ValueError(f"not a CSS colour: {value!r}")
+    return text
 
 
 def esc(text) -> str:
@@ -94,7 +129,7 @@ def render_note(note: dict, index: int | None) -> str:
     # style and no emitter, because the canvas is addressed by key rather than authored as
     # SVG here, so there is nowhere to put coordinates. Recorded as a gap rather than left
     # as an `if False` branch that reads like a feature.
-    num = f'<span class="note-num">{index}</span>' if index else ""
+    badge = f'<span class="note-num">{index}</span>' if index else ""
 
     over = len(text) > NOTE_BUDGET
     if over and rule and anti:
@@ -108,7 +143,7 @@ def render_note(note: dict, index: int | None) -> str:
         inner = f"<p>{esc(text)}</p>"
         if anti:
             inner += f'<span class="anti"><b>nicht:</b> {esc(anti)}</span>'
-    return f'<div class="note">{num}<div>{inner}</div></div>'
+    return f'<div class="note">{badge}<div>{inner}</div></div>'
 
 
 def spread(kind: str, kicker: str, title: str, canvas: str, notes: list[dict],
@@ -154,7 +189,8 @@ def type_canvas(steps: list[dict]) -> str:
     for s in steps:
         rows.append(
             f'<div class="row"><p class="eyebrow">{esc(s["label"])}</p>'
-            f'<div style="font-size:{s["px"]}px;line-height:1.15">{esc(s["specimen"])}</div></div>'
+            f'<div style="font-size:{num(s["px"], "px")}px;line-height:1.15">'
+            f'{esc(s["specimen"])}</div></div>'
         )
     return "".join(rows)
 
@@ -192,7 +228,7 @@ def gradient_canvas(c: dict) -> str:
         chain = " → ".join(st["color"].strip("{}").split(".", 1)[-1] for st in tok["$value"])
         cards.append(
             f'<div class="grad"><div class="grad-sw" style="background:linear-gradient('
-            f'90deg,{ends[0]},{ends[-1]})"></div>'
+            f'90deg,{colour(ends[0])},{colour(ends[-1])})"></div>'
             f'<div class="nm">{esc(name)}</div><div class="vl">{esc(chain)}</div></div>'
         )
     return f'<div class="grads">{"".join(cards)}</div>'
@@ -293,8 +329,10 @@ def build(data: dict, mode: str = "approval") -> str:
                 if handoff else "")
     md = ""
     if handoff and data.get("markdown"):
+        # HTML closes a raw-text element case-INSENSITIVELY, so a case-sensitive replace
+        # lets `</SCRIPT>` terminate md-source and start injecting markup.
         md = ('<script type="text/plain" id="md-source">'
-              + data["markdown"].replace("</script", "<\\/script") + "</script>")
+              + CLOSING_SCRIPT.sub(r"<\\/\1", data["markdown"]) + "</script>")
 
     page = template.replace("<!--__TITLE__-->", esc(f"{system} — Sketchbook"))
     page = page.replace("<!--__DESIGN_TOKENS__-->", "")   # the Specimen carries its own
@@ -373,6 +411,79 @@ def selftest() -> int:
     checks.append(("under budget -> plain prose", "<figure" not in render_note(short, 1)))
     checks.append(("markup in a note is escaped",
                    "&lt;script&gt;" in render_note({"text": "<script>"}, 1)))
+
+    # --- the three attribute/raw-text escapes, each asserted on the production path ---
+    # A style attribute is not an escaping-free zone just because the value looks numeric:
+    # `12px" onmouseover="...` closes the attribute and adds markup.
+    # These must be asserted through build(), not by calling the validators directly:
+    # a first draft tested num()/colour() in isolation and stayed green when the call
+    # sites were reverted -- testing the fix instead of the code.
+    # The in-module DEMO carries only a colour spread; the committed fixture carries all
+    # eight kinds, so the poisoned canvases have somewhere to live.
+    fixture_path = HERE / "fixtures" / "sketchbook-demo.json"
+    base_doc = (json.loads(fixture_path.read_text(encoding="utf-8"))
+                if fixture_path.exists() else DEMO)
+
+    def hostile_build(mutate) -> str | None:
+        """The page build() produces for a poisoned document, or None if it refused."""
+        doc = json.loads(json.dumps(base_doc))
+        if not mutate(doc):
+            return "NO SUCH SPREAD"
+        try:
+            return build(doc)
+        except (ValueError, KeyError):
+            return None
+
+    def poison_type(doc) -> bool:
+        for sp in doc.get("spreads", []):
+            c = sp.get("canvas", {})
+            if c.get("kind") == "type" and c.get("steps"):
+                c["steps"][0]["px"] = '12px" onmouseover="alert(1)'
+                return True
+        return False
+
+    def poison_gradient(doc) -> bool:
+        for sp in doc.get("spreads", []):
+            c = sp.get("canvas", {})
+            if c.get("kind") == "gradient" and c.get("roles"):
+                first = next(iter(c["roles"]))
+                c["roles"][first] = '#fff" onmouseover="alert(1)'
+                return True
+        return False
+
+    for label_, mutate in (("font size", poison_type), ("gradient endpoint", poison_gradient)):
+        got = hostile_build(mutate)
+        if got == "NO SUCH SPREAD":
+            checks.append((f"the demo has a spread carrying a {label_}", False))
+        else:
+            # The marker is the event-handler name reaching the page at all. A first
+            # draft searched for `onmouseover="alert(1)"` WITH a closing quote, which the
+            # payload never produces (`...alert(1)px`), so the check passed on output
+            # that was plainly injected.
+            checks.append((f"a poisoned {label_} is refused, not interpolated",
+                           got is None or "onmouseover" not in got))
+
+    checks.append(("a real number still passes", num(13.5, "px") == "13.5"))
+    checks.append(("real colours still pass",
+                   colour("#FA2E1A") == "#FA2E1A"
+                   and colour("oklch(0.7 0.1 20)").startswith("oklch")))
+
+    # HTML closes a raw-text element case-insensitively, so a case-sensitive replace lets
+    # `</SCRIPT>` end md-source early and start injecting.
+    for variant in ("</script>", "</SCRIPT>", "</ScRiPt >"):
+        hostile = json.loads(json.dumps(DEMO))
+        hostile["markdown"] = f"# notes\n{variant}<img src=x onerror=alert(1)>"
+        out = build(hostile, mode="handoff")
+        body = out.split('id="md-source">', 1)[-1]
+        embedded = body.split("</script>", 1)[0]
+        # No `or True` here, and no fallback disjunct that cannot fail: the embedded
+        # text must contain NO closing script tag in any casing, and must carry the
+        # neutralised form instead.
+        checks.append((f"md-source carries no closing script tag ({variant})",
+                       re.search(r"</script", embedded, re.IGNORECASE) is None))
+        checks.append((f"  and the closer is neutralised instead ({variant})",
+                       re.search(r"<\\/script", embedded, re.IGNORECASE) is not None
+                       and "<img src=x" in embedded))
 
     for label, ok in checks:
         print(f"  {label:<48} {'ok' if ok else 'FAIL'}")

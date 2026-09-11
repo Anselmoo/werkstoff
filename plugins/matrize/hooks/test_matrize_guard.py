@@ -12,6 +12,7 @@ Run: python3 plugins/matrize/hooks/test_matrize_guard.py
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -140,6 +141,47 @@ def main() -> int:
         (corrupt / ".design/system/spread-choice.json").write_text("{not json")
         code, out = run(corrupt, ".design/system/tokens.json")
         case("rule2: unparseable record denies (not 'no decision made')", DENY, code, out)
+
+        # --- symlink scope: resolve() follows links, the scope check must not ---
+        # A symlink planted inside references/ that points outside the design root
+        # resolves to a path that is not under references/. Writing through it still
+        # changes what reading that reference yields, so it must deny.
+        sym = design_repo(tmp / "sym")
+        outside = tmp / "sym-outside.css"
+        outside.write_text(":root{}\n")
+        (sym / ".design/references/hig/linked.css").symlink_to(outside)
+        code, out = run(sym, ".design/references/hig/linked.css")
+        case("symlink: a link inside references/ pointing out is still denied",
+             DENY, code, out, "read-only")
+        code, out = run(sym, "sym-outside.css")
+        case("symlink: writing the TARGET directly, outside the root, is allowed",
+             ALLOW, code, out)
+
+        # --- fail closed: a detector that will not import must not disable rule 3 ---
+        # Build a copy of the guard whose sibling scripts/ has a broken redundancy.py.
+        broken = tmp / "brokenplugin"
+        (broken / "hooks").mkdir(parents=True)
+        (broken / "scripts").mkdir(parents=True)
+        shutil.copy(GUARD, broken / "hooks" / "matrize_guard.py")
+        (broken / "scripts" / "redundancy.py").write_text(
+            "raise ImportError('detector deliberately broken for calibration')\n")
+        br = design_repo(tmp / "brokenrepo")
+        (br / ".claude").mkdir(parents=True, exist_ok=True)
+        (br / ".claude/matrize.local.md").write_text(
+            "---\nroot: .design\nsurfaces: docs/**/*.html\n---\n")
+        (br / "docs").mkdir(parents=True, exist_ok=True)
+        colour_only = ("<style>.sw-1{background:#5b7fa6}.sw-2{background:#7a9e6b}"
+                       ".sw-3{background:#c98f4a}</style>\n" + "\n" * 40 +
+                       '<td class="sw-1"></td><td class="sw-2"></td>'
+                       '<td class="sw-3"></td>')
+        event = json.dumps({"cwd": str(br), "tool_name": "Write",
+                            "tool_input": {"file_path": "docs/chart.html",
+                                           "content": colour_only}})
+        proc = subprocess.run([sys.executable, str(broken / "hooks" / "matrize_guard.py")],
+                              input=event, capture_output=True, text=True,
+                              env={"PATH": "/usr/bin:/bin"})
+        case("fail closed: an unimportable detector denies rather than allowing",
+             DENY, proc.returncode, proc.stdout + proc.stderr, "guard failed")
 
         # --- rule 4: the vocabulary decides what may be a token ---------------
         # The guard's scope claim is that it polices ONE file. Every case below is
