@@ -14,6 +14,9 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `emit --target provenance`: `assets/provenance-viewer.html` +
+  `scripts/build_provenance_html.py` — reference → card → token, read from written edges
+  only, with `--paranoid` re-deriving it by value-matching to show the disagreement
 - `scripts/icons.py` — an icon *system*: grid, live area, padding and stroke all derived
   from the spacing base; four shared keylines; optical stroke; `~dark` naming; twelve
   seed icons defined as primitives so the same data renders and validates

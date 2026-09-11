@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<title>matrize — provenance graph</title>
+<style>
+<!--__DESIGN_TOKENS__-->
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: var(--font-sans); font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+header {
+  min-height: var(--header-h); display: flex; align-items: center; gap: var(--space-4);
+  padding: 0 var(--space-4); border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--bg); z-index: 5;
+}
+h1 { font-size: 1.05rem; font-weight: 600; margin: 0; }
+.sub { color: var(--muted); font-size: .82rem; margin: 0; }
+.layout { display: grid; grid-template-columns: 1fr 340px; min-height: calc(100vh - var(--header-h)); }
+.main { padding: var(--space-4); overflow-x: auto; }
+.sidebar {
+  border-left: 1px solid var(--border); padding: var(--space-4);
+  position: sticky; top: var(--header-h); align-self: start; max-height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+}
+h2 {
+  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; margin: 0 0 var(--space-2);
+}
+.verdict {
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  background: var(--panel); border-radius: var(--radius-panel);
+  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-3); font-size: 1rem;
+}
+.note { color: var(--muted); font-size: .82rem; margin: var(--space-2) 0 0; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--muted);
+  font-size: .8rem; margin: 0 0 var(--space-3); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { width: 22px; height: 0; border-top: 2px solid var(--muted); display: inline-block; }
+.key.c { border-top-style: dashed; border-top-color: var(--status-bad, var(--cat-5)); }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dot.ref { background: var(--cat-1); }
+.dot.card { background: var(--cat-4); }
+.dot.token { background: var(--cat-2); }
+
+svg { display: block; }
+.node rect { cursor: pointer; }
+.node text { font-size: 11px; fill: var(--text); pointer-events: none; }
+.node .sub { font-size: 9px; fill: var(--muted); }
+.n-ref rect { fill: var(--panel-2); stroke: var(--cat-1); }
+.n-card rect { fill: var(--panel-2); stroke: var(--cat-4); }
+.n-token rect { fill: var(--panel-2); stroke: var(--cat-2); }
+.node.dim { opacity: .22; }
+.node.on rect { stroke-width: 2.5; fill: var(--panel); }
+.edge { stroke: var(--border); stroke-width: 1.4; fill: none; }
+.edge.gC { stroke: var(--status-bad, var(--cat-5)); stroke-dasharray: 4,3; }
+.edge.alias { stroke: var(--cat-3); }
+.edge.dim { opacity: .12; }
+.edge.on { stroke-width: 2.4; stroke: var(--accent); }
+
+.chain { margin: 0; padding: 0; list-style: none; font-size: .84rem; }
+.chain li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.chain .k { color: var(--muted); font-size: .72rem; text-transform: uppercase;
+  letter-spacing: .06em; display: block; }
+.grade { font-weight: 600; }
+.gA { color: var(--status-good, var(--cat-2)); }
+.gB { color: var(--cat-4); }
+.gC { color: var(--status-bad, var(--cat-5)); }
+.empty { color: var(--muted); font-size: .84rem; }
+.pill { display: inline-block; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 1px 6px; font-size: .72rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>matrize — provenance graph</h1>
+  <p class="sub" id="scope">Not generated yet.</p>
+</header>
+
+<div class="layout">
+  <div class="main">
+    <p class="verdict" id="verdict"><!--__VERDICT__--></p>
+
+    <p class="legend">
+      <span><i class="dot ref"></i> reference</span>
+      <span><i class="dot card"></i> Design Card</span>
+      <span><i class="dot token"></i> token</span>
+      <span><i class="key"></i> edge, grade A or B</span>
+      <span><i class="key c"></i> grade C — direction only, drawn dashed</span>
+      <span>click a node: ancestors and dependents both light up</span>
+    </p>
+
+    <p class="note">This is the one interactive artefact matrize emits. Everything else is
+      print-first, because an approval artefact ends as a PDF in front of someone who does
+      not get a localhost URL. A graph earns the exception: it has no readable static
+      layout, and the reader arrives with a target question — <em>why is this token this
+      value, and what breaks if I change it?</em></p>
+
+    <div id="graph"></div>
+  </div>
+
+  <aside class="sidebar">
+    <h2>Selected</h2>
+    <div id="detail"><p class="empty">Click a node to trace it backwards to its
+      reference and forwards to everything that depends on it.</p></div>
+  </aside>
+</div>
+
+<script>
+var DATA = /*__PROVENANCE_DATA__*/ null;
+(function () {
+  var host = document.getElementById('graph');
+  var detail = document.getElementById('detail');
+
+  if (!DATA || !DATA.nodes || !DATA.nodes.length) {
+    document.getElementById('scope').textContent =
+      'Could not read the provenance payload. Re-run build_provenance_html.py to regenerate this graph.';
+    host.innerHTML = '';
+    var p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'No graph to draw.';
+    host.appendChild(p);
+    return;
+  }
+  document.getElementById('scope').textContent = DATA.scope;
+
+  var COL = { reference: 0, card: 1, token: 2 };
+  var W = 250, H = 34, GAPX = 150, GAPY = 12, PADX = 12, PADY = 12;
+  var byCol = [[], [], []];
+  DATA.nodes.forEach(function (n) { byCol[COL[n.kind]].push(n); });
+  var pos = {};
+  byCol.forEach(function (list, ci) {
+    list.forEach(function (n, i) {
+      pos[n.id] = { x: PADX + ci * (W + GAPX), y: PADY + i * (H + GAPY) };
+    });
+  });
+  var rows = Math.max(byCol[0].length, byCol[1].length, byCol[2].length);
+  var width = PADX * 2 + 3 * W + 2 * GAPX + 60;   // room for the alias bow
+  var height = PADY * 2 + rows * (H + GAPY);
+
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) { e.setAttribute(k, attrs[k]); }
+    return e;
+  }
+
+  var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height, width: width, height: height });
+  var edgeEls = [], nodeEls = {};
+
+  DATA.edges.forEach(function (e) {
+    var a = pos[e.from], b = pos[e.to];
+    if (!a || !b) { return; }
+    var d;
+    if (a.x === b.x) {
+      // Same column — an alias points token->token. Left-to-right routing would draw it
+      // backwards as a stub, so bow it out to the right of the column and back.
+      var bow = a.x + W + 46;
+      d = 'M' + (a.x + W) + ' ' + (a.y + H / 2) +
+          ' C' + bow + ' ' + (a.y + H / 2) + ' ' + bow + ' ' + (b.y + H / 2) +
+          ' ' + (b.x + W) + ' ' + (b.y + H / 2);
+    } else {
+      var x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2;
+      var mid = (x1 + x2) / 2;
+      d = 'M' + x1 + ' ' + y1 + ' C' + mid + ' ' + y1 + ' ' + mid + ' ' + y2 + ' ' + x2 + ' ' + y2;
+    }
+    var path = el('path', {
+      d: d,
+      'class': 'edge ' + (e.kind === 'alias' ? 'alias' : '') + ' g' + e.grade
+    });
+    path.__e = e;
+    edgeEls.push(path);
+    svg.appendChild(path);
+  });
+
+  DATA.nodes.forEach(function (n) {
+    var p = pos[n.id];
+    var g = el('g', { 'class': 'node n-' + n.kind, transform: 'translate(' + p.x + ',' + p.y + ')' });
+    g.appendChild(el('rect', { width: W, height: H, rx: 6 }));
+    var t = el('text', { x: 10, y: 15 });
+    t.textContent = n.label;              // textContent, never innerHTML
+    g.appendChild(t);
+    var s = el('text', { x: 10, y: 27, 'class': 'sub' });
+    s.textContent = n.sub || '';
+    g.appendChild(s);
+    g.addEventListener('click', function () { select(n.id); });
+    nodeEls[n.id] = g;
+    svg.appendChild(g);
+  });
+  host.appendChild(svg);
+
+  function walk(start, dir) {
+    var seen = {}, queue = [start], out = { nodes: {}, edges: [] };
+    while (queue.length) {
+      var cur = queue.shift();
+      if (seen[cur]) { continue; }
+      seen[cur] = true;
+      out.nodes[cur] = true;
+      DATA.edges.forEach(function (e) {
+        var a = dir === 'back' ? e.to : e.from;
+        var b = dir === 'back' ? e.from : e.to;
+        if (a === cur) { out.edges.push(e); queue.push(b); }
+      });
+    }
+    return out;
+  }
+
+  function select(id) {
+    var back = walk(id, 'back'), fwd = walk(id, 'fwd');
+    var live = {};
+    Object.keys(back.nodes).forEach(function (k) { live[k] = true; });
+    Object.keys(fwd.nodes).forEach(function (k) { live[k] = true; });
+    var liveEdges = back.edges.concat(fwd.edges);
+
+    Object.keys(nodeEls).forEach(function (k) {
+      nodeEls[k].classList.toggle('dim', !live[k]);
+      nodeEls[k].classList.toggle('on', k === id);
+    });
+    edgeEls.forEach(function (p) {
+      var on = liveEdges.indexOf(p.__e) !== -1;
+      p.classList.toggle('dim', !on);
+      p.classList.toggle('on', on);
+    });
+    render(id, back, fwd);
+  }
+
+  function render(id, back, fwd) {
+    var node = DATA.nodes.filter(function (n) { return n.id === id; })[0];
+    detail.textContent = '';
+    var h = document.createElement('p');
+    h.innerHTML = '';
+    h.textContent = node.label;
+    h.style.fontWeight = '600';
+    detail.appendChild(h);
+    if (node.sub) {
+      var sp = document.createElement('p');
+      sp.className = 'note';
+      sp.textContent = node.sub;
+      detail.appendChild(sp);
+    }
+
+    function list(title, items, empty) {
+      var h2 = document.createElement('h2');
+      h2.textContent = title;
+      h2.style.marginTop = '14px';
+      detail.appendChild(h2);
+      if (!items.length) {
+        var e = document.createElement('p');
+        e.className = 'empty';
+        e.textContent = empty;
+        detail.appendChild(e);
+        return;
+      }
+      var ul = document.createElement('ul');
+      ul.className = 'chain';
+      items.forEach(function (it) {
+        var li = document.createElement('li');
+        var k = document.createElement('span');
+        k.className = 'k';
+        k.textContent = it.kind;
+        li.appendChild(k);
+        li.appendChild(document.createTextNode(it.label));
+        if (it.grade) {
+          var g = document.createElement('span');
+          g.className = 'grade g' + it.grade;
+          g.textContent = '  grade ' + it.grade;
+          li.appendChild(g);
+        }
+        ul.appendChild(li);
+      });
+      detail.appendChild(ul);
+    }
+
+    function chain(set, self) {
+      return Object.keys(set.nodes).filter(function (k) { return k !== self; })
+        .map(function (k) {
+          var n = DATA.nodes.filter(function (x) { return x.id === k; })[0];
+          var e = set.edges.filter(function (x) { return x.from === k || x.to === k; })[0];
+          return { kind: n.kind, label: n.label, grade: e ? e.grade : '' };
+        });
+    }
+
+    list('Came from', chain(back, id), 'Nothing upstream — this is a source.');
+    list('What depends on it', chain(fwd, id),
+      'Nothing downstream. Changing it breaks nothing else.');
+  }
+})();
+</script>
+</body>
+</html>

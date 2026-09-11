@@ -249,6 +249,45 @@ The demo data is committed and deliberately shows a **failing** system: the acti
 clears AA only at large sizes, one duration sits past the Doherty threshold, one spacing
 step is off the grid, and one note runs past its budget with nothing to draw.
 
+## The provenance graph — the one interactive artefact
+
+![A dark three-column graph: one reference node on the left, a column of Design Cards,
+and a column of tokens, with curved edges between them and a sidebar for the selected
+node. The verdict reads: 50 tokens trace to 1 reference, and 3 roles share --silica, so
+changing it changes 3 things, not one.](assets/provenance-viewer-screenshot.jpg)
+
+Everything else matrize emits is print-first, because an approval artefact ends as a PDF
+in front of someone who does not get a `localhost` URL. A graph earns the exception: it
+has no readable static layout, and the reader arrives with a target question rather than
+reading it end to end — *why is this token this value, and what breaks if I change it?*
+Click any node and both answers light up at once.
+
+```bash
+python3 plugins/matrize/scripts/retrofit_css.py tools/design-tokens/tokens.css --out /tmp/tokens.json
+python3 plugins/matrize/scripts/build_provenance_html.py --tokens /tmp/tokens.json --out /tmp/prov.html
+```
+
+**Edges are read, never inferred.** They come from each token's written `edge` field and
+from DTCG `{ref}` aliases. Nothing here matches values across files — and `--paranoid`
+makes that refusal testable by re-deriving the graph the wrong way and reporting the
+disagreement. On this repository's own tokens it finds four:
+
+```
+value-matching would MERGE 2 distinct roles that share one value: radius.sm, space.1
+value-matching would MERGE 2 distinct roles that share one value: radius.panel, space.2
+value-matching would COLLAPSE 2 roles aliasing color.ferria into one node …
+value-matching would COLLAPSE 3 roles aliasing color.silica into one node: color.accent,
+  color.cat-1, color.diverging-cool — so "what breaks if I change color.silica?" would
+  answer 1 instead of 3
+```
+
+That is the whole argument for writing edges rather than reconstructing them, measured on
+real material instead of asserted. The selftest asserts both cases against the actual
+file: `4px` must stay two nodes, and `--silica` must show three dependents.
+
+Grade travels with the edge, so a grade-C origin is drawn dashed — reusing the `4,3` dash
+that already means *unproven* elsewhere in this workshop.
+
 ## The icon system, and gradients
 
 ![A sketchbook spread titled Icon-System showing twelve stroke icons on a 24 grid with
