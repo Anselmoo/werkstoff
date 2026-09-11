@@ -9,6 +9,20 @@ constraint needing an anti-rule; `property` — observed, not stored.
 
 ---
 
+## Contents
+
+- [Time](#time)
+- [Curves](#curves)
+- [What actually moves](#what-actually-moves)
+- [Patterns](#patterns)
+- [Principles worth encoding as rules](#principles-worth-encoding-as-rules)
+- [Accessibility](#accessibility)
+- [Delivery](#delivery)
+- [Frequently confused pairs](#frequently-confused-pairs)
+- [Decoding notes](#decoding-notes)
+
+---
+
 ## Time
 
 | Term | What it names | Kind |

@@ -260,5 +260,17 @@ def selftest() -> int:
     return 1 if bad else 0
 
 
+def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n")[0])
+    ap.add_argument("--selftest", action="store_true",
+                    help="assert the thresholds discriminate, and that log beats linear")
+    args = ap.parse_args()
+    if args.selftest:
+        return selftest()
+    ap.print_help()
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(selftest() if "--selftest" in sys.argv else (print(__doc__) or 0))
+    sys.exit(main())

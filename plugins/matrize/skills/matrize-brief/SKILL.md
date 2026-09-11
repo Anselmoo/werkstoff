@@ -34,6 +34,10 @@ delivery chain does.
 6. **Coverage** — state explicitly which of the six required areas (states, contrast,
    motion, inverse mode, content rules, provenance) the system covers and which it does
    not. A system missing any of them is incomplete, and this is where that is said.
+   Check the asset classes too, against
+   `${CLAUDE_PLUGIN_ROOT}/references/vocabulary/visual-asset-taxonomy.md` — three are
+   missing from almost every design system and almost always needed: **empty state**,
+   **error state**, and **Open Graph image**. Treat them as mandatory coverage.
 
 ## Phase entry criteria are gates, not aspirations
 

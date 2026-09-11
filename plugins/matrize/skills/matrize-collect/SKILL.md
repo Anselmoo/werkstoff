@@ -57,6 +57,28 @@ If a reference genuinely needs replacing, collect it again as a new slug with it
 provenance. Do not reach for the escape hatch to edit one in place — a reference that
 changed is a different reference, and the record should say so.
 
+## Step 4b — classify what each reference can actually yield
+
+Read `${CLAUDE_PLUGIN_ROOT}/references/vocabulary/visual-asset-taxonomy.md` and record,
+per reference, which asset classes it contains. Its **Origin** column is the one that
+bounds every promise downstream:
+
+| origin | what this plugin can deliver |
+|---|---|
+| `derivable` | the asset itself, completely |
+| `drawn` | a *system* — grid, keylines, stroke, naming — plus a seed set and a growth rule |
+| `captured` | capture rules: frame, chrome, state, redaction. Never the asset |
+| `shot` | direction: subject, colour temperature, crop, scrim level. Never the asset |
+
+So a request for a complete icon library is a promise that cannot be kept, and saying so
+at intake is cheaper than discovering it at emit. Record the classes present; `brief`
+reports any the project needs and no reference supplies.
+
+The taxonomy also names its own limit, which belongs in the provenance record: construction
+rules are extractable from a reference — layer count, offset amount, lightness step, shadow
+radius — while **the artwork is not**, and layer geometry measured off a screenshot is
+grade-C evidence that may not set a token alone.
+
 ## Step 5 — report
 
 Print one table: slug, what it is, reliability, rights, and the single consequence of

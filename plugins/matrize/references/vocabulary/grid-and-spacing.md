@@ -16,6 +16,19 @@ Vendor-specific terms are attributed inline.
 
 ---
 
+## Contents
+
+- [The scale itself](#the-scale-itself)
+- [Page and layout grid](#page-and-layout-grid)
+- [Vertical structure](#vertical-structure)
+- [Responsive behaviour](#responsive-behaviour)
+- [Box-level spacing](#box-level-spacing)
+- [Depth](#depth)
+- [Frequently confused pairs](#frequently-confused-pairs)
+- [Decoding notes](#decoding-notes)
+
+---
+
 ## The scale itself
 
 | Term | What it names | Kind |

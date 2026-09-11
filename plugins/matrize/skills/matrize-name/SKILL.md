@@ -44,6 +44,31 @@ the anti-rule too.
 
 "The reference does it this way" is not a purpose. It is the absence of one.
 
+## Use the controlled vocabulary, and its kind legend
+
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/` holds one file per dimension naming the terms
+a design system actually uses — and, more usefully, the pairs people confuse. Adopt those
+terms rather than coining near-synonyms: a lexicon that calls a gutter a gap has invented
+a collision the vocabulary already warns about.
+
+Each term carries a **kind**, and the kind decides where it belongs. This is a routing
+rule, not a note:
+
+| kind | where it goes |
+|---|---|
+| `token` | a stored value — `tokens.json` |
+| `derived` | computed from tokens; **never stored separately** |
+| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** |
+| `property` | observed or measured; not stored at all |
+
+So a `rule`-kind term with no anti-rule is not an incomplete entry, it is a
+mis-classified one. And a `derived` or `property` term appearing in `tokens.json` is a
+value that will drift from the thing it was derived from.
+
+Two collisions the vocabulary names, worth checking every lexicon against: **margin** is
+both a page concept and a box concept — if both appear, rename one — and **gutter** is a
+property of the grid definition while **gap** is the CSS property realising it.
+
 ## Name in roles, not in appearances
 
 A name that describes appearance dies the first time the appearance changes. `--ink`
@@ -84,3 +109,5 @@ named because its evidence was direction-only.
 - `references/principle-vocabulary.md` — the named principles a `purpose` may cite, and
   the anti-copying test. Mandatory read before drafting any entry.
 - `references/design-card-schema.md` — what the cards being interpreted look like.
+- `references/vocabulary/*.md` — the controlled vocabulary and its kind legend, which
+  routes every term to tokens, the lexicon, or neither. Mandatory read before naming.

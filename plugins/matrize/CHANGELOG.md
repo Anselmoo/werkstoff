@@ -14,6 +14,16 @@ All notable changes to the `matrize` plugin are documented here.
   aliasing one source into a single node
 
 ### Added
+- `references/vocabulary/` — the domain layer, authored by the plugin's owner: one file
+  per dimension (colour, grid and spacing, typography, motion, icons) plus
+  `visual-asset-taxonomy.md`, the parent taxonomy. Each carries a **kind** per term
+  (`token` / `derived` / `rule` / `property`) that routes it to tokens, the lexicon, or
+  neither, and ends with **Decoding notes** giving the reliability grade each dimension
+  actually yields from a reference
+- the taxonomy's **Origin** column wired into `matrize-collect` as the bound on what can
+  be promised at all — `drawn` classes get a system and seeds, never a library — and its
+  three habitually-missing classes (empty state, error state, Open Graph image) wired
+  into `matrize-brief` as mandatory coverage
 - `emit --target provenance`: `assets/provenance-viewer.html` +
   `scripts/build_provenance_html.py` — reference → card → token, read from written edges
   only, with `--paranoid` re-deriving it by value-matching to show the disagreement

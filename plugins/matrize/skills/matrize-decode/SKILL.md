@@ -48,6 +48,23 @@ citation-backed extraction falsifiable elsewhere in this workshop:
 A card that would set a token from a grade-C source alone is rejected and surfaced as an
 open question. `scripts/validate_tokens.py` enforces it, so it is not a judgement call.
 
+## What a reference actually yields, per dimension
+
+Before measuring a dimension, read its vocabulary file under
+`${CLAUDE_PLUGIN_ROOT}/references/vocabulary/`. Each one ends with **Decoding notes**: what
+that dimension yields from a reference and at what grade, written per term rather than
+per reference.
+
+They carry findings that are cheaper to reuse than to rediscover. The base unit is
+inferable at grade B by taking the greatest common divisor of every observed spacing
+value — *and if the GCD is 1, there is no grid, which is itself the finding*. A baseline
+grid is grade C at best because it lives in computed line boxes and is rarely declared.
+Spring parameters are grade C or absent, because unless expressed through `linear()` they
+live in JavaScript. Timing by eye is grade C, always.
+
+Record ratios, not absolutes: "section spacing is 2× card padding" survives a rescale
+and "48px" does not.
+
 ## Fan out, with a breaker
 
 Dispatch one `reference-decoder` per reference. First batch 4, then ×2, then ×4, hard
@@ -86,3 +103,6 @@ grade-C-only result with the question a human must answer.
 - `references/design-card-schema.md` — the single definition of a Design Card. Mandatory
   read before writing one.
 - `references/reliability-grading.md` — what each grade licenses a card to claim.
+- `references/vocabulary/*.md` — per-dimension terms, confused pairs, and the **Decoding
+  notes** that say what each dimension yields and at what grade. Read the file for the
+  dimension before measuring it.

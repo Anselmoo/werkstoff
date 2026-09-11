@@ -249,6 +249,36 @@ The demo data is committed and deliberately shows a **failing** system: the acti
 clears AA only at large sizes, one duration sits past the Doherty threshold, one spacing
 step is off the grid, and one note runs past its budget with nothing to draw.
 
+## The vocabulary
+
+`references/vocabulary/` carries the domain layer: one file per dimension — colour, grid
+and spacing, typography, motion, icons — plus `visual-asset-taxonomy.md`, the parent the
+five hang off.
+
+Each file names the terms a design system actually uses, the **pairs people confuse**,
+and ends with **Decoding notes**: what that dimension yields from a reference and at what
+grade. So `matrize-decode` knows the base unit is inferable at grade B by taking the GCD
+of observed spacing — and that *a GCD of 1 means there is no grid, which is itself the
+finding* — without rediscovering it per run.
+
+Every term carries a **kind**, and the kind is a routing rule rather than a note:
+
+| kind | where it goes |
+|---|---|
+| `token` | a stored value — `tokens.json` |
+| `derived` | computed from tokens; never stored separately |
+| `rule` | a constraint — a lexicon entry, **and it needs an anti-rule** |
+| `property` | observed or measured; not stored at all |
+
+A `rule`-kind term with no anti-rule is mis-classified, not merely incomplete. A `derived`
+or `property` term sitting in `tokens.json` is a value that will drift from whatever it
+was derived from.
+
+The taxonomy's **Origin** column bounds what can be promised at all: `derivable` classes
+are delivered whole, `drawn` classes only as a system plus seeds and a growth rule,
+`captured` and `shot` classes as rules and never as assets. That is the honest reason
+this plugin ships an icon *system* rather than an icon library.
+
 ## The provenance graph — the one interactive artefact
 
 ![A dark three-column graph: one reference node on the left, a column of Design Cards,
