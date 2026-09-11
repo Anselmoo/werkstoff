@@ -30,8 +30,15 @@ One Design Card per finding, in the exact shape of
 or in an agent prompt; it lives in one place so it cannot drift into two.
 
 Non-negotiable per card: **source**, **selector-or-page-reference**, **reliability
-grade**, and a confidence sentence. A card that cannot cite where it was read is not a
-card.
+grade**, a confidence sentence, and its **outgoing edges**. A card that cannot cite where
+it was read is not a card.
+
+**Edges are written here, not inferred later.** Each card records `reference -> card` and,
+when it sets one, `card -> token`, each edge carrying the grade it was derived under. This
+is a schema obligation on this phase, not a feature of a viewer: reconstructing the graph
+by matching values across files merges roles that happen to share a value, which is the
+defect class the graph exists to expose. See the schema for the two real cases that
+settled it.
 
 The rule with teeth, mirroring the "a comment is not a rule" discipline that makes
 citation-backed extraction falsifiable elsewhere in this workshop:

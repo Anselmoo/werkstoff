@@ -32,6 +32,33 @@ refusing the reference; pretending it is grade B would mean inventing precision.
 keeps it usable for the thing it can honestly support — **direction** — and blocks the
 thing it cannot.
 
+## Secondary sources — a third party's description of someone else's system
+
+A growing class of reference is neither the vendor's own guidelines nor a page you
+measured: it is **somebody else's written interpretation of a third party's design
+system**. Curated `DESIGN.md` collections are the current example — a file describing
+"the Apple design system" that Apple did not write.
+
+These are legitimate input. They are *not* grade A, and grading them A because they are
+published is the trap. A secondary source underwrites **"this is one documented
+interpretation"**, never **"this is what that vendor does"**.
+
+So a secondary reference carries two extra fields and one ceiling:
+
+- `secondary: true`
+- `describes: <the system it interprets>` — naming whose system, so the claim's real
+  subject is visible
+- **ceiling: grade B.** Usable as ratios, relations and direction. A card that asserts
+  something *about the described system* as fact needs the primary source, and says so.
+
+The distinction is the same one this whole phase rests on. "VoltAgent's DESIGN.md states
+a 4px base unit for Apple" is a measurement about a document. "Apple uses a 4px base
+unit" is a claim about Apple, and the document cannot carry it.
+
+Check the collection's own licence before reproducing anything from it — a curated
+description is a copyrightable work in its own right, independent of whatever it
+describes. See `rights-grading.md`.
+
 ## The rule that has teeth
 
 > A Design Card that would set a token from a grade-C source **alone** is rejected, and

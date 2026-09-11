@@ -7,6 +7,14 @@ two versions that disagree.
 A Design Card records a **measurement**, not a judgement. If a sentence in a card could
 be argued with on taste, it belongs in `LEXIKON.md` instead.
 
+## Contents
+
+- [The shape](#the-shape) — two worked cards, one that sets a token and one that cannot
+- [Edges are written, never reconstructed](#edges-are-written-never-reconstructed) — I8,
+  and the two real cases that settled it
+- [Field rules](#field-rules)
+- [The rule that makes a card falsifiable](#the-rule-that-makes-a-card-falsifiable)
+
 ## The shape
 
 ```
@@ -22,6 +30,9 @@ be argued with on taste, it belongs in `LEXIKON.md` instead.
 **Holds across:** 4 of 5 collected pages; the marketing page steps by 1.33 instead
 **Confidence:** High — four independent pages agree, and the outlier is a different template
 **Sets a token:** yes — `type.scale.ratio`
+**Edges:**
+  - hig-web -> CARD-014 (grade B)
+  - CARD-014 -> type.scale.ratio (grade B)
 ```
 
 And one that does not clear the bar, which is just as important to write down:
@@ -40,7 +51,36 @@ And one that does not clear the bar, which is just as important to write down:
 **Confidence:** Low — a single screenshot, and antialiasing makes ±2px unresolvable
 **Sets a token:** NO — grade-C evidence alone. Open question: is the radius series
   derived from the spacing base, or independent? Needs a second source or a decision.
+**Edges:**
+  - competitor-app -> CARD-021 (grade C)
 ```
+
+## Edges are written, never reconstructed
+
+Every card records its **outgoing edges** explicitly — `reference -> card` and, when it
+sets one, `card -> token` — and each edge carries the reliability grade it was derived
+under. The provenance renderer reads these. It never infers the graph by matching values
+across `DECODE.md` and `tokens.json`.
+
+That is not a precaution. Reconstruction was tested against a real 50-declaration token
+file before this rule was written, and it failed twice on the first try:
+
+- **Two roles, one value.** `4px` is both `--space-1` and `--radius-sm`; `8px` is both
+  `--space-2` and `--radius-panel`. Value-matching merges a spacing role into a radius
+  role.
+- **Three roles, one source.** `--cat-1`, `--accent` and `--diverging-cool` all resolve
+  to `var(--silica)`. A reconstructed graph shows one node where there are three
+  dependents — so it answers *"what breaks if I change this?"* with **one** when the
+  truth is **three**, which is the single question the graph exists to answer.
+
+A card that sets a token and records no `card -> token` edge is rejected by
+`validate_tokens.py`. The cost is one field per card; the alternative is a graph that is
+confidently wrong in exactly the cases that matter.
+
+**Grade per edge, not per card.** A card corroborated by a grade-A source but reaching
+its token through a grade-C inference has an A edge and a C edge, and the renderer draws
+the C edge dashed — reusing the `'4,3'` dash that already means *unproven* in three of
+this repo's viewers.
 
 ## Field rules
 

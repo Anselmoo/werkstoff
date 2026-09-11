@@ -44,6 +44,11 @@ card citing "the HIG" cannot be re-derived and is worthless.
 
 Set `Holds across` honestly. One page is not a pattern; write "1 page" when that is true.
 
+Record each card's **outgoing edges** — `reference -> card`, and `card -> token` when it
+sets one — with the grade each edge was derived under. Do not leave them for something
+downstream to infer: a graph rebuilt by matching values merges two roles that happen to
+share a number, and that is precisely what a provenance graph is for catching.
+
 ## The ceiling you may not exceed
 
 > A value supported solely by a screenshot is not a token.

@@ -3,6 +3,24 @@
 All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- renamed from `vorbild` to `matrize` — the die a form is struck from, which is the
+  architecture rather than a metaphor for it, and which sits in the same shop-floor
+  register as `werkstoff`, `andon`, `takt`, `lehre` and `nacharbeit`
+- **Design Card schema v2**: every card records its outgoing `reference -> card` and
+  `card -> token` edges explicitly, each with its own grade (I8). Reconstruction by
+  value-matching was tested against a real 50-declaration token file and failed twice —
+  it merged `--space-1` with `--radius-sm` (both `4px`) and collapsed three roles
+  aliasing one source into a single node
+
+### Added
+- a **secondary-source** case in the reliability rubric, capped at grade B and required
+  to name what it `describes` — a third party's description of someone else's design
+  system underwrites "one documented interpretation", never "this is what that vendor
+  does"
+- validator rules `V-NO-EDGE`, `V-EDGE-NO-GRADE`, `V-SECONDARY-GRADE-A` and
+  `V-SECONDARY-NO-SUBJECT`, each planted in the selftest, with two negative controls
+  proving they discriminate rather than blanket-reject
 
 ## [0.1.0] - 2026-09-11
 ### Added

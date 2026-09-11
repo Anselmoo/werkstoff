@@ -12,6 +12,14 @@ prose a model can be talked out of:
     Contrast is arithmetic; asserting it is how a system ships an unreadable button.
   * every token names the Design Card it came from. A token with no provenance is
     indistinguishable from one somebody made up.
+  * every token records the EDGE it arrived by, with that edge's own grade. Edges are
+    written, never reconstructed: value-matching across files was tested against a real
+    50-declaration token file and merged `--space-1` with `--radius-sm` (both 4px) and
+    collapsed three roles that alias one source into a single node. A graph that is
+    confidently wrong about "what depends on this" is worse than no graph.
+  * a SECONDARY source -- a third party's description of someone else's system -- is
+    capped at grade B and must name what it describes. Grading it A because it is
+    published is the trap the cap exists for.
 
 Usage:
     validate_tokens.py <tokens.json>
@@ -175,6 +183,34 @@ def validate(doc: dict) -> list[Finding]:
                 "A/B source via corroboratedBy, or surface it as an open question.",
                 "blocker"))
 
+        # 4b. I8 -- the edge this token arrived by, with its own grade
+        edge = ext.get("edge")
+        if not isinstance(edge, dict) or not edge.get("from"):
+            findings.append(Finding(
+                "V-NO-EDGE", path,
+                "no com.werkstoff.matrize.edge: the card -> token edge must be WRITTEN. "
+                "Reconstructing it by matching values across files merges roles that "
+                "happen to share a value -- tested and reproduced on real material.",
+                "blocker"))
+        elif edge.get("grade") not in ("A", "B", "C"):
+            findings.append(Finding("V-EDGE-NO-GRADE", path,
+                                    f"edge.grade is {edge.get('grade')!r}, expected A, B or C; "
+                                    f"an edge without its own grade cannot be drawn dashed"))
+
+        # 4c. a secondary source is capped at B and must say what it describes
+        if ext.get("secondary"):
+            if reliability == "A":
+                findings.append(Finding(
+                    "V-SECONDARY-GRADE-A", path,
+                    "marked secondary but graded A. A third party's description of "
+                    "someone else's system underwrites 'one documented interpretation', "
+                    "not 'this is what that vendor does'. Ceiling is B.",
+                    "blocker"))
+            if not ext.get("describes"):
+                findings.append(Finding("V-SECONDARY-NO-SUBJECT", path,
+                                        "marked secondary but does not name what it describes, "
+                                        "so the claim's real subject is invisible"))
+
         # 5. contrast is computed, never asserted
         if kind == "color" and ext.get("role") in TEXT_BEARING:
             contrast = ext.get("contrast")
@@ -201,6 +237,7 @@ SELFTEST_CLEAN = {
             "$extensions": {EXT: {
                 "role": "dominant-action", "card": "CARD-007",
                 "reliability": "A", "rights": "R1",
+                "edge": {"from": "CARD-007", "grade": "A"},
                 "rule": "Exactly one dominant action colour per view.",
                 "antiRule": "Two dominants and neither reads as the action.",
                 "contrast": {"ratio": 3.84, "passesAA": False, "passesAALarge": True},
@@ -238,6 +275,15 @@ def selftest() -> int:
         ("V-VALUE-SHAPE", mutate(lambda t: t.__setitem__("$value", "#FA2E1A")), "V-VALUE-SHAPE"),
         ("V-REF-DANGLING", mutate(lambda t: t.__setitem__("$value", "{color.nope}")),
          "V-REF-DANGLING"),
+        ("V-NO-EDGE", mutate(lambda t: ext(t).pop("edge")), "V-NO-EDGE"),
+        ("V-EDGE-NO-GRADE", mutate(lambda t: ext(t)["edge"].pop("grade")),
+         "V-EDGE-NO-GRADE"),
+        ("V-SECONDARY-GRADE-A",
+         mutate(lambda t: ext(t).update({"secondary": True, "describes": "Apple HIG"})),
+         "V-SECONDARY-GRADE-A"),
+        ("V-SECONDARY-NO-SUBJECT",
+         mutate(lambda t: ext(t).update({"secondary": True, "reliability": "B"})),
+         "V-SECONDARY-NO-SUBJECT"),
     ]
 
     failures = 0
@@ -259,7 +305,16 @@ def selftest() -> int:
     else:
         print("  corroborated grade C passes  ok")
 
-    print(f"\n{len(cases) + 1} case(s), {failures} failure(s)")
+    ok_secondary = _c.deepcopy(SELFTEST_CLEAN)
+    e2 = ok_secondary["color"]["action"]["$extensions"][EXT]
+    e2.update({"secondary": True, "reliability": "B", "describes": "Apple HIG"})
+    if any(f.rule.startswith("V-SECONDARY") for f in validate(ok_secondary)):
+        print("  secondary at B with a subject passes  FAIL")
+        failures += 1
+    else:
+        print("  secondary at B with a subject passes  ok")
+
+    print(f"\n{len(cases) + 2} case(s), {failures} failure(s)")
     print("RED" if failures else "GREEN")
     return 1 if failures else 0
 

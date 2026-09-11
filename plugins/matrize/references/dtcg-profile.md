@@ -49,6 +49,7 @@ harmlessly instead of failing.
           "rule": "Exactly one dominant action colour per view.",
           "antiRule": "Two dominants in one view and neither reads as the action.",
           "card": "CARD-007",
+          "edge": { "from": "CARD-007", "grade": "A" },
           "reliability": "A",
           "rights": "R1",
           "contrast": { "onPaper": 3.81, "passesAA": false, "passesAALarge": true }
@@ -78,6 +79,12 @@ Three conventions worth stating, because each is easy to get subtly wrong:
 2. every `$value` matches that type's shape;
 3. every reference `{a.b.c}` resolves, and no cycle exists;
 4. every token carries `com.werkstoff.matrize.card`, `reliability` and `rights`;
+4b. every token records the **edge** it arrived by, with that edge's own grade — I8.
+   Edges are written, never reconstructed: value-matching across files was tested on real
+   material and merged `--space-1` with `--radius-sm` (both `4px`), then collapsed three
+   roles aliasing one source into a single node;
+4c. a **secondary** source (a third party's description of someone else's system) is
+   capped at grade B and must name what it `describes`;
 5. **no token's sole provenance is a grade-C card** — this is the mechanical form of "a
    value supported solely by a screenshot is not a token", so it cannot be argued with;
 6. every colour token in a role that can carry text has a computed `contrast` block,
