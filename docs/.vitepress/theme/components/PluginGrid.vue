@@ -62,8 +62,8 @@ const PLUGINS = [
     summary: 'Reworks a Claude Code plugin to the Anthropic standard: a calibrated review of seven surfaces, then a locked, blind-verified fix pass.',
   },
   {
-    name: 'vorbild',
-    url: '/plugins/vorbild',
+    name: 'matrize',
+    url: '/plugins/matrize',
     summary:
       'Derives a named, platform-neutral design system from reference exemplars \u2014 measured, graded for trust and rights, then emitted to any target.',
   },

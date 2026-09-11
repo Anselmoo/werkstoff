@@ -179,7 +179,7 @@ jobs:
           echo "$CHANGED" | grep -q '^plugins/lehre/' && MATCHED_GROUPS="$MATCHED_GROUPS lehre"
           echo "$CHANGED" | grep -q '^plugins/takt/' && MATCHED_GROUPS="$MATCHED_GROUPS takt"
           echo "$CHANGED" | grep -q '^plugins/nacharbeit/' && MATCHED_GROUPS="$MATCHED_GROUPS nacharbeit"
-          echo "$CHANGED" | grep -q '^plugins/vorbild/' && MATCHED_GROUPS="$MATCHED_GROUPS vorbild"
+          echo "$CHANGED" | grep -q '^plugins/matrize/' && MATCHED_GROUPS="$MATCHED_GROUPS matrize"
           echo "$CHANGED" | grep -q '^tools/werkstoff-cli/' && MATCHED_GROUPS="$MATCHED_GROUPS werkstoff-cli"
           MATCHED_GROUPS="$(echo "$MATCHED_GROUPS" | xargs)"
           echo "groups=$MATCHED_GROUPS" >> "$GITHUB_OUTPUT"

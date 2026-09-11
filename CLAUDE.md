@@ -5,8 +5,8 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 ## Layout
 
 `plugins/<name>/` — eleven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `lehre`, `nacharbeit`, `self-assess`, `takt`,
-`vorbild`. Each is independently versioned; `marketplace.json` and `.rrt.toml` both
+`compass`, `confab`, `cupertino`, `lehre`, `matrize`, `nacharbeit`, `self-assess`,
+`takt`. Each is independently versioned; `marketplace.json` and `.rrt.toml` both
 point here.
 
 `nacharbeit` is the tenth and the odd one out: its object is the other nine. It carries

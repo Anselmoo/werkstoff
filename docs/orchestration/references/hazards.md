@@ -74,10 +74,10 @@ card, rather than buried in the third column of a five-column table.
 
 
 <div class="hz-card">
-<div class="hz-head"><code>vorbild</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
-<p class="hz-script"><code>hooks/vorbild_guard.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>the configured design root exists (<code>.design/</code> by default, or <code>root:</code> in <code>.claude/vorbild.local.md</code>)</p>
-<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>VORBILD_DISABLE_GUARD=1</code>, or <code>enforcement: off</code> in <code>.claude/vorbild.local.md</code></p>
+<div class="hz-head"><code>matrize</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/matrize_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>the configured design root exists (<code>.design/</code> by default, or <code>root:</code> in <code>.claude/matrize.local.md</code>)</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>MATRIZE_DISABLE_GUARD=1</code>, or <code>enforcement: off</code> in <code>.claude/matrize.local.md</code></p>
 </div>
 
 </div>

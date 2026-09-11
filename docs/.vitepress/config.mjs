@@ -237,6 +237,7 @@ export default defineConfig({
               { text: 'Ruleset schema', link: '/plugins/references/ruleset-schema' },
             ],
           },
+          { text: 'matrize', link: '/plugins/matrize' },
           {
             text: 'nacharbeit',
             link: '/plugins/nacharbeit',
@@ -247,7 +248,6 @@ export default defineConfig({
           },
           { text: 'self-assess', link: '/plugins/self-assess' },
           { text: 'takt', link: '/plugins/takt' },
-          { text: 'vorbild', link: '/plugins/vorbild' },
         ],
       },
       {
