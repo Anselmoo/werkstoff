@@ -1,6 +1,6 @@
 # Orchestrating werkstoff with superpowers and the official plugins
 
-werkstoff's eleven plugins, `obra/superpowers`, and Anthropic's official plugin set were
+werkstoff's twelve plugins, `obra/superpowers`, and Anthropic's official plugin set were
 built independently, and they overlap far less than their descriptions suggest. This
 catalog records how they compose in one session: which pieces own a whole task, which
 drop into somebody else's workflow, and which handoffs are already wired so nobody
@@ -22,7 +22,11 @@ two or more valid, undocumented variants of the same convention coexisting, and
 `takt`, ships no skills at all: it is one `PreToolUse` hook that denies an
 edit or a dispatch running ahead of a beat the repository declared it depends on,
 turning the sequencing this catalog documents into a refusal rather than a
-suggestion. The tenth, `nacharbeit`, points the same discipline at the other nine: it
+suggestion. The twelfth, `arbeitsplan`, is the compiler for that declaration: it turns a
+stated problem into a workflow spec **and** the takt beats that order it, then runs the
+spec as a redundant swarm — N candidates over one scope, exactly one landed. The pairing
+is the point. takt could not be used because nothing authored its declaration; nothing
+authored it because the format is a thing you write by hand, and nobody did. The tenth, `nacharbeit`, points the same discipline at the other nine: it
 reviews and reworks a plugin's own skills, agents, hooks, scripts, viewers, manifest
 and docs against the official Anthropic standard, and is the only plugin whose object
 is a plugin rather than the application it is installed against.
@@ -73,17 +77,19 @@ into another workflow's beats and gates.
 |`/consistency-map`, `/consistency-canonize`, `/consistency-brief`, `/consistency-align`, `/consistency-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
 |`nacharbeit-review`|Bakes its args, calibrates a finder against planted fixtures and a sealed hold-out, then finds, routes, verifies and synthesizes; every later step reads what the calibration froze|
 |`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
+|`arbeitsplan-compile`|Scopes the problem, derives acceptance criteria, proves the write scope and picks patterns, then writes the spec every later phase reads; a phase invoked without it has no contract to run under|
+|`arbeitsplan-run`|Opens the run-scope lock, fans candidates out into worktrees, applies the per-batch breaker, referees blind and lands exactly one diff; every step consumes what the last one wrote|
 |`matrize-decode`|Fans reference-decoders out under a circuit breaker, then has each card re-derived from its cited source by a blind referee; a card that skips the referee is an unverified claim|
 |`matrize-brief`|Stops outright if any discovery artefact is missing, and its signed approval block is what the three build methods read as their entry gate|
 |`matrize-emit`|Runs the committed formatters against a `tokens.json` the earlier phases wrote; there is nothing to format before they have|
-|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`, `matrize-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
+|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`, `matrize-status`, `arbeitsplan-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
 
 Everything else in werkstoff is a leaf. That covers all of `compass`'s reasoning
 skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
 paradigm and doctrine skills, `self-assess`'s finding skills, `lehre`'s gauge and
 validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `matrize`'s `collect`, `name`,
 `retrofit` and `dolmetsch`, every
-`*-preflight`, and every named agent across all eleven plugins — including nacharbeit's
+`*-preflight`, and every named agent across all twelve plugins — including nacharbeit's
 `component-finder` and `fix-verifier`, which exist precisely so a session without the
 Workflow tool can still dispatch one batch or verify one file from a scoped prompt.
 

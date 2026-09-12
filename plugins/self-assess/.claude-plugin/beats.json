@@ -1,0 +1,17 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "self-assess",
+  "produces": [
+    {
+      "marker": "stage-graph-written",
+      "after": "self-assess-stage-map",
+      "meaning": "the real import/use graph exists, so downstream skills read it rather than guessing"
+    },
+    {
+      "marker": "transform-brief-written",
+      "after": "self-assess-transform-brief",
+      "meaning": "MODERNIZATION_BRIEF.md exists and carries the approved phase list"
+    }
+  ],
+  "requires": []
+}

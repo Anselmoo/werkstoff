@@ -124,6 +124,7 @@ META: dict[str, tuple[str, str]] = {
     "A-S2-HEAD": ("major", "contract"),
     "A-C1-SCREENSHOT": ("minor", "contract"),
     "A-C2-DEMO-DATA": ("minor", "contract"),
+    "A-VIEWER-REQUIRED": ("major", "contract"),
     "A-S3-INNERHTML": ("major", "other"),
     "A-S4-FAIL-VISIBLE": ("minor", "step-logic"),
     "A-NO-CDN": ("major", "contract"),
@@ -1434,6 +1435,27 @@ def _headings(u: Unit) -> list[tuple[int, str]]:
     return out
 
 
+def r_a_viewer_required(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """Every plugin ships an HTML report viewer.
+
+    Keyed on the MANIFEST, not on a viewer unit. Every other A-* rule grades a
+    viewer that exists, which by construction can never notice one that does
+    not -- the rule and the thing it checks would have to be present together.
+    """
+    if u.kind != "manifest":
+        return []
+    assets = u.plugin_dir / "assets"
+    if assets.is_dir() and any(assets.glob("*-viewer.html")):
+        return []
+    return [_finding(
+        u, "A-VIEWER-REQUIRED",
+        "plugin ships no assets/*-viewer.html, so its output has no rendered form",
+        "add assets/<name>-viewer.html with its scripts/build_<name>_html.py, a committed "
+        "demo fixture and a screenshot; see docs/plugin-authoring/references/report-viewer-standard.md",
+        quote=u.plugin,
+    )]
+
+
 def r_p_readme_h1(u: Unit, ctx: list[Unit]) -> list[dict]:
     if not _readme(u):
         return []
@@ -1849,6 +1871,7 @@ RULES = {
     "P-MARKETPLACE-MEMBER": r_p_marketplace_member,
     "P-MANIFEST-KEYWORDS": r_p_manifest_keywords,
     "P-MANIFEST-LICENSE": r_p_manifest_license,
+    "A-VIEWER-REQUIRED": r_a_viewer_required,
     "P-README-H1": r_p_readme_h1,
     "P-README-THESIS": r_p_readme_thesis,
     "P-README-WHY-NOT": r_p_readme_why_not,

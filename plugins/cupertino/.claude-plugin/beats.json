@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "cupertino",
+  "produces": [
+    {
+      "marker": "council-done",
+      "after": "cupertino-council",
+      "meaning": "the design council ran at build time, before any UI code was written"
+    }
+  ],
+  "requires": []
+}

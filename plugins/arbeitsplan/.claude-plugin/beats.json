@@ -1,0 +1,15 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "arbeitsplan",
+  "produces": [],
+  "requires": [
+    {
+      "marker": "branches-explored",
+      "from": "compass",
+      "before": "arbeitsplan-run",
+      "optional": true,
+      "reason": "when compass is installed the swarm reuses its isolated branch generation rather than reimplementing it; absent compass the beat is dropped and the bundled fallback is used, said plainly."
+    }
+  ],
+  "note": "arbeitsplan's own per-run phase beats (built/refereed/landed) are compiled per runId by emit_beats.py from workflow.json. They are not declared here because they do not exist until a run is compiled."
+}

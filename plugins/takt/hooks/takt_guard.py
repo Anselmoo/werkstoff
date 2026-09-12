@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """PreToolUse hook: deny an edit or a dispatch that runs ahead of its beat.
 
+usage: takt_guard.py   (no arguments; the hook event arrives as JSON on stdin)
+
+  Registered by hooks/hooks.json and invoked by Claude Code, not by hand. To
+  exercise it directly, pipe one event in:
+      echo '{"cwd":".","tool_name":"Edit","tool_input":{"file_path":"a.tsx"}}' \
+          | python3 plugins/takt/hooks/takt_guard.py; echo "exit=$?"
+  Its calibration is plugins/takt/hooks/test_takt_guard.py.
+
 Several skills in this marketplace declare where in a build they belong --
 cupertino-council says "before writing any code ... never after",
 compass-clarify-scope says "before any work begins". A declaration in prose is
@@ -67,6 +75,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
 import sys
 from typing import NoReturn
 
@@ -76,6 +85,8 @@ ESCAPE_HATCH = (
     "once the beat has actually run, or remove .claude/takt.local.md if this "
     "repository no longer declares beats"
 )
+RUN_ID_RE = re.compile(r"\A(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
+
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
 
@@ -96,21 +107,72 @@ def allow() -> NoReturn:
     sys.exit(0)
 
 
-def load_beats(settings_path: str) -> list:
+def load_declaration(settings_path: str) -> tuple:
     """Read the first fenced json block. String search, not regex -- a regex
-    over a fence is one of the forms that fails silently on odd whitespace."""
+    over a fence is one of the forms that fails silently on odd whitespace.
+
+    Returns (run_id, beats). run_id is "" when the declaration omits it, which
+    is the pre-runId behaviour: a relative `require` then resolves against cwd
+    exactly as before. A declaration WITH a runId namespaces every relative
+    marker under .takt/<run_id>/, so a marker left behind by an earlier run
+    cannot satisfy this run's beat -- the whole point, for a generated
+    declaration that describes one run rather than a durable project fact."""
     with open(settings_path, "r", encoding="utf-8") as handle:
         text = handle.read()
     start = text.find("```json")
     if start == -1:
-        return []
+        return "", []
     body_start = text.index("\n", start) + 1
     end = text.find("```", body_start)
     if end == -1:
-        return []
+        return "", []
     parsed = json.loads(text[body_start:end])
+    run_id = parsed.get("runId", "")
+    if run_id is None:
+        run_id = ""
+    if not isinstance(run_id, str):
+        # A non-string runId would stringify into a path component. Refuse.
+        raise ValueError("runId must be a string")
+    if run_id and not RUN_ID_RE.match(run_id):
+        # runId becomes a PATH COMPONENT. Anything with a separator or a dot
+        # segment could escape .takt/ entirely, so this is fail-closed by
+        # charset rather than by sanitising -- sanitising invites a bypass.
+        raise ValueError(
+            "runId %r is not [A-Za-z0-9._-]{1,64} without '..'" % (run_id,)
+        )
     beats = parsed.get("beats", [])
-    return beats if isinstance(beats, list) else []
+    return run_id, (beats if isinstance(beats, list) else [])
+
+
+def marker_path_for(cwd: str, run_id: str, marker: str) -> str:
+    """Absolute path of a beat's required marker.
+
+    Three cases, and the middle one is the reason this is not a one-liner:
+
+      absolute            taken literally, runId or not. An explicit path is an
+                          explicit path.
+      already under .takt/  taken as-is. This is a REPO-LEVEL marker -- a durable
+                          fact like ".takt/council-done" -- and namespacing it per
+                          run would point every run at a path that cannot exist yet,
+                          so a fact that IS true would read as false forever.
+      a bare name         namespaced under .takt/<run_id>/ when a runId is
+                          declared. This is a PER-RUN marker, and namespacing is
+                          the whole point: last week's run must not satisfy today's.
+
+    The split falls exactly along the existing convention -- takt's own README
+    example writes `.takt/council-done` -- so every declaration written before
+    runId existed keeps its precise meaning, whether or not a runId is added
+    later. It also lets ONE declaration carry both kinds at once, which is what
+    a compiled union of per-run beats and repo-level plugin beats needs.
+    """
+    if os.path.isabs(marker):
+        return marker
+    normalized = marker.replace(os.sep, "/")
+    if normalized == ".takt" or normalized.startswith(".takt/"):
+        return os.path.join(cwd, marker)
+    if run_id:
+        return os.path.join(cwd, ".takt", run_id, marker)
+    return os.path.join(cwd, marker)
 
 
 def relative(cwd: str, path: str) -> str:
@@ -213,7 +275,7 @@ def main() -> NoReturn:
         if not isinstance(tool_input, dict):
             tool_input = {}
 
-        beats = load_beats(settings_path)
+        run_id, beats = load_declaration(settings_path)
         for beat in beats:
             if not isinstance(beat, dict):
                 continue
@@ -266,7 +328,7 @@ def main() -> NoReturn:
             marker = beat.get("require")
             if not isinstance(marker, str) or not marker:
                 continue
-            marker_path = marker if os.path.isabs(marker) else os.path.join(cwd, marker)
+            marker_path = marker_path_for(cwd, run_id, marker)
             if os.path.exists(marker_path):
                 continue
 

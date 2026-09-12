@@ -224,7 +224,8 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Overview', link: '/plugins/' },
-          { text: 'andon', link: '/plugins/andon' },
+          { text: 'arbeitsplan', link: '/plugins/arbeitsplan' },
+            { text: 'andon', link: '/plugins/andon' },
           { text: 'cli-scaffold', link: '/plugins/cli-scaffold' },
           { text: 'codebase-consistency', link: '/plugins/codebase-consistency' },
           { text: 'compass', link: '/plugins/compass' },
@@ -264,6 +265,7 @@ export default defineConfig({
         text: 'Findings and plans',
         collapsed: true,
         items: [
+          { text: 'arbeitsplan build findings', link: '/arbeitsplan-findings' },
           { text: 'Plugin rebuild findings', link: '/plugin-rebuild-findings' },
           { text: 'Prompt-quality findings', link: '/prompt-quality-findings' },
           { text: 'Benchmark plan', link: '/plugin-benchmark-plan' },

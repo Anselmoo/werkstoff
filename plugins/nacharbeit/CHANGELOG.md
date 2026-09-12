@@ -4,6 +4,17 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `A-VIEWER-REQUIRED` (major) — every plugin must ship `assets/*-viewer.html`. Keyed on the
+  **manifest**, because every other `A-*` rule grades a viewer that exists and so can never
+  report one that does not. The rubric and the linter are checked for agreement, and the rule
+  is planted in a dedicated no-viewer fixture so the calibration can sabotage it like the rest
+- `assets/review-viewer.html` + `scripts/build_review_html.py` + a committed demo fixture —
+  findings by severity, rule family and **fix tier**. The tier column is the point: it
+  separates what a model can close from what is a judgement call, so the fixture carries a
+  `human`-tier finding deliberately. The page also states that a family at `0/n` is not
+  evidence of health, only that nothing exercised it
+
 ## [0.2.0] - 2026-09-09
 ### Added
 - the instrument PR #56 built as repo-internal tooling (`tools/prompt-review/`,

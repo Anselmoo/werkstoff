@@ -1,0 +1,92 @@
+{
+  "beats": [
+    {
+      "gates": "andon-loop",
+      "marker": ".takt/transform-brief-written",
+      "producedBy": "self-assess",
+      "scope": "repo-level",
+      "satisfied": false,
+      "reason": "andon-loop/SKILL.md:51-54 already says to STOP and run self-assess-transform-brief first, and never silently fall back to self-scan. Stated in prose in two files and enforced by nothing.",
+      "optional": false
+    },
+    {
+      "gates": "arbeitsplan-run",
+      "marker": ".takt/branches-explored",
+      "producedBy": "compass",
+      "scope": "repo-level",
+      "satisfied": true,
+      "reason": "when compass is installed the swarm reuses its isolated branch generation rather than reimplementing it; absent compass the beat is dropped and the bundled fallback is used, said plainly.",
+      "optional": true
+    }
+  ],
+  "produces": [
+    {
+      "marker": "branches-explored",
+      "plugin": "compass",
+      "after": "compass-explore-branches",
+      "meaning": "genuinely distinct approaches were generated in isolation and scored"
+    },
+    {
+      "marker": "contracts-audited",
+      "plugin": "confab",
+      "after": "confab-contract-drift",
+      "meaning": "machine-checkable contracts were compared against actual call-site usage"
+    },
+    {
+      "marker": "council-done",
+      "plugin": "cupertino",
+      "after": "cupertino-council",
+      "meaning": "the design council ran at build time, before any UI code was written"
+    },
+    {
+      "marker": "patterns-canonized",
+      "plugin": "codebase-consistency",
+      "after": "consistency-canonize",
+      "meaning": "the canonical form of each divergent dimension is settled"
+    },
+    {
+      "marker": "plugin-reviewed",
+      "plugin": "nacharbeit",
+      "after": "nacharbeit-review",
+      "meaning": "a calibrated review pass has findings on record for this plugin"
+    },
+    {
+      "marker": "ruleset-pinned",
+      "plugin": "lehre",
+      "after": "lehre-pin",
+      "meaning": "the doctrine ruleset is frozen, so a gauge run measures against a fixed rule set"
+    },
+    {
+      "marker": "scope-clarified",
+      "plugin": "compass",
+      "after": "compass-clarify-scope",
+      "meaning": "the task is scoped; compass-clarify-scope declares itself for use before any work begins"
+    },
+    {
+      "marker": "stage-graph-written",
+      "plugin": "self-assess",
+      "after": "self-assess-stage-map",
+      "meaning": "the real import/use graph exists, so downstream skills read it rather than guessing"
+    },
+    {
+      "marker": "tokens-emitted",
+      "plugin": "matrize",
+      "after": "matrize-emit",
+      "meaning": "the design system was formatted to its targets from a written tokens.json"
+    },
+    {
+      "marker": "transform-brief-written",
+      "plugin": "self-assess",
+      "after": "self-assess-transform-brief",
+      "meaning": "MODERNIZATION_BRIEF.md exists and carries the approved phase list"
+    },
+    {
+      "marker": "wire-proven",
+      "plugin": "andon",
+      "after": "andon-verify",
+      "meaning": "one named wire has been proven against evidence, not asserted"
+    }
+  ],
+  "declarations": 12,
+  "generated": "2026-09-12 09:30 UTC"
+}

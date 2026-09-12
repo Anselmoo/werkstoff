@@ -1,0 +1,166 @@
+# arbeitsplan: what this build actually established
+
+A record of the defects found while building `arbeitsplan` and extending `takt`, written
+because the root cause of a defect is only findable if the reasoning that produced it survives
+the transcript. Every row below was **run**, not reasoned.
+
+## The headline: five silent failures, all reporting success
+
+Every one of these produced clean, confident output. None raised an error. Four of the five
+lived in the same ~10 lines of one bash function.
+
+| # | defect | what it silently did | how it was found |
+|---|---|---|---|
+| 1 | tab as the field separator in `read` | tab is an IFS **whitespace** char, so a run of tabs collapses and empty fields vanish. The disabled arm's empty `plugin_dir` disappeared and every later field shifted left — **swapping the two ablation arms** | asserting on argv per arm |
+| 2 | `printf '%s'` with no trailing newline | `read` hit EOF, the loop body never ran, so the **enabled** arm got no `--plugin-dir` at all | the same assertion, after #1 |
+| 3 | `tr '\x1f' '\n'` | `tr` takes **octal**, not hex. `'\x1f'` parsed as the character set `{\, x, 1, f}` — every `f`, `x` and `1` in a path became a newline, shredding `/…/werkstoff/…` into five fragments | a path that reported as "does not exist" |
+| 4 | `claude -p` inherits the loop's stdin | the child consumed the remaining cell list. A 2-cell sweep ran **one** and reported `PASS 1/1` | running a **real** `claude`; no stub could |
+| 5 | comparing `plugin:skill` against `plugin` | the delegation cycle check compared a dispatch id (`"compass:compass-solve"`) against ledger plugin names (`"compass"`). Never matched, so every cycle passed | the guard's own calibration |
+
+**The transferable lesson is narrower than "test more".** #4 is the one that matters: a stub
+that does not exercise the same syscalls as the real binary is not a test of the harness. The
+echo-only stub passed every time; a stub that merely adds `cat > /dev/null` reproduces the bug
+instantly and for no tokens. That stub is now a permanent `--selftest` case.
+
+## Three times the instrument was the defect, not the code
+
+This repository's CLAUDE.md says *"verify the instrument before trusting its verdict."* It was
+needed three times in one session, and in each case the instrument was **mine**:
+
+1. **A sabotage test that passed for the wrong reason.** Two of three `STALE` cases in takt's
+   guard calibration stayed green with the fix removed, because a bare `require: "built"`
+   resolved to a path nothing had created. Planting the stale marker at *every* location an
+   earlier run could have left one is what made them real.
+2. **An imported measurement treated as a law.** The matrix runner refused to run whenever it
+   detected a nested Claude Code session, on the strength of a measurement made in a different
+   repository on a different day (*"a nested `claude -p` fails: OAuth session expired"*). It
+   does not reproduce here — a nested `claude -p` returns cleanly. The refusal was also
+   **redundant**: a cell that hits an auth banner is already scored `UNMEASURED` with the
+   reason, which is more information than never starting. Replaced with a one-call probe that
+   prints what it actually got.
+3. **An audit that reported four phantom findings.** A grep for cross-plugin references flagged
+   4 dead ids. All four were false positives: `andon_core.py`'s `STRATEGY_D_REJECTED_TYPOS`
+   denylist (andon already validates these), the andon reference doc *documenting* that typo,
+   and `lehre:hooks`, a `batchKey` tuple in a JSON example. **Genuine dead references: zero.**
+
+## The cross-plugin linkage audit
+
+148 real skill/agent ids across 12 plugins; 36 cross-plugin references in 7 of them.
+
+| source | ordering | hard dispatch | optional | boundary prose |
+|---|---|---|---|---|
+| `self-assess` | 0 | 4 | 2 | 1 |
+| `andon` | **2** | 2 | 0 | 1 |
+| `arbeitsplan` | 0 | 0 | 4 | 3 |
+| `nacharbeit` | 0 | 1 | 0 | 0 |
+| `confab` / `cupertino` / `lehre` | 0 | 0 | 0 | 1 each |
+| `takt` | 0 | 0 | 0 | 0 |
+
+**Exactly one genuine cross-plugin ordering dependency existed, and nothing enforced it.**
+`plugins/andon/skills/andon-loop/SKILL.md:51-54`: *"**Stop** and tell the user to run
+`self-assess:self-assess-transform-brief` first — never silently fall back to self-scan."*
+Duplicated in `andon_core.py`. It is "X before Y", it spans two plugins, and it bound only if a
+model obeyed prose — which this repo measures at baseline.
+
+It is now a `PreToolUse` denial, declared in `plugins/andon/.claude-plugin/beats.json`,
+compiled by `emit_beats.py --repo-only`, enforced by takt. Verified end to end: `andon-loop` is
+denied until `.takt/transform-brief-written` exists.
+
+## Why `takt` was kept
+
+`compass:compass-reason-verify` returned **3/3 unanimous** for
+`KEEP_TAKT_BUT_GENERALIZE_DELEGATION`, by forward deduction, backward-from-options and
+constraint mapping independently. The decisive argument, which none of them needed prompting
+for:
+
+> **Delegation and ordering are different axes.** A delegation registry records *who dispatched
+> whom, and how deep* — a call graph. takt gates *"has beat X's marker been written"* — an order
+> that also gates raw `Write`/`Edit` calls with **no dispatch in them at all**. takt's canonical
+> beat ("no `*.tsx` write until `.takt/council-done` exists") has no dispatch to record.
+
+Two claims made earlier in the session did **not** survive checking, and are corrected here:
+
+- *"takt is inert because nothing authors its declaration"* — too strong. Its test fixtures are
+  hand-written declarations and its README documents that path. takt is **under-adopted**, not
+  structurally dependent on arbeitsplan.
+- *"takt-v0.1.0 may be a tag that published nothing"* — it is a real published GitHub Release
+  (2026-08-30, signed zip + SBOM, not a draft). Both assets show `download_count: 0`.
+
+**The counter-argument nobody could dismiss, recorded so it is not lost:** only `emit_beats.py`
+has ever auto-authored a declaration. Keeping takt separate pays a full plugin surface for a
+generality nothing has yet used. That is grounds for a re-audit if no second author appears — 
+not grounds for deletion.
+
+## Design consequences that came out of building it
+
+- **A guard's ledger must be the guard's own.** A guard that checks a list some skill was
+  supposed to append to fails open exactly when the skill misbehaves — the case it was written
+  for. arbeitsplan's re-dispatch denial is an `O_CREAT|O_EXCL` create failing with `EEXIST`: no
+  read-modify-write, race-free across parallel candidates, and dependent on nothing cooperating.
+- **JSONL over JSON for anything parallel writers append to**, with a size cap: `O_APPEND` of
+  one line is atomic under `PIPE_BUF` (512 POSIX, 4096 Linux); a longer record can interleave.
+- **A depth cap and cycle detection are not redundant.** A cap bounds `A→B→C→D`; `A→B→A` is
+  depth 2 and sails under any cap. The sabotage tests prove independence: unbound the cap and
+  only `DEPTH` goes red; disable the cycle check and only `CYCLE` does.
+- **Compare against the dispatching source, not the run's owner.** Using the owner classified
+  `arbeitsplan → compass → arbeitsplan` as fan-out and skipped the cycle check on precisely the
+  shape it exists for.
+- **A `.takt/`-prefixed marker is repo-level and must not be namespaced by `runId`.** One
+  compiled declaration has to carry both durable facts and per-run markers; namespacing a
+  durable fact makes something true read as false in every later run. The split falls along
+  takt's existing convention, so no prior declaration changes meaning.
+
+## Does markdown formatting reduce model confusion? Measured, and: no evidence
+
+The question was "standardize markdown width and notation — will it help?" Rather than assert,
+it was run through the ablation matrix this session built. Two rounds, 30 `claude -p` cells,
+one fresh process each.
+
+**Design.** Three arms of the *same content* from `references/patterns.md`, differing only in
+form, with a question whose answer is known and checkable:
+
+| arm | form |
+|---|---|
+| **A structured** | as the repo writes it — tables, code fences, headings, ~100-col hard wrap |
+| **B unstructured** | tables flattened to prose, no fences, no headings, no hard wrap |
+| **C cosmetic** | identical structure to A, reflowed to 55 cols |
+
+C exists to separate the *cosmetic* claim from the *structural* one, so an effect could not be
+attributed to the wrong cause.
+
+**Round 1** — one fact from ~1 KB. All three arms: **5/5 correct, identical every repeat.** A
+ceiling: the task was too easy to discriminate, and a null result at a ceiling is weak evidence.
+
+**Round 2** — four facts from four different sections of a ~10 KB document, one of them in the
+*rejected* list so it could not be answered by skimming the top:
+
+| arm | facts correct | all four correct | identical across 5 repeats |
+|---|---|---|---|
+| A structured | 19/20 | 4/5 | no (2 distinct answers) |
+| B unstructured | **20/20** | **5/5** | **yes** |
+| C cosmetic | 18/20 | 3/5 | no (2 distinct answers) |
+
+**The unstructured arm scored best.** That is the opposite of the expected direction — and with
+n=5 per arm and a spread of two errors out of twenty, it is **noise, not a finding**. The honest
+reading is that no arm was measurably better, and the only fact anything got wrong was the
+*count* of accepted patterns, which is a known model weakness independent of formatting.
+
+**What this does and does not license:**
+
+- It does **not** support enforcing cosmetic rules (line width, list markers) on a
+  comprehension claim. Nothing here shows they help, and C — the cosmetic-only arm — scored
+  lowest.
+- It does **not** refute structural markup either. The effect, if any, is smaller than this
+  design can see.
+- It does **not** contradict this repo's own 9-of-11 handoff benchmark, because **that is a
+  different claim**: `compile_spec.py` *parses* the machine-readable index in `patterns.md`.
+  That is machine consumption, where structure is not a preference but a precondition. This
+  experiment tested *model* comprehension, and found nothing.
+
+**Recommendation:** adopt `markdownlint-cli2` for diff hygiene and for the structural rules a
+*tool* depends on — fenced blocks with language tags, machine-readable JSON blocks, heading
+hierarchy. Justify it on reviewability and machine-parseability, which are demonstrated, and
+**not** on reduced model confusion, which is not. Cosmetic rules stay warnings.
+
+Raw cells are under `analysis/md-experiment/` (gitignored). The matrices are reproducible:
+`analysis/md-experiment/matrix.json` and `matrix2.json`.

@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "codebase-consistency",
+  "produces": [
+    {
+      "marker": "patterns-canonized",
+      "after": "consistency-canonize",
+      "meaning": "the canonical form of each divergent dimension is settled"
+    }
+  ],
+  "requires": []
+}

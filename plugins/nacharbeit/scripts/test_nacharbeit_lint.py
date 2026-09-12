@@ -262,6 +262,17 @@ if __name__ == "__main__":
         exp[rid] = f"{P}/assets/bad-viewer.html"
     w(root, "plugins/bad2/assets/other-viewer.html", viewer_html("bad2", conformant=False))
 
+    # A-VIEWER-REQUIRED fires on an ABSENCE, so it needs a plugin with no viewer
+    # at all. `bad` and `bad2` both have one -- they exist to plant the rules
+    # that grade a viewer's CONTENT -- so a third fixture plugin carries this
+    # one. Minimal on purpose: a manifest is all the rule keys on.
+    w(root, "plugins/bad3/.claude-plugin/plugin.json",
+      json.dumps({"name": "bad3", "version": "0.1.0", "description": "Has no viewer.",
+                  "author": {"name": "Anselm Hahn", "email": "x@y.z"},
+                  "keywords": ["x"], "license": "MIT"}))
+    w(root, "plugins/bad3/README.md", "# bad3\n\n**No viewer.**\n")
+    exp["A-VIEWER-REQUIRED"] = "plugins/bad3/.claude-plugin/plugin.json"
+
     # ---- P
     w(root, f"{P}/.claude-plugin/plugin.json", json.dumps({"name": "wrongname", "version": "1.0", "description": "Audits widgets.", "author": {"name": "bad contributors"}}))
     for rid in ("P-MANIFEST-NAME-DIR", "P-MANIFEST-SEMVER", "P-AUTHOR-PRESENT", "P-MARKETPLACE-MEMBER", "P-MANIFEST-KEYWORDS", "P-MANIFEST-LICENSE", "P-SKILL-DIR-HAS-FILE", "P-REF-REACHABLE"):
@@ -477,7 +488,7 @@ def main() -> int:
         exp = build_positive(root)
 
         # 1. positive
-        findings = run(root, ["plugins/bad", "plugins/bad2"])
+        findings = run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"])
         for rid, f in exp.items():
             hits = [x for x in findings if x["rule_id"] == rid and x["file"] == f]
             if not hits:
@@ -489,7 +500,7 @@ def main() -> int:
         saved = dict(lp.RULES)
         for rid in saved:
             lp.RULES[rid] = lambda _u, _ctx: []
-            after = run(root, ["plugins/bad", "plugins/bad2"])
+            after = run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"])
             lp.RULES[rid] = saved[rid]
             if any(x["rule_id"] == rid for x in after):
                 print(f"RED  sabotage: blanking {rid} did not remove its findings — the check is not load-bearing")

@@ -1,6 +1,6 @@
 # rrt (repo-release-tools) configuration for werkstoff.
 #
-# Twelve independently-versioned units: eleven plugins under plugins/<name>/ (each
+# Thirteen independently-versioned units: twelve plugins under plugins/<name>/ (each
 # with its own .claude-plugin/plugin.json) plus the werkstoff-cli installer
 # under tools/werkstoff-cli/ (pyproject.toml). There is deliberately NO
 # repo-wide version — bump one unit with `rrt bump <bump> --group <name>`.
@@ -113,6 +113,15 @@ changelog_file = "plugins/matrize/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
+name = "arbeitsplan"
+release_branch = "release/arbeitsplan/v{version}"
+changelog_file = "plugins/arbeitsplan/CHANGELOG.md"
+
+  [[tool.rrt.version_groups.version_targets]]
+  path = "plugins/arbeitsplan/.claude-plugin/plugin.json"
+  kind = "package_json"
+
+[[tool.rrt.version_groups]]
 name = "werkstoff-cli"
 release_branch = "release/werkstoff-cli/v{version}"
 changelog_file = "tools/werkstoff-cli/CHANGELOG.md"
@@ -198,6 +207,13 @@ source = "plugins/nacharbeit/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
   { path = ".claude-plugin/marketplace.json", field = "plugins[name=nacharbeit].description" },
+]
+
+[[tool.rrt.field_targets]]
+source = "plugins/arbeitsplan/.claude-plugin/plugin.json"
+source_field = "description"
+targets = [
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=arbeitsplan].description" },
 ]
 
 [[tool.rrt.field_targets]]
@@ -355,6 +371,21 @@ command = ["cp", "tools/design-tokens/tokens.css", "plugins/lehre/assets/tokens.
 path = "plugins/self-assess/assets/tokens.css"
 description = "self-assess's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/self-assess/assets/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/assets/tokens.css"
+description = "arbeitsplan's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/arbeitsplan/assets/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/assets/tokens.css"
+description = "nacharbeit's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/nacharbeit/assets/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/takt/assets/tokens.css"
+description = "takt's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/takt/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/matrize/assets/tokens.css"

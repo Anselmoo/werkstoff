@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "confab",
+  "produces": [
+    {
+      "marker": "contracts-audited",
+      "after": "confab-contract-drift",
+      "meaning": "machine-checkable contracts were compared against actual call-site usage"
+    }
+  ],
+  "requires": []
+}

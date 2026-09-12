@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>takt — beat graph</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
+  header { margin-bottom: var(--space-4); }
+  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .verdict {
+    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+  }
+  .verdict strong { color: var(--text); }
+  .legend {
+    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
+  }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dd { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.mono, th.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  /* State is carried by the WORD and the glyph, never by colour alone: colour
+     is a third channel on top of two that already work without it. */
+  .state { white-space: nowrap; font-weight: 600; }
+  .state .glyph { display: inline-block; width: 1.1em; }
+  .state-satisfied { color: var(--silica); }
+  .state-blocked { color: var(--samaria-light); }
+  .scope { font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
+  .empty {
+    margin: var(--space-4) 0; padding: var(--space-3);
+    background: var(--panel); border: 1px solid var(--samaria-light);
+    border-radius: var(--radius-panel);
+  }
+  .produces li { margin-bottom: var(--space-1); }
+  .produces code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>takt — beat graph</h1>
+    <p class="sub">Every cross-plugin ordering rule this repository declares, and whether its marker exists yet.</p>
+    <p class="verdict" id="verdict">Loading the compiled declaration…</p>
+  </header>
+
+  <div class="legend">
+    <dl>
+      <dt>✓ satisfied</dt><dd>the required marker exists, so takt allows the gated call.</dd>
+      <dt>✗ blocked</dt><dd>the marker is absent; takt denies the gated call until the producing step runs.</dd>
+      <dt>repo-level</dt><dd>a durable fact (<code>.takt/&lt;name&gt;</code>). Survives every run.</dd>
+      <dt>per-run</dt><dd>namespaced under <code>.takt/&lt;runId&gt;/</code>, so an earlier run cannot satisfy this one.</dd>
+    </dl>
+  </div>
+
+  <div id="empty" class="empty" hidden>
+    <strong>No beats compiled.</strong>
+    <p>This report was rendered from an empty declaration, which means either no plugin declares a
+      <code>requires</code> entry, or the compile step did not run. Regenerate with
+      <code>python3 plugins/arbeitsplan/scripts/emit_beats.py --repo-only --write</code>,
+      then rebuild this page. An empty graph is not the same as an unblocked one.</p>
+  </div>
+
+  <h2 id="beats-heading">Declared beats</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>state</th><th class="mono">gated call</th><th class="mono">requires marker</th>
+        <th>produced by</th><th>scope</th><th>why</th>
+      </tr>
+    </thead>
+    <tbody id="beats"></tbody>
+  </table>
+
+  <h2>Markers each plugin produces</h2>
+  <ul class="produces" id="produces"></ul>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/*__BEATGRAPH_DATA__*/
+const DATA = (typeof BEATGRAPH !== "undefined") ? BEATGRAPH : null;
+
+function el(id) { return document.getElementById(id); }
+
+function cell(row, text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (cls) td.className = cls;
+  row.appendChild(td);
+  return td;
+}
+
+function render() {
+  // Visible failure. A page that silently renders nothing is indistinguishable
+  // from a repository with no ordering rules, which is the wrong conclusion to
+  // let a reader reach in silence.
+  if (!DATA || !Array.isArray(DATA.beats)) {
+    el("verdict").textContent =
+      "This report could not be read. Rebuild it with plugins/takt/scripts/build_beatgraph_html.py.";
+    el("empty").hidden = false;
+    return;
+  }
+
+  const beats = DATA.beats;
+  const blocked = beats.filter((b) => !b.satisfied);
+
+  if (beats.length === 0) {
+    el("verdict").textContent =
+      "No cross-plugin ordering rules are declared in this repository, so takt gates nothing.";
+    el("empty").hidden = false;
+  } else if (blocked.length === 0) {
+    el("verdict").textContent =
+      "Every declared beat is satisfied: all " + beats.length +
+      " required markers exist, so takt is currently blocking nothing.";
+  } else {
+    const names = blocked.map((b) => b.gates).join(", ");
+    el("verdict").textContent =
+      blocked.length + " of " + beats.length + " declared beats are blocked. " +
+      "takt will deny " + names + " until the step that produces each marker has run.";
+  }
+
+  const tbody = el("beats");
+  for (const b of beats) {
+    const tr = document.createElement("tr");
+    const st = document.createElement("td");
+    st.className = "state " + (b.satisfied ? "state-satisfied" : "state-blocked");
+    const glyph = document.createElement("span");
+    glyph.className = "glyph";
+    glyph.textContent = b.satisfied ? "✓" : "✗";
+    st.appendChild(glyph);
+    st.appendChild(document.createTextNode(b.satisfied ? "satisfied" : "blocked"));
+    tr.appendChild(st);
+    cell(tr, b.gates, "mono");
+    cell(tr, b.marker, "mono");
+    cell(tr, b.producedBy || "nothing declared");
+    cell(tr, b.scope, "scope");
+    cell(tr, b.reason || "");
+    tbody.appendChild(tr);
+  }
+
+  const ul = el("produces");
+  for (const p of (DATA.produces || [])) {
+    const li = document.createElement("li");
+    const code = document.createElement("code");
+    code.textContent = p.marker;
+    li.appendChild(code);
+    li.appendChild(document.createTextNode(
+      " — " + p.plugin + ", after " + p.after + ". " + (p.meaning || "")));
+    ul.appendChild(li);
+  }
+
+  el("footer").textContent =
+    "Compiled from " + (DATA.declarations || 0) + " plugin declaration(s)" +
+    (DATA.generated ? " at " + DATA.generated : "") +
+    ". Regenerate with emit_beats.py --repo-only, then rebuild this page.";
+}
+
+render();
+</script>
+</body>
+</html>

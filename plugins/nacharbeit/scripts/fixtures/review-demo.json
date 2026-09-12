@@ -1,0 +1,33 @@
+{
+  "generated": "2026-09-12 09:48 UTC",
+  "plugins": 3,
+  "findings": [
+    { "rule": "M-FRONTMATTER-PARSE", "family": "M", "severity": "blocker", "tier": "haiku",
+      "file": "plugins/widget/skills/widget-scan/SKILL.md",
+      "message": "frontmatter fails to parse, so the skill loads with no description and never triggers" },
+    { "rule": "H-DENY-PAYLOAD", "family": "H", "severity": "blocker", "tier": "sonnet",
+      "file": "plugins/widget/hooks/widget_guard.py",
+      "message": "deny emits no hookEventName, so the runtime discards the decision silently" },
+    { "rule": "A-VIEWER-REQUIRED", "family": "A", "severity": "major", "tier": "human",
+      "file": "plugins/widget/.claude-plugin/plugin.json",
+      "message": "plugin ships no assets/*-viewer.html, so its output has no rendered form" },
+    { "rule": "S-EXCEPT-SWALLOW", "family": "S", "severity": "major", "tier": "sonnet",
+      "file": "plugins/widget/scripts/collect.py",
+      "message": "`except: pass` swallows every error, so a failure looks like 'nothing found'" },
+    { "rule": "P-README-WHY-NOT", "family": "P", "severity": "minor", "tier": "opus",
+      "file": "plugins/widget/README.md",
+      "message": "README lacks '## What it is not'; a reader cannot tell it from its siblings" },
+    { "rule": "D-COUNT-PROSE", "family": "D", "severity": "nit", "tier": "haiku",
+      "file": "docs/plugins/index.md",
+      "message": "heading says eleven plugins; twelve are installed" }
+  ],
+  "families": [
+    { "family": "M", "fired": 1, "total": 31 },
+    { "family": "H", "fired": 1, "total": 9 },
+    { "family": "S", "fired": 1, "total": 14 },
+    { "family": "A", "fired": 1, "total": 13 },
+    { "family": "P", "fired": 1, "total": 13 },
+    { "family": "D", "fired": 1, "total": 11 }
+  ],
+  "calibration": { "planted": 91, "fired": 91, "blanked": 91 }
+}

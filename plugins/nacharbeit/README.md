@@ -177,6 +177,22 @@ another repository copies them (or its own, in the same `planted.json` shape) an
 points `--fixtures-root` at them — the review refuses to grade a kind it has no
 tuning + sealed pair for.
 
+## The review report
+
+![Six findings across three plugins, each with its severity, rule family and the cheapest tier that can fix it, over a calibration block showing 91 rules planted and blanked](assets/review-viewer-screenshot.jpg)
+
+```bash
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --json > /tmp/review.json
+python3 plugins/nacharbeit/scripts/build_review_html.py --report /tmp/review.json --out /tmp/review.html
+```
+
+Rendered from committed demo data at `scripts/fixtures/review-demo.json`. The fixture carries a
+**blocker** and a **human**-tier finding on purpose: the tier column exists to separate what a
+model can close from what is a judgement call, and a demo without one cannot show that.
+
+The page also states plainly that a family at `0/n` is **not** evidence of health — it is
+evidence that nothing in the reviewed plugin exercised that family.
+
 ## Verifying a change to this plugin
 
 ```bash

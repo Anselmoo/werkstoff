@@ -4,8 +4,23 @@
     {
       "name": "werkstoff-docs",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "docs:dev"],
+      "runtimeArgs": [
+        "run",
+        "docs:dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "viewer-preview",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8777",
+        "--directory",
+        "analysis/viewer-preview"
+      ],
+      "port": 8777
     }
   ]
 }

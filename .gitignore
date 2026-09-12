@@ -22,6 +22,13 @@ node_modules/
 # data the behavior tests need committed.
 /analysis/
 
+# arbeitsplan candidate worktrees. Each is a full linked worktree of this repo,
+# so committing them would commit N copies of the tree. Anchored for the same
+# reason /analysis/ is: an unanchored `.arbeitsplan` would also swallow any
+# nested fixture of that name, and this file has already been burned once by an
+# unanchored pattern silently excluding real source (issue #24).
+/.arbeitsplan/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

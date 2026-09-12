@@ -4,10 +4,50 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — eleven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `lehre`, `matrize`, `nacharbeit`, `self-assess`,
-`takt`. Each is independently versioned; `marketplace.json` and `.rrt.toml` both
-point here.
+`plugins/<name>/` — twelve plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
+`codebase-consistency`, `compass`, `confab`, `cupertino`, `lehre`, `matrize`,
+`nacharbeit`, `self-assess`, `takt`. Each is independently versioned;
+`marketplace.json` and `.rrt.toml` both point here.
+
+`arbeitsplan` is the twelfth and pairs with `takt`: it **compiles** a stated problem into
+an executable workflow (`analysis/arbeitsplan/<runId>/workflow.json`) and generates the
+`.claude/takt.local.md` beats that takt then **enforces** — so cross-plugin ordering is a
+`PreToolUse` denial rather than prose. Its own guard covers only what takt structurally
+cannot: per-dispatch attribution (an identical re-dispatch, a shared-tree write during a
+fan-out, a write outside `writeScope`, a dispatch past budget). It parallelises by
+**redundancy** — N candidates over the SAME scope in separate worktrees, exactly one landed
+and the rest deleted — so no merge ever happens; and it converges by **widening**, never by
+retrying. `takt` gained an optional `runId` in the same change, namespacing markers under
+`.takt/<runId>/`; a declaration without one behaves exactly as before.
+
+## Every plugin ships an HTML report viewer
+
+**Mandatory, not aspirational.** A plugin without `assets/<name>-viewer.html` plus its
+`scripts/build_<name>_html.py`, a committed demo fixture and a committed screenshot is
+incomplete. Enforced by `A-VIEWER-REQUIRED` in `plugins/nacharbeit/references/rubric.md` and
+checked by `nacharbeit_lint.py` — stated only here it would be prose, which this repo measures
+at baseline. Read `docs/plugin-authoring/references/report-viewer-standard.md` before writing
+one.
+
+## Every plugin declares its beats
+
+`plugins/<name>/.claude-plugin/beats.json` declares what a plugin **produces** (markers its
+completion proves) and **requires** (markers that must precede it).
+`python3 plugins/arbeitsplan/scripts/emit_beats.py --repo-only --write` compiles the union of
+all twelve into one `.claude/takt.local.md`, which `takt` enforces — so cross-plugin order is a
+`PreToolUse` denial instead of a sentence.
+
+It sits beside `plugin.json` rather than in `references/` because `M-REF-UNWIRED` requires every
+reference to be named by a SKILL.md, and **takt ships no skills**.
+
+Two rules the compiler applies, both refusals rather than warnings: an **optional** requirement
+whose producing plugin is absent is dropped and reported (enforcing an order against a plugin
+that cannot run denies forever); a requirement naming a marker **no installed plugin produces**
+is dangling and is *not* compiled (a beat whose marker nothing can create is an unconditional
+denial wearing an ordering costume).
+
+A marker written `.takt/<name>` is **repo-level** and is never namespaced by `runId`; a bare
+name is **per-run** and always is. One declaration carries both.
 
 `nacharbeit` is the tenth and the odd one out: its object is the other nine. It carries
 the calibrated review instrument PR #56 built (`scripts/nacharbeit_lint.py`,
@@ -239,7 +279,7 @@ Twelve independent version groups in `.rrt.toml` (11 plugins + `tools/werkstoff-
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash
-rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1
+rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1; pinned at 1.17.1 here
 rrt tag create --group <name> --prefix '<name>-v' --push   # plugins
 rrt tag create --group werkstoff-cli --push                # ONLY this one uses bare v<version>
 ```

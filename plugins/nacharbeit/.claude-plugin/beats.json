@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "nacharbeit",
+  "produces": [
+    {
+      "marker": "plugin-reviewed",
+      "after": "nacharbeit-review",
+      "meaning": "a calibrated review pass has findings on record for this plugin"
+    }
+  ],
+  "requires": []
+}

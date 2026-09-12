@@ -1,0 +1,12 @@
+{
+  "runId": "ap-fixture-1",
+  "phase": "build",
+  "kind": "fanout-redundant",
+  "sharedTreeWritable": false,
+  "writeScope": ["src/**"],
+  "candidates": [
+    { "id": "c1", "worktree": ".arbeitsplan/ap-fixture-1/c1" }
+  ],
+  "fanOut": 2,
+  "budget": { "totalDispatches": 4 }
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "matrize",
+  "produces": [
+    {
+      "marker": "tokens-emitted",
+      "after": "matrize-emit",
+      "meaning": "the design system was formatted to its targets from a written tokens.json"
+    }
+  ],
+  "requires": []
+}

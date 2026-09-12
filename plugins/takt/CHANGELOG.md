@@ -4,6 +4,32 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `assets/beatgraph-viewer.html` + `scripts/build_beatgraph_html.py` + a committed demo
+  fixture — the artifact takt has never had. Until now the only way to learn what takt was
+  blocking was to trip over a denial; the page renders every declared beat, whether its marker
+  exists, and which plugin produces it
+- a **repo-level marker escape**: a relative `require` that already begins `.takt/` is taken
+  as-is and is never namespaced by `runId`, while a bare name always is. One compiled
+  declaration therefore carries both durable facts and per-run markers at once. The split falls
+  along takt's existing convention (`require: ".takt/council-done"`), so no declaration written
+  before `runId` existed changes meaning
+- Optional top-level `runId` in `.claude/takt.local.md`. When present, every **relative**
+  `require` marker resolves under `.takt/<runId>/` instead of against the repository root,
+  so a marker left behind by an earlier run cannot satisfy a later run's beat. Omitting
+  `runId` leaves behaviour byte-identical, which `hooks/test_takt_guard.py` pins under the
+  name `BACKWARD`. `runId` becomes a path component, so it must match
+  `[A-Za-z0-9._-]{1,64}` with no `..`; anything else denies rather than being sanitised
+- `hooks/test_takt_guard.py` — takt was the only hook-bearing plugin in this repository
+  with no guard unit test, which is very likely why the staleness above went unnoticed.
+  Asserts deny **and** allow across inertness, the escape hatch, both marker regimes, the
+  `runId` charset, and the exit-2-plus-JSON deny protocol. Sabotage-tested: blanking the
+  `runId` resolution turns the `STALE` cases red and leaves `BACKWARD` green
+- `scripts/validate_beats.py` — authoring-time validation of a declaration, with
+  `--selftest` over 11 planted-defect declarations. Reports what the guard *tolerates*:
+  a beat gating no paths or no skills is silently skipped at runtime, which is the
+  likeliest bug in a generated declaration
+
 ### Fixed
 - `takt_guard.py` read only `tool_input["file_path"]`, so a `MultiEdit` carrying its
   paths in an `edits` array produced no target, matched no beat, and was **allowed** in

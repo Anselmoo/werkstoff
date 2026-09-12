@@ -1,0 +1,12 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "lehre",
+  "produces": [
+    {
+      "marker": "ruleset-pinned",
+      "after": "lehre-pin",
+      "meaning": "the doctrine ruleset is frozen, so a gauge run measures against a fixed rule set"
+    }
+  ],
+  "requires": []
+}

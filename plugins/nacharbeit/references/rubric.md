@@ -256,6 +256,7 @@ it is reimplemented. The standard is `docs/plugin-authoring/references/report-vi
 | `A-TOKENS-PRESENT` | A plugin with a viewer ships `assets/tokens.css`. | viewer | minor | standard "What is mechanically checked" |
 | `A-BUILDER-EXISTS` | A `scripts/*.py` names the viewer or injects the `__DESIGN_TOKENS__` marker. | viewer | minor | standard (builder + template pairing) |
 | `A-C4-ALT` | The README's screenshot alt text is ≥10 characters and not the plugin name. | readme | nit | standard C4 |
+| `A-VIEWER-REQUIRED` | The plugin ships at least one `assets/*-viewer.html`. Keyed on the manifest, because every other `A-*` rule grades a viewer that exists and so can never report one that does not. | manifest | major | CLAUDE.md "Every plugin ships an HTML report viewer" |
 
 ### Judgement
 

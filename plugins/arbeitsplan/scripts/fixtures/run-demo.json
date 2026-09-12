@@ -1,0 +1,44 @@
+{
+  "runId": "ap-2026-09-12-a3f1",
+  "generated": "2026-09-12 09:42 UTC",
+  "candidates": [
+    {
+      "id": "c1",
+      "angle": "middleware-layer",
+      "outcome": "rejected",
+      "checksPassed": 2,
+      "checksTotal": 3,
+      "filesTouched": 3,
+      "evidence": "a3 not met: requirements.txt gains 'slowapi' (src/api/search.py:8)"
+    },
+    {
+      "id": "c2",
+      "angle": "decorator-per-route",
+      "outcome": "landed",
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "filesTouched": 2,
+      "evidence": "3/3 met; 429 raised past 60/min at src/api/search.py:41"
+    },
+    {
+      "id": "c3",
+      "angle": "reverse-proxy-config",
+      "outcome": "unmeasured",
+      "checksPassed": 0,
+      "checksTotal": 0,
+      "filesTouched": 0,
+      "evidence": "worktree has no nginx toolchain; the angle cannot be built here at all"
+    },
+    {
+      "id": "c4",
+      "angle": "token-bucket-in-store",
+      "outcome": "accepted",
+      "checksPassed": 3,
+      "checksTotal": 3,
+      "filesTouched": 4,
+      "evidence": "3/3 met, but touches 4 files to c2's 2, so the selection rule prefers c2"
+    }
+  ],
+  "breaker": { "accepted": 2, "measured": 3, "unmeasured": 1, "tripped": false },
+  "budget": { "used": 8, "total": 9 }
+}

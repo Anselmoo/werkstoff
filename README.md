@@ -38,6 +38,13 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   design and craft discipline for a project's whole lifecycle, 10 skills
   each grounded in a specific, real Jobs/Apple decision, composed by
   `cupertino-review` into one fixed lifecycle pipeline.
+- **[`arbeitsplan`](plugins/arbeitsplan/README.md)** — compiles a stated
+  problem into an executable, budgeted agentic workflow and runs it as a
+  redundant swarm: N candidates over the *same* scope in their own git
+  worktrees, judged blind, exactly one landed and the rest deleted — so
+  nothing is ever merged and a merge conflict cannot occur. Converges by
+  widening, never by retrying; generates the `takt` beats that enforce its
+  order rather than enforcing ordering twice.
 - **[`andon`](plugins/andon/README.md)** — an evidence-grounded
   harden-and-advance loop for live, actively-maintained codebases:
   propose maximally, verify adversarially across seven proof strategies,
@@ -92,8 +99,8 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 ```
 
 Swap `self-assess` for any plugin name above (`confab`, `compass`,
-`cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`, `takt`, `lehre`,
-`nacharbeit`, `matrize`) to install
+`cupertino`, `andon`, `arbeitsplan`, `cli-scaffold`, `codebase-consistency`,
+`takt`, `lehre`, `nacharbeit`, `matrize`) to install
 a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin

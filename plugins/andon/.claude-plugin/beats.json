@@ -1,0 +1,20 @@
+{
+  "$schema": "arbeitsplan/beats/1",
+  "plugin": "andon",
+  "produces": [
+    {
+      "marker": "wire-proven",
+      "after": "andon-verify",
+      "meaning": "one named wire has been proven against evidence, not asserted"
+    }
+  ],
+  "requires": [
+    {
+      "marker": "transform-brief-written",
+      "from": "self-assess",
+      "before": "andon-loop",
+      "optional": false,
+      "reason": "andon-loop/SKILL.md:51-54 already says to STOP and run self-assess-transform-brief first, and never silently fall back to self-scan. Stated in prose in two files and enforced by nothing."
+    }
+  ]
+}
