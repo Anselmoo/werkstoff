@@ -4,6 +4,7 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-12
 ### Changed
 - converted to `pathlib.Path` throughout (41 modernization findings to **zero**), together with
   `B904` cause-chaining, two dead `# noqa` directives that suppressed nothing, and
