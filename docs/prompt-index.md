@@ -95,7 +95,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 "run this same prompt three times with the plugin and three times without, on separate processes"
 ````
 
-> Triggers `arbeitsplan-matrix`: compiles a `cases × models × plugin_states × repeats` sweep and hands you a terminal command. It never runs it — a nested `claude -p` cannot authenticate.
+> Triggers `arbeitsplan-matrix`: compiles a `cases × models × plugin_states × repeats` sweep, proves the environment can authenticate with one cheap call, then runs it — one fresh process per cell, with a real per-cell `--model`.
 
 ### Find out why something was refused
 
@@ -639,7 +639,7 @@ we actually do, and make the important ones actually enforced"
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 90 mechanical rules; findings by rule and file, nothing applied.
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 92 mechanical rules; findings by rule and file, nothing applied.
 
 ### Run the calibrated review
 

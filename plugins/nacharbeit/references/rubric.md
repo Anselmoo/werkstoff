@@ -208,7 +208,7 @@ instead of `permissionDecisionReason`, makes the runtime silently ignore the den
 ## S — scripts
 
 Applies to `scripts/**/*.{py,sh,js}` and `hooks/*.py` (kinds `script` and `hookscript`),
-skipping `fixtures/` and `testdata/`. `S-JS-SYNTAX` also covers `workflows/*.js`.
+skipping `fixtures/` and `testdata/`. `S-JS-SYNTAX` and `S-WF-SHAPE` also cover `workflows/*.js`.
 
 ### Mechanical
 
@@ -216,6 +216,7 @@ skipping `fixtures/` and `testdata/`. `S-JS-SYNTAX` also covers `workflows/*.js`
 |---|---|---|---|---|
 | `S-PY-COMPILE` | `ast.parse` succeeds. | script (.py) | blocker | CLAUDE.md verification list |
 | `S-JS-SYNTAX` | `node --check` passes; when `node` is absent the rule is listed under `skipped`, never silently passed. | script (.js), workflow | blocker | `scripts/ci/check-js-syntax.sh` |
+| `S-WF-SHAPE` | A workflow script has a top-level `return`. The runtime evaluates the body, so one wrapped in `export default` defines a function nothing calls and dispatches nothing. Detected by parsing a copy as an ES module, where node's `Illegal return statement` refusal is the *positive* signal; when `node` is absent the rule is listed under `skipped`. | workflow | blocker | `scripts/ci/check-js-syntax.sh`; the `workflow-authoring` contract |
 | `S-SHEBANG` | An entry-point script starts with `#!/usr/bin/env python3` (or bash). | script | nit | repo convention |
 | `S-DOCSTRING-USAGE` | An entry-point `.py` has a module docstring stating its usage, or an argparse `--help`; test files are exempt. | script | minor | platform best-practices "Make execution intent clear" |
 | `S-ARGPARSE` | A script reading `sys.argv` imports `argparse`. | script (.py) | minor | same; `--help` must exist |

@@ -97,7 +97,7 @@
         {
           "id": "arbeitsplan:arbeitsplan-matrix",
           "name": "arbeitsplan-matrix",
-          "description": "Compiles a headless sweep — cases x models x plugin-states x repeats, one fresh `claude -p` process per cell — and hands the user the command to run it from a terminal. Use when the user wants genuinely independent candidates, a real per-candidate --model, a plugin-present versus plugin-absent comparison, or asks to benchmark or ablate a plugin. Also use afterwards to read the results back. Never runs the sweep itself; a nested `claude -p` cannot authenticate."
+          "description": "Compiles and runs a headless sweep — cases x models x plugin-states x repeats, one fresh `claude -p` process per cell — after proving the environment can authenticate. Use when the user wants genuinely independent candidates, a real per-candidate --model, a plugin-present versus plugin-absent comparison, or asks to benchmark or ablate a plugin. Also use afterwards to read results back. A cell that could not be fairly measured is UNMEASURED, never FAIL."
         },
         {
           "id": "arbeitsplan:arbeitsplan-patterns",

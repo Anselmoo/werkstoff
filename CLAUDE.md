@@ -176,7 +176,7 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
-python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (90 rules planted + blanked) -- run before trusting it
+python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (92 rules planted + blanked) -- run before trusting it
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
 bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
@@ -198,6 +198,14 @@ the uncommitted files sitting locally. Every plugin with a `scripts/lib/`
 package now vendors a canary `README.md` there via `.rrt.toml`'s
 `artifact_targets` (`tools/plugin-lib-canary/README.md`); add a matching
 entry when a new plugin gains one of its own.
+
+**`rrt artifacts --check` compares each file to the lock, not to its generator.**
+If an artifact was stale when the lock was snapshotted, both agree and the check
+stays green forever. That shipped in `69f438a`: `docs/.vitepress/data/surface.json`
+carried an `arbeitsplan-matrix` description the SKILL.md no longer had, snapshotted
+in the same commit, and `--check --strict` passed every run afterwards. Only
+`rrt artifacts --regenerate` re-runs each target's command, so run that — not
+`--snapshot` — after touching anything a generator reads.
 
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never

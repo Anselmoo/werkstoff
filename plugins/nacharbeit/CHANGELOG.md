@@ -5,6 +5,14 @@ All notable changes to the `nacharbeit` plugin are documented here.
 ## [Unreleased]
 
 ### Added
+- `S-WF-SHAPE` (blocker) — a `workflows/*.js` file must carry a top-level `return`. The
+  Workflow runtime evaluates the script *body*, so one wrapped in `export default async
+  function run(...)` defines a function nothing calls and resolves to `undefined`, leaving
+  every agent dispatch unreachable. It parses under `node --check` and lints clean, so
+  nothing caught it until `plugins/arbeitsplan/workflows/run.js` shipped in that shape.
+  Detected by parsing a copy as an ES module, where node's `Illegal return statement`
+  refusal is the **positive** signal — the calibration asserts that wording still holds
+  before trusting the rule, because a rename would leave it quietly passing everything
 - `A-VIEWER-REQUIRED` (major) — every plugin must ship `assets/*-viewer.html`. Keyed on the
   **manifest**, because every other `A-*` rule grades a viewer that exists and so can never
   report one that does not. The rubric and the linter are checked for agreement, and the rule

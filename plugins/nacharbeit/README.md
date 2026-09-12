@@ -82,7 +82,7 @@ sealed recall falls below its floor.
 | skill | role | what it does |
 |---|---|---|
 | `nacharbeit-preflight` | leaf, read-only | inventory by kind, available checkers, other live guards, open lock |
-| `nacharbeit-lint` | leaf, zero tokens | the calibration, then the 90 mechanical rules |
+| `nacharbeit-lint` | leaf, zero tokens | the calibration, then the 92 mechanical rules |
 | `nacharbeit-review` | orchestrator | build and bake args → calibrated workflow → persist → report |
 | `nacharbeit-fix` | orchestrator | open the lock and snapshot → remediate / verify / repair per file → post-checks and contract diff → release |
 | `nacharbeit-status` | status | what ran, what is held for a person, whether a lock is open |
@@ -114,7 +114,7 @@ by intent.
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 90 mechanical
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 92 mechanical
 > rules; findings by rule and file, nothing applied.
 
 ##### Run the calibrated review
@@ -196,7 +196,7 @@ evidence that nothing in the reviewed plugin exercised that family.
 ## Verifying a change to this plugin
 
 ```bash
-python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 90 rules planted, blanked, synced
+python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 92 rules planted, blanked, synced
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/nacharbeit --docs-root docs   # the plugin lints clean under its own rules
 python3 test/plugins/lint-frontmatter.py plugins/nacharbeit
