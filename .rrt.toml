@@ -455,3 +455,86 @@ command = ["cp", "test/plugins/verify-hooks-deny.py", "plugins/nacharbeit/script
 path = "docs/.vitepress/data/surface.json"
 description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
 command = ["python3", "tools/surface-index/build_surface_index.py"]
+
+# The docs site embeds each plugin README verbatim via `<!--@include:-->`, so every
+# screenshot a README references has to exist a second time under docs/plugins/assets/.
+# Those copies were made by hand and synced by nothing: this PR added three viewers and
+# forgot three copies, and the VitePress build failed with "Could not resolve
+# ./assets/beatgraph-viewer-screenshot.jpg" -- naming only the first of the three.
+# Tracking them here makes `rrt artifacts --check --strict`, already a CI step, the thing
+# that notices. Add an entry when a plugin gains a screenshot.
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/architecture-tree-viewer-screenshot.jpg"
+description = "docs copy of plugins/cli-scaffold/assets/architecture-tree-viewer-screenshot.jpg"
+command = ["cp", "plugins/cli-scaffold/assets/architecture-tree-viewer-screenshot.jpg", "docs/plugins/assets/architecture-tree-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/beatgraph-viewer-screenshot.jpg"
+description = "docs copy of plugins/takt/assets/beatgraph-viewer-screenshot.jpg"
+command = ["cp", "plugins/takt/assets/beatgraph-viewer-screenshot.jpg", "docs/plugins/assets/beatgraph-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/board-viewer-screenshot.jpg"
+description = "docs copy of plugins/andon/assets/board-viewer-screenshot.jpg"
+command = ["cp", "plugins/andon/assets/board-viewer-screenshot.jpg", "docs/plugins/assets/board-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"
+description = "docs copy of plugins/compass/assets/branch-comparison-viewer-screenshot.jpg"
+command = ["cp", "plugins/compass/assets/branch-comparison-viewer-screenshot.jpg", "docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/burndown-viewer-screenshot.jpg"
+description = "docs copy of plugins/confab/assets/burndown-viewer-screenshot.jpg"
+command = ["cp", "plugins/confab/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/derivation-viewer-screenshot.jpg"
+description = "docs copy of plugins/matrize/assets/derivation-viewer-screenshot.jpg"
+command = ["cp", "plugins/matrize/assets/derivation-viewer-screenshot.jpg", "docs/plugins/assets/derivation-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/doctrine-viewer-screenshot.jpg"
+description = "docs copy of plugins/lehre/assets/doctrine-viewer-screenshot.jpg"
+command = ["cp", "plugins/lehre/assets/doctrine-viewer-screenshot.jpg", "docs/plugins/assets/doctrine-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/icon-system-screenshot.jpg"
+description = "docs copy of plugins/matrize/assets/icon-system-screenshot.jpg"
+command = ["cp", "plugins/matrize/assets/icon-system-screenshot.jpg", "docs/plugins/assets/icon-system-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/matrix-viewer-screenshot.jpg"
+description = "docs copy of plugins/codebase-consistency/assets/matrix-viewer-screenshot.jpg"
+command = ["cp", "plugins/codebase-consistency/assets/matrix-viewer-screenshot.jpg", "docs/plugins/assets/matrix-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/provenance-viewer-screenshot.jpg"
+description = "docs copy of plugins/matrize/assets/provenance-viewer-screenshot.jpg"
+command = ["cp", "plugins/matrize/assets/provenance-viewer-screenshot.jpg", "docs/plugins/assets/provenance-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/review-flow-viewer-screenshot.jpg"
+description = "docs copy of plugins/cupertino/assets/review-flow-viewer-screenshot.jpg"
+command = ["cp", "plugins/cupertino/assets/review-flow-viewer-screenshot.jpg", "docs/plugins/assets/review-flow-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/review-viewer-screenshot.jpg"
+description = "docs copy of plugins/nacharbeit/assets/review-viewer-screenshot.jpg"
+command = ["cp", "plugins/nacharbeit/assets/review-viewer-screenshot.jpg", "docs/plugins/assets/review-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/run-viewer-screenshot.jpg"
+description = "docs copy of plugins/arbeitsplan/assets/run-viewer-screenshot.jpg"
+command = ["cp", "plugins/arbeitsplan/assets/run-viewer-screenshot.jpg", "docs/plugins/assets/run-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/sketchbook-screenshot.jpg"
+description = "docs copy of plugins/matrize/assets/sketchbook-screenshot.jpg"
+command = ["cp", "plugins/matrize/assets/sketchbook-screenshot.jpg", "docs/plugins/assets/sketchbook-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/stage-map-viewer-screenshot.jpg"
+description = "docs copy of plugins/self-assess/assets/stage-map-viewer-screenshot.jpg"
+command = ["cp", "plugins/self-assess/assets/stage-map-viewer-screenshot.jpg", "docs/plugins/assets/stage-map-viewer-screenshot.jpg"]

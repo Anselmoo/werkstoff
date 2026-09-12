@@ -1053,6 +1053,39 @@ def check_c6_bodies(report: Report, recipes: list[tuple[Path, dict]]) -> None:
             report.fail("C6", f"{rel}: body is {len(body.split())} words -- too short to orient "
                               "a reader who landed here from search rather than the grid")
 
+# A docs page embeds a plugin README verbatim via `<!--@include:-->`, so every image
+# the README references must exist a SECOND time under docs/plugins/assets/. Those
+# copies are made by hand. When three viewers were added and three copies forgotten,
+# the VitePress build failed in CI with "Could not resolve
+# ./assets/beatgraph-viewer-screenshot.jpg" -- naming only the FIRST of the three,
+# because rollup stops at the first unresolved import.
+#
+# .rrt.toml now tracks each copy as an artifact_target, which catches DRIFT between a
+# copy and its source. It cannot catch a reference to a file that exists in neither
+# place, because that needs a list entry nobody added. This check needs no list: it
+# resolves what the pages actually reference.
+def check_c7_images(report: Report) -> None:
+    seen = 0
+    for page in sorted(DOCS.rglob("*.md")):
+        text = page.read_text(encoding="utf-8")
+        # Resolve @include: the way VitePress does, so a README's images are checked
+        # against the page that embeds it rather than against the README's own folder.
+        for inc in re.findall(r"<!--\s*@include:\s*([^\s>-]+)", text):
+            src = (page.parent / inc).resolve()
+            if src.exists():
+                text += "\n" + src.read_text(encoding="utf-8")
+        for ref in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", text):
+            if ref.startswith(("http://", "https://", "data:", "/")):
+                continue
+            seen += 1
+            if not (page.parent / ref).exists():
+                report.fail("C7", f"{page.relative_to(DOCS).as_posix()}: image {ref!r} does not "
+                                  "resolve -- the VitePress build fails on this, and it names "
+                                  "only the first such reference per run")
+    if not seen:
+        report.fail("C7", "no relative image references found at all -- the check resolved "
+                          "nothing, so a green result here would mean nothing")
+
 
 CHECKS = {
     "C1": ("counts claimed in prose match reality", check_c1_counts),
@@ -1061,6 +1094,7 @@ CHECKS = {
     "C4": ("outline shape and reading load stay navigable", check_c4_outline),
     "C5": ("do/don't guidance coverage", check_c5_dos_donts),
     "C6": ("every recipe body orients a reader arriving from search", check_c6_bodies),
+    "C7": ("every image a docs page references resolves", check_c7_images),
 }
 
 
