@@ -179,7 +179,7 @@ takt enforces an order it never authors, and until now the only way to learn wha
 blocking was to trip over a denial. `assets/beatgraph-viewer.html` renders that order: every
 declared beat, whether its marker exists yet, and which plugin produces it.
 
-![Every declared cross-plugin beat with its state, the marker it waits on and the plugin that produces it](assets/beatgraph-viewer-screenshot.jpg)
+![Declared beats with their state and evidence path, a table of requirements deliberately not compiled with the reason for each, and every marker a plugin produces tagged by evidence kind](assets/beatgraph-viewer-screenshot.jpg)
 
 ```bash
 python3 plugins/takt/scripts/build_beatgraph_html.py --repo . --out /tmp/beatgraph.html
@@ -187,9 +187,19 @@ python3 plugins/takt/scripts/build_beatgraph_html.py --repo . --out /tmp/beatgra
 
 The screenshot above is rendered from committed demo data at
 `scripts/fixtures/beatgraph-demo.json`, so it is reproducible rather than a picture of one
-machine on one day. That fixture deliberately carries **both** states — one blocked beat and one
-satisfied — because a demo in which nothing is blocked cannot show what blocking looks like, and
-one in which everything is cannot show the other.
+machine on one day. That fixture is **synthetic and says so**, and deliberately carries every state the page can
+render: a blocked beat, a satisfied one, two refusals, and both evidence kinds. A demo missing a
+state cannot show what that state looks like.
+
+It is synthetic because this repository's own live graph currently compiles **zero** beats —
+every cross-plugin ordering rule here is either already enforced in code or has a producer that
+leaves no evidence. `build_beatgraph_html.py --repo .` renders that real state, and the page
+says plainly that no beats is a *result*, not an omission.
+
+The beat list is the **compiler's**, imported from `arbeitsplan/scripts/emit_beats.py` rather
+than re-derived — the selftest asserts the two counts match. A page and a compiler that
+disagree about what is enforced is a page that lies, and this repo has already been burned once
+by a validator that drifted from the guard it validated.
 
 State is carried by the word and the glyph; colour is a third channel on top of two that already
 work without it.

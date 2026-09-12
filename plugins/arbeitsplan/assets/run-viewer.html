@@ -107,7 +107,8 @@ const GLYPH = { landed: "✓", accepted: "·", rejected: "✗", unmeasured: "—
 function render() {
   if (!DATA || !Array.isArray(DATA.candidates)) {
     el("verdict").textContent =
-      "This run report could not be read. Rebuild it with plugins/arbeitsplan/scripts/build_run_html.py.";
+      "This run report could not be read, so nothing below is trustworthy. Regenerate it: " +
+      "python3 plugins/arbeitsplan/scripts/build_run_html.py --run <runId>";
     el("empty").hidden = false;
     return;
   }
@@ -179,7 +180,7 @@ function render() {
 
   el("footer").textContent =
     "Run " + (DATA.runId || "?") + (DATA.generated ? " — " + DATA.generated : "") +
-    ". Rebuild with build_run_html.py.";
+    ". Regenerate with build_run_html.py after any further dispatch.";
 }
 render();
 </script>

@@ -196,6 +196,49 @@ def main() -> int:
         rc, _ = run(tmp, "Skill", {"skill": "ap-run"})
         check("both kinds satisfied in one declaration -> ALLOW", rc, ALLOW)
 
+        # --- requireKind: what SHAPE satisfies a beat --------------------
+        # The bypass this closes: with plain os.path.exists, `mkdir <path>`
+        # opens any gate. Harmless while markers were empty touch-files;
+        # a one-command bypass once a beat gates on a real artifact.
+        print("REQUIREKIND (file / dir / any)")
+        ART = {"id": "artifact-gate", "tools": ["Skill"], "skills": ["consumer"],
+               "require": "analysis/x/brief.md", "requireKind": "file", "reason": "artifact gate"}
+        declare(tmp, [ART])
+        (tmp / "analysis" / "x").mkdir(parents=True, exist_ok=True)
+        rc, out = run(tmp, "Skill", {"skill": "consumer"})
+        check("file evidence absent -> DENY", rc, DENY, out)
+
+        # A DIRECTORY at the artifact path must NOT satisfy a file gate.
+        (tmp / "analysis" / "x" / "brief.md").mkdir(parents=True, exist_ok=True)
+        rc, out = run(tmp, "Skill", {"skill": "consumer"})
+        check("a DIRECTORY does not satisfy requireKind file -> DENY", rc, DENY, out)
+
+        (tmp / "analysis" / "x" / "brief.md").rmdir()
+        (tmp / "analysis" / "x" / "brief.md").write_text("# brief\n")
+        rc, _ = run(tmp, "Skill", {"skill": "consumer"})
+        check("a real FILE satisfies it -> ALLOW", rc, ALLOW)
+
+        # Omitted requireKind must behave exactly as before the field existed.
+        BARE = dict(ART)
+        BARE.pop("requireKind")
+        BARE["require"] = "analysis/x/dirish"
+        declare(tmp, [BARE])
+        (tmp / "analysis" / "x" / "dirish").mkdir(parents=True, exist_ok=True)
+        rc, _ = run(tmp, "Skill", {"skill": "consumer"})
+        check("omitted requireKind is exists() -- a dir satisfies -> ALLOW", rc, ALLOW)
+
+        DIRK = dict(BARE)
+        DIRK["requireKind"] = "dir"
+        declare(tmp, [DIRK])
+        rc, _ = run(tmp, "Skill", {"skill": "consumer"})
+        check("requireKind dir accepts a directory -> ALLOW", rc, ALLOW)
+
+        BADK = dict(BARE)
+        BADK["requireKind"] = "socket"
+        declare(tmp, [BADK])
+        rc, out = run(tmp, "Skill", {"skill": "consumer"})
+        check("an unknown requireKind -> DENY (fail-closed)", rc, DENY, out)
+
         # --- runId charset is fail-closed -------------------------------
         print("runId charset")
         for bad in ("../escape", "a/b", "a..b", 17):

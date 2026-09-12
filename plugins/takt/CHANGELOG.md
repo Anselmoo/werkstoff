@@ -5,6 +5,21 @@ All notable changes to the `takt` plugin are documented here.
 ## [Unreleased]
 
 ### Added
+- **`requireKind: "file" | "dir" | "any"`** on a beat, defaulting to `any` so every existing
+  declaration behaves byte-identically. The guard used a plain `os.path.exists`, so
+  `mkdir <path>` opened any gate — harmless while markers were empty touch-files, a one-command
+  bypass once a beat gates on a real produced artifact. An unknown value denies, fail-closed
+- the beat-graph viewer now renders **refusals** — requirements declared and deliberately not
+  compiled, with the reason for each — and tags every produced marker with its evidence kind. Its
+  beat list is the **compiler's**, imported from `arbeitsplan/scripts/emit_beats.py` rather than
+  re-derived, and the selftest asserts the two counts agree: a page and a compiler that disagree
+  about what is enforced is a page that lies
+
+### Fixed
+- **`/.takt/` is now gitignored.** A marker means "this step ran in *this* checkout"; committed,
+  it satisfied its gate for every clone forever — failing **open**, silently, which is the
+  opposite of the fail-closed stance every guard here takes. Deliberately *not* extended to
+  `.cupertino/`, `.lehre/` or `.design/`, which hold durable project facts that should be shared
 - `assets/beatgraph-viewer.html` + `scripts/build_beatgraph_html.py` + a committed demo
   fixture — the artifact takt has never had. Until now the only way to learn what takt was
   blocking was to trip over a denial; the page renders every declared beat, whether its marker

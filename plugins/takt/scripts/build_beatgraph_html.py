@@ -33,8 +33,29 @@ TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
 DATA_MARKER = "/*__BEATGRAPH_DATA__*/"
 
 
+def _compiler(repo: Path):
+    """arbeitsplan's repo_beats, imported rather than reimplemented.
+
+    The viewer and the compiler must not be two opinions about which beats
+    exist. When they drifted once before -- validate_beats.py rejecting output
+    takt's own guard handled correctly -- the lesson recorded was that a second
+    implementation of the same rule is believed right up until it is wrong.
+    Returns None when arbeitsplan is not installed; the viewer then renders
+    declarations only and says so.
+    """
+    mod = repo / "plugins" / "arbeitsplan" / "scripts" / "emit_beats.py"
+    if not mod.is_file():
+        return None
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("arbeitsplan_emit_beats", mod)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
 def collect(repo: Path) -> dict:
-    """Build the report from declarations plus the markers actually on disk."""
+    """Build the report from the declarations, the COMPILER's verdict, and the
+    evidence actually on disk."""
     plugins = repo / "plugins"
     decls = {}
     for d in sorted(plugins.iterdir()) if plugins.is_dir() else []:
@@ -45,38 +66,41 @@ def collect(repo: Path) -> dict:
             except (json.JSONDecodeError, ValueError) as exc:
                 raise SystemExit(f"build_beatgraph_html.py: {f}: {exc}")
 
-    produced = {}
     produces = []
     for name, d in decls.items():
         for pr in d.get("produces") or []:
-            if pr.get("marker"):
-                produced[pr["marker"]] = name
-                produces.append({"marker": pr["marker"], "plugin": name,
-                                 "after": pr.get("after", "?"), "meaning": pr.get("meaning", "")})
-
-    beats = []
-    for name, d in sorted(decls.items()):
-        for req in d.get("requires") or []:
-            marker, before = req.get("marker"), req.get("before")
-            if not marker or not before:
-                continue
-            # Repo-level by construction: a declared requirement is a durable
-            # fact about the repository, not a fact about one run.
-            path = repo / ".takt" / marker
-            beats.append({
-                "gates": before,
-                "marker": f".takt/{marker}",
-                "producedBy": produced.get(marker),
-                "scope": "repo-level",
-                "satisfied": path.exists(),
-                "reason": req.get("reason", ""),
-                "optional": bool(req.get("optional")),
+            ev = pr.get("evidence") or {}
+            produces.append({
+                "marker": pr.get("marker", "?"), "plugin": name,
+                "after": pr.get("after", "?"), "meaning": pr.get("meaning", ""),
+                "evidenceKind": ev.get("kind", "undeclared"),
+                "evidencePath": ev.get("path", ""),
+                "why": ev.get("why", ""),
             })
+
+    m = _compiler(repo)
+    beats, refused = [], []
+    if m is not None:
+        compiled, dropped, refusals, _malformed = m.repo_beats(decls, plugins)
+        for b in compiled:
+            path = repo / b["require"]
+            kind = b.get("requireKind", "any")
+            sat = path.is_file() if kind == "file" else (
+                path.is_dir() if kind == "dir" else path.exists())
+            beats.append({
+                "gates": b["skills"][0] if b["skills"] else "?",
+                "marker": b["require"], "producedBy": None,
+                "scope": kind, "satisfied": sat, "reason": b.get("reason", ""),
+            })
+        refused = [{"gates": w, "marker": mk, "reason": r, "why": why}
+                   for w, mk, r, why in refusals]
 
     return {
         "beats": beats,
+        "refused": refused,
         "produces": sorted(produces, key=lambda p: p["marker"]),
         "declarations": len(decls),
+        "compilerAvailable": m is not None,
         "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
@@ -117,12 +141,36 @@ def selftest() -> int:
     ok("a static verdict element exists", 'class="verdict"' in html)
     ok("a static legend exists", 'class="legend"' in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
-    ok("blocked beats appear in the demo",
+    # The check that matters: the viewer's beat list is the COMPILER's beat
+    # list. If these ever disagree the page is lying about what is enforced.
+    live = collect(Path(__file__).resolve().parent.parent.parent)
+    m = _compiler(Path(__file__).resolve().parent.parent.parent)
+    if m is not None:
+        decls = {d.parent.parent.name: json.loads(d.read_text())
+                 for d in sorted((Path(__file__).resolve().parent.parent.parent / "plugins")
+                                 .glob("*/.claude-plugin/beats.json"))}
+        compiled, _, _, _ = m.repo_beats(decls, Path(__file__).resolve().parent.parent.parent / "plugins")
+        ok("viewer beat count equals the compiler's", len(live["beats"]) == len(compiled),
+           f"viewer {len(live['beats'])} vs compiler {len(compiled)}")
+        ok("a refusal is carried through to the page, not dropped",
+           len(live["refused"]) >= 1,
+           "a requirement the compiler refused must be visible, or the page implies it was never declared")
+    ok("demo shows a BLOCKED beat",
        any(not b["satisfied"] for b in demo["beats"]),
        "a demo where nothing is blocked cannot show what blocking looks like")
-    ok("satisfied beats appear too",
+    ok("demo shows a SATISFIED beat",
        any(b["satisfied"] for b in demo["beats"]),
        "a demo where everything is blocked cannot show the other state")
+    ok("demo shows a REFUSED requirement",
+       len(demo.get("refused") or []) >= 1,
+       "a refusal is a result, not an omission -- a page that never shows one implies every "
+       "declared requirement became a beat")
+    ok("demo shows an evidence kind of 'none'",
+       any(p.get("evidenceKind") == "none" for p in demo["produces"]),
+       "the undependable case is the one a reader most needs to see named")
+    ok("demo is labelled synthetic",
+       "SYNTHETIC" in (demo.get("_note") or ""),
+       "demo data that reads as live state misleads about what this repo currently enforces")
 
     print()
     if fails:

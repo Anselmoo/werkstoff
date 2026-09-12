@@ -1,11 +1,17 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "confab",
   "produces": [
     {
       "marker": "contracts-audited",
       "after": "confab-contract-drift",
-      "meaning": "machine-checkable contracts were compared against actual call-site usage"
+      "meaning": "machine-checkable contracts were compared against actual call-site usage",
+      "evidence": {
+        "kind": "artifact",
+        "path": "analysis/confab/contract_drift_summary.json",
+        "relativeTo": "repo",
+        "writtenBy": "plugins/confab/scripts/contract_drift.py"
+      }
     }
   ],
   "requires": []

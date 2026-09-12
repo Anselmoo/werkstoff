@@ -1,5 +1,5 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "cli-scaffold",
   "produces": [],
   "requires": []

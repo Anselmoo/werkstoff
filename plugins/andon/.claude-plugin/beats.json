@@ -1,11 +1,15 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "andon",
   "produces": [
     {
       "marker": "wire-proven",
       "after": "andon-verify",
-      "meaning": "one named wire has been proven against evidence, not asserted"
+      "meaning": "one named wire has been proven against evidence, not asserted",
+      "evidence": {
+        "kind": "none",
+        "why": "andon-verify is explicitly forbidden to write -- its SKILL.md says 'Never write to the ledger; andon-loop persists it', and its allowed-tools carry no Write. Nothing durable marks that one wire was proven."
+      }
     }
   ],
   "requires": [
@@ -14,7 +18,8 @@
       "from": "self-assess",
       "before": "andon-loop",
       "optional": false,
-      "reason": "andon-loop/SKILL.md:51-54 already says to STOP and run self-assess-transform-brief first, and never silently fall back to self-scan. Stated in prose in two files and enforced by nothing."
+      "alreadyEnforcedBy": "plugins/andon/scripts/andon_core.py:check_ingest_prereqs",
+      "why": "NOT compiled into a beat, deliberately. check_ingest_prereqs already enforces this in code and does it better: it checks BOTH MODERNIZATION_BRIEF.md and transform_brief_summary.json with os.path.isfile, and -- decisively -- only when gap_source == 'self-assess-brief'. A takt beat fires unconditionally, so it would deny andon-loop in its DEFAULT gap_source:self-scan mode, which needs no brief at all. Escapable only by TAKT_DISABLE_GUARD=1, which disables every other beat too."
     }
   ]
 }

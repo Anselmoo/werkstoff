@@ -133,6 +133,11 @@ def validate(decl: dict) -> list:
                            f"so it resolves to .takt/{run_id}/{require}. Use a bare name for a "
                            f"per-run marker, or '.takt/<name>' for a repo-level one")
 
+        rk = beat.get("requireKind")
+        if rk is not None and rk not in ("file", "dir", "any"):
+            err(where, f"'requireKind' {rk!r} must be 'file', 'dir' or 'any' -- the guard "
+                       f"raises on anything else, and a raise after opt-in DENIES")
+
         if not beat.get("reason"):
             err(where, "no 'reason' -- the denial will not say why")
 
@@ -161,6 +166,12 @@ SELFTEST_CASES = [
         {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": ".takt/built", "reason": "r"}]}, 0),
     ("a non-.takt slash under a runId is still flagged", {"runId": "ap-1", "beats": [
         {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "sub/dir/built", "reason": "r"}]}, 1),
+    ("requireKind file is accepted", {"beats": [
+        {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "x", "requireKind": "file", "reason": "r"}]}, 0),
+    ("requireKind omitted is accepted (backward compatible)", {"beats": [
+        {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "x", "reason": "r"}]}, 0),
+    ("requireKind nonsense is rejected", {"beats": [
+        {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "x", "requireKind": "socket", "reason": "r"}]}, 1),
     ("mixed per-run and repo-level in one declaration", {"runId": "ap-1", "beats": [
         {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "built", "reason": "r"},
         {"id": "b", "tools": ["Skill"], "skills": ["t"], "require": ".takt/council-done", "reason": "r"}]}, 0),

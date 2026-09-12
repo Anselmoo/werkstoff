@@ -56,15 +56,30 @@ needed three times in one session, and in each case the instrument was **mine**:
 | `confab` / `cupertino` / `lehre` | 0 | 0 | 0 | 1 each |
 | `takt` | 0 | 0 | 0 | 0 |
 
-**Exactly one genuine cross-plugin ordering dependency existed, and nothing enforced it.**
-`plugins/andon/skills/andon-loop/SKILL.md:51-54`: *"**Stop** and tell the user to run
-`self-assess:self-assess-transform-brief` first — never silently fall back to self-scan."*
-Duplicated in `andon_core.py`. It is "X before Y", it spans two plugins, and it bound only if a
-model obeyed prose — which this repo measures at baseline.
+> **CORRECTED IN ROUND 3.** What stood here claimed this dependency was unenforced and that a
+> takt beat had fixed it. Both halves were wrong, and how the error survived is the most useful
+> thing on this page — the sentence *"Duplicated in `andon_core.py`"* was already written
+> **here**, in round 2. The evidence was in this document. It was read as duplicated *prose*
+> rather than as *enforcement*, because the audit that produced this section classified by
+> keyword over SKILL.md text and never opened a script.
 
-It is now a `PreToolUse` denial, declared in `plugins/andon/.claude-plugin/beats.json`,
-compiled by `emit_beats.py --repo-only`, enforced by takt. Verified end to end: `andon-loop` is
-denied until `.takt/transform-brief-written` exists.
+`plugins/andon/skills/andon-loop/SKILL.md:51-54` states the rule in prose. But
+`plugins/andon/scripts/andon_core.py:741-754` — `check_ingest_prereqs` — **has enforced it in
+code all along**, and better than the beat did:
+
+| | `check_ingest_prereqs` | the beat that was shipped |
+|---|---|---|
+| files checked | **both** `MODERNIZATION_BRIEF.md` *and* `transform_brief_summary.json` | one |
+| existence test | `os.path.isfile` | `os.path.exists` — a directory satisfies it |
+| when it fires | **only** when `gap_source == "self-assess-brief"` | **always** |
+
+The last row made the beat actively harmful. `gap_source: self-scan` is **the default** and
+needs no brief at all, so the beat denied `andon-loop` in its ordinary mode — escapable only by
+`TAKT_DISABLE_GUARD=1`, which disables every other beat too. The beat has been removed; the
+requirement now carries `alreadyEnforcedBy`, and the compiler refuses to re-create it.
+
+**The transferable rule:** a rule enforced in code reads, to a prose scanner, exactly like a
+rule enforced by nothing. Any future run of that audit must grep the executable surface.
 
 ## Why `takt` was kept
 
@@ -164,3 +179,69 @@ hierarchy. Justify it on reviewability and machine-parseability, which are demon
 
 Raw cells are under `analysis/md-experiment/` (gitignored). The matrices are reproducible:
 `analysis/md-experiment/matrix.json` and `matrix2.json`.
+
+## Round 3: the beat graph was wired on one side only
+
+`beats.json` shipped in round 2 across all twelve plugins. The `requires` half worked. The
+`produces` half **did not exist as code** — not one plugin writes a `.takt/` marker anywhere,
+and the round-2 end-to-end demo passed only because the marker was created by hand.
+
+Three defects in the marker indirection, not one:
+
+| # | defect | fails | consequence |
+|---|---|---|---|
+| 1 | nothing writes any marker | **closed** | denies forever, loudly. Annoying, visible, safe |
+| 2 | `.takt/` was not gitignored | **open** | a committed marker satisfies its gate for every clone, silently |
+| 3 | a marker written because a SKILL.md says to `touch` it | either | ~1 run in 3 by this repo's own table |
+
+Defect 2 is the serious one: every guard here fails closed on purpose, and a committed marker
+is the exact opposite.
+
+### Seven of eleven steps cannot be evidenced at all
+
+- `cupertino-council` and `andon-verify` write **nothing**. The council produces a brief, a
+  tension log and code, all in conversation; `andon-verify` is explicitly forbidden to write
+  ("`andon-loop` persists it").
+- `compass`'s two markers persist to `.compass/runs/<uuid>/…` — predictable directory,
+  unpredictable leaf, and takt's `require` has no glob.
+- `lehre-pin` and `matrize-emit` write to caller-chosen paths.
+- `consistency-canonize` writes to `analysis/<area>/`, where `<area>` is the command's argument.
+
+Four have real artifacts: self-assess's `stage_graph.json` and `MODERNIZATION_BRIEF.md`,
+confab's `contract_drift_summary.json`, nacharbeit's `run.json`.
+
+**Existence still under-specifies completion.** `MODERNIZATION_BRIEF.md` is written *even on
+self-assess's degraded "Ready-with-gaps" path*. Two patterns here already solve that and are the
+model for any future evidence rule: `nacharbeit/scripts/write_results.py:115` writes `run.json`
+**last**, commented "its presence means the other three are complete"; and `build_report.py`
+refuses when a `FAILED-*` marker is **newer** than `run.json`'s mtime.
+
+### What replaced it
+
+- `evidence` is required on every `produces`. **`kind: "none"` is legal to declare and
+  impossible to depend on** — the compiler refuses any beat requiring it, quoting the recorded
+  `why`, so the step stays in the registry with its reason instead of being re-derived by
+  someone shipping the same broken marker.
+- **`alreadyEnforcedBy`** on a `requires` makes the compiler refuse a duplicate of an existing
+  in-code enforcement. Two enforcements of one rule is drift waiting to happen, and the second
+  is usually the weaker one.
+- Where an artifact exists, a beat gates on **the real path** with `requireKind: "file"`,
+  closing the `mkdir <path>` bypass plain `os.path.exists` allowed. Omitting `requireKind` is
+  byte-identical to the old behaviour.
+- `/.takt/` is gitignored. The deliberate contrast: `.cupertino/<domain>-handbook.md`,
+  `.lehre/ruleset.json` and `.design/` stay **tracked**, because they are durable project facts
+  that should be shared. An artifact carries its own lifecycle; a marker has no defensible
+  default either way.
+
+**Net result: zero beats compile.** `emit_beats --repo-only` writes nothing and says so. That is
+the correct state — every cross-plugin ordering rule this repository has is either already
+enforced in code or cannot be evidenced.
+
+### The instrument was the defect, for the fourth time
+
+Two guard calibrations passing for the wrong reason; an imported measurement never re-run
+locally; four phantom dead references; and now a prose-only audit that missed enforcement
+sitting in a script the same document already cited. Four instruments, one session, one shape:
+each looked right and measured the wrong thing. That is the strongest argument this repository
+has for its own rule — **verify the instrument before trusting its verdict** — and the reason
+every guard added here ships with a sabotage test that must go red.

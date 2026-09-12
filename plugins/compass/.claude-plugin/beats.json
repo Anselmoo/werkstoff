@@ -1,16 +1,24 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "compass",
   "produces": [
     {
       "marker": "scope-clarified",
       "after": "compass-clarify-scope",
-      "meaning": "the task is scoped; compass-clarify-scope declares itself for use before any work begins"
+      "meaning": "the task is scoped; compass-clarify-scope declares itself for use before any work begins",
+      "evidence": {
+        "kind": "none",
+        "why": "compass persists to .compass/runs/<run-id>/state.json where <run-id> is a freshly generated UUID. The directory is predictable, the leaf is not, and takt's require is a plain os.path.exists with no glob."
+      }
     },
     {
       "marker": "branches-explored",
       "after": "compass-explore-branches",
-      "meaning": "genuinely distinct approaches were generated in isolation and scored"
+      "meaning": "genuinely distinct approaches were generated in isolation and scored",
+      "evidence": {
+        "kind": "none",
+        "why": "same run-scoped UUID path as scope-clarified. Additionally the workflow path has no filesystem access, so the artifact exists only if the model ran the separate persist and render commands."
+      }
     }
   ],
   "requires": []

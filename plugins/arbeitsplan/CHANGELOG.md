@@ -4,6 +4,37 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **The two beats round 2 compiled were both wrong, and one was harmful.** `andon requires
+  transform-brief-written` duplicated `andon_core.py:check_ingest_prereqs`, which already
+  enforced it in code and better — both artifacts, `isfile`, and only when
+  `gap_source == "self-assess-brief"`. The beat fired *unconditionally*, so it denied
+  `andon-loop` in its **default** `gap_source: self-scan` mode, which needs no brief at all,
+  escapable only by `TAKT_DISABLE_GUARD=1` — which disables every other beat too. Removed.
+  `arbeitsplan requires branches-explored` removed as well: optional, and its evidence lives at
+  a run-scoped UUID path no fixed `require` can name
+- the round-2 audit that produced that beat classified cross-plugin references by **keyword over
+  SKILL.md prose** and never opened a script. A rule enforced in code reads, to a prose scanner,
+  exactly like a rule enforced by nothing
+
+### Added — beats schema v2, so those mistakes cannot be made again
+- **`evidence` is required on every `produces`.** `kind: "artifact" | "receipt" | "none"`.
+  `none` is **legal to declare and impossible to depend on**: the compiler refuses any beat
+  requiring it and quotes the recorded `why`, so the step stays in the registry with its reason
+  instead of being re-derived by someone shipping the same unwritable marker. Of eleven declared
+  produces, **seven are `none`** — most steps in this repo leave nothing durable behind
+- **`alreadyEnforcedBy`** on a `requires`: the compiler refuses to compile a duplicate of an
+  existing in-code enforcement. Two enforcements of one rule is drift waiting to happen, and the
+  second is usually the weaker
+- a beat with artifact evidence now gates on **the real produced path** with
+  `requireKind: "file"`, not on a marker something must remember to touch
+- `--repo-only` compiles **zero** beats today and says so explicitly — that is a result, not an
+  error, and it writes nothing rather than making takt live for no gain
+
+### Notes
+- sabotage-tested: remove the `alreadyEnforcedBy` refusal and the harmful beat reappears;
+  remove the `kind: none` refusal and an unsatisfiable beat compiles. Both cases go red
+
 ### Added
 - `references/delegation.md` and `scripts/delegation.py` — a general delegation mechanism for
   every plugin, not just compass. Append-only JSONL ledger at

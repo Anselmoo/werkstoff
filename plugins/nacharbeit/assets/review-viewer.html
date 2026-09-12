@@ -109,7 +109,8 @@ const CLS = { blocker: "o-rejected", major: "o-rejected", minor: "o-unmeasured",
 function render() {
   if (!DATA || !Array.isArray(DATA.findings)) {
     el("verdict").textContent =
-      "This review could not be read. Rebuild it with plugins/nacharbeit/scripts/build_review_html.py.";
+      "This review could not be read, so nothing below is trustworthy. Regenerate it: " +
+      "nacharbeit_lint.py --json, then build_review_html.py --report";
     el("empty").hidden = false;
     return;
   }
@@ -173,7 +174,8 @@ function render() {
 
   el("footer").textContent =
     "Reviewed " + (DATA.plugins || 0) + " plugin(s)" +
-    (DATA.generated ? " — " + DATA.generated : "") + ". Rebuild with build_review_html.py.";
+    (DATA.generated ? " — " + DATA.generated : "") +
+    ". Regenerate with build_review_html.py after any re-run of the lint.";
 }
 render();
 </script>

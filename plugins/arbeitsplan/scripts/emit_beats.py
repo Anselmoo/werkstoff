@@ -95,54 +95,139 @@ def load_declarations(plugins_root) -> dict:
     return out
 
 
-def repo_beats(decls: dict) -> tuple:
+def evidence_path(ev: dict, plugin: str, decls: dict) -> str:
+    """Where the evidence for this marker actually lives, repo-relative.
+
+    `relativeTo: "output_dir"` is left as a documented default rather than
+    resolved: the value is configurable per repository, and inventing the
+    configured value here would produce a beat that gates on a path this
+    repository does not use. The default is stated in `configuredIn` so a
+    reader can see what was assumed.
+    """
+    path = ev.get("path", "")
+    if ev.get("relativeTo") == "output_dir" and plugin == "self-assess":
+        return f"analysis/self-assess/{path}"
+    return path
+
+
+def check_evidence(plugin: str, produce: dict, root: Path) -> list:
+    """Is this marker evidenced by something that actually exists on disk?
+
+    Three kinds, and the whole point is that `none` is LEGAL TO DECLARE and
+    IMPOSSIBLE TO DEPEND ON. Round 2 shipped markers nothing wrote, and the
+    resulting beat had no key: it denied forever, escapable only by disabling
+    every other beat. Recording *why* a step cannot be evidenced keeps that
+    knowledge in the repository instead of being re-derived by someone
+    shipping the same broken marker again.
+    """
+    ev = produce.get("evidence")
+    marker = produce.get("marker", "?")
+    if not isinstance(ev, dict) or not ev.get("kind"):
+        return [f"{plugin}:{marker} declares no evidence -- every produces entry must say how "
+                f"its completion can be observed, even if the answer is 'it cannot'"]
+    kind = ev["kind"]
+    if kind == "none":
+        if not ev.get("why"):
+            return [f"{plugin}:{marker} is kind 'none' with no 'why' -- an unevidenced step must "
+                    f"record why, or the next reader re-derives it the expensive way"]
+        return []
+    if kind == "artifact":
+        if not ev.get("path"):
+            return [f"{plugin}:{marker} is kind 'artifact' with no path"]
+        return []
+    if kind == "receipt":
+        writer = ev.get("writtenBy")
+        if not writer:
+            return [f"{plugin}:{marker} is kind 'receipt' with no writtenBy"]
+        wp = root / writer
+        if not wp.is_file():
+            return [f"{plugin}:{marker} names writtenBy {writer!r}, which does not exist"]
+        if marker not in wp.read_text(encoding="utf-8", errors="replace"):
+            return [f"{plugin}:{marker} names writtenBy {writer!r}, but that file never mentions "
+                    f"the marker -- a receipt nothing writes is the defect this check exists for"]
+        return []
+    return [f"{plugin}:{marker} has unknown evidence kind {kind!r}"]
+
+
+def repo_beats(decls: dict, root: Path = None) -> tuple:
     """Compile every plugin's declared `requires` into repo-level takt beats.
 
-    Returns (beats, dropped, dangling).
+    Returns (beats, dropped, refused, malformed).
 
-      dropped   an OPTIONAL requirement whose producing plugin is not installed.
-                Dropped silently-but-reported: enforcing an order against a
-                plugin that cannot run it would deny forever.
-      dangling  a requirement naming a marker NO installed plugin produces. This
-                is reported and NOT compiled: a beat whose marker nothing can
-                ever create is an unconditional denial wearing an ordering
-                costume.
+    FOUR reasons a requirement does not become a beat, and every one of them
+    was a real defect before it was a rule:
 
-    Markers are written `.takt/<marker>` so they stay REPO-LEVEL -- durable
-    facts, not per-run ones -- even when the declaration also carries a runId
-    for arbeitsplan's own phase beats.
+      dropped    an OPTIONAL requirement whose producing plugin is absent.
+                 Enforcing an order against a plugin that cannot run denies
+                 forever.
+      refused    the requirement carries `alreadyEnforcedBy` -- something in
+                 code already enforces it. Two enforcements of one rule is
+                 drift waiting to happen, and the second is usually the weaker.
+      refused    the producing marker's evidence is kind 'none'. A beat whose
+                 evidence nothing can create is an unconditional denial wearing
+                 an ordering costume.
+      malformed  a requirement naming a marker no installed plugin produces.
     """
-    produced = {}
+    root = root or Path("plugins")
+    produced, evidence_of = {}, {}
+    malformed = []
     for name, d in decls.items():
         for pr in d.get("produces") or []:
-            if pr.get("marker"):
-                produced[pr["marker"]] = name
+            if not pr.get("marker"):
+                continue
+            produced[pr["marker"]] = name
+            evidence_of[pr["marker"]] = pr
+            malformed.extend(check_evidence(name, pr, root.parent if root.name == "plugins" else Path(".")))
 
-    beats, dropped, dangling = [], [], []
+    beats, dropped, refused = [], [], []
     for name, d in sorted(decls.items()):
         for req in d.get("requires") or []:
-            marker, src = req.get("marker"), req.get("from")
-            before = req.get("before")
+            marker, src, before = req.get("marker"), req.get("from"), req.get("before")
             if not marker or not before:
                 continue
+
+            if req.get("alreadyEnforcedBy"):
+                refused.append((name, marker, "already enforced in code by "
+                                + req["alreadyEnforcedBy"], req.get("why", "")))
+                continue
+
             if src and src not in decls:
                 if req.get("optional"):
                     dropped.append((name, marker, src))
                 else:
-                    dangling.append((name, marker, f"{src} is not installed"))
+                    malformed.append(f"{name} requires {marker!r} from {src}, which is not installed")
                 continue
+
             if marker not in produced:
-                dangling.append((name, marker, "no installed plugin produces it"))
+                malformed.append(f"{name} requires {marker!r}, which no installed plugin produces")
                 continue
+
+            ev = (evidence_of[marker].get("evidence") or {})
+            if ev.get("kind") == "none":
+                refused.append((name, marker,
+                                f"{produced[marker]} cannot evidence it", ev.get("why", "")))
+                continue
+
+            # Artifact evidence gates on the REAL path, not on a marker some
+            # step must remember to touch. requireKind 'file' closes the
+            # `mkdir <path>` bypass that takt's os.path.exists would allow.
+            if ev.get("kind") == "artifact":
+                require = evidence_path(ev, produced[marker], decls)
+                kind = "file"
+            else:
+                require = f".takt/{marker}"
+                kind = "file"
+
             beats.append({
                 "id": f"{before}-after-{marker}",
                 "tools": ["Skill", "Task", "Agent"],
                 "skills": [before],
-                "require": f".takt/{marker}",
+                "require": require,
+                "requireKind": kind,
                 "reason": req.get("reason")
                 or f"{before} consumes what '{marker}' records; {produced[marker]} produces it.",
             })
-    return beats, dropped, dangling
+    return beats, dropped, refused, malformed
 
 
 def render(spec: dict, beats: list) -> str:
@@ -250,33 +335,67 @@ def selftest() -> int:
                 fails.append("takt validation")
                 print("        " + rc.stderr.strip()[:300])
 
-    # ---- ACCEPTANCE TEST for the declare-everywhere design ------------
-    # The repo has exactly ONE genuine cross-plugin ordering dependency, found
-    # by audit: andon-loop/SKILL.md:51-54 says to STOP and run
-    # self-assess-transform-brief first, in prose, enforced by nothing. If
-    # beats.json cannot express THAT, the design is wrong and every other
-    # declaration is decoration.
+    # ---- ACCEPTANCE, round 3 -----------------------------------------
+    # Round 2's acceptance test asserted that the andon beat COMPILED. It did,
+    # and it was redundant with andon_core.check_ingest_prereqs, weaker than it
+    # (one file vs two, exists vs isfile), and harmful -- it fired
+    # unconditionally against a default gap_source:self-scan mode that needs no
+    # brief. The assertion is now the opposite, and it is on the COUNT, because
+    # the bug was a beat that compiled and looked right.
     root = Path(__file__).resolve().parent.parent.parent
     decls = load_declarations(root)
     if decls:
-        beats, dropped, dangling = repo_beats(decls)
-        ids = {b["id"] for b in beats}
+        beats, dropped, refused, malformed = repo_beats(decls, root)
+        refused_markers = {m for _, m, _, _ in refused}
         for name, ok_ in [
-            ("ACCEPTANCE andon-loop gated on transform-brief-written",
-             "andon-loop-after-transform-brief-written" in ids),
-            ("ACCEPTANCE that beat requires a REPO-LEVEL marker",
-             any(b["require"] == ".takt/transform-brief-written" for b in beats)),
-            ("ACCEPTANCE no dangling requirement compiled", not dangling),
-            ("ACCEPTANCE every compiled beat gates something",
-             all(b["skills"] and b["require"] for b in beats)),
             ("ACCEPTANCE all 12 plugins declare", len(decls) == 12),
+            ("ACCEPTANCE every declaration is well-formed", not malformed),
+            ("ACCEPTANCE ZERO beats compile today", len(beats) == 0),
+            ("ACCEPTANCE the andon requirement is refused, not compiled",
+             "transform-brief-written" in refused_markers),
+            ("ACCEPTANCE it is refused for being already enforced in code",
+             any("already enforced in code" in r for _, m, r, _ in refused
+                 if m == "transform-brief-written")),
         ]:
             print(f"  {'ok  ' if ok_ else 'FAIL'} {name}")
             if not ok_:
                 fails.append(name)
-        if dangling:
-            for d in dangling:
-                print(f"        dangling: {d}")
+        if malformed:
+            for m in malformed:
+                print(f"        malformed: {m}")
+
+        # A legitimate beat must still compile -- the checks must not have
+        # simply broken compilation.
+        synthetic = {
+            "p1": {"plugin": "p1", "produces": [{"marker": "m1", "after": "s1",
+                   "evidence": {"kind": "artifact", "path": "analysis/x/out.json"}}],
+                   "requires": []},
+            "p2": {"plugin": "p2", "produces": [], "requires": [
+                   {"marker": "m1", "from": "p1", "before": "s2", "reason": "r"}]},
+        }
+        b2, _, _, mal2 = repo_beats(synthetic, root)
+        ok_ = len(b2) == 1 and b2[0]["require"] == "analysis/x/out.json" and b2[0]["requireKind"] == "file"
+        print(f"  {'ok  ' if ok_ else 'FAIL'} ACCEPTANCE a legitimate artifact beat still compiles, "
+              f"gating on the real path")
+        if not ok_:
+            fails.append("legitimate beat compiles")
+
+        # kind 'none' must be undependable.
+        synthetic["p1"]["produces"][0]["evidence"] = {"kind": "none", "why": "nothing durable"}
+        b3, _, ref3, _ = repo_beats(synthetic, root)
+        ok_ = len(b3) == 0 and any("cannot evidence" in r for _, _, r, _ in ref3)
+        print(f"  {'ok  ' if ok_ else 'FAIL'} ACCEPTANCE a kind-'none' marker cannot be depended on")
+        if not ok_:
+            fails.append("kind none refused")
+
+        # alreadyEnforcedBy must refuse even with perfect evidence.
+        synthetic["p1"]["produces"][0]["evidence"] = {"kind": "artifact", "path": "analysis/x/out.json"}
+        synthetic["p2"]["requires"][0]["alreadyEnforcedBy"] = "scripts/thing.py:check"
+        b4, _, ref4, _ = repo_beats(synthetic, root)
+        ok_ = len(b4) == 0 and any("already enforced" in r for _, _, r, _ in ref4)
+        print(f"  {'ok  ' if ok_ else 'FAIL'} ACCEPTANCE alreadyEnforcedBy refuses a duplicate beat")
+        if not ok_:
+            fails.append("alreadyEnforcedBy refused")
 
     print()
     if fails:
@@ -310,12 +429,26 @@ def main(argv: list) -> int:
         return selftest()
     if args.repo_only:
         decls = load_declarations(args.plugins_root)
-        beats, dropped, dangling = repo_beats(decls)
-        for who, marker, why in dangling:
-            print(f"DANGLING {who} requires '{marker}': {why} -- not compiled, because a beat "
-                  f"whose marker nothing can create is an unconditional denial.", file=sys.stderr)
+        beats, dropped, refused, malformed = repo_beats(decls, Path(args.plugins_root))
+        for m in malformed:
+            print(f"MALFORMED {m}", file=sys.stderr)
+        for who, marker, reason, why in refused:
+            print(f"refused  {who} requires '{marker}': {reason}")
+            if why:
+                print("           " + "\n           ".join(
+                    __import__("textwrap").wrap(why, 86)))
         for who, marker, src in dropped:
             print(f"dropped  {who}'s optional requirement '{marker}' ({src} not installed)")
+        if malformed:
+            print(f"{len(malformed)} malformed declaration(s); nothing written", file=sys.stderr)
+            return 1
+        if not beats:
+            print(f"\nno beats compiled from {len(decls)} declaration(s), and that is a RESULT, "
+                  f"not an error: every cross-plugin ordering rule this repository has is either "
+                  f"already enforced in code or cannot be evidenced. Writing nothing rather than "
+                  f"an empty declaration, because creating .claude/takt.local.md makes takt live "
+                  f"and fail-closed for no gain.")
+            return 0
         spec = {"runId": "repo", "phases": [], "delegates": []}
         text = render(spec, beats)
         out = Path(args.out)
@@ -342,7 +475,8 @@ def main(argv: list) -> int:
         print(f"spec is not valid JSON: {exc}", file=sys.stderr)
         return 2
 
-    beats = beats_for(spec) + repo_beats(load_declarations(args.plugins_root))[0]
+    beats = beats_for(spec) + repo_beats(load_declarations(args.plugins_root),
+                                         Path(args.plugins_root))[0]
     if not beats:
         print("no phase declares a dependency, so there is no order to enforce; "
               "writing nothing rather than a declaration that gates nothing.")

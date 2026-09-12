@@ -329,12 +329,33 @@ def main() -> NoReturn:
             if not isinstance(marker, str) or not marker:
                 continue
             marker_path = marker_path_for(cwd, run_id, marker)
-            if os.path.exists(marker_path):
+            # requireKind: what SHAPE satisfies this beat.
+            #
+            # Default "any" is os.path.exists, byte-identical to every
+            # declaration written before this field existed. "file" exists
+            # because a beat can now gate on a real produced ARTIFACT rather
+            # than an empty marker, and `mkdir MODERNIZATION_BRIEF.md` would
+            # otherwise open that gate -- a one-command bypass nobody would
+            # think to look for. cupertino's equivalent gate already uses
+            # isfile; this lets a declaration say which it means.
+            require_kind = beat.get("requireKind") or "any"
+            if require_kind not in ("file", "dir", "any"):
+                raise ValueError(
+                    "requireKind %r must be 'file', 'dir' or 'any'" % (require_kind,)
+                )
+            if require_kind == "file":
+                satisfied = os.path.isfile(marker_path)
+            elif require_kind == "dir":
+                satisfied = os.path.isdir(marker_path)
+            else:
+                satisfied = os.path.exists(marker_path)
+            if satisfied:
                 continue
 
+            shape = "" if require_kind == "any" else f" as a {require_kind}"
             deny(
                 f"takt: '{target}' runs ahead of beat '{beat_id}'. {reason} "
-                f"Required marker '{marker}' does not exist. {ESCAPE_HATCH}"
+                f"Required marker '{marker}' does not exist{shape}. {ESCAPE_HATCH}"
             )
     except SystemExit:
         raise

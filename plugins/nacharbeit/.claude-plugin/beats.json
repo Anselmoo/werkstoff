@@ -1,11 +1,18 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "nacharbeit",
   "produces": [
     {
       "marker": "plugin-reviewed",
       "after": "nacharbeit-review",
-      "meaning": "a calibrated review pass has findings on record for this plugin"
+      "meaning": "a calibrated review pass has findings on record for this plugin",
+      "evidence": {
+        "kind": "artifact",
+        "path": "analysis/nacharbeit/run.json",
+        "relativeTo": "repo",
+        "writtenBy": "plugins/nacharbeit/scripts/write_results.py",
+        "note": "the best-designed case in the repo: run.json is written LAST, and its own comment says 'its presence means the other three are complete'. build_report.py additionally refuses when a FAILED-* marker is newer than run.json's mtime -- staleness, not just presence."
+      }
     }
   ],
   "requires": []

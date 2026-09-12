@@ -1,11 +1,15 @@
 {
-  "$schema": "arbeitsplan/beats/1",
+  "$schema": "arbeitsplan/beats/2",
   "plugin": "cupertino",
   "produces": [
     {
       "marker": "council-done",
       "after": "cupertino-council",
-      "meaning": "the design council ran at build time, before any UI code was written"
+      "meaning": "the design council ran at build time, before any UI code was written",
+      "evidence": {
+        "kind": "none",
+        "why": "cupertino-council writes NOTHING. It produces a Council Brief, a Tension Log, a Design Identity sentence and then UI code -- all in conversation. Its only scripts are stdin-to-exit-code validators. cupertino has a real flag writer (scripts/state.py set <flag>), but no skill on the council path invokes it."
+      }
     }
   ],
   "requires": []
