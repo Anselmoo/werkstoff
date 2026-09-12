@@ -91,7 +91,7 @@ def load_declarations(plugins_root) -> dict:
         try:
             out[d.name] = json.loads(f.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, ValueError) as exc:
-            raise SystemExit(f"emit_beats.py: {f} is not valid JSON: {exc}")
+            raise SystemExit(f"emit_beats.py: {f} is not valid JSON: {exc}") from exc
     return out
 
 
@@ -149,7 +149,7 @@ def check_evidence(plugin: str, produce: dict, root: Path) -> list:
     return [f"{plugin}:{marker} has unknown evidence kind {kind!r}"]
 
 
-def repo_beats(decls: dict, root: Path = None) -> tuple:
+def repo_beats(decls: dict, root: Path | None = None) -> tuple:
     """Compile every plugin's declared `requires` into repo-level takt beats.
 
     Returns (beats, dropped, refused, malformed).
@@ -177,7 +177,7 @@ def repo_beats(decls: dict, root: Path = None) -> tuple:
                 continue
             produced[pr["marker"]] = name
             evidence_of[pr["marker"]] = pr
-            malformed.extend(check_evidence(name, pr, root.parent if root.name == "plugins" else Path(".")))
+            malformed.extend(check_evidence(name, pr, root.parent if root.name == "plugins" else Path()))
 
     beats, dropped, refused = [], [], []
     for name, d in sorted(decls.items()):
@@ -345,7 +345,7 @@ def selftest() -> int:
     root = Path(__file__).resolve().parent.parent.parent
     decls = load_declarations(root)
     if decls:
-        beats, dropped, refused, malformed = repo_beats(decls, root)
+        beats, _dropped, refused, malformed = repo_beats(decls, root)
         refused_markers = {m for _, m, _, _ in refused}
         for name, ok_ in [
             ("ACCEPTANCE all 12 plugins declare", len(decls) == 12),
@@ -373,7 +373,7 @@ def selftest() -> int:
             "p2": {"plugin": "p2", "produces": [], "requires": [
                    {"marker": "m1", "from": "p1", "before": "s2", "reason": "r"}]},
         }
-        b2, _, _, mal2 = repo_beats(synthetic, root)
+        b2, _, _, _ = repo_beats(synthetic, root)
         ok_ = len(b2) == 1 and b2[0]["require"] == "analysis/x/out.json" and b2[0]["requireKind"] == "file"
         print(f"  {'ok  ' if ok_ else 'FAIL'} ACCEPTANCE a legitimate artifact beat still compiles, "
               f"gating on the real path")

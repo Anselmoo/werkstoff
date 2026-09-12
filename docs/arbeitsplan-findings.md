@@ -245,3 +245,56 @@ sitting in a script the same document already cited. Four instruments, one sessi
 each looked right and measured the wrong thing. That is the strongest argument this repository
 has for its own rule — **verify the instrument before trusting its verdict** — and the reason
 every guard added here ships with a sabotage test that must go red.
+
+## Round 4: Python conventions, and what a measured survey found
+
+The ask was "use `Path` over `os.path`, and look for other conceptual points". Rather than
+list plausible ones, the survey was run: `ruff --select PTH,UP,SIM,B,C4,DTZ,RUF,PERF,RET,PIE`
+over `plugins/`, which separates cleanly into two categories that should not be conflated.
+
+**Real defects — suppressions and handling that silently do nothing:**
+
+| finding | count | why it is a defect, not style |
+|---|---|---|
+| `RUF100` unused `noqa` | **95** | each asserts "known exception here" against a rule that was never enabled, so it suppresses nothing. The "looks correct and silently does nothing" family exactly |
+| `SIM115` open without a context manager | 34 | the handle leaks. Harmless in short-lived scripts, real in anything long-running |
+| `B904` `raise` in `except` without `from` | 11 | drops the original cause. In a fail-closed guard the cause *is* the diagnostic |
+
+**Style/modernization:** ~600 `PTH*`, 57 `UP031`, 56 `PERF401`. Worth a convention; not worth
+calling a bug. `UP031` is the one with history here — CLAUDE.md's defect table already records
+`PROMPT % (...)` with a literal `%` raising `TypeError`, whose stale output was then read as a
+fresh result.
+
+Two claims made during the survey were **wrong and are corrected here**: `UP017` is
+`timezone.utc` → `datetime.UTC` (cosmetic), *not* `datetime.utcnow()`; and `utcnow()` is not
+used anywhere in the repo — `DTZ003` passes clean, so there is no naive-datetime bug. Both were
+asserted before checking.
+
+### `Path` is not a drop-in, and two gaps land in security checks
+
+- **`os.path.normpath` has no `Path` equivalent.** It collapses `..` *lexically*; the nearest,
+  `.resolve()`, touches the filesystem and follows symlinks. In a write-scope guard that is a
+  change to what the guard decides, not a refactor. (matrize's guard deliberately does both a
+  lexical and a physical check, for this reason.)
+- **`os.path.relpath` returns `../outside`** where `Path.relative_to` *raises* — unless
+  `walk_up=True`, which is **3.12+**.
+
+And an asymmetry worth stating plainly: the repo declares py312, but a **hook** runs under
+whatever `python3` the user's machine has, and a hook that cannot import does not warn — it
+**denies every call**, because it is fail-closed. Hooks are the one place where reaching for the
+newest API has an asymmetric downside. Both functions keep `os.path` with the reason in a
+comment; `PTH` would have "fixed" both.
+
+### What was done
+
+`takt` and `arbeitsplan` were taken to **zero** findings (41 → 0), guards included, with all
+four sabotage checks re-run afterwards to confirm the refactor did not make any test vacuous —
+8, 1, 3 and 4 cases go red respectively. The rules are now selected in `ruff.toml` with a
+**shrink-only baseline**: ten plugins plus `tools/`, `scripts/` and `test/` carry ~966
+pre-existing findings and are listed with their count at the moment the convention landed. The
+list may only shrink, `takt` and `arbeitsplan` are deliberately absent, and a new plugin starts
+absent too. Calibrated: a planted `os.path` in `arbeitsplan` is caught.
+
+`PERF` is deliberately not selected — its four remaining hits are the `edit_targets` loops whose
+`isinstance(path, str)` guard carries a long comment explaining that a truthiness check on a
+string iterates its characters, and a comprehension would compress that guard out of sight.

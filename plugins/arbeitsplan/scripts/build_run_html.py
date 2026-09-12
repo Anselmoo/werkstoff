@@ -60,7 +60,7 @@ def collect(root: Path, run_id: str) -> dict:
         "breaker": {"accepted": len(measured), "measured": len(measured),
                     "unmeasured": len(cands) - len(measured), "tripped": False},
         "budget": {"used": len(cands), "total": len(cands)},
-        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
 

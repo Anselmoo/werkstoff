@@ -91,7 +91,7 @@ def check(name: str, got: int, want: int, out: str = "") -> None:
         names = {DENY: "DENY", ALLOW: "ALLOW"}
         print(f"  FAIL {name}: wanted {names.get(want, want)}, got {names.get(got, got)}")
         if out:
-            print(f"       {out.strip().splitlines()[:1]}")
+            print(f"       {next(iter(out.strip().splitlines()), '')}")
         FAILURES.append(name)
 
 
@@ -168,7 +168,7 @@ def main() -> int:
         for bad in ({"writeScope": []}, {"budget": {}}, {"runId": ""}):
             lock(tmp, **bad)
             rc, out = run(tmp, "Edit", {"file_path": "src/api/x.py"})
-            key = list(bad)[0]
+            key = next(iter(bad))
             if key == "budget":
                 rc, out = run(tmp, "Agent", {"prompt": "x"})
             check(f"malformed lock ({key}) -> DENY", rc, DENY, out)

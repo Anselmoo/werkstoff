@@ -77,9 +77,10 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 from typing import NoReturn
 
-SETTINGS = os.path.join(".claude", "takt.local.md")
+SETTINGS = Path(".claude") / "takt.local.md"
 ESCAPE_HATCH = (
     "set TAKT_DISABLE_GUARD=1 to bypass this guard, create the required marker "
     "once the beat has actually run, or remove .claude/takt.local.md if this "
@@ -117,8 +118,7 @@ def load_declaration(settings_path: str) -> tuple:
     marker under .takt/<run_id>/, so a marker left behind by an earlier run
     cannot satisfy this run's beat -- the whole point, for a generated
     declaration that describes one run rather than a durable project fact."""
-    with open(settings_path, "r", encoding="utf-8") as handle:
-        text = handle.read()
+    text = Path(settings_path).read_text(encoding="utf-8")
     start = text.find("```json")
     if start == -1:
         return "", []
@@ -138,7 +138,7 @@ def load_declaration(settings_path: str) -> tuple:
         # segment could escape .takt/ entirely, so this is fail-closed by
         # charset rather than by sanitising -- sanitising invites a bypass.
         raise ValueError(
-            "runId %r is not [A-Za-z0-9._-]{1,64} without '..'" % (run_id,)
+            f"runId {run_id!r} is not [A-Za-z0-9._-]{{1,64}} without '..'"
         )
     beats = parsed.get("beats", [])
     return run_id, (beats if isinstance(beats, list) else [])
@@ -165,14 +165,14 @@ def marker_path_for(cwd: str, run_id: str, marker: str) -> str:
     later. It also lets ONE declaration carry both kinds at once, which is what
     a compiled union of per-run beats and repo-level plugin beats needs.
     """
-    if os.path.isabs(marker):
+    if Path(marker).is_absolute():
         return marker
     normalized = marker.replace(os.sep, "/")
     if normalized == ".takt" or normalized.startswith(".takt/"):
-        return os.path.join(cwd, marker)
+        return str(Path(cwd) / marker)
     if run_id:
-        return os.path.join(cwd, ".takt", run_id, marker)
-    return os.path.join(cwd, marker)
+        return str(Path(cwd) / ".takt" / run_id / marker)
+    return str(Path(cwd) / marker)
 
 
 def relative(cwd: str, path: str) -> str:
@@ -180,7 +180,12 @@ def relative(cwd: str, path: str) -> str:
     the tool reported an absolute or a relative path."""
     if not path:
         return ""
-    candidate = path if os.path.isabs(path) else os.path.join(cwd, path)
+    # normpath/relpath kept deliberately: Path has no lexical normpath (only
+    # .resolve(), which touches the filesystem and follows symlinks), and
+    # Path.relative_to raises where relpath returns "../outside" unless
+    # walk_up=True, which is Python 3.12+. A hook runs under whatever python3
+    # the machine has, and a hook that cannot import denies every call.
+    candidate = path if Path(path).is_absolute() else str(Path(cwd) / path)
     try:
         rel = os.path.relpath(os.path.normpath(candidate), os.path.normpath(cwd))
     except ValueError:
@@ -263,9 +268,9 @@ def main() -> NoReturn:
     except (json.JSONDecodeError, ValueError):
         allow()  # not a payload this hook can read; never police what it cannot parse
 
-    cwd = event.get("cwd") or os.getcwd()
-    settings_path = os.path.join(cwd, SETTINGS)
-    if not os.path.isfile(settings_path):
+    cwd = event.get("cwd") or str(Path.cwd())
+    settings_path = Path(cwd) / SETTINGS
+    if not settings_path.is_file():
         allow()  # inert: this repository has not declared any beats
 
     # Past this point the repository opted in, so errors deny rather than allow.
@@ -341,14 +346,15 @@ def main() -> NoReturn:
             require_kind = beat.get("requireKind") or "any"
             if require_kind not in ("file", "dir", "any"):
                 raise ValueError(
-                    "requireKind %r must be 'file', 'dir' or 'any'" % (require_kind,)
+                    f"requireKind {require_kind!r} must be 'file', 'dir' or 'any'"
                 )
+            probe = Path(marker_path)
             if require_kind == "file":
-                satisfied = os.path.isfile(marker_path)
+                satisfied = probe.is_file()
             elif require_kind == "dir":
-                satisfied = os.path.isdir(marker_path)
+                satisfied = probe.is_dir()
             else:
-                satisfied = os.path.exists(marker_path)
+                satisfied = probe.exists()
             if satisfied:
                 continue
 

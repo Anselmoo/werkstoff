@@ -64,7 +64,7 @@ def collect(repo: Path) -> dict:
             try:
                 decls[d.name] = json.loads(f.read_text(encoding="utf-8"))
             except (json.JSONDecodeError, ValueError) as exc:
-                raise SystemExit(f"build_beatgraph_html.py: {f}: {exc}")
+                raise SystemExit(f"build_beatgraph_html.py: {f}: {exc}") from exc
 
     produces = []
     for name, d in decls.items():
@@ -81,7 +81,7 @@ def collect(repo: Path) -> dict:
     m = _compiler(repo)
     beats, refused = [], []
     if m is not None:
-        compiled, dropped, refusals, _malformed = m.repo_beats(decls, plugins)
+        compiled, _dropped, refusals, _malformed = m.repo_beats(decls, plugins)
         for b in compiled:
             path = repo / b["require"]
             kind = b.get("requireKind", "any")
@@ -101,7 +101,7 @@ def collect(repo: Path) -> dict:
         "produces": sorted(produces, key=lambda p: p["marker"]),
         "declarations": len(decls),
         "compilerAvailable": m is not None,
-        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
 

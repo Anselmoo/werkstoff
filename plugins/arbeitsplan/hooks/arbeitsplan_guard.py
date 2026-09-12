@@ -53,9 +53,10 @@ import hashlib
 import json
 import os
 import sys
+from pathlib import Path
 from typing import NoReturn
 
-LOCK = os.path.join("analysis", "arbeitsplan", "run_scope.json")
+LOCK = Path("analysis") / "arbeitsplan" / "run_scope.json"
 
 # The delegation ledger's logic lives in scripts/delegation.py so the guard and
 # the CLI cannot drift into two answers about the same question. Imported by
@@ -69,12 +70,11 @@ try:
 
     _spec = _ilu.spec_from_file_location(
         "arbeitsplan_delegation",
-        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                     "scripts", "delegation.py"),
+        Path(__file__).resolve().parent.parent / "scripts" / "delegation.py",
     )
     _DELEGATION = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_DELEGATION)
-except Exception as _exc:  # noqa: BLE001 - reported at decision time, not here
+except Exception as _exc:
     _DELEGATION_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
@@ -90,7 +90,7 @@ ESCAPE_HATCH = (
 def _iso_now() -> str:
     import datetime
 
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def deny(reason: str) -> NoReturn:
@@ -116,7 +116,18 @@ def relative(cwd: str, path: str) -> str:
     the tool reported an absolute or a relative path."""
     if not path:
         return ""
-    candidate = path if os.path.isabs(path) else os.path.join(cwd, path)
+    # os.path.normpath and os.path.relpath are kept DELIBERATELY; Path is not a
+    # drop-in for either, and both differences land in a security check:
+    #
+    #   normpath   collapses ".." LEXICALLY. Path has no equivalent -- the
+    #              nearest is .resolve(), which touches the filesystem and
+    #              follows symlinks. Swapping it would change what this
+    #              write-scope guard actually decides.
+    #   relpath    returns "../outside" for a path above cwd. Path.relative_to
+    #              RAISES there unless walk_up=True, which is Python 3.12+.
+    #              A hook runs under whatever python3 the user has, and a hook
+    #              that fails to import denies every call rather than warning.
+    candidate = path if Path(path).is_absolute() else str(Path(cwd) / path)
     try:
         rel = os.path.relpath(os.path.normpath(candidate), os.path.normpath(cwd))
     except ValueError:
@@ -134,7 +145,7 @@ def matches(target: str, patterns: list) -> bool:
     lowered to '*' first, because fnmatch has no '**' and would otherwise fail
     to match across separators while LOOKING like it should.
     """
-    base = os.path.basename(target)
+    base = Path(target).name
     for raw in patterns:
         if not isinstance(raw, str) or not raw:
             continue
@@ -237,15 +248,14 @@ def main() -> NoReturn:
     except (json.JSONDecodeError, ValueError):
         allow()  # not a payload this hook can read; never police what it cannot parse
 
-    cwd = event.get("cwd") or os.getcwd()
-    lock_path = os.path.join(cwd, LOCK)
-    if not os.path.isfile(lock_path):
+    cwd = event.get("cwd") or str(Path.cwd())
+    lock_path = Path(cwd) / LOCK
+    if not lock_path.is_file():
         allow()  # inert: no arbeitsplan run is in flight
 
     # Past this point a run is in flight, so errors deny rather than allow.
     try:
-        with open(lock_path, "r", encoding="utf-8") as handle:
-            lock = json.load(handle)
+        lock = json.loads(lock_path.read_text(encoding="utf-8"))
         if not isinstance(lock, dict):
             raise ValueError("run_scope.json is not an object")
 
@@ -269,9 +279,9 @@ def main() -> NoReturn:
             if not isinstance(total, int) or total <= 0:
                 raise ValueError("budget.totalDispatches must be a positive integer")
 
-            ledger_dir = os.path.join(cwd, "analysis", "arbeitsplan", run_id, "dispatch")
-            os.makedirs(ledger_dir, exist_ok=True)
-            used = len([n for n in os.listdir(ledger_dir) if n.endswith(".json")])
+            ledger_dir = Path(cwd) / "analysis" / "arbeitsplan" / run_id / "dispatch"
+            ledger_dir.mkdir(parents=True, exist_ok=True)
+            used = len(list(ledger_dir.glob("*.json")))
             if used >= total:
                 deny(
                     f"arbeitsplan: dispatch budget exhausted for run '{run_id}' "
@@ -281,7 +291,7 @@ def main() -> NoReturn:
                 )
 
             signature = dispatch_signature(phase, tool_name, tool_input)
-            entry = os.path.join(ledger_dir, signature + ".json")
+            entry = ledger_dir / (signature + ".json")
             try:
                 fd = os.open(entry, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
             except FileExistsError:
@@ -308,7 +318,7 @@ def main() -> NoReturn:
                         f"check cannot be evaluated for '{target}'. Refusing rather "
                         f"than delegating unchecked. {ESCAPE_HATCH}"
                     )
-                ledger = os.path.join(cwd, "analysis", "arbeitsplan", run_id, "delegation.jsonl")
+                ledger = Path(cwd) / "analysis" / "arbeitsplan" / run_id / "delegation.jsonl"
                 parent = lock.get("delegationParent")
                 records = _DELEGATION.read_ledger(ledger)
                 allowed, depth, why = _DELEGATION.check(records, source, target, parent)
@@ -326,7 +336,7 @@ def main() -> NoReturn:
                             "status": "denied",
                             "timestamp": _iso_now(),
                         })
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         # The denial still stands -- it does not depend on the
                         # record -- but the failure is CARRIED INTO the message
                         # rather than swallowed. A silently unrecorded denial is
@@ -370,7 +380,7 @@ def main() -> NoReturn:
             shared_writable = bool(lock.get("sharedTreeWritable"))
 
             for target in targets:
-                target_abs = os.path.normpath(os.path.join(cwd, target))
+                target_abs = os.path.normpath(str(Path(cwd) / target))
                 inside = in_any_worktree(target_abs, worktrees)
 
                 if not inside and not shared_writable:

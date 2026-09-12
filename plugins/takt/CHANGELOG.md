@@ -4,6 +4,12 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+### Changed
+- converted to `pathlib.Path` throughout, to zero modernization findings, with the same
+  deliberate `normpath`/`relpath` exceptions and comment as arbeitsplan's guard. Guard
+  calibration, payload-shape pins and the deny probe all re-verified, and the repo-level-marker
+  sabotage re-run
+
 ### Added
 - **`requireKind: "file" | "dir" | "any"`** on a beat, defaulting to `any` so every existing
   declaration behaves byte-identically. The guard used a plain `os.path.exists`, so

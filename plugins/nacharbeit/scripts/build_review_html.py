@@ -58,7 +58,7 @@ def collect(report_path: Path) -> dict:
         "plugins": len({f["file"].split("/")[1] for f in out if f["file"].count("/") > 1}),
         "families": [],
         "calibration": {},
-        "generated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
 

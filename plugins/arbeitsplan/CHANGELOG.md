@@ -4,6 +4,18 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+### Changed
+- converted to `pathlib.Path` throughout (41 modernization findings to **zero**), together with
+  `B904` cause-chaining, two dead `# noqa` directives that suppressed nothing, and
+  `datetime.UTC`. `os.path.normpath` and `os.path.relpath` are **kept deliberately** in
+  `arbeitsplan_guard.py` with the reason in a comment: `Path` has no lexical `normpath` (only
+  `.resolve()`, which touches the filesystem and follows symlinks — a behaviour change inside a
+  write-scope check), and `Path.relative_to` raises where `relpath` returns `../outside` unless
+  `walk_up=True`, which is 3.12+. A hook runs under whatever `python3` the machine has, and a
+  hook that cannot import denies every call
+- all four guard sabotage checks were re-run after the refactor; 8, 1, 3 and 4 cases go red
+  respectively, confirming the change did not make any test vacuous
+
 ### Fixed
 - **The two beats round 2 compiled were both wrong, and one was harmful.** `andon requires
   transform-brief-written` duplicated `andon_core.py:check_ingest_prereqs`, which already

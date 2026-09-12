@@ -145,9 +145,9 @@ def cmd_selftest(args) -> int:
         ],
     }
     fails = []
-    import os
+    import os  # only for chdir; Path has no equivalent, by design
     with tempfile.TemporaryDirectory() as raw:
-        cwd = os.getcwd()
+        cwd = Path.cwd()
         try:
             os.chdir(raw)
             Path("spec.json").write_text(json.dumps(spec))

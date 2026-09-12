@@ -85,6 +85,40 @@ report viewers — and records the cupertino-council verdict that until now surv
 only in commit `821a14a`'s message, alongside the design rationale buried at the top
 of `tools/design-tokens/tokens.css` and linked from nothing.
 
+## Python conventions (enforced, with a shrink-only baseline)
+
+`pathlib.Path` over `os.path`, and five rules tied to real defects rather than taste. All
+selected in `ruff.toml`; `ruff check .` must pass.
+
+| rule | why it is on |
+|---|---|
+| `PTH` | `Path` over `os.path`. The convention itself |
+| `UP` | pyupgrade. **`UP031` especially**: printf-style `%` is in the defect table above — `PROMPT % (...)` with a literal `%` raised `TypeError`, and the stale output was then read as a fresh result |
+| `B904` | `raise` inside `except` without `from` drops the cause. In a fail-closed guard the cause **is** the diagnostic |
+| `SIM115` | a file opened without a context manager leaks the handle |
+| `RUF100` | a `noqa` that suppresses nothing. **95 of these existed** — comments asserting "known exception" against rules never enabled, i.e. the "looks correct and silently does nothing" family |
+| `DTZ` | naive datetimes. Already clean; on to keep it that way |
+
+**The baseline may only shrink.** Ten plugins plus `tools/`, `scripts/` and `test/` carry ~966
+pre-existing findings and are listed in `ruff.toml`'s `per-file-ignores` with their count at the
+time the convention landed. Adding a path there, or raising a number, means new code was written
+against the old convention — fix the code instead. Same discipline as
+`test/plugins/tag-releases-baseline.txt`. **`takt` and `arbeitsplan` are deliberately absent and
+must stay at zero; a new plugin starts absent too.**
+
+**`Path` is not a drop-in for all of `os.path`, and two gaps land in security checks.**
+`os.path.normpath` collapses `..` **lexically** and has no `Path` equivalent — the nearest,
+`.resolve()`, touches the filesystem and follows symlinks, which would change what a write-scope
+guard decides. `os.path.relpath` returns `../outside` where `Path.relative_to` **raises**, unless
+`walk_up=True`, which is **3.12+**. Both are kept in `takt_guard.py` and `arbeitsplan_guard.py`
+with the reason in a comment. Note the asymmetry that makes this matter: the repo declares
+py312, but a **hook** runs under whatever `python3` the user's machine has, and a hook that
+cannot import does not warn — it **denies every call**.
+
+`PERF` is deliberately **not** selected. Its four remaining hits are the `edit_targets` loops
+whose `isinstance(path, str)` guard carries a long comment explaining that a truthiness check on
+a string iterates its characters; a comprehension would compress that guard out of sight.
+
 ## Use the MCPs — they are faster and more accurate than grep
 
 **serena** (connected) — symbol-level navigation. Prefer it over grep whenever
