@@ -1064,27 +1064,67 @@ def check_c6_bodies(report: Report, recipes: list[tuple[Path, dict]]) -> None:
 # copy and its source. It cannot catch a reference to a file that exists in neither
 # place, because that needs a list entry nobody added. This check needs no list: it
 # resolves what the pages actually reference.
-def check_c7_images(report: Report) -> None:
-    seen = 0
+def _page_text(page: Path) -> str:
+    """The page as VitePress assembles it, minus fenced code.
+
+    @include: is resolved so a plugin README's own references are checked against
+    the docs page that embeds them -- which is where they actually have to
+    resolve. Code fences are dropped because VitePress does not linkify inside
+    them and a sample path is not a broken link.
+    """
+    text = page.read_text(encoding="utf-8")
+    for inc in re.findall(r"<!--\s*@include:\s*([^\s>-]+)", text):
+        src = (page.parent / inc).resolve()
+        if src.exists():
+            text += "\n" + src.read_text(encoding="utf-8")
+    return re.sub(r"^(```|~~~).*?^\1", "", text, flags=re.S | re.M)
+
+
+def _resolves(base: Path, target: str) -> bool:
+    """Does a relative reference resolve the way VitePress resolves it?"""
+    t = target.split("#", 1)[0].split("?", 1)[0]
+    if not t:
+        return True  # a pure #anchor stays on the page
+    here = base / t
+    # VitePress strips .md from routes, so a link may omit it or name a directory.
+    return here.exists() or here.with_suffix(".md").exists() or (here / "index.md").exists()
+
+
+# A docs page embeds a plugin README verbatim via `<!--@include:-->`, so every
+# image AND every link the README carries must also resolve from the docs page.
+# Both have now broken the build in the same PR, one after the other: three
+# screenshot copies were missing, and then `references/delegation.md` had no
+# `docs/plugins/references/` stub. rollup and vitepress each report only the
+# FIRST offender, so a run fixes one and the next appears.
+#
+# .rrt.toml tracks the screenshot copies as artifact_targets, which catches drift
+# between a copy and its source. It cannot catch a reference to something that
+# exists in neither place -- that needs a list entry nobody added. This check
+# needs no list: it resolves what the pages actually reference.
+def check_c7_refs(report: Report) -> None:
+    images = links = 0
     for page in sorted(DOCS.rglob("*.md")):
-        text = page.read_text(encoding="utf-8")
-        # Resolve @include: the way VitePress does, so a README's images are checked
-        # against the page that embeds it rather than against the README's own folder.
-        for inc in re.findall(r"<!--\s*@include:\s*([^\s>-]+)", text):
-            src = (page.parent / inc).resolve()
-            if src.exists():
-                text += "\n" + src.read_text(encoding="utf-8")
+        text = _page_text(page)
+        rel = page.relative_to(DOCS).as_posix()
         for ref in re.findall(r"!\[[^\]]*\]\(([^)\s]+)\)", text):
             if ref.startswith(("http://", "https://", "data:", "/")):
                 continue
-            seen += 1
+            images += 1
             if not (page.parent / ref).exists():
-                report.fail("C7", f"{page.relative_to(DOCS).as_posix()}: image {ref!r} does not "
-                                  "resolve -- the VitePress build fails on this, and it names "
-                                  "only the first such reference per run")
-    if not seen:
-        report.fail("C7", "no relative image references found at all -- the check resolved "
-                          "nothing, so a green result here would mean nothing")
+                report.fail("C7", f"{rel}: image {ref!r} does not resolve -- the VitePress "
+                                  "build fails on this, and names only the first per run")
+        for ref in re.findall(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)", text):
+            if ref.startswith(("http://", "https://", "mailto:", "data:", "/", "#")):
+                continue
+            links += 1
+            if not _resolves(page.parent, ref):
+                report.fail("C7", f"{rel}: link {ref!r} does not resolve -- vitepress fails "
+                                  "the build on a dead link. A plugin README linking its own "
+                                  "references/ needs a docs/plugins/references/ include stub")
+    if not images or not links:
+        report.fail("C7", f"resolved {images} image(s) and {links} link(s) -- one class found "
+                          "nothing at all, so a green result here would mean nothing")
+
 
 
 CHECKS = {
@@ -1094,7 +1134,7 @@ CHECKS = {
     "C4": ("outline shape and reading load stay navigable", check_c4_outline),
     "C5": ("do/don't guidance coverage", check_c5_dos_donts),
     "C6": ("every recipe body orients a reader arriving from search", check_c6_bodies),
-    "C7": ("every image a docs page references resolves", check_c7_images),
+    "C7": ("every image and link a docs page references resolves", check_c7_refs),
 }
 
 

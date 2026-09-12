@@ -224,8 +224,14 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Overview', link: '/plugins/' },
-          { text: 'arbeitsplan', link: '/plugins/arbeitsplan' },
-            { text: 'andon', link: '/plugins/andon' },
+          { text: 'andon', link: '/plugins/andon' },
+          {
+            text: 'arbeitsplan',
+            link: '/plugins/arbeitsplan',
+            items: [
+              { text: 'Delegation', link: '/plugins/references/delegation' },
+            ],
+          },
           { text: 'cli-scaffold', link: '/plugins/cli-scaffold' },
           { text: 'codebase-consistency', link: '/plugins/codebase-consistency' },
           { text: 'compass', link: '/plugins/compass' },
