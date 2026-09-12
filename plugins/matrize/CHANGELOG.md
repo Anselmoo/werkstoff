@@ -4,6 +4,7 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-12
 ### Changed
 - the Specimen speaks **English**. `build_sketchbook_html.py` hardcoded German chrome —
   `Anmerkungen`, `nicht:`, `Entscheider:`, `Freigegeben:`, `Datum:`, `Optische Grösse`,
