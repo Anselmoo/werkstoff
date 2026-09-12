@@ -179,7 +179,8 @@ bash test/plugins/lint-oracles.sh                         # silent-failure regex
 python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (90 rules planted + blanked) -- run before trusting it
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
-node --check plugins/<name>/workflows/<file>.js
+bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
+bash scripts/ci/check-js-syntax.sh --selftest              # 8 planted-defect cases -- run before trusting it
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
@@ -211,6 +212,28 @@ exempted by name in `test/plugins/tag-releases-baseline.txt`, a list that may
 only shrink; anything new that lacks a release is a failure. Its calibration,
 `test-lint-tag-releases.py`, is sabotage-tested: blank out the guard's `missing`
 list and 4 of its 13 cases go red.
+
+`check-js-syntax.sh` asserts three things over `plugins/*/workflows/*.js`, and the
+middle one **looks backwards on purpose.** A Workflow script is not a module: the
+runtime evaluates its *body* in an async context, so `args` is an injected global
+and a top-level `return` is the result. biome parses `.js` as an ES module, where a
+top-level `return` is illegal, so it emits `Illegal return statement outside of a
+function` on every **correctly** shaped file. `node --check` does not, because Node
+wraps CommonJS in a function. Neither checker models the runtime, and they disagree
+about all fifteen files. The script therefore **requires** that message: a file that
+does not produce it has no top-level return and resolves to `undefined`.
+
+That is not hypothetical. `plugins/arbeitsplan/workflows/run.js` shipped wrapped in
+`export default async function run(rawArgs)` — the only file in the repo in that
+shape. It passed `node --check`, it was the one file biome parsed *cleanly*, and
+every agent dispatch inside it was unreachable. Wiring biome naively would have
+failed the fourteen correct files and passed the broken one. `biome.jsonc` spells
+out every rule rather than using `recommended`, and the biome version is pinned in
+the script, for the reason `ruff.toml`'s header gives at length. Its
+`javascript.globals` list is what makes `noUndeclaredVariables` usable — with it,
+`agent(...)` passes and `agnet(...)` is an error. The `overrides` block is a
+shrink-only baseline of the twelve findings that already existed, per directory,
+and it may only shrink.
 
 `lint-release-wiring.py` exists because adding a plugin means adding its name to
 **four** separate lists — `.rrt.toml`'s `version_groups` and `field_targets`,

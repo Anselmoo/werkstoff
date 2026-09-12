@@ -322,10 +322,16 @@ exist and are never called", that is worth recording as a measurement rather tha
 ### `biome` — 15 workflow scripts had never been linted at all
 
 `scripts/ci/check-js-syntax.sh` runs `node --check`, which proves a file **parses** and nothing
-more. Biome over the same 15 files: 18 errors, 55 warnings.
+more. Biome over the same 15 files: 78 diagnostics — 18 error, 54 warning, 6 info.
 
-Most is style (39 `useOptionalChain`, 6 `useTemplate`). Two categories looked alarming and were
-**not**, on inspection — recorded so nobody re-investigates them:
+**Correction to the first reading of that number.** "18 errors" was reported here as a lint
+result. It is not: **17 of the 18 are a single parse message on 14 files, and those 14 files are
+correct.** See the next section — that miscount is the whole finding, and the rest of this
+section is the part that really was style.
+
+Most of the genuine lint output is style (38 `useOptionalChain`, 6 `useTemplate`). Two
+categories looked alarming and were **not**, on inspection — recorded so nobody re-investigates
+them:
 
 - **`noTemplateCurlyInString` ×4** — every one is `${CLAUDE_PLUGIN_ROOT}` inside a
   *documentation* string describing a shell command, deliberately literal.
@@ -352,8 +358,63 @@ This is `codebase-consistency`'s exact subject: two or more valid, undocumented 
 convention coexisting. The variants differ in how loudly they fail, which is the property that
 matters most.
 
-### The gap that let all of this accumulate
+### Closing the gap: what wiring biome actually found
 
-`check-js-syntax.sh` only proves the JS parses. Wiring `biome` into it would work — it is on
-PATH — but it would start at 18 errors and 55 warnings, so it needs the same shrink-only
-baseline `ruff.toml` now carries. Recorded as a known gap rather than silently left open.
+The gap recorded above — `check-js-syntax.sh` proving only that the JS parses — is now closed
+by `biome.jsonc` plus a rewritten `scripts/ci/check-js-syntax.sh`. Doing it surfaced something
+larger than the lint findings, and in the shape this repository keeps producing: **an
+instrument that was about to measure exactly the wrong thing.**
+
+**The two checkers disagree about all fifteen files, and neither models the runtime.** A
+Workflow script is not a module. The runtime evaluates its *body* in an async context, so `args`
+is an injected global and a top-level `return` is the result. biome parses `.js` as an ES
+module, where a top-level `return` is illegal, and so emits
+
+    Illegal return statement outside of a function
+
+on every **correctly shaped** file — 17 times across 14 files. `node --check` emits nothing,
+because Node wraps CommonJS in a function where top-level `return` is legal.
+
+**The one file biome parsed cleanly was the broken one.**
+`plugins/arbeitsplan/workflows/run.js` shipped wrapped in `export default async function
+run(rawArgs)` — the only file of fifteen in that shape, and mine. Under the documented contract
+(`workflow-authoring`: `export const meta`, then a script body, `args` as a global, a top-level
+`return`) that body defines a function nothing calls and falls off the end: the workflow
+resolves to `undefined` and **every agent dispatch in it is unreachable.** It passed
+`node --check`. It was the single file with zero biome parse errors. The `normalizeArgs` fix
+recorded in the section above was correct code in a function nothing invoked.
+
+So the check **inverts** the signal: the parse message is *required*, and a file that does not
+produce it fails on shape. Wiring biome the obvious way would have failed the fourteen correct
+files and passed the broken one — the fifth instrument failure this session, and the first one
+caught before it shipped rather than after.
+
+`run.js` is rewritten to the documented shape (`const opts = normalizeArgs(args)`, top-level
+returns), and all fifteen files now carry one.
+
+**What the baseline holds.** With the parse class accounted for, the real lint surface is
+**twelve findings in three plugins** — none a live bug, each read before being listed: nine
+unused `catch (e)` bindings, one O(n²) `reduce` over a list that is never long, one `let` never
+reassigned, one `.forEach` whose callback returns `Map.set`'s own return value.
+`codebase-consistency` 6, `cupertino` 3, `nacharbeit` 3; `arbeitsplan`, `compass` and `matrize`
+are at zero and absent from the baseline so they stay there. Each entry disables only the rules
+that directory actually trips, never the whole set.
+
+**Rules over `recommended`, and a pinned version**, for the reason `ruff.toml`'s header gives:
+same commit, same config, 0 findings under ruff 0.15.22 and 325 under 0.16.6. Biome's
+`recommended` set moves the same way. The `javascript.globals` list is what makes
+`noUndeclaredVariables` usable rather than a wall of false positives — with it, `agent(...)`
+passes and `agnet(...)` is an error.
+
+**Eight planted-defect cases, five sabotages, and one sabotage that initially lied.** Blanking
+the shape assertion, the lint branch, the parse-message branch, the globals list, or the
+JSON-decode guard each turns named cases red. The parse-message branch was the exception on the
+first pass: its case (`const broken = (`) stayed green with the branch removed, because biome
+bails before it ever sees a top-level return and the *shape* assertion caught it instead — the
+same "green for the wrong reason" failure the takt `STALE` cases had earlier this session. It is
+now calibrated by a case that satisfies the shape assertion and still carries a second parse
+error (`await` in a non-async helper), so only the intended branch can catch it.
+
+**Still not wired:** biome does not run in `.pre-commit-config.yaml`, and nacharbeit's
+`S-JS-SYNTAX` still checks `node --check` alone, so the shape contract is enforced in CI but not
+in a local plugin review.
