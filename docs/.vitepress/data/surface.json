@@ -946,7 +946,7 @@
         {
           "id": "matrize:token-emitter",
           "name": "token-emitter",
-          "description": "Use this agent when matrize needs a formatter authored for one emit target — a committed script that turns the DTCG token file into CSS, Tailwind config, SCSS, JSON or TOML deterministically. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
+          "description": "Use this agent when matrize needs a formatter AUTHORED for one emit target — a committed script that turns the DTCG token file into that target deterministically. This is how a target that does not exist yet gets built: matrize ships css, vitepress, html, pdf and provenance, and Tailwind, SCSS, JSON and TOML are named in the README as NOT built, so asking for one of those is a request to author the formatter, never a claim that emit can already produce it. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
           "tools": [
             "Read",
             "Glob",

@@ -4,7 +4,7 @@
 Format
 ------
 Measured off the reference artefact rather than invented: landscape A4 at **root-2**
-(1.414), a 66/34 split between a rounded specimen canvas and an `ANMERKUNGEN` margin,
+(1.414), a 66/34 split between a rounded specimen canvas and an `NOTES` margin,
 numbered callouts in the OUTLINED margin weight, a tinted observation box for the derived
 note, and a hairline footer carrying `NN / TT — block name`.
 
@@ -26,7 +26,7 @@ inlined implementation plan, which is what a developer needs and a client does n
 Text into illustration
 ----------------------
 A UX-law obligation, not a flourish: prose past its slot budget stops being read
-(Cognitive Load, Miller's Law). An ANMERKUNG over budget is rendered as a do/don't
+(Cognitive Load, Miller's Law). A NOTE over budget is rendered as a do/don't
 figure instead — but ONLY when the entry carries a structured `rule` and `antiRule` to
 draw. With nothing to draw, it flags the overrun and leaves the prose alone. Inventing
 a figure the lexicon never described is the same defect as a rule with no card behind it.
@@ -55,7 +55,7 @@ import contrast as contrastlib  # noqa: E402
 TEMPLATE = HERE.parent / "assets" / "sketchbook-template.html"
 TOKENS = HERE.parent / "assets" / "tokens.css"
 
-# Character budget per ANMERKUNG. Past this the entry becomes a figure — see the
+# Character budget per NOTE. Past this the entry becomes a figure — see the
 # module docstring for why this is a rule rather than a preference.
 NOTE_BUDGET = 240
 
@@ -114,14 +114,14 @@ def do_dont_figure(rule: str, anti: str) -> str:
   <rect x="170" y="40" width="70" height="16" rx="8" fill="#d4321e"/>
   <rect x="248" y="40" width="34" height="16" rx="8" fill="#d4321e"/>
   <line x1="163" y1="9" x2="291" y2="59" stroke="#d4321e" stroke-width="1.2" opacity=".55"/>
-  <text x="227" y="84" text-anchor="middle" font-size="10" fill="#d4321e" font-weight="600">nicht</text>
+  <text x="227" y="84" text-anchor="middle" font-size="10" fill="#d4321e" font-weight="600">not</text>
 </svg>
-<figcaption>{esc(rule)} — <b>nicht:</b> {esc(anti)}</figcaption>
+<figcaption>{esc(rule)} — <b>not:</b> {esc(anti)}</figcaption>
 </figure>"""
 
 
 def render_note(note: dict, index: int | None) -> str:
-    """One ANMERKUNG. Over budget with a structured pair -> figure; otherwise flagged."""
+    """One NOTE. Over budget with a structured pair -> figure; otherwise flagged."""
     text = note.get("text", "")
     rule, anti = note.get("rule"), note.get("antiRule")
     # Only the OUTLINED margin callout ships. The reference's other state — a FILLED
@@ -142,7 +142,7 @@ def render_note(note: dict, index: int | None) -> str:
     else:
         inner = f"<p>{esc(text)}</p>"
         if anti:
-            inner += f'<span class="anti"><b>nicht:</b> {esc(anti)}</span>'
+            inner += f'<span class="anti"><b>not:</b> {esc(anti)}</span>'
     return f'<div class="note">{badge}<div>{inner}</div></div>'
 
 
@@ -163,7 +163,7 @@ def spread(kind: str, kicker: str, title: str, canvas: str, notes: list[dict],
   <h1>{esc(title)}</h1>
   <div class="body">
     <div class="{canvas_cls}">{canvas}</div>
-    <aside class="anmerkungen"><h2>Anmerkungen</h2>{note_html}{obs}</aside>
+    <aside class="notes-margin"><h2>Notes</h2>{note_html}{obs}</aside>
   </div>
   {snip}
   <footer><span>{esc(label)}</span><span>{page:02d} / {total:02d} — {esc(title)}</span></footer>
@@ -212,7 +212,7 @@ def icons_canvas(c: dict) -> str:
         for px in (system.grid, system.grid * 2 / 3, system.grid / 2)
     )
     return (f'<div class="icon-grid">{cells}</div>'
-            f'<p class="eyebrow" style="margin-top:1.1rem">Optische Grösse</p>'
+            f'<p class="eyebrow" style="margin-top:1.1rem">Optical size</p>'
             f'<div class="icon-grid">{small}</div>')
 
 
@@ -221,7 +221,7 @@ def gradient_canvas(c: dict) -> str:
     roles = c["roles"]
     derived = gradlib.derive(roles)
     if not derived:
-        return '<p class="empty">Keine Rolle stützt einen Verlauf. Das ist ein Befund.</p>'
+        return '<p class="empty">No role supports a gradient. That is a finding.</p>'
     cards = []
     for name, tok in derived.items():
         ends = [roles[st["color"].strip("{}").split(".", 1)[-1]] for st in tok["$value"]]
@@ -315,14 +315,14 @@ def build(data: dict, mode: str = "approval") -> str:
   <div class="statement-body">
     <p class="kicker">{esc(data.get('kicker', 'Sketchbook'))}</p>
     <div class="approval">
-    <h2>{esc(gate.get('framing', 'Diskussionsgrundlage, kein fertiges Regelwerk.'))}</h2>
+    <h2>{esc(gate.get('framing', 'A basis for discussion, not a finished rulebook.'))}</h2>
     <p>{esc(gate.get('criteria', ''))}</p>
-    <p class="line">Entscheider: <span class="rule-line">{esc(gate.get('decisionMaker', ''))}</span></p>
-    <p class="line">Freigegeben: <span class="rule-line"></span> Datum: <span class="rule-line" style="min-width:8rem"></span></p>
-    <p class="line">Freigabe umfasst: {esc(gate.get('covers', 'Richtung | Richtung und Taxonomie | das ganze System'))}</p>
+    <p class="line">Decision-maker: <span class="rule-line">{esc(gate.get('decisionMaker', ''))}</span></p>
+    <p class="line">Approved: <span class="rule-line"></span> Date: <span class="rule-line" style="min-width:8rem"></span></p>
+    <p class="line">Approval covers: {esc(gate.get('covers', 'direction | direction and taxonomy | the whole system'))}</p>
     </div>
   </div>
-  <footer><span>{esc(label)}</span><span>{total:02d} / {total:02d} — Freigabe</span></footer>
+  <footer><span>{esc(label)}</span><span>{total:02d} / {total:02d} — Approval</span></footer>
 </section>""")
 
     controls = ('<button id="md-export" class="md-export-btn">Export as Markdown</button>'
@@ -343,25 +343,25 @@ def build(data: dict, mode: str = "approval") -> str:
 
 
 DEMO = {
-    "system": "Beispielsystem",
-    "kicker": "Sketchbook — Neues Designkonzept",
-    "footerLabel": "Beispielsystem — Design Sketchbook",
-    "philosophy": "Eine dominante Aktionsfarbe, ein weiches Radius-System, drei Register.",
+    "system": "Example System",
+    "kicker": "Sketchbook — New Design Concept",
+    "footerLabel": "Example System — Design Sketchbook",
+    "philosophy": "One dominant action colour, a soft radius system, three registers.",
     "spreads": [{
-        "title": "Farbe",
+        "title": "Colour",
         "canvas": {"kind": "colour", "colours": [
-            {"name": "Aktion", "hex": "#FA2E1A", "on": "#ffffff"},
-            {"name": "Tinte", "hex": "#1a1a1a", "on": "#ffffff"},
+            {"name": "Action", "hex": "#FA2E1A", "on": "#ffffff"},
+            {"name": "Ink", "hex": "#1a1a1a", "on": "#ffffff"},
         ]},
-        "notes": [{"text": "Rot bleibt die einzige dominante Aktionsfarbe pro View.",
-                   "antiRule": "nie zwei gleichzeitig", "pin": True}],
-        "observation": "Der Ball im Schriftzug liefert das Gold-Motiv bereits.",
+        "notes": [{"text": "Red stays the only dominant action colour per view.",
+                   "antiRule": "never two at once", "pin": True}],
+        "observation": "Action red clears 3:1 for large text, and falls short for body copy.",
         "snippet": "--action: #FA2E1A;",
     }],
-    "approval": {"framing": "Diskussionsgrundlage, kein fertiges Regelwerk.",
-                 "criteria": "Rückmeldung zu Farbe und Templates vor der Produktion.",
-                 "decisionMaker": "", "covers": "Richtung"},
-    "markdown": "# Beispielsystem\n",
+    "approval": {"framing": "A basis for discussion, not a finished rulebook.",
+                 "criteria": "Feedback on colour and templates before production.",
+                 "decisionMaker": "", "covers": "direction"},
+    "markdown": "# Example System\n",
 }
 
 
@@ -371,7 +371,8 @@ def selftest() -> int:
     checks.append(("landscape A4 in @page", "size: A4 landscape" in page))
     checks.append(("root-2 aspect, not 16/10", "aspect-ratio: 1.414" in page and "16 / 10" not in page))
     checks.append(("cover is a statement spread", 'spread--statement' in page))
-    checks.append(("approval block is present by default", "Diskussionsgrundlage" in page))
+    # Coupled to the default framing above. Move BOTH or this asserts nothing.
+    checks.append(("approval block is present by default", "A basis for discussion, not a finished rulebook." in page))
     checks.append(("approval mode carries NO code", "<pre>" not in page))
     # The BUTTON must be absent. The string "md-export" also appears in the stylesheet
     # and in the listener's own guard, so a bare substring test asserts the wrong thing.
@@ -401,9 +402,9 @@ def selftest() -> int:
     checks.append(("fg/bg is computed into the chart", "3.84:1" in build(computed)))
 
     # text -> illustration
-    long_with_pair = {"text": "x" * 300, "rule": "Eine Aktionsfarbe", "antiRule": "nie zwei"}
+    long_with_pair = {"text": "x" * 300, "rule": "One action colour", "antiRule": "never two"}
     long_without = {"text": "y" * 300}
-    short = {"text": "kurz"}
+    short = {"text": "short"}
     checks.append(("over budget + a pair -> figure", "<figure" in render_note(long_with_pair, 1)))
     checks.append(("over budget, nothing to draw -> flagged, prose kept",
                    "budget-flag" in render_note(long_without, 1)

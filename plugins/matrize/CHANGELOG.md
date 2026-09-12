@@ -4,6 +4,31 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
 
+### Changed
+- the Specimen speaks **English**. `build_sketchbook_html.py` hardcoded German chrome —
+  `Anmerkungen`, `nicht:`, `Entscheider:`, `Freigegeben:`, `Datum:`, `Optische Grösse`,
+  `Freigabe` — which shipped into *every* user's client-facing approval PDF regardless of
+  their own data. The CSS class moved with it (`.anmerkungen` → `.notes-margin`, in the
+  generator **and** `assets/sketchbook-template.html`, which are a matched pair), as did the
+  selftest assertion coupled to the default framing string
+- `scripts/fixtures/sketchbook-demo.json` translated. A translation, not a redesign: every
+  structural property the renderer keys on is unchanged, verified by comparing rendered
+  markers before and after — 10 spreads, 16 notes, 1 over-budget flag, 0 figures, 8 pins, 8
+  observations, 15 anti-rules. The over-budget note is still over `NOTE_BUDGET` (342 chars)
+  with no rule/anti-rule pair, so the flag-rather-than-draw branch stays exercised. German
+  decimal commas (`3,84:1`) normalised to points, which the chart axis already used
+
+### Fixed
+- `assets/sketchbook-screenshot.jpg` was **stale**, independently of the language change: it
+  showed a footer of `03 / 08` while the committed code renders `03 / 10`. Recaptured through
+  the print path, and the command that produces the *image* — not just the HTML — is now in
+  the README, since its absence is why nobody could diff it
+- `agents/token-emitter.md`'s description listed CSS, Tailwind, SCSS, JSON and TOML without
+  the "not built" qualifier every other surface carries, so it read as a capability list. It
+  now says what it is: the agent that AUTHORS a formatter, including for the four targets the
+  README names as absent
+
+
 ## [0.2.0] - 2026-09-12
 ### Changed
 - **the vocabulary now enforces.** It reached the pipeline only as prose in four
