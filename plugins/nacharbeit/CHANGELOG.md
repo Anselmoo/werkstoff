@@ -4,6 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-12
 ### Added
 - `S-WF-SHAPE` (blocker) — a `workflows/*.js` file must carry a top-level `return`. The
   Workflow runtime evaluates the script *body*, so one wrapped in `export default async

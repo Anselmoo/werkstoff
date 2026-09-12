@@ -967,7 +967,7 @@
     },
     {
       "name": "nacharbeit",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
       "skills": [
         {
