@@ -4,6 +4,7 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-12
 ### Changed
 - converted to `pathlib.Path` throughout, to zero modernization findings, with the same
   deliberate `normpath`/`relpath` exceptions and comment as arbeitsplan's guard. Guard
