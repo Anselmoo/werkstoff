@@ -3,6 +3,8 @@
 All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
+
+## [0.2.0] - 2026-09-12
 ### Changed
 - **the vocabulary now enforces.** It reached the pipeline only as prose in four
   `SKILL.md` files, which this workshop has measured as the weakest enforcement layer
