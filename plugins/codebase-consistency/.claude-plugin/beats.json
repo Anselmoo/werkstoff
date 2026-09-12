@@ -1,0 +1,16 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "codebase-consistency",
+  "produces": [
+    {
+      "marker": "patterns-canonized",
+      "after": "consistency-canonize",
+      "meaning": "the canonical form of each divergent dimension is settled",
+      "evidence": {
+        "kind": "none",
+        "why": "writes analysis/<area>/CANON.json where <area> is the command's own argument, so the path is per-invocation. Its workflow contains no fs calls; the command renders the artifacts itself."
+      }
+    }
+  ],
+  "requires": []
+}

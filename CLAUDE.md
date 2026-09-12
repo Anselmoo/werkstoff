@@ -4,10 +4,50 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — eleven plugins: `andon`, `cli-scaffold`, `codebase-consistency`,
-`compass`, `confab`, `cupertino`, `lehre`, `matrize`, `nacharbeit`, `self-assess`,
-`takt`. Each is independently versioned; `marketplace.json` and `.rrt.toml` both
-point here.
+`plugins/<name>/` — twelve plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
+`codebase-consistency`, `compass`, `confab`, `cupertino`, `lehre`, `matrize`,
+`nacharbeit`, `self-assess`, `takt`. Each is independently versioned;
+`marketplace.json` and `.rrt.toml` both point here.
+
+`arbeitsplan` is the twelfth and pairs with `takt`: it **compiles** a stated problem into
+an executable workflow (`analysis/arbeitsplan/<runId>/workflow.json`) and generates the
+`.claude/takt.local.md` beats that takt then **enforces** — so cross-plugin ordering is a
+`PreToolUse` denial rather than prose. Its own guard covers only what takt structurally
+cannot: per-dispatch attribution (an identical re-dispatch, a shared-tree write during a
+fan-out, a write outside `writeScope`, a dispatch past budget). It parallelises by
+**redundancy** — N candidates over the SAME scope in separate worktrees, exactly one landed
+and the rest deleted — so no merge ever happens; and it converges by **widening**, never by
+retrying. `takt` gained an optional `runId` in the same change, namespacing markers under
+`.takt/<runId>/`; a declaration without one behaves exactly as before.
+
+## Every plugin ships an HTML report viewer
+
+**Mandatory, not aspirational.** A plugin without `assets/<name>-viewer.html` plus its
+`scripts/build_<name>_html.py`, a committed demo fixture and a committed screenshot is
+incomplete. Enforced by `A-VIEWER-REQUIRED` in `plugins/nacharbeit/references/rubric.md` and
+checked by `nacharbeit_lint.py` — stated only here it would be prose, which this repo measures
+at baseline. Read `docs/plugin-authoring/references/report-viewer-standard.md` before writing
+one.
+
+## Every plugin declares its beats
+
+`plugins/<name>/.claude-plugin/beats.json` declares what a plugin **produces** (markers its
+completion proves) and **requires** (markers that must precede it).
+`python3 plugins/arbeitsplan/scripts/emit_beats.py --repo-only --write` compiles the union of
+all twelve into one `.claude/takt.local.md`, which `takt` enforces — so cross-plugin order is a
+`PreToolUse` denial instead of a sentence.
+
+It sits beside `plugin.json` rather than in `references/` because `M-REF-UNWIRED` requires every
+reference to be named by a SKILL.md, and **takt ships no skills**.
+
+Two rules the compiler applies, both refusals rather than warnings: an **optional** requirement
+whose producing plugin is absent is dropped and reported (enforcing an order against a plugin
+that cannot run denies forever); a requirement naming a marker **no installed plugin produces**
+is dangling and is *not* compiled (a beat whose marker nothing can create is an unconditional
+denial wearing an ordering costume).
+
+A marker written `.takt/<name>` is **repo-level** and is never namespaced by `runId`; a bare
+name is **per-run** and always is. One declaration carries both.
 
 `nacharbeit` is the tenth and the odd one out: its object is the other nine. It carries
 the calibrated review instrument PR #56 built (`scripts/nacharbeit_lint.py`,
@@ -44,6 +84,40 @@ this repo that already do it right). The third reference,
 report viewers — and records the cupertino-council verdict that until now survived
 only in commit `821a14a`'s message, alongside the design rationale buried at the top
 of `tools/design-tokens/tokens.css` and linked from nothing.
+
+## Python conventions (enforced, with a shrink-only baseline)
+
+`pathlib.Path` over `os.path`, and five rules tied to real defects rather than taste. All
+selected in `ruff.toml`; `ruff check .` must pass.
+
+| rule | why it is on |
+|---|---|
+| `PTH` | `Path` over `os.path`. The convention itself |
+| `UP` | pyupgrade. **`UP031` especially**: printf-style `%` is in the defect table above — `PROMPT % (...)` with a literal `%` raised `TypeError`, and the stale output was then read as a fresh result |
+| `B904` | `raise` inside `except` without `from` drops the cause. In a fail-closed guard the cause **is** the diagnostic |
+| `SIM115` | a file opened without a context manager leaks the handle |
+| `RUF100` | a `noqa` that suppresses nothing. **95 of these existed** — comments asserting "known exception" against rules never enabled, i.e. the "looks correct and silently does nothing" family |
+| `DTZ` | naive datetimes. Already clean; on to keep it that way |
+
+**The baseline may only shrink.** Ten plugins plus `tools/`, `scripts/` and `test/` carry ~966
+pre-existing findings and are listed in `ruff.toml`'s `per-file-ignores` with their count at the
+time the convention landed. Adding a path there, or raising a number, means new code was written
+against the old convention — fix the code instead. Same discipline as
+`test/plugins/tag-releases-baseline.txt`. **`takt` and `arbeitsplan` are deliberately absent and
+must stay at zero; a new plugin starts absent too.**
+
+**`Path` is not a drop-in for all of `os.path`, and two gaps land in security checks.**
+`os.path.normpath` collapses `..` **lexically** and has no `Path` equivalent — the nearest,
+`.resolve()`, touches the filesystem and follows symlinks, which would change what a write-scope
+guard decides. `os.path.relpath` returns `../outside` where `Path.relative_to` **raises**, unless
+`walk_up=True`, which is **3.12+**. Both are kept in `takt_guard.py` and `arbeitsplan_guard.py`
+with the reason in a comment. Note the asymmetry that makes this matter: the repo declares
+py312, but a **hook** runs under whatever `python3` the user's machine has, and a hook that
+cannot import does not warn — it **denies every call**.
+
+`PERF` is deliberately **not** selected. Its four remaining hits are the `edit_targets` loops
+whose `isinstance(path, str)` guard carries a long comment explaining that a truthiness check on
+a string iterates its characters; a comprehension would compress that guard out of sight.
 
 ## Use the MCPs — they are faster and more accurate than grep
 
@@ -102,10 +176,11 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
-python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (90 rules planted + blanked) -- run before trusting it
+python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (92 rules planted + blanked) -- run before trusting it
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
-node --check plugins/<name>/workflows/<file>.js
+bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
+bash scripts/ci/check-js-syntax.sh --selftest              # 8 planted-defect cases -- run before trusting it
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
@@ -124,6 +199,14 @@ package now vendors a canary `README.md` there via `.rrt.toml`'s
 `artifact_targets` (`tools/plugin-lib-canary/README.md`); add a matching
 entry when a new plugin gains one of its own.
 
+**`rrt artifacts --check` compares each file to the lock, not to its generator.**
+If an artifact was stale when the lock was snapshotted, both agree and the check
+stays green forever. That shipped in `69f438a`: `docs/.vitepress/data/surface.json`
+carried an `arbeitsplan-matrix` description the SKILL.md no longer had, snapshotted
+in the same commit, and `--check --strict` passed every run afterwards. Only
+`rrt artifacts --regenerate` re-runs each target's command, so run that — not
+`--snapshot` — after touching anything a generator reads.
+
 `lint-frontmatter.py` matters more than it looks: frontmatter that fails to
 parse still **loads, with no description and no tools**, so the skill never
 triggers and nothing reports an error.
@@ -137,6 +220,32 @@ exempted by name in `test/plugins/tag-releases-baseline.txt`, a list that may
 only shrink; anything new that lacks a release is a failure. Its calibration,
 `test-lint-tag-releases.py`, is sabotage-tested: blank out the guard's `missing`
 list and 4 of its 13 cases go red.
+
+`check-js-syntax.sh` asserts three things over `plugins/*/workflows/*.js`, and the
+middle one **looks backwards on purpose.** A Workflow script is not a module: the
+runtime evaluates its *body* in an async context, so `args` is an injected global
+and a top-level `return` is the result. biome parses `.js` as an ES module, where a
+top-level `return` is illegal, so it emits `Illegal return statement outside of a
+function` on every **correctly** shaped file. `node --check` does not, because Node
+wraps CommonJS in a function. Neither checker models the runtime, and they disagree
+about all fifteen files. The script therefore **requires** that message: a file that
+does not produce it has no top-level return and resolves to `undefined`.
+
+That is not hypothetical. `plugins/arbeitsplan/workflows/run.js` shipped wrapped in
+`export default async function run(rawArgs)` — the only file in the repo in that
+shape. It passed `node --check`, it was the one file biome parsed *cleanly*, and
+every agent dispatch inside it was unreachable. Wiring biome naively would have
+failed the fourteen correct files and passed the broken one. `biome.jsonc` spells
+out every rule rather than using `recommended`, and the biome version is pinned in
+the script, for the reason `ruff.toml`'s header gives at length. Its
+`javascript.globals` list is what makes `noUndeclaredVariables` usable — with it,
+`agent(...)` passes and `agnet(...)` is an error. The `overrides` block is a
+shrink-only baseline of the twelve findings that already existed, per directory,
+and it may only shrink. The same script runs in three places and nowhere else: its
+own CI step, two `local` pre-commit hooks (the second running `--selftest`, gated on
+the instrument's own files), and by hand. nacharbeit's `S-WF-SHAPE` enforces the
+shape half independently, via `node` alone, so a plugin review catches it without
+biome installed.
 
 `lint-release-wiring.py` exists because adding a plugin means adding its name to
 **four** separate lists — `.rrt.toml`'s `version_groups` and `field_targets`,
@@ -239,7 +348,7 @@ Twelve independent version groups in `.rrt.toml` (11 plugins + `tools/werkstoff-
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash
-rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1
+rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1; pinned at 1.17.1 here
 rrt tag create --group <name> --prefix '<name>-v' --push   # plugins
 rrt tag create --group werkstoff-cli --push                # ONLY this one uses bare v<version>
 ```

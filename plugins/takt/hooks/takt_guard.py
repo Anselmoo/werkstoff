@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """PreToolUse hook: deny an edit or a dispatch that runs ahead of its beat.
 
+usage: takt_guard.py   (no arguments; the hook event arrives as JSON on stdin)
+
+  Registered by hooks/hooks.json and invoked by Claude Code, not by hand. To
+  exercise it directly, pipe one event in:
+      echo '{"cwd":".","tool_name":"Edit","tool_input":{"file_path":"a.tsx"}}' \
+          | python3 plugins/takt/hooks/takt_guard.py; echo "exit=$?"
+  Its calibration is plugins/takt/hooks/test_takt_guard.py.
+
 Several skills in this marketplace declare where in a build they belong --
 cupertino-council says "before writing any code ... never after",
 compass-clarify-scope says "before any work begins". A declaration in prose is
@@ -67,15 +75,23 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
 import sys
+from pathlib import Path
 from typing import NoReturn
 
-SETTINGS = os.path.join(".claude", "takt.local.md")
+SETTINGS = Path(".claude") / "takt.local.md"
 ESCAPE_HATCH = (
     "set TAKT_DISABLE_GUARD=1 to bypass this guard, create the required marker "
     "once the beat has actually run, or remove .claude/takt.local.md if this "
     "repository no longer declares beats"
 )
+# `(?!\.+\Z)` rejects a runId that is nothing but dots. Without it "." matched,
+# and <root>/<runId> then normalises to <root> itself -- a run whose state aliases
+# the unnamespaced directory and every other run's stale files, which is exactly
+# the isolation runId exists to provide. ".." was already blocked; "." was not.
+RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
+
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
 
@@ -96,21 +112,71 @@ def allow() -> NoReturn:
     sys.exit(0)
 
 
-def load_beats(settings_path: str) -> list:
+def load_declaration(settings_path: str) -> tuple:
     """Read the first fenced json block. String search, not regex -- a regex
-    over a fence is one of the forms that fails silently on odd whitespace."""
-    with open(settings_path, "r", encoding="utf-8") as handle:
-        text = handle.read()
+    over a fence is one of the forms that fails silently on odd whitespace.
+
+    Returns (run_id, beats). run_id is "" when the declaration omits it, which
+    is the pre-runId behaviour: a relative `require` then resolves against cwd
+    exactly as before. A declaration WITH a runId namespaces every relative
+    marker under .takt/<run_id>/, so a marker left behind by an earlier run
+    cannot satisfy this run's beat -- the whole point, for a generated
+    declaration that describes one run rather than a durable project fact."""
+    text = Path(settings_path).read_text(encoding="utf-8")
     start = text.find("```json")
     if start == -1:
-        return []
+        return "", []
     body_start = text.index("\n", start) + 1
     end = text.find("```", body_start)
     if end == -1:
-        return []
+        return "", []
     parsed = json.loads(text[body_start:end])
+    run_id = parsed.get("runId", "")
+    if run_id is None:
+        run_id = ""
+    if not isinstance(run_id, str):
+        # A non-string runId would stringify into a path component. Refuse.
+        raise ValueError("runId must be a string")
+    if run_id and not RUN_ID_RE.match(run_id):
+        # runId becomes a PATH COMPONENT. Anything with a separator or a dot
+        # segment could escape .takt/ entirely, so this is fail-closed by
+        # charset rather than by sanitising -- sanitising invites a bypass.
+        raise ValueError(
+            f"runId {run_id!r} is not [A-Za-z0-9._-]{{1,64}} without '..'"
+        )
     beats = parsed.get("beats", [])
-    return beats if isinstance(beats, list) else []
+    return run_id, (beats if isinstance(beats, list) else [])
+
+
+def marker_path_for(cwd: str, run_id: str, marker: str) -> str:
+    """Absolute path of a beat's required marker.
+
+    Three cases, and the middle one is the reason this is not a one-liner:
+
+      absolute            taken literally, runId or not. An explicit path is an
+                          explicit path.
+      already under .takt/  taken as-is. This is a REPO-LEVEL marker -- a durable
+                          fact like ".takt/council-done" -- and namespacing it per
+                          run would point every run at a path that cannot exist yet,
+                          so a fact that IS true would read as false forever.
+      a bare name         namespaced under .takt/<run_id>/ when a runId is
+                          declared. This is a PER-RUN marker, and namespacing is
+                          the whole point: last week's run must not satisfy today's.
+
+    The split falls exactly along the existing convention -- takt's own README
+    example writes `.takt/council-done` -- so every declaration written before
+    runId existed keeps its precise meaning, whether or not a runId is added
+    later. It also lets ONE declaration carry both kinds at once, which is what
+    a compiled union of per-run beats and repo-level plugin beats needs.
+    """
+    if Path(marker).is_absolute():
+        return marker
+    normalized = marker.replace(os.sep, "/")
+    if normalized == ".takt" or normalized.startswith(".takt/"):
+        return str(Path(cwd) / marker)
+    if run_id:
+        return str(Path(cwd) / ".takt" / run_id / marker)
+    return str(Path(cwd) / marker)
 
 
 def relative(cwd: str, path: str) -> str:
@@ -118,7 +184,12 @@ def relative(cwd: str, path: str) -> str:
     the tool reported an absolute or a relative path."""
     if not path:
         return ""
-    candidate = path if os.path.isabs(path) else os.path.join(cwd, path)
+    # normpath/relpath kept deliberately: Path has no lexical normpath (only
+    # .resolve(), which touches the filesystem and follows symlinks), and
+    # Path.relative_to raises where relpath returns "../outside" unless
+    # walk_up=True, which is Python 3.12+. A hook runs under whatever python3
+    # the machine has, and a hook that cannot import denies every call.
+    candidate = path if Path(path).is_absolute() else str(Path(cwd) / path)
     try:
         rel = os.path.relpath(os.path.normpath(candidate), os.path.normpath(cwd))
     except ValueError:
@@ -201,9 +272,9 @@ def main() -> NoReturn:
     except (json.JSONDecodeError, ValueError):
         allow()  # not a payload this hook can read; never police what it cannot parse
 
-    cwd = event.get("cwd") or os.getcwd()
-    settings_path = os.path.join(cwd, SETTINGS)
-    if not os.path.isfile(settings_path):
+    cwd = event.get("cwd") or str(Path.cwd())
+    settings_path = Path(cwd) / SETTINGS
+    if not settings_path.is_file():
         allow()  # inert: this repository has not declared any beats
 
     # Past this point the repository opted in, so errors deny rather than allow.
@@ -213,7 +284,7 @@ def main() -> NoReturn:
         if not isinstance(tool_input, dict):
             tool_input = {}
 
-        beats = load_beats(settings_path)
+        run_id, beats = load_declaration(settings_path)
         for beat in beats:
             if not isinstance(beat, dict):
                 continue
@@ -266,13 +337,35 @@ def main() -> NoReturn:
             marker = beat.get("require")
             if not isinstance(marker, str) or not marker:
                 continue
-            marker_path = marker if os.path.isabs(marker) else os.path.join(cwd, marker)
-            if os.path.exists(marker_path):
+            marker_path = marker_path_for(cwd, run_id, marker)
+            # requireKind: what SHAPE satisfies this beat.
+            #
+            # Default "any" is os.path.exists, byte-identical to every
+            # declaration written before this field existed. "file" exists
+            # because a beat can now gate on a real produced ARTIFACT rather
+            # than an empty marker, and `mkdir MODERNIZATION_BRIEF.md` would
+            # otherwise open that gate -- a one-command bypass nobody would
+            # think to look for. cupertino's equivalent gate already uses
+            # isfile; this lets a declaration say which it means.
+            require_kind = beat.get("requireKind") or "any"
+            if require_kind not in ("file", "dir", "any"):
+                raise ValueError(
+                    f"requireKind {require_kind!r} must be 'file', 'dir' or 'any'"
+                )
+            probe = Path(marker_path)
+            if require_kind == "file":
+                satisfied = probe.is_file()
+            elif require_kind == "dir":
+                satisfied = probe.is_dir()
+            else:
+                satisfied = probe.exists()
+            if satisfied:
                 continue
 
+            shape = "" if require_kind == "any" else f" as a {require_kind}"
             deny(
                 f"takt: '{target}' runs ahead of beat '{beat_id}'. {reason} "
-                f"Required marker '{marker}' does not exist. {ESCAPE_HATCH}"
+                f"Required marker '{marker}' does not exist{shape}. {ESCAPE_HATCH}"
             )
     except SystemExit:
         raise

@@ -1,0 +1,130 @@
+{
+  // Repo-root biome config, scoped to the fifteen Workflow scripts under
+  // plugins/*/workflows/. It is JSONC rather than JSON because the decisions
+  // below are not self-evident and a config nobody can read is a config the
+  // next person silently reverts -- same reason ruff.toml carries a header.
+  //
+  // WHY THIS EXISTS: scripts/ci/check-js-syntax.sh ran `node --check` and
+  // nothing else, which proves a file PARSES. It cannot see an unused catch
+  // binding, a `.forEach` callback returning a value, or a typo'd runtime
+  // hook. Those are the "looks correct and silently does nothing" family
+  // CLAUDE.md opens with, and until this file existed nothing looked for them
+  // in JavaScript at all.
+  //
+  // WHY `recommended` IS OFF AND EVERY RULE IS SPELLED OUT: ruff.toml records
+  // what implicit defaults cost here -- same commit, same config, 0 findings
+  // under ruff 0.15.22 and 325 under 0.16.6, because the default rule set
+  // widened in a release nobody in this repo asked for. Biome's `recommended`
+  // set moves the same way. A rule set that changes when an unrelated tool
+  // cuts a release is not a decision this repo ever made, so the decision is
+  // written down here instead. check-js-syntax.sh pins the biome version for
+  // the same reason.
+  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+
+  // Only the Workflow scripts. docs/ is vitepress with its own node_modules,
+  // and the report viewers' inline JS is checked by
+  // scripts/ci/check_viewer_conformance.py against a different standard.
+  "files": { "includes": ["plugins/*/workflows/*.js"] },
+
+  // Formatting and import sorting are deliberately NOT enabled. Turning them
+  // on would rewrite all fifteen files at once, which is the "reformatting
+  // noise buries real defects" trade ruff.toml already refused.
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+
+  "javascript": {
+    // The Workflow runtime's injected hooks. Declaring them is what lets
+    // noUndeclaredVariables run at all: without this list every one of these
+    // is an undeclared global and the rule drowns in false positives, which
+    // is how a rule ends up switched off. With it, `agent(...)` passes and
+    // `agnet(...)` is an error -- proven by check-js-syntax.sh --selftest,
+    // not assumed.
+    "globals": ["args", "agent", "parallel", "pipeline", "phase", "log", "budget", "workflow"]
+  },
+
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        // The reason this file exists. A misspelled runtime hook parses
+        // cleanly, throws at dispatch time, and looks like a model failure.
+        "noUndeclaredVariables": "error",
+        "noUnusedVariables": "error",
+        "noUnreachable": "error",
+        "noConstantCondition": "error",
+        "noSelfAssign": "error",
+        "useValidTypeof": "error"
+      },
+      "suspicious": {
+        // A `.map` callback with no return yields [undefined, ...] and every
+        // downstream `.filter(Boolean)` quietly empties the batch.
+        "useIterableCallbackReturn": "error",
+        // A duplicated key in an agent schema silently wins over the first.
+        "noDuplicateObjectKeys": "error",
+        "noDoubleEquals": "error",
+        "noSelfCompare": "error",
+        "noAsyncPromiseExecutor": "error",
+        "noCompareNegZero": "error",
+        "noDuplicateCase": "error",
+        "noFallthroughSwitchClause": "error",
+        "noGlobalIsNan": "error"
+      },
+      "complexity": {
+        "noUselessTernary": "error",
+        // A catch that only rethrows erases nothing but reads as handling.
+        "noUselessCatch": "error"
+      },
+      "performance": { "noAccumulatingSpread": "error" },
+      "style": { "useConst": "error" }
+    }
+  },
+
+  // SHRINK-ONLY BASELINE.
+  //
+  // Twelve findings existed when this landed, none of them a live bug (each
+  // was read before being listed: nine unused `catch (e)` bindings, one
+  // O(n^2) reduce over a list that is never long, one `let` never reassigned,
+  // one `.forEach` whose callback returns Map.set's own return value). They
+  // are listed here per directory with the count at that moment.
+  //
+  // This list may only SHRINK. Adding a path, or raising a number, means new
+  // code was written against the old convention -- fix the code instead. Same
+  // discipline as ruff.toml's per-file-ignores and
+  // test/plugins/tag-releases-baseline.txt, for the same reason: a baseline
+  // that can grow is not a baseline, it is a suggestion.
+  //
+  // Each entry disables ONLY the rules that directory actually trips, never
+  // the whole set -- a blanket "off" would hide the next real defect too.
+  //
+  // `arbeitsplan`, `compass` and `matrize` are deliberately ABSENT: all three
+  // are at zero and must stay there. A new plugin starts absent too.
+  "overrides": [
+    {
+      // 6 findings: noUnusedVariables 4, noAccumulatingSpread 1, useConst 1
+      "includes": ["plugins/codebase-consistency/workflows/*.js"],
+      "linter": {
+        "rules": {
+          "correctness": { "noUnusedVariables": "off" },
+          "performance": { "noAccumulatingSpread": "off" },
+          "style": { "useConst": "off" }
+        }
+      }
+    },
+    {
+      // 3 findings: noUnusedVariables 3
+      "includes": ["plugins/cupertino/workflows/*.js"],
+      "linter": { "rules": { "correctness": { "noUnusedVariables": "off" } } }
+    },
+    {
+      // 3 findings: noUnusedVariables 2, useIterableCallbackReturn 1
+      "includes": ["plugins/nacharbeit/workflows/*.js"],
+      "linter": {
+        "rules": {
+          "correctness": { "noUnusedVariables": "off" },
+          "suspicious": { "useIterableCallbackReturn": "off" }
+        }
+      }
+    }
+  ]
+}

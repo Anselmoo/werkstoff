@@ -21,6 +21,25 @@ It owns no skills and no agents. It is one hook and a declaration format, becaus
 beats it enforces span plugins — a council from one, an audit from another, a proof from
 a third — and no single plugin honestly owns that order.
 
+## What it is not
+
+takt is **not** a planner. It enforces an order somebody else decided; it never decides
+one, and it ships no skills and no agents on purpose — the beats it enforces span
+plugins, so no single plugin honestly owns that order.
+
+- **`arbeitsplan`** compiles a problem into a workflow and *writes* the beat declaration
+  takt then enforces. If you want the beats authored for you, that is the plugin; takt is
+  the runtime underneath it.
+- **`compass`** reasons about what to do. takt has no opinion about whether an order is
+  wise, only about whether it was followed.
+- **`andon`** proves a wire is actually proven. takt only asks whether a marker exists —
+  it never inspects what the marker claims.
+- **`nacharbeit`**, **`lehre`**, **`cupertino`** each gate their own domain's rules. takt
+  gates the order *between* them, which is the only thing none of them can see.
+
+takt also never writes a file, including the markers themselves. Whatever performs a beat
+creates its marker; takt reads and refuses, nothing else.
+
 ## Install
 
 ```
@@ -62,6 +81,49 @@ Create `.claude/takt.local.md` with one fenced `json` block:
 
 Whatever performs the beat creates the marker — `mkdir -p .takt && touch
 .takt/council-done`. takt never writes files; it only reads and refuses.
+
+### `runId` — for a declaration that describes one run
+
+A marker is an existence check, so by default it is permanent: once
+`.takt/council-done` exists it satisfies its beat forever. That is right for a durable
+project fact ("the design council has run for this UI"), and wrong for a declaration
+that describes a single run — a marker left by last week's run would satisfy today's
+beat, and the gate would pass without the step ever happening.
+
+An optional top-level `runId` namespaces every **relative** marker under
+`.takt/<runId>/`:
+
+````markdown
+```json
+{
+  "runId": "ap-2026-09-12-a3f1",
+  "beats": [
+    {
+      "id": "land-after-referee",
+      "tools": ["Skill", "Task", "Agent"],
+      "skills": ["arbeitsplan-run"],
+      "require": "refereed",
+      "reason": "candidates are refereed before one is landed."
+    }
+  ]
+}
+```
+````
+
+- **Omit it and nothing changes.** A declaration with no `runId` resolves markers
+  exactly as before; this is the case every existing declaration is in, and
+  `hooks/test_takt_guard.py` pins it under the name `BACKWARD`.
+- A new `runId` invalidates every earlier run's markers at once, because they live in a
+  different directory. Staleness stops being a thing to remember.
+- `runId` becomes a path component, so it must match `[A-Za-z0-9._-]{1,64}` and contain
+  no `..`. Anything else **denies** rather than being sanitised — sanitising a path
+  invites a bypass.
+- An **absolute** `require` is always taken literally, `runId` or not. An explicit path
+  is an explicit path.
+
+Generated declarations are the reason this exists: `arbeitsplan` compiles beats from a
+workflow spec, and a generator that reused one run's markers in the next run would
+produce a file that looks enforced and enforces nothing.
 
 A single call can touch several files: a `MultiEdit` may carry its paths in an `edits`
 array rather than one top-level `file_path`. Every path a payload exposes is collected,
@@ -111,11 +173,57 @@ model to decide, which is the model-mediated path this plugin exists to replace.
   repository opted into is precisely the bypass this plugin exists to prevent.
 - **Escape hatch**: `TAKT_DISABLE_GUARD=1`, or remove the declaration file.
 
+## The beat graph
+
+takt enforces an order it never authors, and until now the only way to learn what it was
+blocking was to trip over a denial. `assets/beatgraph-viewer.html` renders that order: every
+declared beat, whether its marker exists yet, and which plugin produces it.
+
+![Declared beats with their state and evidence path, a table of requirements deliberately not compiled with the reason for each, and every marker a plugin produces tagged by evidence kind](assets/beatgraph-viewer-screenshot.jpg)
+
+```bash
+python3 plugins/takt/scripts/build_beatgraph_html.py --repo . --out /tmp/beatgraph.html
+```
+
+The screenshot above is rendered from committed demo data at
+`scripts/fixtures/beatgraph-demo.json`, so it is reproducible rather than a picture of one
+machine on one day. That fixture is **synthetic and says so**, and deliberately carries every state the page can
+render: a blocked beat, a satisfied one, two refusals, and both evidence kinds. A demo missing a
+state cannot show what that state looks like.
+
+It is synthetic because this repository's own live graph currently compiles **zero** beats —
+every cross-plugin ordering rule here is either already enforced in code or has a producer that
+leaves no evidence. `build_beatgraph_html.py --repo .` renders that real state, and the page
+says plainly that no beats is a *result*, not an omission.
+
+The beat list is the **compiler's**, imported from `arbeitsplan/scripts/emit_beats.py` rather
+than re-derived — the selftest asserts the two counts match. A page and a compiler that
+disagree about what is enforced is a page that lies, and this repo has already been burned once
+by a validator that drifted from the guard it validated.
+
+State is carried by the word and the glyph; colour is a third channel on top of two that already
+work without it.
+
 ## Testing
 
 ```bash
+python3 plugins/takt/hooks/test_takt_guard.py          # denies AND allows; BACKWARD + STALE
+python3 plugins/takt/scripts/validate_beats.py --selftest
 python3 test/plugins/verify-hooks-deny.py plugins/takt
+python3 test/plugins/verify-takt-payload-shapes.py
 ```
+
+`test_takt_guard.py` is sabotage-tested, and the sabotage is worth running rather than
+trusting: make `marker_path_for` ignore `run_id` and the `STALE` cases must go red while
+every `BACKWARD` case stays green. An earlier draft of those cases stayed green under
+that sabotage — they were passing for the wrong reason, because a bare `require` resolved
+to a path nothing had created. Planting the stale marker at *every* location an earlier
+run could have left one is what makes them real.
+
+`validate_beats.py` reports what the guard tolerates. The guard silently skips a beat
+that gates nothing, which is correct at runtime — refusing every other beat because one
+is malformed would be worse — and dangerous at authoring time, especially now that
+declarations can be generated.
 
 The fixture at `test/plugins/fixtures/hook-violation-takt/` is plugin-specific because
 takt is scope-conditional: probed with the generic fixture the hook correctly allows,

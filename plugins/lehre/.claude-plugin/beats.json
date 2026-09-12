@@ -1,0 +1,16 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "lehre",
+  "produces": [
+    {
+      "marker": "ruleset-pinned",
+      "after": "lehre-pin",
+      "meaning": "the doctrine ruleset is frozen, so a gauge run measures against a fixed rule set",
+      "evidence": {
+        "kind": "none",
+        "why": "lehre-pin writes .github/workflows/lehre.yml, edits to pyproject.toml or linter config, and test files -- all at the host repo's own CI paths, none plugin-owned or predictable. lehre's only real marker writer is lehre_cli.py close -> .lehre/units/<id>.done, and that belongs to lehre-validate, not lehre-pin."
+      }
+    }
+  ],
+  "requires": []
+}

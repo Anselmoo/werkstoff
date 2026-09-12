@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 11 plugin READMEs, 91 in
+Every example prompt shipped by the 12 plugin READMEs, 96 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -60,6 +60,50 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `andon-loop` — continues an existing ledger's cycle rather than starting fresh, still refusing to advance past whatever gap stopped the last pass.
+
+## arbeitsplan
+
+[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 5 prompts.
+
+### Turn a vague piece of work into something runnable
+
+````prompt
+"I know roughly what I want to change but not how to actually run it as an agentic workflow — turn it into one"
+````
+
+> Triggers `arbeitsplan-compile`: scopes the problem, derives acceptance criteria with real commands, picks patterns from the frozen catalog, sets a dispatch budget, and writes `workflow.json`. Refuses and points at `compass` if the problem turns out to be a question.
+
+### Build several versions and keep the best one
+
+````prompt
+"build three independent versions of this change and land whichever one actually holds up"
+````
+
+> Triggers `arbeitsplan-run`: one worktree per candidate over the same scope, a blind referee per candidate, exactly one diff applied, the losers deleted. Nothing is merged.
+
+### Ask what shape the work should take
+
+````prompt
+"how many agents should I actually use for this, and when does it stop?"
+````
+
+> Triggers `arbeitsplan-patterns`: names a pattern, a fan-out width, a model tier, a stop rule and a cost, each tagged with whether the number was measured or reasoned.
+
+### Compare with and without a plugin, on fresh processes
+
+````prompt
+"run this same prompt three times with the plugin and three times without, on separate processes"
+````
+
+> Triggers `arbeitsplan-matrix`: compiles a `cases × models × plugin_states × repeats` sweep, proves the environment can authenticate with one cheap call, then runs it — one fresh process per cell, with a real per-cell `--model`.
+
+### Find out why something was refused
+
+````prompt
+"the swarm just stopped and said the contract is wrong — what happened?"
+````
+
+> Triggers `arbeitsplan-status`: phases done, candidate outcomes, referee verdicts, budget used, and whether a lock is still open.
 
 ## cli-scaffold
 
@@ -595,7 +639,7 @@ we actually do, and make the important ones actually enforced"
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 90 mechanical rules; findings by rule and file, nothing applied.
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 92 mechanical rules; findings by rule and file, nothing applied.
 
 ### Run the calibrated review
 

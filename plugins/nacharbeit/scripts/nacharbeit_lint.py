@@ -40,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -110,6 +111,7 @@ META: dict[str, tuple[str, str]] = {
     # ---- S: scripts
     "S-PY-COMPILE": ("blocker", "other"),
     "S-JS-SYNTAX": ("blocker", "other"),
+    "S-WF-SHAPE": ("blocker", "contract"),
     "S-SHEBANG": ("nit", "procedure"),
     "S-DOCSTRING-USAGE": ("minor", "procedure"),
     "S-ARGPARSE": ("minor", "procedure"),
@@ -124,6 +126,7 @@ META: dict[str, tuple[str, str]] = {
     "A-S2-HEAD": ("major", "contract"),
     "A-C1-SCREENSHOT": ("minor", "contract"),
     "A-C2-DEMO-DATA": ("minor", "contract"),
+    "A-VIEWER-REQUIRED": ("major", "contract"),
     "A-S3-INNERHTML": ("major", "other"),
     "A-S4-FAIL-VISIBLE": ("minor", "step-logic"),
     "A-NO-CDN": ("major", "contract"),
@@ -1057,6 +1060,83 @@ def r_s_js_syntax(u: Unit, ctx: list[Unit]) -> list[dict]:
     return [_finding(u, "S-JS-SYNTAX", f"node --check fails: {first[:140]}", "fix the JavaScript syntax", line=int(m.group(1)) if m else None, quote=first[:120])]
 
 
+_MJS_CACHE: dict[str, tuple[int, str]] = {}
+
+
+def _node_module_parse(node: str, text: str) -> tuple[int, str]:
+    """Parse `text` as an ES MODULE via a temporary `.mjs` copy; return (rc, stderr).
+
+    `node --check` on a `.js` file auto-detects, and CommonJS wraps the body in a
+    function where a top-level `return` is legal -- so it cannot answer the
+    question S-WF-SHAPE asks. The `.mjs` suffix is what forces module mode; there
+    is no stdin equivalent (`node --check -` falls back to CommonJS with a
+    warning). rc -1 means node itself could not be run, which is not a verdict.
+    """
+    key = hashlib.sha256(text.encode()).hexdigest()
+    if key not in _MJS_CACHE:
+        tmp = None
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False, encoding="utf-8") as fh:
+                fh.write(text)
+                tmp = Path(fh.name)
+            r = subprocess.run([node, "--check", str(tmp)], capture_output=True, text=True, timeout=60)
+            _MJS_CACHE[key] = (r.returncode, (r.stderr or "").strip())
+        except (OSError, subprocess.TimeoutExpired) as e:
+            _MJS_CACHE[key] = (-1, f"{type(e).__name__}: {e}")
+        finally:
+            if tmp is not None:
+                tmp.unlink(missing_ok=True)
+    return _MJS_CACHE[key]
+
+
+def r_s_wf_shape(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """A Workflow script's body IS the function, and this rule proves it has one.
+
+    The runtime evaluates the body in an async context: `args` is an injected
+    global and a top-level `return` is the result. A file that wraps its body in
+    `export default async function run(...)` therefore defines a function nothing
+    calls, falls off the end, and resolves to `undefined` -- every agent dispatch
+    in it unreachable. That shipped once, in
+    `plugins/arbeitsplan/workflows/run.js`.
+
+    The detection INVERTS node: parsed as a module a top-level `return` is
+    illegal, so node's refusal is the POSITIVE signal. Reading a specific error
+    message as the good outcome makes node's wording load-bearing, which is why
+    `test_nacharbeit_lint.py` asserts that wording still holds before trusting
+    this rule -- otherwise a Node rename would leave it quietly passing
+    everything.
+    """
+    if u.kind != "workflow":
+        return []
+    node = OPTIONS.get("node")
+    if not node:
+        _skip("S-WF-SHAPE", "node is not on PATH")
+        return []
+    rc, err = _node_module_parse(node, u.text)
+    if rc == -1:
+        _skip("S-WF-SHAPE", f"node could not be run: {err[:80]}")
+        return []
+    if rc != 0:
+        # Node refused the module parse. Two very different reasons, and only one
+        # of them is a verdict:
+        #   "Illegal return statement" -> a top-level return EXISTS. Correct shape.
+        #   anything else              -> a real syntax error. S-JS-SYNTAX reports
+        #                                 that as a blocker on this same file; this
+        #                                 rule declines rather than guessing a
+        #                                 shape for a file it could not parse.
+        return []
+    line = _line_of(u, "export default")
+    return [_finding(
+        u, "S-WF-SHAPE",
+        "workflow script has no top-level `return`, so the runtime evaluates its body, "
+        "resolves to undefined, and every agent dispatch in it is unreachable",
+        "unwrap the body -- a Workflow script's body IS the function (`args` is an injected "
+        "global and the top-level `return` is the result); do not wrap it in `export default`",
+        line=line or 1,
+        quote=(u.lines[line - 1] if line and line <= len(u.lines) else (u.lines[0] if u.lines else ""))[:120],
+    )]
+
+
 def r_s_shebang(u: Unit, ctx: list[Unit]) -> list[dict]:
     if not _is_script(u) or not _is_entry_point(u):
         return []
@@ -1432,6 +1512,27 @@ def _headings(u: Unit) -> list[tuple[int, str]]:
         if not in_fence and ln.startswith("#"):
             out.append((i, ln.strip()))
     return out
+
+
+def r_a_viewer_required(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """Every plugin ships an HTML report viewer.
+
+    Keyed on the MANIFEST, not on a viewer unit. Every other A-* rule grades a
+    viewer that exists, which by construction can never notice one that does
+    not -- the rule and the thing it checks would have to be present together.
+    """
+    if u.kind != "manifest":
+        return []
+    assets = u.plugin_dir / "assets"
+    if assets.is_dir() and any(assets.glob("*-viewer.html")):
+        return []
+    return [_finding(
+        u, "A-VIEWER-REQUIRED",
+        "plugin ships no assets/*-viewer.html, so its output has no rendered form",
+        "add assets/<name>-viewer.html with its scripts/build_<name>_html.py, a committed "
+        "demo fixture and a screenshot; see docs/plugin-authoring/references/report-viewer-standard.md",
+        quote=u.plugin,
+    )]
 
 
 def r_p_readme_h1(u: Unit, ctx: list[Unit]) -> list[dict]:
@@ -1823,6 +1924,7 @@ RULES = {
     "H-TEST-EXISTS": r_h_test_exists,
     "S-PY-COMPILE": r_s_py_compile,
     "S-JS-SYNTAX": r_s_js_syntax,
+    "S-WF-SHAPE": r_s_wf_shape,
     "S-SHEBANG": r_s_shebang,
     "S-DOCSTRING-USAGE": r_s_docstring_usage,
     "S-ARGPARSE": r_s_argparse,
@@ -1849,6 +1951,7 @@ RULES = {
     "P-MARKETPLACE-MEMBER": r_p_marketplace_member,
     "P-MANIFEST-KEYWORDS": r_p_manifest_keywords,
     "P-MANIFEST-LICENSE": r_p_manifest_license,
+    "A-VIEWER-REQUIRED": r_a_viewer_required,
     "P-README-H1": r_p_readme_h1,
     "P-README-THESIS": r_p_readme_thesis,
     "P-README-WHY-NOT": r_p_readme_why_not,

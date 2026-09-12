@@ -1,37 +1,37 @@
 {
-  "_why": "Committed demo data for the Specimen, so the screenshot in the README is reproducible. It carries a deliberately failing system rather than a clean one: the dominant action colour clears AA only at large sizes, one motion duration sits past the Doherty threshold, one spacing step is off the grid, one ANMERKUNG runs past its character budget with nothing structured to draw, and the icon and gradient spreads show the SYSTEM (grid, keylines, optical stroke, derived stops) rather than a contact sheet. A demo in which nothing is wrong demonstrates nothing.",
-  "system": "Tennisschule — Neues Designkonzept",
-  "kicker": "Sketchbook — Neues Designkonzept",
-  "footerLabel": "Beispielprojekt — Design Sketchbook",
-  "philosophy": "Eine dominante Aktionsfarbe. Drei Register statt einer Stimme überall. Weiche Radien, mit genau einer Ausnahme.",
+  "_why": "Committed demo data for the Specimen, so the screenshot in the README is reproducible. It carries a deliberately failing system rather than a clean one: the dominant action colour clears AA only at large sizes, one motion duration sits past the Doherty threshold, one spacing step is off the grid, one NOTE runs past its character budget with nothing structured to draw, and the icon and gradient spreads show the SYSTEM (grid, keylines, optical stroke, derived stops) rather than a contact sheet. A demo in which nothing is wrong demonstrates nothing.",
+  "system": "Tennis School — New Design Concept",
+  "kicker": "Sketchbook — New Design Concept",
+  "footerLabel": "Example Project — Design Sketchbook",
+  "philosophy": "One dominant action colour. Three registers instead of one voice everywhere. Soft radii, with exactly one exception.",
   "spreads": [
     {
-      "title": "Farbe",
+      "title": "Colour",
       "canvas": {
         "kind": "colour",
         "colours": [
           {
-            "name": "Aktion",
+            "name": "Action",
             "hex": "#FA2E1A",
             "on": "#ffffff"
           },
           {
-            "name": "Tinte",
+            "name": "Ink",
             "hex": "#1a1a1a",
             "on": "#ffffff"
           },
           {
-            "name": "Papier",
+            "name": "Paper",
             "hex": "#f4f2f0",
             "on": "#1a1a1a"
           },
           {
-            "name": "Haarlinie",
+            "name": "Hairline",
             "hex": "#e2ded9",
             "on": "#ffffff"
           },
           {
-            "name": "Anfänger-Grün",
+            "name": "Beginner Green",
             "hex": "#4c8d5a",
             "on": "#ffffff"
           }
@@ -40,74 +40,74 @@
       "notes": [
         {
           "pin": true,
-          "text": "Rot bleibt die einzige dominante Aktionsfarbe pro View.",
-          "rule": "Eine dominante Aktionsfarbe pro View",
-          "antiRule": "nie zwei gleichzeitig"
+          "text": "Red stays the only dominant action colour per view.",
+          "rule": "One dominant action colour per view",
+          "antiRule": "never two at once"
         },
         {
           "pin": true,
-          "text": "Alert-Grün nie im selben View wie Anfänger-Grün.",
-          "antiRule": "zwei Grüntöne, die dasselbe zu bedeuten scheinen"
+          "text": "Alert green never in the same view as beginner green.",
+          "antiRule": "two greens that appear to mean the same thing"
         }
       ],
-      "observation": "Das Aktionsrot erreicht auf Weiss 3,84:1 — genug für grosse Schrift und Rahmen, zu wenig für Fliesstext. Ein Ghost-Button mit rotem Label in Textgrösse fällt durch.",
+      "observation": "Action red reaches 3.84:1 on white — enough for large text and borders, too little for body copy. A ghost button with a red label at text size fails.",
       "snippet": "--action: #FA2E1A;  /* large text and borders only */\n--ink: #1a1a1a;\n--paper: #f4f2f0;"
     },
     {
-      "title": "Kontrast",
+      "title": "Contrast",
       "canvas": {
         "kind": "contrast",
         "pairs": [
           {
-            "role": "Aktion auf Papier",
+            "role": "Action on paper",
             "fg": "#FA2E1A",
             "bg": "#f4f2f0"
           },
           {
-            "role": "Tinte auf Papier",
+            "role": "Ink on paper",
             "fg": "#1a1a1a",
             "bg": "#f4f2f0"
           },
           {
-            "role": "Haarlinie auf Papier",
+            "role": "Hairline on paper",
             "fg": "#e2ded9",
             "bg": "#f4f2f0"
           },
           {
-            "role": "Anfänger-Grün auf Weiss",
+            "role": "Beginner green on white",
             "fg": "#4c8d5a",
             "bg": "#ffffff"
           },
           {
-            "role": "Tinte auf Weiss",
+            "role": "Ink on white",
             "fg": "#1a1a1a",
             "bg": "#ffffff",
-            "mode": "hell"
+            "mode": "light"
           },
           {
-            "role": "Papier auf Tinte",
+            "role": "Paper on ink",
             "fg": "#f4f2f0",
             "bg": "#1a1a1a",
-            "mode": "dunkel",
+            "mode": "dark",
             "unproven": true
           }
         ]
       },
       "notes": [
         {
-          "text": "Gemessen, nicht behauptet. Die Schwellen zeigen den Abstand: 3,44 gegen 4,5 ist ein Streifschuss, 1,20 ist eine andere Farbe.",
-          "antiRule": "Kontrast nach Augenmass beurteilen"
+          "text": "Measured, not asserted. The thresholds show the distance: 3.44 against 4.5 is a graze, 1.20 is a different colour.",
+          "antiRule": "judging contrast by eye"
         },
         {
-          "text": "Die gestrichelte Linie markiert einen Wert, dessen Herkunft nur Grad C ist — Richtung, kein Tokenwert.",
-          "antiRule": "einen geschätzten Wert als gemessen ausgeben"
+          "text": "The dashed line marks a value whose provenance is only grade C — direction, not a token value.",
+          "antiRule": "passing an estimated value off as measured"
         }
       ],
-      "observation": "Haarlinie ist als Trennlinie gedacht und nicht als Text. Bei 1,20:1 ist das eine Regel, keine Beobachtung.",
+      "observation": "Hairline is meant as a divider, not as text. At 1.20:1 that is a rule, not an observation.",
       "snippet": "/* body text needs >= 4.5:1 */"
     },
     {
-      "title": "Icon-System",
+      "title": "Icon System",
       "canvas": {
         "kind": "icons",
         "base": 4
@@ -115,25 +115,25 @@
       "notes": [
         {
           "pin": true,
-          "text": "24er Raster, 20er Live-Fläche, Strich 2 — abgeleitet aus der Basis 4, nicht gesetzt.",
-          "rule": "Jedes Icon füllt eine der vier Keylines",
-          "antiRule": "ein Icon, das in keiner Keyline sitzt, liest sich neben seinen Nachbarn anders gross"
+          "text": "24 grid, 20 live area, stroke 2 — derived from the base of 4, not decreed.",
+          "rule": "Every icon fills one of the four keylines",
+          "antiRule": "an icon that sits in no keyline reads a different size beside its neighbours"
         },
         {
           "pin": true,
-          "text": "Icons stehen nie allein.",
-          "antiRule": "ein Icon ohne Label als einzige Bedeutung"
+          "text": "Icons never stand alone.",
+          "antiRule": "an icon with no label as the only carrier of meaning"
         },
         {
-          "text": "Die Wortmarke gehört nicht dazu: ein Logo wird einmal gezeichnet, ein Icon-Set wird in vielen Grössen gerendert.",
-          "antiRule": "die Logo-Geometrie auf Icons übertragen"
+          "text": "The wordmark is not part of this: a logo is drawn once, an icon set is rendered at many sizes.",
+          "antiRule": "carrying the logo geometry over onto icons"
         }
       ],
-      "observation": "Zwölf Saatkörner, keine Bibliothek. Die Wachstumsregel ist das Lieferobjekt — bis ein eigenes Set existiert, wird ein offenes Set vollständig übernommen, nie zwei gemischt.",
+      "observation": "Twelve seeds, not a library. The growth rule is the deliverable — until an own set exists, one open set is adopted whole, never two mixed.",
       "snippet": "python3 scripts/icons.py --sprite   # 12 seeds, checked against the grid"
     },
     {
-      "title": "Verläufe",
+      "title": "Gradients",
       "canvas": {
         "kind": "gradient",
         "roles": {
@@ -146,92 +146,92 @@
       "notes": [
         {
           "pin": true,
-          "text": "Beide Endpunkte sind Rollen, keine Literale — ändert sich die Rolle, ändert sich der Verlauf mit.",
-          "rule": "Verlaufsstopps referenzieren Rollen",
-          "antiRule": "Hex-Werte direkt in den Verlauf schreiben"
+          "text": "Both endpoints are roles, not literals — change the role and the gradient changes with it.",
+          "rule": "Gradient stops reference roles",
+          "antiRule": "writing hex values straight into the gradient"
         },
         {
-          "text": "Der Aktionsverlauf bleibt in einem Farbton. Zwei Farbtöne wären eine zweite dominante Aktionsfarbe durch die Hintertür.",
-          "antiRule": "Verlauf über zwei Farbfamilien"
+          "text": "The action gradient stays within one hue. Two hues would be a second dominant action colour through the back door.",
+          "antiRule": "a gradient across two colour families"
         },
         {
-          "text": "Nur auf UI-Flächen. In Illustrationen entsteht Ton aus flachen Zonen und deren Überlappung, nicht aus einer Mischung.",
-          "antiRule": "Verlauf in einer Illustrationszone"
+          "text": "UI surfaces only. In illustration, tone comes from flat zones and their overlap, not from a blend.",
+          "antiRule": "a gradient inside an illustration zone"
         }
       ],
-      "observation": "Ein dritter Stopp ist eine Entscheidung, die begründet werden muss — meist sind es zwei Verläufe unter einem Namen."
+      "observation": "A third stop is a decision that has to be justified — usually it is two gradients under one name."
     },
     {
-      "title": "Typografie",
+      "title": "Typography",
       "canvas": {
         "kind": "type",
         "steps": [
           {
             "label": "Display — Anton",
             "px": 46,
-            "specimen": "Wir leben Tennis"
+            "specimen": "We live tennis"
           },
           {
-            "label": "UI & Fliesstext — Plus Jakarta Sans",
+            "label": "UI & body copy — Plus Jakarta Sans",
             "px": 19,
             "specimen": "Regular  Medium  Semibold  Bold"
           },
           {
-            "label": "Eyebrow / Sektionslabel",
+            "label": "Eyebrow / section label",
             "px": 12,
-            "specimen": "MARKENZEICHEN & SLOGAN"
+            "specimen": "WORDMARK & SLOGAN"
           }
         ]
       },
       "notes": [
         {
-          "text": "Drei Register statt einer Stimme überall: Anton für Plakat-Headlines, höchstens ein- bis zweimal pro Seite, Plus Jakarta Sans für alles andere.",
-          "antiRule": "Anton als Fliesstext"
+          "text": "Three registers instead of one voice everywhere: Anton for poster headlines, at most once or twice a page, Plus Jakarta Sans for everything else.",
+          "antiRule": "Anton as body copy"
         },
         {
-          "text": "Diese Anmerkung ist absichtlich zu lang geraten und läuft weit über das Zeichenbudget hinaus, ohne dass ihr eine saubere Regel mit Gegenregel beiliegt, an der sich eine Zeichnung überhaupt festmachen liesse; sie beschreibt stattdessen in vielen Nebensätzen, was eine Schriftfamilie alles leisten soll, und verliert dabei genau die Leserin, für die das Sketchbook gemacht ist."
+          "text": "This note has been made deliberately too long and runs far past its character budget without carrying a clean rule and anti-rule pair that a drawing could be anchored to at all; instead it describes, in clause after clause, everything a type family is supposed to achieve, and in doing so loses exactly the reader the sketchbook was made for."
         }
       ],
-      "observation": "Eyebrows bleiben Grossbuchstaben; nur die Schriftstärke wird leichter."
+      "observation": "Eyebrows stay uppercase; only the weight gets lighter."
     },
     {
-      "title": "Zustände",
+      "title": "States",
       "canvas": {
         "kind": "states",
         "states": [
           {
             "kind": "default",
-            "text": "Kurs buchen"
+            "text": "Book a course"
           },
           {
             "kind": "ghost",
-            "text": "Mehr erfahren"
+            "text": "Learn more"
           },
           {
             "kind": "focus",
-            "text": "Kurs buchen"
+            "text": "Book a course"
           },
           {
             "kind": "disabled",
-            "text": "Ausgebucht"
+            "text": "Fully booked"
           }
         ]
       },
       "notes": [
         {
-          "text": "Fokus ist nicht kosmetisch — ohne ihn ist das System mit der Tastatur unbenutzbar.",
-          "rule": "Jedes interaktive Element hat einen sichtbaren Fokus",
-          "antiRule": "outline: none ohne Ersatz"
+          "text": "Focus is not cosmetic — without it the system is unusable from the keyboard.",
+          "rule": "Every interactive element has a visible focus state",
+          "antiRule": "outline: none with no replacement"
         },
         {
-          "text": "Leer- und Ladezustand fehlen hier noch und sind damit offene Fragen, keine Auslassungen.",
-          "antiRule": "einen fehlenden Zustand als Entscheidung ausgeben"
+          "text": "Empty and loading states are still missing here, which makes them open questions rather than omissions.",
+          "antiRule": "passing a missing state off as a decision"
         }
       ],
-      "observation": "Ghost-Button trägt das Aktionsrot als Rahmen, nicht als Label in Textgrösse — genau der Fall, den die Kontrastseite ausschliesst."
+      "observation": "The ghost button carries action red as a border, not as a label at text size — exactly the case the contrast page rules out."
     },
     {
-      "title": "Bewegung",
+      "title": "Motion",
       "canvas": {
         "kind": "motion",
         "durations": [
@@ -240,7 +240,7 @@
             "ms": 120
           },
           {
-            "name": "Eintritt",
+            "name": "Entry",
             "ms": 200
           },
           {
@@ -248,22 +248,22 @@
             "ms": 320
           },
           {
-            "name": "Seitenwechsel",
+            "name": "Page change",
             "ms": 520
           }
         ]
       },
       "notes": [
         {
-          "text": "Die 400-ms-Linie ist die Doherty-Schwelle: darüber wirkt die Oberfläche träge statt ruhig.",
-          "rule": "Übergänge bleiben unter 400 ms",
-          "antiRule": "Dauer als Gestaltungsmittel dehnen"
+          "text": "The 400 ms line is the Doherty threshold: past it the surface feels sluggish rather than calm.",
+          "rule": "Transitions stay under 400 ms",
+          "antiRule": "stretching duration as a design device"
         }
       ],
-      "observation": "Seitenwechsel liegt bei 520 ms und ist damit der einzige Wert jenseits der Schwelle."
+      "observation": "Page change sits at 520 ms, the only value beyond the threshold."
     },
     {
-      "title": "Raster",
+      "title": "Grid",
       "canvas": {
         "kind": "spacing",
         "base": 4,
@@ -292,19 +292,19 @@
       },
       "notes": [
         {
-          "text": "Alle Schritte sind Vielfache der Basis — bis auf einen.",
-          "rule": "Abstände sind ganzzahlige Vielfache von 4px",
-          "antiRule": "ein Zwischenwert, der einmal gepasst hat"
+          "text": "Every step is a multiple of the base — all but one.",
+          "rule": "Spacing steps are whole multiples of 4px",
+          "antiRule": "an in-between value that fitted once"
         }
       ],
-      "observation": "space-4 liegt bei 18px und damit auf 4,5× der Basis. Entweder 16 oder 20 — oder die Basis stimmt nicht."
+      "observation": "space-4 sits at 18px, which is 4.5x the base. Either 16 or 20 — or the base is wrong."
     }
   ],
   "approval": {
-    "framing": "Diskussionsgrundlage, kein fertiges Regelwerk.",
-    "criteria": "Rückmeldung zu Farbe, Bildsprache und den vier Templates — vor der Produktion.",
+    "framing": "A basis for discussion, not a finished rulebook.",
+    "criteria": "Feedback on colour, imagery and the four templates — before production.",
     "decisionMaker": "",
-    "covers": "Richtung | Richtung und Taxonomie | das ganze System"
+    "covers": "direction | direction and taxonomy | the whole system"
   },
-  "markdown": "# Tennisschule — Neues Designkonzept\n\nEine dominante Aktionsfarbe. Drei Register. Weiche Radien mit einer Ausnahme.\n"
+  "markdown": "# Tennis School — New Design Concept\n\nOne dominant action colour. Three registers. Soft radii with one exception.\n"
 }

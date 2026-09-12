@@ -1,0 +1,7 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "takt",
+  "produces": [],
+  "requires": [],
+  "note": "takt is the RUNTIME for these declarations, not a participant in them. Empty by design, not by omission."
+}

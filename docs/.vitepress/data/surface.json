@@ -85,6 +85,101 @@
       "workflows": []
     },
     {
+      "name": "arbeitsplan",
+      "version": "0.1.0",
+      "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm — N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted — and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and — only behind an explicit approval gate — to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
+      "skills": [
+        {
+          "id": "arbeitsplan:arbeitsplan-compile",
+          "name": "arbeitsplan-compile",
+          "description": "Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at compass when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-matrix",
+          "name": "arbeitsplan-matrix",
+          "description": "Compiles and runs a headless sweep — cases x models x plugin-states x repeats, one fresh `claude -p` process per cell — after proving the environment can authenticate. Use when the user wants genuinely independent candidates, a real per-candidate --model, a plugin-present versus plugin-absent comparison, or asks to benchmark or ablate a plugin. Also use afterwards to read results back. A cell that could not be fairly measured is UNMEASURED, never FAIL."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-patterns",
+          "name": "arbeitsplan-patterns",
+          "description": "Says which agentic pattern fits a problem and with what numbers — fan-out width, model tier, stop rule, cost — grounded in a frozen catalog of measured configurations. Use when the user asks what shape work should be run in, how many agents to use, whether to run something in parallel, or whether a named pattern is a good idea. Also use to explain why a pattern is rejected here. Read-only; it proposes, it never compiles."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-preflight",
+          "name": "arbeitsplan-preflight",
+          "description": "Read-only inventory of what a swarm run can and cannot do in this repository before any tokens are spent. Use before arbeitsplan-compile or arbeitsplan-run, when the user asks whether this repo is ready for a swarm, or when a run failed and the cause might be the environment rather than the work. Reports git/worktree support, test commands, other plugins' live guards, and any open run lock. Writes nothing."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-run",
+          "name": "arbeitsplan-run",
+          "description": "Executes a compiled workflow as a redundant swarm — N candidates over the same scope in their own git worktrees, judged blind, exactly one landed. Use after arbeitsplan-compile, or when the user asks to run the workflow, start the swarm, or build several versions and pick one. Halts and surfaces rather than retrying when candidates fail; convergence comes from widening, never from repeating. Writes only inside candidate worktrees until the landing step."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-status",
+          "name": "arbeitsplan-status",
+          "description": "Read-only report on an arbeitsplan run that has already started — phases done, candidates built, referee verdicts, dispatch budget used, and whether a lock is open. Use when the user asks how the run is going, what the swarm decided, why something was denied, or what is still holding a lock. Advances nothing and writes nothing."
+        }
+      ],
+      "agents": [
+        {
+          "id": "arbeitsplan:candidate-builder",
+          "name": "candidate-builder",
+          "description": "Use this agent when one candidate of an arbeitsplan fan-out phase must be built in its own git worktree, under exactly one assigned angle, against the acceptance criteria in workflow.json. Typical triggers include arbeitsplan-run dispatching N builders in a single parallel batch, one per angle, and a re-dispatch under a NEW angle after a batch was too narrow. Every dispatch names exactly ONE angle and ONE worktree; a dispatch naming several is out of scope and only the first is handled. Never dispatched to \"improve\" a previous candidate — that is the serial retry loop this plugin exists to prevent, and the PreToolUse guard denies an identical re-dispatch outright. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Write",
+            "Edit",
+            "Bash"
+          ]
+        },
+        {
+          "id": "arbeitsplan:candidate-referee",
+          "name": "candidate-referee",
+          "description": "Use this agent to judge ONE arbeitsplan candidate against the acceptance criteria, given its diff and nothing else — no builder rationale, no angle, no other candidate, no prior verdict. Typical triggers include arbeitsplan-run dispatching one referee per candidate in a single parallel batch after a fan-out phase closes, and a re-judgement after the acceptance criteria themselves were revised. One candidate per dispatch, always; a dispatch carrying two candidates is out of scope and only the first is judged. Never dispatched to compare candidates against each other — ranking is a deterministic rule in the calling skill, not a judgement call. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "arbeitsplan:pattern-researcher",
+          "name": "pattern-researcher",
+          "description": "Use this agent to propose which agentic pattern fits a stated problem, grounded first in the frozen catalog at references/patterns.md and only then in outside sources. Typical triggers include arbeitsplan-patterns being asked what shape a problem should be run in, arbeitsplan-compile needing a pattern for one phase, and a request to check whether a pattern the user names is actually a good fit. Returns proposals with citations; it never writes workflow.json and never edits the catalog. A pattern the catalog marks rejected is never proposed, whatever an outside source says. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "WebSearch",
+            "WebFetch"
+          ]
+        },
+        {
+          "id": "arbeitsplan:scope-prover",
+          "name": "scope-prover",
+          "description": "Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Typical triggers include arbeitsplan-compile needing a writeScope for workflow.json, and a map-reduce-disjoint phase needing its disjointness established BEFORE any builder is dispatched. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": [
+        "arbeitsplan-run-swarm"
+      ]
+    },
+    {
       "name": "cli-scaffold",
       "version": "0.8.1",
       "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
@@ -851,7 +946,7 @@
         {
           "id": "matrize:token-emitter",
           "name": "token-emitter",
-          "description": "Use this agent when matrize needs a formatter authored for one emit target — a committed script that turns the DTCG token file into CSS, Tailwind config, SCSS, JSON or TOML deterministically. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
+          "description": "Use this agent when matrize needs a formatter AUTHORED for one emit target — a committed script that turns the DTCG token file into that target deterministically. This is how a target that does not exist yet gets built: matrize ships css, vitepress, html, pdf and provenance, and Tailwind, SCSS, JSON and TOML are named in the README as NOT built, so asking for one of those is a request to author the formatter, never a claim that emit can already produce it. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
           "tools": [
             "Read",
             "Glob",
@@ -1169,6 +1264,12 @@
     "andon:andon-propose",
     "andon:andon-status",
     "andon:andon-verify",
+    "arbeitsplan:arbeitsplan-compile",
+    "arbeitsplan:arbeitsplan-matrix",
+    "arbeitsplan:arbeitsplan-patterns",
+    "arbeitsplan:arbeitsplan-preflight",
+    "arbeitsplan:arbeitsplan-run",
+    "arbeitsplan:arbeitsplan-status",
     "cli-scaffold:cli-architecture",
     "cli-scaffold:cli-scaffold-compiled",
     "cli-scaffold:cli-scaffold-interpreted",
@@ -1259,6 +1360,10 @@
     "andon:andon-challenger",
     "andon:andon-defender",
     "andon:andon-verifier",
+    "arbeitsplan:candidate-builder",
+    "arbeitsplan:candidate-referee",
+    "arbeitsplan:pattern-researcher",
+    "arbeitsplan:scope-prover",
     "cli-scaffold:cli-scaffold-verifier",
     "codebase-consistency:align-executor",
     "codebase-consistency:consistency-critic",

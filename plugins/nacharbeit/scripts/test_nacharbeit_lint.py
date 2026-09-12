@@ -232,6 +232,17 @@ if __name__ == "__main__":
     exp["S-PY-COMPILE"] = f"{P}/scripts/broken.py"
     w(root, f"{P}/scripts/bad.js", "function (\n")
     exp["S-JS-SYNTAX"] = f"{P}/scripts/bad.js"
+    # Parses under `node --check` (CommonJS wraps the body) and biome parses it
+    # as a module CLEANLY -- it is wrong only against the runtime's calling
+    # convention. This is the shape plugins/arbeitsplan/workflows/run.js shipped
+    # in, where it left every agent dispatch unreachable.
+    w(root, f"{P}/workflows/dead.js",
+      "export const meta = { name: 'dead', description: 'Never dispatches anything.' }\n"
+      "export default async function run(rawArgs) {\n"
+      "  const out = await agent('go')\n"
+      "  return { out, rawArgs }\n"
+      "}\n")
+    exp["S-WF-SHAPE"] = f"{P}/workflows/dead.js"
     w(root, f"{P}/scripts/noshebang.py", '''import re
 import subprocess
 import sys
@@ -261,6 +272,17 @@ if __name__ == "__main__":
                 "A-S3-INNERHTML", "A-S4-FAIL-VISIBLE", "A-NO-CDN", "A-TOKENS-PRESENT", "A-BUILDER-EXISTS"):
         exp[rid] = f"{P}/assets/bad-viewer.html"
     w(root, "plugins/bad2/assets/other-viewer.html", viewer_html("bad2", conformant=False))
+
+    # A-VIEWER-REQUIRED fires on an ABSENCE, so it needs a plugin with no viewer
+    # at all. `bad` and `bad2` both have one -- they exist to plant the rules
+    # that grade a viewer's CONTENT -- so a third fixture plugin carries this
+    # one. Minimal on purpose: a manifest is all the rule keys on.
+    w(root, "plugins/bad3/.claude-plugin/plugin.json",
+      json.dumps({"name": "bad3", "version": "0.1.0", "description": "Has no viewer.",
+                  "author": {"name": "Anselm Hahn", "email": "x@y.z"},
+                  "keywords": ["x"], "license": "MIT"}))
+    w(root, "plugins/bad3/README.md", "# bad3\n\n**No viewer.**\n")
+    exp["A-VIEWER-REQUIRED"] = "plugins/bad3/.claude-plugin/plugin.json"
 
     # ---- P
     w(root, f"{P}/.claude-plugin/plugin.json", json.dumps({"name": "wrongname", "version": "1.0", "description": "Audits widgets.", "author": {"name": "bad contributors"}}))
@@ -391,6 +413,16 @@ if __name__ == "__main__":
     w(root, f"{P}/assets/tokens.css", ":root { --header-h: 61px; }\n")
     wb(root, f"{P}/assets/clean-viewer-screenshot.jpg", jpeg(1600))
     w(root, f"{P}/scripts/fixtures/sample.json", "{}\n")
+    # The correct shape: body at top level, `args` as an injected global, a
+    # top-level `return`. Present so the negative check proves S-WF-SHAPE allows
+    # as well as denies -- a rule exercised only by its planted defect is half
+    # calibrated.
+    w(root, f"{P}/workflows/scan.js",
+      "export const meta = { name: 'scan', description: 'Scans one area.' }\n"
+      "const area = (args && args.area) || '.'\n"
+      "phase('Scan')\n"
+      "const found = await agent('Scan the area')\n"
+      "return { area, found }\n")
     w(root, f"{P}/.claude-plugin/plugin.json", json.dumps({"name": "clean", "version": "0.1.0", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "keywords": ["widgets"], "license": "MIT"}))
     w(root, ".claude-plugin/marketplace.json", json.dumps({"name": "test", "plugins": [{"name": "clean", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "source": "./plugins/clean"}]}))
     w(root, f"{P}/README.md", f"""# clean
@@ -469,15 +501,30 @@ def run(root: Path, plugins: list[str]) -> list[dict]:
 
 def main() -> int:
     red = 0
-    if not shutil.which("node"):
+    node = shutil.which("node")
+    if not node:
         print("RED  environment: node is not on PATH, so S-JS-SYNTAX cannot be calibrated")
+        return 1
+    # S-WF-SHAPE reads one specific node refusal as its POSITIVE signal (a
+    # top-level return EXISTS), so that wording is load-bearing. If a future node
+    # renames it, the rule stops firing and quietly passes every workflow --
+    # exactly the "looks correct and silently does nothing" shape. Assert it here,
+    # against a body known to have a top-level return, before trusting the rule.
+    # The probe deliberately carries NO `export`: that is what makes it sensitive to
+    # the `.mjs` suffix in _node_module_parse. With an `export` present node would
+    # auto-detect module mode anyway and the suffix could be dropped unnoticed.
+    _rc, _err = lp._node_module_parse(node, "const a = 1\nreturn { a }\n")
+    if _rc == 0 or "Illegal return statement" not in _err:
+        print("RED  environment: node no longer answers a top-level `return` in module "
+              f"mode with 'Illegal return statement' (rc={_rc}, stderr={_err[:120]!r}); "
+              "S-WF-SHAPE's positive signal is gone and the rule must be re-derived")
         return 1
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         exp = build_positive(root)
 
         # 1. positive
-        findings = run(root, ["plugins/bad", "plugins/bad2"])
+        findings = run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"])
         for rid, f in exp.items():
             hits = [x for x in findings if x["rule_id"] == rid and x["file"] == f]
             if not hits:
@@ -489,7 +536,7 @@ def main() -> int:
         saved = dict(lp.RULES)
         for rid in saved:
             lp.RULES[rid] = lambda _u, _ctx: []
-            after = run(root, ["plugins/bad", "plugins/bad2"])
+            after = run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"])
             lp.RULES[rid] = saved[rid]
             if any(x["rule_id"] == rid for x in after):
                 print(f"RED  sabotage: blanking {rid} did not remove its findings — the check is not load-bearing")

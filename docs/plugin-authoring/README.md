@@ -41,7 +41,7 @@ structure" pattern the craft rules below argue against.
   skill/agent needs a fenced output example.
 - [`plugins/nacharbeit/references/rubric.md`](../plugins/references/rubric.md) — the
   frozen rule set nacharbeit grades every skill, agent, command, workflow prompt, hook,
-  script, viewer, manifest, README and docs page against: 90 mechanical rules a
+  script, viewer, manifest, README and docs page against: 92 mechanical rules a
   sabotage-tested linter enforces, 48 judgement rules a calibrated finder applies, and the
   settled answers to the seven places the official and third-party sources disagree. Read
   this before arguing about a finding in `docs/prompt-quality-findings.md`, and change it

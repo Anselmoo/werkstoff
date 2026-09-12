@@ -1,0 +1,16 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "matrize",
+  "produces": [
+    {
+      "marker": "tokens-emitted",
+      "after": "matrize-emit",
+      "meaning": "the design system was formatted to its targets from a written tokens.json",
+      "evidence": {
+        "kind": "none",
+        "why": "every matrize emitter takes a caller-supplied --out, and with no --out it prints to stdout and writes nothing at all. There is no plugin-owned path to stat."
+      }
+    }
+  ],
+  "requires": []
+}

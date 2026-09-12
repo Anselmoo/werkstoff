@@ -311,7 +311,7 @@ jobs:
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
             table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
             echo "</tbody></table>"
           } > board.md
           cat board.md

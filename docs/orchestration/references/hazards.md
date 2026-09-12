@@ -74,6 +74,13 @@ card, rather than buried in the third column of a five-column table.
 
 
 <div class="hz-card">
+<div class="hz-head"><code>arbeitsplan</code><span class="hz-chip">Skill|Task|Agent|Write|Edit|MultiEdit</span></div>
+<p class="hz-script"><code>hooks/arbeitsplan_guard.py</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/arbeitsplan/run_scope.json</code> exists — a run is in flight</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span><code>ARBEITSPLAN_DISABLE_GUARD=1</code>, or close the run by removing the lock</p>
+</div>
+
+<div class="hz-card">
 <div class="hz-head"><code>matrize</code><span class="hz-chip">Write|Edit|MultiEdit</span></div>
 <p class="hz-script"><code>hooks/matrize_guard.py</code></p>
 <p class="hz-row"><span class="hz-row-label">Inert unless</span>the configured design root exists (<code>.design/</code> by default, or <code>root:</code> in <code>.claude/matrize.local.md</code>)</p>
@@ -85,7 +92,7 @@ card, rather than buried in the third column of a five-column table.
 Two details matter beyond the cards above. First, andon's matcher covers `Write` and `Edit`
 only — it does not list `MultiEdit`, unlike self-assess's matcher on the same three
 tool names. Second, two matchers reach upstream of the edit itself by covering
-`Skill|Task|Agent`, so they can intercept a dispatch and not only a file write.
+`Skill|Task|Agent`, so they can intercept a dispatch and not only a file write. `arbeitsplan` matches the same six, and the division of labour between it and `takt` is deliberate rather than incidental: `takt` answers "has the required step run?", which is legitimately repo-level state, while `arbeitsplan` answers "did THIS in-flight dispatch issue this edit?", which is the per-dispatch attribution problem below. Ordering appears in exactly one of the two.
 cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
 `cupertino-longevity`, `cupertino-integrate`, or `cupertino-council` before
 `cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. takt's matcher is the
@@ -130,8 +137,8 @@ moment a repo merely had `analysis/self-assess/` on disk, blocking confab, cuper
 and codebase-consistency remediators along with ordinary direct edits. The general
 rule that follows: gate on a per-dispatch lock, never on repo-level state, whenever
 the question a hook is answering is "did the currently-in-flight remediation issue
-this specific edit." self-assess's `edit_scope.json` and confab's
-`remediation_scope.json` both do exactly that now — opened immediately before a
+this specific edit." self-assess's `edit_scope.json`, confab's
+`remediation_scope.json` and arbeitsplan's `run_scope.json` all do exactly that now — opened immediately before a
 remediator agent is dispatched, holding the specific file(s) that dispatch is allowed
 to touch, and closed after. nacharbeit's `fix_scope.json` is the third and the
 widest-reaching, because its remediators edit *other plugins'* files: it lists every
@@ -142,7 +149,7 @@ post-check script that has re-run every test and diffed every contract.
 That rule does not extend to every hook in the table. andon's and cupertino's guards
 answer a different question — "is the ledger in a stop state" and "has the required
 ordering step already run" — which is legitimately repo-level state rather than a
-per-dispatch attribution problem. Only self-assess's, confab's and nacharbeit's edit-scope guards are
+per-dispatch attribution problem. Only self-assess's, confab's, nacharbeit's and arbeitsplan's edit-scope guards are
 solving the "whose edit is this" problem the quoted constraint describes, and only
 those three need a per-dispatch lock rather than a durable flag. lehre's, like
 andon's, answers a repo-level question ("does this write violate the declared

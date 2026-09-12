@@ -1,0 +1,54 @@
+{
+  "generated": "2026-09-12 11:05 UTC",
+  "declarations": 12,
+  "compilerAvailable": true,
+  "_note": "SYNTHETIC demo data, not this repository's live state. It deliberately carries every state the page can render -- one blocked beat, one satisfied, two refusals, and both evidence kinds -- because a demo missing a state cannot show what that state looks like. This repository's own live graph currently compiles ZERO beats, which is correct and is what `build_beatgraph_html.py --repo .` renders.",
+  "beats": [
+    {
+      "gates": "deploy-docs",
+      "marker": "analysis/widget/COVERAGE.json",
+      "producedBy": "widget",
+      "scope": "file",
+      "satisfied": false,
+      "reason": "deploy-docs publishes numbers the coverage run produces; publishing before it has run ships last week's figures as this week's."
+    },
+    {
+      "gates": "widget-release",
+      "marker": "analysis/widget/audit_summary.json",
+      "producedBy": "widget",
+      "scope": "file",
+      "satisfied": true,
+      "reason": "the release notes are assembled from the audit summary; releasing without it produces notes with nothing behind them."
+    }
+  ],
+  "refused": [
+    {
+      "gates": "andon",
+      "marker": "transform-brief-written",
+      "reason": "already enforced in code by plugins/andon/scripts/andon_core.py:check_ingest_prereqs",
+      "why": "check_ingest_prereqs checks BOTH artifacts with isfile, and only when gap_source is 'self-assess-brief'. A beat fires unconditionally, so it would deny andon-loop in its default self-scan mode, which needs no brief at all."
+    },
+    {
+      "gates": "widget",
+      "marker": "council-done",
+      "reason": "cupertino cannot evidence it",
+      "why": "cupertino-council writes nothing durable -- a brief, a tension log and code, all in conversation. A beat gating on it would deny forever, with no way to satisfy it."
+    }
+  ],
+  "produces": [
+    { "marker": "audit_summary", "plugin": "widget", "after": "widget-audit",
+      "evidenceKind": "artifact", "evidencePath": "analysis/widget/audit_summary.json",
+      "meaning": "the audit ran and its findings are on record", "why": "" },
+    { "marker": "council-done", "plugin": "cupertino", "after": "cupertino-council",
+      "evidenceKind": "none", "evidencePath": "",
+      "meaning": "the design council ran before any UI code was written",
+      "why": "the council produces a brief, a tension log and code, all in conversation; nothing durable is written" },
+    { "marker": "plugin-reviewed", "plugin": "nacharbeit", "after": "nacharbeit-review",
+      "evidenceKind": "artifact", "evidencePath": "analysis/nacharbeit/run.json",
+      "meaning": "a calibrated review pass has findings on record", "why": "" },
+    { "marker": "wire-proven", "plugin": "andon", "after": "andon-verify",
+      "evidenceKind": "none", "evidencePath": "",
+      "meaning": "one named wire has been proven against evidence",
+      "why": "andon-verify is forbidden to write; andon-loop persists the result, so nothing marks that one wire was proven" }
+  ]
+}

@@ -214,14 +214,14 @@ by intent.
 
 ## The sketchbook — the Specimen
 
-![A landscape sketchbook spread titled Kontrast: a threshold chart plots six contrast
+![A landscape sketchbook spread titled Contrast: a threshold chart plots six contrast
 pairs against rules at 3.0, 4.5 and 7.0, with square red heads for pairs that fall short
-and round dark heads for pairs that clear, beside an ANMERKUNGEN margin carrying two
+and round dark heads for pairs that clear, beside a NOTES margin carrying two
 rules with their anti-rules.](assets/sketchbook-screenshot.jpg)
 
 Landscape A4 at **√2**, measured off a real reference rather than assumed — a generic
 landscape scaffold uses 16:10, and the reference does not. One building block per spread,
-a 66/34 split between specimen canvas and `ANMERKUNGEN` margin, numbered callouts in the
+a 66/34 split between specimen canvas and `NOTES` margin, numbered callouts in the
 margin, a tinted box for the derived observation, and the approval block that makes the
 whole thing a gate rather than a gallery.
 
@@ -235,6 +235,23 @@ described as if it worked.
 python3 plugins/matrize/scripts/build_sketchbook_html.py \
   --data plugins/matrize/scripts/fixtures/sketchbook-demo.json --out /tmp/sketchbook.html
 ```
+
+The screenshot above is page 3 of that file, rendered through the same print path the `pdf`
+target uses. Recording it matters: the previous image was captured from a build whose footer
+still read `03 / 08`, the current code renders `03 / 10`, and nothing noticed — because the
+command that produces the HTML was written down and the command that produces the *image*
+was not.
+
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
+  --no-pdf-header-footer --print-to-pdf=/tmp/sb.pdf file:///tmp/sketchbook.html
+pdftoppm -f 3 -l 3 -jpeg -jpegopt quality=82 -scale-to-x 1602 -scale-to-y 1133 /tmp/sb.pdf /tmp/page
+cp /tmp/page-03.jpg plugins/matrize/assets/sketchbook-screenshot.jpg
+cp /tmp/page-03.jpg docs/plugins/assets/sketchbook-screenshot.jpg   # the docs copy is NOT synced by anything
+```
+
+Print, not the screen preview: `@media screen` wraps each spread in a shadowed card on grey,
+`@media print` is full-bleed, and the committed image is the print rendering.
 
 **Two modes.** `approval` (default) is the reference's shape — no code anywhere, because
 it goes in front of a decision-maker. `handoff` adds a bottom-anchored snippet per spread
@@ -251,7 +268,7 @@ miss fixed by darkening a few percent, and 1.20 is a different colour. A table p
 "FAILS" for both.
 
 **Text into illustration.** Prose past its slot budget stops being read, so an over-budget
-`ANMERKUNG` is rendered as a do/don't figure instead — but only when the entry carries a
+`NOTE` is rendered as a do/don't figure instead — but only when the entry carries a
 structured rule and anti-rule to draw. With nothing to draw it flags the overrun and
 leaves the prose alone. Inventing a figure the lexicon never described is the same defect
 as a rule with no card behind it.

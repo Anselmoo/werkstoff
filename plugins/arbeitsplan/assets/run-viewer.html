@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>arbeitsplan — swarm run</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
+  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .verdict {
+    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  .legend {
+    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
+  }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dd { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  /* Every outcome is a WORD plus a glyph. Colour is the third channel, never the only one. */
+  .outcome { white-space: nowrap; font-weight: 600; }
+  .outcome .glyph { display: inline-block; width: 1.1em; }
+  .o-landed { color: var(--silica); }
+  .o-accepted { color: var(--silica-light); }
+  .o-rejected { color: var(--samaria-light); }
+  .o-unmeasured { color: var(--muted); }
+  .breaker {
+    margin: var(--space-3) 0; padding: var(--space-3);
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  .breaker .maths { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86rem; }
+  .breaker p { margin: var(--space-1) 0 0; color: var(--muted); font-size: 0.84rem; }
+  .empty {
+    margin: var(--space-4) 0; padding: var(--space-3); background: var(--panel);
+    border: 1px solid var(--samaria-light); border-radius: var(--radius-panel);
+  }
+  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>arbeitsplan — swarm run</h1>
+    <p class="sub">N candidates over one scope, judged blind. Exactly one lands; the rest are deleted.</p>
+    <p class="verdict" id="verdict">Loading the run…</p>
+  </header>
+
+  <div class="legend">
+    <dl>
+      <dt>✓ landed</dt><dd>this candidate's diff was applied to the working tree. Exactly one ever is.</dd>
+      <dt>· accepted</dt><dd>met every acceptance criterion, but lost the selection rule.</dd>
+      <dt>✗ rejected</dt><dd>a referee found at least one criterion demonstrably unmet.</dd>
+      <dt>— unmeasured</dt><dd>never fairly tried (no worktree, broken build). <strong>Excluded from the breaker's denominator</strong>, never counted as a rejection.</dd>
+    </dl>
+  </div>
+
+  <div id="empty" class="empty" hidden>
+    <strong>No candidates in this report.</strong>
+    <p>Either the run never dispatched, or this page was built from an empty report. Re-run
+      <code>arbeitsplan-run</code> and rebuild; an empty run is not a clean one.</p>
+  </div>
+
+  <h2>Candidates</h2>
+  <table>
+    <thead><tr><th>outcome</th><th>id</th><th>angle</th><th>checks</th><th>files</th><th>referee evidence</th></tr></thead>
+    <tbody id="candidates"></tbody>
+  </table>
+
+  <h2>The circuit breaker</h2>
+  <div class="breaker" id="breaker"></div>
+
+  <h2>Budget</h2>
+  <div class="breaker" id="budget"></div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/*__RUN_DATA__*/
+const DATA = (typeof RUN !== "undefined") ? RUN : null;
+function el(id) { return document.getElementById(id); }
+function cell(row, text, cls) {
+  const td = document.createElement("td");
+  td.textContent = text;
+  if (cls) td.className = cls;
+  row.appendChild(td);
+  return td;
+}
+const GLYPH = { landed: "✓", accepted: "·", rejected: "✗", unmeasured: "—" };
+
+function render() {
+  if (!DATA || !Array.isArray(DATA.candidates)) {
+    el("verdict").textContent =
+      "This run report could not be read, so nothing below is trustworthy. Regenerate it: " +
+      "python3 plugins/arbeitsplan/scripts/build_run_html.py --run <runId>";
+    el("empty").hidden = false;
+    return;
+  }
+  const c = DATA.candidates;
+  const measured = c.filter((x) => x.outcome !== "unmeasured");
+  const accepted = c.filter((x) => x.outcome === "landed" || x.outcome === "accepted");
+  const landed = c.find((x) => x.outcome === "landed");
+
+  if (c.length === 0) {
+    el("verdict").textContent = "This run produced no candidates at all.";
+    el("empty").hidden = false;
+  } else if (landed) {
+    el("verdict").textContent =
+      "Candidate " + landed.id + " (" + landed.angle + ") landed. " +
+      (c.length - 1) + " other candidate(s) were deleted without being merged, which is why " +
+      "this run could not produce a merge conflict.";
+  } else {
+    el("verdict").textContent =
+      "Nothing landed. " + accepted.length + " of " + measured.length +
+      " measured candidates were accepted, so the run halted rather than re-dispatching.";
+  }
+
+  const tbody = el("candidates");
+  for (const x of c) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.className = "outcome o-" + x.outcome;
+    const g = document.createElement("span");
+    g.className = "glyph";
+    g.textContent = GLYPH[x.outcome] || "?";
+    td.appendChild(g);
+    td.appendChild(document.createTextNode(x.outcome));
+    tr.appendChild(td);
+    cell(tr, x.id, "mono");
+    cell(tr, x.angle);
+    cell(tr, x.outcome === "unmeasured" ? "not run" :
+             (x.checksPassed + "/" + x.checksTotal));
+    cell(tr, x.outcome === "unmeasured" ? "—" : String(x.filesTouched));
+    cell(tr, x.evidence || "");
+    tbody.appendChild(tr);
+  }
+
+  const b = DATA.breaker || {};
+  const bd = el("breaker");
+  const maths = document.createElement("div");
+  maths.className = "maths";
+  maths.textContent =
+    "accepted " + (b.accepted || 0) + " × 3 = " + ((b.accepted || 0) * 3) +
+    "   vs   measured " + (b.measured || 0) + " × 2 = " + ((b.measured || 0) * 2) +
+    "   →   " + (b.tripped ? "TRIPPED" : "held");
+  bd.appendChild(maths);
+  const note = document.createElement("p");
+  note.textContent = b.tripped
+    ? "Below two thirds. The run aborted: the correct response is a better contract, not more agents."
+    : "At or above two thirds, judged for this batch alone. " + (b.unmeasured || 0) +
+      " unmeasured candidate(s) were excluded from the denominator — counting them would make " +
+      "this breaker measure the environment instead of the work.";
+  bd.appendChild(note);
+
+  const bu = DATA.budget || {};
+  const bud = el("budget");
+  const bm = document.createElement("div");
+  bm.className = "maths";
+  // null means the builder could not read the spec or the dispatch ledger. Saying
+  // so beats printing "0 of 0", which reads as a real, reassuring measurement.
+  bm.textContent = (bu.total == null || bu.used == null)
+    ? "not derivable — no workflow.json or dispatch ledger for this run"
+    : bu.used + " of " + bu.total + " dispatches used";
+  bud.appendChild(bm);
+  const bn = document.createElement("p");
+  bn.textContent = "Declared at compile time. The hook denies past it; raising it is a decision to re-compile.";
+  bud.appendChild(bn);
+
+  el("footer").textContent =
+    "Run " + (DATA.runId || "?") + (DATA.generated ? " — " + DATA.generated : "") +
+    ". Regenerate with build_run_html.py after any further dispatch.";
+}
+render();
+</script>
+</body>
+</html>

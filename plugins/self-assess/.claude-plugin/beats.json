@@ -1,0 +1,32 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "self-assess",
+  "produces": [
+    {
+      "marker": "stage-graph-written",
+      "after": "self-assess-stage-map",
+      "meaning": "the real import/use graph exists, so downstream skills read it rather than guessing",
+      "evidence": {
+        "kind": "artifact",
+        "path": "stage_graph.json",
+        "relativeTo": "output_dir",
+        "configuredIn": ".claude/self-assess.local.md (output_dir, default analysis/self-assess)",
+        "writtenBy": "model"
+      }
+    },
+    {
+      "marker": "transform-brief-written",
+      "after": "self-assess-transform-brief",
+      "meaning": "MODERNIZATION_BRIEF.md exists and carries the approved phase list",
+      "evidence": {
+        "kind": "artifact",
+        "path": "MODERNIZATION_BRIEF.md",
+        "relativeTo": "output_dir",
+        "configuredIn": ".claude/self-assess.local.md (output_dir, default analysis/self-assess)",
+        "writtenBy": "model",
+        "caveat": "ALSO written on the degraded 'Ready-with-gaps' path, so existence does not imply success. Any beat depending on this should follow nacharbeit's pattern instead: a sentinel written LAST, plus an mtime check against a FAILED marker."
+      }
+    }
+  ],
+  "requires": []
+}

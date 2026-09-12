@@ -1,0 +1,17 @@
+{
+  "description": "arbeitsplan: denies a re-dispatch of an identical prompt, a write to the shared tree during a fan-out phase, a write outside the declared writeScope, and a dispatch past the declared budget. type:command, never type:prompt -- a prompt hook asks a model to decide, and a model asked whether it may retry is the thing being governed. Ordering is NOT gated here; that is takt's job, via the beats arbeitsplan-compile writes. Inert until analysis/arbeitsplan/run_scope.json exists.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Task|Agent|Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/arbeitsplan_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

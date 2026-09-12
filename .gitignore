@@ -22,6 +22,25 @@ node_modules/
 # data the behavior tests need committed.
 /analysis/
 
+# takt beat markers. A marker means "this step ran in THIS checkout", so
+# committing one satisfies its gate for every clone forever -- failing OPEN and
+# silently, which is the opposite of the fail-closed stance every guard here
+# takes. Anchored for the same reason /analysis/ is.
+#
+# Note the contrast with the other plugin state dirs, which are deliberately
+# NOT ignored: .cupertino/<domain>-handbook.md, .lehre/ruleset.json and
+# .design/ hold durable project facts that SHOULD be shared. An artifact
+# carries its own lifecycle; a marker has no defensible default either way,
+# which is one reason a beat should gate on the artifact where one exists.
+/.takt/
+
+# arbeitsplan candidate worktrees. Each is a full linked worktree of this repo,
+# so committing them would commit N copies of the tree. Anchored for the same
+# reason /analysis/ is: an unanchored `.arbeitsplan` would also swallow any
+# nested fixture of that name, and this file has already been burned once by an
+# unanchored pattern silently excluding real source (issue #24).
+/.arbeitsplan/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
