@@ -7,3 +7,50 @@ repos:
       - id: rrt-config-validate
       - id: rrt-doctor
       - id: rrt-branch-name
+
+  # Local, deliberately, rather than biomejs/pre-commit. That hook runs biome
+  # and only biome, so the rule set and the shrink-only baseline in biome.jsonc
+  # would have to be expressed a second time, and the two assertions biome
+  # cannot make on its own -- `node --check`, and the top-level-`return` shape
+  # check that reads biome's parse refusal as its POSITIVE signal -- would not
+  # run here at all. CI already calls this script directly
+  # (.github/workflows/plugin-checks.yml, "Check workflow JS syntax"); this
+  # keeps one code path rather than a second opinion that can drift from it.
+  - repo: local
+    hooks:
+      - id: check-js-syntax
+        name: workflow JS parses, has a top-level return, and is clean under biome
+        entry: scripts/ci/check-js-syntax.sh
+        language: script
+        # `pass_filenames: false` is load-bearing, not laziness. The script does
+        # its own discovery (`find plugins -path '*/workflows/*.js'`), and the
+        # shape assertion is a property of the WHOLE set -- "all 15 carry a
+        # top-level return". Handed a subset it would print that line about the
+        # files that happened to change, which is a different and weaker claim.
+        pass_filenames: false
+        # Pinned explicitly. Left unset a hook runs in EVERY stage, and CI calls
+        # pre-commit twice -- once plain, once `--hook-stage manual` for
+        # rrt-doctor -- so both hooks below would run twice per CI job for no
+        # extra signal. Stating the stage is also the lesson rrt-doctor taught
+        # here in the other direction: its manifest pins it to `stages:
+        # [manual]`, so it silently never ran under a plain `pre-commit run`.
+        # An absence that is written down is a decision; one that is inferred
+        # from a default is a bug waiting to be found.
+        stages: [pre-commit]
+        # biome.jsonc and the script itself are inputs, not just subjects: a
+        # change to either changes what the check decides, so a commit touching
+        # one must re-run it even when no workflow file moved.
+        files: ^(plugins/[^/]+/workflows/.*\.js|biome\.jsonc|scripts/ci/check-js-syntax\.sh)$
+
+      - id: check-js-syntax-selftest
+        name: check-js-syntax calibrates itself (8 planted defects)
+        entry: scripts/ci/check-js-syntax.sh
+        args: [--selftest]
+        language: script
+        pass_filenames: false
+        stages: [pre-commit]
+        # Only when the instrument changes. CLAUDE.md's rule is to calibrate
+        # before trusting a checker, and this is the cheapest place to hold that:
+        # ~7s, paid by whoever edits the checker or its config, not by every
+        # commit. `pre-commit run --all-files` in CI runs it every time.
+        files: ^(scripts/ci/check-js-syntax\.sh|biome\.jsonc)$

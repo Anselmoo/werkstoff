@@ -415,6 +415,20 @@ same "green for the wrong reason" failure the takt `STALE` cases had earlier thi
 now calibrated by a case that satisfies the shape assertion and still carries a second parse
 error (`await` in a non-async helper), so only the intended branch can catch it.
 
-**Still not wired:** biome does not run in `.pre-commit-config.yaml`, and nacharbeit's
-`S-JS-SYNTAX` still checks `node --check` alone, so the shape contract is enforced in CI but not
-in a local plugin review.
+**Both gaps are now closed.** `S-WF-SHAPE` (blocker) carries the shape contract into
+nacharbeit's rubric, so a local plugin review refuses the same thing CI does — it detects the
+top-level return by parsing a copy as an ES module, reusing the `node` the linter already needs
+rather than adding biome as a dependency of the linter. And `.pre-commit-config.yaml` gained two
+`local` hooks: `check-js-syntax` on any change to a workflow script, to `biome.jsonc`, or to the
+script itself, and `check-js-syntax-selftest` on the instrument's own files only, so the
+calibration is paid by whoever edits the checker rather than by every commit.
+
+They are `local` rather than `biomejs/pre-commit` deliberately: that hook runs biome alone, so
+the rule set and the baseline would be stated twice, and neither `node --check` nor the shape
+assertion would run there at all.
+
+Proven by sabotage rather than by configuration: restoring the pre-fix `run.js` and running
+`pre-commit run check-js-syntax` reports `FAIL(shape)` and exit 1. The `files:` patterns were
+checked in both directions — a workflow path runs the hook, `README.md` reports `Skipped`, and a
+workflow edit alone does not drag in the 7-second selftest. A hook that is configured but never
+invoked is this repo's `rrt-doctor` `stages: [manual]` defect exactly.

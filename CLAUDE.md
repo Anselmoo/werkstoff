@@ -241,7 +241,11 @@ the script, for the reason `ruff.toml`'s header gives at length. Its
 `javascript.globals` list is what makes `noUndeclaredVariables` usable — with it,
 `agent(...)` passes and `agnet(...)` is an error. The `overrides` block is a
 shrink-only baseline of the twelve findings that already existed, per directory,
-and it may only shrink.
+and it may only shrink. The same script runs in three places and nowhere else: its
+own CI step, two `local` pre-commit hooks (the second running `--selftest`, gated on
+the instrument's own files), and by hand. nacharbeit's `S-WF-SHAPE` enforces the
+shape half independently, via `node` alone, so a plugin review catches it without
+biome installed.
 
 `lint-release-wiring.py` exists because adding a plugin means adding its name to
 **four** separate lists — `.rrt.toml`'s `version_groups` and `field_targets`,
