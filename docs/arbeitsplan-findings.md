@@ -298,3 +298,62 @@ absent too. Calibrated: a planted `os.path` in `arbeitsplan` is caught.
 `PERF` is deliberately not selected — its four remaining hits are the `edit_targets` loops whose
 `isinstance(path, str)` guard carries a long comment explaining that a truthiness check on a
 string iterates its characters, and a comprehension would compress that guard out of sight.
+
+## Round 5: what three analyzers found that ruff did not
+
+`vulture` (dead code), `ty` (types) and `biome` (JS) are all on PATH and none had been run
+against this repository. Each found something ruff structurally cannot.
+
+### `vulture` — remarkably clean, and that is the result
+
+Two findings across **all twelve plugins**, and both are false positives: an unused parameter
+in a `cli-scaffold` test fixture, and `def __exit__(self, *exc_info)` in confab, where the
+parameter is required by the context-manager protocol whether or not it is read. **No dead
+guards.** Given CLAUDE.md's warning that this repo "has been burned repeatedly by guards that
+exist and are never called", that is worth recording as a measurement rather than an assumption.
+
+### `ty` — two real clusters, one inference-noise cluster
+
+| cluster | verdict |
+|---|---|
+| `importlib.util.spec_from_file_location` returns `ModuleSpec \| None`, and `spec.loader` is `Loader \| None` — neither was checked, in **two** places | **real.** In `build_beatgraph_html.py` an unexpected import failure raised `AttributeError` instead of the `None` its own docstring promises, crashing the build rather than degrading to declarations-only. In `arbeitsplan_guard.py` the surrounding `except` already made it fail **closed**, but the reported cause was an opaque `AttributeError` rather than the real one — a denial names its reason or it teaches nothing. Both now check |
+| 29 diagnostics in `compile_spec.py` | **inference noise.** All from `_mut()`, the selftest helper that mutates a deliberately heterogeneous fixture dict; `ty` cannot narrow the union. The selftest passes 15/15 |
+
+### `biome` — 15 workflow scripts had never been linted at all
+
+`scripts/ci/check-js-syntax.sh` runs `node --check`, which proves a file **parses** and nothing
+more. Biome over the same 15 files: 18 errors, 55 warnings.
+
+Most is style (39 `useOptionalChain`, 6 `useTemplate`). Two categories looked alarming and were
+**not**, on inspection — recorded so nobody re-investigates them:
+
+- **`noTemplateCurlyInString` ×4** — every one is `${CLAUDE_PLUGIN_ROOT}` inside a
+  *documentation* string describing a shell command, deliberately literal.
+- **`noUnusedVariables` ×9** — every one is `catch (e)` where the fallback is intentional. The
+  nit is real but small: ES2019's optional catch binding (`catch {}`) *says* the error is
+  ignored on purpose, where `catch (e)` merely looks like a forgotten one.
+
+### The finding worth acting on: one helper, three behaviours
+
+Comparing those nine `catch` blocks surfaced a genuine divergence. Ten workflow scripts share a
+`normalizeArgs` helper, and it handles a malformed JSON string **three different ways**:
+
+| plugins | on a string that is not JSON |
+|---|---|
+| `compass` ×4, `nacharbeit` ×2 | **throws with a named, actionable error** — best |
+| `cupertino` ×3 | **silently returns the raw string.** `NORMALIZED_ARGS` is then a `str`, every `.field` on it reads `undefined`, and the run fails later, far from the cause |
+| `arbeitsplan` ×1 | bare `JSON.parse` → a `SyntaxError` naming neither the workflow nor the remedy |
+
+arbeitsplan's has been fixed to the compass/nacharbeit shape and its three failure modes proven
+by execution. **cupertino's is left alone deliberately** — it is a released plugin and changing
+its error behaviour is the owner's call, not a lint's.
+
+This is `codebase-consistency`'s exact subject: two or more valid, undocumented variants of one
+convention coexisting. The variants differ in how loudly they fail, which is the property that
+matters most.
+
+### The gap that let all of this accumulate
+
+`check-js-syntax.sh` only proves the JS parses. Wiring `biome` into it would work — it is on
+PATH — but it would start at 18 errors and 55 warnings, so it needs the same shrink-only
+baseline `ruff.toml` now carries. Recorded as a known gap rather than silently left open.

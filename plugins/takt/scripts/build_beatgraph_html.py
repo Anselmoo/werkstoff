@@ -48,6 +48,13 @@ def _compiler(repo: Path):
         return None
     import importlib.util
     spec = importlib.util.spec_from_file_location("arbeitsplan_emit_beats", mod)
+    # spec_from_file_location returns ModuleSpec | None, and spec.loader is
+    # Loader | None. Without these checks an unexpected import failure raises
+    # AttributeError instead of the None this function's docstring promises --
+    # the page would then crash rather than degrade to declarations-only.
+    # Found by `ty`, not by reading.
+    if spec is None or spec.loader is None:
+        return None
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m

@@ -65,7 +65,32 @@ const REFEREE_SCHEMA = {
 }
 
 function normalizeArgs(raw) {
-  const a = typeof raw === 'string' ? JSON.parse(raw) : raw || {}
+  // Three variants of this helper exist across the marketplace's workflow
+  // scripts, and they are not equally safe. compass and nacharbeit throw a
+  // NAMED error; cupertino silently returns the raw string, so a malformed arg
+  // flows on as a string and every `.field` on it reads `undefined` -- wrong
+  // quietly, far from the cause. This used to be a third variant: a bare
+  // JSON.parse whose SyntaxError said nothing about which workflow failed or
+  // what to do. Throwing with the remedy is the only version that fails at the
+  // point the mistake was made.
+  let a = raw
+  if (typeof raw === 'string') {
+    try {
+      a = JSON.parse(raw)
+    } catch {
+      throw new Error(
+        'arbeitsplan-run: args arrived as a string that is not JSON. Pass args as an ' +
+        'object in the tool call, not JSON.stringify(...).',
+      )
+    }
+    if (!a || typeof a !== 'object') {
+      throw new Error(
+        'arbeitsplan-run: args parsed to ' + typeof a + ', not an object. Pass an object ' +
+        'with angles, acceptance, writeScope and worktrees.',
+      )
+    }
+  }
+  a = a || {}
   return {
     spec: a.spec || null,
     angles: Array.isArray(a.angles) ? a.angles : [],
@@ -212,7 +237,7 @@ export default async function run(rawArgs) {
   const byId = new Map((verdicts || []).filter(Boolean).map((v) => [v.candidateId, v]))
   const accepted = scoped.filter((c) => LANDS.has(byId.get(c.candidateId)?.verdict))
   const cannotJudge = scoped.filter((c) => byId.get(c.candidateId)?.verdict === 'cannot_judge')
-  const leaked = (verdicts || []).filter((v) => v && v.rationaleLeaked)
+  const leaked = (verdicts || []).filter((v) => v?.rationaleLeaked)
 
   // Selection is a RULE, not a judgement. Asking a model to prefer one is how a
   // tie quietly becomes a preference.

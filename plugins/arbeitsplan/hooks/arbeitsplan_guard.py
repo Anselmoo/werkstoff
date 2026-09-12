@@ -72,6 +72,12 @@ try:
         "arbeitsplan_delegation",
         Path(__file__).resolve().parent.parent / "scripts" / "delegation.py",
     )
+    # spec_from_file_location returns ModuleSpec | None and .loader is
+    # Loader | None. The except below already makes this fail CLOSED, but
+    # without the check the reported cause is an opaque AttributeError rather
+    # than the real one. A denial names its reason or it teaches nothing.
+    if _spec is None or _spec.loader is None:
+        raise ImportError(f"no loadable module spec for {_spec!r}")
     _DELEGATION = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_DELEGATION)
 except Exception as _exc:
