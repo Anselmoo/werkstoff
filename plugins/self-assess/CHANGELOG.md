@@ -4,6 +4,17 @@ All notable changes to the `self-assess` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-12
+
+### Added
+- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
+- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
+- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
+
+### Fixed
+- **ci**: install PyYAML in auto-version-bump.yml (#57)
+- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
+
 ## [0.9.1] - 2026-09-09
 
 ### Fixed
