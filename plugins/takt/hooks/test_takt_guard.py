@@ -241,7 +241,10 @@ def main() -> int:
 
         # --- runId charset is fail-closed -------------------------------
         print("runId charset")
-        for bad in ("../escape", "a/b", "a..b", 17):
+        # "." and "..." are the subtle ones: they pass a naive charset check, and
+        # `.takt/<runId>` then normalises back to `.takt` itself -- a per-run
+        # namespace that is not one, satisfied by any previous run's markers.
+        for bad in ("../escape", "a/b", "a..b", ".", "...", 17):
             declare(tmp, [RUN_BEAT], run_id=bad)
             rc, out = run(tmp, "Skill", {"skill": "arbeitsplan-run"})
             check(f"invalid runId {bad!r} -> DENY", rc, DENY, out)

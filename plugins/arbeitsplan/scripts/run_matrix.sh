@@ -190,15 +190,25 @@ else:
     disallowed = ""
 
 if sys.argv[2] == "header":
+    # These lines are consumed by `eval` in the shell below, so every value that
+    # comes from the matrix FILE is shell-quoted here. Unquoted, an
+    # expected_tools or output_format entry containing `;` or `$(...)` ran as
+    # shell code before the sweep started -- a matrix file is authored by hand,
+    # which makes it a footgun rather than an exploit, but the whole point of
+    # this script is that a quoting mistake here is invisible and produces a
+    # clean-looking table. The %d fields cannot carry metacharacters and are
+    # left alone.
+    import shlex
+
     print("OK")
     print("repeats=%d" % repeats)
-    print("ablation=%s" % ablation)
-    print("permission_mode=%s" % perm)
+    print("ablation=%s" % shlex.quote(str(ablation)))
+    print("permission_mode=%s" % shlex.quote(str(perm)))
     print("timeout_s=%d" % timeout)
-    print("output_format=%s" % m.get("output_format", "json"))
+    print("output_format=%s" % shlex.quote(str(m.get("output_format", "json"))))
     print("strict_mcp=%d" % (1 if m.get("strict_mcp_config", True) else 0))
-    print("expected_tools=%s" % ",".join(expected))
-    print("disallowed_tools=%s" % disallowed)
+    print("expected_tools=%s" % shlex.quote(",".join(expected)))
+    print("disallowed_tools=%s" % shlex.quote(disallowed))
     print("cells=%d" % (len(cases) * len(models) * len(states) * repeats))
     sys.exit(0)
 
@@ -340,6 +350,27 @@ BRK
 )"
   if [[ "$broke" == "OK" ]]; then echo "  ok   infrastructure failure -> UNMEASURED, denominator 0"; else echo "  FAIL infrastructure failure: $broke"; fails=$((fails+1)); fi
 
+  # A missing plugin_dir on the enabled arm must stop the SCRIPT, not just the
+  # loop. While the cell list was piped into `while`, the loop ran in a subshell
+  # and `exit 2` killed only that: the script went on to write a summary and
+  # exited 0, reporting a sweep that never ran. Measured both ways before the
+  # fix -- exit 0 with a summary, versus exit 2 with none.
+  bd="$(mktemp -d)"
+  cat > "$bd/m.json" <<'BADDIR'
+{"cases":[{"id":"c","prompt":"hi"}],"models":["haiku"],
+ "plugin_states":[{"id":"on","plugin_dir":"/definitely/not/here"}],
+ "repeats":1,"ablation":"isolated","expected_tools":["Skill"]}
+BADDIR
+  CLAUDE_BIN="$stub" bash "$0" --matrix "$bd/m.json" --out "$bd/out" --allow-nested >/dev/null 2>&1
+  rc_bad=$?
+  if [[ "$rc_bad" -eq 2 && ! -f "$bd/out/summary.json" ]]; then
+    echo "  ok   a missing plugin_dir exits the script, and writes no summary"
+  else
+    echo "  FAIL missing plugin_dir: exit $rc_bad, summary $([ -f "$bd/out/summary.json" ] && echo written || echo absent) -- wanted exit 2 and no summary"
+    fails=$((fails+1))
+  fi
+  rm -rf "$bd"
+
   # ---- the stdin-consumption regression -----------------------------
   # THE case the other stubs cannot catch. A real `claude -p` reads stdin;
   # the cell loop reads its cell list FROM stdin. Without `< /dev/null` on the
@@ -444,7 +475,12 @@ fi
 DISALLOWED="${disallowed_tools:-}"
 [[ -n "$DISALLOWED" ]] || DISALLOWED="$DEFAULT_DISALLOWED"
 
-python3 -c "$VALIDATE_PY" "$MATRIX" cells | while IFS=$'\x1e' read -r cid model sid n expect dirs prompt; do
+# `done < <(...)` rather than `... | while`. A pipeline runs the loop in a
+# SUBSHELL, so the `exit 2` below for a missing plugin_dir terminated only that
+# subshell: the script carried on, wrote an empty summary and exited 0, reporting
+# a sweep that never ran. Process substitution keeps the loop in this shell, so
+# the exit is the script's. It also means counters set in the loop survive it.
+while IFS=$'\x1e' read -r cid model sid n expect dirs prompt; do
   label="${cid}__${model}__${sid}__${n}"
   cell_json="$OUT/cells/${label}.json"
 
@@ -575,7 +611,7 @@ json.dump({
 }, open(sys.argv[1], "w"), indent=2)
 print("  %-38s %-12s exit=%-3s %ss" % (os.environ["LABEL"], outcome, rc, os.environ["DUR"]))
 CELLPY
-done
+done < <(python3 -c "$VALIDATE_PY" "$MATRIX" cells)
 
 [[ "$DRY_RUN" -eq 1 ]] && exit 0
 

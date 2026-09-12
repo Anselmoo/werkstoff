@@ -172,7 +172,11 @@ function render() {
   const bud = el("budget");
   const bm = document.createElement("div");
   bm.className = "maths";
-  bm.textContent = (bu.used || 0) + " of " + (bu.total || 0) + " dispatches used";
+  // null means the builder could not read the spec or the dispatch ledger. Saying
+  // so beats printing "0 of 0", which reads as a real, reassuring measurement.
+  bm.textContent = (bu.total == null || bu.used == null)
+    ? "not derivable — no workflow.json or dispatch ledger for this run"
+    : bu.used + " of " + bu.total + " dispatches used";
   bud.appendChild(bm);
   const bn = document.createElement("p");
   bn.textContent = "Declared at compile time. The hook denies past it; raising it is a decision to re-compile.";

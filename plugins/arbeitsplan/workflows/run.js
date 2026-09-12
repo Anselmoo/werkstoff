@@ -48,7 +48,10 @@ const CANDIDATE_SCHEMA = {
 
 const REFEREE_SCHEMA = {
   type: 'object',
-  required: ['candidateId', 'verdict'],
+  // perCriterion is REQUIRED. With only candidateId and verdict, `{verdict:
+  // 'accepted'}` validated, entered `accepted`, and could be selected and landed
+  // with metCount 0 -- an acceptance nothing checked.
+  required: ['candidateId', 'verdict', 'perCriterion'],
   properties: {
     candidateId: { type: 'string' },
     verdict: { enum: ['accepted', 'accepted_different_approach', 'rejected', 'cannot_judge'] },
@@ -147,7 +150,11 @@ const built = await parallel(
         model: opts.modelTier,
         schema: CANDIDATE_SCHEMA,
       },
-    ).then((r) => ({ candidateId: id, angle, ...(r || {}) }))
+    // Controller values LAST. Spread first and a builder that returns its own
+    // candidateId -- malformed, or adversarial after reading repository text --
+    // would overwrite the dispatch's identity, attributing its diff to another
+    // candidate and mispairing it with that candidate's referee verdict.
+    ).then((r) => ({ ...(r || {}), candidateId: id, angle }))
   }),
 )
 
@@ -235,7 +242,19 @@ const verdicts = await parallel(
 )
 
 const byId = new Map((verdicts || []).filter(Boolean).map((v) => [v.candidateId, v]))
-const accepted = scoped.filter((c) => LANDS.has(byId.get(c.candidateId)?.verdict))
+// A verdict is not evidence. `accepted` counts only when the referee actually
+// recorded a met criterion: the schema now demands perCriterion, and this is the
+// second, in-code check that an empty one cannot pass.
+const acceptedWithEvidence = (c) => {
+  const v = byId.get(c.candidateId)
+  if (!v || !LANDS.has(v.verdict)) return false
+  const per = Array.isArray(v.perCriterion) ? v.perCriterion : []
+  return per.length > 0 && per.some((x) => x && x.met)
+}
+const accepted = scoped.filter(acceptedWithEvidence)
+const acceptedNoEvidence = scoped.filter(
+  (c) => LANDS.has(byId.get(c.candidateId)?.verdict) && !acceptedWithEvidence(c),
+)
 const cannotJudge = scoped.filter((c) => byId.get(c.candidateId)?.verdict === 'cannot_judge')
 const leaked = (verdicts || []).filter((v) => v?.rationaleLeaked)
 
@@ -275,6 +294,7 @@ return {
   droppedForScope,
   cannotJudge,
   rationaleLeaks: leaked,
+  acceptedWithoutEvidence: acceptedNoEvidence,
   referee: verdicts,
   aborted: false,
   note:

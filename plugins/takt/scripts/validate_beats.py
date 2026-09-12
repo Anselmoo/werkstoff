@@ -34,7 +34,11 @@ from pathlib import Path
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
 KNOWN_TOOLS = set(EDIT_TOOLS) | set(DISPATCH_TOOLS)
-RUN_ID_RE = re.compile(r"\A(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
+# `(?!\.+\Z)` rejects a runId that is nothing but dots. Without it "." matched,
+# and <root>/<runId> then normalises to <root> itself -- a run whose state aliases
+# the unnamespaced directory and every other run's stale files, which is exactly
+# the isolation runId exists to provide. ".." was already blocked; "." was not.
+RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
 
 
 def load(path: Path) -> dict:

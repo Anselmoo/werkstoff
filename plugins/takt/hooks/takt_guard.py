@@ -86,7 +86,11 @@ ESCAPE_HATCH = (
     "once the beat has actually run, or remove .claude/takt.local.md if this "
     "repository no longer declares beats"
 )
-RUN_ID_RE = re.compile(r"\A(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
+# `(?!\.+\Z)` rejects a runId that is nothing but dots. Without it "." matched,
+# and <root>/<runId> then normalises to <root> itself -- a run whose state aliases
+# the unnamespaced directory and every other run's stale files, which is exactly
+# the isolation runId exists to provide. ".." was already blocked; "." was not.
+RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
 
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")

@@ -287,15 +287,15 @@ def main() -> NoReturn:
 
             ledger_dir = Path(cwd) / "analysis" / "arbeitsplan" / run_id / "dispatch"
             ledger_dir.mkdir(parents=True, exist_ok=True)
-            used = len(list(ledger_dir.glob("*.json")))
-            if used >= total:
-                deny(
-                    f"arbeitsplan: dispatch budget exhausted for run '{run_id}' "
-                    f"({used}/{total} used). The spec declared this ceiling; raising it "
-                    f"is a decision to re-compile, not one to make mid-run. "
-                    f"{ESCAPE_HATCH}"
-                )
 
+            # ORDER MATTERS. This used to count the ledger, compare against the
+            # budget, and only then create the entry -- a check-then-act that two
+            # parallel dispatch hooks both pass while `used < total`, after which
+            # both create their own entry and the run exceeds its declared
+            # ceiling. O_EXCL makes the CREATE atomic, so creating FIRST turns it
+            # into a reservation: whoever lands the file has taken the slot, and
+            # the count afterwards is authoritative. A dispatch that overshoots
+            # gives its slot back before denying, so a denial costs nothing.
             signature = dispatch_signature(phase, tool_name, tool_input)
             entry = ledger_dir / (signature + ".json")
             try:
@@ -311,6 +311,23 @@ def main() -> NoReturn:
                 )
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 json.dump({"phase": phase, "tool": tool_name, "signature": signature}, handle)
+
+            used = len(list(ledger_dir.glob("*.json")))
+            if used > total:
+                # Release the slot this call reserved, then refuse. Two racing
+                # calls can both overshoot and both release, which is stricter
+                # than necessary and fail-closed -- the safe direction for a
+                # ceiling the spec declared.
+                try:
+                    entry.unlink()
+                except OSError:
+                    pass
+                deny(
+                    f"arbeitsplan: dispatch budget exhausted for run '{run_id}' "
+                    f"({used - 1}/{total} already used). The spec declared this ceiling; "
+                    f"raising it is a decision to re-compile, not one to make mid-run. "
+                    f"{ESCAPE_HATCH}"
+                )
 
             # ---- delegation: depth cap and cycle detection --------------
             target = dispatch_target(tool_input)
@@ -388,6 +405,37 @@ def main() -> NoReturn:
             for target in targets:
                 target_abs = os.path.normpath(str(Path(cwd) / target))
                 inside = in_any_worktree(target_abs, worktrees)
+
+                # Lexical containment is necessary and NOT sufficient. A symlink
+                # created inside a candidate worktree can point anywhere, and the
+                # lexical path still reads as contained while the write lands on
+                # the target outside it. realpath resolves the existing prefix of
+                # a path that does not exist yet, which is what a create needs.
+                # Both tests must agree; normpath stays because it is what decides
+                # the SCOPE (see the module docstring), and realpath only ever
+                # narrows what is allowed here, never widens it.
+                # The worktree roots are resolved too. On macOS /tmp is itself a
+                # symlink to /private/tmp, so comparing a resolved target against
+                # unresolved roots denies every legitimate write -- which is how
+                # this was caught, by the guard's own allow case going red.
+                target_real = os.path.realpath(target_abs)
+                worktrees_real = [os.path.realpath(w) for w in worktrees
+                                  if isinstance(w, str) and w]
+                if inside and not in_any_worktree(target_real, worktrees_real):
+                    deny(
+                        f"arbeitsplan: '{target}' is lexically inside a candidate worktree "
+                        f"but resolves to '{target_real}', outside every worktree for run "
+                        f"'{run_id}'. A symlink out of the worktree is still a write to the "
+                        f"shared tree, and during a fan-out that is the one thing that makes "
+                        f"a merge conflict possible again. {ESCAPE_HATCH}"
+                    )
+                cwd_real = os.path.realpath(cwd)
+                if not (target_real == cwd_real or target_real.startswith(cwd_real + os.sep)):
+                    deny(
+                        f"arbeitsplan: '{target}' resolves to '{target_real}', outside the "
+                        f"repository at '{cwd_real}'. A run's writes stay inside the tree it "
+                        f"was compiled against. {ESCAPE_HATCH}"
+                    )
 
                 if not inside and not shared_writable:
                     deny(

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Render assets/review-viewer.html from a completed swarm run.
+"""Render assets/review-viewer.html from a nacharbeit review.
 
-usage: build_review_html.py [-h] [--run RUNID] [--root DIR] [--report FILE] [--out FILE] [--selftest]
+usage: build_review_html.py [-h] [--lint FILE] [--report FILE] [--out FILE] [--selftest]
 
-A run's own account of itself: which candidates were measured, which were never
-fairly tried, what each referee found, where the breaker stood, and which single
-diff landed. Reading that out of raw JSON is possible; seeing at a glance that
-two candidates were excluded from the denominator is not.
+Findings by rule family, severity and FIX TIER. The tier column is the point: it
+separates what a model can close from what is a judgement call, so a reader can
+see the size of the remaining work rather than only its count. A family sitting
+at 0/n is not evidence of health -- only that nothing exercised it.
+
+  --lint    raw `nacharbeit_lint.py --json` output; normalised here by collect()
+  --report  a report already in the viewer's shape
 
 Exit: 0 written, 2 could not read an input.
 
@@ -49,9 +52,15 @@ def collect(report_path: Path) -> dict:
             "rule": rid,
             "family": rid.split("-", 1)[0],
             "severity": f.get("severity", "minor"),
-            "tier": f.get("tier", "sonnet"),
+            # nacharbeit_lint.py emits `fix_tier` and `claim`; the viewer reads
+            # `tier` and `message`. Reading the viewer's own names off the
+            # linter's output silently defaulted every tier to "sonnet" and left
+            # every message blank -- the normaliser existed and still did not
+            # normalise. The viewer's names are accepted too, so an already
+            # normalised record passes through unchanged.
+            "tier": f.get("fix_tier") or f.get("tier") or "sonnet",
             "file": f.get("file", ""),
-            "message": f.get("message", ""),
+            "message": f.get("claim") or f.get("message") or "",
         })
     return {
         "findings": out,
@@ -94,6 +103,24 @@ def selftest() -> int:
     ok("the demo spans more than one rule family", len({f["family"] for f in demo["findings"]}) > 1)
     ok("the calibration block is populated",
        bool(demo.get("calibration", {}).get("planted")))
+    # collect() against REAL nacharbeit_lint.py output. It was dead code --
+    # reachable from no CLI flag -- which is how it came to read `tier` and
+    # `message` when the linter emits `fix_tier` and `claim`.
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        raw = Path(td) / "lint.json"
+        raw.write_text(json.dumps({"findings": [{
+            "rule_id": "M-FM-DESC", "severity": "major", "fix_tier": "human",
+            "file": "plugins/x/skills/a/SKILL.md", "claim": "description does not say when",
+        }]}), encoding="utf-8")
+        got = collect(raw)["findings"][0]
+        ok("collect maps rule_id -> rule", got["rule"] == "M-FM-DESC", str(got))
+        ok("collect derives the family", got["family"] == "M", str(got))
+        ok("collect maps fix_tier -> tier, not the default",
+           got["tier"] == "human", str(got))
+        ok("collect maps claim -> message, not empty",
+           got["message"] == "description does not say when", str(got))
+
     print()
     if fails:
         print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
@@ -107,21 +134,28 @@ def main(argv: list) -> int:
         prog="build_review_html.py",
         description="Render a nacharbeit review: findings by severity, rule family and fix tier.",
         epilog="exit 0 written, 2 could not read an input")
-    parser.add_argument("--report", help="a prepared report JSON instead of scanning a run")
+    parser.add_argument("--lint", help="raw nacharbeit_lint.py --json output, normalised by collect()")
+    parser.add_argument("--report", help="a report already in the viewer's shape")
     parser.add_argument("--out")
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
 
     if args.selftest:
         return selftest()
-    if args.report:
+    if args.lint:
+        try:
+            report = collect(Path(args.lint))
+        except FileNotFoundError:
+            print(f"no such lint report: {args.lint}", file=sys.stderr)
+            return 2
+    elif args.report:
         try:
             report = json.loads(Path(args.report).read_text(encoding="utf-8"))
         except FileNotFoundError:
             print(f"no such report: {args.report}", file=sys.stderr)
             return 2
     else:
-        parser.error("--report is required unless --selftest is given")
+        parser.error("one of --lint or --report is required unless --selftest is given")
 
     out = Path(args.out) if args.out else TEMPLATE.parent / "run-report.html"
     out.write_text(render(report), encoding="utf-8")

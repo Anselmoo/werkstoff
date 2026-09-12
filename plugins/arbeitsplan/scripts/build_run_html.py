@@ -38,28 +38,98 @@ def render(report: dict) -> str:
     return tpl.replace(DATA_MARKER, "const RUN = " + payload + ";")
 
 
+def _read_json(path: Path):
+    """Parse one JSON file, or None if it is absent or unreadable.
+
+    Unreadable is NOT the same as empty: the caller reports what it could not
+    read rather than rendering a confident page over a missing input.
+    """
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
 def collect(root: Path, run_id: str) -> dict:
+    """Derive the report from the run's OWN records, never from assumption.
+
+    This used to label every measured candidate `accepted`, set the breaker's
+    numerator to the measured count and both budget numbers to the candidate
+    count -- so the page said the breaker held and the budget was exactly spent
+    no matter what actually happened. A report that cannot be wrong cannot be
+    evidence. Every field below now comes from a file on disk, and where the
+    file is missing the report SAYS so instead of filling the gap.
+    """
     d = root / run_id
     cands = []
+
+    # candidateId -> referee record, written one per judged candidate.
+    verdicts = {}
+    rdir = d / "referee"
+    for f in sorted(rdir.glob("*.json")) if rdir.is_dir() else []:
+        rec = _read_json(f)
+        if isinstance(rec, dict) and rec.get("candidateId"):
+            verdicts[rec["candidateId"]] = rec
+
+    landed_rec = _read_json(d / "landed.json")
+    landed_id = landed_rec.get("candidateId") if isinstance(landed_rec, dict) else None
+
     cdir = d / "candidates"
     for f in sorted(cdir.glob("*.json")) if cdir.is_dir() else []:
-        c = json.loads(f.read_text(encoding="utf-8"))
+        c = _read_json(f)
+        if not isinstance(c, dict):
+            continue
+        cid = c.get("candidateId", f.stem)
+        v = verdicts.get(cid)
+        if not c.get("measured"):
+            outcome, evidence = "unmeasured", ""
+        elif cid == landed_id:
+            outcome, evidence = "landed", (v or {}).get("note", "") or ""
+        elif v is None:
+            # NOT `accepted`. No referee record means nothing judged this
+            # candidate, which is a different statement from judging it good.
+            outcome, evidence = "unrefereed", "no referee record for this candidate"
+        elif v.get("verdict") == "accepted":
+            met = [x for x in (v.get("perCriterion") or []) if x.get("met")]
+            outcome = "accepted"
+            evidence = f"{len(met)}/{len(v.get('perCriterion') or [])} criteria met"
+        else:
+            outcome = "rejected"
+            evidence = v.get("verdict", "") + (": " + v["note"] if v.get("note") else "")
         cands.append({
-            "id": c.get("candidateId", f.stem),
+            "id": cid,
             "angle": c.get("angle", ""),
-            "outcome": "unmeasured" if not c.get("measured") else "accepted",
+            "outcome": outcome,
             "checksPassed": sum(1 for k in c.get("checks") or [] if k.get("exit") == 0),
             "checksTotal": len(c.get("checks") or []),
             "filesTouched": len(c.get("filesTouched") or []),
-            "evidence": "",
+            "evidence": evidence,
         })
+
     measured = [c for c in cands if c["outcome"] != "unmeasured"]
+    accepted = [c for c in measured if c["outcome"] in ("accepted", "landed")]
+    # The same 2/3 rule the workflow enforces, computed over the same classes:
+    # the unmeasured are excluded from the denominator, never counted as
+    # rejections.
+    tripped = bool(measured) and len(accepted) * 3 < len(measured) * 2
+
+    # Budget comes from the compiled spec and the dispatch ledger the hook
+    # writes -- the two authorities that actually decide it. Absent either, the
+    # page reports that it does not know rather than printing a reassuring 0/0.
+    spec = _read_json(d / "workflow.json")
+    total = None
+    if isinstance(spec, dict) and isinstance(spec.get("budget"), dict):
+        t = spec["budget"].get("totalDispatches")
+        total = t if isinstance(t, int) else None
+    ddir = d / "dispatch"
+    used = len(list(ddir.glob("*.json"))) if ddir.is_dir() else None
+
     return {
         "runId": run_id,
         "candidates": cands,
-        "breaker": {"accepted": len(measured), "measured": len(measured),
-                    "unmeasured": len(cands) - len(measured), "tripped": False},
-        "budget": {"used": len(cands), "total": len(cands)},
+        "breaker": {"accepted": len(accepted), "measured": len(measured),
+                    "unmeasured": len(cands) - len(measured), "tripped": tripped},
+        "budget": {"used": used, "total": total},
         "generated": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M UTC"),
     }
 
@@ -95,6 +165,55 @@ def selftest() -> int:
     ok("the demo shows a rejected candidate", "rejected" in outcomes)
     ok("unmeasured is excluded from the breaker denominator",
        demo["breaker"]["measured"] == sum(1 for c in demo["candidates"] if c["outcome"] != "unmeasured"))
+    # collect() against a REAL run directory. The old selftest rendered a
+    # hand-written fixture and never called collect at all, which is precisely
+    # why collect could label every measured candidate `accepted` and fabricate
+    # the breaker and budget without a single test going red.
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        run = root / "r1"
+        (run / "candidates").mkdir(parents=True)
+        (run / "referee").mkdir(parents=True)
+        (run / "dispatch").mkdir(parents=True)
+
+        def w(rel, obj):
+            (run / rel).write_text(json.dumps(obj), encoding="utf-8")
+
+        w("workflow.json", {"budget": {"totalDispatches": 9}})
+        w("candidates/c1.json", {"candidateId": "c1", "measured": True, "checks": [{"exit": 0}]})
+        w("candidates/c2.json", {"candidateId": "c2", "measured": True})
+        w("candidates/c3.json", {"candidateId": "c3", "measured": False})
+        w("candidates/c4.json", {"candidateId": "c4", "measured": True})
+        w("referee/c1.json", {"candidateId": "c1", "verdict": "accepted",
+                              "perCriterion": [{"id": "a", "met": True}]})
+        w("referee/c2.json", {"candidateId": "c2", "verdict": "rejected", "note": "criterion a"})
+        w("landed.json", {"candidateId": "c1"})
+        (run / "dispatch" / "x.json").write_text("{}", encoding="utf-8")
+
+        got = collect(root, "r1")
+        by = {c["id"]: c["outcome"] for c in got["candidates"]}
+        ok("a landed candidate reads `landed`", by.get("c1") == "landed", str(by))
+        ok("a rejected verdict reads `rejected`, not accepted", by.get("c2") == "rejected", str(by))
+        ok("an unmeasured candidate stays `unmeasured`", by.get("c3") == "unmeasured", str(by))
+        # The finding that started this: no referee record must NOT read as accepted.
+        ok("no referee record reads `unrefereed`, never `accepted`",
+           by.get("c4") == "unrefereed", str(by))
+        ok("breaker numerator counts only accepted/landed",
+           got["breaker"]["accepted"] == 1, str(got["breaker"]))
+        ok("breaker denominator excludes the unmeasured",
+           got["breaker"]["measured"] == 3, str(got["breaker"]))
+        ok("breaker trips below two thirds", got["breaker"]["tripped"] is True, str(got["breaker"]))
+        ok("budget total comes from workflow.json", got["budget"]["total"] == 9, str(got["budget"]))
+        ok("budget used comes from the dispatch ledger", got["budget"]["used"] == 1, str(got["budget"]))
+
+        # A run with neither spec nor ledger must report that it does not know.
+        bare = root / "r2"
+        (bare / "candidates").mkdir(parents=True)
+        got2 = collect(root, "r2")
+        ok("an unknown budget is null, not a reassuring 0/0",
+           got2["budget"] == {"used": None, "total": None}, str(got2["budget"]))
+
     print()
     if fails:
         print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))

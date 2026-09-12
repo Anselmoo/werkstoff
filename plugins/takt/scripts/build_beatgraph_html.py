@@ -85,6 +85,12 @@ def collect(repo: Path) -> dict:
                 "why": ev.get("why", ""),
             })
 
+    # marker -> the plugin that declares it produced. The compiler already has
+    # this; the viewer used to hardcode producedBy None, so every compiled beat
+    # rendered "nothing declared" even when the declaration named its producer
+    # -- the one column the beat-graph page exists to show.
+    producer = {pr["marker"]: pr["plugin"] for pr in produces}
+
     m = _compiler(repo)
     beats, refused = [], []
     if m is not None:
@@ -96,7 +102,7 @@ def collect(repo: Path) -> dict:
                 path.is_dir() if kind == "dir" else path.exists())
             beats.append({
                 "gates": b["skills"][0] if b["skills"] else "?",
-                "marker": b["require"], "producedBy": None,
+                "marker": b["require"], "producedBy": producer.get(b["require"]),
                 "scope": kind, "satisfied": sat, "reason": b.get("reason", ""),
             })
         refused = [{"gates": w, "marker": mk, "reason": r, "why": why}

@@ -69,6 +69,26 @@ def cmd_open(args) -> int:
         "fanOut": ph.get("fanOut", 1),
         "budget": spec["budget"],
     }
+    # run_scope.json is ONE repository-wide lock and the guard reads whatever it
+    # finds. Overwriting it while another run's builders are still dispatching
+    # silently re-pointed the guard at a different phase, scope, budget and
+    # worktree list, so writes from the first run were judged against the
+    # second's contract. A phase transition within the SAME run is the
+    # legitimate case and still works.
+    if LOCK.is_file():
+        try:
+            held = json.loads(LOCK.read_text(encoding="utf-8"))
+        except ValueError:
+            held = {}
+        held_run = held.get("runId")
+        if held_run and held_run != run_id:
+            print(f"REFUSED: run '{held_run}' already holds {LOCK} (phase "
+                  f"{held.get('phase')!r}). Opening run '{run_id}' over it would point the "
+                  "guard at this run's scope and budget while the other run's builders are "
+                  "still writing. Close the held run first: worktree_pool.py close",
+                  file=sys.stderr)
+            return 1
+
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     LOCK.write_text(json.dumps(lock, indent=2) + "\n")
     print(f"lock open: run {run_id}, phase '{args.phase}' ({kind}), "

@@ -121,6 +121,31 @@ def main(argv: list) -> int:
               "there is nothing to land.", file=sys.stderr)
         return 1
 
+    # The workflow's landing allowlist lived only in run.js, so THIS entry point
+    # would apply a rejected -- or never judged -- diff. The referee record is
+    # the authority, and `accepted` is an allowlist: `rejected` and
+    # `cannot_judge` are never collapsed into each other, and a missing record
+    # is not read as consent.
+    verdict_path = Path(args.root) / args.run / "referee" / f"{args.candidate}.json"
+    try:
+        referee = json.loads(verdict_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"REFUSED: no referee record at {verdict_path}. A candidate nothing judged "
+              "is not an accepted candidate; run the referee pass before landing.",
+              file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"REFUSED: the referee record at {verdict_path} is unreadable ({exc}). "
+              "Refusing rather than landing on an unverifiable verdict.", file=sys.stderr)
+        return 1
+    seen = referee.get("verdict")
+    if seen != "accepted":
+        print(f"REFUSED: {args.candidate}'s referee verdict is {seen!r}, and only "
+              "'accepted' lands. 'rejected' says the candidate is wrong; 'cannot_judge' "
+              "says nothing is known, which points at the criteria rather than the "
+              "candidate. Neither is consent.", file=sys.stderr)
+        return 1
+
     diff = candidate.get("diff") or ""
     if not diff.strip():
         print(f"REFUSED: {args.candidate} carries no diff.", file=sys.stderr)

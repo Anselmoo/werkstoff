@@ -145,6 +145,19 @@ def main() -> int:
         rc, _ = run(tmp, "Edit", {"file_path": str(c1 / "src" / "api" / "x.py")})
         check("in-worktree write inside scope -> ALLOW", rc, ALLOW)
 
+        # A symlink is the way a lexically-contained path reaches outside the
+        # worktree. The containment check was purely lexical, so this write
+        # looked in-scope and landed on the shared tree.
+        outside = tmp / "outside"
+        outside.mkdir(parents=True, exist_ok=True)
+        (c1 / "src" / "api").mkdir(parents=True, exist_ok=True)
+        link = c1 / "src" / "api" / "escape.py"
+        if link.is_symlink() or link.exists():
+            link.unlink()
+        link.symlink_to(outside / "escape.py")
+        rc, out = run(tmp, "Edit", {"file_path": str(link)})
+        check("in-worktree SYMLINK pointing outside -> DENY", rc, DENY, out)
+
         rc, out = run(tmp, "Edit", {"file_path": str(c1 / "src" / "secrets.py")})
         check("in-worktree write OUTSIDE scope -> DENY", rc, DENY, out)
 
