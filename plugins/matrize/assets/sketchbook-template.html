@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><!--__TITLE__--></title>
+<style>
+<!--__DESIGN_TOKENS__-->
+
+/* Landscape A4 at root-2, measured off the reference sketchbook — NOT 16:10.
+   The reference carries /Rotate 90 on a 595x842 MediaBox, so the effective page is
+   842x595pt = 1.414. A MediaBox-only read says portrait and is wrong. */
+@page { size: A4 landscape; margin: 0; }
+
+:root {
+  --sb-ink: #1a1a1a;
+  --sb-paper: #ffffff;
+  --sb-canvas: #f4f2f0;     /* the warm grey the reference uses for the specimen field */
+  --sb-hair: #e2ded9;
+  --sb-muted: #6b6b6b;
+  --sb-accent: #d4321e;
+  --sb-pad: 4.2rem;
+  --sb-radius: 26px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0;
+  background: #d9d9d9;
+  color: var(--sb-ink);
+  font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.spread {
+  width: 100vw;
+  height: 100vh;
+  background: var(--sb-paper);
+  page-break-after: always;
+  break-after: page;
+  display: flex;
+  flex-direction: column;
+  padding: var(--sb-pad);
+  position: relative;
+}
+/* Dead space is the bug a fixed-height frame creates: sparse content left top-aligned
+   reads as broken, not restrained. A statement spread earns its quiet by CENTRING; a
+   working spread fills the frame and centres its specimen inside the canvas. Approval
+   mode has no bottom-anchored snippet to close the gap with, so centring does it. */
+.spread--statement { justify-content: center; }
+.statement-body {
+  /* A wrapper, because `margin-top: auto` on the footer absorbs ALL free space and
+     silently defeats `justify-content: center` on the parent. Centring the content in
+     its own flex child is the fix; the footer then sits where it belongs. */
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+}
+.spread--working { justify-content: flex-start; }
+
+@media screen {
+  body { padding: 2rem 0; }
+  .spread {
+    width: min(1400px, 94vw);
+    height: auto;
+    aspect-ratio: 1.414;          /* root-2, the reference's real proportion */
+    margin: 0 auto 2rem;
+    box-shadow: 0 2px 24px rgba(0,0,0,.14);
+  }
+}
+
+.kicker {
+  font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--sb-muted); font-weight: 600; margin: 0 0 .45rem;
+}
+h1 { font-size: 2.1rem; font-weight: 400; margin: 0 0 1.6rem; letter-spacing: -.01em; }
+.spread--statement h1 { font-size: 3.6rem; line-height: 1.08; margin: 0 0 1rem; }
+.lede { font-size: 1.15rem; color: var(--sb-muted); max-width: 46ch; margin: 0; }
+
+/* The 66/34 split, measured off the reference. */
+.body { display: grid; grid-template-columns: 1.95fr 1fr; gap: 3rem; flex: 1; min-height: 0; }
+
+.canvas {
+  background: var(--sb-canvas);
+  border-radius: var(--sb-radius);
+  padding: 2.2rem;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* the specimen sits in the field, not at its top edge */
+}
+.canvas--plain { background: transparent; padding: 0; }
+
+/* Two-state callout: FILLED pins the artwork, OUTLINED opens the margin entry.
+   Same number, two weights — the reference's own convention. */
+.pin {
+  position: absolute; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--sb-ink); color: var(--sb-paper);
+  font-size: .72rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.note-num {
+  flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--sb-ink); color: var(--sb-ink);
+  font-size: .68rem; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; margin-top: .1rem;
+}
+
+.anmerkungen h2 {
+  font-size: .72rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--sb-accent); font-weight: 700; margin: 0 0 1.1rem;
+}
+.note { display: flex; gap: .7rem; margin-bottom: 1rem; font-size: .84rem; line-height: 1.45; }
+.note p { margin: 0; }
+.note .anti { display: block; margin-top: .2rem; color: var(--sb-ink); }
+.note .anti b { font-weight: 600; }
+
+.observation {
+  background: var(--sb-canvas); border-radius: 14px;
+  padding: .95rem 1.1rem; font-size: .82rem; line-height: 1.45; margin-top: 1.4rem;
+}
+
+footer {
+  margin-top: auto;
+  flex: 0 0 auto; padding-top: .9rem; border-top: 1px solid var(--sb-hair);
+  display: flex; justify-content: space-between;
+  font-size: .74rem; color: var(--sb-muted);
+}
+
+/* Specimen rows: eyebrow label then the thing at real size — never a table of numbers. */
+.row { padding: .85rem 0; border-bottom: 1px solid var(--sb-hair); }
+.row:last-child { border-bottom: 0; }
+.eyebrow {
+  font-size: .66rem; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sb-muted); font-weight: 600; margin: 0 0 .35rem;
+}
+.chips { display: flex; flex-wrap: wrap; gap: .9rem; }
+.chip { width: 118px; }
+.chip .sw { height: 76px; border-radius: 12px; border: 1px solid rgba(0,0,0,.08); }
+.chip .nm { font-size: .7rem; margin-top: .3rem; font-weight: 600; }
+.chip .vl { font-size: .66rem; color: var(--sb-muted); font-variant-numeric: tabular-nums; }
+.chip .cr { font-size: .66rem; margin-top: .1rem; }
+
+.icon-grid { display: flex; flex-wrap: wrap; gap: 1.1rem; }
+.icon-cell { width: 92px; text-align: center; color: var(--sb-ink); }
+.icon-cell svg { display: block; margin: 0 auto; }
+/* `break-all` split names mid-word (icon-arrow-righ / t). Break at the hyphen. */
+.icon-name { font-size: .6rem; margin-top: .35rem; font-weight: 600;
+  word-break: normal; overflow-wrap: break-word; hyphens: manual; }
+.icon-key { font-size: .58rem; color: var(--sb-muted); margin-top: .1rem; }
+
+.grads { display: flex; flex-direction: column; gap: .9rem; }
+.grad-sw { height: 44px; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); }
+.grad .nm { font-size: .72rem; margin-top: .3rem; font-weight: 600; }
+.grad .vl { font-size: .66rem; color: var(--sb-muted); }
+
+.states { display: flex; flex-wrap: wrap; gap: .6rem; }
+.btn {
+  border-radius: 999px; padding: .5rem 1.1rem; font-size: .8rem; font-weight: 600;
+  border: 1.5px solid transparent; background: var(--sb-ink); color: var(--sb-paper);
+}
+.btn--ghost { background: transparent; color: var(--sb-accent); border-color: var(--sb-accent); }
+.btn--disabled { background: var(--sb-hair); color: #9a9a9a; }
+.btn--focus { outline: 3px solid var(--sb-accent); outline-offset: 3px; }
+.state-label { font-size: .62rem; color: var(--sb-muted); text-align: center; margin-top: .25rem; }
+
+/* Chart primitive styling. Colour is redundant to position and shape throughout. */
+.chart { display: block; max-width: 100%; }
+.chart .rule { stroke: #b9b3ab; stroke-width: 1; }
+.chart .rule-pass { stroke: var(--sb-ink); }
+.chart .rule-label { font-size: 9px; fill: var(--sb-muted); }
+.chart .stem { stroke: #c8c2ba; stroke-width: 2; }
+.chart .stem-short { stroke: var(--sb-accent); }
+.chart .head-clears { fill: var(--sb-ink); }
+.chart .head-short { fill: var(--sb-accent); }
+.chart .mark-label { font-size: 11px; fill: var(--sb-ink); }
+.chart .mark-mode { font-size: 8.5px; fill: var(--sb-muted); }
+.chart .mark-value { font-size: 10.5px; fill: var(--sb-ink); font-variant-numeric: tabular-nums; }
+.chart .empty, .empty { color: var(--sb-muted); font-size: .82rem; }
+
+/* Text-into-illustration: a rule that outran its budget becomes a do/don't pair. */
+.figure { margin: 0; }
+.figure svg { display: block; width: 100%; height: auto; }
+.figure figcaption { font-size: .72rem; color: var(--sb-muted); margin-top: .35rem; }
+.budget-flag {
+  font-size: .74rem; color: var(--sb-accent); border-left: 2px solid var(--sb-accent);
+  padding-left: .6rem; margin: .4rem 0 0;
+}
+
+.approval { border: 1.5px solid var(--sb-ink); border-radius: 16px; padding: 1.6rem 1.8rem; }
+.approval h2 { margin: 0 0 .7rem; font-size: 1.05rem; }
+.approval .line { margin-top: 1.1rem; font-size: .86rem; }
+.approval .rule-line { display: inline-block; border-bottom: 1px solid var(--sb-ink); min-width: 15rem; }
+
+pre {
+  background: #14181c; color: #e6ebee; border-radius: 12px;
+  padding: .9rem 1.1rem; font-size: .72rem; overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin: 1rem 0 0;
+}
+.code-copy-wrap { position: relative; }
+.copy-btn {
+  position: absolute; top: .5rem; right: .5rem; font-size: .66rem;
+  padding: .2rem .55rem; border-radius: 4px; border: 1px solid rgba(255,255,255,.3);
+  background: rgba(255,255,255,.08); color: #e6ebee; cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+.md-export-btn {
+  position: fixed; top: 1.2rem; right: 1.2rem; z-index: 10; font-size: .72rem;
+  padding: .45rem .9rem; border-radius: 999px; border: 1px solid currentColor;
+  background: var(--sb-paper); color: var(--sb-ink); opacity: .8; cursor: pointer;
+}
+@media print {
+  body { background: #fff; padding: 0; }
+  .copy-btn, .md-export-btn { display: none !important; }
+  .spread { box-shadow: none; margin: 0; width: 100vw; height: 100vh; aspect-ratio: auto; }
+}
+</style>
+</head>
+<body>
+<!--__CONTROLS__-->
+<!--__SPREADS__-->
+<!--__MD_SOURCE__-->
+<script>
+document.querySelectorAll('pre').forEach(function (pre) {
+  var code = pre.textContent;
+  var wrap = document.createElement('div');
+  wrap.className = 'code-copy-wrap';
+  pre.parentNode.insertBefore(wrap, pre);
+  wrap.appendChild(pre);
+  var btn = document.createElement('button');
+  btn.className = 'copy-btn';
+  btn.textContent = 'Copy';
+  btn.addEventListener('click', function () {
+    navigator.clipboard.writeText(code).then(function () {
+      btn.textContent = 'Copied';
+      setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+    });
+  });
+  wrap.appendChild(btn);
+});
+var ex = document.getElementById('md-export');
+if (ex) {
+  ex.addEventListener('click', function () {
+    var src = document.getElementById('md-source');
+    var blob = new Blob([src.textContent], { type: 'text/markdown' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'design-system.md';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
+</script>
+</body>
+</html>

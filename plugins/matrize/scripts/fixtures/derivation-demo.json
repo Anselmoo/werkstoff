@@ -1,0 +1,155 @@
+{
+  "_why": "Committed demo data for assets/derivation-viewer.html, per report-viewer standard C2 (the screenshot must be reproducible) and C3 (the demo must show the failure the plugin exists for). Two failures are shown deliberately: four tokens that would have been set from screenshot evidence alone, and a primary action colour that passes AA only for large text. Both are the shapes a design system ships without noticing. The appearance mode is carried per pair because this fixture mixes light-mode and dark-mode pairs, and color-system.md names a mode-less contrast table as the shape of the error that hides a role behaving differently in the two modes -- an error the first version of this very fixture committed.",
+  "scope": "11 references, 34 cards, 4 dimensions — decoded 2026-09-11, refereed by decode-referee",
+  "verdict": "4 of 34 cards would set a token from screenshot evidence alone and are blocked as open questions, and the primary action colour clears AA only at large sizes — a ghost button using it as body-size label text fails. One concept was needed that the vocabulary does not name, and the empty- and error-state classes have no coverage at all.",
+  "references": [
+    {
+      "name": "house-tokens",
+      "method": "published token file",
+      "reliability": "A",
+      "rights": "R1",
+      "cards": 9
+    },
+    {
+      "name": "hig-web",
+      "method": "declared CSS, fetched",
+      "reliability": "B",
+      "rights": "R3",
+      "cards": 7
+    },
+    {
+      "name": "material-web",
+      "method": "published guidelines",
+      "reliability": "A",
+      "rights": "R2",
+      "cards": 6
+    },
+    {
+      "name": "competitor-app",
+      "method": "screenshot measurement",
+      "reliability": "C",
+      "rights": "R3",
+      "cards": 5
+    },
+    {
+      "name": "print-brochure",
+      "method": "supplied artwork",
+      "reliability": "C",
+      "rights": "R1",
+      "cards": 4
+    },
+    {
+      "name": "docs-site",
+      "method": "declared CSS, fetched",
+      "reliability": "B",
+      "rights": "R1",
+      "cards": 3
+    }
+  ],
+  "gradeCOnly": [
+    {
+      "token": "radius.card",
+      "reference": "competitor-app",
+      "wouldSet": "6px, read off a 2x screenshot (±2px unresolvable)"
+    },
+    {
+      "token": "space.gutter",
+      "reference": "competitor-app",
+      "wouldSet": "24px, estimated from a single view"
+    },
+    {
+      "token": "color.accent.warm",
+      "reference": "print-brochure",
+      "wouldSet": "#E8A03C, sampled from a CMYK proof"
+    },
+    {
+      "token": "motion.duration.enter",
+      "reference": "competitor-app",
+      "wouldSet": "~250ms, timed by eye from a screen recording"
+    }
+  ],
+  "contrast": [
+    {
+      "role": "dominant-action",
+      "fg": "#FA2E1A",
+      "bg": "#FFFFFF",
+      "mode": "light"
+    },
+    {
+      "role": "ink",
+      "fg": "#dfe6ea",
+      "bg": "#0a0d10",
+      "mode": "dark"
+    },
+    {
+      "role": "muted",
+      "fg": "#8b9aa4",
+      "bg": "#0a0d10",
+      "mode": "dark"
+    },
+    {
+      "role": "link",
+      "fg": "#348ad9",
+      "bg": "#0a0d10",
+      "mode": "dark"
+    },
+    {
+      "role": "quiet-action",
+      "fg": "#8b9aa4",
+      "bg": "#FFFFFF",
+      "mode": "light"
+    }
+  ],
+  "vocabulary": {
+    "terms": [
+      {
+        "term": "Action / interactive",
+        "dimension": "color-system"
+      },
+      {
+        "term": "Ink / foreground",
+        "dimension": "color-system"
+      },
+      {
+        "term": "Border / hairline",
+        "dimension": "color-system"
+      },
+      {
+        "term": "Ramp / scale",
+        "dimension": "color-system"
+      },
+      {
+        "term": "Spacing step",
+        "dimension": "grid-and-spacing"
+      },
+      {
+        "term": "Corner radius",
+        "dimension": "icon-system"
+      },
+      {
+        "term": "Duration ramp",
+        "dimension": "motion"
+      },
+      {
+        "term": "Easing set",
+        "dimension": "motion"
+      },
+      {
+        "term": "Type scale",
+        "dimension": "typography"
+      }
+    ],
+    "extensions": [
+      {
+        "term": "Density bias",
+        "why": "no vocabulary term for a per-surface density offset",
+        "card": "CARD-031"
+      }
+    ],
+    "assetClasses": [
+      "Icon",
+      "Open Graph image",
+      "Screenshot"
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 10 plugin READMEs, 84 in
+Every example prompt shipped by the 11 plugin READMEs, 91 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -516,6 +516,66 @@ we actually do, and make the important ones actually enforced"
 ````prompt
 "lehre status — what can I build next?"
 ````
+
+## matrize
+
+[`plugins/matrize/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/matrize/README.md) — 7 prompts.
+
+### Find out what can honestly be extracted here
+
+````prompt
+"before we start: what can matrize actually measure from these references, and what would only be a guess?"
+````
+
+> Triggers `matrize-preflight`: per-phase Ready / Ready-with-gaps / Not-ready, each reference graded for extraction reliability and for rights, and any existing CSS/token footprint already in the repo.
+
+### Lift an ad-hoc project into the taxonomy without changing how it looks
+
+````prompt
+"take this project's scattered CSS and name it as a system — same pixels, just organised and justified"
+````
+
+> Triggers `matrize-retrofit`: maps existing declarations onto the taxonomy and proves zero visual diff, rather than redesigning anything.
+
+### Measure the references before interpreting them
+
+````prompt
+"read these references and tell me what they actually do — ratios and relations, with a confidence rating per line"
+````
+
+> Triggers `matrize-decode`: Design Cards with source, selector-or-page reference, and a reliability grade; a second agent re-derives each one from the cited source.
+
+### Name what recurs, with the failure case
+
+````prompt
+"give every recurring element a name, a purpose, a rule and an anti-rule"
+````
+
+> Triggers `matrize-name`: writes `LEXIKON.md`, machine-addressable so `dolmetsch` can read it; `design-critic` rejects any rule that is really a copy.
+
+### See genuinely different directions side by side
+
+````prompt
+"show me four properly different directions for this, not four shades of the same one"
+````
+
+> Triggers `matrize-spread`: divergent idioms in one fixed shell so they stay comparable, each with a bounded specimen zone, plus a forced-choice block.
+
+### Turn vague direction into precise terms
+
+````prompt
+"make it airier — and tell me what that means in actual numbers"
+````
+
+> Triggers `matrize-dolmetsch`: translates both ways against `LEXIKON.md`, and says so plainly when a term is not in the lexicon rather than guessing.
+
+### Produce the approval artefact
+
+````prompt
+"emit the sketchbook as a landscape PDF I can put in front of the client"
+````
+
+> Triggers `matrize-emit`: headless Chrome print-to-pdf honouring `@page`, with the approval block that names the decision-maker and the gate criteria.
 
 ## nacharbeit
 

@@ -76,6 +76,13 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   hold-out per rule family), then a tier-gated fix pass under a
   PreToolUse hook that denies every edit outside the fix lock. Opus- and
   human-tier findings are surfaced, never auto-applied.
+- **[`matrize`](plugins/matrize/README.md)** — derives a named,
+  platform-neutral design system from reference exemplars: measurement and
+  interpretation stay separate artefacts, every reference is graded both for
+  how far its values can be trusted and for what may be reproduced from it,
+  every named element carries a purpose, a rule and an **anti-rule**, and the
+  DTCG token file — never CSS — is the source every other target is emitted
+  from. References are read-only, enforced by a hook.
 
 ## Install
 
@@ -86,7 +93,7 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 
 Swap `self-assess` for any plugin name above (`confab`, `compass`,
 `cupertino`, `andon`, `cli-scaffold`, `codebase-consistency`, `takt`, `lehre`,
-`nacharbeit`) to install
+`nacharbeit`, `matrize`) to install
 a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin

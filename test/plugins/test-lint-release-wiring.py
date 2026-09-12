@@ -51,8 +51,36 @@ def build_box() -> Path:
 
 
 def edit(box: Path, rel: str, fn) -> None:
+    """Apply a mutation, and refuse an inert one.
+
+    A sabotage that matches nothing leaves the box pristine, the guard correctly
+    passes, and the case reports FAIL for a reason that has nothing to do with the
+    guard -- which is exactly what happened when an eleventh plugin was appended to
+    the tag allowlist and two cases anchored on `|lehre|takt)` stopped matching.
+    Failing here names the real cause instead.
+    """
     path = box / rel
-    path.write_text(fn(path.read_text(encoding="utf-8")), encoding="utf-8")
+    before = path.read_text(encoding="utf-8")
+    after = fn(before)
+    if after == before:
+        raise AssertionError(
+            f"the mutation for {rel} changed nothing -- the sabotage is inert, so this "
+            f"case proves nothing about the guard. Fix the mutation, not the guard.")
+    path.write_text(after, encoding="utf-8")
+
+
+def edit_allowlist(text: str, fn) -> str:
+    """Rewrite only plugin-release.yml's tag-allowlist line.
+
+    Anchored on the probe plus the case terminator rather than on a neighbouring
+    plugin name, so appending a twelfth plugin cannot quietly make this inert.
+    """
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if PROBE in line and ") ;;" in line:
+            lines[i] = fn(line)
+            return "".join(lines)
+    raise AssertionError(f"no allowlist line carrying the probe {PROBE!r}")
 
 
 def case(label: str, mutate, want_rc: int, want_text: str) -> None:
@@ -90,7 +118,9 @@ case("missing .rrt.toml field_targets",
          "", t)), 1, "field_targets")
 
 case("missing plugin-release.yml allowlist entry",
-     lambda b: edit(b, RELEASE, lambda t: t.replace(f"|{PROBE}|takt)", "|takt)")),
+     lambda b: edit(b, RELEASE,
+                    lambda t: edit_allowlist(
+                        t, lambda line: line.replace(f"|{PROBE}", "", 1))),
      1, "plugin-release.yml")
 
 case("missing auto-version-bump.yml matcher",
@@ -98,7 +128,9 @@ case("missing auto-version-bump.yml matcher",
      1, "auto-version-bump.yml")
 
 case("stale name in allowlist (no plugin dir)",
-     lambda b: edit(b, RELEASE, lambda t: t.replace(f"|{PROBE}|takt)", f"|{PROBE}|ghost|takt)")),
+     lambda b: edit(b, RELEASE,
+                    lambda t: edit_allowlist(
+                        t, lambda line: line.replace(f"|{PROBE}", f"|{PROBE}|ghost", 1))),
      1, "no plugins/ghost/")
 
 # Structural changes must fail LOUDLY. A guard that silently finds zero names in

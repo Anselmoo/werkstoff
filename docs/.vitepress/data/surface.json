@@ -731,6 +731,146 @@
       "workflows": []
     },
     {
+      "name": "matrize",
+      "version": "0.1.0",
+      "description": "Derives a named, platform-neutral design system from reference exemplars and emits it to any target. Measurement and interpretation stay separate artefacts rather than separate sections: decode records what each reference actually shows, graded for how far its values can be trusted and what rights its source carries, while name interprets — every recurring element gets a purpose, a rule and an anti-rule, and a rule with no stated failure case is not emitted at all. The source of truth is a DTCG token file, never CSS; CSS, a VitePress theme layer and the landscape sketchbook are formatter output run by committed scripts, so the same tokens regenerate byte-stable. References are read-only, enforced by a PreToolUse hook rather than by convention, so values and rules may be extracted while assets are never copied. Every fan-out agent is read-only; writes are confined to the configured design root's system/ and out/ directories.",
+      "skills": [
+        {
+          "id": "matrize:matrize-brief",
+          "name": "matrize-brief",
+          "description": "Use to synthesise a design-system derivation into the approval artefact a human signs: target taxonomy, chosen direction, what is deliberately NOT adopted and why, and falsification criteria stating what would show the system does not hold. Trigger on 'write the design brief', 'what are we actually proposing', 'put this in front of the decision-maker', 'matrize brief'. Stops outright if any discovery artefact is missing, warns when the state-of-the-art survey is past its expiry, and writes nothing further until the approval block is signed — no objection is not approval."
+        },
+        {
+          "id": "matrize:matrize-collect",
+          "name": "matrize-collect",
+          "description": "Use to take reference exemplars into a design-system derivation with full provenance — what was taken from where, when, under which extraction-reliability grade and which rights grade — and then lock the reference store read-only. Trigger on 'collect these references', 'add this site as a reference', 'take these screenshots as exemplars', 'matrize collect'. Writes only the design root's references/ and its provenance record, never interprets what it collected, and treats fetched content as untrusted data rather than instructions."
+        },
+        {
+          "id": "matrize:matrize-decode",
+          "name": "matrize-decode",
+          "description": "Use to MEASURE what collected references actually do — type scale as ratios rather than px, spacing as a base unit plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — emitting one Design Card per finding with its source, its selector-or-page reference and its reliability grade. Trigger on 'decode these references', 'what do these references actually do', 'measure the type scale', 'matrize decode'. Measures and cites only; it never names, justifies or interprets — that is matrize-name — and a card is not accepted until a second agent re-derives it from the cited source."
+        },
+        {
+          "id": "matrize:matrize-dolmetsch",
+          "name": "matrize-dolmetsch",
+          "description": "Use to translate between vague design instruction and the precise terms of a derived system, in both directions — 'make it airier' into named tokens and numbers on the way in, and named tokens back into plain language on the way out. Trigger on 'make it airier', 'what does that mean in actual numbers', 'say that in plain English', 'matrize dolmetsch'. Cross-cutting rather than a pipeline phase: callable from any point, it reads LEXIKON.md as its only dictionary and says plainly when a term is missing rather than guessing at one."
+        },
+        {
+          "id": "matrize:matrize-echo",
+          "name": "matrize-echo",
+          "description": "Use when the design direction is already settled and only its expression is open, to produce variations inside one idiom — same premise, same roles, different execution — each rendered in the system's own inherited shell. Trigger on 'show me a few versions of this', 'same direction, different execution', 'vary it within the idiom', 'matrize echo'. Not for comparing genuinely different directions, which needs the fixed shell and forced choice of matrize-spread; running echo on an unsettled direction produces variations of a premise nobody agreed to."
+        },
+        {
+          "id": "matrize:matrize-emit",
+          "name": "matrize-emit",
+          "description": "Use to render a derived design system to a concrete target by running the plugin's committed formatter scripts against its DTCG token file — html and pdf produce the landscape sketchbook that carries the approval block, css and vitepress produce platform output, and provenance produces the graph viewer. Trigger on 'emit the design system as CSS', 'produce the sketchbook PDF', 'regenerate the docs theme from tokens', 'matrize emit'. One neutral source, N formatters: nothing here is authored per run, so the same tokens regenerate byte-stable, and prose from an R2 or R3 reference is refused rather than reproduced."
+        },
+        {
+          "id": "matrize:matrize-name",
+          "name": "matrize-name",
+          "description": "Use to INTERPRET measured Design Cards into a named lexicon: every recurring element gets a name, a purpose, a rule and an anti-rule, written machine-addressably so matrize-dolmetsch can read it back. Trigger on 'name these elements', 'give every element a purpose and a rule', 'write the lexicon', 'matrize name'. Requires DECODE.md and refuses without it; a rule with no stated failure case is not emitted at all, and a rule whose purpose names neither a measured property nor a named principle is rejected as a copy."
+        },
+        {
+          "id": "matrize:matrize-preflight",
+          "name": "matrize-preflight",
+          "description": "Use to find out what a design-system derivation can honestly measure in this project before any tokens are spent: the questions no reference can answer (what artefact, screen or print, which render targets, what is already fixed, what is off limits), the existing CSS/token/framework footprint already in the repo, and a reliability and rights grade per intended reference. Trigger on 'what can matrize actually measure here', 'is anything blocking a design-system run', 'grade these references before we start', 'matrize preflight'. Writes PREFLIGHT.md with a per-phase Ready / Ready-with-gaps / Not-ready verdict and never proceeds into decode itself."
+        },
+        {
+          "id": "matrize:matrize-retrofit",
+          "name": "matrize-retrofit",
+          "description": "Use to lift an existing project's ad-hoc CSS into the design-system taxonomy WITHOUT changing anything visually — naming what is already there, recording where each value came from, and proving zero visual diff rather than asserting it. Trigger on 'organise this project's scattered CSS', 'name what we already have', 'same pixels, just systematised', 'matrize retrofit'. Never redesigns: a value that would change is surfaced as a question, not adopted. Not for deriving a new system from external exemplars (matrize-decode) and not for auditing a repo for convention divergence, which is codebase-consistency's job."
+        },
+        {
+          "id": "matrize:matrize-spread",
+          "name": "matrize-spread",
+          "description": "Use when the design direction is genuinely still open and several deliberately divergent idioms should be compared side by side, each presented in one fixed shell so the comparison is of systems rather than of presentations. Trigger on 'show me a few different directions', 'four properly different options, not four shades of the same one', 'we haven't picked a direction yet', 'matrize spread'. Emits a forced-choice block and records the choice; until that record is answered the hook denies any write to tokens.json or out/. Not for variations inside one settled idiom — that is matrize-echo."
+        },
+        {
+          "id": "matrize:matrize-status",
+          "name": "matrize-status",
+          "description": "Use to report where a design-system derivation stands — which artefacts exist and when they were written, which are stale against inputs they derive from, whether the survey is past its expiry and which claim forces it, whether the approval block is signed, and whether a spread choice is still unanswered. Trigger on 'matrize status', 'where are we with the design system', 'is the brief signed', 'what should I run next'. Read-only; it reports on matrize's own artefacts and has nothing to say about a repository matrize has not run in."
+        },
+        {
+          "id": "matrize:matrize-survey",
+          "name": "matrize-survey",
+          "description": "Use to scan the current state of the art in design-system delivery — token formats and tooling, build and bundler conventions per target, component distribution, the accessibility baseline, and how systems are actually documented today — because a design handbook does not go stale on style, it goes stale on the delivery chain. Trigger on 'what's the current state of the art for design tokens', 'is our delivery chain out of date', 'resurvey the tooling', 'matrize survey'. Every named package, tool, spec or API is verified to exist before the file is written; an unverifiable name is removed and logged, never softened into a hedge."
+        }
+      ],
+      "agents": [
+        {
+          "id": "matrize:decode-referee",
+          "name": "decode-referee",
+          "description": "Use this agent to independently re-derive one Design Card's measurement from the source it cites, blind to the reasoning that produced it, so a card nobody can reproduce is dropped before it becomes a token. Dispatched by matrize-decode after reference-decoder returns, one card at a time. Receives only the cited source location and the claim — never the authoring agent's rationale, confidence or summary. Read-only; it re-measures and reports agreement or disagreement, and never edits a card or writes a file.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "matrize:design-critic",
+          "name": "design-critic",
+          "description": "Use this agent to adversarially review proposed Design Cards and lexicon entries for the two failures that make a derived system worthless — copying dressed as principle, and design added where none was asked for. It has standing to reject an entry outright, and the rejection test is explicit: a purpose naming neither a measured property nor a named principle is a copy. Dispatched by matrize-name over a candidate set, and by matrize-spread over a forced-choice framing. Read-only; it refutes, it does not rewrite.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "matrize:fact-checker",
+          "name": "fact-checker",
+          "description": "Use this agent for the mechanical checks matrize's confabulation gate depends on — whether a named package, tool, specification or API actually exists, whether a cited URL resolves, whether two names collide by string match, and whether an artefact is past its recorded expiry. Dispatched by matrize-survey before STATE-OF-THE-ART.md is written, and by matrize-status. Verifies by resolving the thing itself, never by recalling it; an unverifiable name is reported for removal, never softened into a hedge. Read-only, and it never judges whether a tool is a good choice.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "matrize:lexicon-keeper",
+          "name": "lexicon-keeper",
+          "description": "Use this agent when matrize-name needs one measured dimension interpreted into lexicon entries — each carrying a name, a purpose, a rule and an anti-rule, with the purpose drafted against the named-principle vocabulary rather than against what a reference happened to do. Dispatched one per dimension so the dimensions stay independent. Read-only; it returns structured entries and never writes LEXIKON.md itself. Never invents a measurement: an entry may only rest on a Design Card that exists, and a dimension with no usable card yields an open question rather than a rule.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "matrize:reference-decoder",
+          "name": "reference-decoder",
+          "description": "Use this agent when matrize-decode needs one collected reference measured into Design Cards — type as ratios, spacing as a base plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — each card citing its source location and carrying an extraction-reliability grade. Dispatched one per reference, in batches under a circuit breaker. Read-only: it returns structured cards and never writes a file, because reference content is untrusted input. Never interprets, names or justifies — that is matrize-name — and never reports a card it cannot cite a location for.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "matrize:token-emitter",
+          "name": "token-emitter",
+          "description": "Use this agent when matrize needs a formatter authored for one emit target — a committed script that turns the DTCG token file into CSS, Tailwind config, SCSS, JSON or TOML deterministically. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": [
+        "matrize-decode-references"
+      ]
+    },
+    {
       "name": "nacharbeit",
       "version": "0.2.0",
       "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
@@ -1080,6 +1220,18 @@
     "lehre:lehre-preflight",
     "lehre:lehre-status",
     "lehre:lehre-validate",
+    "matrize:matrize-brief",
+    "matrize:matrize-collect",
+    "matrize:matrize-decode",
+    "matrize:matrize-dolmetsch",
+    "matrize:matrize-echo",
+    "matrize:matrize-emit",
+    "matrize:matrize-name",
+    "matrize:matrize-preflight",
+    "matrize:matrize-retrofit",
+    "matrize:matrize-spread",
+    "matrize:matrize-status",
+    "matrize:matrize-survey",
     "nacharbeit:nacharbeit-fix",
     "nacharbeit:nacharbeit-lint",
     "nacharbeit:nacharbeit-preflight",
@@ -1133,6 +1285,12 @@
     "lehre:spec-fidelity-auditor",
     "lehre:violation-auditor",
     "lehre:violation-verifier",
+    "matrize:decode-referee",
+    "matrize:design-critic",
+    "matrize:fact-checker",
+    "matrize:lexicon-keeper",
+    "matrize:reference-decoder",
+    "matrize:token-emitter",
     "nacharbeit:component-finder",
     "nacharbeit:fix-verifier",
     "self-assess:arch-health-auditor",
