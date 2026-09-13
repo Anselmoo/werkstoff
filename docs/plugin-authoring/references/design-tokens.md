@@ -65,8 +65,8 @@ values they do, not a target `check_design_tokens.py` reads.
 
 `scripts/ci/check_design_tokens.py` runs these over `docs/.vitepress/theme/**`
 (`.css`/`.vue`/`.js`), `docs/.vitepress/config.mjs`, every `plugins/*/assets/*-viewer.html`, and
-`plugins/matrize/assets/*template*.html`. Its baseline records 79 findings in 29
-(path, rule) entries: T-HEX 27, T-RADIUS 33, T-FONT-FAMILY 11, T-COLOR-FN 8.
+`plugins/matrize/assets/*template*.html`. Its baseline records 71 findings in 24
+(path, rule) entries: T-HEX 27, T-RADIUS 33, T-FONT-FAMILY 3, T-COLOR-FN 8.
 
 **T-HEX** — a literal hex colour in a declaration value, including inside a `var()`
 fallback.

@@ -71,6 +71,7 @@ introduction: WARN and continue, not an error.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -185,10 +186,11 @@ def scan_hex(text: str) -> list[re.Match[str]]:
 
 
 # --- T-COLOR-FN ---------------------------------------------------------------
-COLOR_FN_RE = re.compile(
-    r"\b(?:rgb|rgba|hsl|hsla|hwb|oklch)\(([^()]*(?:\([^()]*\)[^()]*)*)\)",
-    re.IGNORECASE,
-)
+# Only the call's NAME and opening paren; its arguments are read by _call_args(), which
+# balances parentheses to any depth. A regex for the arguments cannot: the previous one
+# handled one level of nesting, so rgba(var(--r, var(--f)), 2, 3, 0.5) never matched and its
+# literal main channels passed.
+COLOR_FN_RE = re.compile(r"\b(?:rgb|rgba|hsl|hsla|hwb|oklch)\(", re.IGNORECASE)
 DIGIT_RE = re.compile(r"\d")
 
 
@@ -251,12 +253,52 @@ def _has_literal_main_channel(args: str) -> bool:
     return bool(DIGIT_RE.search(_strip_var_calls(main)))
 
 
-def scan_color_fn(text: str) -> list[re.Match[str]]:
-    return [m for m in COLOR_FN_RE.finditer(text) if _has_literal_main_channel(m.group(1))]
+class CallMatch:
+    """The part of re.Match that scan_file() and the selftest read: where the call starts,
+    and its full argument text."""
+
+    def __init__(self, start: int, args: str) -> None:
+        self._start = start
+        self._args = args
+
+    def start(self) -> int:
+        return self._start
+
+    def group(self, index: int = 0) -> str:
+        return self._args
+
+
+def _call_args(text: str, open_paren: int) -> str:
+    """The argument text of the call whose `(` sits at `open_paren`, nested calls included.
+    An unclosed call is read to the end of its line rather than skipped: malformed CSS is no
+    reason to stop checking it."""
+    depth = 0
+    for i in range(open_paren, len(text)):
+        if text[i] == "(":
+            depth += 1
+        elif text[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return text[open_paren + 1 : i]
+    end = text.find("\n", open_paren)
+    return text[open_paren + 1 : end if end != -1 else len(text)]
+
+
+def scan_color_fn(text: str) -> list[CallMatch]:
+    hits = []
+    for match in COLOR_FN_RE.finditer(text):
+        args = _call_args(text, match.end() - 1)
+        if _has_literal_main_channel(args):
+            hits.append(CallMatch(match.start(), args))
+    return hits
 
 
 # --- T-FONT-FAMILY -------------------------------------------------------------
-FONT_PROP_RE = re.compile(r"\bfont(?:-family)?\s*:\s*([^;]+);", re.IGNORECASE)
+# Where a CSS declaration ends: its `;`, the `}` closing its block (CSS lets the last
+# declaration omit the `;`, so requiring one let `font-family: Arial}` through), or the `"`
+# closing an inline style attribute.
+DECL_END = r'(?=;|\}|"\s*(?:/?>|[\w:-]+\s*=))'
+FONT_PROP_RE = re.compile(r"\bfont(?:-family)?\s*:\s*([^;}]+?)" + DECL_END, re.IGNORECASE)
 # JS font assignments: `ctx.font = '12px Arial'` (canvas) and
 # `fontFamily: '...'` / `el.style.fontFamily = '...'` (DOM/React/Vue). Only
 # an assignment or object-property colon counts -- not a bare mention of the
@@ -307,7 +349,7 @@ def scan_font_family(text: str) -> list[re.Match[str]]:
 
 # --- T-RADIUS ------------------------------------------------------------------
 RADIUS_PROP_RE = re.compile(
-    r"\bborder(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;]+);", re.IGNORECASE
+    r"\bborder(?:-(?:top|bottom)-(?:left|right))?-radius\s*:\s*([^;}]+?)" + DECL_END, re.IGNORECASE
 )
 PX_TOKEN_RE = re.compile(r"(-?\d*\.?\d+)px", re.IGNORECASE)
 
@@ -354,12 +396,66 @@ def _is_source_tokens_copy(root: Path, path: Path) -> bool:
         return False
 
 
+def _glob_regex(pattern: str) -> re.Pattern[str]:
+    """A SCOPE_GLOBS pattern as a regex over a posix path relative to the repo root:
+    `**/` spans zero or more directories, `*` and `?` stay within one."""
+    out = []
+    i = 0
+    while i < len(pattern):
+        if pattern.startswith("**/", i):
+            out.append("(?:[^/]+/)*")
+            i += 3
+        elif pattern[i] == "*":
+            out.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
+
+
+SCOPE_REGEXES = tuple(_glob_regex(pattern) for pattern in SCOPE_GLOBS)
+# Every SCOPE_GLOBS pattern lives under one of these; nothing else is walked.
+SCOPE_TOPS = ("docs/.vitepress", "plugins")
+# Directories no scope pattern can reach, skipped for speed: dependencies, VCS data, and the
+# docs site's build output and cache.
+PRUNED = {"node_modules", ".git"}
+PRUNED_UNDER_VITEPRESS = {"dist", "cache"}
+
+
+def _walk_files(root: Path, top: str) -> list[str]:
+    """Every file under `root/top`, as a posix path relative to `root`.
+
+    os.walk() with an onerror that raises, NOT Path.glob(): glob() swallows a PermissionError
+    and returns no matches for a directory it cannot read, which would turn an unreadable
+    viewer directory into a clean, incomplete audit. Here it fails the run instead."""
+    base = root / top
+    if not base.is_dir():
+        return []
+
+    def fail(exc: OSError) -> None:
+        raise ScanError(f"cannot traverse {exc.filename}: {exc}") from exc
+
+    rels = []
+    for dirpath, dirnames, filenames in os.walk(base, onerror=fail):
+        here = Path(dirpath)
+        prune = PRUNED | (PRUNED_UNDER_VITEPRESS if here == root / "docs/.vitepress" else set())
+        dirnames[:] = [d for d in dirnames if d not in prune]
+        rels.extend((here / name).relative_to(root).as_posix() for name in filenames)
+    return rels
+
+
 def discovered_files(root: Path) -> list[Path]:
-    """Every file the scope globs name, minus a tokens.css that is a
-    byte-identical copy of the source of truth."""
+    """Every file the scope globs name, minus a tokens.css that is a byte-identical copy of the
+    source of truth. Raises ScanError when a directory in scope cannot be read."""
     found: set[Path] = set()
-    for pattern in SCOPE_GLOBS:
-        found.update(p for p in root.glob(pattern) if p.is_file())
+    for top in SCOPE_TOPS:
+        for rel in _walk_files(root, top):
+            if any(rx.match(rel) for rx in SCOPE_REGEXES):
+                found.add(root / rel)
     return sorted(p for p in found if not _is_source_tokens_copy(root, p))
 
 
@@ -731,6 +827,48 @@ def selftest() -> bool:
             "T-COLOR-FN never matches color-mix(...) -- not one of the six named functions",
             len(scan_color_fn("color-mix(in srgb, var(--x) 20%, transparent)")) == 0,
         )
+
+        # --- review findings: nesting, declaration boundaries, traversal ---
+        check(
+            "T-COLOR-FN fires on literal main channels beside a NESTED var() fallback",
+            len(scan_color_fn("rgba(var(--r, var(--fallback)), 2, 3, 0.5)")) == 1,
+        )
+        check(
+            "T-COLOR-FN stays silent when every main channel is a nested var()",
+            len(scan_color_fn("rgba(var(--r, var(--f)), var(--g), var(--b), 0.5)")) == 0,
+        )
+        check(
+            "T-FONT-FAMILY fires on a last declaration with no `;` before `}`",
+            len(scan_font_family(".a { color: red; font-family: Arial }")) == 1
+            and len(scan_font_family(".a { font: 12px Arial}")) == 1,
+        )
+        check(
+            "T-FONT-FAMILY fires inside an inline style attribute with no `;`",
+            len(scan_font_family('<div style="font-family: Arial">x</div>')) == 1,
+        )
+        check(
+            "T-FONT-FAMILY still silent on a semicolonless var() declaration",
+            len(scan_font_family(".a { font-family: var(--font-mono) }")) == 0,
+        )
+        check(
+            "T-RADIUS fires on a last declaration with no `;` before `}`",
+            len(scan_radius(".a { border-radius: 4px }")) == 1,
+        )
+        locked = root / "plugins/locked"
+        (locked / "assets").mkdir(parents=True)
+        locked.chmod(0)
+        try:
+            if os.access(locked, os.R_OK):
+                print("  skip unreadable-directory case: permissions are not enforced for this user")
+            else:
+                try:
+                    discovered_files(root)
+                    raised = False
+                except ScanError:
+                    raised = True
+                check("discovery RAISES on an unreadable directory instead of skipping it", raised)
+        finally:
+            locked.chmod(0o755)
 
         # --- baseline behaviour ---
         existing = css

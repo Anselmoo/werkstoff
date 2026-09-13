@@ -56,6 +56,7 @@ import argparse
 import fnmatch
 import json
 import re
+import stat
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -198,34 +199,79 @@ def js_string_array(source: str, key: str, where: Path) -> list[str]:
 SNAPSHOT_BANNER = "::: info Snapshot"
 
 
+def _stat_mode(path: Path) -> int | None:
+    """`path`'s st_mode, or None only when it does not exist.
+
+    An explicit stat, because Path.is_file()/is_dir() return False on EVERY OSError on
+    Python 3.14 -- an unreadable directory would read as "no manifest here" and quietly drop
+    a plugin from the count. A PermissionError here propagates instead."""
+    try:
+        return path.stat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+
+
+def _is_dir(path: Path) -> bool:
+    mode = _stat_mode(path)
+    return mode is not None and stat.S_ISDIR(mode)
+
+
+def _is_file(path: Path) -> bool:
+    mode = _stat_mode(path)
+    return mode is not None and stat.S_ISREG(mode)
+
+
+def _plugin_dirs(root: Path = REPO) -> list[Path]:
+    """Every plugin directory under plugins/ -- one that carries `.claude-plugin/plugin.json`.
+
+    Listed with Path.iterdir() and tested with an explicit stat (_is_dir/_is_file), both of
+    which RAISE on an unreadable entry -- not with Path.glob(), which returns no match for a
+    directory it cannot read. A glob would turn a filesystem fault into a plausible, wrong
+    count, and a wrong count is exactly what this audit exists to catch.
+    """
+    plugins = root / "plugins"
+    try:
+        return [d for d in sorted(plugins.iterdir())
+                if _is_dir(d) and _is_file(d / ".claude-plugin" / "plugin.json")]
+    except OSError as exc:
+        raise DocsAuditError(f"cannot list plugins under {plugins}: {exc}") from exc
+
+
 def count_plugins_on_disk(root: Path = REPO) -> int:
     """Plugins actually on disk: one `.claude-plugin/plugin.json` per plugin.
 
-    Not a hardcoded list -- the same drift class CLAUDE.md's release-wiring
-    table names (adding a plugin means editing prose in N places, and nothing
-    compares the prose to the filesystem). Globbing plugin.json rather than
-    `plugins/*/` itself excludes stray non-plugin directories (fixtures,
-    scratch dirs) that carry no manifest.
+    Not a hardcoded list -- the same drift class CLAUDE.md's release-wiring table names
+    (adding a plugin means editing prose in N places, and nothing compares the prose to the
+    filesystem). A directory under plugins/ without a manifest (a fixture, a scratch dir) is
+    not a plugin and is not counted.
     """
-    return len(list((root / "plugins").glob("*/.claude-plugin/plugin.json")))
+    return len(_plugin_dirs(root))
 
 
 def count_pretooluse_hook_plugins(root: Path = REPO) -> int:
-    """Plugins whose hooks.json actually registers a PreToolUse hook.
+    """Plugins whose hooks.json registers at least one PreToolUse hook that runs something.
 
-    Parsed as JSON, not grepped -- a plugin whose hooks.json only comments
-    out a PreToolUse block, or names it in a "description" string, would
-    otherwise count as enforcing when it enforces nothing. `hooks.json`
-    nests event names under a top-level `hooks` key in every plugin this
-    repo ships; a bare top-level event name is also accepted so a
-    differently-shaped-but-valid manifest isn't silently miscounted as
-    absent.
+    Parsed as JSON, not grepped -- a plugin whose hooks.json names PreToolUse in a string
+    would otherwise count as enforcing when it enforces nothing. For the same reason an EMPTY
+    registration (`"PreToolUse": []`, or entries whose `hooks` list is empty) does not count:
+    no hook runs. Only manifest-bearing plugins are considered. `hooks.json` nests event names
+    under a top-level `hooks` key in every plugin this repo ships; a bare top-level event name
+    is also accepted so a differently-shaped-but-valid manifest isn't miscounted as absent.
+    An unreadable or invalid hooks.json fails the audit rather than counting as "no hook".
     """
     count = 0
-    for path in sorted(root.glob("plugins/*/hooks/hooks.json")):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        events = data.get("hooks") if isinstance(data.get("hooks"), dict) else data
-        if isinstance(events, dict) and "PreToolUse" in events:
+    for plugin in _plugin_dirs(root):
+        path = plugin / "hooks" / "hooks.json"
+        try:
+            if not _is_file(path):
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DocsAuditError(f"cannot read {path}: {exc}") from exc
+        events = data.get("hooks") if isinstance(data, dict) and isinstance(data.get("hooks"), dict) else data
+        registrations = events.get("PreToolUse") if isinstance(events, dict) else None
+        if isinstance(registrations, list) and any(
+                isinstance(entry, dict) and entry.get("hooks") for entry in registrations):
             count += 1
     return count
 
@@ -233,11 +279,21 @@ def count_pretooluse_hook_plugins(root: Path = REPO) -> int:
 def count_report_viewers(root: Path = REPO) -> tuple[int, int]:
     """(distinct plugins shipping a report viewer, total *-viewer.html files).
 
-    `matrize` ships two viewers (derivation, provenance) from one plugin, so
-    the file count and the plugin count are different claims and both get
-    stated in prose -- both must be derivable, not just one.
+    `matrize` ships two viewers (derivation, provenance) from one plugin, so the file count
+    and the plugin count are different claims and both get stated in prose -- both must be
+    derivable, not just one. Only manifest-bearing plugins are considered, so an orphan or
+    scratch `plugins/<x>/assets/*-viewer.html` is not reported as a shipped viewer.
     """
-    viewers = sorted(root.glob("plugins/*/assets/*-viewer.html"))
+    viewers: list[Path] = []
+    for plugin in _plugin_dirs(root):
+        assets = plugin / "assets"
+        try:
+            if not _is_dir(assets):
+                continue
+            viewers.extend(p for p in sorted(assets.iterdir())
+                           if p.name.endswith("-viewer.html") and _is_file(p))
+        except OSError as exc:
+            raise DocsAuditError(f"cannot list {assets}: {exc}") from exc
     plugins = {path.parent.parent.name for path in viewers}
     return len(plugins), len(viewers)
 

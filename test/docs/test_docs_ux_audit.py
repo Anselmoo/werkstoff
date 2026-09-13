@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import textwrap
@@ -186,24 +187,45 @@ class TestPluginGroundTruth(unittest.TestCase):
             (root / "plugins" / "not-a-plugin").mkdir(parents=True)
             self.assertEqual(AUDIT.count_plugins_on_disk(root), 1)
 
+    def _hooks(self, plugin: Path, doc: object) -> None:
+        (plugin / "hooks").mkdir(parents=True, exist_ok=True)
+        (plugin / "hooks" / "hooks.json").write_text(json.dumps(doc), encoding="utf-8")
+
     def test_counts_only_plugins_whose_hooks_json_registers_pretooluse(self) -> None:
+        running = {"matcher": "Write", "hooks": [{"type": "command", "command": "guard"}]}
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            with_hook = root / "plugins" / "with-hook" / "hooks"
-            with_hook.mkdir(parents=True)
-            (with_hook / "hooks.json").write_text(
-                json.dumps({"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": []}]}}),
-                encoding="utf-8")
-
-            other_event_only = root / "plugins" / "other-event" / "hooks"
-            other_event_only.mkdir(parents=True)
-            (other_event_only / "hooks.json").write_text(
-                json.dumps({"hooks": {"SessionStart": [{"hooks": []}]}}), encoding="utf-8")
-
-            no_hooks_file = root / "plugins" / "no-hooks"
-            no_hooks_file.mkdir(parents=True)
-
+            self._hooks(self._plugin(root, "with-hook"), {"hooks": {"PreToolUse": [running]}})
+            self._hooks(self._plugin(root, "other-event"),
+                        {"hooks": {"SessionStart": [{"hooks": [{"type": "command", "command": "x"}]}]}})
+            self._plugin(root, "no-hooks")
             self.assertEqual(AUDIT.count_pretooluse_hook_plugins(root), 1)
+
+    def test_an_empty_pretooluse_registration_does_not_count(self) -> None:
+        """`"PreToolUse": []`, or entries whose `hooks` list is empty, register nothing --
+        counting them would describe a plugin as enforcing when no hook ever runs."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._hooks(self._plugin(root, "empty-list"), {"hooks": {"PreToolUse": []}})
+            self._hooks(self._plugin(root, "empty-hooks"),
+                        {"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": []}]}})
+            self.assertEqual(AUDIT.count_pretooluse_hook_plugins(root), 0)
+
+    def test_a_hooks_json_outside_a_manifest_bearing_plugin_does_not_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._hooks(root / "plugins" / "scratch",
+                        {"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": [{"type": "command"}]}]}})
+            self.assertEqual(AUDIT.count_pretooluse_hook_plugins(root), 0)
+
+    def test_an_invalid_hooks_json_fails_instead_of_counting_as_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plugin = self._plugin(root, "broken")
+            (plugin / "hooks").mkdir()
+            (plugin / "hooks" / "hooks.json").write_text("{not json", encoding="utf-8")
+            with self.assertRaises(AUDIT.DocsAuditError):
+                AUDIT.count_pretooluse_hook_plugins(root)
 
     def test_counts_report_viewer_plugins_and_files_separately(self) -> None:
         """matrize-shaped fixture: one plugin, two viewer files -- the plugin
@@ -212,18 +234,45 @@ class TestPluginGroundTruth(unittest.TestCase):
         swapped one number for the other."""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            multi = root / "plugins" / "multi" / "assets"
+            multi = self._plugin(root, "multi") / "assets"
             multi.mkdir(parents=True)
             (multi / "a-viewer.html").write_text("<html></html>", encoding="utf-8")
             (multi / "b-viewer.html").write_text("<html></html>", encoding="utf-8")
 
-            single = root / "plugins" / "single" / "assets"
+            single = self._plugin(root, "single") / "assets"
             single.mkdir(parents=True)
             (single / "c-viewer.html").write_text("<html></html>", encoding="utf-8")
 
             n_plugins, n_files = AUDIT.count_report_viewers(root)
             self.assertEqual(n_plugins, 2)
             self.assertEqual(n_files, 3)
+
+    def test_an_orphan_viewer_without_a_plugin_manifest_is_not_counted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shipped = self._plugin(root, "shipped") / "assets"
+            shipped.mkdir(parents=True)
+            (shipped / "a-viewer.html").write_text("<html></html>", encoding="utf-8")
+            orphan = root / "plugins" / "scratch" / "assets"
+            orphan.mkdir(parents=True)
+            (orphan / "b-viewer.html").write_text("<html></html>", encoding="utf-8")
+            self.assertEqual(AUDIT.count_report_viewers(root), (1, 1))
+
+    def test_an_unreadable_plugin_directory_fails_instead_of_undercounting(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._plugin(root, "readable")
+            locked = self._plugin(root, "locked")
+            locked.chmod(0)
+            try:
+                if os.access(locked, os.R_OK):
+                    self.skipTest("permissions are not enforced for this user")
+                for counter in (AUDIT.count_plugins_on_disk, AUDIT.count_pretooluse_hook_plugins,
+                                AUDIT.count_report_viewers):
+                    with self.subTest(counter=counter.__name__), self.assertRaises(AUDIT.DocsAuditError):
+                        counter(root)
+            finally:
+                locked.chmod(0o755)
 
 
 class TestApplyClaims(unittest.TestCase):
