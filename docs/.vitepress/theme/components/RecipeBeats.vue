@@ -260,7 +260,7 @@ const pluginRequirements = computed(() => {
 .opening-prompt-code {
   margin: 0.5rem 0 0;
   border-left: 3px solid var(--wk-samaria);
-  background: rgba(207, 182, 86, 0.1);
+  background: color-mix(in srgb, var(--wk-samaria-light) 10%, transparent);
   border-radius: var(--wk-radius-sm, 4px);
   padding: 0.6rem 0.85rem;
   overflow-x: auto;
@@ -268,7 +268,7 @@ const pluginRequirements = computed(() => {
 }
 .dark .opening-prompt-code {
   border-left-color: var(--wk-samaria-light);
-  background: rgba(207, 182, 86, 0.08);
+  background: color-mix(in srgb, var(--wk-samaria-light) 8%, transparent);
 }
 
 .opening-prompt-code code {

@@ -1,15 +1,24 @@
 /* werkstoff identity for the docs site.
  *
  * The palette is not invented here. tools/design-tokens/tokens.css is the single
- * source of truth -- vendored into all seven capability plugins' assets/tokens.css
- * -- and its comments record the brand rule: the identity material is silica
+ * source of truth -- vendored into all 12 plugins' assets/tokens.css, and into
+ * docs/.vitepress/theme/tokens.css, all via .rrt.toml's artifact_targets --
+ * and its comments record the brand rule: the identity material is silica
  * aerogel, and each categorical slot is one aerogel chemistry. Change a colour
- * THERE, then mirror it here.
+ * THERE, then `rrt artifacts --regenerate`.
  *
- * The values are mirrored rather than @import-ed: this file ships to a static site
- * while tokens.css lives in tools/, outside the VitePress source root, so an import
- * would either break the build or need a bundler alias to survive it. Duplication
- * with a named source beats a fragile path.
+ * tokens.css is IMPORTED now, not hand-mirrored: theme/index.js imports the
+ * vendored docs/.vitepress/theme/tokens.css immediately before this file, and
+ * every --wk-* and --vp-c-brand-* declaration below is a var() reference into
+ * it rather than a restated literal. The vendored copy exists because this
+ * file ships to a static site while the canonical
+ * tools/design-tokens/tokens.css lives outside the VitePress source root, so
+ * a direct @import of that path would either break the build or need a
+ * bundler alias to survive it -- a named, registered copy beats a fragile
+ * path. Where a value here has no token counterpart (light-mode neutrals
+ * VitePress already owns, the docs spacing scale, a small set of named
+ * baseline exceptions such as pure white), the literal stays; see
+ * .design/system/retrofit-report.md for the full account.
  *
  * Contrast, measured rather than assumed (WCAG 2.1, normal text needs 4.5:1):
  *   dark   #dfe6ea on #0a0d10 = 15.44:1   body text
@@ -47,27 +56,28 @@
  */
 
 :root {
-  /* ---- werkstoff tokens, mirrored from tools/design-tokens/tokens.css ---- */
-  --wk-bg: #0a0d10;
-  --wk-panel: #141a1f;
-  --wk-panel-2: #1c242b;
-  --wk-text: #dfe6ea;
-  --wk-muted: #8b9aa4;
-  --wk-smoke: #cdd8de;
-  --wk-border: #28323a;
+  /* ---- werkstoff tokens, referenced from tools/design-tokens/tokens.css
+   * (imported as ./tokens.css, immediately above this file) ---- */
+  --wk-bg: var(--bg);
+  --wk-panel: var(--panel);
+  --wk-panel-2: var(--panel-2);
+  --wk-text: var(--text);
+  --wk-muted: var(--muted);
+  --wk-smoke: var(--smoke);
+  --wk-border: var(--border);
 
-  /* The aerogel family — one chemistry per categorical slot. Mirrored here so a
-     later CSS pass can reference these without touching this :root block again. */
-  --wk-silica: #348ad9;
-  --wk-silica-light: #73b6fa;
-  --wk-chromia: #08935c;
-  --wk-chromia-light: #5cbd89;
-  --wk-neodymia: #ab6dc6;
-  --wk-neodymia-light: #d39eea;
-  --wk-samaria: #ab8f00;
-  --wk-samaria-light: #cfb656;
-  --wk-ferria: #bd5137;
-  --wk-ferria-light: #e2856d;
+  /* The aerogel family — one chemistry per categorical slot. Referenced here so a
+     later CSS pass can use these without touching this :root block again. */
+  --wk-silica: var(--silica);
+  --wk-silica-light: var(--silica-light);
+  --wk-chromia: var(--chromia);
+  --wk-chromia-light: var(--chromia-light);
+  --wk-neodymia: var(--neodymia);
+  --wk-neodymia-light: var(--neodymia-light);
+  --wk-samaria: var(--samaria);
+  --wk-samaria-light: var(--samaria-light);
+  --wk-ferria: var(--ferria);
+  --wk-ferria-light: var(--ferria-light);
 
   /* -deep steps: the light-mode-safe TEXT step for each family. The base and
    * -light steps above all measure under 4.5:1 as text on white, so light mode
@@ -81,25 +91,26 @@
    * 6.14:1). The catalog block used to consume all five to recolour recipe
    * title links; those 14 rules are gone and that per-mode text-contrast
    * obligation is retired with them -- see the catalog section for why. The
-   * other four stay because this :root block is a MIRROR of tokens.css, not a
-   * usage list; the file's header rule is "change a colour THERE, then mirror
-   * it here", and a mirror with holes in it is worse than an unused token. */
-  --wk-silica-deep: #005a9d;
-  --wk-chromia-deep: #005e39;
-  --wk-neodymia-deep: #77428e;
-  --wk-samaria-deep: #746005;
-  --wk-ferria-deep: #82260f;
+   * other four stay because this :root block is a REFERENCE layer over
+   * tokens.css, not a usage list; the file's header rule is "change a colour
+   * THERE, then `rrt artifacts --regenerate`", and a reference layer with
+   * holes in it is worse than an unused token. */
+  --wk-silica-deep: var(--silica-deep);
+  --wk-chromia-deep: var(--chromia-deep);
+  --wk-neodymia-deep: var(--neodymia-deep);
+  --wk-samaria-deep: var(--samaria-deep);
+  --wk-ferria-deep: var(--ferria-deep);
 
   /* The two poles of the duality: scattered blue, transmitted warmth. */
   --wk-accent: var(--wk-silica);
   --wk-accent-2: var(--wk-samaria-light);
 
-  --wk-status-good: #4c8d5a;
-  --wk-status-bad: #b0503f;
-  --wk-status-warn: #b58b3a;
+  --wk-status-good: var(--status-good);
+  --wk-status-bad: var(--status-bad);
+  --wk-status-warn: var(--status-warn);
   /* was #3a5a7a, 2.71:1 against the new darker --wk-bg -- below WCAG 1.4.11's
      3:1 non-text minimum; lightened within the same hue family to clear it. */
-  --wk-status-unknown: #4a719c;
+  --wk-status-unknown: var(--status-unknown);
   --wk-radius-sm: 4px;
   --wk-radius-control: 6px;
   --wk-radius-panel: 8px;
@@ -158,19 +169,22 @@
    * Light values sit on VitePress's own --vp-c-divider -> text-3 neutral ramp,
    * which is what the header comment already establishes as correct light-mode
    * behaviour. */
-  --wk-rule: #8e8e95;
-  --wk-rule-soft: #a7a7ac;
+  --wk-rule: var(--rule-on-light);
+  --wk-rule-soft: var(--rule-soft-on-light);
 
   /* Light mode: silica darkened to clear AA on white (see header). */
-  --vp-c-brand-1: #1874c2;
-  --vp-c-brand-2: #0f66ae;
-  --vp-c-brand-3: #348ad9;
-  --vp-c-brand-soft: rgba(52, 138, 217, 0.14);
+  --vp-c-brand-1: var(--accent-on-light);
+  --vp-c-brand-2: var(--accent-on-light-strong);
+  --vp-c-brand-3: var(--silica);
+  --vp-c-brand-soft: color-mix(in srgb, var(--silica) 14%, transparent);
 
   /* Light mode otherwise keeps VitePress's own neutrals, which are already
    * accessible. Forcing a dark-native palette into light mode buys nothing and
    * risks unreadable text. */
   --vp-button-brand-border: transparent;
+  /* Named baseline exception (.design/system/BRIEF.md "Settled"): white is not
+   * a member of the aerogel palette, so it stays a literal rather than
+   * inventing a --white token with no brand meaning. */
   --vp-button-brand-text: #ffffff;
   --vp-button-brand-bg: var(--vp-c-brand-1);
 }
@@ -196,14 +210,14 @@
    * (verified: interpolating those two hex values at t=0.45 yields #55616a
    * exactly, and at t=0.30 yields #46515a exactly). 3.07:1 and 2.40:1 on
    * --wk-bg -- see the header block. */
-  --wk-rule: #55616a;
-  --wk-rule-soft: #46515a;
+  --wk-rule: var(--rule);
+  --wk-rule-soft: var(--rule-soft);
 
   /* Full-strength silica: 5.37:1 on --wk-bg, so it is safe as link text here. */
   --vp-c-brand-1: var(--wk-silica);
   --vp-c-brand-2: var(--wk-silica-light);
   --vp-c-brand-3: var(--wk-silica);
-  --vp-c-brand-soft: rgba(52, 138, 217, 0.16);
+  --vp-c-brand-soft: color-mix(in srgb, var(--silica) 16%, transparent);
 
   --vp-code-block-bg: var(--wk-panel);
   --vp-code-bg: var(--wk-panel-2);
@@ -219,19 +233,19 @@
 .dark {
   --vp-custom-block-tip-border: var(--wk-status-good);
   --vp-custom-block-tip-text: var(--wk-text);
-  --vp-custom-block-tip-bg: rgba(76, 141, 90, 0.12);
+  --vp-custom-block-tip-bg: color-mix(in srgb, var(--status-good) 12%, transparent);
 
   --vp-custom-block-warning-border: var(--wk-status-warn);
   --vp-custom-block-warning-text: var(--wk-text);
-  --vp-custom-block-warning-bg: rgba(181, 139, 58, 0.12);
+  --vp-custom-block-warning-bg: color-mix(in srgb, var(--status-warn) 12%, transparent);
 
   --vp-custom-block-danger-border: var(--wk-status-bad);
   --vp-custom-block-danger-text: var(--wk-text);
-  --vp-custom-block-danger-bg: rgba(176, 80, 63, 0.12);
+  --vp-custom-block-danger-bg: color-mix(in srgb, var(--status-bad) 12%, transparent);
 
   --vp-custom-block-info-border: var(--wk-status-unknown);
   --vp-custom-block-info-text: var(--wk-text);
-  --vp-custom-block-info-bg: rgba(74, 113, 156, 0.12);
+  --vp-custom-block-info-bg: color-mix(in srgb, var(--status-unknown) 12%, transparent);
 }
 
 /* ---- Home hero: the duality, scattered blue into transmitted warmth ---- */
@@ -244,6 +258,12 @@
   );
   --vp-home-hero-image-background-image: linear-gradient(
     120deg,
+    /* Deliberate literals, baselined in scripts/ci/design-tokens-baseline.txt.
+       These are --silica at 50% and --samaria-light at 35%, but color-mix() computes
+       to a non-legacy color(srgb ...) value, and a gradient holding one interpolates
+       in OKLab instead of sRGB: 84k pixels of this blurred backdrop moved (max 4/255).
+       Adding 'in srgb' still left ~10k pixels off. A retrofit that moves pixels failed,
+       so the legacy form stays until the backdrop is redesigned on purpose. */
     rgba(52, 138, 217, 0.5),
     rgba(207, 182, 86, 0.35)
   );
@@ -678,18 +698,18 @@ div[class*='language-prompt'] {
 /* The scattered-blue pole; the beginning. */
 .recipe-card[data-category='before-any-code'] {
   border-left-color: var(--wk-silica);
-  background: rgba(52, 138, 217, 0.06);
+  background: color-mix(in srgb, var(--silica) 6%, transparent);
 }
 .dark .recipe-card[data-category='before-any-code'] {
-  background: rgba(52, 138, 217, 0.12);
+  background: color-mix(in srgb, var(--silica) 12%, transparent);
 }
 
 .recipe-card[data-category='change-existing-code'] {
   border-left-color: var(--wk-chromia);
-  background: rgba(8, 147, 92, 0.06);
+  background: color-mix(in srgb, var(--chromia) 6%, transparent);
 }
 .dark .recipe-card[data-category='change-existing-code'] {
-  background: rgba(8, 147, 92, 0.12);
+  background: color-mix(in srgb, var(--chromia) 12%, transparent);
 }
 
 /* Silica, not ferria: work on the undoped base material. See the block
@@ -697,37 +717,37 @@ div[class*='language-prompt'] {
  * decision, not an arbitrary one. */
 .recipe-card[data-category='plugin-authoring'] {
   border-left-color: var(--wk-silica);
-  background: rgba(52, 138, 217, 0.06);
+  background: color-mix(in srgb, var(--silica) 6%, transparent);
 }
 .dark .recipe-card[data-category='plugin-authoring'] {
-  background: rgba(52, 138, 217, 0.12);
+  background: color-mix(in srgb, var(--silica) 12%, transparent);
 }
 
 .recipe-card[data-category='quality-verification'] {
   border-left-color: var(--wk-neodymia);
-  background: rgba(171, 109, 198, 0.06);
+  background: color-mix(in srgb, var(--neodymia) 6%, transparent);
 }
 .dark .recipe-card[data-category='quality-verification'] {
-  background: rgba(171, 109, 198, 0.12);
+  background: color-mix(in srgb, var(--neodymia) 12%, transparent);
 }
 
 /* The transmitted-warmth pole -- the same gold as the terminal node. Release
  * *is* completion; the metaphor is already exact. */
 .recipe-card[data-category='ci-release'] {
   border-left-color: var(--wk-samaria);
-  background: rgba(171, 143, 0, 0.06);
+  background: color-mix(in srgb, var(--samaria) 6%, transparent);
 }
 .dark .recipe-card[data-category='ci-release'] {
-  background: rgba(171, 143, 0, 0.12);
+  background: color-mix(in srgb, var(--samaria) 12%, transparent);
 }
 
 /* Rust is corrosion is defect. Exact, and now unshared. */
 .recipe-card[data-category='defect-work'] {
   border-left-color: var(--wk-ferria);
-  background: rgba(189, 81, 55, 0.06);
+  background: color-mix(in srgb, var(--ferria) 6%, transparent);
 }
 .dark .recipe-card[data-category='defect-work'] {
-  background: rgba(189, 81, 55, 0.12);
+  background: color-mix(in srgb, var(--ferria) 12%, transparent);
 }
 
 /* surface / "Other": not a phase of the dev loop, so no chemistry and no hue --
@@ -779,11 +799,11 @@ div[class*='language-prompt'] {
 
 .ext-badge[data-external='claude-plugins-official'] {
   border: 1px solid var(--wk-silica);
-  background: rgba(52, 138, 217, 0.08);
+  background: color-mix(in srgb, var(--silica) 8%, transparent);
   color: var(--vp-c-text-1);
 }
 .dark .ext-badge[data-external='claude-plugins-official'] {
-  background: rgba(52, 138, 217, 0.14);
+  background: color-mix(in srgb, var(--silica) 14%, transparent);
   color: var(--wk-text);
 }
 
@@ -917,8 +937,9 @@ div[class*='language-prompt'] {
     animation: wk-rise-in 0.5s ease-out forwards;
   }
   /* Staggered per card, capped at 8 steps -- a 9th-and-beyond card (this
-     page has exactly 4 features and 9 plugins) shares the last step rather
-     than the stagger growing unbounded with the grid size. */
+     page has exactly 4 features and 12 plugins, per PluginGrid.vue's PLUGINS
+     list) shares the last step rather than the stagger growing unbounded
+     with the grid size. */
   .VPFeatures .item:nth-child(1),
   .plugin-grid .plugin-card:nth-child(1) {
     animation-delay: 0.4s;

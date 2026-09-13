@@ -338,9 +338,10 @@ command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/cli-scaffold/assets/
 # report viewers were independently hand-copying into their own :root
 # blocks (confirmed diverging: andon/confab/matrix used --bg-panel/--text-dim
 # naming and a different font stack than cli-scaffold/self-assess's
-# --panel/--muted naming). Vendored into all 7 report-viewer plugins,
-# including cupertino and compass ahead of their own D3 rollout, so no
-# future rebuild needs a separate artifact_targets addition just for tokens.
+# --panel/--muted naming). Vendored into all 12 plugins (every plugin on
+# disk carries assets/tokens.css) and into docs/.vitepress/theme/tokens.css,
+# so no future rebuild needs a separate artifact_targets addition just for
+# tokens.
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/andon/assets/tokens.css"
@@ -401,6 +402,16 @@ command = ["cp", "tools/design-tokens/tokens.css", "plugins/cupertino/assets/tok
 path = "plugins/compass/assets/tokens.css"
 description = "compass's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/compass/assets/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "docs/.vitepress/theme/tokens.css"
+description = "the docs theme's synced copy of tools/design-tokens/tokens.css, imported by theme/index.js ahead of werkstoff.css so the theme's --wk-*/--vp-c-brand-* declarations can reference it with var() instead of restating its values"
+command = ["cp", "tools/design-tokens/tokens.css", "docs/.vitepress/theme/tokens.css"]
+
+[[tool.rrt.artifact_targets]]
+path = ".design/system/tokens.json"
+description = "the DTCG token file matrize derives from tools/design-tokens/tokens.css -- regenerated, never hand-edited"
+command = ["python3", "plugins/matrize/scripts/retrofit_css.py", "tools/design-tokens/tokens.css", "--out", ".design/system/tokens.json"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/andon/assets/inline-d3.html"
