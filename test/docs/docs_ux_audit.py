@@ -54,7 +54,9 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import re
+import stat
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -192,6 +194,150 @@ def js_string_array(source: str, key: str, where: Path) -> list[str]:
                              f"empty (delete this call site) or the scan is broken; an empty "
                              f"exclusion set makes the audit grade pages VitePress never builds")
     return items
+
+
+SNAPSHOT_BANNER = "::: info Snapshot"
+
+
+def _stat_mode(path: Path) -> int | None:
+    """`path`'s st_mode, or None only when it does not exist.
+
+    An explicit stat, because Path.is_file()/is_dir() return False on EVERY OSError on
+    Python 3.14 -- an unreadable directory would read as "no manifest here" and quietly drop
+    a plugin from the count. A PermissionError here propagates instead."""
+    try:
+        return path.stat().st_mode
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+
+
+def _is_dir(path: Path) -> bool:
+    mode = _stat_mode(path)
+    return mode is not None and stat.S_ISDIR(mode)
+
+
+def _is_file(path: Path) -> bool:
+    mode = _stat_mode(path)
+    return mode is not None and stat.S_ISREG(mode)
+
+
+def _plugin_dirs(root: Path = REPO) -> list[Path]:
+    """Every plugin directory under plugins/ -- one that carries `.claude-plugin/plugin.json`.
+
+    Listed with Path.iterdir() and tested with an explicit stat (_is_dir/_is_file), both of
+    which RAISE on an unreadable entry -- not with Path.glob(), which returns no match for a
+    directory it cannot read. A glob would turn a filesystem fault into a plausible, wrong
+    count, and a wrong count is exactly what this audit exists to catch.
+    """
+    plugins = root / "plugins"
+    try:
+        return [d for d in sorted(plugins.iterdir())
+                if _is_dir(d) and _is_file(d / ".claude-plugin" / "plugin.json")]
+    except OSError as exc:
+        raise DocsAuditError(f"cannot list plugins under {plugins}: {exc}") from exc
+
+
+def count_plugins_on_disk(root: Path = REPO) -> int:
+    """Plugins actually on disk: one `.claude-plugin/plugin.json` per plugin.
+
+    Not a hardcoded list -- the same drift class CLAUDE.md's release-wiring table names
+    (adding a plugin means editing prose in N places, and nothing compares the prose to the
+    filesystem). A directory under plugins/ without a manifest (a fixture, a scratch dir) is
+    not a plugin and is not counted.
+    """
+    return len(_plugin_dirs(root))
+
+
+def count_pretooluse_hook_plugins(root: Path = REPO) -> int:
+    """Plugins whose hooks.json registers at least one PreToolUse hook that runs something.
+
+    Parsed as JSON, not grepped -- a plugin whose hooks.json names PreToolUse in a string
+    would otherwise count as enforcing when it enforces nothing. For the same reason an EMPTY
+    registration (`"PreToolUse": []`, or entries whose `hooks` list is empty) does not count:
+    no hook runs. Only manifest-bearing plugins are considered. `hooks.json` nests event names
+    under a top-level `hooks` key in every plugin this repo ships; a bare top-level event name
+    is also accepted so a differently-shaped-but-valid manifest isn't miscounted as absent.
+    An unreadable or invalid hooks.json fails the audit rather than counting as "no hook".
+    """
+    count = 0
+    for plugin in _plugin_dirs(root):
+        path = plugin / "hooks" / "hooks.json"
+        try:
+            if not _is_file(path):
+                continue
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise DocsAuditError(f"cannot read {path}: {exc}") from exc
+        events = data.get("hooks") if isinstance(data, dict) and isinstance(data.get("hooks"), dict) else data
+        registrations = events.get("PreToolUse") if isinstance(events, dict) else None
+        if isinstance(registrations, list) and any(
+                isinstance(entry, dict) and entry.get("hooks") for entry in registrations):
+            count += 1
+    return count
+
+
+def count_report_viewers(root: Path = REPO) -> tuple[int, int]:
+    """(distinct plugins shipping a report viewer, total *-viewer.html files).
+
+    `matrize` ships two viewers (derivation, provenance) from one plugin, so the file count
+    and the plugin count are different claims and both get stated in prose -- both must be
+    derivable, not just one. Only manifest-bearing plugins are considered, so an orphan or
+    scratch `plugins/<x>/assets/*-viewer.html` is not reported as a shipped viewer.
+    """
+    viewers: list[Path] = []
+    for plugin in _plugin_dirs(root):
+        assets = plugin / "assets"
+        try:
+            if not _is_dir(assets):
+                continue
+            viewers.extend(p for p in sorted(assets.iterdir())
+                           if p.name.endswith("-viewer.html") and _is_file(p))
+        except OSError as exc:
+            raise DocsAuditError(f"cannot list {assets}: {exc}") from exc
+    plugins = {path.parent.parent.name for path in viewers}
+    return len(plugins), len(viewers)
+
+
+def _display_path(path: Path) -> Path:
+    """`path` relative to REPO for messages, or `path` itself when it lies
+    outside REPO -- true for a fixture page in a test, never for a live claim.
+    """
+    try:
+        return path.relative_to(REPO)
+    except ValueError:
+        return path
+
+
+def apply_claims(report: Report, claims: list[tuple[Path, str, int, str]]) -> None:
+    """Grade each (path, pattern, expected value, label) claim: the sentence
+    matching `pattern` in `path` must assert `expected`.
+
+    A page carrying SNAPSHOT_BANNER is a frozen historical record by design
+    (see docs/... council brief) -- its counts are expected to go stale the
+    moment reality moves on, and re-grading it against live ground truth
+    would make freezing a page pointless. Skipped claims are still reported,
+    as a note rather than a finding, so a skip is visible rather than silent.
+    """
+    for path, pattern, expected, label in claims:
+        if not path.is_file():
+            report.fail("C1", f"{_display_path(path)}: claim source file is missing")
+            continue
+        text = path.read_text(encoding="utf-8")
+        if SNAPSHOT_BANNER in text:
+            report.checks_run.append(f"C1 snapshot page skipped: {_display_path(path)} "
+                                     f"carries '{SNAPSHOT_BANNER}' -- not graded against live {label}")
+            continue
+        match = re.search(pattern, text)
+        if match is None:
+            report.fail("C1", f"{_display_path(path)}: no sentence matching /{pattern}/ -- "
+                              "the claim was reworded or removed; update this registry")
+            continue
+        claimed = parse_number(match.group(1))
+        if claimed is None:
+            report.fail("C1", f"{_display_path(path)}: cannot parse '{match.group(1)}' as a number")
+        elif claimed != expected:
+            report.fail("C1", f"{_display_path(path)}: claims {claimed} {label}, actual is {expected} "
+                              f"(in: \"{match.group(0)}\")")
 
 
 def src_exclude() -> list[str]:
@@ -706,6 +852,16 @@ def check_c1_counts(report: Report, recipes: list[tuple[Path, dict]]) -> None:
         (REPO / ".github" / "workflows" / "plugin-checks.yml").read_text(encoding="utf-8"),
         re.M))
 
+    n_plugins = count_plugins_on_disk()
+    n_hook_plugins = count_pretooluse_hook_plugins()
+    n_viewer_plugins, n_viewer_files = count_report_viewers()
+
+    ORCH_README = DOCS / "orchestration" / "README.md"
+    HAZARDS = DOCS / "orchestration" / "references" / "hazards.md"
+    CLAUDE_MD_BLOCK = DOCS / "orchestration" / "references" / "claude-md-block.md"
+    REPORT_VIEWER_STANDARD = DOCS / "plugin-authoring" / "references" / "report-viewer-standard.md"
+    PLUGIN_AUTHORING_README = DOCS / "plugin-authoring" / "README.md"
+
     claims = [
         (DOCS / "index.md", r"([A-Za-z-]+|\d+) development tasks", n_recipes, "catalog recipes"),
         (DOCS / "catalog" / "ci-release" / "pipeline-red-across-jobs.md",
@@ -717,27 +873,48 @@ def check_c1_counts(report: Report, recipes: list[tuple[Path, dict]]) -> None:
         (DOCS / "index.md", r"([A-Za-z-]+|\d+) copy-paste prompts", n_prompts, "beats carrying a prompt"),
         (DOCS / "orchestration" / "references" / "catalog.md",
          r"the same\s+([A-Za-z-]+|\d+) task recipes", n_recipes, "catalog recipes"),
+
+        # Plugins on disk (count of plugins/*/.claude-plugin/plugin.json).
+        (DOCS / "index.md", r"([A-Za-z-]+|\d+) plugins that each catch one distinct failure mode",
+         n_plugins, "plugins on disk"),
+        (DOCS / "index.md", r"([A-Za-z-]+|\d+) plugins, one job each — see \[the plugin list\]",
+         n_plugins, "plugins on disk"),
+        (DOCS / "plugins" / "index.md", r"# ([A-Za-z-]+|\d+) plugins, one job each",
+         n_plugins, "plugins on disk"),
+        (ORCH_README, r"werkstoff's ([a-z-]+|\d+) plugins,", n_plugins, "plugins on disk"),
+        (ORCH_README, r"across all ([a-z-]+|\d+) plugins — including nacharbeit's",
+         n_plugins, "plugins on disk"),
+        (PLUGIN_AUTHORING_README, r"werkstoff's ([a-z-]+|\d+) plugins actually do today",
+         n_plugins, "plugins on disk"),
+        (PLUGIN_AUTHORING_README, r"extending any of the ([a-z-]+|\d+) plugins",
+         n_plugins, "plugins on disk"),
+
+        # Plugins with a PreToolUse hook (count of plugins/*/hooks/hooks.json containing
+        # a PreToolUse key).
+        (DOCS / "index.md", r"([A-Za-z-]+|\d+) plugins register a PreToolUse hook",
+         n_hook_plugins, "plugins registering a PreToolUse hook"),
+        (HAZARDS, r"([A-Za-z-]+|\d+) werkstoff plugins register a `PreToolUse` hook",
+         n_hook_plugins, "plugins registering a PreToolUse hook"),
+        (CLAUDE_MD_BLOCK, r"([A-Za-z-]+|\d+) other werkstoff plugins hold a `PreToolUse` hook",
+         n_hook_plugins - 1, "plugins registering a PreToolUse hook, other than takt"),
+
+        # Plugins shipping a report viewer (distinct plugins with
+        # plugins/*/assets/*-viewer.html) and the file count (matrize ships two).
+        (REPORT_VIEWER_STANDARD, r"All ([A-Za-z-]+|\d+) plugins ship a self-contained HTML report",
+         n_viewer_plugins, "plugins shipping a report viewer"),
+        (REPORT_VIEWER_STANDARD, r"self-contained HTML report — ([A-Za-z-]+|\d+) files",
+         n_viewer_files, "report-viewer HTML files"),
+        (PLUGIN_AUTHORING_README,
+         r"the ([A-Za-z-]+|\d+) self-contained HTML reports \(one per plugin, two for `matrize`\)",
+         n_viewer_files, "report-viewer HTML files"),
     ]
-    for path, pattern, expected, label in claims:
-        if not path.is_file():
-            report.fail("C1", f"{path.relative_to(REPO)}: claim source file is missing")
-            continue
-        text = path.read_text(encoding="utf-8")
-        match = re.search(pattern, text)
-        if match is None:
-            report.fail("C1", f"{path.relative_to(REPO)}: no sentence matching /{pattern}/ -- "
-                              "the claim was reworded or removed; update this registry")
-            continue
-        claimed = parse_number(match.group(1))
-        if claimed is None:
-            report.fail("C1", f"{path.relative_to(REPO)}: cannot parse '{match.group(1)}' as a number")
-        elif claimed != expected:
-            report.fail("C1", f"{path.relative_to(REPO)}: claims {claimed} {label}, actual is {expected} "
-                              f"(in: \"{match.group(0)}\")")
+    apply_claims(report, claims)
 
     # Unclaimed-but-derivable totals, reported for awareness, not failure.
     report.checks_run.append(f"C1 ground truth: {n_recipes} recipes, {n_beats} beats, "
-                             f"{n_prompts} prompts, {n_categories} categories")
+                             f"{n_prompts} prompts, {n_categories} categories, "
+                             f"{n_plugins} plugins on disk, {n_hook_plugins} with a PreToolUse hook, "
+                             f"{n_viewer_plugins} shipping a report viewer ({n_viewer_files} files)")
 
 
 # ---------------------------------------------------------------------------

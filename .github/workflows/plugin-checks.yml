@@ -21,6 +21,8 @@ jobs:
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
+      design_tokens: ${{ steps.design_tokens.outcome }}
+      readme_skeleton: ${{ steps.readme_skeleton.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
       catalog_recipes: ${{ steps.catalog_recipes.outcome }}
       docs_audit_tests: ${{ steps.docs_audit_tests.outcome }}
@@ -126,6 +128,28 @@ jobs:
         # one viewer shipping .legend CSS that nothing used. None of that was
         # visible to any existing check.
         run: python3 scripts/ci/check_viewer_conformance.py
+
+      - name: Check design-token usage (docs theme + report viewers)
+        id: design_tokens
+        continue-on-error: true
+        # docs/plugin-authoring/references/design-tokens.md. The selftest runs
+        # first: a lint that cannot fail reports success every run. --base-ref
+        # turns a baseline that GREW in this change into a failure, so a new
+        # literal cannot be absorbed by raising its count in the same diff. An
+        # unreadable ref is a printed WARN, never a silent skip.
+        run: |
+          git fetch --quiet --depth=1 origin main
+          python3 scripts/ci/check_design_tokens.py --selftest
+          python3 scripts/ci/check_design_tokens.py --base-ref origin/main
+
+      - name: Check plugin READMEs against the canonical skeleton
+        id: readme_skeleton
+        continue-on-error: true
+        # The P-README-* rules of plugins/nacharbeit/references/rubric.md. They reported
+        # 20 findings for months with CI green, because nacharbeit_lint.py exits 0 once
+        # a scan completes and nothing called it -- a rule that cannot fail is prose.
+        # --fail-on makes exactly this family blocking; the other families stay advisory.
+        run: python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/*/ --docs-root docs --fail-on P-README-
 
       - name: Run symbol-indexer test suite
         id: symbol_indexer_tests
@@ -244,6 +268,8 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.viewer_conformance.outcome == 'failure' ||
+          steps.design_tokens.outcome == 'failure' ||
+          steps.readme_skeleton.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
           steps.catalog_recipes.outcome == 'failure' ||
           steps.docs_audit_tests.outcome == 'failure' ||
@@ -297,6 +323,8 @@ jobs:
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
+            row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
+            row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"
             row "catalog recipes vs. capability surface" "${{ needs.checks.outputs.catalog_recipes }}"
             row "docs-audit srcExclude tests" "${{ needs.checks.outputs.docs_audit_tests }}"
@@ -311,7 +339,7 @@ jobs:
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
             table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
             echo "</tbody></table>"
           } > board.md
           cat board.md

@@ -1,10 +1,10 @@
 # confab
 
-Audits AI-generated code quality across four independent domains —
+**Audits AI-generated code quality across four independent domains —
 hallucinated dependencies, weak test assertions, contract drift, and
 agentic-loop reliability — with independent verification, and an
 optional bounded self-optimization cycle that can apply fixes in a
-constrained, auto-fixable subset of findings.
+constrained, auto-fixable subset of findings.**
 
 ## Why this exists
 
@@ -19,14 +19,49 @@ an independent verification pass re-checks it, and never lets a timeout
 or an unreachable registry masquerade as a real verdict in either
 direction.
 
+## What it is not
+
+confab's four audits are narrow by design. Two adjacent jobs are
+explicitly out of scope and deferred to sibling plugins:
+
+- **Not a prose-documentation-drift checker.** `confab-contract-drift`'s
+  scope is "structural, machine-checkable declarations only" — type
+  hints, docstrings, and API/OpenAPI/GraphQL schemas against real
+  call-site or handler usage. A claim in `CLAUDE.md`, `README.md`,
+  `ARCHITECTURE.md`, `DECISIONS.md` or an ADR file no longer matching the
+  code is `self-assess:self-assess-docs-drift`'s job, not confab's.
+- **Not a verifier of a specific change, fix, wire, or numeric claim.**
+  `confab-assertion-audit` judges only whether the *tests* would catch a
+  bug — it is explicitly "not for proving that a specific change, fix,
+  wire, or numeric claim is correct." That adversarial verification is
+  `andon:andon-verify`'s job.
+
 ## Install
 
 ```
-/plugin install confab@<marketplace>
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install confab@werkstoff
 ```
 
-or, for local development, point Claude Code at this directory as a
-plugin source.
+Both `PreToolUse` hooks are inert until the target repository already has
+an `analysis/confab/` directory, so installing the plugin changes nothing
+until a confab audit skill has actually run once.
+
+### Requirements
+
+Python 3.9+ (stdlib only — no third-party dependencies for any enforcement
+script). Network access is required for `confab-dependency-audit`'s
+registry lookups and `confab-preflight`'s reachability check; both are
+read-only GET requests bounded by a timeout and degrade to `"skipped"`
+rather than failing the run when network access isn't available.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
+```bash
+claude --plugin-dir /path/to/werkstoff/plugins/confab
+```
 
 <!-- rrt:auto:start:example-prompts-intro -->
 ## Example Prompts
@@ -114,7 +149,9 @@ by intent.
 Run `confab-preflight` first if you're not sure the plugin's checks can even run in
 this repo — it's read-only and never blocks the other four.
 
-## Skills (8)
+## Components
+
+### Skills (8)
 
 | Skill | What it does |
 |---|---|
@@ -127,7 +164,7 @@ this repo — it's read-only and never blocks the other four.
 | `confab-cycle` | Bounded self-optimization loop: re-runs audits pass by pass, optionally applying fixes, until convergence or a pass cap. |
 | `confab-status` | Read-only dashboard: what's run, what's stale, what to run next. |
 
-## Agents (5)
+### Agents (5)
 
 `dependency-auditor`, `assertion-auditor`, `contract-auditor`,
 `agentic-reliability-auditor` each do the Find/Verify judgment work for
@@ -136,7 +173,9 @@ frontmatter — none of them has `Write` or `Edit`). `confab-remediator` is
 the only agent with `Edit`, and only ever receives one already-located,
 already-scoped finding at a time.
 
-## How enforcement works (not just documentation)
+## What is enforced, and what is not
+
+### How enforcement works (not just documentation)
 
 Every MUST-NOT / refuse / halt rule in this plugin's behavioral spec is
 enforced by code that can actually refuse, not by a sentence a model
@@ -169,7 +208,47 @@ reads and might still violate:
   closed on any internal error, naming an explicit escape hatch in the
   denial message.
 
-## Design decisions (spec was silent here)
+## The report
+
+`scripts/build_burndown_html.py` renders `ledger.json`'s recorded pass
+history into a self-contained HTML report (`analysis/confab/reports/BURNDOWN.html`
+by default) with a Trend tab and a Breakdown tab. The Trend tab is the
+default view — a single honest D3 line chart of cumulative closed
+findings, since `ledger.json`'s `passes` array is the only place
+pass-over-pass history actually exists:
+
+![Confab burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last](assets/burndown-viewer-screenshot.jpg)
+
+The Breakdown tab adds by-status and by-domain bars plus a findings
+sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
+
+That image is reproducible rather than a one-off capture — the ledger it
+shows is committed at `scripts/fixtures/sample_burndown_ledger.json` (5
+passes and 10 findings, chosen so the last pass closes nothing and one
+finding sits `escalated` with `reopenCount: 4` — the thrash-guard
+outcome this plugin exists to surface, and the one status that never
+clears itself). To rebuild it:
+
+```bash
+mkdir -p /tmp/confab-demo/analysis/confab
+cp plugins/confab/scripts/fixtures/sample_burndown_ledger.json \
+    /tmp/confab-demo/analysis/confab/ledger.json
+python3 plugins/confab/scripts/build_burndown_html.py /tmp/confab-demo \
+    --template plugins/confab/assets/burndown-viewer.html \
+    --d3 plugins/confab/assets/inline-d3.html \
+    --tokens plugins/confab/assets/tokens.css
+```
+
+The report states its own verdict in words before any chart: whether the
+cleanup converged, stalled, or is still closing findings, and what an
+escalated finding means. Every status colour is named in a legend that is
+visible without clicking anything, because `--status-good`/`--status-bad`
+are not separable under deuteranopia — see the mandate at the top of
+`tools/design-tokens/tokens.css`.
+
+## Design decisions
+
+*(spec was silent here)*
 
 The behavioral spec stated obligations, not implementation details. Where
 it didn't specify something, these are the choices made and why:
@@ -181,41 +260,6 @@ it didn't specify something, these are the choices made and why:
   filenames like `DEPENDENCY_AUDIT.md` without a directory; putting
   everything under one declared directory is what makes the write-scope
   enforcement in `lib/paths.py` possible and keeps the repo root clean.
-- **Burndown viewer**: `scripts/build_burndown_html.py` renders
-  `ledger.json`'s recorded pass history into a self-contained HTML report
-  (`analysis/confab/reports/BURNDOWN.html` by default) with a Trend tab and a
-  Breakdown tab. The Trend tab is the default view — a single honest D3 line
-  chart of cumulative closed findings, since `ledger.json`'s `passes` array is
-  the only place pass-over-pass history actually exists:
-
-  ![Confab burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last](assets/burndown-viewer-screenshot.jpg)
-
-  The Breakdown tab adds by-status and by-domain bars plus a findings
-  sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
-
-  That image is reproducible rather than a one-off capture — the ledger it
-  shows is committed at `scripts/fixtures/sample_burndown_ledger.json` (5
-  passes and 10 findings, chosen so the last pass closes nothing and one
-  finding sits `escalated` with `reopenCount: 4` — the thrash-guard
-  outcome this plugin exists to surface, and the one status that never
-  clears itself). To rebuild it:
-
-  ```bash
-  mkdir -p /tmp/confab-demo/analysis/confab
-  cp plugins/confab/scripts/fixtures/sample_burndown_ledger.json \
-      /tmp/confab-demo/analysis/confab/ledger.json
-  python3 plugins/confab/scripts/build_burndown_html.py /tmp/confab-demo \
-      --template plugins/confab/assets/burndown-viewer.html \
-      --d3 plugins/confab/assets/inline-d3.html \
-      --tokens plugins/confab/assets/tokens.css
-  ```
-
-  The report states its own verdict in words before any chart: whether the
-  cleanup converged, stalled, or is still closing findings, and what an
-  escalated finding means. Every status colour is named in a legend that is
-  visible without clicking anything, because `--status-good`/`--status-bad`
-  are not separable under deuteranopia — see the mandate at the top of
-  `tools/design-tokens/tokens.css`.
 - **First-pass constraint-domain tiebreak in `confab-cycle`**: when the
   ledger has no findings yet (first pass of a fresh cycle), there's no
   "most open High findings" signal to rank domains by. `cycle_engine.py`
@@ -249,10 +293,45 @@ it didn't specify something, these are the choices made and why:
   dispatches. This is what makes the `PreToolUse` scope hook viable: it
   only ever has to reason about one active scope at a time.
 
-## Requirements
+## Verifying a change to this plugin
 
-Python 3.9+ (stdlib only — no third-party dependencies for any enforcement
-script). Network access is required for `confab-dependency-audit`'s
-registry lookups and `confab-preflight`'s reachability check; both are
-read-only GET requests bounded by a timeout and degrade to `"skipped"`
-rather than failing the run when network access isn't available.
+```bash
+python3 plugins/confab/scripts/hooks/test_guard_edit_scope.py   # the edit-scope hook denies AND allows (8 cases)
+python3 plugins/confab/scripts/test_build_burndown_html.py      # burndown HTML renderer, known fixtures
+python3 plugins/confab/scripts/test_cycle_engine.py             # pass cap / reopen thrash-guard raise correctly
+python3 test/plugins/lint-frontmatter.py plugins/confab         # YAML that would load with EMPTY metadata
+python3 test/plugins/verify-hooks-deny.py plugins/confab        # both hooks deny the violation AND stay inert elsewhere
+claude plugin validate plugins/confab --strict                  # manifest + structure
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/confab --docs-root docs   # mechanical M/H/S/A/P/D rules
+```
+
+There is no `guard_bash_scope.py`-specific unit test file — its behavior
+is covered by `test/plugins/verify-hooks-deny.py` (declared-command
+resolution against a crafted violating Bash event) rather than a
+dedicated `unittest` module.
+
+### Behavioural cases
+
+```bash
+bash test/plugins/verify-clean-box.sh        # ALWAYS first
+bash test/plugins/run.sh new-dep-audit       # confab-dependency-audit against a seeded hallucinated package
+```
+
+## Escape hatch
+
+Both hooks fail closed and always name their own bypass in the deny
+message:
+
+- **`guard_edit_scope.py`** (Edit/Write): "If this edit is unrelated to a
+  confab remediation, remove `analysis/confab/remediation_scope.json`
+  (or the whole `analysis/confab/` directory) to clear stuck state, or
+  run `confab-cycle` without `--fix`."
+- **`guard_bash_scope.py`** (Bash): "If this command is genuinely needed
+  and unrelated to a confab audit, run it outside a confab-managed
+  session, or remove `analysis/confab/` from this repository to disable
+  this guard."
+
+Both hooks are also inert by construction — see "What is enforced, and
+what is not" — until the target repository already has an
+`analysis/confab/` directory, so a repo that has never run a confab
+skill is never touched by either guard.

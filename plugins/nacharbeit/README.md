@@ -56,7 +56,7 @@ flag with a werkstoff default.
 /plugin install nacharbeit@werkstoff
 ```
 
-Or point Claude Code at the directory: `cc --plugin-dir /path/to/werkstoff/plugins/nacharbeit`.
+Or point Claude Code at the directory: `claude --plugin-dir /path/to/werkstoff/plugins/nacharbeit`.
 The hook is inert until a fix pass opens `analysis/nacharbeit/fix_scope.json`, so
 installing it changes nothing about an ordinary session.
 

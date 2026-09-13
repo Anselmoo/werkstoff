@@ -1,5 +1,9 @@
 # arbeitsplan: what this build actually established
 
+::: info Snapshot
+Dated record written when arbeitsplan was added to the ten plugins that existed then. Counts, file paths and plugin lists reflect that moment and are kept as a record, not updated. For the current set see [the plugin index](/plugins/).
+:::
+
 A record of the defects found while building `arbeitsplan` and extending `takt`, written
 because the root cause of a defect is only findable if the reasoning that produced it survives
 the transcript. Every row below was **run**, not reasoned.

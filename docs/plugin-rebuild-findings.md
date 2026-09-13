@@ -1,5 +1,9 @@
 # Rebuilding six plugins from behavior specs — what was measured
 
+::: info Snapshot
+Dated record of the behaviour-specification rebuild of the first six plugins. Counts, file paths and plugin lists reflect that moment and are kept as a record, not updated. For the current set see [the plugin index](/plugins/).
+:::
+
 Supersedes the enforcement conclusions in `docs/andon-pilot-findings.md`, which
 were drawn before the hook layer was tested and are wrong in one important way
 (see §2).

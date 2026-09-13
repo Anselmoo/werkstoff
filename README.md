@@ -107,7 +107,7 @@ Or for local development, point Claude Code straight at a plugin
 directory without registering the marketplace:
 
 ```
-cc --plugin-dir /path/to/werkstoff/plugins/self-assess
+claude --plugin-dir /path/to/werkstoff/plugins/self-assess
 ```
 
 ## Docs

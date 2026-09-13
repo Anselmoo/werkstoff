@@ -54,3 +54,22 @@ repos:
         # ~7s, paid by whoever edits the checker or its config, not by every
         # commit. `pre-commit run --all-files` in CI runs it every time.
         files: ^(scripts/ci/check-js-syntax\.sh|biome\.jsonc)$
+
+      - id: check-design-tokens
+        name: docs theme and report viewers use design tokens (shrink-only baseline)
+        entry: python3 scripts/ci/check_design_tokens.py
+        language: system
+        # The script discovers its own scope; handed a subset it would report
+        # every unlisted baseline entry as stale.
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(docs/\.vitepress/(theme/.*|config\.mjs)|plugins/[^/]+/assets/.*\.html|tools/design-tokens/tokens\.css|scripts/ci/(check_design_tokens\.py|design-tokens-baseline\.txt))$
+
+      - id: check-design-tokens-selftest
+        name: check-design-tokens calibrates itself (planted defects + rule sabotage)
+        entry: python3 scripts/ci/check_design_tokens.py
+        args: [--selftest]
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^scripts/ci/check_design_tokens\.py$

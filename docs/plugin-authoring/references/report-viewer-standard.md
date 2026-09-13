@@ -3,7 +3,8 @@
 Read this before writing or editing any `plugins/*/assets/*-viewer.html` or its
 `plugins/*/scripts/build_*_html.py`.
 
-Eight plugins ship a self-contained HTML report. They were built independently, share
+All 12 plugins ship a self-contained HTML report — 13 files, since `matrize` ships two
+(`derivation-viewer.html`, `provenance-viewer.html`). They were built independently, share
 exactly one thing — `tools/design-tokens/tokens.css`, vendored per plugin by
 `.rrt.toml`'s `artifact_targets` — and diverge on everything else. This file is the
 shared part that was never written down.
@@ -19,6 +20,17 @@ before touching any colour; it is the authority this file defers to.
 
 A verdict nobody wrote down gets re-derived from scratch by the next council. That is
 what happened, and it is the whole reason for this document.
+
+## Design tokens
+
+The tokens marker gets a viewer the token *values*; it does not stop a viewer from
+writing a new literal colour, font family, or radius beside them. That is a separate
+question, with its own enforcement: see
+[`design-tokens.md`](design-tokens.md) for the four rules
+`scripts/ci/check_design_tokens.py` runs over every `plugins/*/assets/*-viewer.html`
+(T-HEX, T-COLOR-FN, T-FONT-FAMILY, T-RADIUS) and the shrink-only baseline that grades
+them. A viewer's own `tokens.css` copy is exempt from that check — it is where the
+literals are supposed to live — but the viewer HTML that references it is not.
 
 ## Craft vs content, same split as [`craft-standards.md`](craft-standards.md)
 
@@ -91,18 +103,27 @@ meaning "this is the bad number".
 `--status-bad` and for the `--cat-1`/`--cat-3` pair that is closest under deuteranopia
 simulation (dE00 5.69): *never color alone, always pair with an icon or a label.*
 
-A viewer therefore needs a legend that is visible **without interaction**. Two current
-violations:
+A viewer therefore needs a legend that is visible **without interaction**. The violation
+this rule was written against:
 
 - `plugins/confab/assets/burndown-viewer.html:61-62` defines `.legend` and `.legend .swatch`
   and **uses neither**. Its `open`/`closed`/`escalated` status colours (`:280`) are never
   explained anywhere.
-- `plugins/self-assess/assets/stage-map-viewer.html` assigns fills at `:174-178` and names
-  them only in a sidebar badge after a click (`:408-410`). A reader who never clicks cannot
-  learn that amber means god-module or that a dashed ring means dead-end.
 
-A third is self-inflicted: `matrix-viewer.html:216` explains cell-colour semantics in the
-sidebar placeholder, and `selectCell` destroys that text on the first click (`:466`).
+A legend is necessary, not sufficient: the marks themselves need a second channel, or a
+reader still has to match hues against it. Two viewers show the pattern that satisfies both:
+
+- `plugins/self-assess/assets/stage-map-viewer.html` encodes state, not identity, so it uses
+  no categorical hue. Each channel is independent of hue: ring weight (god-module), a dashed
+  ring (dead-end), a second inner ring (cycle membership, by shape) and a printed number
+  (which cycle). A number that does not fit its circle becomes a tag only where it covers no
+  other stage, and is otherwise left out with a visible count, never overlapped. Legend
+  swatches are painted by the map's own `drawNodeMark()`.
+- `plugins/codebase-consistency/assets/matrix-viewer.html` prints every cell's key — a variant
+  letter, or a ✓/≈/✗ conformance glyph — on a solid plate, so the words never depend on the
+  fill's contrast. Variant hues use only the categorical slots that cannot be mistaken for the
+  page's status colours (`--cat-1`, `--cat-3`); every other variant shares one neutral fill.
+  Legend keys and cells share one decision, `cellMark()`, and one painter, `drawCellMark()`.
 
 Prose may substitute for swatches where it genuinely explains the encoding (lehre's `.note`
 does), but silence may not.
@@ -157,10 +178,13 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
   heading that changes with the data is a heading that can drift unnoticed, so
   `check_viewer_conformance.py` fails both a mismatch and a run-time overwrite of the
   `<h1>` (it caught a live one in `cupertino` the first time it ran).
-- **One tokens marker spelling: `<!--__DESIGN_TOKENS__-->`.** Three spellings are in use
-  today — that comment form (five viewers), `/*__DESIGN_TOKENS__*/` (`cupertino`), and
-  `/*__TOKENS__*/` (`confab`, `cli-scaffold`). The palette is shared; the pipeline
-  delivering it is not.
+- **One tokens marker spelling: `<!--__DESIGN_TOKENS__-->`.** `scripts/ci/check_viewer_conformance.py`
+  still names two forbidden variants it watches for — `/*__DESIGN_TOKENS__*/` and
+  `/*__TOKENS__*/` — but a grep of all 13 `plugins/*/assets/*-viewer.html` files today
+  shows every one of them already on the canonical comment form; no variant spelling
+  remains on disk. The check keeps rejecting the variants anyway, because a marker
+  spelling that regresses silently the next time a viewer is copy-pasted from an older
+  one is exactly the failure this rule exists to catch.
 
 ### S3 — Untrusted input, two independent barriers
 
@@ -171,8 +195,10 @@ Neither barrier is load-bearing alone.
 
 ### S4 — Fail visibly
 
-All eight already do this correctly: a missing or unparseable input renders a "re-run X to
-regenerate" message, never a blank page. Keep it.
+The eight viewers that existed when this standard was written all did this correctly: a
+missing or unparseable input renders a "re-run X to regenerate" message, never a blank page.
+Keep it. `check_viewer_conformance.py` does not grade S4, so a viewer added since is not proven
+to — check it by hand when you add one.
 
 ## Screenshots
 

@@ -32,20 +32,13 @@ features:
     link: /prompt-index
     linkText: Browse by plugin
   - title: Which pipeline owns the task
-    details: Four pipelines share the same eight-step skeleton and compete rather than compose. The routing table names which one owns a given task shape, and which to leave alone.
+    details: Four pipelines compete rather than compose; two of them even rhyme through the same seven-phase skeleton. The routing table names which one owns a given task shape, and which to leave alone.
     link: /orchestration/references/routing
     linkText: Read the routing table
   - title: What happens when they share a session
-    details: Five plugins register a PreToolUse hook, two diff baselines can disagree, and two agents can collide on a name. The hazards, with their inert conditions and escape hatches.
+    details: Nine plugins register a PreToolUse hook, two diff baselines can disagree, and two agents can collide on a name. The hazards, with their inert conditions and escape hatches.
     link: /orchestration/references/hazards
     linkText: Read the hazards
 ---
 
-## Twelve plugins, one job each
-
-Pick by problem, not by feature list — each plugin targets one distinct failure mode
-and refuses to speak outside it. Every card opens its full README in this
-site — same install instructions and licensing as the [repo](https://github.com/Anselmoo/werkstoff),
-without leaving for it.
-
-<PluginGrid />
+Twelve plugins, one job each — see [the plugin list](/plugins/) for what each one catches.

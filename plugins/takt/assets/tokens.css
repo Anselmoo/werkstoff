@@ -175,3 +175,66 @@
   --transition-fast: 120ms ease;
   --transition-base: 200ms ease;
 }
+
+/* ---------------------------------------------------------------------------
+ * RETROFIT ADDITIONS -- 2026-09-12, docs/design-token-docs-harmonization
+ *
+ * The 50 declarations above are untouched. This second :root block names
+ * seven values the docs theme and the report viewers already used, copied
+ * from their current use sites, with no visual change anywhere. See
+ * .design/system/BRIEF.md ("Settled") and .design/system/retrofit-report.md
+ * for the full rationale and every contrast figure's derivation.
+ * ------------------------------------------------------------------------ */
+:root {
+  /* Silica darkened for link text and the h2 origin tick on a white ground.
+   * Light-mode --vp-c-brand-1. Copied from
+   * docs/.vitepress/theme/werkstoff.css:165 (pre-retrofit line numbering).
+   * The existing --accent / --silica #348ad9 is 3.63:1 on white and fails AA;
+   * this is the file's one deliberate light-mode departure, now named.
+   * Suffix is -on-light, not -2: --accent-2 already means the second pole
+   * (samaria).
+   * Contrast: 4.87:1 on #ffffff (AA body); 4.51:1 on #f6f6f7 (assumed
+   * VitePress light --vp-c-bg-soft, not verifiable with node_modules absent;
+   * 0.01 above AA); #ffffff label on it 4.87:1. */
+  --accent-on-light: #1874c2;
+
+  /* The deeper silica shade in VitePress's second brand slot (--vp-c-brand-2),
+   * light mode. Copied from werkstoff.css:166. Same family and the same
+   * light-mode accommodation as --accent-on-light; its exact consumers in the
+   * VitePress default theme were not verified (node_modules absent).
+   * Contrast: 5.95:1 on #ffffff; 5.50:1 on #f6f6f7; #ffffff label on it
+   * 5.95:1. */
+  --accent-on-light-strong: #0f66ae;
+
+  /* Load-bearing section-break rule (h2 break, hr, blockquote left rule) on
+   * the dark ground. Sole carrier, so WCAG 1.4.11's 3:1 non-text minimum
+   * applies. Copied from werkstoff.css's .dark --wk-rule. It is --border to
+   * --muted interpolated at t=0.45, a stop on a ramp this palette already
+   * owns.
+   * Contrast: 3.07:1 on --bg #0a0d10 (clears 3:1 non-text). */
+  --rule: #55616a;
+
+  /* Rule used only where space also carries the break -- never the sole
+   * signal. Copied from werkstoff.css's .dark --wk-rule-soft (same ramp,
+   * t=0.30). Deliberately below 3:1.
+   * Contrast: 2.40:1 on --bg #0a0d10 (below 3:1 by design). */
+  --rule-soft: #46515a;
+
+  /* Load-bearing section-break rule on a white ground. Copied from
+   * werkstoff.css:161 (:root --wk-rule).
+   * Contrast: 3.25:1 on #ffffff; 3.01:1 on #f6f6f7 (clears 3:1 by 0.01). */
+  --rule-on-light: #8e8e95;
+
+  /* Rule on a white ground, used only where space also carries the break.
+   * Copied from werkstoff.css:162 (:root --wk-rule-soft).
+   * Contrast: 2.40:1 on #ffffff (below 3:1 by design). */
+  --rule-soft-on-light: #a7a7ac;
+
+  /* Monospace family for data cells, code and maths in the report viewers.
+   * Pairs with --font-sans. The value is the stack nine viewer declarations
+   * used to repeat verbatim (arbeitsplan, codebase-consistency, confab, lehre,
+   * nacharbeit and takt); those declarations now reference this token. The
+   * docs theme uses VitePress's own var(--vp-font-family-mono).
+   * Contrast: n/a (not a colour). */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

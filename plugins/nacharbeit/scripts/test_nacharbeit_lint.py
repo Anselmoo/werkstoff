@@ -18,7 +18,9 @@ Exit: 0 green; 1 any check red.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import re
@@ -499,6 +501,17 @@ def run(root: Path, plugins: list[str]) -> list[dict]:
         os.chdir(cwd)
 
 
+def run_main(root: Path, argv: list[str]) -> int:
+    """Invoke lp.main() as the CLI would, from inside root, with stdout/stderr swallowed."""
+    cwd = os.getcwd()
+    os.chdir(root)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            return lp.main(argv)
+    finally:
+        os.chdir(cwd)
+
+
 def main() -> int:
     red = 0
     node = shutil.which("node")
@@ -554,6 +567,40 @@ def main() -> int:
             red += len(clean)
         else:
             print("     negative: clean plugin silent")
+
+    # 5. --fail-on: a CLI-level check, exercised through lp.main() rather than lp.lint()
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        build_clean(root)
+        readme = root / "plugins" / "clean" / "README.md"
+        # Drop the bold thesis line so the next non-blank line under the H1 is
+        # "## Why this exists" -- P-README-THESIS fires, nothing else changes.
+        readme.write_text(
+            readme.read_text(encoding="utf-8").replace("**Audits widgets and reports every failing one.**\n", ""),
+            encoding="utf-8",
+        )
+        rc_hit = run_main(root, ["plugins/clean", "--fail-on", "P-README-"])
+        rc_no_flag = run_main(root, ["plugins/clean"])
+        rc_typo = run_main(root, ["plugins/clean", "--fail-on", "P-READMe-"])
+        # A registered prefix with zero findings on this tree: P-README-SCREENSHOT
+        # never fires for build_clean() (no screenshot rule violation), but the id
+        # is real, so it must NOT be treated as a typo.
+        rc_valid_no_findings = run_main(root, ["plugins/clean", "--fail-on", "P-README-SCREENSHOT"])
+        if rc_hit != 1:
+            print(f"RED  fail-on: --fail-on P-README- on a README missing its thesis line exited {rc_hit}, expected 1")
+            red += 1
+        if rc_no_flag != 0:
+            print(f"RED  fail-on: the same run without --fail-on exited {rc_no_flag}, expected 0")
+            red += 1
+        if rc_typo != 2:
+            print(f"RED  fail-on: a prefix matching no registered rule id (typo) exited {rc_typo}, expected 2")
+            red += 1
+        if rc_valid_no_findings != 0:
+            print(f"RED  fail-on: a valid registered prefix with zero findings exited {rc_valid_no_findings}, expected 0")
+            red += 1
+        if rc_hit == 1 and rc_no_flag == 0 and rc_typo == 2 and rc_valid_no_findings == 0:
+            print("     fail-on: matching prefix -> exit 1, no flag -> exit 0, "
+                  "typo prefix -> exit 2, valid prefix with no findings -> exit 0")
 
     # 4. rubric ↔ META sync
     text = RUBRIC.read_text(encoding="utf-8")

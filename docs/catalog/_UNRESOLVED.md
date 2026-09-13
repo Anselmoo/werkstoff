@@ -1,5 +1,9 @@
 # Unresolved skills
 
+::: info Snapshot
+Dated internal note from the rebuild of the first 25 catalog entries (the catalog has since grown). Counts, file paths and plugin lists reflect that moment and are kept as a record, not updated. For the current set see [the catalog index](./index.md).
+:::
+
 Every `skill:` value used across the 25 rebuilt catalog entries was checked against a
 real, existing definition before being written into frontmatter:
 

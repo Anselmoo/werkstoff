@@ -1,0 +1,26 @@
+# Design-token hygiene baseline. Shrink-only -- see scripts/ci/check_design_tokens.py.
+# Regenerate with: python3 scripts/ci/check_design_tokens.py --print-baseline
+docs/.vitepress/config.mjs	T-HEX	1
+docs/.vitepress/theme/components/CatalogGrid.vue	T-RADIUS	4
+docs/.vitepress/theme/components/CopyButton.vue	T-RADIUS	1
+docs/.vitepress/theme/components/PairingCards.vue	T-RADIUS	4
+docs/.vitepress/theme/components/PluginGrid.vue	T-RADIUS	1
+docs/.vitepress/theme/components/RecipeBeats.vue	T-RADIUS	1
+docs/.vitepress/theme/werkstoff.css	T-COLOR-FN	2
+docs/.vitepress/theme/werkstoff.css	T-HEX	1
+docs/.vitepress/theme/werkstoff.css	T-RADIUS	1
+plugins/andon/assets/board-viewer.html	T-HEX	1
+plugins/andon/assets/board-viewer.html	T-RADIUS	2
+plugins/compass/assets/branch-comparison-viewer.html	T-RADIUS	1
+plugins/confab/assets/burndown-viewer.html	T-RADIUS	2
+plugins/lehre/assets/doctrine-viewer.html	T-COLOR-FN	1
+plugins/lehre/assets/doctrine-viewer.html	T-RADIUS	1
+plugins/matrize/assets/derivation-viewer.html	T-HEX	9
+plugins/matrize/assets/derivation-viewer.html	T-RADIUS	1
+plugins/matrize/assets/provenance-viewer.html	T-RADIUS	1
+plugins/matrize/assets/sketchbook-template.html	T-COLOR-FN	5
+plugins/matrize/assets/sketchbook-template.html	T-FONT-FAMILY	3
+plugins/matrize/assets/sketchbook-template.html	T-HEX	14
+plugins/matrize/assets/sketchbook-template.html	T-RADIUS	8
+plugins/self-assess/assets/stage-map-viewer.html	T-HEX	1
+plugins/self-assess/assets/stage-map-viewer.html	T-RADIUS	5

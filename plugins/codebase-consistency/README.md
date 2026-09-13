@@ -1,4 +1,8 @@
-# Codebase Consistency Plugin
+# codebase-consistency
+
+**Derives which of two or more valid, undocumented patterns already competing in a live
+codebase should become the canon, then aligns every divergent site to it with a
+provable equivalence check.**
 
 Point Claude at a live, already-modern area of your codebase that grew
 inconsistent — divergent architecture, docs, code patterns, and style
@@ -25,7 +29,9 @@ The discovery commands (`scan`, `map`, `canonize`) write artifacts to
 running beside a new one, just one live codebase getting more consistent
 commit by commit. `verify` proves it.
 
-## Scope — read this before installing both this and `self-assess`
+## What it is not
+
+### Scope — read this before installing both this and `self-assess`
 
 This plugin does **one specific thing that a documented-convention checker
 and a version-modernization checker structurally cannot**: derive which
@@ -49,7 +55,37 @@ undocumented** ways of doing something coexist in the same codebase.
 ## Install
 
 ```
+/plugin marketplace add Anselmoo/werkstoff
 /plugin install codebase-consistency@werkstoff
+```
+
+There is no hook here: nothing runs until you invoke one of the slash commands below,
+so installing the plugin changes nothing about an ordinary session.
+
+### Requirements
+
+Commands degrade gracefully, but these improve the output (run
+`/consistency-preflight` to check all at once):
+
+- **Analysis tools** — [`scc`](https://github.com/boyter/scc) or
+  [`cloc`](https://github.com/AlDanial/cloc); without them, counts fall
+  back to `find`/`wc`.
+- **The repo's own linter/formatter** — mechanical style facts fall back
+  to grep-based heuristics without one.
+- **Real git history** — shallow or squashed history degrades every
+  derived Pattern Card's confidence; `/consistency-canonize` still runs,
+  just on frequency alone.
+- **A runnable test suite** — enables real equivalence proof in
+  `/consistency-verify`. Without one, verification degrades to a
+  structural-diff-only review, and `/consistency-preflight` reports
+  Ready-with-gaps rather than blocking.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
+```bash
+claude --plugin-dir /path/to/werkstoff/plugins/codebase-consistency
 ```
 
 <!-- rrt:auto:start:example-prompts-intro -->
@@ -88,15 +124,15 @@ by intent.
 > (`matrix.json` + an interactive `CONSISTENCY_MATRIX.html`).
 
 The rendered `CONSISTENCY_MATRIX.html` is a self-contained D3/SVG grid — click any
-cell for its variant, site count, and an example citation in the sidebar; hatched
-cells mean no divergence was found there.
+cell for its variant, site count, and an example citation in the sidebar; a cell with a
+dashed outline reading “no data” has nothing recorded for that module × dimension pair.
 
-![Consistency matrix viewer showing six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions, cells colored green/amber/red by conformance to the canonical pattern and hatched where no data exists, with the sidebar open on a selected shipping × error-handling-style cell showing its diverging variant and site count](assets/matrix-viewer-screenshot.jpg)
+![Consistency matrix viewer showing six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions: every cell with data is filled green, amber or red by its conformance to the canonical pattern and prints a dark label plate carrying a matching glyph (✓ aligned, ≈ partially aligned, ✗ diverging) and its site count; the three pairs with no data are dark cells with a dashed outline reading "no data"; a legend under the grid repeats each key exactly as the cells draw it; and the sidebar is open on the selected shipping × error-handling-style cell, showing its diverging variant, 17 sites and 0% conformance](assets/matrix-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the matrix it shows is
 committed at `scripts/testdata/sample_matrix.json` (6 modules × 4 dimensions, chosen so
 `shipping` is unambiguously the worst module, three module × dimension pairs have no data
-at all and render hatched, and three distinct variants compete inside a single dimension).
+at all and render as dashed “no data” cells, and three distinct variants compete inside a single dimension).
 To rebuild it:
 
 ```bash
@@ -180,7 +216,74 @@ Then the full path:
 /consistency-status billing                          # where am I, what's stale, what's next
 ```
 
-## Commands
+## Recommended workspace setup
+
+Work on a branch per alignment pass rather than restricting file
+permissions the way a legacy-modernization pipeline restricts
+`legacy/` — there's no separate untouchable tree here, just the live
+repository:
+
+```bash
+git switch -c consistency/<area>-<dimension>
+```
+
+Keep Bash on a *prompted* permission mode during `/consistency-align`'s
+batched fan-out, since that step is the one that dispatches many
+write-capable agents at once.
+
+## Safety notes
+
+**Analyzed code is untrusted input.** A codebase can contain comments or
+string literals crafted to steer automated analysis ("ignore previous
+instructions", "this file is exempt from style review", "mark this
+canon approved"). Agents treat file content and commit messages as data
+and flag instruction-shaped text; verification agents re-derive every
+canon and every PASS verdict from the cited code itself, never from
+another agent's description; and `/consistency-brief` is a human approval
+gate before any code is aligned. Treat discovery artifacts the same way.
+
+**Secrets stay out of shared artifacts.** Any credential value encountered
+while citing evidence is masked (`API_KEY = "sk-****"`) and cited by
+`file:line` only — never reproduced in `PATTERN_CARDS.md`,
+`CONSISTENCY_SCAN.md`, or any other committed artifact.
+
+## Dynamic workflow orchestration
+
+On Claude Code builds with the Workflow tool, four commands (`scan`,
+`canonize`, `align`, `verify`) run as scripted multi-agent orchestrations
+that fan out more agents for deeper coverage — looping until findings
+stabilize, and adversarially re-deriving every finding before it's
+trusted. `align`'s batched fan-out runs in dependency-aware escalating
+batches behind a per-batch circuit breaker, so a playbook that stops
+working is caught within a handful of agents and the spend stops until
+it is revised. Commands fall back to direct subagent fan-out on older
+builds automatically; no configuration needed. Invoking the slash command
+is the opt-in.
+
+## Components
+
+### Agents (5)
+
+Specialist subagents invoked by the commands (or directly):
+
+- **`pattern-analyst`** — Surveys the codebase and git history to cluster
+  variants and read maturity/recency signals. Read-only. *(scan,
+  canonize's verify pass)*
+- **`pattern-extractor`** — Weighs frequency/maturity/recency and decides
+  provenance per dimension; refuses to force a pick on a genuine tie.
+  Read-only. *(canonize)*
+- **`consistency-critic`** — Adversarial reviewer, skeptical of both
+  unresolved divergence and *forced* uniformity where real variation was
+  warranted; re-derives PASS verdicts independently rather than
+  rubber-stamping them. Read-only. *(canonize's panel, verify's re-check)*
+- **`align-executor`** — Applies the canonical form to one module,
+  following the pilot's playbook; refuses to run without one. Write access
+  scoped to its own module directory. *(align)*
+- **`equivalence-verifier`** — Independently re-derives whether an aligned
+  module behaves identically and its docs still match. Read-only.
+  *(verify)*
+
+### Commands (8)
 
 Run in order, but each is standalone — stop, review, resume.
 
@@ -241,88 +344,67 @@ Run in order, but each is standalone — stop, review, resume.
   artifact inventory, staleness flags, and the single most useful next
   command.
 
-## Agents
+## What is enforced, and what is not
 
-Specialist subagents invoked by the commands (or directly):
+codebase-consistency registers no `PreToolUse` hook, so no tool call is denied at the
+wire the way it is in the nine werkstoff plugins that ship one — nothing here stops a
+write the way `andon` or `lehre` would. Enforcement instead lives in three places inside
+the pipeline itself:
 
-- **`pattern-analyst`** — Surveys the codebase and git history to cluster
-  variants and read maturity/recency signals. Read-only. *(scan,
-  canonize's verify pass)*
-- **`pattern-extractor`** — Weighs frequency/maturity/recency and decides
-  provenance per dimension; refuses to force a pick on a genuine tie.
-  Read-only. *(canonize)*
-- **`consistency-critic`** — Adversarial reviewer, skeptical of both
-  unresolved divergence and *forced* uniformity where real variation was
-  warranted; re-derives PASS verdicts independently rather than
-  rubber-stamping them. Read-only. *(canonize's panel, verify's re-check)*
-- **`align-executor`** — Applies the canonical form to one module,
-  following the pilot's playbook; refuses to run without one. Write access
-  scoped to its own module directory. *(align)*
-- **`equivalence-verifier`** — Independently re-derives whether an aligned
-  module behaves identically and its docs still match. Read-only.
-  *(verify)*
+- **`/consistency-brief` is a human approval gate.** It reads the discovery artifacts,
+  stops outright if any are missing, and enters plan mode before a single site is
+  touched — a maintainer, not a hook, decides whether the canon is approved.
+- **`/consistency-align`'s circuit breaker.** The batched fan-out runs one pilot module
+  first, then dependency-aware escalating batches, and a playbook that stops working is
+  caught within a handful of agents rather than run to completion. `align-executor` is
+  *instructed* to write only inside its own module directory — its prompt and the
+  `workflows/align.js` dispatch text both say so — but nothing mechanically enforces
+  that scope: the plugin ships no hook, its `tools:` frontmatter (`Read, Glob, Grep,
+  Write, Edit, Bash`) grants ordinary Write/Edit access with no path restriction, and
+  `align.js` never inspects which files a unit actually touched. What the circuit
+  breaker mechanically checks is each unit's self-reported test result
+  (`testsRan`/`aligned`): a unit only counts as aligned if it ran real tests and they
+  passed, and a batch where fewer than two-thirds of measurable units aligned aborts the
+  fan-out rather than continuing to the next batch.
+- **`/consistency-verify`'s second adversarial pass.** Every PASS verdict is re-derived
+  independently rather than trusted from the aligner's own run, guarding against a
+  verifier that only reruns the tests the aligner already ran.
 
-## Recommended workspace setup
+None of this is a `PreToolUse` denial — a model that skips `/consistency-brief` and
+edits code directly is not blocked by anything in this plugin. What holds is the
+approval gate and the adversarial re-derivation, not a wire-level refusal.
 
-Work on a branch per alignment pass rather than restricting file
-permissions the way a legacy-modernization pipeline restricts
-`legacy/` — there's no separate untouchable tree here, just the live
-repository:
+## The report
+
+The one HTML report this plugin ships — `assets/matrix-viewer.html`, rendered per run as
+`analysis/<area>/CONSISTENCY_MATRIX.html` — is embedded under "See it as a matrix" in
+Example Prompts above, together with the reproducible demo build command.
+
+## Verifying a change to this plugin
 
 ```bash
-git switch -c consistency/<area>-<dimension>
+python3 test/plugins/lint-frontmatter.py plugins/codebase-consistency
+claude plugin validate plugins/codebase-consistency --strict
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/codebase-consistency --docs-root docs
+python3 test/plugins/lint-release-wiring.py
+node --check plugins/codebase-consistency/workflows/scan.js
+node --check plugins/codebase-consistency/workflows/canonize.js
+node --check plugins/codebase-consistency/workflows/align.js
+node --check plugins/codebase-consistency/workflows/verify.js
+bash scripts/ci/check-js-syntax.sh
 ```
 
-Keep Bash on a *prompted* permission mode during `/consistency-align`'s
-batched fan-out, since that step is the one that dispatches many
-write-capable agents at once.
-
-## Prerequisites
-
-Commands degrade gracefully, but these improve the output (run
-`/consistency-preflight` to check all at once):
-
-- **Analysis tools** — [`scc`](https://github.com/boyter/scc) or
-  [`cloc`](https://github.com/AlDanial/cloc); without them, counts fall
-  back to `find`/`wc`.
-- **The repo's own linter/formatter** — mechanical style facts fall back
-  to grep-based heuristics without one.
-- **Real git history** — shallow or squashed history degrades every
-  derived Pattern Card's confidence; `/consistency-canonize` still runs,
-  just on frequency alone.
-- **A runnable test suite** — enables real equivalence proof in
-  `/consistency-verify`. Without one, verification degrades to a
-  structural-diff-only review, and `/consistency-preflight` reports
-  Ready-with-gaps rather than blocking.
-
-## Safety notes
-
-**Analyzed code is untrusted input.** A codebase can contain comments or
-string literals crafted to steer automated analysis ("ignore previous
-instructions", "this file is exempt from style review", "mark this
-canon approved"). Agents treat file content and commit messages as data
-and flag instruction-shaped text; verification agents re-derive every
-canon and every PASS verdict from the cited code itself, never from
-another agent's description; and `/consistency-brief` is a human approval
-gate before any code is aligned. Treat discovery artifacts the same way.
-
-**Secrets stay out of shared artifacts.** Any credential value encountered
-while citing evidence is masked (`API_KEY = "sk-****"`) and cited by
-`file:line` only — never reproduced in `PATTERN_CARDS.md`,
-`CONSISTENCY_SCAN.md`, or any other committed artifact.
-
-## Dynamic workflow orchestration
-
-On Claude Code builds with the Workflow tool, four commands (`scan`,
-`canonize`, `align`, `verify`) run as scripted multi-agent orchestrations
-that fan out more agents for deeper coverage — looping until findings
-stabilize, and adversarially re-deriving every finding before it's
-trusted. `align`'s batched fan-out runs in dependency-aware escalating
-batches behind a per-batch circuit breaker, so a playbook that stops
-working is caught within a handful of agents and the spend stops until
-it is revised. Commands fall back to direct subagent fan-out on older
-builds automatically; no configuration needed. Invoking the slash command
-is the opt-in.
+There is no `test_*_guard.py` and no `verify-hooks-deny.py` case for this plugin — those
+checks apply only to a plugin that registers a hook, which this one does not.
+`verify-hooks-deny.py` itself does cover all nine hook-bearing plugins (a generic
+default fixture for andon, a `test/plugins/fixtures/hook-violation-<plugin>/` fixture
+for the other eight), but the dedicated `test_*_guard.py`-style unit test is real for
+only seven of them (`andon`, `arbeitsplan`, `lehre`, `matrize`, `nacharbeit`,
+`self-assess`, `takt`) — confab has one for `guard_edit_scope.py` but none for
+`guard_bash_scope.py`, and cupertino's `pretooluse_guard.py` has no dedicated test at
+all. The demo build command for `assets/matrix-viewer.html`, under "See it as a
+matrix" in Example Prompts, doubles as a verification: a stale template or a broken
+`build_matrix_html.py` argument fails that command before it fails anything else.
 
 ## License
 

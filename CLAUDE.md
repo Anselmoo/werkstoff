@@ -80,8 +80,8 @@ are strong on enforcement prose but were weak on showing output shape —
 `plugins/cupertino/agents/handbook-dimension-analyst.md` and
 `plugins/self-assess/agents/business-rules-miner.md` are the two files in
 this repo that already do it right). The third reference,
-`docs/plugin-authoring/references/report-viewer-standard.md`, covers the eight HTML
-report viewers — and records the cupertino-council verdict that until now survived
+`docs/plugin-authoring/references/report-viewer-standard.md`, covers the twelve plugins'
+HTML report viewers — and records the cupertino-council verdict that until now survived
 only in commit `821a14a`'s message, alongside the design rationale buried at the top
 of `tools/design-tokens/tokens.css` and linked from nothing.
 
@@ -133,7 +133,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the twelve-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the thirteen-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 
@@ -344,7 +344,7 @@ column), not in anything the rebuild pipeline itself added.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Twelve independent version groups in `.rrt.toml` (11 plugins + `tools/werkstoff-cli`).
+Thirteen independent version groups in `.rrt.toml` (12 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

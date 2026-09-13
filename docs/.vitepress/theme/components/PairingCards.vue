@@ -299,38 +299,38 @@ const { copiedId, failedId, copy } = useClipboardCopy()
    level for a different taxonomy (severity, not beat); this card was never
    given that shape in the first place, so there's nothing left to collide. */
 .chip-beat[data-beat='inspect'] {
-  background: rgba(52, 138, 217, 0.14);
+  background: color-mix(in srgb, var(--wk-silica) 14%, transparent);
   color: var(--wk-silica-deep);
 }
 .dark .chip-beat[data-beat='inspect'] {
-  background: rgba(52, 138, 217, 0.2);
+  background: color-mix(in srgb, var(--wk-silica) 20%, transparent);
   color: var(--wk-silica-light);
 }
 
 .chip-beat[data-beat='split'] {
-  background: rgba(8, 147, 92, 0.14);
+  background: color-mix(in srgb, var(--wk-chromia) 14%, transparent);
   color: var(--wk-chromia-deep);
 }
 .dark .chip-beat[data-beat='split'] {
-  background: rgba(8, 147, 92, 0.2);
+  background: color-mix(in srgb, var(--wk-chromia) 20%, transparent);
   color: var(--wk-chromia-light);
 }
 
 .chip-beat[data-beat='execute'] {
-  background: rgba(171, 109, 198, 0.14);
+  background: color-mix(in srgb, var(--wk-neodymia) 14%, transparent);
   color: var(--wk-neodymia-deep);
 }
 .dark .chip-beat[data-beat='execute'] {
-  background: rgba(171, 109, 198, 0.2);
+  background: color-mix(in srgb, var(--wk-neodymia) 20%, transparent);
   color: var(--wk-neodymia-light);
 }
 
 .chip-beat[data-beat='verify'] {
-  background: rgba(171, 143, 0, 0.14);
+  background: color-mix(in srgb, var(--wk-samaria) 14%, transparent);
   color: var(--wk-samaria-deep);
 }
 .dark .chip-beat[data-beat='verify'] {
-  background: rgba(171, 143, 0, 0.2);
+  background: color-mix(in srgb, var(--wk-samaria) 20%, transparent);
   color: var(--wk-samaria-light);
 }
 
@@ -382,7 +382,7 @@ const { copiedId, failedId, copy } = useClipboardCopy()
 .prompt-code {
   margin: 0.5rem 0 0;
   border-left: 3px solid var(--wk-samaria);
-  background: rgba(207, 182, 86, 0.1);
+  background: color-mix(in srgb, var(--wk-samaria-light) 10%, transparent);
   border-radius: var(--wk-radius-sm, 4px);
   padding: 0.6rem 0.85rem;
   overflow-x: auto;
@@ -390,7 +390,7 @@ const { copiedId, failedId, copy } = useClipboardCopy()
 }
 .dark .prompt-code {
   border-left-color: var(--wk-samaria-light);
-  background: rgba(207, 182, 86, 0.08);
+  background: color-mix(in srgb, var(--wk-samaria-light) 8%, transparent);
 }
 
 .prompt-code code {

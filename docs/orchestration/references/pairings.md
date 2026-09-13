@@ -197,7 +197,7 @@ pairings:
     donts:
       - "Don't write the hook before the check step has run -- you'd be enforcing a rule against divergence you haven't measured."
       - "Don't settle for a \"prompt\"-type hook and call it enforcement; only type: \"command\" measured as reliably blocking on this repo's own runs."
-    grounding: "tools/enforcement-audit/rules/ currently holds a single andon.json; six plugins have no rules file at all -- this repo's own CLAUDE.md records the enforcement ladder this pairing is built on."
+    grounding: "tools/enforcement-audit/rules/ currently holds a single andon.json; eleven plugins have no rules file at all -- this repo's own CLAUDE.md records the enforcement ladder this pairing is built on."
     recipeTask: "Make a strategy enforced rather than documented"
     recipeUrl: "/catalog/quality-verification/make-strategy-enforced-not-documented"
 

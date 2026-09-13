@@ -1,6 +1,7 @@
 import { defineComponent, h, nextTick, onMounted, watch } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import { useData, useRoute } from 'vitepress'
+import './tokens.css'
 import './werkstoff.css'
 import RecipeHeader from './components/RecipeHeader.vue'
 import RecipeBeats from './components/RecipeBeats.vue'

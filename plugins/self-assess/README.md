@@ -1,5 +1,10 @@
 # self-assess
 
+**Assesses a live codebase — architecture, docs drift, CI topology, conventions,
+idioms, business rules, UI accessibility — with every finding tied to `file:line`
+evidence, and touches source only behind an explicit authorization recorded on
+disk, never a remembered "yes" earlier in the conversation.**
+
 Comprehensive self-assessment of live codebases: architecture, documentation drift, CI/CD
 topology, conventions, code idioms, business rules, and UI/accessibility — with findings
 carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
@@ -15,6 +20,29 @@ phase strictly read-only, and gates the one place it can touch source (the
 FIX phase) behind explicit human authorization recorded on disk, not just a
 remembered "yes" earlier in the conversation.
 
+## What it is not
+
+- Not a post-hoc design-handbook conformance checker or fixer. `self-assess-idiom-fix`
+  explicitly excludes findings from a `cupertino-handbook-check` pass — that's
+  `cupertino-handbook-fix` — and `self-assess-lint-audit` excludes auditing work against
+  a domain handbook under `.cupertino/` — that's `cupertino:cupertino-handbook-check`.
+- Not an architecture/style-convention codifier. `self-assess-extract-rules` mines what
+  the code *decides* — calculations, validations, state transitions — not how it is
+  written; code style, naming, layering and dependency-direction conventions are
+  `lehre-codify`'s job.
+- Not a UI designer. `self-assess-ui-audit` statically audits existing markup for
+  accessibility and design-token problems; designing an interface that does not exist
+  yet is `cupertino-council` at build time, and the end-to-end design pipeline that
+  surface belongs to is `cupertino-review`.
+- Not a general fix-application or per-fix verification loop. `self-assess-transform-execute`
+  applies exactly one human-authorized phase named in `MODERNIZATION_BRIEF.md` and refuses
+  without a numbered phase; applying a set of approved fixes across a repo and proving each
+  one as it lands is `andon-loop`.
+- Not a remediator for other plugins' findings. `idiom-remediator` only ever touches
+  self-assess's own code-idiom findings — never `lehre`'s rule-card conformance findings
+  (lehre's own `conformance-remediator`) or cupertino handbook findings (cupertino's own
+  `handbook-remediator`).
+
 ## Install
 
 ```
@@ -22,11 +50,17 @@ remembered "yes" earlier in the conversation.
 /plugin install self-assess@werkstoff
 ```
 
-Or for local development, point Claude Code straight at the plugin directory
-without registering the marketplace:
+The hook is inert until a self-assess remediator dispatch opens an edit-scope lock
+(`self-assess-idiom-fix` or `self-assess-transform-execute` running with `idiom_fix.mode:
+fix` / `transform.mode: execute`), so installing it changes nothing until one of those
+runs.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
 
 ```bash
-cc --plugin-dir /path/to/werkstoff/plugins/self-assess
+claude --plugin-dir /path/to/werkstoff/plugins/self-assess
 ```
 
 <!-- rrt:auto:start:example-prompts-intro -->
@@ -52,7 +86,7 @@ Alongside the JSON stage graph, this skill renders a self-contained HTML viewer
 instead of directory structure, so a tight interconnected core reads as a
 visible cluster and an unconnected module drifts off on its own.
 
-![Force-directed dependency graph rendered on canvas: a gold-outlined "core" god-module node sits at the center of a tight cluster of blue stage nodes (api, ui, cache, utils, legacy), two red nodes (auth, db) forming one real mutual-dependency cycle, two purple nodes (worker, queue) forming a second cycle, and an unconnected "sandbox" node drifted into the opposite corner of the canvas with no edges to the rest of the graph at all. A panel stack in the top-left corner states the scope (11 stages, 16 wires, 103 files), answers "Which stages can't be changed on their own?" in a sentence naming core as the god-module and auth/db and queue/worker as the two cycles, and carries an always-visible legend pairing each fill with the word for what it means -- ordinary stage, god-module, in a dependency cycle, dead-end, and circle area](assets/stage-map-viewer-screenshot.jpg)
+![Force-directed dependency graph rendered on canvas: every stage is a dark disc whose rings carry its state -- a thick amber ring on the large "core" god-module at the bottom of the main cluster, thin grey rings on the ordinary stages (api, ui, cache, legacy), dashed rings on the dead-end "utils" and on the unconnected "sandbox" stage drifted off on its own, and a double red ring on each of the four stages caught in a dependency cycle, printing its cycle number above its name: "1" on auth and db, "2" on queue and worker. A panel stack in the top-left corner states the scope (11 stages, 16 wires, 103 files), answers "Which stages can't be changed on their own?" in a sentence naming core as the god-module and the cycles as #1 auth ⇄ db and #2 queue ⇄ worker, and carries an always-visible legend whose swatches are drawn with the same rings as the map -- ordinary stage, god-module, a cycle member shown both as a numbered double ring and in its small red-core form, dead-end, and circle area](assets/stage-map-viewer-screenshot.jpg)
 
 That picture is reproducible. The two inputs are committed beside the builder --
 `scripts/fixtures/sample_stage_graph.json` (11 stages, 16 wires) and
@@ -225,16 +259,7 @@ Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.m
 fix`, in `.claude/self-assess.local.md` only when ready to apply a change — both
 default to a plan/propose-only mode that refuses to touch source.
 
-## Why this plugin is structured the way it is
-
-Every skill in this plugin is a thin markdown workflow that calls into one shared Python
-library (`scripts/lib/`) through a single CLI entry point (`scripts/self_assess_cli.py`) for
-every rule that has to actually *refuse* something: a disabled skill, a dirty tree, an
-unauthorized transform phase, a missing gating field in a persisted artifact, a write path that
-escapes the plugin's output directory, a numeric threshold. The SKILL.md files describe
-*workflow*; the CLI enforces *rules*. A skill that gets a non-zero exit from the CLI is
-required to stop and surface the message — that is the refusal, not a suggestion the model can
-talk itself out of.
+## Components
 
 ```
 self-assess/
@@ -246,11 +271,84 @@ self-assess/
 └── agents/*.md                     # 11 agents, one per spec entry
 ```
 
-## Settings: `.claude/self-assess.local.md`
+### Skills (16)
 
-All settings live in YAML frontmatter in this file, read fresh by every skill invocation via
-`self_assess_cli.py get-settings`. Absence of the file is a fully valid, fully-defaulted
-configuration — nothing is required to exist.
+`self-assess-preflight`, `self-assess-stage-map`, `self-assess-docs-drift`,
+`self-assess-ci-topology`, `self-assess-lint-audit`, `self-assess-code-idiom`,
+`self-assess-extract-rules`, `self-assess-arch-health`, `self-assess-complexity-score`,
+`self-assess-ui-audit`, `self-assess-transform-brief`, `self-assess-transform-execute`,
+`self-assess-idiom-fix`, `self-assess-status`, `self-assess-portfolio`,
+`self-assess-autopilot`.
+
+### Agents (11)
+
+`stage-mapper`, `arch-health-auditor`, `ci-topology-auditor`, `docs-drift-auditor`,
+`convention-auditor`, `idiom-auditor`, `business-rules-miner`, `complexity-surveyor`,
+`ui-auditor`, `idiom-remediator` (write-capable), `transform-executor` (write-capable).
+
+Every other agent is strictly read-only (`Read`, `Glob`, `Grep`, `Bash` for inspection only).
+
+## What is enforced, and what is not
+
+### Hooks
+
+`hooks/guard_target_edit.py` (`PreToolUse`, matcher `Write|Edit|MultiEdit`) denies an edit
+into target-repo source unless a self-assess remediator dispatch has an edit-scope lock open
+— `analysis/self-assess/edit_scope.json`, written by `self_assess_cli.py open-edit-scope`
+immediately before `self-assess-idiom-fix` or `self-assess-transform-execute` dispatches
+`idiom-remediator` / `transform-executor`. While a scope is open it enforces, regardless of
+whether the dispatching skill cooperates with its own instructions:
+
+- `idiom_fix.mode` / `transform.mode` — the write is refused unless the matching mode is set
+- `require_clean_tree` — the write is refused against a dirty tree unless disabled
+- the locked file list — a write outside the files the open scope named is refused
+
+self-assess writing its own reports (inside `output_dir`, default `analysis/self-assess`) is
+never gated, scope lock or not. It fails **closed** once a scope is open — any unexpected
+exception denies rather than allows — with one exception: a missing or broken `scripts/lib/`
+package (`ModuleNotFoundError` at import time) degrades to a stderr warning and an allow,
+since a packaging defect is not evidence the edit violates a rule, and blocking every future
+edit in every repo would be strictly worse than one missed check.
+
+### How enforcement actually works (mapping rules to code)
+
+| Rule (spec id) | Enforced by |
+|---|---|
+| `skill-reads-own-settings-before-running` | `settings.require_enabled()` — `check-enabled` subcommand |
+| `lint-max-rules-cap` | `lint_cap.cap_rules()` — hard `DEFAULT_MAX_RULES = 12`, always returns a `skipped` list |
+| `complexity-score-formula` | `formulas.complexity_index()` — `2.94 × KSLOC^1.10`, and `validators.validate_complexity_score_summary` recomputes it and rejects a mismatch |
+| `language-detection-threshold` | `language_detect.detect_languages()` — `MIN_FILES_FOR_DETECTION = 3` |
+| `cycle-definition-in-graph` | `graph.find_cycles()` — Tarjan SCC, `MIN_CYCLE_SIZE = 2` |
+| `p0-rule-panel-confirmation` | `p0_panel.confirm_p0_rule()` plus `validators.validate_business_rules_summary` refusing any P0 rule without `panel_confirmed: true` |
+| `extract-rules-loop-convergence` | `rules_loop.RuleLoopController` — hard `MAX_ROUNDS_HARD_CAP = 4`, 2 consecutive dry rounds to converge |
+| `stage-graph-vs-stage-map-json` | `validators.validate_stage_graph` rejects the artifact unless `edgeCount == len(wires)` |
+| `file-stage-index-partial-coverage` | `attribution.attribute()` returns `"Unattributed"` on any miss, never an error |
+| `skip-verification-behavior` | `skip_verification.label_findings()` — refuses a finding missing `verified` when `skip_verification` is false |
+| `credential-masking-in-output` | `credentials.mask_url()` / `mask_text()`; `validators.validate_ci_topology_summary` refuses any finding carrying `raw_remote_url` |
+| `docs-drift-not-ci-specific` | `scope.exclude_ci_claims()` |
+| `idiom-fix-modernization-only` | `gates.filter_eligible_idiom_findings()` |
+| `transform-brief-gate-on-stage-graph` | skill-level file-existence check, degrades to a short brief |
+| `transform-brief-attributes-findings-via-lookup` | `attribution.attribute()` |
+| `transform-brief-work-item-ranking` | `formulas.work_item_rank()` — fixed `SEVERITY_WEIGHT` map |
+| `transform-brief-confab-routing` | `transform_routing.route_confab_finding()` |
+| `transform-execute-gate-transform-mode` | `gates.check_transform_mode()` / `check_phase_authorized()` |
+| `transform-execute-open-question-resolution` | `gates.check_open_questions_resolved()` |
+| `portfolio-grade-worst-signal-wins` | `portfolio.grade_repo()` — `Gray` branch checked first, unconditionally |
+| `portfolio-cwd-git-repo-check` | `gates.check_portfolio_scope()` |
+| `read-only-skills-no-mutation` | tool restrictions in each SKILL.md / agent frontmatter (`Read, Glob, Grep, Bash` only) |
+| `dirty-tree-gate` | `gates.check_dirty_tree()` |
+| `no-commit-or-push` | no code path in any skill or agent invokes `git commit`/`git push` |
+| `ui-audit-static-only` | `validators.validate_ui_audit_summary` refuses a `contrast` finding without `heuristic: true` |
+| `autopilot-gate-before-fix` | `gates.check_autopilot_fix_approved()` |
+| `status-no-fabrication` | `status.build_present_artifacts()` — only includes a key when its sidecar file exists on disk |
+| write-scope enforcement | `write_guard.resolve_output_path()` — rejects traversal, absolute paths, and any escape of `output_dir` before any write |
+| `idiom_fix.mode` / `transform.mode` / dirty-tree / edit-scope (regardless of skill cooperation) | `hooks/guard_target_edit.py` PreToolUse hook — see Hooks above |
+
+## Settings
+
+All settings live in YAML frontmatter in `.claude/self-assess.local.md`, read fresh by every
+skill invocation via `self_assess_cli.py get-settings`. Absence of the file is a fully valid,
+fully-defaulted configuration — nothing is required to exist.
 
 ```markdown
 ---
@@ -275,7 +373,15 @@ autopilot:
 Per-skill overrides: nest a block under the skill's id (e.g. `self-assess-ui-audit:\n  enabled:
 false`) to disable just that skill.
 
-## Design decisions (spec was silent here)
+## The report
+
+See the screenshot and reproducible rebuild command under "Map the architecture" in
+[Example Prompts](#example-prompts) above — the stage-map viewer is the one HTML report
+this plugin ships.
+
+## Design decisions
+
+*(spec was silent here)*
 
 The behavioral spec states obligations, not implementation details. Where it left a concrete
 choice unstated, this is what was chosen and why:
@@ -317,40 +423,33 @@ choice unstated, this is what was chosen and why:
   `azure-pipelines.yml`, plus "git remote"/"mirror script"/"pipeline config" keywords) rather
   than a judgment call each run — see `scripts/lib/scope.py`.
 
-## How enforcement actually works (mapping rules to code)
+### Why this plugin is structured the way it is
 
-| Rule (spec id) | Enforced by |
-|---|---|
-| `skill-reads-own-settings-before-running` | `settings.require_enabled()` — `check-enabled` subcommand |
-| `lint-max-rules-cap` | `lint_cap.cap_rules()` — hard `DEFAULT_MAX_RULES = 12`, always returns a `skipped` list |
-| `complexity-score-formula` | `formulas.complexity_index()` — `2.94 × KSLOC^1.10`, and `validators.validate_complexity_score_summary` recomputes it and rejects a mismatch |
-| `language-detection-threshold` | `language_detect.detect_languages()` — `MIN_FILES_FOR_DETECTION = 3` |
-| `cycle-definition-in-graph` | `graph.find_cycles()` — Tarjan SCC, `MIN_CYCLE_SIZE = 2` |
-| `p0-rule-panel-confirmation` | `p0_panel.confirm_p0_rule()` plus `validators.validate_business_rules_summary` refusing any P0 rule without `panel_confirmed: true` |
-| `extract-rules-loop-convergence` | `rules_loop.RuleLoopController` — hard `MAX_ROUNDS_HARD_CAP = 4`, 2 consecutive dry rounds to converge |
-| `stage-graph-vs-stage-map-json` | `validators.validate_stage_graph` rejects the artifact unless `edgeCount == len(wires)` |
-| `file-stage-index-partial-coverage` | `attribution.attribute()` returns `"Unattributed"` on any miss, never an error |
-| `skip-verification-behavior` | `skip_verification.label_findings()` — refuses a finding missing `verified` when `skip_verification` is false |
-| `credential-masking-in-output` | `credentials.mask_url()` / `mask_text()`; `validators.validate_ci_topology_summary` refuses any finding carrying `raw_remote_url` |
-| `docs-drift-not-ci-specific` | `scope.exclude_ci_claims()` |
-| `idiom-fix-modernization-only` | `gates.filter_eligible_idiom_findings()` |
-| `transform-brief-gate-on-stage-graph` | skill-level file-existence check, degrades to a short brief |
-| `transform-brief-attributes-findings-via-lookup` | `attribution.attribute()` |
-| `transform-brief-work-item-ranking` | `formulas.work_item_rank()` — fixed `SEVERITY_WEIGHT` map |
-| `transform-brief-confab-routing` | `transform_routing.route_confab_finding()` |
-| `transform-execute-gate-transform-mode` | `gates.check_transform_mode()` / `check_phase_authorized()` |
-| `transform-execute-open-question-resolution` | `gates.check_open_questions_resolved()` |
-| `portfolio-grade-worst-signal-wins` | `portfolio.grade_repo()` — `Gray` branch checked first, unconditionally |
-| `portfolio-cwd-git-repo-check` | `gates.check_portfolio_scope()` |
-| `read-only-skills-no-mutation` | tool restrictions in each SKILL.md / agent frontmatter (`Read, Glob, Grep, Bash` only) |
-| `dirty-tree-gate` | `gates.check_dirty_tree()` |
-| `no-commit-or-push` | no code path in any skill or agent invokes `git commit`/`git push` |
-| `ui-audit-static-only` | `validators.validate_ui_audit_summary` refuses a `contrast` finding without `heuristic: true` |
-| `autopilot-gate-before-fix` | `gates.check_autopilot_fix_approved()` |
-| `status-no-fabrication` | `status.build_present_artifacts()` — only includes a key when its sidecar file exists on disk |
-| write-scope enforcement | `write_guard.resolve_output_path()` — rejects traversal, absolute paths, and any escape of `output_dir` before any write |
+Every skill in this plugin is a thin markdown workflow that calls into one shared Python
+library (`scripts/lib/`) through a single CLI entry point (`scripts/self_assess_cli.py`) for
+every rule that has to actually *refuse* something: a disabled skill, a dirty tree, an
+unauthorized transform phase, a missing gating field in a persisted artifact, a write path that
+escapes the plugin's output directory, a numeric threshold. The SKILL.md files describe
+*workflow*; the CLI enforces *rules*. A skill that gets a non-zero exit from the CLI is
+required to stop and surface the message — that is the refusal, not a suggestion the model can
+talk itself out of.
 
-## Testing performed
+## Verifying a change to this plugin
+
+**Static:**
+
+```bash
+python3 test/plugins/lint-frontmatter.py plugins/self-assess
+claude plugin validate plugins/self-assess --strict
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/self-assess --docs-root docs
+python3 test/plugins/verify-hooks-deny.py plugins/self-assess
+python3 plugins/self-assess/hooks/test_guard_target_edit.py   # the hook denies AND allows
+python3 plugins/self-assess/scripts/test_build_stage_map_html.py
+python3 plugins/self-assess/scripts/lib/test_status.py
+python3 plugins/self-assess/scripts/lib/test_staleness.py
+```
+
+### Testing performed
 
 Every subcommand above was exercised directly against both the passing and refusing case
 (clean settings vs. a disabled skill, a valid path vs. path traversal, a 2-cycle graph vs. a
@@ -359,23 +458,21 @@ non-cycle, a single P0 judge vs. two agreeing judges, 15 extracted lint rules ca
 directory refused, `autopilot.fix_approved` defaulting to refused) — all producing the expected
 exit code and message. See `scripts/self_assess_cli.py --help` for the full subcommand list.
 
-## Skills (16)
+### Behavioural cases
 
-`self-assess-preflight`, `self-assess-stage-map`, `self-assess-docs-drift`,
-`self-assess-ci-topology`, `self-assess-lint-audit`, `self-assess-code-idiom`,
-`self-assess-extract-rules`, `self-assess-arch-health`, `self-assess-complexity-score`,
-`self-assess-ui-audit`, `self-assess-transform-brief`, `self-assess-transform-execute`,
-`self-assess-idiom-fix`, `self-assess-status`, `self-assess-portfolio`,
-`self-assess-autopilot`.
+```bash
+bash test/plugins/verify-clean-box.sh          # ALWAYS first
+bash test/plugins/run.sh new-stage-map
+bash test/plugins/run.sh new-ui-audit
+```
 
-## Agents (11)
+## Escape hatch
 
-`stage-mapper`, `arch-health-auditor`, `ci-topology-auditor`, `docs-drift-auditor`,
-`convention-auditor`, `idiom-auditor`, `business-rules-miner`, `complexity-surveyor`,
-`ui-auditor`, `idiom-remediator` (write-capable), `transform-executor` (write-capable).
-
-Every other agent is strictly read-only (`Read`, `Glob`, `Grep`, `Bash` for inspection only).
-
-Set `transform.mode: execute` and list authorized phase numbers, or `idiom_fix.mode: fix`, in
-`.claude/self-assess.local.md` only when ready to apply a change — both default to a
-plan/propose-only mode that refuses to touch source.
+Set `idiom_fix.mode: 'fix'` or `transform.mode: 'execute'` (whichever applies) and, if the
+tree is dirty, `require_clean_tree: false`, in `.claude/self-assess.local.md`. That is the
+exact text `hooks/guard_target_edit.py` gives in every denial it emits: "If this edit is not
+one self-assess should be gating, set `idiom_fix.mode: 'fix'` or `transform.mode: 'execute'`
+(whichever applies) and, if the tree is dirty, `require_clean_tree: false`, in
+`.claude/self-assess.local.md`." There is no separate kill switch — both write-capable skills
+already default to a plan/propose-only mode that refuses to touch source, and this only widens
+that mode explicitly.

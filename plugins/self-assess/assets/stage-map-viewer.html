@@ -28,7 +28,8 @@
      viewport and scrolls internally rather than running off the bottom
      edge; the sidebar and hint shrink rather than overhang a narrow one. */
   #hud { position: absolute; top: 12px; left: 12px; width: 280px;
-    max-width: calc(100vw - 24px); max-height: calc(100vh - 24px);
+    /* Capped above #hint, which a long legend used to run under. */
+    max-width: calc(100vw - 24px); max-height: calc(100vh - 76px);
     overflow-y: auto; overscroll-behavior: contain;
     display: flex; flex-direction: column; gap: 8px; z-index: 2; }
   .panel { background: var(--panel); border: 1px solid var(--border);
@@ -39,20 +40,17 @@
   /* R1: the verdict sentence -- what this map FOUND, not how to drive it. */
   .verdict { color: var(--text); font-size: 12px; line-height: 1.5; }
   /* R4: a legend a reader gets without clicking anything. tokens.css's
-     mandate is "never color alone, always pair with an icon or a label" --
-     every swatch below is glued to the word for what that fill means, and
-     the two non-colour channels (amber ring, dashed ring) are drawn on the
-     swatch itself so they read the same way they do on the canvas. */
+     mandate is "never color alone, always pair with an icon or a label".
+     Every swatch is a <canvas> painted by the same drawNodeMark() the map
+     uses, so a swatch cannot drift from the circle it explains, and the
+     non-colour channels -- ring weight, dashed ring, the cycle number --
+     read the same way in the legend as on the map. */
   #legendpanel h3 { font-size: 11px; text-transform: uppercase;
     letter-spacing: .05em; color: var(--muted); margin-bottom: var(--space-2); }
   .legend { list-style: none; padding: 0; display: flex; flex-direction: column;
     gap: var(--space-2); font-size: 12px; color: var(--muted); }
   .legend li { display: flex; align-items: center; gap: 8px; }
-  .legend .swatch { flex: none; width: 15px; height: 15px; border-radius: 50%;
-    border: 1px solid var(--border); }
-  .legend .swatch.ring-god { border-color: var(--god); border-width: 2px; }
-  .legend .swatch.ring-dead { border-style: dashed; }
-  .legend .swatch.tiny { width: 8px; height: 8px; margin-right: calc(var(--space-1) * -1); }
+  .legend canvas.swatch { flex: none; }
   #search { width: 100%; padding: var(--space-2) var(--space-2); border-radius: 6px;
     border: 1px solid var(--border); background: var(--panel-2);
     color: var(--text); font: inherit; outline: none; }
@@ -77,12 +75,26 @@
     font-size: 18px; line-height: 1; } #sidebar .closebtn:hover { color: var(--text); }
   .badge { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: 9px;
     font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
-  .badge.cycle { border-color: var(--cycle); color: var(--cycle); }
+  /* The red is carried by the border (3.40:1 on --panel, clears 3:1); the
+     words are --text (13.90:1). --status-bad as small text was 3.40:1. */
+  .badge.cycle { border-color: var(--cycle); color: var(--text); }
   .badge.god { border-color: var(--god); color: var(--god); }
   #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
     max-width: calc(100vw - 24px); color: var(--muted); font-size: 12px;
     z-index: 2; background: var(--panel); border: 1px solid var(--border);
     border-radius: 6px; padding: 4px 12px; }
+  /* Says how many cycle numbers draw() left out because no spot for their tag was clear.
+     It lives in the HUD, so the note itself can never cover a stage. --text on --panel
+     13.90:1; the --status-bad border 3.40:1 on --panel, 3.77:1 on --bg. */
+  /* Pinned to the bottom of the HUD, so the count of left-out numbers stays visible even when
+     the HUD scrolls on a short viewport. */
+  #lodnote { position: sticky; bottom: 0; border-color: var(--cycle); color: var(--text);
+    font-size: 12px; line-height: 1.45; }
+  /* The HUD scrolls when it is taller than the viewport; this says so, so a clipped legend
+     is never silent. --muted on --panel 6.06:1. */
+  #hudmore { position: sticky; bottom: 0; text-align: center; color: var(--muted);
+    font-size: 11px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius-control); padding: var(--space-1) var(--space-2); }
   #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
   #err .panel { max-width: 420px; text-align: center; }
 </style>
@@ -103,19 +115,21 @@
       side.</p>
   </div>
   <div class="panel" id="legendpanel">
-    <h3>What the colours mean</h3>
+    <h3>What the marks mean</h3>
     <ul class="legend" id="legend">
-      <li><span class="swatch" data-fill="stage"></span>ordinary stage</li>
-      <li><span class="swatch ring-god" data-fill="god"></span>god-module — most stages import it</li>
-      <li><span class="swatch" data-fill="cycle"></span>in a dependency cycle — one hue per cycle</li>
-      <li><span class="swatch ring-dead" data-fill="stage"></span>dead-end — imports nothing outward</li>
-      <li><span class="swatch tiny" data-fill="stage"></span><span class="swatch" data-fill="stage"></span>circle area — files in the stage</li>
+      <li><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>ordinary stage — thin grey ring</li>
+      <li><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module — most stages import it (thick amber ring)</li>
+      <li><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a dependency cycle — double red ring, or a red core when small; its number names the cycle</li>
+      <li><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end — imports nothing outward (dashed ring)</li>
+      <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
     </ul>
   </div>
   <div class="panel">
     <input id="search" type="search" placeholder="Search stages…" autocomplete="off">
     <div id="results"></div>
   </div>
+  <div id="hudmore" hidden>↓ scroll for the rest of this panel</div>
+  <div class="panel" id="lodnote" hidden></div>
 </div>
 
 <div id="sidebar" class="panel"></div>
@@ -187,54 +201,168 @@ const adjacency = new Map();
 const addAdj = (id, e) => { const a = adjacency.get(id); a ? a.push(e) : adjacency.set(id, [e]); };
 for (const e of edges) { addAdj(e.source, e); if (e.target !== e.source) addAdj(e.target, e); }
 
-// ── Colors: resolved from the injected design tokens once at startup, so
-// canvas fillStyle/strokeStyle (which cannot reference CSS var() directly)
-// stay in sync with the same tokens.css the DOM chrome uses. A few colors
-// have no equivalent canonical token -- those stay hardcoded, called out
-// inline below rather than silently left as unexplained magic hex. ──────
+// ── Colours and marks ────────────────────────────────────────────────────
+// Canvas fillStyle/strokeStyle cannot read CSS var(), so every colour is
+// resolved once from the injected tokens. None is a literal: node fills are
+// tints MIXED from tokens here (canvas has no color-mix()), and they are drawn
+// opaque, so the colour a reader sees is exactly the colour measured below.
 const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-const hexToRgba = (hex, alpha) => {
+const rgbOf = hex => {
   const n = parseInt(hex.replace("#", ""), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+const hexToRgba = (hex, alpha) => `rgba(${rgbOf(hex).join(",")},${alpha})`;
+// Opaque sRGB mix: the same arithmetic as color-mix(in srgb, a t, b).
+const mixHex = (a, b, t) => {
+  const [pa, pb] = [rgbOf(a), rgbOf(b)];
+  return "#" + pa.map((v, i) => Math.round(v * t + pb[i] * (1 - t)).toString(16).padStart(2, "0")).join("");
 };
 const COLOR = {
   bg: cssVar("--bg"),
+  panel: cssVar("--panel"),
+  text: cssVar("--text"),
+  muted: cssVar("--muted"),
   accent: cssVar("--accent"),
-  border: cssVar("--border"),
   textFaint: hexToRgba(cssVar("--text"), 0.15),
-  accentFocus: hexToRgba(cssVar("--accent"), 0.3),
   cycle: cssVar("--status-bad"),
   god: cssVar("--status-warn"),
-  // Viewer-specific fill hues (deliberately distinct from the --cycle/--god
-  // BORDER colors above, which mark the same nodes' outlines, not their
-  // fills). tokens.css now ships --cat-1..5, and some of these hues --
-  // notably the CYCLE_PALETTE entries below -- already sit close to a
-  // canonical categorical equivalent; a full migration onto --cat-* is a
-  // follow-up, not done in this change.
-  godFill: "#7a6a3a",
-  stageFill: "#4a6580",
-  label: "#e8e8e8",
 };
-const CYCLE_PALETTE = [COLOR.cycle, "#a5648a", "#9e5a5a", "#7a5d8a"];
-function fillFor(n) {
-  if (n.inCycle) return CYCLE_PALETTE[(n.cycleId || 0) % CYCLE_PALETTE.length];
-  if (n.godModuleFanIn) return COLOR.godFill;
-  return COLOR.stageFill;
+const FONT_SANS = cssVar("--font-sans");
+const RADIUS_SM = parseFloat(cssVar("--radius-sm")) || 0;
+
+// What a node's mark encodes is STATE -- can this stage be changed on its own? -- and
+// tokens.css reserves the status scale for state and forbids it as a categorical slot. So the
+// map uses no categorical hue at all, and needs none. Three independent channels:
+//   * outer ring -- colour AND weight: ordinary thin grey, god-module thick amber, selected
+//                   blue; a cycle member that is none of those keeps a red ring.
+//   * inner ring -- a second, red ring inside the first marks cycle membership by SHAPE, so
+//                   it reads without hue (R4). On a circle too small to hold two rings the
+//                   disc is solid red instead -- lightness, still not hue alone.
+//   * a number   -- WHICH cycle; drawn inside the circle, or as a tag only where that covers
+//                   nothing (see draw()).
+// Fills are opaque 18% tints of a status colour on --bg. A cycle member always takes the cycle
+// tint, because it is the only tint the red inner ring clears 3:1 on (3.27:1; on the god tint
+// it is 2.99:1, on the ordinary tint 2.95:1). Measured with plugins/matrize/scripts/contrast.py,
+// every ring against BOTH sides it separates:
+//   ordinary  --muted ring        6.73:1 vs --bg, 5.27:1 vs its tint;  label 12.09:1
+//   god       --status-warn ring  6.23:1 vs --bg, 4.94:1 vs its tint, 5.41:1 vs the cycle tint
+//   selected  --accent ring       5.37:1 vs --bg, 4.36:1 vs its tint, 4.65:1 vs the cycle tint
+//   cycle     --status-bad rings  3.77:1 vs --bg, 3.27:1 vs the cycle tint;  label 13.40:1
+// 18% is a ceiling, not a taste: at 30% the red ring falls to 2.85:1 against its own tint.
+// Every ring is at least 2px wide, so anti-aliasing leaves full-colour pixels.
+const TINT = 0.18;
+const FILL = {
+  stage: mixHex(COLOR.muted, COLOR.bg, TINT),
+  cycle: mixHex(COLOR.cycle, COLOR.bg, TINT),
+  god: mixHex(COLOR.god, COLOR.bg, TINT),
+  selected: mixHex(COLOR.accent, COLOR.bg, TINT),
+};
+const RING = {
+  stage: { color: COLOR.muted, width: 2 },
+  cycle: { color: COLOR.cycle, width: 2.5 },
+  god: { color: COLOR.god, width: 4 },
+  selected: { color: COLOR.accent, width: 3 },
+};
+const INNER_RING_W = 2, INNER_RING_GAP = 2, INNER_RING_MIN_R = 7;
+// The complete mark for a node, or for a legend swatch built from a node-shaped object.
+function markFor(n) {
+  const state = selected != null && selected === n.id ? "selected"
+    : n.godModuleFanIn ? "god" : n.inCycle ? "cycle" : "stage";
+  return { fill: n.inCycle ? FILL.cycle : FILL[state], ring: RING[state], inner: !!n.inCycle, dashed: !!n.deadEnd };
+}
+const cycleNumber = n => (n.inCycle && n.cycleId != null ? String(n.cycleId + 1) : null);
+
+// ONE painter for a node's disc and rings, on the map and in the legend. Returns the mark's
+// true outer radius (ring edge included), which tag placement keeps its clearances from.
+function drawNodeMark(c, x, y, r, mark, { hover = false } = {}) {
+  const w = hover ? mark.ring.width + 1 : mark.ring.width;
+  const disc = (radius, color) => {
+    c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2); c.fillStyle = color; c.fill();
+  };
+  const ring = (radius, color, width, dashed) => {
+    c.beginPath(); c.arc(x, y, radius, 0, Math.PI * 2);
+    c.lineWidth = width; c.strokeStyle = color;
+    if (dashed) c.setLineDash([5, 4]);
+    c.stroke(); c.setLineDash([]);
+  };
+  if (mark.inner && r < INNER_RING_MIN_R) {
+    // Too small for two rings. Every gap below is PAINTED --bg, not left to whatever edges run
+    // underneath, and is SMALL_GAP wide so at least one pixel of it is solid.
+    const core = r - w / 2 - SMALL_GAP;
+    if (core >= SMALL_CORE_MIN) {
+      // Red core, --bg gap, state ring: ring and core each meet --bg on both sides
+      // (red 3.77:1, amber 6.23:1, blue 5.37:1).
+      disc(r, COLOR.bg); disc(core, COLOR.cycle);
+      ring(r, mark.ring.color, w, mark.dashed);
+      return r + w / 2;
+    } else if (mark.ring.color === COLOR.cycle) {
+      // No room for core, gap and ring: a plain member is a solid red disc (3.77:1 on --bg).
+      disc(r, COLOR.cycle);
+      return r;
+    } else {
+      // A selected or god-module member keeps its state ring OUTSIDE the disc, across a
+      // painted --bg gap, rather than laid on red (1.42 / 1.65:1).
+      disc(r + SMALL_GAP, COLOR.bg); disc(r, COLOR.cycle);
+      ring(r + SMALL_GAP + w / 2, mark.ring.color, w, mark.dashed);
+      return r + SMALL_GAP + w;
+    }
+  }
+  disc(r, mark.fill);
+  ring(r, mark.ring.color, w, mark.dashed);
+  if (mark.inner) {
+    ring(r - mark.ring.width / 2 - INNER_RING_GAP - INNER_RING_W / 2, COLOR.cycle, INNER_RING_W, false);
+  }
+  return r + w / 2;
+}
+const SMALL_GAP = 2, SMALL_CORE_MIN = 1.5;
+
+// The cycle number is never drawn smaller than NUM_PX, at any zoom.
+const NUM_PX = 11;
+const font = (weight, px) => `${weight} ${px}px ${FONT_SANS}`;
+// ONE painter for a cycle number, inside a circle, inside a tag and in the legend.
+function drawNodeNumber(c, x, y, num) {
+  c.font = font(700, NUM_PX); c.fillStyle = COLOR.text;
+  c.fillText(num, x, y + 0.5);
+}
+// Usable width inside the rings: 88% of the innermost free diameter.
+const innerWidth_ = (r, mark) =>
+  2 * (r - mark.ring.width - (mark.inner ? INNER_RING_GAP + INNER_RING_W : 0)) * 0.88;
+function truncateTo(c, text, maxW) {
+  if (c.measureText(text).width <= maxW) return text;
+  const chars = [...text];
+  while (chars.length > 1 && c.measureText(chars.join("") + "…").width > maxW) chars.pop();
+  return chars.length > 1 ? chars.join("") + "…" : "";
 }
 
 // ── R4: persistent legend ────────────────────────────────────────────────
-// The static <ul class="legend"> already carries the WORDS; this only paints
-// each swatch, and it reads the fills straight out of the same COLOR /
-// CYCLE_PALETTE the canvas uses, so a legend swatch cannot drift from the
-// circle it explains the way a second hardcoded hex would.
-const LEGEND_FILL = {
-  stage: COLOR.stageFill,
-  god: COLOR.godFill,
-  cycle: CYCLE_PALETTE[0],
-};
-for (const sw of document.querySelectorAll("#legend .swatch")) {
-  sw.style.background = LEGEND_FILL[sw.dataset.fill] || COLOR.stageFill;
+// The static <ul class="legend"> carries the WORDS; each swatch is a canvas painted by
+// drawNodeMark() and drawNodeNumber() from a node-shaped object passed through markFor() --
+// exactly the path a node on the map takes.
+function paintSwatch(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const kind = cv.dataset.mark;
+  const w = kind === "area" ? 38 : kind === "cycle" ? 48 : 28, h = 28;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  cv.style.width = w + "px"; cv.style.height = h + "px";
+  const c = cv.getContext("2d");
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.textAlign = "center"; c.textBaseline = "middle";
+  if (kind === "area") {
+    drawNodeMark(c, 6, h / 2, 4, markFor({}));
+    drawNodeMark(c, 25, h / 2, 11, markFor({}));
+    return;
+  }
+  const node = kind === "god" ? { godModuleFanIn: 1 }
+    : kind === "cycle" ? { inCycle: true, cycleId: 0 }
+    : kind === "dead" ? { deadEnd: true } : {};
+  const cx = kind === "cycle" ? 15 : w / 2;
+  drawNodeMark(c, cx, h / 2, 13, markFor(node));
+  const num = cycleNumber(node);
+  if (num) drawNodeNumber(c, cx, h / 2, num);
+  // The same cycle member, drawn at a size too small for two rings.
+  if (kind === "cycle") drawNodeMark(c, 40, h / 2, 5.5, markFor(node));
 }
+document.querySelectorAll("#legend canvas.swatch").forEach(paintSwatch);
 
 // ── R1: the verdict, in words ────────────────────────────────────────────
 // The static markup already states the general finding this map exists to
@@ -243,7 +371,11 @@ for (const sw of document.querySelectorAll("#legend .swatch")) {
 // builder's \u003c/\u003e/\u0026 escaping is barrier one).
 const godModules = nodes.filter(n => n.godModuleFanIn)
   .sort((a, b) => b.godModuleFanIn - a.godModuleFanIn);
-const realCycles = (DATA.cycles || []).filter(c => c.length > 1);
+// Numbered by position in DATA.cycles, the same index the builder writes to
+// each member's cycleId -- so "#2" in this sentence is the "2" drawn on the map.
+const realCycles = (DATA.cycles || [])
+  .map((members, i) => ({ no: i + 1, members }))
+  .filter(c => c.members.length > 1);
 const isolated = nodes.filter(n => !n.fanIn && !n.fanOut);
 const deadEnds = nodes.filter(n => n.deadEnd);
 const count = (n, noun) => n + " " + noun + (n === 1 ? "" : "s");
@@ -256,7 +388,7 @@ function verdictText() {
       edges.length + " wires)");
   }
   if (realCycles.length) {
-    const shown = realCycles.slice(0, 3).map(c => c.join(" ⇄ ")).join("; ");
+    const shown = realCycles.slice(0, 3).map(c => "#" + c.no + " " + c.members.join(" ⇄ ")).join("; ");
     found.push(count(realCycles.length, "dependency cycle") + " (" + shown +
       (realCycles.length > 3 ? "; …" : "") + ")");
   }
@@ -364,30 +496,171 @@ function draw() {
     ctx.stroke();
   }
 
-  // Nodes
+  // Nodes, pass one. Everything a node shows stays inside its own circle -- a label or a cycle
+  // number that does not fit is truncated, moved to a tag in pass two, or dropped -- so nothing
+  // drawn here can cover a neighbour.
+  const obstacles = panelRects();
+  const drawn = [];   // outer ring edge of every node on screen
+  const needTag = []; // cycle members whose number did not fit inside
   for (const n of nodes) {
     const sr = n.r * k;
     if (sr < MIN_R) continue;
     if (!visible(n, k, tx, ty, vw, vh)) continue;
     const sx = n.x * k + tx, sy = n.y * k + ty;
-    const isSel = selected === n.id, isHov = hovered === n.id;
+    const mark = markFor(n);
+    const extent = drawNodeMark(ctx, sx, sy, sr, mark, { hover: hovered === n.id });
+    const outer = { x: sx, y: sy, r: extent };
+    drawn.push(outer);
 
-    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
-    ctx.fillStyle = isSel ? COLOR.accentFocus : fillFor(n);
-    ctx.globalAlpha = 0.85; ctx.fill(); ctx.globalAlpha = 1;
-    ctx.lineWidth = isSel ? 2.5 : isHov ? 1.8 : n.godModuleFanIn ? 2 : 1;
-    ctx.strokeStyle = isSel || isHov ? COLOR.accent : n.godModuleFanIn ? COLOR.god : COLOR.border;
-    if (n.deadEnd) ctx.setLineDash([5, 4]);
-    ctx.stroke(); ctx.setLineDash([]);
-
-    if (sr > LABEL_R) {
-      const fs = Math.min(16, Math.max(9, sr / 4));
-      ctx.font = `400 ${fs}px system-ui, sans-serif`;
-      ctx.fillStyle = COLOR.label;
-      const label = n.name.length > 22 ? [...n.name].slice(0, 20).join("") + "…" : n.name;
-      ctx.fillText(label, sx, sy);
+    const num = cycleNumber(n);
+    const maxW = innerWidth_(sr, mark);
+    const namePx = Math.min(16, Math.max(9, sr / 4));
+    if (num) {
+      ctx.font = font(700, NUM_PX);
+      if (ctx.measureText(num).width > maxW || NUM_PX + 2 > maxW) {
+        // Only a member whose centre is on the canvas and not under a panel is a candidate:
+        // a number for a stage the reader cannot see is not "left out", it is off-screen.
+        const seen = sx >= 0 && sy >= 0 && sx <= vw && sy <= vh &&
+          !obstacles.some(b => sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h);
+        if (seen) needTag.push({ num, owner: outer });
+      } else if (sr > LABEL_R && NUM_PX + namePx + 4 <= maxW) {
+        drawNodeNumber(ctx, sx, sy - namePx / 2 - 1.5, num);
+        ctx.font = font(400, namePx); ctx.fillStyle = COLOR.text;
+        const label = truncateTo(ctx, n.name, maxW);
+        if (label) ctx.fillText(label, sx, sy + NUM_PX / 2 + 1);
+      } else {
+        drawNodeNumber(ctx, sx, sy, num);
+      }
+    } else if (sr > LABEL_R) {
+      ctx.font = font(400, namePx); ctx.fillStyle = COLOR.text;
+      const label = truncateTo(ctx, n.name, maxW);
+      if (label) ctx.fillText(label, sx, sy);
     }
   }
+
+  // Pass two: a number that did not fit becomes a tag beside its circle, joined to it by a
+  // leader line -- ONLY where that is unambiguous and covers nothing. A spot (12 angles,
+  // starting up-right, at 3 distances) is accepted when its box stays inside the canvas and
+  // clear of the HTML panels; when every other node keeps at least TAG_CLEAR px from the box
+  // AND is farther from it than the tag's own node by OWN_MARGIN px, so the nearest circle is
+  // always its own; when its leader keeps LEADER_CLEAR px from every other node; and when it
+  // touches no earlier tag and crosses no earlier leader. There is deliberately no "least bad"
+  // fallback -- that is how a number ends up on, or reads as belonging to, another stage. A
+  // number with no such spot is left out, #lodnote counts it and says zooming in shows it, and
+  // membership stays readable from the double ring or the red core.
+  const placedTags = [];
+  let hiddenNumbers = 0;
+  ctx.font = font(700, NUM_PX);
+  for (const t of needTag) {
+    const w = Math.ceil(ctx.measureText(t.num).width) + 8, h = NUM_PX + 6;
+    const o = t.owner;
+    let placed = null;
+    for (const gap of [4, 12, 22]) {
+      for (let a = 0; a < 12 && !placed; a++) {
+        const ang = -Math.PI / 4 + a * Math.PI / 6;
+        const d = o.r + gap + Math.hypot(w, h) / 2;
+        const box = {
+          x: Math.round(o.x + Math.cos(ang) * d - w / 2),
+          y: Math.round(o.y + Math.sin(ang) * d - h / 2), w, h,
+        };
+        const leader = {
+          x1: o.x + Math.cos(ang) * o.r, y1: o.y + Math.sin(ang) * o.r,
+          x2: box.x + w / 2, y2: box.y + h / 2,
+        };
+        if (box.x < 2 || box.y < 2 || box.x + w > vw - 2 || box.y + h > vh - 2) continue;
+        if (obstacles.some(r => boxesOverlap(r, box, 4))) continue;
+        const ownGap = boxGap(o, box);
+        if (drawn.some(c => c !== o && boxGap(c, box) < Math.max(TAG_CLEAR, ownGap + OWN_MARGIN))) continue;
+        if (drawn.some(c => c !== o && segmentNearCircle(leader, c, LEADER_CLEAR))) continue;
+        if (placedTags.some(p => boxesOverlap(p.box, box, 3) || segmentHitsBox(p.leader, box) ||
+          segmentHitsBox(leader, p.box) || segmentsCross(leader, p.leader))) continue;
+        placed = { box, leader, num: t.num };
+      }
+      if (placed) break;
+    }
+    if (placed) placedTags.push(placed); else hiddenNumbers++;
+  }
+  // Drawn after placement, so every tag sits above every node and every leader.
+  for (const p of placedTags) drawCycleTag(ctx, p);
+
+  const note = document.getElementById("lodnote");
+  if (hiddenNumbers) {
+    note.textContent = hiddenNumbers + (hiddenNumbers === 1 ? " cycle number is" : " cycle numbers are") +
+      " left out where a tag would cover another stage or a panel — zoom in to read " +
+      (hiddenNumbers === 1 ? "it" : "them") + ".";
+  }
+  note.hidden = !hiddenNumbers;
+  updateHudMore();
+}
+
+const TAG_CLEAR = 6, OWN_MARGIN = 4, LEADER_CLEAR = 3;
+// HTML chrome floating over the canvas, in canvas coordinates (the canvas fills the viewport).
+function panelRects() {
+  const rects = [];
+  for (const id of ["hud", "sidebar", "hint"]) {
+    const el = document.getElementById(id);
+    if (!el || el.hidden) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+  }
+  return rects;
+}
+// Gap between a circle's edge and a box (negative when they overlap).
+function boxGap(c, b) {
+  const nx = Math.max(b.x, Math.min(c.x, b.x + b.w)), ny = Math.max(b.y, Math.min(c.y, b.y + b.h));
+  return Math.hypot(c.x - nx, c.y - ny) - c.r;
+}
+const boxesOverlap = (a, b, pad) =>
+  a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
+function segmentNearCircle(s, c, pad) {
+  const dx = s.x2 - s.x1, dy = s.y2 - s.y1;
+  const len2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0, Math.min(1, ((c.x - s.x1) * dx + (c.y - s.y1) * dy) / len2));
+  return Math.hypot(c.x - (s.x1 + t * dx), c.y - (s.y1 + t * dy)) < c.r + pad;
+}
+function segmentsCross(a, b) {
+  const side = (px, py, qx, qy, rx, ry) => Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px));
+  return side(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1) !== side(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2) &&
+    side(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1) !== side(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
+}
+// The HUD scrolls when it is taller than the viewport; #hudmore says so until the reader
+// reaches its end.
+function updateHudMore() {
+  const hud = document.getElementById("hud"), more = document.getElementById("hudmore");
+  const note = document.getElementById("lodnote"), hint = document.getElementById("hint");
+  // The HUD ends above the hint as it is actually laid out -- it wraps to two or three lines
+  // on a narrow viewport, which a fixed calc() could not know -- so the hint never paints
+  // over the pinned note or the cue.
+  const limit = hint.getBoundingClientRect().top - hud.getBoundingClientRect().top - 8;
+  hud.style.maxHeight = Math.max(80, Math.floor(limit)) + "px";
+  // The cue sits flush on the pinned note, so no scrolled legend shows between them.
+  more.style.bottom = note.hidden ? "0px" : note.offsetHeight + "px";
+  const hasMore = hud.scrollHeight - hud.scrollTop - hud.clientHeight > 4;
+  if (more.hidden === hasMore) more.hidden = !hasMore;
+}
+document.getElementById("hud").addEventListener("scroll", updateHudMore);
+addEventListener("resize", updateHudMore);
+function segmentHitsBox(s, b) {
+  // Leaders are a few tens of pixels long; 16 samples cannot step over a tag box.
+  for (let i = 0; i <= 16; i++) {
+    const x = s.x1 + (s.x2 - s.x1) * i / 16, y = s.y1 + (s.y2 - s.y1) * i / 16;
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return true;
+  }
+  return false;
+}
+
+// A cycle-number tag: --text digits on a --panel plate (13.90:1), outlined in --status-bad (3.40:1
+// on the plate, 3.77:1 on --bg) and joined to its circle by a --muted leader (6.73:1 on --bg).
+// The box sits on whole pixels and both lines are 2px, so every edge keeps full-colour pixels --
+// a 1.5px outline between pixels measured 2.95:1.
+function drawCycleTag(c, p) {
+  const { box, leader } = p;
+  c.beginPath(); c.moveTo(leader.x1, leader.y1); c.lineTo(leader.x2, leader.y2);
+  c.strokeStyle = COLOR.muted; c.lineWidth = 2; c.stroke();
+  c.beginPath(); c.roundRect(box.x, box.y, box.w, box.h, RADIUS_SM);
+  c.fillStyle = COLOR.panel; c.fill();
+  c.strokeStyle = COLOR.cycle; c.lineWidth = 2; c.stroke();
+  drawNodeNumber(c, box.x + box.w / 2, box.y + box.h / 2, p.num);
 }
 
 // ── Zoom / pan / hit-testing ────────────────────────────────────────────
@@ -505,7 +778,7 @@ function renderSidebar() {
     <h2>${esc(n.name)}</h2>
     <div class="meta">${n.fileCount} file(s)</div>
     <div>
-      ${n.inCycle ? '<span class="badge cycle">in a dependency cycle</span>' : ""}
+      ${n.inCycle ? `<span class="badge cycle">in dependency cycle${n.cycleId != null ? " #" + (n.cycleId + 1) : ""}</span>` : ""}
       ${n.godModuleFanIn ? `<span class="badge god">god-module: fan-in ${n.godModuleFanIn}</span>` : ""}
       ${n.deadEnd ? '<span class="badge">dead-end (no outgoing wires)</span>' : ""}
       <span class="badge">fan-in ${n.fanIn}</span>
