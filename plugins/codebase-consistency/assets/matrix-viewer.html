@@ -141,25 +141,59 @@
     grid-row: 2 / -1;
     display: block;
   }
+  /* A cell's resting outline is drawCellMark()'s stroke attribute (a no-data
+     cell's is a dashed --muted line). Only the interaction states are set
+     here, and a CSS property beats a presentation attribute, so they win. */
   .cell-rect {
-    stroke: var(--border);
     stroke-width: 1;
+    shape-rendering: crispEdges;
     cursor: pointer;
   }
+  /* Hover and selection draw in --bg, the one colour that separates from EVERY fill this
+     grid uses (3.77:1 on --status-bad, the lowest; 5.37:1 on --cat-1, where the old
+     --accent hover was 1.00:1 -- the same colour). A resting cell's 1px edge already
+     reads dark, so hover must MOVE the fill's edge, not recolour one pixel: 3px insets
+     the fill by 1.5px, and selection, at 5px, by 2.5px. */
   .cell-rect:hover {
-    stroke: var(--accent);
-    stroke-width: 2;
+    stroke: var(--bg);
+    stroke-width: 3;
   }
   .cell-rect.selected {
-    stroke: var(--text);
-    stroke-width: 2;
+    stroke: var(--bg);
+    stroke-width: 5;
   }
+  /* A no-data cell is not clickable, so it has no hover state: it keeps its dashed --muted
+     outline (5.43:1 inside, 6.73:1 against the page) instead of trading it for --bg. */
+  .cell-rect.cell-empty, .cell-rect.cell-empty:hover {
+    stroke: var(--muted);
+    stroke-width: 1;
+    cursor: default;
+  }
+  /* A cell's words never sit on its fill. They sit on a solid --bg plate
+     (drawCellMark), because 10-11px text cannot clear 4.5:1 on every fill this
+     grid uses: the best token on --status-bad is 4.09:1 and on --cat-5 4.08:1.
+     On the plate --text is 15.44:1 whatever the fill, and the plate's edge
+     against the fill is the fill's own contrast with --bg (>=3.77:1 for every
+     fill used). Measured with plugins/matrize/scripts/contrast.py. */
+  .cell-plate { fill: var(--bg); pointer-events: none; }
   .cell-text {
-    font-size: 10px;
-    fill: rgba(255,255,255,0.85);
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    fill: var(--text);
     pointer-events: none;
     text-anchor: middle;
-    dominant-baseline: middle;
+    dominant-baseline: central;
+  }
+  /* No data: no fill and no texture -- the words say it. --muted on --panel-2
+     is 5.43:1 for the text; the dashed --muted outline is 5.43:1 inside and
+     6.73:1 against the page. */
+  .cell-nodata {
+    font-size: 10px;
+    fill: var(--muted);
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: central;
   }
   .sidebar {
     width: 340px;
@@ -192,7 +226,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     padding: var(--space-2) var(--space-3);
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text);
     word-break: break-all;
@@ -213,14 +247,8 @@
     align-items: center;
     flex-wrap: wrap;
   }
-  .legend .swatch {
-    width: 12px;
-    height: 12px;
-    display: inline-block;
-    border-radius: 2px;
-    margin-right: var(--space-1);
-    vertical-align: middle;
-  }
+  .legend-item { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .legend .mini { flex: none; overflow: visible; }
   .verdict-panel {
     margin: 0 20px 16px;
     padding: var(--space-4) var(--space-4);
@@ -289,7 +317,7 @@
        the eye goes, so the one paragraph that teaches a first-time reader how to
        read the grid was the last thing they found. It is also outside any node
        selectCell() clears, so it survives every interaction. -->
-  <p class="note colour-key" id="colourKey"><strong>Reading the cells.</strong> Once <code>/consistency-canonize</code> has run, a cell's colour is its distance from the chosen canon — green aligned, amber partial, red diverging, as labelled in the legend below. Before that it shows variant-cluster identity instead: one hue per distinct variant, with no ranking implied. A hatched cell means no data was found for that module × dimension pair. The number printed inside a cell is its site count.</p>
+  <p class="note colour-key" id="colourKey"><strong>Reading the cells.</strong> Every cell prints its own key on a dark plate, so no cell has to be read by colour alone. Once <code>/consistency-canonize</code> has run, the key is the cell's distance from the chosen canon — ✓ aligned (green), ≈ partially aligned (amber), ✗ diverging (red) — followed by its site count, and a cell keyed “–” has no score yet. Before that, the key is a letter naming the variant in that cell: the two most frequent variants also get a hue each (blue and purple — never red, amber or green, which mean conformance here), the rest share one neutral fill, and the letter is what tells two variants apart. A cell with a dashed outline that reads “no data” has nothing recorded for that module × dimension pair.</p>
 </section>
 
 <div class="layout">
@@ -371,30 +399,107 @@ const CELL_W = Math.max(CELL_W_MIN, Math.min(CELL_W_MAX, WIDEST_LABEL));
 // Two lines' worth of header only when something actually needs wrapping.
 const HEADER_H = WIDEST_LABEL > CELL_W_MAX ? 58 : 40;
 
-// ---- palette per variant (stable hash → hue) ------------------------------
-// Not part of the shared token system — these are arbitrary hashed hues for
-// distinguishing variant identity before /consistency-canonize has run.
-// tokens.css now ships a categorical scale (--cat-1..5), but it only covers
-// 5 hues against this PALETTE's 8; migrating this hashed lookup onto
-// --cat-1..5 plus a fallback for the 3 extra hues is a follow-up, not done
-// in this change.
-const VARIANT_COLORS = {};
-const PALETTE = ['#5b7fa6', '#7a9e6b', '#c98f4a', '#a5648a', '#5a9e9e', '#9e7a5a', '#7a7a9e', '#9e5a5a'];
-function colorForVariant(label) {
-  if (VARIANT_COLORS[label]) return VARIANT_COLORS[label];
-  let h = 0;
-  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
-  const c = PALETTE[h % PALETTE.length];
-  VARIANT_COLORS[label] = c;
-  return c;
-}
-function colorForConformance(c) {
-  if (c >= 0.85) return getCss('--status-good');
-  if (c >= 0.4) return getCss('--status-warn');
-  return getCss('--status-bad');
-}
+// ---- cell marks: ONE decision and ONE painter for the grid and the legend ----
 function getCss(varName) {
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+}
+const RADIUS_SM = parseFloat(getCss('--radius-sm')) || 0;
+
+// Variant identity, before /consistency-canonize has run. Colour is never what tells two
+// variants apart (R4): every variant gets a LETTER, printed in each of its cells and beside
+// its legend entry. Hue is only a glance aid for the most common variants, and it is limited
+// to the categorical slots that cannot be mistaken for this page's STATUS colours. The page
+// uses red / amber / green to mean diverging / partial / aligned -- in its conformance scale,
+// its "a red cell is the expensive one" note and its NEEDS ACTION tile -- and tokens.css
+// reserves the status scale, so --cat-5 ferria (next to --status-bad), --cat-2 chromia (next
+// to --status-good) and --cat-4 samaria (next to --status-warn) are left out. That leaves
+// silica and neodymia for the two most frequent variants; every other variant shares the
+// neutral --muted fill ("a sixth series folds into Other" -- here, a third).
+const VARIANT_HUES = ['--cat-1', '--cat-3'];
+const VARIANT_RANK = (() => {
+  const counts = new Map();
+  for (const c of (MATRIX.cells || [])) {
+    const v = c.variant || '?';
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  const ranked = [...counts.entries()]
+    .sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+  return new Map(ranked.map(([variant, count], index) => [variant, { index, count }]));
+})();
+// Letters, skipping I and O: printed beside a site count they read as 1 and 0.
+// 0 -> A ... 23 -> Z, 24 -> AA.
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+function variantCode(index) {
+  const base = CODE_ALPHABET.length;
+  let code = '';
+  for (let n = index; ; n = Math.floor(n / base) - 1) {
+    code = CODE_ALPHABET[n % base] + code;
+    if (n < base) break;
+  }
+  return code;
+}
+
+// Conformance, after /consistency-canonize: the status scale, which tokens.css reserves for
+// exactly this kind of state -- and which it also says is red/green-ambiguous under
+// deuteranopia, so every band carries a glyph too. `sample` is a conformance value inside the
+// band, so the legend can ask cellMark() for the mark instead of building one by hand.
+const CONFORMANCE_BANDS = [
+  { min: 0.85, sample: 1, token: '--status-good', glyph: '✓', label: 'aligned with canon (≥85%)' },
+  { min: 0.4, sample: 0.5, token: '--status-warn', glyph: '≈', label: 'partially aligned (40–85%)' },
+  { min: -Infinity, sample: 0, token: '--status-bad', glyph: '✗', label: 'diverges from canon (<40%)' },
+];
+const UNSCORED_CODE = '–';
+
+// Everything that decides how a cell looks, in one place. The grid and the legend both call
+// this, so a legend key cannot describe a mark the grid does not draw.
+function cellMark(cell) {
+  if (!cell) {
+    return { kind: 'nodata', fill: getCss('--panel-2'), stroke: getCss('--muted'), dash: '4 3', code: null };
+  }
+  if (hasConformance) {
+    if (typeof cell.conformance === 'number') {
+      const band = CONFORMANCE_BANDS.find(b => cell.conformance >= b.min);
+      return { kind: 'conformance', fill: getCss(band.token), stroke: getCss('--border'), dash: null, code: band.glyph };
+    }
+    // Once a canon exists, a cell with no score (e.g. a dimension canonize left for a human
+    // decision) is neither a band nor a variant key: it is neutral and says so.
+    return { kind: 'unscored', fill: getCss('--muted'), stroke: getCss('--border'), dash: null, code: UNSCORED_CODE };
+  }
+  const rank = VARIANT_RANK.get(cell.variant || '?');
+  const index = rank ? rank.index : VARIANT_HUES.length;
+  return {
+    kind: 'variant',
+    fill: getCss(index < VARIANT_HUES.length ? VARIANT_HUES[index] : '--muted'),
+    stroke: getCss('--border'),
+    dash: null,
+    code: variantCode(index),
+  };
+}
+
+// Paints one cell into an SVG group `g` -- a grid cell, or a legend key at a
+// smaller size. A cell's words sit on a solid --bg plate (see .cell-plate), so
+// their contrast does not depend on the fill; a no-data cell has no plate and
+// says so in words instead. Must be called on a group already in the document:
+// the plate is sized from the rendered text's bounding box.
+function drawCellMark(g, x, y, w, h, mark, text) {
+  const rect = g.append('rect')
+    .attr('x', x).attr('y', y).attr('width', w).attr('height', h)
+    .attr('fill', mark.fill).attr('stroke', mark.stroke);
+  if (mark.dash) rect.attr('stroke-dasharray', mark.dash);
+  if (!text) return rect;
+  const label = g.append('text')
+    .attr('class', mark.kind === 'nodata' ? 'cell-nodata' : 'cell-text')
+    .attr('x', x + w / 2).attr('y', y + h / 2)
+    .text(text);
+  if (mark.kind !== 'nodata') {
+    const box = label.node().getBBox();
+    g.insert('rect', 'text')
+      .attr('class', 'cell-plate')
+      .attr('x', box.x - 4).attr('y', box.y - 2)
+      .attr('width', box.width + 8).attr('height', box.height + 4)
+      .attr('rx', RADIUS_SM);
+  }
+  return rect;
 }
 
 // ---- index cells for O(1) lookup ------------------------------------------
@@ -646,43 +751,29 @@ function render() {
     .attr('height', modules.length * CELL_H)
     .attr('viewBox', '0 0 ' + (dimensions.length * CELL_W) + ' ' + (modules.length * CELL_H));
 
-  const defs = svg.append('defs');
-  const hatch = defs.append('pattern')
-    .attr('id', 'emptyHatch')
-    .attr('width', 8).attr('height', 8)
-    .attr('patternTransform', 'rotate(45)')
-    .attr('patternUnits', 'userSpaceOnUse');
-  hatch.append('rect').attr('width', 8).attr('height', 8).attr('fill', getCss('--panel-2'));
-  hatch.append('rect').attr('width', 4).attr('height', 8).attr('fill', getCss('--status-unknown')).attr('fill-opacity', 0.35);
-
-  svg.selectAll('rect.cell-rect')
+  // One group per cell, painted by drawCellMark() -- the same painter the
+  // legend keys use. The plate reads "<key> · <sites>": the variant letter or
+  // the conformance glyph, then the site count.
+  svg.selectAll('g.cell')
     .data(flat, d => d.mod + '\u0000' + d.dim)
-    .join('rect')
-    .attr('class', 'cell-rect')
-    .attr('x', d => d.j * CELL_W + 1)
-    .attr('y', d => d.i * CELL_H + 1)
-    .attr('width', CELL_W - 2)
-    .attr('height', CELL_H - 2)
-    .attr('fill', d => {
-      if (!d.c) return 'url(#emptyHatch)';
-      return hasConformance && typeof d.c.conformance === 'number'
-        ? colorForConformance(d.c.conformance)
-        : colorForVariant(d.c.variant || '?');
-    })
-    .on('click', (event, d) => {
-      if (!d.c) return;
-      selectCell(event.currentTarget, d.mod, d.dim, d.c);
-    })
-    .append('title')
-    .text(d => d.c ? (d.mod + ' × ' + d.dim) : ('no data for ' + d.mod + ' × ' + d.dim));
-
-  svg.selectAll('text.cell-text')
-    .data(flat.filter(d => d.c && d.c.sites != null), d => d.mod + '\u0000' + d.dim)
-    .join('text')
-    .attr('class', 'cell-text')
-    .attr('x', d => d.j * CELL_W + CELL_W / 2)
-    .attr('y', d => d.i * CELL_H + CELL_H / 2)
-    .text(d => d.c.sites);
+    .join('g')
+    .attr('class', 'cell')
+    .each(function (d) {
+      const mark = cellMark(d.c);
+      let text = 'no data';
+      if (d.c) {
+        const parts = [];
+        if (mark.code != null) parts.push(mark.code);
+        if (d.c.sites != null) parts.push(String(d.c.sites));
+        text = parts.join(' · ');
+      }
+      const rect = drawCellMark(d3.select(this), d.j * CELL_W + 1, d.i * CELL_H + 1,
+        CELL_W - 2, CELL_H - 2, mark, text)
+        .attr('class', d.c ? 'cell-rect' : 'cell-rect cell-empty');
+      if (d.c) rect.on('click', event => selectCell(event.currentTarget, d.mod, d.dim, d.c));
+      rect.append('title')
+        .text(d.c ? (d.mod + ' × ' + d.dim) : ('no data for ' + d.mod + ' × ' + d.dim));
+    });
 
   renderLegend();
 }
@@ -703,7 +794,9 @@ function selectCell(rectEl, mod, dim, cell) {
 
   const rows = [
     ['Module', mod],
-    ['Variant', cell.variant || '(unknown)'],
+    // The letter the cell and the legend print, so the three surfaces agree.
+    ['Variant', (hasConformance && typeof cell.conformance === 'number'
+      ? '' : cellMark(cell).code + ' · ') + (cell.variant || '(unknown)')],
     ['Sites', cell.sites != null ? String(cell.sites) : '?'],
   ];
   if (typeof cell.conformance === 'number') {
@@ -730,58 +823,50 @@ function selectCell(rectEl, mod, dim, cell) {
   }
 }
 
-function legendItem(background, label) {
-  const span = document.createElement('span');
-  const sw = document.createElement('span');
-  sw.className = 'swatch';
-  sw.style.background = background;
-  span.appendChild(sw);
-  span.appendChild(document.createTextNode(label));
-  return span;
+// A legend entry: a small key painted by drawCellMark() -- the grid's own
+// painter -- beside its words. The key is attached to the document before it
+// is painted, because the plate is sized from the rendered text.
+function legendItem(mark, code, label) {
+  const item = document.createElement('span');
+  item.className = 'legend-item';
+  document.getElementById('legend').appendChild(item);
+  const w = 34, h = 22;
+  const svg = d3.select(item).append('svg')
+    .attr('class', 'mini').attr('width', w).attr('height', h)
+    .attr('viewBox', '0 0 ' + w + ' ' + h).attr('aria-hidden', 'true');
+  drawCellMark(svg.append('g'), 0.5, 0.5, w - 1, h - 1, mark, code);
+  item.appendChild(document.createTextNode(label));
+  return item;
 }
 
 function renderLegend() {
   const legend = document.getElementById('legend');
   legend.innerHTML = '';
   if (hasConformance) {
-    const items = [
-      ['--status-good', 'aligned with canon (≥85%)'],
-      ['--status-warn', 'partially aligned (40–85%)'],
-      ['--status-bad', 'diverges from canon (<40%)'],
-    ];
-    for (const [varName, label] of items) {
-      legend.appendChild(legendItem(getCss(varName), label));
+    for (const band of CONFORMANCE_BANDS) {
+      legendItem(cellMark({ conformance: band.sample }), band.glyph, band.label);
+    }
+    const unscored = CELLS.filter(c => typeof c.conformance !== 'number').length;
+    if (unscored) {
+      legendItem(cellMark({}), UNSCORED_CODE,
+        'not scored against the canon (' + unscored + (unscored === 1 ? ' cell' : ' cells') + ')');
     }
   } else {
-    legend.appendChild(legendItem('', 'colours show variant identity, one hue per distinct variant — no ranking implied'));
-    // R4 follow-through: a legend that only explains the ENCODING, without naming
-    // which hue is which variant, still leaves colour as the sole visible-without-
-    // interaction channel for telling two cells apart. Count occurrences straight
-    // from CELLS -- the same module-level source render() reads -- so this never
-    // drifts from what the grid actually shows, and sort by frequency so the
-    // variants a reader is most likely to be scanning for come first. (Not `flat`:
-    // that array is local to render()'s closure and out of scope here.)
-    const counts = new Map();
-    for (const c of CELLS) {
-      if (typeof c.conformance !== 'number' || !hasConformance) {
-        const v = c.variant || '?';
-        counts.set(v, (counts.get(v) || 0) + 1);
-      }
-    }
-    const byFrequency = [...counts.entries()].sort((a, b) => b[1] - a[1]);
-    for (const [variant, count] of byFrequency) {
-      legend.appendChild(legendItem(colorForVariant(variant), variant + ' (' + count + ')'));
+    const intro = document.createElement('span');
+    intro.textContent = 'Each letter is one variant, most frequent first; the two most frequent also get '
+      + 'a hue, the rest share the neutral fill. No ranking implied:';
+    legend.appendChild(intro);
+    // The same ranking cellMark() assigns hues and letters by, so the variants a reader is
+    // most likely scanning for come first.
+    for (const [variant, rank] of VARIANT_RANK) {
+      legendItem(cellMark({ variant }), variantCode(rank.index), variant + ' (' + rank.count + ')');
     }
     const note = document.createElement('span');
     note.textContent = 'Run /consistency-canonize to switch this to a conformance-to-canon scale.';
     legend.appendChild(note);
   }
-  // The hatched "no data" state is explained in both branches: it is a real
-  // encoding a reader meets on the grid, and a legend that omits it leaves
-  // colour (and texture) as the only channel.
-  legend.appendChild(legendItem(
-    'repeating-linear-gradient(45deg, ' + getCss('--panel-2') + ' 0 4px, ' + getCss('--status-unknown') + ' 4px 8px)',
-    'hatched — no data for that module × dimension pair'));
+  // No data is explained in both modes, drawn exactly as the grid draws it.
+  legendItem(cellMark(null), '', 'dashed outline, “no data” — nothing recorded for that module × dimension pair');
 }
 
 document.getElementById('filterInput').addEventListener('input', e => {
