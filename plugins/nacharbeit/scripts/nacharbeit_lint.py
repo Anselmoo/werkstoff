@@ -2047,11 +2047,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-readme-markers", dest="readme_markers", action="store_false")
     ap.add_argument("--viewer-checker", type=Path, default=HERE / "check_viewer_conformance.py")
     ap.add_argument("--docs-root", type=Path, default=None, help="docs site root for the D-* rules (default: off)")
+    ap.add_argument("--fail-on", dest="fail_on", action="append", default=[], metavar="PREFIX",
+                     help="repeatable: exit 1 if any finding's rule id starts with PREFIX (e.g. P-README-); "
+                          "without this flag the scan always exits 0")
     a = ap.parse_args(argv)
     for d in a.plugin_dirs:
         if not d.is_dir():
             print(f"ERROR: not a directory: {d}", file=sys.stderr)
             return 2
+    if a.fail_on:
+        known_ids = set(RULES)
+        for p in a.fail_on:
+            if not any(rid.startswith(p) for rid in known_ids):
+                print(f"ERROR: --fail-on prefix {p!r} matches no known rule id", file=sys.stderr)
+                return 2
     configure(marketplace=a.marketplace, readme_markers=a.readme_markers, viewer_checker=a.viewer_checker, docs_root=a.docs_root)
     result = lint(a.plugin_dirs)
     result["rubricHash"] = rubric_hash(a.rubric)
@@ -2070,6 +2079,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- [{f['severity']}] {f['rule_id']}  {loc}\n    {f['claim']}")
         for s in result["skipped"]:
             print(f"  SKIPPED {s['rule_id']}: {s['reason']}")
+    if a.fail_on:
+        hit_prefixes = sorted({p for p in a.fail_on if any(f["rule_id"].startswith(p) for f in result["findings"])})
+        if hit_prefixes:
+            n = sum(1 for f in result["findings"] if any(f["rule_id"].startswith(p) for p in hit_prefixes))
+            print(f"FAIL: {n} finding(s) matched --fail-on prefix {', '.join(hit_prefixes)}", file=sys.stderr)
+            return 1
     return 0
 
 

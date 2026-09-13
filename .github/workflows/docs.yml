@@ -89,6 +89,13 @@ jobs:
         # generated artifacts above.
         run: python3 test/docs/docs_ux_audit.py
 
+      - name: Verify the docs theme and report viewers use design tokens
+        # Blocking here for the same reason as the audit above: a page built on
+        # a hard-coded colour must not publish. Calibrated before it is trusted.
+        run: |
+          python3 scripts/ci/check_design_tokens.py --selftest
+          python3 scripts/ci/check_design_tokens.py
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:

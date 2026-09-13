@@ -33,6 +33,7 @@ Usage:
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import textwrap
@@ -153,6 +154,133 @@ class TestSrcExcludeFailsLoudly(unittest.TestCase):
             with self.assertRaises(AUDIT.DocsAuditError) as caught:
                 AUDIT.src_exclude()
         self.assertIn("is missing", str(caught.exception))
+
+
+class TestPluginGroundTruth(unittest.TestCase):
+    """count_plugins_on_disk / count_pretooluse_hook_plugins / count_report_viewers,
+    each exercised against a fixture tree rather than the live repo -- so a passing
+    test here proves the COUNTING LOGIC is right, independent of whatever the live
+    plugins/ directory happens to hold today.
+    """
+
+    def _plugin(self, root: Path, name: str) -> Path:
+        d = root / "plugins" / name / ".claude-plugin"
+        d.mkdir(parents=True)
+        (d / "plugin.json").write_text("{}", encoding="utf-8")
+        return root / "plugins" / name
+
+    def test_counts_plugins_on_disk(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._plugin(root, "alpha")
+            self._plugin(root, "beta")
+            self.assertEqual(AUDIT.count_plugins_on_disk(root), 2)
+
+    def test_ignores_a_plugin_dir_with_no_manifest(self) -> None:
+        """A directory under plugins/ that never grew a manifest (a scratch dir,
+        a half-deleted plugin) must not inflate the count -- the whole point of
+        globbing plugin.json rather than plugins/*/ itself."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._plugin(root, "alpha")
+            (root / "plugins" / "not-a-plugin").mkdir(parents=True)
+            self.assertEqual(AUDIT.count_plugins_on_disk(root), 1)
+
+    def test_counts_only_plugins_whose_hooks_json_registers_pretooluse(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with_hook = root / "plugins" / "with-hook" / "hooks"
+            with_hook.mkdir(parents=True)
+            (with_hook / "hooks.json").write_text(
+                json.dumps({"hooks": {"PreToolUse": [{"matcher": "Write", "hooks": []}]}}),
+                encoding="utf-8")
+
+            other_event_only = root / "plugins" / "other-event" / "hooks"
+            other_event_only.mkdir(parents=True)
+            (other_event_only / "hooks.json").write_text(
+                json.dumps({"hooks": {"SessionStart": [{"hooks": []}]}}), encoding="utf-8")
+
+            no_hooks_file = root / "plugins" / "no-hooks"
+            no_hooks_file.mkdir(parents=True)
+
+            self.assertEqual(AUDIT.count_pretooluse_hook_plugins(root), 1)
+
+    def test_counts_report_viewer_plugins_and_files_separately(self) -> None:
+        """matrize-shaped fixture: one plugin, two viewer files -- the plugin
+        count and the file count must diverge, because both get stated in
+        prose and a check that conflated them would pass a page that quietly
+        swapped one number for the other."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            multi = root / "plugins" / "multi" / "assets"
+            multi.mkdir(parents=True)
+            (multi / "a-viewer.html").write_text("<html></html>", encoding="utf-8")
+            (multi / "b-viewer.html").write_text("<html></html>", encoding="utf-8")
+
+            single = root / "plugins" / "single" / "assets"
+            single.mkdir(parents=True)
+            (single / "c-viewer.html").write_text("<html></html>", encoding="utf-8")
+
+            n_plugins, n_files = AUDIT.count_report_viewers(root)
+            self.assertEqual(n_plugins, 2)
+            self.assertEqual(n_files, 3)
+
+
+class TestApplyClaims(unittest.TestCase):
+    """apply_claims() -- the generic grader behind every C1 entry, including the
+    three new plugin-count claims. Exercised directly against fixture pages so
+    these tests never depend on, or drift with, the live docs/ prose.
+    """
+
+    def _page(self, tmp: str, text: str) -> Path:
+        path = Path(tmp) / "page.md"
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_wrong_plugin_count_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            page = self._page(tmp, "Eleven plugins ship this repo.\n")
+            report = AUDIT.Report()
+            AUDIT.apply_claims(report, [(page, r"([A-Za-z-]+|\d+) plugins ship this repo", 12,
+                                         "plugins on disk")])
+            self.assertFalse(report.ok)
+            self.assertIn("claims 11 plugins on disk, actual is 12", report.findings[0])
+
+    def test_right_plugin_count_passes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            page = self._page(tmp, "Twelve plugins ship this repo.\n")
+            report = AUDIT.Report()
+            AUDIT.apply_claims(report, [(page, r"([A-Za-z-]+|\d+) plugins ship this repo", 12,
+                                         "plugins on disk")])
+            self.assertTrue(report.ok)
+
+    def test_snapshot_bannered_page_with_wrong_count_is_ignored(self) -> None:
+        """A page carrying the snapshot banner is a frozen historical record --
+        it is EXPECTED to disagree with live ground truth, so grading it would
+        make freezing a page pointless. The skip must still be visible (a note),
+        not a silent no-op."""
+        with tempfile.TemporaryDirectory() as tmp:
+            page = self._page(tmp, "::: info Snapshot\nAs of last count, eleven plugins shipped.\n:::\n")
+            report = AUDIT.Report()
+            AUDIT.apply_claims(report, [(page, r"([A-Za-z-]+|\d+) plugins shipped", 12,
+                                         "plugins on disk")])
+            self.assertTrue(report.ok)
+            self.assertTrue(any("snapshot page skipped" in note for note in report.checks_run))
+
+    def test_missing_claim_source_file_fails(self) -> None:
+        report = AUDIT.Report()
+        AUDIT.apply_claims(report, [(Path("/nonexistent/page.md"), r"(\d+) plugins", 12, "plugins")])
+        self.assertFalse(report.ok)
+        self.assertIn("claim source file is missing", report.findings[0])
+
+    def test_reworded_sentence_fails_rather_than_passing_silently(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            page = self._page(tmp, "This repo has a bunch of plugins.\n")
+            report = AUDIT.Report()
+            AUDIT.apply_claims(report, [(page, r"([A-Za-z-]+|\d+) plugins ship this repo", 12,
+                                         "plugins on disk")])
+            self.assertFalse(report.ok)
+            self.assertIn("no sentence matching", report.findings[0])
 
 
 class TestPublishedPages(unittest.TestCase):
