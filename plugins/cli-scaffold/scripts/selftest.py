@@ -171,8 +171,9 @@ def main():
                "shared tokens.css injected exactly once")
         expect(len(re.findall(r"--bg:\s*#[0-9a-fA-F]{3,8}", rendered)) == 1,
                "--bg no longer hand-duplicated in the viewer's own <style> block")
-        expect("--role-core: #4c8d5a" in rendered,
-               "viewer-local role colors preserved (no shared equivalent to migrate to)")
+        expect("--role-core: var(--cat-1)" in rendered,
+               "role colors come from the shared categorical tokens, not a "
+               "viewer-local hex")
 
     print("architecture tree — committed demo fixture "
           "(report-viewer-standard.md R1/R4/S2/C2):")

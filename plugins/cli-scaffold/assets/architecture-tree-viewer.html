@@ -8,18 +8,23 @@
 <!--__DESIGN_TOKENS__-->
 <style>
 :root {
-  /* Role colors are specific to this viewer's five-pillar legend; no
-     equivalent exists in the shared token file, so they stay local.
-     role-core (#4c8d5a) and role-test (#b58b3a) numerically match
-     --status-good/--status-warn -- coincidence, not a shared concept, so
-     they are NOT aliased to those tokens (see Global Constraints).
-     tokens.css now also ships a --cat-1..5 categorical scale that partially
-     overlaps this six-hue --role-* set by hue family (independent
-     convergence on similar hues is real evidence they should eventually be
-     unified) -- not migrated in this change, comment only. */
-  --role-core: #4c8d5a; --role-entry: #5b7fa6; --role-distribution: #a5648a;
-  --role-test: #b58b3a; --role-help: #5a9e9e; --role-completion: #9e7a5a;
-  --role-other: #444;
+  /* Role colors ride tokens.css's --cat-1..5 categorical scale instead of a
+     bespoke six-hue ramp (see that file's header comment for the CVD-
+     separation metric the five were validated against -- the cap is the
+     material, not a style choice). Six roles, five slots: tokens.css says a
+     sixth series "folds into Other, or the chart facets" -- reusing a slot
+     (round 1's core/completion sharing --cat-1) is neither of those
+     treatments and is a defect, not a compromise.
+     completion is the one folded to neutral: build_architecture_tree.py's
+     own ROLE_LABELS/ROLE_PILLARS map it to the same doctrine pillar as help
+     (UX/discoverability), so folding it costs no pillar coverage -- help
+     alone still evidences that pillar -- and the builder's own comment
+     already treats completion as the most optional of the six ("a nested
+     {file: ...} that may be null / absent for languages with no native
+     completion mechanism"). It gets no --role-* entry: its badge is drawn by
+     the neutral [data-role="completion"] rule below .badge, not a hue. */
+  --role-core: var(--cat-1); --role-entry: var(--cat-2); --role-distribution: var(--cat-3);
+  --role-test: var(--cat-4); --role-help: var(--cat-5);
 }
 * { box-sizing: border-box; margin: 0; }
 html, body { background: var(--bg); color: var(--text);
@@ -47,9 +52,32 @@ main > .panel + .panel { margin-top: var(--space-3); }
 .row-name { font-size: 13px; }
 .row-count { color: var(--muted); font-size: 11px; }
 .row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
-.badge { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
-  font-size: 10px; color: #fff; line-height: 1.5; cursor: default;
-  border: 1px solid transparent; }
+/* Every badge is a neutral chip -- --panel-2 fill, --text label -- with its
+   categorical identity carried as a left-border swatch instead of as the
+   fill itself. Round 1 filled each badge with its role colour and needed a
+   fg literal (#fff) for the one slot (ferria) where neither var(--bg) nor
+   var(--text) cleared 4.5:1 on that fill. A fixed fill/label pair sidesteps
+   that: var(--text) on --panel-2 is 12.45:1 on every slot, so no per-role
+   text colour -- literal or token -- is ever needed.
+   R4 swatch contrast, measured with plugins/matrize/scripts/contrast.py
+   (fg on --panel-2 #1c242b; a border/mark needs WCAG 1.4.11's 3:1, not
+   the 4.5:1 body-text threshold, because the role NAME is the text and it
+   is always var(--text)):
+     --cat-1 silica   #348ad9  4.33:1
+     --cat-2 chromia  #08935c  3.99:1
+     --cat-3 neodymia #ab6dc6  4.29:1
+     --cat-4 samaria  #ab8f00  4.98:1
+     --cat-5 ferria   #bd5137  3.29:1
+   All five clear 3:1 against --panel-2; none needed adjustment. */
+.badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm); font-size: 10px; line-height: 1.5; cursor: default;
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--border); border-left: 4px solid var(--border); }
+/* completion is the role folded to neutral (see the --role-* comment above):
+   it draws the same chip with no categorical swatch at all -- var(--muted)
+   on the left border instead of a --cat-* hue -- rather than reusing
+   another role's colour or inventing a sixth. */
+.badge[data-role="completion"] { border-left-color: var(--muted); }
 /* A role no file claims is drawn hollow and dashed, so "absent" is legible
    in the legend without reading the colour at all. */
 .badge.absent { background: transparent; color: var(--muted);
@@ -256,11 +284,17 @@ rowSel.each(function (d) {
   } else if ((d.data.roles || []).length) {
     const badges = row.append("span").attr("class", "row-badges");
     for (const r of d.data.roles) {
-      badges.append("span")
+      const badge = badges.append("span")
         .attr("class", "badge")
-        .style("background", "var(--role-" + r + ")")
+        .attr("data-role", r)
         .attr("title", DATA.roleLabels[r] || r)
         .text(r);
+      // completion carries no categorical hue (see the --role-* comment and
+      // the [data-role="completion"] CSS rule) -- its neutral swatch colour
+      // comes entirely from that static rule, not from an inline override.
+      if (r !== "completion") {
+        badge.style("border-left-color", "var(--role-" + r + ")");
+      }
     }
   }
 });
@@ -279,7 +313,10 @@ rowSel.each(function (d) {
 
     const chip = document.createElement("span");
     chip.className = "badge" + (absent ? " absent" : "");
-    if (!absent) chip.style.background = "var(--role-" + role + ")";
+    chip.dataset.role = role;
+    if (!absent && role !== "completion") {
+      chip.style.borderLeftColor = "var(--role-" + role + ")";
+    }
     chip.textContent = role;
     item.appendChild(chip);
 
