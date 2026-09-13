@@ -231,12 +231,10 @@
   --rule-soft-on-light: #a7a7ac;
 
   /* Monospace family for data cells, code and maths in the report viewers.
-   * Pairs with --font-sans. Nine literal repeats carry this stack verbatim:
-   * arbeitsplan run-viewer.html:35,47; codebase-consistency
-   * matrix-viewer.html:195; confab burndown-viewer.html:119; lehre
-   * doctrine-viewer.html:93; nacharbeit review-viewer.html:35,47; takt
-   * beatgraph-viewer.html:38,52. The docs theme already uses
-   * var(--vp-font-family-mono).
+   * Pairs with --font-sans. The value is the stack nine viewer declarations
+   * used to repeat verbatim (arbeitsplan, codebase-consistency, confab, lehre,
+   * nacharbeit and takt); those declarations now reference this token. The
+   * docs theme uses VitePress's own var(--vp-font-family-mono).
    * Contrast: n/a (not a colour). */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

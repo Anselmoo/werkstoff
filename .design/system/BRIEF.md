@@ -316,7 +316,7 @@ the time of writing, a scratch regex put the tree at roughly T-HEX 48, T-COLOR-F
 T-FONT-FAMILY 9, T-RADIUS 26. The script's own run is the authoritative figure. After the
 retrofit, the hardened rules and all three viewer migrations (cli-scaffold first; stage-map and
 matrix on a third attempt, see `retrofit-report.md`), it records T-HEX 27, T-COLOR-FN 8,
-T-FONT-FAMILY 11, T-RADIUS 33 (79 findings, 29 entries).
+T-FONT-FAMILY 3, T-RADIUS 33 (71 findings, 24 entries), after five viewers adopted `--font-mono`.
 
 **Writing new code:**
 

@@ -317,3 +317,6 @@ colours), and the design below is the revision that answered those findings:
 
 The baseline lines for both files were lowered in the same change, to **79 findings across 29
 (path, rule) entries** (T-HEX 27, T-COLOR-FN 8, T-FONT-FAMILY 11, T-RADIUS 33). No other entry moved.
+After review, five more viewers (arbeitsplan, confab, lehre, nacharbeit, takt) replaced the literal
+monospace stack with `var(--font-mono)`, lowering the baseline to **71 findings across 24 entries**
+(T-FONT-FAMILY 3).

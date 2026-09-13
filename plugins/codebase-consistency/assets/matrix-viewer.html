@@ -520,9 +520,14 @@ const NO_DATA_PAIRS = TOTAL_PAIRS - CELLS.length;
 // by every perfectly-conformant cell (2 of 21 in the committed fixture).
 // Before /consistency-canonize there is no canon to be distant from, so every
 // recorded cell IS a variant and the two counts legitimately coincide.
-const DIVERGENT_CELLS = CELLS.filter(
-  c => typeof c.conformance !== 'number' || c.conformance < 1);
+// Once a canon exists, a cell with no conformance score (a dimension canonize left for a
+// human decision) is not a measured divergence: it stays out of the divergent count, the
+// worst-cell pick, the module/dimension ranking and the site total, and the verdict states
+// how many such cells there are instead of presenting them as 0% conformance.
 const WITH_CONF = CELLS.filter(c => typeof c.conformance === 'number');
+const UNSCORED = hasConformance ? CELLS.filter(c => typeof c.conformance !== 'number') : [];
+const DIVERGENT_CELLS = hasConformance ? WITH_CONF.filter(c => c.conformance < 1) : CELLS;
+const SCORED_SITES = WITH_CONF.reduce((s, c) => s + (c.sites || 0), 0);
 const AVG_CONF = WITH_CONF.length
   ? WITH_CONF.reduce((s, c) => s + c.conformance, 0) / WITH_CONF.length
   : null;
@@ -576,8 +581,8 @@ function moduleDivergenceScore(mod) {
   let score = 0;
   for (const dim of MATRIX.dimensions) {
     const c = cellIndex.get(mod + '\u0000' + dim);
-    if (!c) continue;
-    score += hasConformance ? (1 - (c.conformance ?? 0.5)) : 1;
+    if (!c || (hasConformance && typeof c.conformance !== 'number')) continue;
+    score += hasConformance ? 1 - c.conformance : 1;
   }
   return score;
 }
@@ -585,8 +590,8 @@ function dimensionDivergenceScore(dim) {
   let score = 0;
   for (const mod of MATRIX.modules) {
     const c = cellIndex.get(mod + '\u0000' + dim);
-    if (!c) continue;
-    score += hasConformance ? (1 - (c.conformance ?? 0.5)) : 1;
+    if (!c || (hasConformance && typeof c.conformance !== 'number')) continue;
+    score += hasConformance ? 1 - c.conformance : 1;
   }
   return score;
 }
@@ -613,9 +618,9 @@ function renderVerdict() {
   }
   // Worst single cell: furthest from canon, ties broken by how many sites
   // that divergence actually costs.
-  const scored = CELLS.map(c => ({
+  const scored = (hasConformance ? WITH_CONF : CELLS).map(c => ({
     c,
-    d: (hasConformance && typeof c.conformance === 'number') ? 1 - c.conformance : 1,
+    d: hasConformance ? 1 - c.conformance : 1,
   }));
   scored.sort((a, b) => (b.d - a.d) || ((b.c.sites || 0) - (a.c.sites || 0)));
   const worst = scored[0].c;
@@ -630,12 +635,17 @@ function renderVerdict() {
       + MATRIX.dimensions.length + ' convention dimensions sit below 40% conformance.');
     parts.push('Its worst cell is ' + worst.module + ' × ' + worst.dimension + ' — '
       + (worst.sites != null ? worst.sites : '?') + ' sites at '
-      + Math.round((worst.conformance || 0) * 100) + '% conformance.');
+      + Math.round(worst.conformance * 100) + '% conformance.');
     parts.push('Across the area ' + DIVERGENT_CELLS.length + ' of ' + TOTAL_PAIRS
       + ' module × dimension pairs carry a divergent variant, and mean conformance is '
       + AVG_PCT + '% — that average is the share of sites already matching the canon, so '
-      + (100 - AVG_PCT) + '% of the ' + TOTAL_SITES
-      + ' sites counted here are what an alignment pass still has to rewrite.');
+      + (100 - AVG_PCT) + '% of the ' + SCORED_SITES
+      + ' scored sites are what an alignment pass still has to rewrite.');
+    if (UNSCORED.length) {
+      parts.push(UNSCORED.length + (UNSCORED.length === 1 ? ' cell has' : ' cells have')
+        + ' no conformance score yet (keyed “–”) and ' + (UNSCORED.length === 1 ? 'is' : 'are')
+        + ' left out of these figures.');
+    }
   } else {
     const diverging = MATRIX.dimensions.filter(
       dim => cellIndex.get(worstMod + '\u0000' + dim)).length;

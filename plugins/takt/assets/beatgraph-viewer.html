@@ -35,7 +35,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
   th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
   th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  td.mono, th.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  td.mono, th.mono { font-family: var(--font-mono); }
   /* State is carried by the WORD and the glyph, never by colour alone: colour
      is a third channel on top of two that already work without it. */
   .state { white-space: nowrap; font-weight: 600; }
@@ -49,7 +49,7 @@
     border-radius: var(--radius-panel);
   }
   .produces li { margin-bottom: var(--space-1); }
-  .produces code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .produces code { font-family: var(--font-mono); }
   footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
 </style>
 </head>
