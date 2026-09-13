@@ -198,6 +198,7 @@ export default defineConfig({
           { text: 'Prompt catalog', link: '/catalog/' },
           { text: 'Prompt index by plugin', link: '/prompt-index' },
           { text: 'Orchestration overview', link: '/orchestration/' },
+          { text: 'Glossary', link: '/glossary' },
         ],
       },
       {
@@ -265,6 +266,7 @@ export default defineConfig({
           { text: 'Craft standards', link: '/plugin-authoring/references/craft-standards' },
           { text: 'Output-shape findings', link: '/plugin-authoring/references/output-shape-findings' },
           { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
+          { text: 'Design tokens', link: '/plugin-authoring/references/design-tokens' },
         ],
       },
       {

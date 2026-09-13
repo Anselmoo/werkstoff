@@ -1,5 +1,11 @@
 # Output-shape findings — the case study behind craft-standards.md
 
+::: info Snapshot
+Dated record of a comparative audit against the first six werkstoff plugins. Counts, file
+paths and plugin lists reflect that moment and are kept as a record, not updated. For the
+current set see [the plugin index](/plugins/).
+:::
+
 This is the **content** side of [`craft-standards.md`](craft-standards.md)'s craft/content
 split: one specific, evidence-grounded finding about werkstoff's skills/agents, not a
 general rule. Researched by comparing this repo's six plugins against `anthropics/skills`,

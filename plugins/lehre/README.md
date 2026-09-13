@@ -123,7 +123,7 @@ Self-contained and offline — no CDN, no network, no external font. It delibera
 selection, interpolate, ease, force and scale, but no `d3-sankey`, so the layout is
 hand-written and the dependency would buy nothing. It does vendor
 `tools/design-tokens/tokens.css`, because a viewer inventing its own palette would break
-the one thing all eight viewers share.
+the one thing every werkstoff report viewer shares.
 
 Click any node in the enforcement flow to filter the rule table; ribbons are grouped by
 full path tuple, so the filter is exact rather than approximate.

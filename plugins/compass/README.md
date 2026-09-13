@@ -23,18 +23,49 @@ executable code, not by prose.** Every numeric bound is a named constant, every
 and every persisted artifact is validated on read and write. A skill cannot
 quietly skip a rule — the guard's non-zero exit is observable.
 
+## What it is not
+
+- **Not a repository-architecture mapper.** `compass-map-relationships`
+  traverses relationships whose entities are already established — deriving a
+  repo's real import/module graph from source ("map this repo's architecture",
+  "show me the real module boundaries", "map stages and wires") belongs to
+  `self-assess-stage-map`, which parses imports per language and writes the
+  stage graph other skills consume.
+- **Not for simple, well-specified, single-step tasks.** `compass-solve` runs
+  the full pipeline; it exists for tasks complex or ambiguous enough to need
+  staged decomposition, not ones that don't.
+- **Not for well-trodden single-step reasoning.** `compass-reason-verify`
+  climbs its rung ladder only where a concrete failure-mode signal (multi-step
+  arithmetic, a costly wrong early assumption, a precision-critical
+  calculation, an image/diagram input) makes the extra reasoning worth its
+  cost.
+- **Not for tuning a one-off prompt.** `compass-optimize-instruction` needs
+  representative real test cases to score APE candidates against; without them
+  it has nothing to optimize toward.
+
 ## Install
 
-```bash
-# Try locally
-cc --plugin-dir /path/to/compass
-
-# Run the enforcement test suite
-python3 scripts/test_compass.py    # -> "46 passed, 0 failed"
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install compass@werkstoff
 ```
 
-Requires Python 3 (standard library only). Workflow scripts require the Workflow
-tool; without it, every skill has a manual path that calls the same Python guards.
+compass ships no PreToolUse hook, so installing it changes nothing by itself —
+its guarantees run only when a skill invokes the guard CLI or a workflow
+script (see [What is enforced, and what is not](#what-is-enforced-and-what-is-not)).
+
+### Requirements
+
+Python 3, standard library only. Workflow scripts require the Workflow tool;
+without it, every skill has a manual path that calls the same Python guards.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
+```bash
+claude --plugin-dir /path/to/werkstoff/plugins/compass
+```
 
 <!-- rrt:auto:start:example-prompts-intro -->
 ## Example Prompts
@@ -212,7 +243,9 @@ python3 plugins/compass/scripts/build_branch_comparison_html.py /tmp/compass-dem
 to name one of the other 13 technique skills directly unless you want just that one
 step (see the full table below).
 
-## Skills (14)
+## Components
+
+### Skills (14)
 
 | Skill | Use it when |
 |-------|-------------|
@@ -231,7 +264,7 @@ step (see the full table below).
 | `compass-summarize-trace` | Capture a finished `compass-solve` run as a fixed 7-section record. |
 | `compass-verify-assumptions` | Check exactly one named assumption in ≤3 steps. |
 
-## Agents (3)
+### Agents (3)
 
 - **branch-proposer** — proposes one branch under an assigned angle, or scores one
   branch in isolation (used by `compass-explore-branches`).
@@ -240,20 +273,26 @@ step (see the full table below).
 - **reasoning-path** — one isolated reasoning attempt under one strategy (used by
   `compass-reason-verify`'s self-consistency tier).
 
-## Enforcement layer
+## What is enforced, and what is not
+
+compass registers no PreToolUse hook — nothing here is a denial at the tool-call
+layer. Instead, every skill invokes a guard at each decision point, and the
+guard's non-zero exit is what makes a rule observable rather than aspirational.
+
+### Enforcement layer
 
 - `scripts/compass_lib.py` — the guard library: all numeric bounds as named
   constants, all rules as functions that raise `GuardError`.
 - `scripts/compass.py` — the CLI every skill invokes (`python3
   ${CLAUDE_PLUGIN_ROOT}/scripts/compass.py <check> -`). Exit 0 = pass, exit 2 =
   rule violated, exit 3 = usage error.
-- `scripts/test_compass.py` — 46 assertions proving each guard both accepts valid
+- `scripts/test_compass.py` — 53 assertions proving each guard both accepts valid
   input and refuses invalid input. Run: `python3 scripts/test_compass.py`.
 - `workflows/*.js` — parallel orchestration for the fan-out skills
   (`solve`, `explore-branches`, `reason-verify`, `optimize-instruction`), each
   embedding the same bounds as JS constants with `throw` guards.
 
-## How enforcement works
+### How enforcement works
 
 Skills call the guard CLI at each decision point. For example, `compass-decompose-chain`
 does not merely *tell* the model to keep 2-5 acyclic stages — it runs:
@@ -290,13 +329,22 @@ Rules enforced in code (non-exhaustive):
 - Write scope: path traversal, absolute paths, and out-of-dir targets rejected
   *before* any write.
 
-## Configuration
+## Settings
 
-Copy `.claude/compass.local.md` into your project and set `max_branch_count` in its
-frontmatter to lower the Explore ceiling. The effective cap is always
+`.claude/compass.local.md` — copy it into your project and set `max_branch_count`
+in its frontmatter to lower the Explore ceiling. The effective cap is always
 **min(6, max_branch_count)**.
 
-## Design decisions (spec was silent here)
+## The report
+
+Every `compass-explore-branches` run can persist a self-contained HTML report
+comparing branch scores — see the screenshot and build command under
+[Explore before committing](#explore-before-committing) in Example Prompts
+above.
+
+## Design decisions
+
+*(spec was silent here)*
 
 Where the spec was silent, these choices were made and are noted here:
 
@@ -327,6 +375,15 @@ Where the spec was silent, these choices were made and are noted here:
 7. **Execution mode is a first-class key** (`mode` + `mode_decided_at: "runtime"`),
    validated by `stage-dispatch`, so "decide the mode at runtime" is checkable
    rather than aspirational.
+
+## Verifying a change to this plugin
+
+```bash
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/compass --docs-root docs
+python3 plugins/compass/scripts/test_compass.py                     # -> "53 passed, 0 failed"
+python3 plugins/compass/scripts/test_build_branch_comparison_html.py
+bash scripts/ci/check-js-syntax.sh                                  # workflows/*.js shape
+```
 
 ## License
 

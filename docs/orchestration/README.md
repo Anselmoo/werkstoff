@@ -10,7 +10,7 @@ orchestrates them twice by hand.
 
 Three different things are installed, and they stack rather than compete.
 
-**werkstoff plugins are specialised inspectors and enforcers.** Eight of the ten
+**werkstoff plugins are specialised inspectors and enforcers.** Eight of the twelve
 target one distinct failure mode and refuse to speak outside it — `andon` on
 handoffs between stages that were never proven, `self-assess` on a repo that cannot
 describe its own health, `confab` on assertions, contracts and dependency manifests
@@ -22,14 +22,19 @@ two or more valid, undocumented variants of the same convention coexisting, and
 `takt`, ships no skills at all: it is one `PreToolUse` hook that denies an
 edit or a dispatch running ahead of a beat the repository declared it depends on,
 turning the sequencing this catalog documents into a refusal rather than a
-suggestion. The twelfth, `arbeitsplan`, is the compiler for that declaration: it turns a
-stated problem into a workflow spec **and** the takt beats that order it, then runs the
-spec as a redundant swarm — N candidates over one scope, exactly one landed. The pairing
-is the point. takt could not be used because nothing authored its declaration; nothing
-authored it because the format is a thing you write by hand, and nobody did. The tenth, `nacharbeit`, points the same discipline at the other nine: it
+suggestion. The tenth, `nacharbeit`, points the same discipline at the other nine: it
 reviews and reworks a plugin's own skills, agents, hooks, scripts, viewers, manifest
 and docs against the official Anthropic standard, and is the only plugin whose object
-is a plugin rather than the application it is installed against.
+is a plugin rather than the application it is installed against. The eleventh,
+`matrize`, targets a skipped decision phase: a design system re-guessed ad hoc per
+project instead of derived once from exemplars someone actually admires, named, and
+struck into every target — a DTCG token file, a stylesheet, a Tailwind config, and a
+sketchbook a non-technical decision-maker can approve. The twelfth, `arbeitsplan`, is
+the compiler for a beat declaration: it turns a stated problem into a workflow spec
+**and** the takt beats that order it, then runs the spec as a redundant swarm — N
+candidates over one scope, exactly one landed. The pairing with takt is the point.
+takt could not be used because nothing authored its declaration; nothing authored it
+because the format is a thing you write by hand, and nobody did.
 
 **superpowers is process discipline.** It ships 14 skills, zero agents, zero commands,
 and one `SessionStart` hook — so any agent, in any plugin's workflow, can execute it.

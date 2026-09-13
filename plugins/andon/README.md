@@ -1,9 +1,9 @@
 # andon
 
-Walks a repository's value stream stage-by-stage, proposing fixes for
+**Walks a repository's value stream stage-by-stage, proposing fixes for
 discovered gaps, proving each wire before advancing via seven
 evidence-grounded strategies, and halting rather than passing broken or
-unproven handoffs -- the andon rule.
+unproven handoffs -- the andon rule.**
 
 ## Why this exists
 
@@ -16,10 +16,36 @@ one of seven evidence-grounded strategies (adversarial tribunal, numerical
 V&V, and others) before the loop is allowed to advance to the next stage. A
 halt is the intended outcome for an unproven fix, not a bug in the loop.
 
+## What it is not
+
+- **Not for applying a single authorized phase from a `MODERNIZATION_BRIEF.md`.**
+  That belongs to `self-assess` (`self-assess-transform-execute`) — return to
+  `andon-loop`, or straight to `andon-verify`, only for the proof afterward
+  (`skills/andon-loop/SKILL.md`).
+- **Not for judging whether an existing test suite's assertions would catch a
+  mutation.** That is `confab`'s job (`confab:confab-assertion-audit`), not
+  `andon-verify`'s (`skills/andon-verify/SKILL.md`).
+
 ## Install
 
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install andon@werkstoff
+```
+
+The `PreToolUse` hook (see [What is enforced, and what is
+not](#what-is-enforced-and-what-is-not)) is inert until a repo already has an
+andon ledger directory (`analysis/andon/ledger` by default, or wherever
+`ledger_dir` in `.claude/andon.local.md` points it) — the settings file only
+relocates or disables the check, it does not by itself activate anything — so
+installing andon changes nothing until `andon-loop` actually starts a pass.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
 ```bash
-cc --plugin-dir /path/to/andon
+claude --plugin-dir /path/to/werkstoff/plugins/andon
 ```
 
 Or copy this directory under a project's `.claude-plugin/` for project-scoped
@@ -97,7 +123,95 @@ Run `andon-preflight` first in any repo — it's read-only and never creates the
 ledger — then `andon-loop` to start a pass, and `andon-status` at any point to see
 the board without advancing anything.
 
-## The board, as an HTML report
+## The andon rule
+
+Three non-negotiable stop conditions enforced in code
+(`check_stop_conditions()` in `scripts/andon_core.py`), explained in full in
+`references/andon-rule.md`:
+
+1. A red wire verdict blocks advance until an explicit user re-run or
+   override.
+2. A proposal's blast radius exceeding the configured authorization level
+   blocks advance until the user explicitly confirms.
+3. A Tier 1 structural-evidence contradiction is **never** overridable, by
+   anyone, under any circumstance -- there is no parameter in the enforcing
+   function that can waive it.
+
+## Components
+
+### Skills (5)
+
+| Skill | Purpose |
+|---|---|
+| `andon-loop` | Orchestrates Phases 0-6: detect topology, init/resume the ledger, scan the cursor's stage for gaps, dispatch propose/verify, enforce the andon rule, advance the cursor, detect convergence. The sole writer to the ledger. |
+| `andon-preflight` | Read-only readiness report: stage legibility, ledger writability, house-rules presence, cross-plugin availability. Never creates the ledger. |
+| `andon-propose` | Proposes a fix for one gap maximally from the ledger/codebase/house-rules, then grills the user one question at a time only on genuinely load-bearing forks (gated by blast-radius tag). |
+| `andon-verify` | Routes a wire to one of seven evidence-grounded strategies via a deterministic classifier, runs the matching reference doc, and returns a structured verdict. Never writes to the ledger. |
+| `andon-status` | Read-only board: stream table, cursor, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix, non-overridable holds. |
+
+### Agents (4, tribunal strategy, dispatched by `andon-verify`)
+
+`andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator` --
+see `agents/*.md` for their exact refusal contracts. All four are read-only
+except `andon-verifier`, which may execute deterministic checks (tests,
+greps) but never modifies the artifact under review.
+
+### Scripts
+
+`scripts/andon_core.py` is the single enforcement library + CLI. Every
+mechanical guarantee in the spec is implemented here as a real conditional
+that raises/exits non-zero on violation -- settings gating, OKF schema
+validation, write-scope enforcement, the three andon-rule stop conditions,
+sub-cycle bounds, the wire classifier, the Detection Ladder, the NO-PERSONA
+check, and untrusted-content fencing/masking. Skills invoke it as a CLI;
+the hook imports it as a library. No third-party dependencies.
+
+`scripts/build_board_html.py` renders the andon board as a self-contained
+HTML report -- see [The report](#the-report) below.
+
+## What is enforced, and what is not
+
+### Hooks
+
+`hooks/hooks.json` registers a `PreToolUse` hook (`hooks/andon_enforce.py`) on
+`Write`/`Edit` that holds regardless of model cooperation. On every matched
+call it:
+
+1. **Checks the escape hatch first** -- if `.claude/andon.local.md` sets
+   `enforcement: off` (or `false`/`disabled`), the hook allows unconditionally.
+2. **Is inert until a ledger exists** -- if the configured ledger directory
+   (`analysis/andon/ledger` by default; `ledger_dir` in the same settings
+   file) is not a directory, the hook allows -- so it never polices a repo
+   that hasn't started using andon.
+3. **Always allows a write targeting the ledger itself** -- the loop must
+   always be able to record its own halt.
+4. **Otherwise evaluates the andon rule's stop conditions** (`stop_reason()`
+   in `hooks/andon_enforce.py`): an open or reopened gap with no
+   `blast_radius` value, a `blast_radius` that exceeds the configured
+   `authorization_level`, a gap that has reopened `MAX_CONSECUTIVE_REOPENS`
+   (3) times, or an evidence doc recording a `red` or `unknown` verdict --
+   any of these denies the `Write`/`Edit` outright, regardless of which file
+   was targeted.
+
+Gating values are read tolerantly: a frontmatter key first (`status`,
+`blast_radius`, ...), then the legacy `tags: ["kind:wire", "status:open"]`
+array, then treated as genuinely absent -- a missing value is never inferred,
+only surfaced as a stop.
+
+The hook fails **closed** on any internal error (malformed payload, import
+failure, unexpected exception), always naming the escape hatch -- see
+[Escape hatch](#escape-hatch) below.
+
+## Settings
+
+`.claude/andon.local.md` is optional. See `references/okf-ledger-schema.md`
+for the full field table and defaults. Every andon skill reads this file
+first and halts immediately if `enabled: false` is set -- before running any
+phase, before touching the repo.
+
+## The report
+
+### The board, as an HTML report
 
 `scripts/build_board_html.py` renders the same evidence `andon-status` prints to
 the chat as one self-contained HTML file, written to `<ledger_dir>/ANDON_BOARD.html`.
@@ -133,79 +247,9 @@ python3 plugins/andon/scripts/build_board_html.py \
 `scripts/fixtures/sample_ledger/README.md` documents exactly which defect each
 stage, gap and evidence doc is there to expose.
 
-## Skills (5)
+## Design decisions
 
-| Skill | Purpose |
-|---|---|
-| `andon-loop` | Orchestrates Phases 0-6: detect topology, init/resume the ledger, scan the cursor's stage for gaps, dispatch propose/verify, enforce the andon rule, advance the cursor, detect convergence. The sole writer to the ledger. |
-| `andon-preflight` | Read-only readiness report: stage legibility, ledger writability, house-rules presence, cross-plugin availability. Never creates the ledger. |
-| `andon-propose` | Proposes a fix for one gap maximally from the ledger/codebase/house-rules, then grills the user one question at a time only on genuinely load-bearing forks (gated by blast-radius tag). |
-| `andon-verify` | Routes a wire to one of seven evidence-grounded strategies via a deterministic classifier, runs the matching reference doc, and returns a structured verdict. Never writes to the ledger. |
-| `andon-status` | Read-only board: stream table, cursor, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix, non-overridable holds. |
-
-## Agents (4, tribunal strategy, dispatched by `andon-verify`)
-
-`andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator` --
-see `agents/*.md` for their exact refusal contracts. All four are read-only
-except `andon-verifier`, which may execute deterministic checks (tests,
-greps) but never modifies the artifact under review.
-
-## Scripts
-
-`scripts/andon_core.py` is the single enforcement library + CLI. Every
-mechanical guarantee in the spec is implemented here as a real conditional
-that raises/exits non-zero on violation -- settings gating, OKF schema
-validation, write-scope enforcement, the three andon-rule stop conditions,
-sub-cycle bounds, the wire classifier, the Detection Ladder, the NO-PERSONA
-check, and untrusted-content fencing/masking. Skills invoke it as a CLI;
-the hook imports it as a library. No third-party dependencies.
-
-## Hooks
-
-`hooks/hooks.json` registers a `PreToolUse` hook (`hooks/pre_tool_use.py`) on
-`Write`/`Edit` that holds regardless of model cooperation:
-
-1. **Disabled-plugin halt** -- refuses any write into the ledger/output
-   directory when `.claude/andon.local.md` has `enabled: false`.
-2. **Write-scope** -- refuses path traversal, absolute paths, and any target
-   outside the declared ledger/output directory, including traversal
-   segments embedded inside an otherwise-andon-looking path.
-3. **`log.md` append-only** -- refuses a `Write` that would overwrite an
-   existing `log.md`, and refuses any `Edit` on it outright.
-4. **Gap-closure gating** -- refuses writing a gap doc with `status: closed`
-   unless its linked evidence doc has `verdict: green` and is not a Tier 1
-   `non_overridable` contradiction (andon rule conditions 1 and 3).
-
-The hook is **inert** in any repository that hasn't started using andon yet
-(no `analysis/andon` or configured ledger/output directory present) --
-it exits 0 immediately in that case, so it never polices unrelated repos.
-It fails **closed** on any internal error (malformed payload, import
-failure, unexpected exception), always naming the escape hatch: set
-`enabled: false` in `.claude/andon.local.md`, or delete the ledger
-directory.
-
-## Settings: `.claude/andon.local.md`
-
-Optional. See `references/okf-ledger-schema.md` for the full field table and
-defaults. Every andon skill reads this file first and halts immediately if
-`enabled: false` is set -- before running any phase, before touching the
-repo.
-
-## The andon rule
-
-Three non-negotiable stop conditions enforced in code
-(`check_stop_conditions()` in `scripts/andon_core.py`), explained in full in
-`references/andon-rule.md`:
-
-1. A red wire verdict blocks advance until an explicit user re-run or
-   override.
-2. A proposal's blast radius exceeding the configured authorization level
-   blocks advance until the user explicitly confirms.
-3. A Tier 1 structural-evidence contradiction is **never** overridable, by
-   anyone, under any circumstance -- there is no parameter in the enforcing
-   function that can waive it.
-
-## Design decisions (spec was silent here)
+*(spec was silent here)*
 
 The behavioral spec states obligations, not implementations. Where it was
 silent on a mechanical detail, these choices were made:
@@ -253,7 +297,7 @@ silent on a mechanical detail, these choices were made:
   `noreply@example.com`) -- update it to the actual maintainer before
   publishing to a marketplace.
 
-## Testing
+## Verifying a change to this plugin
 
 ```bash
 # Enforcement library smoke tests
@@ -264,3 +308,20 @@ python3 scripts/andon_core.py check-stop-conditions --verdict red --authorizatio
 # Preflight against this repo (read-only)
 python3 scripts/andon_core.py preflight .
 ```
+
+## Escape hatch
+
+Set `enforcement: off` (also accepts `false` or `disabled`) in
+`.claude/andon.local.md` to disable the `PreToolUse` hook outright --
+`hooks/andon_enforce.py` reads it in `settings()` and allows every
+`Write`/`Edit` once set.
+
+This is a separate switch from `enabled: false` in the same file: that one is
+read by `scripts/andon_core.py`'s `enforce_enabled_or_halt()`, and it is the
+**skills** (`andon-loop`, `andon-status`, ...) that read it and halt before
+running any phase -- it does nothing to the hook. The hook and the skills
+each have their own kill switch, and both live in `.claude/andon.local.md`.
+
+Deleting the ledger directory (`analysis/andon/ledger` by default, or
+whatever `ledger_dir` names in that file) also makes the hook inert, since it
+allows immediately once the configured ledger directory does not exist.

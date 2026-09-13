@@ -382,7 +382,8 @@ and fails if it does not misbehave.
 ### What the vocabulary does NOT do
 
 It does not propose a term for a token. Matching custom-property names against the
-registry binds **1** of this repository's own 50 declarations, because names are *roles*
+registry bound **1** of the 50 declarations this repository's token file held when that was
+measured (it has 57 since the retrofit), because names are *roles*
 (`--space-1`, `--bg`) and the vocabulary names *concepts* (`Spacing step`, `Surface /
 background`). The binding is interpretation, and invariant I3 keeps interpretation in a
 separate artefact written by a separate agent. `--audit` reports what is named and what is
@@ -487,7 +488,8 @@ illustration zone**, where tone comes from flat colour and overlap rather than a
 ## The retrofit proof, on this repository's own tokens
 
 `retrofit` is proven, not asserted, and on real material: `tools/design-tokens/tokens.css`
-— 50 declarations, eight synced consumers.
+— 57 declarations, thirteen synced consumers (twelve plugins plus
+`docs/.vitepress/theme/tokens.css`, per `.rrt.toml`'s `artifact_targets`).
 
 ```bash
 python3 plugins/matrize/scripts/retrofit_css.py tools/design-tokens/tokens.css --out /tmp/tokens.json

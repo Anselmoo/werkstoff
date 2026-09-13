@@ -1,8 +1,8 @@
 # cupertino
 
-A design and craft discipline rooted in Steve Jobs' documented decisions,
+**A design and craft discipline rooted in Steve Jobs' documented decisions,
 applied through a fixed, sequenced lifecycle pipeline — not a menu of
-individually-selectable design techniques.
+individually-selectable design techniques.**
 
 ## Why this exists
 
@@ -25,17 +25,46 @@ cupertino-backwards -> cupertino-focus -> [cupertino-longevity & cupertino-integ
 Four `cupertino-handbook-*` skills give the same discipline a durable, checkable memory
 per domain (code / design / testing / documentation).
 
+## What it is not
+
+- Not a post-hoc auditor of a UI that already exists — `cupertino-council` runs before
+  any code is written and is never retrofitted onto finished code; for accessibility,
+  semantic-markup or hardcoded-design-value problems in shipped source, use
+  `self-assess:self-assess-ui-audit`, and for a full-lifecycle design pass over an
+  existing project use `cupertino-review` instead.
+- Not an auditor of repo-wide documented conventions such as `CLAUDE.md` or
+  `.claude/house-rules.md` — `cupertino-handbook-check` only compares work against a
+  domain handbook this plugin itself drafted; use `self-assess:self-assess-lint-audit`
+  for repo-wide convention drift.
+- Not the producer of a machine-checkable ruleset a hook enforces at write time —
+  `cupertino-handbook-draft` writes a human-readable, per-dimension handbook describing
+  a domain as it already is; the machine-checkable `.lehre/ruleset.json` a `lehre` run
+  enforces comes from `lehre-codify` instead.
+- Not the applier of code-modernization or idiom findings — `cupertino-handbook-fix`
+  only applies a prior `cupertino-handbook-check` pass's own mechanical findings, and
+  never touches `code_idiom_summary.json`; route those to `self-assess:self-assess-idiom-fix`.
+
 ## Install
 
-Point Claude Code at this directory as a plugin (local dev):
-
-```bash
-claude --plugin-dir /path/to/cupertino
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install cupertino@werkstoff
 ```
 
-or copy it into a project's `.claude-plugin/` for project-scoped use. No environment
-variables or external services are required — everything the plugin needs is either
-in this repo or written under `.cupertino/` in the target project.
+The PreToolUse hook is inert until the current repo already has a `.cupertino/` state
+directory, so installing the plugin changes nothing on its own — no environment
+variables or external services are required either; everything the plugin needs is
+either in this repo or written under `.cupertino/` in the target project.
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
+```bash
+claude --plugin-dir /path/to/werkstoff/plugins/cupertino
+```
+
+Or copy this directory into a project's `.claude-plugin/` for project-scoped use.
 
 <!-- rrt:auto:start:example-prompts-intro -->
 ## Example Prompts
@@ -228,7 +257,35 @@ the fixed tension order), so it is a plausible run rather than lorem ipsum shape
 `cupertino-backwards` always runs first; the other lifecycle stages stay locked
 until it has.
 
-## Skills (15)
+## A note on the Workflow tool
+
+`workflows/*.js` are written for Claude Code's `Workflow` tool (`pipeline()` /
+`parallel()` / `agent()`). The handbook skills instruct invoking them via
+`Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/...", args: {...} })`. If your
+environment's Workflow tool requires an explicit multi-agent-orchestration opt-in
+before it will run, treat invoking one of these three handbook skills as that opt-in —
+they exist specifically to guarantee the one-item-per-dispatch and blind-verification
+properties that a single model-driven loop can't reliably hold to.
+
+## Components
+
+- **3 workflows** (`workflows/`) — `handbook-draft.js`, `handbook-check.js`,
+  `handbook-fix.js`. These use the Workflow tool's `pipeline()`/`parallel()` primitives
+  so that "one dimension per dispatch," "one rule per dispatch," and "remediate then
+  immediately verify, blind" are structural properties of the orchestration code itself,
+  not instructions a model could skip.
+- **1 PreToolUse hook** (`hooks/hooks.json` + `hooks/pretooluse_guard.py`) — the
+  mechanical backstop for every MUST-NOT rule in the spec. Runs on every `Skill`,
+  `Task`/`Agent`, `Write`/`Edit`, and `Bash` call; inert (exits 0 immediately) unless
+  the current repo already has a `.cupertino/` state directory, so it never polices an
+  unrelated project.
+- **Shared scripts** (`scripts/`) — `validators.py` (content-shape checks: zero tech
+  nouns, one-sentence survivors, evolution score + threshold, five-lens council,
+  fixed tension order, reveal shape, handbook JSON schemas), `state.py` (the
+  `.cupertino/flags/` marker store the hook and skills share), `run_prototype.sh`
+  (actually executes a prototype spike and reports its real exit code/output).
+
+### Skills (15)
 
 | Skill | Purpose |
 |---|---|
@@ -248,7 +305,7 @@ until it has.
 | `cupertino-handbook-check` | Compares new or changed work against an existing handbook to find divergence, with file:line evidence. Read-only. |
 | `cupertino-handbook-fix` | Applies a prior handbook-check pass's mechanical findings — only when the user has explicitly enabled fix mode. |
 
-## Agents (4)
+### Agents (4)
 
 | Agent | Purpose |
 |---|---|
@@ -257,25 +314,9 @@ until it has.
 | `handbook-remediator` | Dispatched by `cupertino-handbook-fix` to apply one already-verified mechanical finding's exact rewrite at its cited file:line, and nothing else. |
 | `handbook-verifier` | Dispatched immediately after `handbook-remediator`, deliberately blind to its output, to independently judge whether the file now satisfies the handbook rule. |
 
-## Components
+## What is enforced, and what is not
 
-- **3 workflows** (`workflows/`) — `handbook-draft.js`, `handbook-check.js`,
-  `handbook-fix.js`. These use the Workflow tool's `pipeline()`/`parallel()` primitives
-  so that "one dimension per dispatch," "one rule per dispatch," and "remediate then
-  immediately verify, blind" are structural properties of the orchestration code itself,
-  not instructions a model could skip.
-- **1 PreToolUse hook** (`hooks/hooks.json` + `hooks/pretooluse_guard.py`) — the
-  mechanical backstop for every MUST-NOT rule in the spec. Runs on every `Skill`,
-  `Task`/`Agent`, `Write`/`Edit`, and `Bash` call; inert (exits 0 immediately) unless
-  the current repo already has a `.cupertino/` state directory, so it never polices an
-  unrelated project. Escape hatch: `CUPERTINO_DISABLE_GUARD=1`.
-- **Shared scripts** (`scripts/`) — `validators.py` (content-shape checks: zero tech
-  nouns, one-sentence survivors, evolution score + threshold, five-lens council,
-  fixed tension order, reveal shape, handbook JSON schemas), `state.py` (the
-  `.cupertino/flags/` marker store the hook and skills share), `run_prototype.sh`
-  (actually executes a prototype spike and reports its real exit code/output).
-
-## How each spec rule is mechanically enforced
+### How each spec rule is mechanically enforced
 
 | Rule | Enforcement |
 |---|---|
@@ -304,7 +345,16 @@ until it has.
 | handbook-fix mode gate | PreToolUse hook parses `.claude/cupertino.local.md` for a `fix:` block with `mode: fix`; denies the `Skill` dispatch otherwise |
 | no commit/push during handbook fix/check | PreToolUse hook denies mutating `git`/`rm -rf` commands while `.cupertino/flags/handbook-fix-active` or `handbook-check-active` is set |
 
-## Design decisions (spec was silent here)
+## The report
+
+The one screenshot this plugin ships — the `cupertino-review` pipeline rendered as a
+self-contained HTML flow diagram — is embedded inside [Example Prompts](#example-prompts)
+under "Run the full review," alongside the reproducible fixture and the exact rebuild
+command, since that prompt is the only place the report is referenced from.
+
+## Design decisions
+
+*(spec was silent here)*
 
 - **State directory**: `.cupertino/` at the project root holds everything the plugin
   persists — `flags/` (ordering/mode markers), `<domain>-handbook.md`,
@@ -385,12 +435,24 @@ until it has.
   .rb .go`. Anything else fails closed ("no runner registered") rather than silently
   skipping the run-it requirement.
 
-## A note on the Workflow tool
+## Verifying a change to this plugin
 
-`workflows/*.js` are written for Claude Code's `Workflow` tool (`pipeline()` /
-`parallel()` / `agent()`). The handbook skills instruct invoking them via
-`Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/...", args: {...} })`. If your
-environment's Workflow tool requires an explicit multi-agent-orchestration opt-in
-before it will run, treat invoking one of these three handbook skills as that opt-in —
-they exist specifically to guarantee the one-item-per-dispatch and blind-verification
-properties that a single model-driven loop can't reliably hold to.
+```bash
+python3 plugins/cupertino/scripts/test_state.py          # the .cupertino/flags/ marker store round-trips
+python3 test/plugins/lint-frontmatter.py plugins/cupertino
+python3 test/plugins/verify-hooks-deny.py plugins/cupertino   # DENY on the plugin-specific fixture, ALLOW when .cupertino/ is absent
+claude plugin validate plugins/cupertino --strict
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/cupertino --docs-root docs
+```
+
+`verify-hooks-deny.py` uses `test/plugins/fixtures/hook-violation-cupertino/` rather
+than the generic fixture, because `pretooluse_guard.py` is scope-conditional: it is
+supposed to allow everywhere the current repo has no `.cupertino/` state directory, and
+the generic fixture would report that correct "allow" as a hook that does nothing.
+
+## Escape hatch
+
+`CUPERTINO_DISABLE_GUARD=1` bypasses `pretooluse_guard.py` for one session. The other
+way out is narrower rather than total: removing `.cupertino/` from a repo that no
+longer uses cupertino makes the hook inert again on its own, since it only acts when
+that directory exists.

@@ -1,9 +1,9 @@
 # cli-scaffold
 
-A Claude Code plugin that generates **production-grade command-line applications
-in 12 languages**, each built against one unified five-pillar architecture
-doctrine and each ecosystem's real idioms — then verified against that doctrine
-before it is shown to you.
+**Generates production-grade command-line applications in 12 languages, each
+built against one unified five-pillar architecture doctrine and each
+ecosystem's real idioms, then verified against that doctrine before it is
+shown to you.**
 
 ## Why this exists
 
@@ -16,16 +16,43 @@ target ecosystem's actual current idioms, then verified against that doctrine
 before you ever see it. The same architectural bar applies whether you ask
 for Rust, Bash, or PowerShell.
 
+## What it is not
+
+- **Not a template library.** Every scaffold is generated freeform from the
+  current per-language reference and doctrine — never from stored
+  boilerplate, and never reused across requests.
+- **Not a guesser.** An ambiguous or unsupported language name is refused
+  outright and lists the 12 supported languages; it is never silently
+  resolved to a "close enough" match.
+- **Not a builder or a publisher.** Verification is static and read-only —
+  the verifier never builds, runs, publishes, or installs the generated CLI
+  (no `cargo publish`, `npm publish`, `gem push`, `dotnet nuget push`,
+  `pip upload`, etc.).
+- **Not a fixer of everything.** Only *fixable* gaps are auto-fixed inside a
+  bounded loop; anything that needs human judgment is surfaced to you
+  unchanged, never resolved on your behalf.
+
 ## Install
 
-```bash
-# from the plugin directory
-claude --plugin-dir .
+```
+/plugin marketplace add Anselmoo/werkstoff
+/plugin install cli-scaffold@werkstoff
 ```
 
-Then invoke `/cli-scaffold <language> called <app-name>` or just describe the CLI
-you want. Generated scaffolds land under `generated-clis/<app-name>/`;
-verification reports under `.cli-scaffold-reports/` (both git-ignored).
+Nothing runs on install: cli-scaffold registers no hook, so no background
+process starts — the plugin only acts when you invoke `/cli-scaffold` or
+describe the CLI you want in plain language.
+
+Generated scaffolds land under `generated-clis/<app-name>/`; verification
+reports under `.cli-scaffold-reports/` (both git-ignored).
+
+### Local development
+
+Point Claude Code at a checkout without registering the marketplace:
+
+```bash
+claude --plugin-dir /path/to/werkstoff/plugins/cli-scaffold
+```
 
 <!-- rrt:auto:start:example-prompts-intro -->
 ## Example Prompts
@@ -101,37 +128,6 @@ foo") and the plugin:
 4. **Verifies** it read-only against the doctrine, fixes every *fixable* gap and
    re-verifies (bounded), and surfaces only *needs-human-judgment* gaps to you.
 
-Generation also writes `ARCHITECTURE.html` inside the scaffold itself: a
-self-contained report viewer rendering the scaffold's real directory tree,
-each file tagged with the five-pillar role(s) its manifest declares for it.
-
-It answers one question rather than merely drawing a tree — *does every pillar
-the doctrine names have a file behind it?* — and states the answer in a
-sentence at the top, derived from the manifest's own gating keys. Four of the
-five pillars are file-backed and therefore countable here; the fifth, Unix
-composability, is behavioural (exit codes 0/1/2, data on stdout, diagnostics on
-stderr), so no file can carry its badge and the viewer says so instead of
-scoring a pillar it cannot see.
-
-![Self-contained HTML architecture viewer for the widgetctl Python scaffold: a header reading "cli-scaffold — architecture tree", a verdict panel answering "Does every pillar the doctrine names have a file behind it?" with the sentence "widgetctl claims 4 of 6 file-backed doctrine roles — nothing in this tree plays the test or completion role, leaving the stability pillar with no file to point at", then an indented file tree with docs/, src/widgetctl/ and tests/ expanded to their files, inline coloured badges reading core, entry, distribution and help beside the files that play those roles, LICENSE/README.md/tests/test_core.py left unbadged, and a legend below repeating each badge word next to its long-form pillar meaning — with test and completion drawn as hollow dashed chips marked "no file claims this role"](assets/architecture-tree-viewer-screenshot.jpg)
-
-That image is reproducible rather than a one-off capture. The scaffold it shows
-is committed at `scripts/fixtures/widgetctl/` — a real directory tree plus its
-`cli-scaffold.manifest.json`, which is exactly what the builder consumes
-(the manifest supplies the roles, the walk supplies the tree). It is
-deliberately *incomplete*: it declares no `--help` snapshot test and no shell
-completion, so the report shows a partial-coverage verdict and two hollow
-legend chips rather than a clean sweep that would prove nothing. To rebuild it:
-
-```bash
-mkdir -p /tmp/cli-scaffold-demo
-cp -R plugins/cli-scaffold/scripts/fixtures/widgetctl /tmp/cli-scaffold-demo/widgetctl
-python3 plugins/cli-scaffold/scripts/build_architecture_tree.py /tmp/cli-scaffold-demo/widgetctl \
-    --template plugins/cli-scaffold/assets/architecture-tree-viewer.html \
-    --d3 plugins/cli-scaffold/assets/inline-d3.html \
-    --tokens plugins/cli-scaffold/assets/tokens.css
-```
-
 ### The 12 languages / 3 paradigms
 
 | Paradigm | Languages | Skill |
@@ -154,22 +150,6 @@ Every generated CLI satisfies all five: **UX/discoverability**,
 
 Identical in all 12 languages: `0` success, `1` runtime error, `2` usage error.
 
-## Skills (5)
-
-| Skill | Purpose |
-|---|---|
-| `scaffold-cli` | `/cli-scaffold` dispatcher — the user-invoked entry point. |
-| `cli-architecture` | The doctrine (single source of truth); not invoked directly, loaded by the three paradigm skills below. |
-| `cli-scaffold-compiled` | Rust, Go, .NET — plus `references/{rust,go,dotnet}.md`. |
-| `cli-scaffold-interpreted` | Python, TypeScript, JavaScript, Ruby, PHP, Perl — plus per-language references. |
-| `cli-scaffold-shell` | Bash, Zsh, PowerShell, POSIX sh — plus per-language references. |
-
-## Agents (1)
-
-`cli-scaffold-verifier` — read-only doctrine conformance check; has no Write/Edit
-tool and the verification engine itself refuses to write anywhere under the
-scaffold.
-
 ## Components
 
 ```
@@ -191,10 +171,45 @@ scripts/
   check_doctrine_isolation.py  # fail if a paradigm skill duplicates the doctrine
   selftest.py                  # runnable proof the guards refuse what they must
   build_architecture_tree.py   # renders ARCHITECTURE.html from the manifest + a real walk
-  fixtures/widgetctl/          # committed demo scaffold behind the screenshot above
+  fixtures/widgetctl/          # committed demo scaffold behind the screenshot in "The report"
 ```
 
-## Enforcement is in code, not prose
+### Skills (5)
+
+| Skill | Purpose |
+|---|---|
+| `scaffold-cli` | `/cli-scaffold` dispatcher — the user-invoked entry point. |
+| `cli-architecture` | The doctrine (single source of truth); not invoked directly, loaded by the three paradigm skills below. |
+| `cli-scaffold-compiled` | Rust, Go, .NET — plus `references/{rust,go,dotnet}.md`. |
+| `cli-scaffold-interpreted` | Python, TypeScript, JavaScript, Ruby, PHP, Perl — plus per-language references. |
+| `cli-scaffold-shell` | Bash, Zsh, PowerShell, POSIX sh — plus per-language references. |
+
+### Agents (1)
+
+`cli-scaffold-verifier` — read-only doctrine conformance check; has no Write/Edit
+tool and the verification engine itself refuses to write anywhere under the
+scaffold.
+
+### Commands (1)
+
+`/cli-scaffold <language> called <app-name> [functionality...]` — loads the
+`scaffold-cli` skill and relays its arguments as the language/dialect, the app
+name, and any requested functionality; the skill then does the resolve, load,
+generate and verify steps above.
+
+## What is enforced, and what is not
+
+cli-scaffold registers no PreToolUse hook, so nothing here is denied at the
+tool-call layer — a model that decided to skip a skill's steps could, in
+principle, write a scaffold without ever running `lang_router.py`,
+`write_scope.py`, or `verify_scaffold.py`. What actually holds is narrower but
+real: every rule below is a conditional that exits non-zero or raises when its
+script is actually invoked, and the `cli-scaffold-verifier` agent's read-only
+boundary *is* enforced at the tool-permission layer rather than by prose — it
+is declared with `tools: Read, Glob, Bash` and simply has no Write or Edit tool
+to misuse.
+
+### Enforcement is in code, not prose
 
 Every rule that says *MUST NOT* / *MUST refuse* / *MUST halt* is enforced by a
 conditional that actually refuses:
@@ -218,7 +233,42 @@ Run the proof:
 python3 scripts/selftest.py
 ```
 
-## Design decisions (spec was silent here)
+## The report
+
+Generation also writes `ARCHITECTURE.html` inside the scaffold itself: a
+self-contained report viewer rendering the scaffold's real directory tree,
+each file tagged with the five-pillar role(s) its manifest declares for it.
+
+It answers one question rather than merely drawing a tree — *does every pillar
+the doctrine names have a file behind it?* — and states the answer in a
+sentence at the top, derived from the manifest's own gating keys. Four of the
+five pillars are file-backed and therefore countable here; the fifth, Unix
+composability, is behavioural (exit codes 0/1/2, data on stdout, diagnostics on
+stderr), so no file can carry its badge and the viewer says so instead of
+scoring a pillar it cannot see.
+
+![Self-contained HTML architecture viewer for the widgetctl Python scaffold: a header reading "cli-scaffold — architecture tree", a verdict panel answering "Does every pillar the doctrine names have a file behind it?" with the sentence "widgetctl claims 4 of 6 file-backed doctrine roles — nothing in this tree plays the test or completion role, leaving the stability pillar with no file to point at", then an indented file tree with docs/, src/widgetctl/ and tests/ expanded to their files, inline badges reading core, entry, distribution and help beside the files that play those roles (neutral chips with light label text, each role's colour carried by a swatch on the chip's left edge), LICENSE/README.md/tests/test_core.py left unbadged, and a legend below repeating each badge word next to its long-form pillar meaning — with test and completion drawn as hollow dashed chips marked "no file claims this role"](assets/architecture-tree-viewer-screenshot.jpg)
+
+That image is reproducible rather than a one-off capture. The scaffold it shows
+is committed at `scripts/fixtures/widgetctl/` — a real directory tree plus its
+`cli-scaffold.manifest.json`, which is exactly what the builder consumes
+(the manifest supplies the roles, the walk supplies the tree). It is
+deliberately *incomplete*: it declares no `--help` snapshot test and no shell
+completion, so the report shows a partial-coverage verdict and two hollow
+legend chips rather than a clean sweep that would prove nothing. To rebuild it:
+
+```bash
+mkdir -p /tmp/cli-scaffold-demo
+cp -R plugins/cli-scaffold/scripts/fixtures/widgetctl /tmp/cli-scaffold-demo/widgetctl
+python3 plugins/cli-scaffold/scripts/build_architecture_tree.py /tmp/cli-scaffold-demo/widgetctl \
+    --template plugins/cli-scaffold/assets/architecture-tree-viewer.html \
+    --d3 plugins/cli-scaffold/assets/inline-d3.html \
+    --tokens plugins/cli-scaffold/assets/tokens.css
+```
+
+## Design decisions
+
+*(spec was silent here)*
 
 Where the specification was silent, these defaults were chosen and are noted here:
 
@@ -254,3 +304,19 @@ Where the specification was silent, these defaults were chosen and are noted her
   (POSIX sh), Pester (PowerShell).
 - **Author metadata** in `plugin.json` defaults to the invoking user's identity;
   adjust before publishing.
+
+## Verifying a change to this plugin
+
+```bash
+python3 test/plugins/lint-frontmatter.py plugins/cli-scaffold
+claude plugin validate plugins/cli-scaffold --strict
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/cli-scaffold --docs-root docs
+python3 plugins/cli-scaffold/scripts/selftest.py
+```
+
+### Behavioural cases
+
+```bash
+bash test/plugins/verify-clean-box.sh
+bash test/plugins/run.sh new-cli-doctrine
+```

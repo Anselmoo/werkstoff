@@ -115,8 +115,10 @@ block states in prose: it denies an edit or a dispatch that runs ahead of a beat
 repository declared, and is inert until `.claude/takt.local.md` exists. Installing it
 turns these five bullets from instructions into refusals.
 
-Four other werkstoff plugins hold a `PreToolUse` hook of their own — `andon` and
-`self-assess` gate write tools, `confab` gates `Edit`/`Write` and `Bash`, and
-`cupertino` enforces its own internal ordering through `GATED_AFTER_BACKWARDS`. All
-are inert until the repository actually uses the owning plugin. See
-[`hazards.md`](hazards.md) for what happens when several are installed at once.
+Eight other werkstoff plugins hold a `PreToolUse` hook of their own — `andon`,
+`lehre`, `matrize`, and `self-assess` gate write tools, `confab` and `nacharbeit`
+also gate `Bash`, `arbeitsplan` matches the same six dispatch-and-write tool types as
+takt itself, and `cupertino` enforces its own internal ordering through
+`GATED_AFTER_BACKWARDS`. All are inert until the repository actually uses the owning
+plugin. See [`hazards.md`](hazards.md) for what happens when several are installed at
+once.

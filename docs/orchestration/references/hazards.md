@@ -6,9 +6,9 @@ ambient plugins actually do when they overlap, grounded in hook source rather th
 what a README implies. `delegation.md` covers the dispatch side; this page covers what
 happens once those dispatches — or a direct edit — land while a guard is watching.
 
-## Eight hooks already arbitrate every edit
+## Nine hooks already arbitrate every edit
 
-Eight werkstoff plugins register a `PreToolUse` hook, and all eight are inert until the
+Nine werkstoff plugins register a `PreToolUse` hook, and all nine are inert until the
 repository shows a specific piece of state — none of them polices an unrelated
 project the moment it happens to be installed. The fact a reader actually scans for
 first — will this fire on my repo, right now — is called out as its own line on every
@@ -91,21 +91,30 @@ card, rather than buried in the third column of a five-column table.
 
 Two details matter beyond the cards above. First, andon's matcher covers `Write` and `Edit`
 only — it does not list `MultiEdit`, unlike self-assess's matcher on the same three
-tool names. Second, two matchers reach upstream of the edit itself by covering
-`Skill|Task|Agent`, so they can intercept a dispatch and not only a file write. `arbeitsplan` matches the same six, and the division of labour between it and `takt` is deliberate rather than incidental: `takt` answers "has the required step run?", which is legitimately repo-level state, while `arbeitsplan` answers "did THIS in-flight dispatch issue this edit?", which is the per-dispatch attribution problem below. Ordering appears in exactly one of the two.
+tool names. Second, three matchers reach upstream of the edit itself by covering
+`Skill|Task|Agent`, so they can intercept a dispatch and not only a file write: `takt`
+and `arbeitsplan` share the identical six-token matcher
+`Skill|Task|Agent|Write|Edit|MultiEdit`, and `cupertino` reaches the same three dispatch
+tools plus `Write|Edit|Bash` in place of `MultiEdit`. The division of labour between
+`takt` and `arbeitsplan` is deliberate rather than incidental: `takt` answers "has the
+required step run?", which is legitimately repo-level state, while `arbeitsplan`
+answers "did THIS in-flight dispatch issue this edit?", which is the per-dispatch
+attribution problem below. Ordering appears in exactly one of the two.
 cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
 `cupertino-longevity`, `cupertino-integrate`, or `cupertino-council` before
-`cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. takt's matcher is the
-widest of the eight, adding `MultiEdit` on top of the same dispatch tools, and it
-gates declared beat order across plugins rather than within one. nacharbeit is the
-only one besides confab and cupertino that watches `Bash`, and for one reason: while
-its fix lock is open, a `git commit`, `push`, `reset` or `checkout` from inside the
-pass is refused, so a half-applied rework is never committed by the thing applying
-it. The other four reach only the write tools.
+`cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. `takt`'s matcher ties
+`arbeitsplan`'s as the widest of the nine — both add `MultiEdit` on top of the same
+three dispatch tools — and `takt` gates declared beat order across plugins rather than
+within one. nacharbeit is the only one besides confab and cupertino that watches
+`Bash`, and for one reason: while its fix lock is open, a `git commit`, `push`,
+`reset` or `checkout` from inside the pass is refused, so a half-applied rework is
+never committed by the thing applying it. The remaining four — andon, lehre, matrize,
+self-assess — reach only the write tools (`Write`/`Edit`, `MultiEdit` on three of the
+four).
 
-## All eight fail closed, with one shared exception
+## All nine fail closed, with one shared exception
 
-Every one of these eight hooks fails closed: an unexpected internal error — a
+Every one of these nine hooks fails closed: an unexpected internal error — a
 malformed JSON payload, a filesystem error, anything the hook did not anticipate —
 denies the tool call rather than silently allowing it, and the deny message always
 names the escape hatch. andon's own docstring states the reasoning plainly: a hook

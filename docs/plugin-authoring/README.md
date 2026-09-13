@@ -29,7 +29,7 @@ structure" pattern the craft rules below argue against.
 - [`references/craft-standards.md`](references/craft-standards.md) — the universal rules
   (skill types, anatomy, frontmatter spec, progressive disclosure, writing voice,
   no-duplication, structure-implies-a-maintainer, wiring references, portability), each
-  checked against what werkstoff's six plugins actually do today, not assumed. Read this
+  checked against what werkstoff's twelve plugins actually do today, not assumed. Read this
   before starting any new skill/agent, or when something about an existing one feels off
   and you're not sure why.
 - [`references/output-shape-findings.md`](references/output-shape-findings.md) — the
@@ -47,12 +47,18 @@ structure" pattern the craft rules below argue against.
   this before arguing about a finding in `docs/prompt-quality-findings.md`, and change it
   (not the finder) when a rule is wrong.
 - [`references/report-viewer-standard.md`](references/report-viewer-standard.md) — the
-  rules for the eight self-contained HTML reports under `plugins/*/assets/*-viewer.html`:
-  state the verdict in words, never print a number twice, an actionable number must not
-  look inert, colour is never the only channel, height derives from content — plus the
-  required `<head>`, the three legitimate page archetypes, and how a screenshot and its
-  demo data get committed so the image is reproducible. Read this before editing any
-  viewer or its `build_*_html.py`.
+  rules for the 13 self-contained HTML reports (one per plugin, two for `matrize`) under
+  `plugins/*/assets/*-viewer.html`: state the verdict in words, never print a number
+  twice, an actionable number must not look inert, colour is never the only channel,
+  height derives from content — plus the required `<head>`, the three legitimate page
+  archetypes, and how a screenshot and its demo data get committed so the image is
+  reproducible. Read this before editing any viewer or its `build_*_html.py`.
+- [`references/design-tokens.md`](references/design-tokens.md) — the corporate design
+  usage rules `scripts/ci/check_design_tokens.py` enforces over the docs theme and every
+  viewer: no literal hex/color-function/font-family/radius where a token exists, a
+  shrink-only baseline, and how the source chain runs from `tools/design-tokens/tokens.css`
+  through the vendored copies to the DTCG file matrize derives from it. Read this before
+  adding a colour, font, or radius anywhere the check covers.
 
 ## The headline finding
 
@@ -62,4 +68,4 @@ schema in a sentence instead of showing a worked, fenced instance. That gap is n
 for every self-assess and confab auditor agent (see `output-shape-findings.md` §4.2) and
 partially closed structurally for `self-assess-extract-rules` (a three-file
 schema/example/report split, §4.6). What's still open, and the general rules to apply
-when extending any of the six plugins, live in `craft-standards.md`.
+when extending any of the twelve plugins, live in `craft-standards.md`.
