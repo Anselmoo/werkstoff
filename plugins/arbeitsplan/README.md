@@ -117,6 +117,17 @@ by intent.
 > proves the environment can authenticate with one cheap call, then runs it — one fresh
 > process per cell, with a real per-cell `--model`.
 
+##### Find out where to even start
+
+````prompt
+"which workflow fits fixing this bug, what do I need to install, and should I use plan mode?"
+````
+
+> Triggers `arbeitsplan-start`: matches the task to one of the four approved workflows in
+> `references/approved-workflows.md`, names the plugins still missing with their exact
+> install command, and states the permission mode to run in. Recommend-only — it never
+> installs anything or writes `workflow.json` itself. "No fit" is a valid answer.
+
 ##### Find out why something was refused
 
 ````prompt
