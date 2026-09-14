@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 96 in
+Every example prompt shipped by the 12 plugin READMEs, 97 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -63,7 +63,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## arbeitsplan
 
-[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 5 prompts.
+[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 6 prompts.
 
 ### Turn a vague piece of work into something runnable
 
@@ -96,6 +96,14 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `arbeitsplan-matrix`: compiles a `cases × models × plugin_states × repeats` sweep, proves the environment can authenticate with one cheap call, then runs it — one fresh process per cell, with a real per-cell `--model`.
+
+### Find out where to even start
+
+````prompt
+"which workflow fits fixing this bug, what do I need to install, and should I use plan mode?"
+````
+
+> Triggers `arbeitsplan-start`: matches the task to one of the four approved workflows in `references/approved-workflows.md`, names the plugins still missing with their exact install command, and states the permission mode to run in. Recommend-only — it never installs anything or writes `workflow.json` itself. "No fit" is a valid answer.
 
 ### Find out why something was refused
 

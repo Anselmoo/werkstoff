@@ -86,7 +86,7 @@
     },
     {
       "name": "arbeitsplan",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm — N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted — and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and — only behind an explicit approval gate — to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
       "skills": [
         {
@@ -113,6 +113,11 @@
           "id": "arbeitsplan:arbeitsplan-run",
           "name": "arbeitsplan-run",
           "description": "Executes a compiled workflow as a redundant swarm — N candidates over the same scope in their own git worktrees, judged blind, exactly one landed. Use after arbeitsplan-compile, or when the user asks to run the workflow, start the swarm, or build several versions and pick one. Halts and surfaces rather than retrying when candidates fail; convergence comes from widening, never from repeating. Writes only inside candidate worktrees until the landing step."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-start",
+          "name": "arbeitsplan-start",
+          "description": "Names which of four approved workflows fits a stated task, the plugins to install for it, and the permission mode to run it in — and says plainly when none of the four fits. Use when the user asks where to start, which workflow or plugin combination applies, whether to use plan mode or auto mode for something, what to install before beginning, or how to combine werkstoff's plugins for a build, an unfamiliar-repo read, a bug fix, or a UI/plugin review. Recommend-only — it never installs anything, writes workflow.json, or changes permission mode itself."
         },
         {
           "id": "arbeitsplan:arbeitsplan-status",
@@ -1269,6 +1274,7 @@
     "arbeitsplan:arbeitsplan-patterns",
     "arbeitsplan:arbeitsplan-preflight",
     "arbeitsplan:arbeitsplan-run",
+    "arbeitsplan:arbeitsplan-start",
     "arbeitsplan:arbeitsplan-status",
     "cli-scaffold:cli-architecture",
     "cli-scaffold:cli-scaffold-compiled",
