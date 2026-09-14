@@ -152,23 +152,56 @@ def write_clean_box_settings(path: Path, home: Path) -> dict:
 # ---------------------------------------------------------------------------
 # 3. Isolation self-check -- the matrix's own verify-clean-box.
 # ---------------------------------------------------------------------------
+# Skills the harness supplies itself. They are present in every session whatever
+# --plugin-dir says, so counting them as leakage would make every cell UNMEASURED.
+# Best-effort and explicitly a list, not a heuristic: "unnamespaced means built-in"
+# would also swallow a personal skill, which is exactly the leak worth catching.
+BUILTIN_SKILLS = frozenset({
+    "artifact-capabilities", "artifact-design", "artifact-diagramming", "claude-api",
+    "code-review", "dataviz", "design", "fewer-permission-prompts", "init",
+    "keybindings-help", "loop", "run", "schedule", "security-review", "simplify",
+    "update-config", "workflow-authoring",
+})
+
+
 def discover_skill_names(plugin_dirs: list) -> set:
     """Best-effort: skill names a --plugin-dir set can legitimately supply.
 
     A plugin_dir is normally a whole plugin (`<dir>/skills/<name>/SKILL.md`);
-    it may also point directly at one skill (`<dir>/SKILL.md`). Both are
-    honoured so the sentinel check works against either shape.
+    it may also point directly at one skill (`<dir>/SKILL.md`). Both are honoured.
+
+    BOTH SPELLINGS are returned: the bare directory name and the `<plugin>:<skill>`
+    form a session actually reports. Returning only the bare name marked every
+    supplied skill as foreign -- measured on the first real cell, where compass and
+    superpowers were both loaded by the arm and both reported as leakage.
+
+    The plugin name comes from .claude-plugin/plugin.json when present, because a
+    cache directory is often the VERSION (".../superpowers/6.3.0"), not the plugin.
     """
     names: set = set()
+
+    def add(plugin: str, skill: str) -> None:
+        names.add(skill)
+        names.add(f"{plugin}:{skill}")
+
     for d in plugin_dirs:
         base = Path(d)
+        plugin = base.name
+        manifest = base / ".claude-plugin" / "plugin.json"
+        if manifest.is_file():
+            try:
+                declared = json.loads(manifest.read_text(encoding="utf-8")).get("name")
+            except ValueError:
+                declared = None
+            if declared:
+                plugin = declared
         skills_dir = base / "skills"
         if skills_dir.is_dir():
             for entry in skills_dir.iterdir():
                 if (entry / "SKILL.md").is_file():
-                    names.add(entry.name)
+                    add(plugin, entry.name)
         if (base / "SKILL.md").is_file():
-            names.add(base.name)
+            add(plugin, base.name)
     return names
 
 
@@ -187,13 +220,21 @@ def _sentinel_argv(argv: list, prompt: str) -> list:
     return [*out, "-p", prompt]
 
 
-def sentinel_check(argv: list, plugin_dirs: list, timeout_s: int) -> str | None:
-    """Return an UNMEASURED reason, or None if the arm's skill set is clean."""
-    allowed = discover_skill_names(plugin_dirs)
+def sentinel_check(argv: list, plugin_dirs: list, timeout_s: int,
+                   cwd: Path | None = None) -> str | None:
+    """Return an UNMEASURED reason, or None if the arm's skill set is clean.
+
+    `cwd` MUST be the cell's own directory. Running the sentinel anywhere else
+    certifies a different environment than the one the cell runs in: measured on
+    the first real cell, where the sentinel inherited the repository and reported
+    a skill the cell could never have seen.
+    """
+    allowed = discover_skill_names(plugin_dirs) | BUILTIN_SKILLS
     call = _sentinel_argv(argv, SENTINEL_PROMPT)
     try:
         proc = subprocess.run(
             call, capture_output=True, timeout=timeout_s, stdin=subprocess.DEVNULL,
+            cwd=cwd,
         )
     except subprocess.TimeoutExpired:
         return "isolation self-check timed out"
@@ -247,6 +288,7 @@ def parse_transcript(raw: bytes) -> dict:
     text = raw.decode("utf-8", "replace")
     skills_fired: list = []
     hook_denials: list = []
+    mode_denials: list = []
     cost_usd = None
     final_text = None
     for line in text.splitlines():
@@ -260,19 +302,28 @@ def parse_transcript(raw: bytes) -> dict:
         if not isinstance(event, dict):
             continue
         etype = event.get("type")
-        # Hook-denial detection is keyed on SHAPE (a hook identity plus a deny
-        # decision), not on one fixed `type` value: measured real transcripts
-        # carry hook lifecycle events as `type":"system"` with varying
-        # `subtype`s (`hook_started`, `hook_response`, ...), never a literal
-        # `"type":"hook_event"`. Gating on shape survives that variation;
-        # gating on one hardcoded type would silently find zero denials.
-        if (event.get("hook_name") or event.get("hook_event")) and event.get("decision") in (
-            "deny", "block",
-        ):
-            hook_denials.append({
-                "hook": event.get("hook_name") or event.get("hook_event"),
-                "reason": event.get("reason") or event.get("permissionDecisionReason"),
-            })
+        # MEASURED SHAPE (2026-09-14, first real cell). A refused call arrives as
+        #   {"type":"system","subtype":"permission_denied","tool_name":"Edit",
+        #    "decision_reason_type":"mode","message":"Cannot write to ... while in plan mode."}
+        # -- no `decision` key and no hook name, so the previous shape-gate (a hook
+        # identity PLUS decision in deny/block) matched nothing and every cell
+        # reported zero denials. hook_started/hook_response events DO carry
+        # `hook_name` but are lifecycle notices, not refusals, and stay ignored.
+        #
+        # WHY THE SPLIT: plan mode refusing an edit is the mode working as designed;
+        # scoring that DENIED would mark every plan-mode cell denied and drown the
+        # signal. Only a HOOK refusal -- a guard intervening -- is scored.
+        if event.get("subtype") == "permission_denied":
+            record = {
+                "tool": event.get("tool_name"),
+                "why": event.get("decision_reason_type"),
+                "reason": event.get("message") or event.get("permissionDecisionReason"),
+            }
+            if record["why"] == "hook" or event.get("hook_name"):
+                record["hook"] = event.get("hook_name")
+                hook_denials.append(record)
+            else:
+                mode_denials.append(record)
         if etype == "assistant":
             content = ((event.get("message") or {}).get("content")) or []
             for block in content:
@@ -297,6 +348,7 @@ def parse_transcript(raw: bytes) -> dict:
     return {
         "skills_fired": skills_fired,
         "hook_denials": hook_denials,
+        "mode_denials": mode_denials,
         "cost_usd": cost_usd,
         "final_text": final_text,
         "raw_bytes": len(raw),
@@ -390,7 +442,11 @@ def run_one_cell(cfg: dict, out_path: Path) -> dict:
     settings_path = subrun_dir / f"{label}.settings.json"
     if ablation == "isolated":
         write_clean_box_settings(settings_path, Path.home())
-        argv = [*argv, "--settings", str(settings_path)]
+        # ABSOLUTE. The cell runs in its own temp dir, so a relative path here is
+        # resolved against the wrong directory and the CLI exits 1 with "Settings
+        # file not found" and an EMPTY stdout -- measured on the first real cell,
+        # where it looked like the model had produced nothing.
+        argv = [*argv, "--settings", str(settings_path.resolve())]
 
     if transcript_mode:
         argv = _swap_output_format(argv, "stream-json")
@@ -401,14 +457,15 @@ def run_one_cell(cfg: dict, out_path: Path) -> dict:
         argv = [*argv, "--max-budget-usd", str(max_budget)]
 
     sentinel_reason = None
-    if ablation == "isolated":
-        sentinel_reason = sentinel_check(argv, plugin_dirs, timeout_s)
-
     celldir = Path(tempfile.mkdtemp(prefix="arbeitsplan-cell-"))
     timed_out = False
     try:
         if fixture_path is not None:
             seed_fixture(fixture_path, celldir)
+        # The sentinel runs AFTER seeding and INSIDE celldir, so it certifies the
+        # environment the cell is about to run in rather than the caller's.
+        if ablation == "isolated":
+            sentinel_reason = sentinel_check(argv, plugin_dirs, timeout_s, cwd=celldir)
         start = time.time()
         try:
             proc = subprocess.run(
@@ -417,14 +474,26 @@ def run_one_cell(cfg: dict, out_path: Path) -> dict:
             )
             rc = proc.returncode
             raw = proc.stdout
+            err = proc.stderr or b""
         except subprocess.TimeoutExpired as exc:
             rc = 124
             raw = exc.stdout or b""
+            err = exc.stderr or b""
             timed_out = True
         duration = int(time.time() - start)
         diff = capture_diff(celldir) if fixture_path is not None else None
     finally:
         shutil.rmtree(celldir, ignore_errors=True)
+
+    # Keep the raw transcript next to the record. Without it a cell that reports
+    # `skills_fired: []` cannot be told apart from a parser reading the wrong field
+    # names -- and the parser's field names were never checked against a real
+    # transcript, only against stubs this file wrote itself.
+    transcript_path = out_path.with_suffix(".stdout")
+    try:
+        transcript_path.write_bytes(raw)
+    except OSError:
+        pass
 
     parsed = parse_transcript(raw)
     outcome, reason = score_cell(
@@ -450,9 +519,17 @@ def run_one_cell(cfg: dict, out_path: Path) -> dict:
         "fail_reason": reason if outcome == "FAIL" else None,
         "skills_fired": parsed["skills_fired"],
         "hook_denials": parsed["hook_denials"],
+        "mode_denials": parsed["mode_denials"],
+        "final_text": (parsed["final_text"] or "")[:4000],
         "cost_usd": parsed["cost_usd"],
         "stdout_bytes": len(raw),
         "stdout_sha256": hashlib.sha256(raw).hexdigest(),
+        # The CLI reports its own refusals (a bad flag, a missing settings file) on
+        # STDERR and writes nothing to stdout. Without this the record said only
+        # "empty stdout -- the run never produced anything", which names the symptom
+        # and hides the cause; the first real cell had to be re-run by hand to learn
+        # that --settings pointed at a path the cell's own cwd could not resolve.
+        "stderr_tail": err.decode("utf-8", "replace")[-2000:] if err else "",
         "diff": diff,
     }
 
@@ -527,6 +604,32 @@ def selftest() -> int:
     check("sabotage check: blanking forbid_skills flips FAIL to PASS (proves the real check bites)",
           broken_outcome == "PASS", broken_outcome)
 
+    # ---- denial parsing, against MEASURED event shapes ---------------------
+    # These two lines are copied from a real transcript (2026-09-14), not invented:
+    # the previous stub asserted a shape the CLI never emits, so the parser passed
+    # its tests and found zero denials on every real cell.
+    real = "\n".join([
+        json.dumps({"type": "system", "subtype": "hook_started", "hook_name": "SessionStart:startup",
+                    "hook_event": "SessionStart"}),
+        json.dumps({"type": "system", "subtype": "permission_denied", "tool_name": "Edit",
+                    "decision_reason_type": "mode",
+                    "message": "Cannot write to /tmp/cell/tests/x.py while in plan mode."}),
+        json.dumps({"type": "system", "subtype": "permission_denied", "tool_name": "Write",
+                    "decision_reason_type": "hook", "hook_name": "PreToolUse",
+                    "message": "arbeitsplan: resolves outside the repository"}),
+        json.dumps({"type": "result", "subtype": "success", "total_cost_usd": 0.5,
+                    "result": "done"}),
+    ]).encode()
+    rp = parse_transcript(real)
+    check("parse_transcript: a MODE refusal is recorded, not scored as a hook denial",
+          len(rp["mode_denials"]) == 1 and rp["mode_denials"][0]["tool"] == "Edit", rp["mode_denials"])
+    check("parse_transcript: a HOOK refusal is a hook denial",
+          len(rp["hook_denials"]) == 1 and rp["hook_denials"][0]["tool"] == "Write", rp["hook_denials"])
+    check("parse_transcript: hook lifecycle notices are not refusals",
+          len(rp["hook_denials"]) + len(rp["mode_denials"]) == 2)
+    check("parse_transcript: result text and cost come off the real result event",
+          rp["final_text"] == "done" and rp["cost_usd"] == 0.5, (rp["final_text"], rp["cost_usd"]))
+
     # ---- DENIED: a hook denial is its own outcome, never a silent PASS -----
     denied_transcript = dict(base_transcript, hook_denials=[
         {"hook": "PreToolUse", "reason": "write outside scope"},
@@ -554,8 +657,9 @@ def selftest() -> int:
     stream = "\n".join([
         json.dumps({"type": "assistant", "message": {"content": [
             {"type": "tool_use", "name": "Skill", "input": {"skill": "zeta:last"}}]}}),
-        json.dumps({"type": "hook_event", "hook_name": "PreToolUse", "decision": "deny",
-                    "reason": "write outside scope"}),
+        json.dumps({"type": "system", "subtype": "permission_denied", "tool_name": "Write",
+                    "decision_reason_type": "hook", "hook_name": "PreToolUse",
+                    "message": "write outside scope"}),
         json.dumps({"type": "assistant", "message": {"content": [
             {"type": "tool_use", "name": "Skill", "input": {"skill": "alpha:first"}}]}}),
         json.dumps({"type": "result", "result": "done" + " " * 250, "total_cost_usd": 0.0042}),
@@ -563,6 +667,9 @@ def selftest() -> int:
     parsed = parse_transcript(stream.encode())
     check("parse_transcript: skills_fired keeps encounter order (not sorted)",
           parsed["skills_fired"] == ["zeta:last", "alpha:first"], parsed["skills_fired"])
+    # The event above is the MEASURED shape. The invented one it replaced
+    # ({"type":"hook_event","decision":"deny"}) is emitted by nothing, so this
+    # assertion passed while the parser found zero denials on every real cell.
     check("parse_transcript: hook_denials collected",
           len(parsed["hook_denials"]) == 1 and parsed["hook_denials"][0]["reason"] == "write outside scope",
           parsed["hook_denials"])
@@ -580,9 +687,30 @@ def selftest() -> int:
         (plugin_dir / "skills" / "not-a-skill").mkdir(parents=True)  # no SKILL.md -- must be ignored
         names = discover_skill_names([str(plugin_dir)])
         check("discover_skill_names: finds a real skill dir, ignores one without SKILL.md",
-              names == {"real-skill"}, names)
+              names == {"real-skill", "demo:real-skill"}
+              and not any(n.endswith("not-a-skill") for n in names), names)
         check("discover_skill_names: an absent plugin_dir set supplies nothing",
               discover_skill_names([]) == set())
+
+        # Measured on the first real cell: a session reports "<plugin>:<skill>",
+        # so bare-name-only matching marked every supplied skill as leakage.
+        manifest_dir = plugin_dir / ".claude-plugin"
+        manifest_dir.mkdir(parents=True, exist_ok=True)
+        (manifest_dir / "plugin.json").write_text(json.dumps({"name": "toy"}), encoding="utf-8")
+        ns = discover_skill_names([str(plugin_dir)])
+        check("discover_skill_names: returns the namespaced <plugin>:<skill> spelling too",
+              "toy:real-skill" in ns and "real-skill" in ns, sorted(ns))
+        check("discover_skill_names: the plugin name comes from plugin.json, not the directory",
+              not any(n.startswith(f"{plugin_dir.name}:") for n in ns), sorted(ns))
+        check("BUILTIN_SKILLS covers harness skills that no --plugin-dir supplies",
+              {"dataviz", "code-review", "run"} <= BUILTIN_SKILLS)
+
+        # Measured on the first real cell: a relative --settings path is resolved
+        # against the cell's own temp cwd, so the CLI exits 1 with an EMPTY stdout
+        # and the record blamed the model for producing nothing.
+        rel_settings = Path("relative") / "cleanbox.json"
+        check("clean-box --settings is passed as an absolute path",
+              Path(str(rel_settings.resolve())).is_absolute(), str(rel_settings))
 
         # ---- write_clean_box_settings: covers every planted plugin+skill ----
         home = tmp / "fakehome"
