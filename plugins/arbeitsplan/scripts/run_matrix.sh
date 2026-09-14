@@ -77,6 +77,28 @@ done
 # something a blanket refusal could never print.
 # ---------------------------------------------------------------------------
 auth_probe() {
+  # Ask the actual question first. A logged-out CLI prints "OAuth session expired and
+  # could not be refreshed", which reads like a nesting problem and is not one: measured
+  # in this repository on 2026-09-13, and again on 2026-09-14 when the token expired
+  # overnight and this probe -- then banner-only -- reported the misleading sentence.
+  # Only an unparseable answer (an older CLI without `auth status`) falls through to the
+  # one-line-call probe below.
+  local status logged
+  status="$("$CLAUDE_BIN" auth status </dev/null 2>/dev/null)"
+  logged="$(printf '%s' "$status" | python3 -c 'import json, sys
+try:
+    d = json.load(sys.stdin)
+except ValueError:
+    print("unknown")
+else:
+    print("yes" if isinstance(d, dict) and d.get("loggedIn") else "no")' 2>/dev/null)"
+  if [[ "$logged" == "no" ]]; then
+    echo "LOGGED OUT"
+    echo "run_matrix.sh: '$CLAUDE_BIN auth status' reports loggedIn:false -- run \`claude auth login\`, then re-run. No cell was spent." >&2
+    exit 3
+  fi
+  [[ "$logged" == "yes" ]] && return 0
+
   local out rc
   out="$("$CLAUDE_BIN" -p "Reply with exactly: OK" --model haiku \
           --permission-mode plan </dev/null 2>&1)"
@@ -687,6 +709,28 @@ MISSFIXJSON
     fails=$((fails+1))
   fi
 
+  # ---- top-level probe: a logged-out CLI gets the actionable answer --------
+  # The probe asks `claude auth status` before any one-line call. Without this the
+  # operator reads "OAuth session expired" -- measured misleading, twice.
+  cat > "$tmp/stub-auth-out" <<'AUTHOUT'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" ]]; then echo '{"loggedIn": false, "authMethod": "none"}'; exit 0; fi
+echo "Failed to authenticate: OAuth session expired and could not be refreshed" >&2
+exit 1
+AUTHOUT
+  chmod +x "$tmp/stub-auth-out"
+  CLAUDE_BIN="$tmp/stub-auth-out" bash "${BASH_SOURCE[0]}" --matrix "$tmp/e2e.json" \
+      --out "$tmp/auth-out" >"$tmp/auth-out.log" 2>&1
+  auth_rc=$?
+  if [[ "$auth_rc" -eq 3 ]] && grep -q "claude auth login" "$tmp/auth-out.log" \
+      && ! grep -q "could not complete a one-line call" "$tmp/auth-out.log" \
+      && [[ ! -f "$tmp/auth-out/summary.json" ]]; then
+    echo "  ok   top-level probe: logged-out CLI -> exit 3, 'claude auth login', banner never blamed"
+  else
+    echo "  FAIL top-level probe on a logged-out CLI: exit $auth_rc"
+    sed 's/^/         | /' "$tmp/auth-out.log" | head -6
+    fails=$((fails+1))
+  fi
   echo
   if [[ "$fails" -gt 0 ]]; then echo "SELFTEST FAILED ($fails)"; exit 1; fi
   echo "selftest passed (21 validation + 3 legacy end-to-end + subrun.py's own + 5 subrun end-to-end; no real cells run)"
