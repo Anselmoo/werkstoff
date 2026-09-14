@@ -22,7 +22,7 @@ Hooks that may deny, Evidence.
 | **Opening prompt** | Scope it before writing code, then build it, then gate the diff |
 | **Writes to repo** | `.compass/runs/<run-id>/state.json` |
 | **Hooks that may deny** | None of these three register one |
-| **Evidence** | pending — measured run not yet recorded |
+| **Evidence** | measured, 6 cells: the expected `compass-clarify-scope` never fired, on either model or mode -- [/examples/build-feature](/examples/build-feature) |
 
 ## B. Understand an unfamiliar repo
 
@@ -33,7 +33,7 @@ Hooks that may deny, Evidence.
 | **Opening prompt** | Map the real module boundaries and what depends on what |
 | **Writes to repo** | `analysis/self-assess/**` |
 | **Hooks that may deny** | self-assess's guard is inert until `analysis/self-assess/edit_scope.json` exists |
-| **Evidence** | pending — measured run not yet recorded |
+| **Evidence** | measured, 4 cells: fired in 2 of 4, sonnet only -- [/examples/understand-repo](/examples/understand-repo) |
 
 ## C. Fix a bug, or harden a repo
 
@@ -44,7 +44,7 @@ Hooks that may deny, Evidence.
 | **Opening prompt** | Find the root cause before changing anything, then prove the fix |
 | **Writes to repo** | `analysis/andon/ledger/**` |
 | **Hooks that may deny** | andon's PreToolUse denies every write outside the ledger while the ledger is in a stop state |
-| **Evidence** | pending — measured run not yet recorded |
+| **Evidence** | measured, 6 cells: 5 of 6, and the only workflow whose diffs actually landed -- [/examples/fix-bug](/examples/fix-bug) |
 
 ## D. Design a UI, or review a plugin
 
@@ -55,7 +55,7 @@ Hooks that may deny, Evidence.
 | **Opening prompt** | Work out what it should be before touching the markup / review this plugin against the standard |
 | **Writes to repo** | `.cupertino/**`, `.design/**`, `analysis/nacharbeit/fix_scope.json` |
 | **Hooks that may deny** | cupertino's guard arms on `.cupertino/`, matrize's on `.design/`, nacharbeit's while the fix lock exists |
-| **Evidence** | pending — measured run not yet recorded |
+| **Evidence** | measured, 8 cells: sonnet reached cupertino but fired `council`, not `backwards`; nacharbeit-lint fired 1 of 4 -- [/examples/design-ui](/examples/design-ui), [/examples/review-plugin](/examples/review-plugin) |
 
 ---
 

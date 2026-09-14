@@ -10,6 +10,9 @@ hero:
     alt: werkstoff
   actions:
     - theme: brand
+      text: Get started
+      link: /start/
+    - theme: alt
       text: Prompt catalog
       link: /catalog/
     - theme: alt

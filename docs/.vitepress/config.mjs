@@ -10,6 +10,10 @@ import { isProsePage, PROSE_PAGE_KEY } from './theme/composables/useProsePage.js
 // interpolates it explicitly rather than hardcoding the path twice.
 const base = '/werkstoff/'
 
+// The one colour literal this file carries; the design-token check allows exactly one
+// here. The Context7 widget takes the same value rather than introducing a second.
+const THEME_COLOR = '#348ad9'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const catalogDir = path.join(__dirname, '..', 'catalog')
 
@@ -124,7 +128,27 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: `${base}favicon.svg` }],
-    ['meta', { name: 'theme-color', content: '#348ad9' }],
+    ['meta', { name: 'theme-color', content: THEME_COLOR }],
+    // Context7's documentation chat, over this repository's own indexed surface
+    // (/anselmoo/werkstoff). `async` so it never blocks first paint; it renders one
+    // floating button and keeps it across SPA navigation, so it belongs in `head`
+    // rather than in a component that would re-mount per route.
+    //
+    // Chat requests go to context7.com, not to this site: the widget sends the
+    // visitor's question to a third party. That is the whole point of it, and it is
+    // worth knowing before enabling it on a site that carries anything private.
+    // This one carries only what is already public on GitHub.
+    [
+      'script',
+      {
+        async: '',
+        src: 'https://context7.com/widget.js',
+        'data-library': '/anselmoo/werkstoff',
+        'data-color': THEME_COLOR,
+        'data-position': 'bottom-right',
+        'data-placeholder': 'Ask about workflows, plugins, or modes…',
+      },
+    ],
   ],
 
   // Not published. These two pilot records name an internal host, an internal
@@ -185,6 +209,7 @@ export default defineConfig({
     logo: '/logo.svg',
 
     nav: [
+      { text: 'Start here', link: '/start/' },
       { text: 'Plugins', link: '/plugins/' },
       { text: 'Prompt catalog', link: '/catalog/' },
       { text: 'Orchestration', link: '/orchestration/' },
@@ -193,7 +218,29 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: 'Start here',
+        text: 'Getting started',
+        collapsed: false,
+        items: [
+          { text: 'Start here', link: '/start/' },
+          { text: 'Approved workflows', link: '/plugins/references/approved-workflows' },
+          { text: 'Permission modes', link: '/start/permission-modes' },
+          {
+            text: 'Measured examples',
+            link: '/examples/',
+            items: [
+              { text: 'Build a feature', link: '/examples/build-feature' },
+              { text: 'Understand a repo', link: '/examples/understand-repo' },
+              { text: 'Fix a bug', link: '/examples/fix-bug' },
+              { text: 'Design a UI', link: '/examples/design-ui' },
+              { text: 'Review a plugin', link: '/examples/review-plugin' },
+              { text: 'Which workflow fits?', link: '/examples/routing' },
+              { text: 'Plan mode under a lock', link: '/examples/hazard-plan-under-lock' },
+            ],
+          },
+        ],
+      },
+      {
+        text: 'Reference',
         items: [
           { text: 'Prompt catalog', link: '/catalog/' },
           { text: 'Prompt index by plugin', link: '/prompt-index' },
@@ -230,6 +277,7 @@ export default defineConfig({
             text: 'arbeitsplan',
             link: '/plugins/arbeitsplan',
             items: [
+              { text: 'Approved workflows', link: '/plugins/references/approved-workflows' },
               { text: 'Delegation', link: '/plugins/references/delegation' },
             ],
           },
