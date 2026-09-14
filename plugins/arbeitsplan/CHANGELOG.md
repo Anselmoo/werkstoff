@@ -4,6 +4,22 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-14
+
+### Added
+- **arbeitsplan**: a front door that recommends and nothing else
+- **arbeitsplan**: isolated testing the matrix can prove
+- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
+- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
+- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
+
+### Fixed
+- **ci**: install PyYAML in auto-version-bump.yml (#57)
+- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
+
+### Documentation
+- harmonize the docs and enforce the corporate design tokens (#61)
+
 ## [0.2.0] - 2026-09-12
 ### Changed
 - converted to `pathlib.Path` throughout (41 modernization findings to **zero**), together with
