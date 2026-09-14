@@ -36,7 +36,7 @@ cell's already-assembled argv plus its fixture / expect_skills / forbid_skills
                             `git diff` as the cell's diff evidence.
   5. transcript parsing     stream-json -> skills_fired (ORDER preserved),
                             hook_denials, cost_usd, final text.
-  6. score_cell()           PASS / FAIL / UNMEASURED from expect_skills /
+  6. score_cell()           PASS / FAIL / DENIED / UNMEASURED from expect_skills /
                             forbid_skills / exit code. UNMEASURED is excluded
                             from every denominator and never retried -- same
                             invariant as the legacy per-cell scoring already
@@ -306,6 +306,12 @@ def parse_transcript(raw: bytes) -> dict:
 # ---------------------------------------------------------------------------
 # 6. score_cell -- the oracle. UNMEASURED is excluded from every denominator
 #    and is never a FAIL: the case was never fairly measured.
+#    DENIED is measured: the cell ran fairly, but a PreToolUse hook denied a
+#    call inside it. It outranks PASS/FAIL, because an expectation about which
+#    skills fire is not a fair verdict on a run a guard intervened in -- PASS
+#    would hide the denial, FAIL would blame the workflow for a guard doing its
+#    job. It comes after the UNMEASURED checks: a run that never happened
+#    cannot have been shaped by anything.
 # ---------------------------------------------------------------------------
 def score_cell(
     *, exit_code: int, expect_exit: int, transcript: dict,
@@ -323,6 +329,10 @@ def score_cell(
         return "UNMEASURED", "stdout under 200 bytes -- too short to be a real reply"
     if BANNER_RE.search(transcript.get("final_text") or ""):
         return "UNMEASURED", "CLI refusal banner -- the run never happened"
+    denials = transcript.get("hook_denials") or []
+    if denials:
+        hooks = sorted({str(d.get("hook") or "unknown hook") for d in denials})
+        return "DENIED", f"{len(denials)} call(s) denied by: " + ", ".join(hooks)
     fired = transcript.get("skills_fired") or []
     forbidden_hit = [s for s in (forbid_skills or []) if s in fired]
     if forbidden_hit:
@@ -516,6 +526,29 @@ def selftest() -> int:
                                             expect_skills=[], forbid_skills=["arbeitsplan:build"])
     check("sabotage check: blanking forbid_skills flips FAIL to PASS (proves the real check bites)",
           broken_outcome == "PASS", broken_outcome)
+
+    # ---- DENIED: a hook denial is its own outcome, never a silent PASS -----
+    denied_transcript = dict(base_transcript, hook_denials=[
+        {"hook": "PreToolUse", "reason": "write outside scope"},
+    ])
+    outcome, reason = score_cell(exit_code=0, expect_exit=0, transcript=denied_transcript,
+                                  expect_skills=["arbeitsplan:build"], forbid_skills=[])
+    check("oracle: DENIED when a hook denied a call, even though every expectation matched",
+          outcome == "DENIED" and "PreToolUse" in (reason or ""), (outcome, reason))
+
+    outcome, reason = score_cell(exit_code=0, expect_exit=0,
+                                  transcript=dict(denied_transcript, raw_bytes=0, final_text=""),
+                                  expect_skills=[], forbid_skills=[])
+    check("oracle: UNMEASURED still outranks DENIED -- a run that never happened was shaped by nothing",
+          outcome == "UNMEASURED", (outcome, reason))
+
+    # Planted-then-blanked: an oracle that ignores hook_denials scores the
+    # denied cell above as PASS. Prove the real check distinguishes them.
+    blind = dict(denied_transcript, hook_denials=[])
+    blind_outcome, _ = score_cell(exit_code=0, expect_exit=0, transcript=blind,
+                                  expect_skills=["arbeitsplan:build"], forbid_skills=[])
+    check("sabotage check: blanking hook_denials flips DENIED to PASS (proves the real check bites)",
+          blind_outcome == "PASS", blind_outcome)
 
     # ---- transcript parsing: ORDER preserved, not sorted -------------------
     stream = "\n".join([

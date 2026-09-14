@@ -8,7 +8,7 @@ stay comparable. arbeitsplan adds `repeats`, `ablation`, `expected_tools`, plus 
 `subrun` runner keys below (`runner`, `transcript`, `max_budget_usd`, and per-case `fixture`,
 `expect_skills`, `forbid_skills`).
 
-**Contents** — [top-level keys](#top-level-keys) · [ablation](#ablation--two-modes-that-answer-different-questions) · [the allowedTools trap](#the-trap---allowedtools-does-not-restrict-anything) · [the subrun runner](#the-subrun-runner-a-thin-per-cell-executor) · [the five outcomes](#the-five-outcomes) · [worked instance](#worked-instance) · [output](#output)
+**Contents** — [top-level keys](#top-level-keys) · [ablation](#ablation--two-modes-that-answer-different-questions) · [the allowedTools trap](#the-trap---allowedtools-does-not-restrict-anything) · [the subrun runner](#the-subrun-runner-a-thin-per-cell-executor) · [the six outcomes](#the-six-outcomes) · [worked instance](#worked-instance) · [output](#output)
 
 ## Authentication is probed, not assumed
 
@@ -137,7 +137,7 @@ in isolation (pure Python, stub CLIs, no real `claude` binary reached); `run_mat
 calls it as one of its own checks, plus five further end-to-end cases against a stub `claude`
 covering the auth/clean-box/sentinel/fixture behaviors above.
 
-## The five outcomes
+## The six outcomes
 
 | outcome | meaning |
 |---|---|
@@ -146,11 +146,19 @@ covering the auth/clean-box/sentinel/fixture behaviors above.
 | `FALSE_POSITIVE` | the plugin-absent arm behaved as though the plugin were present |
 | `UNMEASURED` | the cell never ran fairly — auth failure, timeout, empty output, a tool outside `expected_tools` |
 | `UNSTABLE` | `repeats` of one combination disagreed |
+| `DENIED` | the cell ran fairly, but a `PreToolUse` hook denied at least one call during it (`runner: "subrun"` only) |
 
 **`UNMEASURED` is excluded from every denominator.** It is not a rejection, and it never triggers a
 retry. This is the same rule as `test/plugins/run.sh`'s `ERROR` ("a case whose error count is above
 zero has no rate, only missing data") and matrize's `readable: false`; three independent derivations
 in this codebase, which is why it is an invariant here rather than a convention.
+
+`DENIED` **is measured, and counts in the denominator.** Unlike `UNMEASURED`, the cell ran
+fairly; a guard shaped what it could do. It outranks `PASS` and `FAIL` because an expectation
+about which skills fire or what exit code comes back is not a fair verdict on a run a hook
+intervened in -- scoring it `PASS` would hide the denial, and `FAIL` would blame the workflow
+for a guard doing its job. The reason names every denying hook. Without this outcome the
+oracle could not see the one thing the `plan-under-lock` fixture exists to measure.
 
 `UNSTABLE` is a **finding, not a retry trigger**. Repeats disagreeing means the prompt is
 underdetermined; the answer is a better prompt, not more repeats.
