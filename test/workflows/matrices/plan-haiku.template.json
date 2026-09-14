@@ -7,6 +7,10 @@
       "fixture": "${FIXTURE:numerics-greenfield}",
       "expect_skills": [
         "compass:compass-clarify-scope"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:compass}",
+        "${PLUGIN:superpowers}"
       ]
     },
     {
@@ -16,6 +20,9 @@
       "fixture": "${FIXTURE:toy-pipeline}",
       "expect_skills": [
         "self-assess:self-assess-stage-map"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:self-assess}"
       ]
     },
     {
@@ -25,6 +32,9 @@
       "fixture": "${FIXTURE:median-seeded}",
       "expect_skills": [
         "superpowers:systematic-debugging"
+      ],
+      "plugins": [
+        "${PLUGIN:superpowers}"
       ]
     },
     {
@@ -34,6 +44,9 @@
       "fixture": "${FIXTURE:element-card-ui}",
       "expect_skills": [
         "cupertino:cupertino-backwards"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:cupertino}"
       ]
     },
     {
@@ -43,13 +56,19 @@
       "fixture": "${FIXTURE:toy-plugin}",
       "expect_skills": [
         "nacharbeit:nacharbeit-lint"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:nacharbeit}"
       ]
     },
     {
       "id": "hazard-plan-under-lock",
       "prompt": "Plan a change to the scoring stage of this pipeline. Do not implement it yet -- write the plan down first.",
       "expect_exit": 0,
-      "fixture": "${FIXTURE:plan-under-lock}"
+      "fixture": "${FIXTURE:plan-under-lock}",
+      "plugins": [
+        "${REPO_PLUGIN:arbeitsplan}"
+      ]
     },
     {
       "id": "routing",
@@ -57,6 +76,9 @@
       "expect_exit": 0,
       "expect_skills": [
         "arbeitsplan:arbeitsplan-start"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:arbeitsplan}"
       ]
     }
   ],
@@ -66,14 +88,7 @@
   "plugin_states": [
     {
       "id": "with",
-      "plugin_dir": [
-        "${REPO_PLUGIN:compass}",
-        "${PLUGIN:superpowers}",
-        "${REPO_PLUGIN:self-assess}",
-        "${REPO_PLUGIN:cupertino}",
-        "${REPO_PLUGIN:nacharbeit}",
-        "${REPO_PLUGIN:arbeitsplan}"
-      ]
+      "plugin_dir": "${CASE_PLUGINS}"
     }
   ],
   "repeats": 2,

@@ -7,6 +7,10 @@
       "fixture": "${FIXTURE:numerics-greenfield}",
       "expect_skills": [
         "compass:compass-clarify-scope"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:compass}",
+        "${PLUGIN:superpowers}"
       ]
     },
     {
@@ -16,6 +20,9 @@
       "fixture": "${FIXTURE:median-seeded}",
       "expect_skills": [
         "superpowers:systematic-debugging"
+      ],
+      "plugins": [
+        "${PLUGIN:superpowers}"
       ]
     }
   ],
@@ -25,10 +32,7 @@
   "plugin_states": [
     {
       "id": "with",
-      "plugin_dir": [
-        "${REPO_PLUGIN:compass}",
-        "${PLUGIN:superpowers}"
-      ]
+      "plugin_dir": "${CASE_PLUGINS}"
     }
   ],
   "repeats": 2,
