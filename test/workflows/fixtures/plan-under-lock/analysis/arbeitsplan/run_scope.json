@@ -1,0 +1,10 @@
+{
+  "runId": "ap-fixture-0000",
+  "phase": "build",
+  "kind": "fanout-redundant",
+  "sharedTreeWritable": false,
+  "writeScope": ["pipeline/score.py"],
+  "candidates": [{ "id": "c1", "worktree": "/nonexistent/fixture/c1" }],
+  "fanOut": 1,
+  "budget": { "totalDispatches": 2, "wallClockMinutes": 10 }
+}

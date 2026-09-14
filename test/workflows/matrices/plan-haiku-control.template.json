@@ -1,0 +1,119 @@
+{
+  "cases": [
+    {
+      "id": "build-feature",
+      "prompt": "Add a numerically stable logsumexp to this package, with tests. Scope the work before writing code, then implement it so the existing suite and the new one both pass.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:numerics-greenfield}",
+      "forbid_skills": [
+        "compass:compass-clarify-scope"
+      ]
+    },
+    {
+      "id": "understand-repo",
+      "prompt": "I have not seen this codebase before. Map its real module boundaries and tell me what depends on what, with evidence from the imports.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:toy-pipeline}",
+      "forbid_skills": [
+        "self-assess:self-assess-stage-map"
+      ]
+    },
+    {
+      "id": "fix-bug",
+      "prompt": "ISSUE.md reports a wrong result. Find the root cause before changing anything, then fix it and prove the fix.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:median-seeded}",
+      "forbid_skills": [
+        "superpowers:systematic-debugging"
+      ]
+    },
+    {
+      "id": "design-ui",
+      "prompt": "Here is a UI brief and a first attempt at the card. Work out what it should be before touching the markup, then say what you would change and why.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:element-card-ui}",
+      "forbid_skills": [
+        "cupertino:cupertino-backwards"
+      ]
+    },
+    {
+      "id": "review-plugin",
+      "prompt": "Review this plugin against the standard for skills and manifests, and list what is wrong with it.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:toy-plugin}",
+      "forbid_skills": [
+        "nacharbeit:nacharbeit-lint"
+      ]
+    },
+    {
+      "id": "hazard-plan-under-lock",
+      "prompt": "Plan a change to the scoring stage of this pipeline. Do not implement it yet -- write the plan down first.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:plan-under-lock}"
+    },
+    {
+      "id": "routing",
+      "prompt": "I want to add a feature to this repository. Which werkstoff workflow fits, and what should I run first?",
+      "expect_exit": 0,
+      "forbid_skills": [
+        "arbeitsplan:arbeitsplan-start"
+      ]
+    }
+  ],
+  "models": [
+    "haiku"
+  ],
+  "plugin_states": [
+    {
+      "id": "without",
+      "plugin_dir": null
+    }
+  ],
+  "repeats": 2,
+  "ablation": "isolated",
+  "runner": "subrun",
+  "transcript": true,
+  "max_budget_usd": 0.5,
+  "permission_mode": "plan",
+  "timeout_s": 900,
+  "expected_tools": [
+    "Skill",
+    "ToolSearch",
+    "Read",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "TodoWrite",
+    "Task",
+    "Agent",
+    "NotebookEdit",
+    "LSP"
+  ],
+  "disallowed_tools": [
+    "Workflow",
+    "CronCreate",
+    "CronDelete",
+    "CronList",
+    "RemoteTrigger",
+    "PushNotification",
+    "Artifact",
+    "SendUserFile",
+    "ReportFindings",
+    "AskUserQuestion",
+    "EnterWorktree",
+    "ExitWorktree",
+    "WebFetch",
+    "WebSearch",
+    "Monitor",
+    "DesignSync",
+    "SendMessage",
+    "ListAgents",
+    "TaskOutput",
+    "TaskStop",
+    "ScheduleWakeup",
+    "SlashCommand"
+  ]
+}

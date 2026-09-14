@@ -1,0 +1,81 @@
+{
+  "cases": [
+    {
+      "id": "build-feature",
+      "prompt": "Add a numerically stable logsumexp to this package, with tests. Scope the work before writing code, then implement it so the existing suite and the new one both pass.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:numerics-greenfield}",
+      "expect_skills": [
+        "compass:compass-clarify-scope"
+      ]
+    },
+    {
+      "id": "fix-bug",
+      "prompt": "ISSUE.md reports a wrong result. Find the root cause before changing anything, then fix it and prove the fix.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:median-seeded}",
+      "expect_skills": [
+        "superpowers:systematic-debugging"
+      ]
+    }
+  ],
+  "models": [
+    "haiku"
+  ],
+  "plugin_states": [
+    {
+      "id": "with",
+      "plugin_dir": [
+        "${REPO_PLUGIN:compass}",
+        "${PLUGIN:superpowers}"
+      ]
+    }
+  ],
+  "repeats": 2,
+  "ablation": "isolated",
+  "runner": "subrun",
+  "transcript": true,
+  "max_budget_usd": 0.5,
+  "permission_mode": "acceptEdits",
+  "timeout_s": 900,
+  "expected_tools": [
+    "Skill",
+    "ToolSearch",
+    "Read",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "TodoWrite",
+    "Task",
+    "Agent",
+    "NotebookEdit",
+    "LSP"
+  ],
+  "disallowed_tools": [
+    "Workflow",
+    "CronCreate",
+    "CronDelete",
+    "CronList",
+    "RemoteTrigger",
+    "PushNotification",
+    "Artifact",
+    "SendUserFile",
+    "ReportFindings",
+    "AskUserQuestion",
+    "EnterWorktree",
+    "ExitWorktree",
+    "WebFetch",
+    "WebSearch",
+    "Monitor",
+    "DesignSync",
+    "SendMessage",
+    "ListAgents",
+    "TaskOutput",
+    "TaskStop",
+    "ScheduleWakeup",
+    "SlashCommand"
+  ]
+}
