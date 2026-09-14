@@ -8,10 +8,21 @@ orchestrates them twice by hand.
 
 ## Three roles
 
-Three different things are installed, and they stack rather than compete.
+Three different things are installed, and they stack rather than compete. New here?
+[Start here](/start/) is the shortest path; this page is the map behind it.
 
-**werkstoff plugins are specialised inspectors and enforcers.** Eight of the twelve
-target one distinct failure mode and refuse to speak outside it — `andon` on
+| layer | what it supplies | how to install |
+|---|---|---|
+| **werkstoff** — twelve plugins | specialised inspectors and enforcers, each refusing to speak outside one failure mode | `/plugin marketplace add Anselmoo/werkstoff` then `/plugin install <name>@werkstoff` |
+| **superpowers** — 14 skills, no agents, no commands | the loop shape: brainstorm, plan, TDD, request review, verify before completion. Never the domain judgement | `/plugin install superpowers@claude-plugins-official` |
+| **the official Anthropic plugins** | named, tool-scoped reviewer agents that a command orchestrates | `/plugin install pr-review-toolkit@claude-plugins-official` (and siblings) |
+
+Two things that catch people out. `superpowers` ships one `SessionStart` hook and
+**nothing invocable as an agent or slash command** — any instruction to dispatch it as
+one is wrong. And `claude-security` sets `disable-model-invocation: true`, so the model
+can never reach for it on its own.
+
+Within werkstoff, eight of the twelve target one distinct failure mode each — `andon` on
 handoffs between stages that were never proven, `self-assess` on a repo that cannot
 describe its own health, `confab` on assertions, contracts and dependency manifests
 that look right and are not, `compass` on reasoning stages silently skipped under

@@ -165,6 +165,30 @@ andon's, answers a repo-level question ("does this write violate the declared
 doctrine, or run ahead of a unit that has not been validated"), which is why its
 marker is a durable ruleset rather than a lock.
 
+## Plan mode and an open run-scope lock leave a subagent no legal move
+
+Measured, not inferred: `test/workflows/evidence/plan-file-under-lock.md`, reproducible in
+under a second with `bash test/workflows/reproduce_hazard.sh` — no tokens, no agents, no
+network.
+
+Plan mode permits exactly one write, the plan file at `~/.claude/plans/<name>.md`. While an
+`arbeitsplan` run-scope lock is open, that write is **denied**, because the path resolves
+outside the repository the run was compiled against. A subagent under both therefore has
+nothing it may legally do, and it cannot resolve the conflict itself: it has neither
+`ExitPlanMode` nor `AskUserQuestion`.
+
+It surfaced the expensive way before it was reproduced the cheap way. Three builder agents
+in one fan-out each returned `measured: false`, having correctly refused to bypass the
+guard — a whole batch spent on an environment conflict rather than on the work.
+
+The same probe records a second denial worth knowing: during a `fanout-redundant` phase, a
+write is refused **even when the lock's own `writeScope` names the path**, because only the
+landing step may touch the shared tree. That is what makes a merge conflict structurally
+impossible in an arbeitsplan run.
+
+Neither denial is a malfunction. Close the run, or plan outside it; reaching for
+`ARBEITSPLAN_DISABLE_GUARD=1` disables a guard that is working.
+
 ## Two diff baselines
 
 The official `security-guidance` plugin computes its own baseline independently of
