@@ -124,6 +124,27 @@ for key in ("cases", "models", "plugin_states"):
     if key not in m:
         fail("missing required key %r" % key)
 
+# OPT-IN keys for the subrun.py thin-executor path. A matrix that sets none of
+# these is untouched: same required keys, same argv. See
+# references/matrix-schema.md#the-subrun-runner.
+runner = m.get("runner")
+if runner is not None and runner != "subrun":
+    fail("'runner' must be 'subrun' if set (the only executor this script knows)")
+transcript = m.get("transcript", False)
+if not isinstance(transcript, bool):
+    fail("'transcript' must be a boolean")
+max_budget_usd = m.get("max_budget_usd")
+if max_budget_usd is not None and (
+    isinstance(max_budget_usd, bool) or not isinstance(max_budget_usd, (int, float))
+    or max_budget_usd <= 0
+):
+    fail("'max_budget_usd' must be a positive number")
+if runner != "subrun":
+    if transcript:
+        fail("'transcript' requires top-level 'runner': 'subrun'")
+    if max_budget_usd is not None:
+        fail("'max_budget_usd' requires top-level 'runner': 'subrun'")
+
 cases = m["cases"]
 if not isinstance(cases, list) or not cases:
     fail("'cases' must be a non-empty list")
@@ -140,6 +161,17 @@ for i, c in enumerate(cases):
         fail("cases[%d] (%s) has no 'prompt'" % (i, c["id"]))
     if "expect_exit" in c and not isinstance(c["expect_exit"], int):
         fail("cases[%d].expect_exit must be an integer" % i)
+    if "fixture" in c and not (isinstance(c["fixture"], str) and c["fixture"]):
+        fail("cases[%d].fixture must be a non-empty string" % i)
+    for skill_key in ("expect_skills", "forbid_skills"):
+        if skill_key in c:
+            v = c[skill_key]
+            if not isinstance(v, list) or not all(isinstance(x, str) and x for x in v):
+                fail("cases[%d].%s must be a list of strings" % (i, skill_key))
+    if runner != "subrun":
+        for subrun_key in ("fixture", "expect_skills", "forbid_skills"):
+            if subrun_key in c:
+                fail("cases[%d].%s requires top-level 'runner': 'subrun'" % (i, subrun_key))
 
 models = m["models"]
 if not isinstance(models, list) or not models or not all(isinstance(x, str) and x for x in models):
@@ -209,6 +241,9 @@ if sys.argv[2] == "header":
     print("strict_mcp=%d" % (1 if m.get("strict_mcp_config", True) else 0))
     print("expected_tools=%s" % shlex.quote(",".join(expected)))
     print("disallowed_tools=%s" % shlex.quote(disallowed))
+    print("runner=%s" % shlex.quote(runner or ""))
+    print("transcript=%d" % (1 if transcript else 0))
+    print("max_budget_usd=%s" % shlex.quote("" if max_budget_usd is None else str(max_budget_usd)))
     print("cells=%d" % (len(cases) * len(models) * len(states) * repeats))
     sys.exit(0)
 
@@ -226,10 +261,17 @@ if sys.argv[2] == "header":
 for c, mo, s, n in itertools.product(cases, models, states, range(1, repeats + 1)):
     pd = s.get("plugin_dir")
     dirs = [] if pd is None else ([pd] if isinstance(pd, str) else list(pd))
+    # Three TRAILING fields, opt-in and empty on a matrix that never sets
+    # them: appending here does not touch argv assembly at all, only the
+    # bash `read` line downstream (which already ignores extra empty
+    # fields on the legacy path).
     print("\x1e".join([
         c["id"], mo, s["id"], str(n), str(c.get("expect_exit", 0)),
         "\x1f".join(dirs),
         c["prompt"].replace("\x1e", " ").replace("\x1f", " ").replace("\n", " "),
+        c.get("fixture", ""),
+        "\x1f".join(c.get("expect_skills", [])),
+        "\x1f".join(c.get("forbid_skills", [])),
     ]))
 PYEOF
 
@@ -261,6 +303,14 @@ if [[ "$SELFTEST" -eq 1 ]]; then
   probe "allowed_tools is REFUSED"        '{"cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}],"allowed_tools":["Skill"]}' err
   probe "empty plugin_dir string"         '{"cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a","plugin_dir":""}]}' err
   probe "not json"                        'not json at all' err
+  probe "runner subrun accepted"          '{"runner":"subrun","cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}]}' ok
+  probe "bad runner value"                '{"runner":"sideways","cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "transcript without runner"       '{"transcript":true,"cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "max_budget_usd without runner"   '{"max_budget_usd":1,"cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "max_budget_usd non-positive"     '{"runner":"subrun","max_budget_usd":0,"cases":[{"id":"c","prompt":"p"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "fixture without runner"          '{"cases":[{"id":"c","prompt":"p","fixture":"x"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "expect_skills wrong type"        '{"runner":"subrun","cases":[{"id":"c","prompt":"p","expect_skills":"nope"}],"models":["s"],"plugin_states":[{"id":"a"}]}' err
+  probe "expect_skills with runner ok"    '{"runner":"subrun","cases":[{"id":"c","prompt":"p","expect_skills":["arbeitsplan:build"],"forbid_skills":[]}],"models":["s"],"plugin_states":[{"id":"a"}]}' ok
 
   printf '%s' "$GOOD" > "$tmp/m.json"
   n="$(python3 -c "$VALIDATE_PY" "$tmp/m.json" cells | wc -l | tr -d ' ')"
@@ -316,11 +366,21 @@ for p in cells:
         bad.append("%s: uses --allowedTools, which does not restrict" % c["label"])
     if c["outcome"] != "PASS":
         bad.append("%s: outcome %s, wanted PASS" % (c["label"], c["outcome"]))
+    # LEGACY ARGV MUST BE BYTE-IDENTICAL: this matrix sets no 'runner', so
+    # none of subrun.py's additions (--settings, --max-budget-usd, the
+    # transcript flags) may appear, and the cell record must carry none of
+    # subrun's fields -- proof the legacy CELLPY path ran, not subrun.py.
+    if "--settings" in argv:
+        bad.append("%s: legacy cell carries --settings (subrun leaked in)" % c["label"])
+    if "--max-budget-usd" in argv:
+        bad.append("%s: legacy cell carries --max-budget-usd" % c["label"])
+    if any(k in c for k in ("skills_fired", "hook_denials", "diff")):
+        bad.append("%s: legacy cell carries subrun-only fields" % c["label"])
 print("; ".join(bad) if bad else "OK")
 E2E
 )"
   if [[ "$e2e" == "OK" ]]; then
-    echo "  ok   end-to-end argv: arms correct, isolation flags present"
+    echo "  ok   end-to-end argv: arms correct, isolation flags present, legacy argv unchanged"
   else
     echo "  FAIL end-to-end argv: $e2e (sub-run exit $e2e_rc)"
     sed 's/^/         | /' "$tmp/e2e.log" | head -12
@@ -403,9 +463,233 @@ GRD
     fails=$((fails+1))
   fi
 
+  # ---- subrun.py's own selftest ---------------------------------------
+  # Pure-python, stdlib-only: the oracle (score_cell), transcript parsing
+  # (ordered skills_fired, hook_denials, cost_usd), discover_skill_names,
+  # write_clean_box_settings, and check_auth against stub CLIs -- including
+  # a planted-then-blanked sabotage case for the oracle. Delegated here
+  # rather than duplicated, so there is exactly one place that owns them.
+  if python3 "$HERE/subrun.py" --selftest > "$tmp/subrun-selftest.log" 2>&1; then
+    echo "  ok   subrun.py --selftest (oracle, transcript parsing, clean box, auth)"
+  else
+    echo "  FAIL subrun.py --selftest"
+    sed 's/^/         | /' "$tmp/subrun-selftest.log" | head -30
+    fails=$((fails+1))
+  fi
+
+  # ---- subrun path, end to end against stub CLIs ----------------------
+  # A flexible stub: answers `auth status` truthfully, answers the sentinel
+  # prompt with $SENTINEL_REPLY (empty by default), optionally writes
+  # $CELL_WRITE_FILE into its cwd (the cell's seeded temp dir) to prove
+  # fixture isolation, and otherwise returns a normal scored reply.
+  cat > "$tmp/stub-full" <<'FULLSTUB'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" && "$2" == "status" ]]; then
+  echo '{"loggedIn": true, "authMethod": "claude.ai"}'
+  exit 0
+fi
+prompt=""
+prev=""
+for a in "$@"; do
+  if [[ "$prev" == "-p" ]]; then prompt="$a"; fi
+  prev="$a"
+done
+if [[ "$prompt" == *"List every Skill"* ]]; then
+  printf '%s\n' "${SENTINEL_REPLY:-}"
+  exit 0
+fi
+if [[ -n "${CELL_WRITE_FILE:-}" ]]; then
+  echo "cell output" > "$CELL_WRITE_FILE"
+fi
+echo '{"type":"result","result":"A reply long enough to clear the two hundred byte floor that separates a scored answer from a refusal banner, so this cell is measured rather than discarded as unmeasured."}'
+FULLSTUB
+  chmod +x "$tmp/stub-full"
+
+  # logged-out auth -> exit 3, subrun's own hint, never the raw OAuth banner,
+  # and no summary written. This is the case named in the workflow's problem
+  # statement itself: a logged-out CLI reads like a nesting failure and is not
+  # one, and no real cell may be spent to learn that.
+  cat > "$tmp/stub-loggedout" <<'LOUT'
+#!/usr/bin/env bash
+if [[ "$1" == "auth" && "$2" == "status" ]]; then
+  echo '{"loggedIn": false, "authMethod": null}'
+  exit 0
+fi
+echo "Failed to authenticate: OAuth session expired and could not be refreshed" >&2
+exit 1
+LOUT
+  chmod +x "$tmp/stub-loggedout"
+  cat > "$tmp/subrun-auth.json" <<AUTHJSON
+{"runner":"subrun","cases":[{"id":"c","prompt":"hi","expect_exit":0}],
+ "models":["haiku"],"plugin_states":[{"id":"on","plugin_dir":null}],
+ "repeats":1,"ablation":"isolated","timeout_s":30}
+AUTHJSON
+  CLAUDE_BIN="$tmp/stub-loggedout" bash "${BASH_SOURCE[0]}" --matrix "$tmp/subrun-auth.json" \
+      --out "$tmp/auth-out" --skip-probe >"$tmp/auth.log" 2>&1
+  rc_auth=$?
+  if [[ "$rc_auth" -eq 3 && ! -f "$tmp/auth-out/summary.json" ]] \
+      && grep -q "claude auth login" "$tmp/auth.log" \
+      && ! grep -q "OAuth session expired" "$tmp/auth.log"; then
+    echo "  ok   subrun: logged-out CLI -> exit 3, 'claude auth login' hint, no summary, banner never echoed as the cause"
+  else
+    echo "  FAIL subrun logged-out auth: exit $rc_auth"
+    sed 's/^/         | /' "$tmp/auth.log" | head -12
+    fails=$((fails+1))
+  fi
+
+  # clean-box coverage: every installed plugin false, every personal skill off.
+  fakehome="$tmp/fakehome"
+  mkdir -p "$fakehome/.claude/plugins" "$fakehome/.claude/skills/andon-loop" "$fakehome/.claude/skills/foo-bar"
+  cat > "$fakehome/.claude/plugins/installed_plugins.json" <<'PLUGJSON'
+{"plugins": {"andon@werkstoff": {"enabled": true}, "matrize@werkstoff": {"enabled": true}}}
+PLUGJSON
+  cat > "$tmp/subrun-cleanbox.json" <<CLEANJSON
+{"runner":"subrun","cases":[{"id":"c","prompt":"do it","expect_exit":0}],
+ "models":["haiku"],"plugin_states":[{"id":"on","plugin_dir":null}],
+ "repeats":1,"ablation":"isolated","timeout_s":30}
+CLEANJSON
+  HOME="$fakehome" CLAUDE_BIN="$tmp/stub-full" bash "${BASH_SOURCE[0]}" --matrix "$tmp/subrun-cleanbox.json" \
+      --out "$tmp/cleanbox-out" --skip-probe >"$tmp/cleanbox.log" 2>&1
+  rc_cb=$?
+  cleanbox="$(OUTDIR="$tmp/cleanbox-out" python3 - <<'CBCHK'
+import json, os, pathlib
+cells_dir = pathlib.Path(os.environ["OUTDIR"]) / "cells"
+settings_files = sorted((cells_dir / "_subrun").glob("*.settings.json"))
+bad = []
+if len(settings_files) != 1:
+    bad.append("expected 1 settings file, got %d" % len(settings_files))
+else:
+    s = json.loads(settings_files[0].read_text())
+    if set(s.get("enabledPlugins", {})) != {"andon@werkstoff", "matrize@werkstoff"}:
+        bad.append("enabledPlugins %r" % s.get("enabledPlugins"))
+    if any(v is not False for v in s.get("enabledPlugins", {}).values()):
+        bad.append("an enabledPlugins entry is not False")
+    if set(s.get("skillOverrides", {})) != {"andon-loop", "foo-bar"}:
+        bad.append("skillOverrides %r" % s.get("skillOverrides"))
+    if any(v != "off" for v in s.get("skillOverrides", {}).values()):
+        bad.append("a skillOverrides entry is not 'off'")
+cells = [p for p in cells_dir.glob("*.json") if not p.name.endswith((".settings.json", ".config.json"))]
+if len(cells) == 1:
+    c = json.loads(cells[0].read_text())
+    if "--settings" not in c["argv"]:
+        bad.append("cell argv carries no --settings flag")
+    if c["outcome"] != "PASS":
+        bad.append("outcome %s, wanted PASS" % c["outcome"])
+else:
+    bad.append("expected 1 cell json, got %d" % len(cells))
+print("; ".join(bad) if bad else "OK")
+CBCHK
+)"
+  if [[ "$rc_cb" -eq 0 && "$cleanbox" == "OK" ]]; then
+    echo "  ok   subrun: clean box covers every installed plugin and personal skill"
+  else
+    echo "  FAIL subrun clean box: rc=$rc_cb $cleanbox"
+    sed 's/^/         | /' "$tmp/cleanbox.log" | head -12
+    fails=$((fails+1))
+  fi
+
+  # foreign-skill sentinel -> UNMEASURED, naming the skill. The allowed set
+  # comes from ONE real skill on disk; the stub's sentinel reply names a
+  # different one, which is exactly the case this self-check exists for.
+  sentinel_plugin="$tmp/sentinel-plugin"
+  mkdir -p "$sentinel_plugin/skills/known-skill"
+  printf -- '---\nname: known-skill\n---\n' > "$sentinel_plugin/skills/known-skill/SKILL.md"
+  cat > "$tmp/subrun-sentinel.json" <<SENTJSON
+{"runner":"subrun","cases":[{"id":"c","prompt":"do it","expect_exit":0}],
+ "models":["haiku"],
+ "plugin_states":[{"id":"on","plugin_dir":"$sentinel_plugin"}],
+ "repeats":1,"ablation":"isolated","timeout_s":30}
+SENTJSON
+  SENTINEL_REPLY="SKILL: some-plugin:mystery-skill" HOME="$tmp/fakehome-empty" \
+    CLAUDE_BIN="$tmp/stub-full" bash "${BASH_SOURCE[0]}" --matrix "$tmp/subrun-sentinel.json" \
+        --out "$tmp/sentinel-out" --skip-probe >"$tmp/sentinel.log" 2>&1
+  rc_sent=$?
+  sentinel_check="$(OUTDIR="$tmp/sentinel-out" python3 - <<'SENTCHK'
+import json, os, pathlib
+cells_dir = pathlib.Path(os.environ["OUTDIR"]) / "cells"
+cells = [p for p in cells_dir.glob("*.json") if not p.name.endswith((".settings.json", ".config.json"))]
+bad = []
+if len(cells) != 1:
+    bad.append("expected 1 cell json, got %d" % len(cells))
+else:
+    c = json.loads(cells[0].read_text())
+    if c["outcome"] != "UNMEASURED":
+        bad.append("outcome %s, wanted UNMEASURED" % c["outcome"])
+    reason = c.get("unmeasured_reason") or ""
+    if "mystery-skill" not in reason:
+        bad.append("reason %r does not name the foreign skill" % reason)
+print("; ".join(bad) if bad else "OK")
+SENTCHK
+)"
+  if [[ "$rc_sent" -eq 0 && "$sentinel_check" == "OK" ]]; then
+    echo "  ok   subrun: a foreign skill in the sentinel reply -> UNMEASURED, named"
+  else
+    echo "  FAIL subrun sentinel: rc=$rc_sent $sentinel_check"
+    sed 's/^/         | /' "$tmp/sentinel.log" | head -12
+    fails=$((fails+1))
+  fi
+
+  # fixture seeding: the fixture's baseline file must NOT appear in the diff
+  # (it was committed as the baseline); a file the cell itself writes MUST.
+  fixture_dir="$tmp/fixture-baseline"
+  mkdir -p "$fixture_dir"
+  echo "hello" > "$fixture_dir/README.md"
+  cat > "$tmp/subrun-fixture.json" <<FIXJSON
+{"runner":"subrun","cases":[{"id":"c","prompt":"do it","expect_exit":0,"fixture":"$fixture_dir"}],
+ "models":["haiku"],"plugin_states":[{"id":"on","plugin_dir":null}],
+ "repeats":1,"ablation":"isolated","timeout_s":30}
+FIXJSON
+  CELL_WRITE_FILE="new_output.txt" CLAUDE_BIN="$tmp/stub-full" \
+    bash "${BASH_SOURCE[0]}" --matrix "$tmp/subrun-fixture.json" \
+        --out "$tmp/fixture-out" --skip-probe >"$tmp/fixture.log" 2>&1
+  rc_fix=$?
+  fixture_check="$(OUTDIR="$tmp/fixture-out" python3 - <<'FIXCHK'
+import json, os, pathlib
+cells_dir = pathlib.Path(os.environ["OUTDIR"]) / "cells"
+cells = [p for p in cells_dir.glob("*.json") if not p.name.endswith((".settings.json", ".config.json"))]
+bad = []
+if len(cells) != 1:
+    bad.append("expected 1 cell json, got %d" % len(cells))
+else:
+    c = json.loads(cells[0].read_text())
+    diff = c.get("diff") or ""
+    if "new_output.txt" not in diff:
+        bad.append("diff evidence does not mention the file the cell created: %r" % diff[:200])
+    if "README.md" in diff:
+        bad.append("the fixture's own baseline file leaked into the diff")
+    if c["outcome"] != "PASS":
+        bad.append("outcome %s, wanted PASS" % c["outcome"])
+print("; ".join(bad) if bad else "OK")
+FIXCHK
+)"
+  if [[ "$rc_fix" -eq 0 && "$fixture_check" == "OK" ]]; then
+    echo "  ok   subrun: fixture seeded into the cell, diff evidence captured"
+  else
+    echo "  FAIL subrun fixture seeding: rc=$rc_fix $fixture_check"
+    sed 's/^/         | /' "$tmp/fixture.log" | head -12
+    fails=$((fails+1))
+  fi
+
+  # a missing fixture must stop the SCRIPT (exit 2, no summary) -- same
+  # invariant as the missing-plugin_dir case above, now for subrun cells.
+  cat > "$tmp/subrun-missing-fixture.json" <<MISSFIXJSON
+{"runner":"subrun","cases":[{"id":"c","prompt":"hi","expect_exit":0,"fixture":"$tmp/does-not-exist"}],
+ "models":["haiku"],"plugin_states":[{"id":"on","plugin_dir":null}],
+ "repeats":1,"ablation":"isolated","timeout_s":30}
+MISSFIXJSON
+  CLAUDE_BIN="$tmp/stub-full" bash "${BASH_SOURCE[0]}" --matrix "$tmp/subrun-missing-fixture.json" \
+      --out "$tmp/missfix-out" --skip-probe >"$tmp/missfix.log" 2>&1
+  rc_missfix=$?
+  if [[ "$rc_missfix" -eq 2 && ! -f "$tmp/missfix-out/summary.json" ]]; then
+    echo "  ok   subrun: a missing fixture exits 2 and writes no summary"
+  else
+    echo "  FAIL subrun missing fixture: exit $rc_missfix, summary $([ -f "$tmp/missfix-out/summary.json" ] && echo written || echo absent)"
+    fails=$((fails+1))
+  fi
+
   echo
   if [[ "$fails" -gt 0 ]]; then echo "SELFTEST FAILED ($fails)"; exit 1; fi
-  echo "selftest passed (13 validation + 3 end-to-end against stubs; no real cells run)"
+  echo "selftest passed (21 validation + 3 legacy end-to-end + subrun.py's own + 5 subrun end-to-end; no real cells run)"
   exit 0
 fi
 
@@ -480,7 +764,7 @@ DISALLOWED="${disallowed_tools:-}"
 # subshell: the script carried on, wrote an empty summary and exited 0, reporting
 # a sweep that never ran. Process substitution keeps the loop in this shell, so
 # the exit is the script's. It also means counters set in the loop survive it.
-while IFS=$'\x1e' read -r cid model sid n expect dirs prompt; do
+while IFS=$'\x1e' read -r cid model sid n expect dirs prompt fixture expect_skills forbid_skills; do
   label="${cid}__${model}__${sid}__${n}"
   cell_json="$OUT/cells/${label}.json"
 
@@ -510,6 +794,7 @@ while IFS=$'\x1e' read -r cid model sid n expect dirs prompt; do
   # bracket expression in this repo's CLAUDE.md defect table, one layer down.
   # $'\x1f' in bash IS a real hex escape, and 0x1F is not IFS whitespace, so
   # empty entries survive rather than collapsing.
+  RESOLVED_DIRS=()
   if [[ -n "$dirs" ]]; then
     IFS=$'\x1f' read -ra _dir_list <<< "$dirs"
     for d in "${_dir_list[@]}"; do
@@ -520,11 +805,73 @@ while IFS=$'\x1e' read -r cid model sid n expect dirs prompt; do
         exit 2
       fi
       argv+=(--plugin-dir "$abs")
+      RESOLVED_DIRS+=("$abs")
     done
   fi
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     printf '%-38s ' "$label"; printf '%q ' "${argv[@]}"; echo
+    continue
+  fi
+
+  # ---------------------------------------------------------------------
+  # THIN EXECUTOR HANDOFF (opt-in: 'runner': 'subrun'). Orchestration and
+  # argv assembly stayed exactly where they were, above this line -- this
+  # block only serializes the already-built argv plus this cell's
+  # fixture/expect_skills/forbid_skills/plugin_dirs into one JSON config,
+  # and hands execution+scoring of this ONE cell to subrun.py. The legacy
+  # per-cell run+CELLPY block below never runs for a subrun cell.
+  # ---------------------------------------------------------------------
+  if [[ -n "${runner:-}" ]]; then
+    # subrun.py's OWN artifacts (the config it reads, the clean-box settings
+    # it writes) live one level down, under cells/_subrun/ -- never directly
+    # in cells/ -- because the shared summary generator at the bottom of this
+    # script globs `cells/*.json` (non-recursive) expecting every match to be
+    # a scored cell. A sibling file there without "case"/"outcome" crashed it.
+    mkdir -p "$OUT/cells/_subrun"
+    cfg_file="$OUT/cells/_subrun/${label}.config.json"
+    ARGV_JOINED="$(printf '%s\x1f' "${argv[@]}")" \
+    PLUGIN_DIRS_JOINED="$(printf '%s\x1f' "${RESOLVED_DIRS[@]+"${RESOLVED_DIRS[@]}"}")" \
+    LABEL="$label" CID="$cid" MODEL="$model" SID="$sid" NREP="$n" \
+    EXPECT="$expect" TIMEOUT_S="$timeout_s" ABLATION="$ablation" \
+    FIXTURE="$fixture" EXPECT_SKILLS_JOINED="$expect_skills" FORBID_SKILLS_JOINED="$forbid_skills" \
+    TRANSCRIPT="$transcript" MAX_BUDGET="${max_budget_usd:-}" \
+    python3 - "$cfg_file" <<'CFGPY'
+import json, os, sys
+
+
+def split(v):
+    return [x for x in v.split("\x1f") if x]
+
+
+cfg = {
+    "label": os.environ["LABEL"],
+    "case": os.environ["CID"],
+    "model": os.environ["MODEL"],
+    "plugin_state": os.environ["SID"],
+    "repeat": int(os.environ["NREP"]),
+    "argv": split(os.environ["ARGV_JOINED"]),
+    "expect_exit": int(os.environ["EXPECT"]),
+    "timeout_s": int(os.environ["TIMEOUT_S"]),
+    "ablation": os.environ["ABLATION"],
+    "plugin_dirs": split(os.environ["PLUGIN_DIRS_JOINED"]),
+    "fixture": os.environ["FIXTURE"] or None,
+    "expect_skills": split(os.environ["EXPECT_SKILLS_JOINED"]),
+    "forbid_skills": split(os.environ["FORBID_SKILLS_JOINED"]),
+    "transcript": os.environ["TRANSCRIPT"] == "1",
+    "max_budget_usd": float(os.environ["MAX_BUDGET"]) if os.environ["MAX_BUDGET"] else None,
+}
+json.dump(cfg, open(sys.argv[1], "w"))
+CFGPY
+    python3 "$HERE/subrun.py" --config "$cfg_file" --out "$cell_json"
+    rc=$?
+    if [[ $rc -eq 3 ]]; then
+      echo "run_matrix.sh: subrun.py could not authenticate cell '$label' -- see stderr above." >&2
+      exit 3
+    elif [[ $rc -ne 0 ]]; then
+      echo "run_matrix.sh: subrun.py refused cell '$label' (exit $rc) -- see stderr above." >&2
+      exit 2
+    fi
     continue
   fi
 
