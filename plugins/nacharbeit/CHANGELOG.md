@@ -12,6 +12,10 @@ All notable changes to the `nacharbeit` plugin are documented here.
   fresh processes and record which skill fired — fired, captured (named), silent, UNSTABLE,
   UNMEASURED — with `--routing` comparing the simulation against reality. Cells run through
   `scripts/subrun.py`, vendored from `tools/subrun/` and shared with arbeitsplan.
+- `scripts/route_sim.py` runs only the review's haiku routing simulation, headless, reading
+  `ROUTE_PROMPT`/`ROUTE_SCHEMA` out of `review.js` so it cannot drift; `trigger_probe.py`
+  gains a `werkstoff` arm (every plugin in a clean box — the simulation's own corpus) and
+  `--prompts FILE` for a sample chosen outside the prober.
 - `post_fix_check.py --probe MODEL` re-measures routing-family fixes; without it the
   re-measurement is recorded as `pending` with its command.
 - `status.py --fail-on-severity blocker,major` for CI (exit 1 on a match, 2 on an unknown

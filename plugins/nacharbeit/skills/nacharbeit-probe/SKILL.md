@@ -59,6 +59,8 @@ simulation vs probe: 1/2 agree (0.50)
 ## Resources
 
 - `scripts/trigger_probe.py` — the probe; `--selftest` needs no tokens.
+- `scripts/route_sim.py` — the review's routing simulation alone, to calibrate against the
+  probe with `--routing`; use the `werkstoff` arm for that comparison.
 - `scripts/subrun.py` — the single-cell executor it runs each cell through (vendored from
   `tools/subrun/`, shared with arbeitsplan's matrix).
 - `scripts/post_fix_check.py` — `--probe MODEL` re-measures every routing-family fix after a

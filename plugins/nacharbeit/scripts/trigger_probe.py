@@ -99,10 +99,18 @@ def cell_config(entry: dict, rep: int, model: str, arm: str, plugins_root: Path,
         pd = (plugins_root / entry["plugin"]).resolve()
         argv += ["--setting-sources", "project", "--plugin-dir", str(pd)]
         plugin_dirs = [str(pd)]
+    elif arm == "werkstoff":
+        # Every plugin under plugins_root, in a clean box: the same competition the
+        # routing simulation's corpus models. `isolated` (one plugin) and `installed`
+        # (the whole machine) each measure a different question than the simulation.
+        plugin_dirs = sorted(str(d.resolve()) for d in plugins_root.iterdir() if (d / ".claude-plugin").is_dir())
+        argv += ["--setting-sources", "project"]
+        for d in plugin_dirs:
+            argv += ["--plugin-dir", d]
     return {
         "label": f"{re.sub(r'[^A-Za-z0-9_.-]+', '_', entry['id'])}__{model}__{arm}__{rep}",
         "argv": argv, "case": entry["id"], "model": model, "plugin_state": arm, "repeat": rep,
-        "ablation": arm, "plugin_dirs": plugin_dirs, "transcript": True,
+        "ablation": "installed" if arm == "installed" else "isolated", "plugin_dirs": plugin_dirs, "transcript": True,
         # expect_skills stays empty ON PURPOSE: subrun decides only whether the cell ran
         # FAIRLY. Whether the right skill fired is decided below on normalised names,
         # because a transcript may report `plugin:skill` where the index says `skill`.
@@ -160,7 +168,15 @@ def compare_routing(results: list, routing: dict) -> dict:
 def run(args) -> int:
     import subrun  # vendored copy of tools/subrun/subrun.py
 
-    entries = select(parse_index(Path(args.index).read_text(encoding="utf-8")), args.only, args.all)
+    entries = parse_index(Path(args.index).read_text(encoding="utf-8"))
+    if args.prompts:
+        wanted = json.loads(Path(args.prompts).read_text(encoding="utf-8"))
+        missing = [w for w in wanted if not any(e["prompt"] == w for e in entries)]
+        if missing:
+            raise SystemExit(f"--prompts names text no documented prompt has: {missing[:3]}")
+        entries = [e for e in entries if e["prompt"] in wanted]
+    else:
+        entries = select(entries, args.only, args.all)
     cells = [(e, rep) for e in entries for rep in range(1, args.repeats + 1)]
     est = round(len(cells) * COST_PER_CELL, 2)
     print(f"trigger probe — {len(entries)} prompt(s) x {args.repeats} repeat(s) = {len(cells)} cell(s), "
@@ -232,6 +248,14 @@ def selftest() -> int:
     ok("isolated arm: --plugin-dir for the prompt's own plugin", "--plugin-dir" in cfg["argv"] and cfg["argv"][cfg["argv"].index("--plugin-dir") + 1].endswith("plugins/demo"))
     ok("the model is explicit in argv", cfg["argv"][cfg["argv"].index("--model") + 1] == "haiku")
     ok("subrun gets no expect_skills (the probe decides on normalised names)", cfg["expect_skills"] == [])
+    with tempfile.TemporaryDirectory() as raw:
+        for n in ("demo", "other", "not-a-plugin"):
+            (Path(raw) / n).mkdir()
+        for n in ("demo", "other"):
+            (Path(raw) / n / ".claude-plugin").mkdir()
+        w = cell_config(es[0], 1, "haiku", "werkstoff", Path(raw), "claude", None)
+        ok("werkstoff arm: every plugin, nothing else, in a clean box",
+           w["argv"].count("--plugin-dir") == 2 and w["ablation"] == "isolated" and len(w["plugin_dirs"]) == 2)
     ok("installed arm adds no --plugin-dir", "--plugin-dir" not in cell_config(es[0], 1, "haiku", "installed", Path("plugins"), "claude", None)["argv"])
 
     e = es[0]
@@ -270,8 +294,9 @@ def main(argv: list) -> int:
     ap.add_argument("--model", help="haiku | sonnet | opus | a full id -- required, recorded with every rate")
     ap.add_argument("--only", action="append", default=[], help="a skill id or prompt id (repeatable); the default scope")
     ap.add_argument("--all", action="store_true", help="every documented prompt -- opt-in, it costs real money")
+    ap.add_argument("--prompts", help="a JSON list of exact prompt texts -- a sample chosen outside the prober")
     ap.add_argument("--repeats", type=int, default=2)
-    ap.add_argument("--arm", choices=["isolated", "installed"], default="isolated")
+    ap.add_argument("--arm", choices=["isolated", "werkstoff", "installed"], default="isolated")
     ap.add_argument("--index", default="docs/prompt-index.md")
     ap.add_argument("--plugins-root", default="plugins")
     ap.add_argument("--routing", help="a review's routing.json to compare the simulation against")
@@ -291,7 +316,7 @@ def main(argv: list) -> int:
     if a.repeats < 2:
         print("--repeats must be >= 2: one repeat cannot separate a fix from noise", file=sys.stderr)
         return 2
-    if not a.only and not a.all:
+    if not a.only and not a.all and not a.prompts:
         print("name what to probe with --only (the default scope), or pass --all deliberately", file=sys.stderr)
         return 2
     return run(a)
