@@ -2,7 +2,7 @@
 #
 # Three assertions over plugins/*/workflows/*.js, in increasing strength.
 #
-#   1. it parses            -- node --check
+#   1. it parses            -- as the runtime evaluates it (see (1) below)
 #   2. it is SHAPED like a workflow script -- it has a top-level `return`
 #   3. it is clean under the pinned biome rule set -- biome.jsonc
 #
@@ -18,9 +18,9 @@
 #
 #     Illegal return statement outside of a function
 #
-# node --check does not, because Node wraps CommonJS in a function where
-# top-level return is legal. Neither checker models the runtime, and they
-# disagree about all fifteen files.
+# node --check used to accept it, because Node wrapped a typeless .js as
+# CommonJS; since module auto-detection it rejects it too (see (1)). Neither
+# checker models the runtime, which is why (1) no longer uses node --check.
 #
 # So this script INVERTS that diagnostic: the message is REQUIRED, and a file
 # that does not produce it has no top-level return and returns undefined at
@@ -62,20 +62,30 @@ resolve_biome() {
   return 1
 }
 
-# --- (1) node --check ---------------------------------------------------------
+# --- (1) parse, as the runtime does -------------------------------------------
+# NOT `node --check`. That relied on Node wrapping a typeless .js as CommonJS,
+# and since Node's module auto-detection an `export const meta` line makes it
+# parse the file as an ES module instead -- where the top-level `return` every
+# correct workflow carries is illegal. Measured under Node 26: all fifteen
+# correct files failed. The check had stopped modelling the runtime without a
+# single file changing. So this parses the file the way the runtime evaluates
+# it: `meta`'s `export` stripped, the body compiled as an async function. That
+# is version-independent, and stricter -- it also rejects `await` inside a
+# non-async helper, which the CommonJS wrapper accepted.
+WF_PARSE_JS='const f=process.argv[1];const s=require("fs").readFileSync(f,"utf8");const A=Object.getPrototypeOf(async function(){}).constructor;try{new A(s.replace(/^export\s+(?=const\s+meta\b)/m,""))}catch(e){console.error(f+": "+e.name+": "+e.message);process.exit(1)}'
 run_node_check() {
   local root="$1" fail=0 count=0 file
   while IFS= read -r -d '' file; do
     count=$((count + 1))
     # `< /dev/null` because a child that reads stdin eats the rest of this
     # loop's input; that exact bug silently halved a sweep in run_matrix.sh.
-    if ! node --check "$file" </dev/null 2>&1; then
+    if ! (cd "$root" && node -e "$WF_PARSE_JS" "$file") </dev/null 2>&1; then
       echo "FAIL(parse): $file"
       fail=1
     fi
   done < <(cd "$root" && find plugins -path '*/workflows/*.js' -print0 | sort -z)
   if [ "$fail" -eq 0 ]; then
-    echo "  node --check: all $count workflow .js file(s) parse cleanly."
+    echo "  parse: all $count workflow .js file(s) compile as an async body."
   fi
   return "$fail"
 }
@@ -282,7 +292,7 @@ else
   else
     echo "  FAIL: biome unavailable (no npx, no BIOME_BIN), so the shape and lint" >&2
     echo "        checks could not run. Set ALLOW_MISSING_BIOME=1 to downgrade this" >&2
-    echo "        to a skip; node --check alone only proves the files parse." >&2
+    echo "        to a skip; the parse step alone only proves the files parse." >&2
     status=1
   fi
 fi

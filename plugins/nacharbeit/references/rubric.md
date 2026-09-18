@@ -188,10 +188,10 @@ instead of `permissionDecisionReason`, makes the runtime silently ignore the den
 | `H-MATCHER-KNOWN` | `matcher` is `\|`-joined documented tool names (or empty / `*`). | hooks | minor | hooks docs (a matcher that matches nothing is a hook that never runs) |
 | `H-MATCHER-MULTIEDIT` | A matcher naming `Edit` or `Write` also names `MultiEdit`. | hooks | nit | hazards.md ("andon's matcher does not list MultiEdit") |
 | `H-INERT-STATED` | `hooks.json`'s `description` states when the hook is inert. | hooks | nit | hazards.md cards ("Inert unless") |
-| `H-DENY-SHAPE` | A script that emits `permissionDecision` also emits `hookEventName`; a script using `systemMessage` without `permissionDecisionReason` fails; a script that never emits a decision fails. | hookscript | major | hooks docs (PreToolUse decision control); CLAUDE.md silent-defect row |
+| `H-DENY-SHAPE` | A script that emits `permissionDecision` also emits `hookEventName`; a script using `systemMessage` without `permissionDecisionReason` fails; a script that never emits a decision fails. A `Stop`/`SubagentStop` hook's decision is `{"decision": "block", "reason": …}` and counts as one. | hookscript | major | hooks docs (PreToolUse decision control; Stop decision control); CLAUDE.md silent-defect row |
 | `H-EXIT-2` | The deny path exits 2 (`sys.exit(2)`, `return 2` through `sys.exit(main())`, or a `DENY`/`BLOCK` constant equal to 2). | hookscript | major | hooks docs ("exit code 2 = blocking error") |
 | `H-ESCAPE-HATCH` | The script reads a `<NAME>_DISABLE_GUARD` env var and names it again in a deny reason. | hookscript | minor | hazards.md ("escape hatch named in the hook's own deny message") |
-| `H-FAIL-CLOSED` | The last broad `except` handler calls `deny(…)`, not `allow()`/`exit(0)` (AST proxy; documented). | hookscript | minor | hazards.md "All fail closed"; takt docstring |
+| `H-FAIL-CLOSED` | The last broad `except` handler calls `deny(…)` (or `block(…)` in a `Stop` hook), not `allow()`/`exit(0)` (AST proxy; documented). | hookscript | minor | hazards.md "All fail closed"; takt docstring |
 | `H-MULTI-PATH` | An edit-gating script reads `edits[].file_path` and `file_paths` besides `file_path`. | hookscript | minor | `takt_guard.py::edit_targets`; `test/plugins/verify-takt-payload-shapes.py` |
 | `H-TEST-EXISTS` | `test_<stem>.py` exists beside the hook script (or anywhere under the plugin). | hookscript | minor | CLAUDE.md "verify the instrument"; lehre/andon/self-assess convention |
 

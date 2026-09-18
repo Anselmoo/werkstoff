@@ -910,7 +910,11 @@ def r_h_deny_shape(u: Unit, ctx: list[Unit]) -> list[dict]:
     if "systemMessage" in t and "permissionDecisionReason" not in t:
         return [_finding(u, "H-DENY-SHAPE", "the script uses systemMessage instead of permissionDecisionReason; the runtime ignores the deny",
                          "replace systemMessage with hookSpecificOutput.permissionDecisionReason", line=_line_of(u, "systemMessage"), quote="systemMessage")]
-    if "permissionDecision" not in t and "systemMessage" not in t:
+    # A Stop/SubagentStop hook's documented decision is {"decision": "block",
+    # "reason": ...}, not permissionDecision -- a rule that only knew PreToolUse
+    # reported every correct Stop hook as emitting no decision at all.
+    stop_shape = re.search(r"[\"']decision[\"']", t) and re.search(r"[\"']block[\"']", t) and re.search(r"[\"']reason[\"']", t)
+    if "permissionDecision" not in t and "systemMessage" not in t and not stop_shape:
         return [_finding(u, "H-DENY-SHAPE", "the script never emits a deny decision JSON; exit 2 alone is not a decision the runtime keeps",
                          "print the hookSpecificOutput JSON on stdout before exiting 2", line=1, quote=(u.lines[0] if u.lines else "")[:120])]
     return []
@@ -984,7 +988,9 @@ def r_h_fail_closed(u: Unit, ctx: list[Unit]) -> list[dict]:
                          "wrap the evaluation in try/except Exception and deny with the escape hatch named", line=1, quote=(u.lines[0] if u.lines else "")[:120])]
     last = max(handlers, key=lambda h: h.lineno)
     body = ast.Module(body=last.body, type_ignores=[])
-    if _calls_named(body, {"deny"}) and not (_calls_named(body, {"allow"}) or _exits_zero(body)):
+    # deny() for a PreToolUse guard, block() for a Stop hook: both refuse. What
+    # the rule forbids is the handler that ALLOWS on the guard's own error.
+    if _calls_named(body, {"deny", "block"}) and not (_calls_named(body, {"allow"}) or _exits_zero(body)):
         return []
     return [_finding(u, "H-FAIL-CLOSED", f"the broad except handler at line {last.lineno} allows (or exits 0) on an internal error; a guard that fails open on its own bug is not a guard",
                      "call deny(...) in that handler, naming the escape hatch", line=last.lineno, quote=u.lines[last.lineno - 1] if last.lineno <= len(u.lines) else "")]
@@ -1036,6 +1042,12 @@ def r_s_py_compile(u: Unit, ctx: list[Unit]) -> list[dict]:
 
 
 _NODE_CACHE: dict[tuple[str, str], tuple[int, str]] = {}
+_WF_PARSE_JS = (
+    'const f=process.argv[1];const s=require("fs").readFileSync(f,"utf8");'
+    "const A=Object.getPrototypeOf(async function(){}).constructor;"
+    'try{new A(s.replace(/^export\\s+(?=const\\s+meta\\b)/m,""))}'
+    'catch(e){console.error(f+": "+e.name+": "+e.message);process.exit(1)}'
+)
 
 
 def r_s_js_syntax(u: Unit, ctx: list[Unit]) -> list[dict]:
@@ -1047,8 +1059,15 @@ def r_s_js_syntax(u: Unit, ctx: list[Unit]) -> list[dict]:
         return []
     k = (u.path.as_posix(), hashlib.sha256(u.text.encode()).hexdigest())
     if k not in _NODE_CACHE:
+        # A workflow is parsed as the runtime evaluates it -- `meta`'s export
+        # stripped, the body compiled as an async function -- never with
+        # `node --check`. Under Node's module auto-detection `export const meta`
+        # makes `--check` parse the file as an ES module, where every correct
+        # workflow's top-level `return` is illegal: measured under Node 26, all
+        # fifteen correct files failed. A plain .js script keeps `--check`.
+        argv = [node, "-e", _WF_PARSE_JS, str(u.path)] if u.kind == "workflow" else [node, "--check", str(u.path)]
         try:
-            r = subprocess.run([node, "--check", str(u.path)], capture_output=True, text=True, timeout=60)
+            r = subprocess.run(argv, capture_output=True, text=True, timeout=60)
             _NODE_CACHE[k] = (r.returncode, (r.stderr or "").strip())
         except (OSError, subprocess.TimeoutExpired) as e:
             _NODE_CACHE[k] = (1, f"{type(e).__name__}: {e}")

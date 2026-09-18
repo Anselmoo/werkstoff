@@ -328,8 +328,52 @@ def build_clean(root: Path) -> None:
     w(root, f"{P}/commands/scan.md", "---\ndescription: Scan widgets in an area\nargument-hint: <area>\n---\n\nScan `$1`.\n")
     w(root, f"{P}/hooks/hooks.json", json.dumps({
         "description": "clean: denies a write to a .secret file. Inert until .clean/ exists.",
-        "hooks": {"PreToolUse": [{"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/clean_guard.py\"", "timeout": 15}]}]},
+        "hooks": {"PreToolUse": [{"matcher": "Write|Edit|MultiEdit", "hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/clean_guard.py\"", "timeout": 15}]}],
+                  # A correct Stop hook, so the negative check proves the H-* rules
+                  # accept Stop's {"decision": "block"} shape instead of demanding
+                  # PreToolUse's permissionDecision from it.
+                  "Stop": [{"hooks": [{"type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/clean_stop.py\"", "timeout": 15}]}]},
     }, indent=1))
+    w(root, f"{P}/hooks/clean_stop.py", '''#!/usr/bin/env python3
+"""Stop hook for clean: refuse one stop while .clean/open exists.
+
+Usage: fed a Stop JSON event on stdin by the runtime.
+Exit: 0 allow; 2 block (with {"decision": "block", "reason": ...} on stdout).
+"""
+import json
+import os
+import sys
+
+
+def block(reason):
+    print(json.dumps({"decision": "block", "reason": reason}))
+    sys.stderr.write(reason + "\\n")
+    sys.exit(2)
+
+
+def main():
+    if os.environ.get("CLEAN_DISABLE_GUARD") == "1":
+        sys.exit(0)
+    try:
+        event = json.load(sys.stdin)
+    except ValueError:
+        sys.exit(0)
+    if event.get("stop_hook_active"):
+        sys.exit(0)
+    try:
+        if os.path.exists(os.path.join(event.get("cwd") or os.getcwd(), ".clean", "open")):
+            block("an item is still open; set CLEAN_DISABLE_GUARD=1 to bypass")
+    except SystemExit:
+        raise
+    except Exception as exc:
+        block(f"could not evaluate ({exc}); set CLEAN_DISABLE_GUARD=1 to bypass")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
+''')
+    w(root, f"{P}/hooks/test_clean_stop.py", "#!/usr/bin/env python3\n\"\"\"Usage: test_clean_stop.py  Exit: 0 green.\"\"\"\nimport sys\n\nif __name__ == '__main__':\n    sys.exit(0)\n")
     w(root, f"{P}/hooks/clean_guard.py", '''#!/usr/bin/env python3
 """PreToolUse guard for clean.
 
