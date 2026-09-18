@@ -122,7 +122,7 @@
         {
           "id": "arbeitsplan:arbeitsplan-start",
           "name": "arbeitsplan-start",
-          "description": "Names which of four approved workflows fits a stated task, the plugins to install for it, and the permission mode to run it in — and says plainly when none of the four fits. Use when the user asks where to start, which workflow or plugin combination applies, whether to use plan mode or auto mode for something, what to install before beginning, or how to combine werkstoff's plugins for a build, an unfamiliar-repo read, a bug fix, or a UI/plugin review. Recommend-only — it never installs anything, writes workflow.json, or changes permission mode itself."
+          "description": "Names which of four approved workflows fits a stated task, the plugins to install for it, and the permission mode to run it in — from a frozen reference of what was actually measured in werkstoff, which is why it beats answering from general knowledge — and says plainly when none of the four fits. Use when the user asks where to start, which workflow or plugin combination applies, whether to use plan mode or auto mode for something, what to install before beginning, or how to combine werkstoff's plugins for a build, an unfamiliar-repo read, a bug fix, or a UI/plugin review. Recommend-only — it never installs anything, writes workflow.json, or changes permission mode itself."
         },
         {
           "id": "arbeitsplan:arbeitsplan-status",
@@ -542,7 +542,7 @@
         {
           "id": "confab:confab-assertion-audit",
           "name": "confab-assertion-audit",
-          "description": "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests. Every finding is labeled real-tool or llm-reasoned."
+          "description": "Runs a real mutation-testing tool against the tests when one is available — a measured answer rather than a by-hand reading of the assertions — and labels each finding real-tool or llm-reasoned. Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests."
         },
         {
           "id": "confab:confab-code-change",
@@ -955,7 +955,7 @@
         {
           "id": "matrize:matrize-name",
           "name": "matrize-name",
-          "description": "Use to INTERPRET measured Design Cards into a named lexicon: every recurring element gets a name, a purpose, a rule and an anti-rule, written machine-addressably so matrize-dolmetsch can read it back. Trigger on 'name these elements', 'give every element a purpose and a rule', 'write the lexicon', 'matrize name'. Requires DECODE.md and refuses without it; a rule with no stated failure case is not emitted at all, and a rule whose purpose names neither a measured property nor a named principle is rejected as a copy."
+          "description": "Use to INTERPRET measured Design Cards into a named lexicon: every recurring element gets a name, a purpose, a rule and an anti-rule, written machine-addressably so matrize-dolmetsch can read it back. Trigger on 'name these elements', 'give every element a purpose and a rule', 'write the lexicon', 'matrize name'. Invoke it even when no DECODE.md exists: it then names the measurement step it needs (matrize-decode) instead of improvising names from raw CSS, which is exactly the copying it prevents; a rule with no stated failure case is not emitted at all, and a rule whose purpose names neither a measured property nor a named principle is rejected as a copy."
         },
         {
           "id": "matrize:matrize-preflight",

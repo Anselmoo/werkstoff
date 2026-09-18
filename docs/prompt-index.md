@@ -256,7 +256,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ### Clarify a fuzzy scope
 
 ````prompt
-"the scope of this request is fuzzy, help me pin it down first"
+"add caching to the reporting pipeline — the scope is fuzzy, help me pin it down before anything gets built"
 ````
 
 > Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated success criteria before any work starts.

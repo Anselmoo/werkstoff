@@ -1,5 +1,5 @@
 ---
-description: Derive the canonical form for each divergent, undocumented, non-deprecated convention — with a provenance-tracked Pattern Card per dimension
+description: Use after /consistency-scan to decide which variant of a divergent convention is canonical, with a provenance-tracked Pattern Card each
 argument-hint: <area-dir> [dimension-pattern]
 ---
 
