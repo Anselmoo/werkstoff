@@ -91,8 +91,12 @@ def bare(name: str) -> str:
 
 
 def cell_config(entry: dict, rep: int, model: str, arm: str, plugins_root: Path,
-                claude_bin: str, budget: float | None, fixture: str | None = None) -> dict:
-    argv = [claude_bin, "-p", entry["prompt"], "--model", model, "--permission-mode", "plan",
+                claude_bin: str, budget: float | None, fixture: str | None = None,
+                mode: str = "plan") -> dict:
+    # The permission mode is a variable of the measurement, not a constant: under
+    # `plan` the session is told to research and present a plan, and it did -- 46
+    # seeded cells made 176 Reads and 10 ExitPlanMode calls and invoked Skill 4 times.
+    argv = [claude_bin, "-p", entry["prompt"], "--model", model, "--permission-mode", mode,
             "--output-format", "json", "--strict-mcp-config"]
     plugin_dirs = []
     if arm == "isolated":
@@ -211,7 +215,7 @@ def run(args) -> int:
     cells = [(e, rep) for e in entries for rep in range(1, args.repeats + 1)]
     est = round(len(cells) * COST_PER_CELL, 2)
     print(f"trigger probe — {len(entries)} prompt(s) x {args.repeats} repeat(s) = {len(cells)} cell(s), "
-          f"model {args.model}, arm {args.arm}; estimate ~${est} at ${COST_PER_CELL}/cell")
+          f"model {args.model}, arm {args.arm}, mode {args.permission_mode}; estimate ~${est} at ${COST_PER_CELL}/cell")
     claude = os.environ.get("CLAUDE_BIN") or shutil.which("claude") or "claude"
     if args.dry_run:
         for e, rep in cells:
@@ -228,7 +232,8 @@ def run(args) -> int:
     for e in entries:
         got = []
         for rep in range(1, args.repeats + 1):
-            cfg = cell_config(e, rep, args.model, args.arm, Path(args.plugins_root), claude, args.max_budget_usd, fixture)
+            cfg = cell_config(e, rep, args.model, args.arm, Path(args.plugins_root), claude, args.max_budget_usd, fixture,
+                              args.permission_mode)
             path = out / "cells" / f"{cfg['label']}.json"
             try:
                 cell = subrun.run_one_cell(cfg, path)
@@ -243,7 +248,7 @@ def run(args) -> int:
         r = results[-1]
         print(f"  {r['verdict']:<10} {r['expected']:<32} measured {r['measured']}/{r['cells']}"
               + (f"  captured by {r['capturedBy']}" if r.get("capturedBy") else ""))
-    summary = {"model": args.model, "arm": args.arm, "repeats": args.repeats, "mounts": args.mount or [], "results": results,
+    summary = {"model": args.model, "arm": args.arm, "permissionMode": args.permission_mode, "repeats": args.repeats, "mounts": args.mount or [], "results": results,
                "unmeasured": sum(r["verdict"] == "UNMEASURED" for r in results),
                "cost_usd": round(sum(r["cost_usd"] for r in results), 4)}
     if args.routing:
@@ -283,6 +288,8 @@ def selftest() -> int:
     cfg = cell_config(es[0], 1, "haiku", "isolated", Path("plugins"), "claude", 0.5)
     ok("isolated arm: --plugin-dir for the prompt's own plugin", "--plugin-dir" in cfg["argv"] and cfg["argv"][cfg["argv"].index("--plugin-dir") + 1].endswith("plugins/demo"))
     ok("the model is explicit in argv", cfg["argv"][cfg["argv"].index("--model") + 1] == "haiku")
+    dm = cell_config(es[0], 1, "haiku", "isolated", Path("plugins"), "claude", None, None, "default")
+    ok("the permission mode reaches argv", dm["argv"][dm["argv"].index("--permission-mode") + 1] == "default")
     ok("subrun gets no expect_skills (the probe decides on normalised names)", cfg["expect_skills"] == [])
     with tempfile.TemporaryDirectory() as raw:
         for n in ("demo", "other", "not-a-plugin"):
@@ -348,6 +355,8 @@ def main(argv: list) -> int:
     ap.add_argument("--prompts", help="a JSON list of exact prompt texts -- a sample chosen outside the prober")
     ap.add_argument("--repeats", type=int, default=2)
     ap.add_argument("--arm", choices=["isolated", "werkstoff", "installed"], default="isolated")
+    ap.add_argument("--permission-mode", default="plan", choices=["plan", "default", "acceptEdits", "auto"],
+                    help="recorded with every rate: plan mode was measured to suppress Skill invocation")
     ap.add_argument("--index", default="docs/prompt-index.md")
     ap.add_argument("--plugins-root", default="plugins")
     ap.add_argument("--routing", help="a review's routing.json to compare the simulation against")
