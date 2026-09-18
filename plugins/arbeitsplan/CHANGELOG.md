@@ -4,6 +4,37 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- **schema v2**: `backend` is an object `{kind, why[], acknowledgedGaps[]}` with a closed
+  `why` vocabulary; every phase requires `mode`, `writes` and a namespaced `agentType`;
+  `fanout-readonly`, `sources`, `reDerive`, `borrowGate` and `cannotCheck`; 12-phase cap.
+  `schemaVersion: "1"` is refused by name with the migration in the message.
+- **`arbeitsplan-backend`** skill and `references/backend-selection.md`: matrix vs workflow
+  vs in-session, first-match decision table, the unhooked-Workflow gap made explicit.
+- **`workflows/run.js`** executes `spec.phases` generically, halts before every plan-mode
+  phase (`pending_plan_node`), enforces the dispatch budget in code, and returns span-shaped
+  events. `scripts/test_run_workflow.js` runs it against stub hooks, sabotaged nine ways.
+- Seven agents: `inventory-extractor`, `contract-author`, `synthesizer`, `implementer`,
+  `refactorer`, `cleaner` (proposes only), `adjudicator`. `implementer`/`refactorer` must
+  answer five forgotten-work keys, checked in `run.js`.
+- **The run directory is the plan of record**: `run.jsonl` via the shared
+  `tools/run-record/run_record.py`; `record_event.py`, `reconcile.py`, `sample_rederive.py`,
+  `sweep_artifacts.py`, `check_contract_sync.py`; `landed.json` with `divergedFrom`.
+- A `Stop` hook that refuses one completion while an armed phase is unrecorded.
+
+### Changed
+- `worktree_pool.py open` refuses a plan-mode phase; `close` refuses a phase with no terminal
+  event (`--halt "<reason>"` records one). The guard's plan-file denial names the way out.
+- Python ≥ 3.11 is declared and checked in both hooks and the record library.
+
+### Fixed
+- `emit_beats.py` doubled the agent namespace (`arbeitsplan:arbeitsplan:…`), emitting beats no
+  dispatch could match.
+- `run.js` defaulted a missing `modelTier` to `sonnet`, inventing a gating value.
+- `run_matrix.sh --dry-run` created an empty output directory under `analysis/`.
+- The guard used `datetime.UTC` (3.11+) while claiming to run on any python3; under 3.9 it
+  denied delegation with a bare traceback.
+
 ## [0.3.0] - 2026-09-14
 
 ### Added

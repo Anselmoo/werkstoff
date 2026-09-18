@@ -297,6 +297,14 @@ path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/cupertino/references/parallel-safe-research-protocol.md"]
 
+# The shared execution-record library (tools/run-record/). Every adopting plugin
+# gets a byte-identical copy, so a plugin stays standalone and the copies cannot
+# drift: edit the tools/ original, then `rrt artifacts --regenerate`.
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/scripts/run_record.py"
+description = "arbeitsplan's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/arbeitsplan/scripts/run_record.py"]
+
 # lib/ canary (issue #24): a real, committed file at the root of every
 # plugin's scripts/lib/ package, so a `.gitignore` regression that swallows
 # that directory again makes `rrt artifacts --check --strict` fail on the

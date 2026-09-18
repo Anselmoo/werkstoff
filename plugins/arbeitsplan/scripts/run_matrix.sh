@@ -777,7 +777,13 @@ fi
 eval "$(echo "$HEADER" | tail -n +2)"
 
 OUT="${OUT:-analysis/arbeitsplan/matrix-$(date +%Y%m%d-%H%M%S)}"
-mkdir -p "$OUT/cells" || die "cannot create $OUT"
+# A dry run writes nothing. It used to create $OUT/cells anyway, so every
+# `check_matrices.py` pass left an empty timestamped run directory behind in the
+# real repository -- indistinguishable, to anything reading analysis/, from a
+# sweep that started and produced nothing.
+if [[ "$DRY_RUN" -eq 0 ]]; then
+  mkdir -p "$OUT/cells" || die "cannot create $OUT"
+fi
 
 echo "matrix          : $MATRIX"
 echo "cells           : $cells  (repeats=$repeats)"

@@ -16,6 +16,12 @@ It refuses rather than forcing:
   * a diff touching a path outside the run's writeScope is a refusal. The scope
     is the contract every candidate was dispatched under.
 
+After applying it RECORDS the landing: landed.json (written once) and a
+`landed` event in run.jsonl. landed.json compares the candidate's recorded hunks
+with what `git diff` shows for the same paths afterwards; when they differ it
+carries `divergedFrom`, so a correction made at landing is recorded rather than
+leaving candidates/<id>.json describing a diff that is not what landed.
+
 Exit: 0 applied, 1 refused, 2 bad input.
 
 STDLIB ONLY -- it must run under a bare system python3.
@@ -25,11 +31,16 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import run_record  # vendored copy of tools/run-record/run_record.py
 
 
 def paths_in_diff(diff: str) -> list:
@@ -49,6 +60,29 @@ def in_scope(path: str, scope: list) -> bool:
         if fnmatch.fnmatch(path, pattern) or fnmatch.fnmatch(base, pattern):
             return True
     return False
+
+
+def hunk_body(diff: str) -> list:
+    """The +/- lines of a diff, headers and context dropped: what a comparison
+    of two diffs of the same paths should agree on regardless of index lines,
+    hunk offsets or context width."""
+    return [ln for ln in diff.splitlines()
+            if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
+
+
+def landing_record(run_id: str, candidate_id: str, recorded: str, applied: str, paths: list) -> dict:
+    rec = {
+        "runId": run_id, "candidate": candidate_id, "paths": paths,
+        "recordedSha256": hashlib.sha256("\n".join(hunk_body(recorded)).encode()).hexdigest(),
+        "appliedSha256": hashlib.sha256("\n".join(hunk_body(applied)).encode()).hexdigest(),
+    }
+    if rec["recordedSha256"] != rec["appliedSha256"]:
+        rec["divergedFrom"] = {
+            "candidate": candidate_id,
+            "onlyRecorded": [ln for ln in hunk_body(recorded) if ln not in hunk_body(applied)][:40],
+            "onlyApplied": [ln for ln in hunk_body(applied) if ln not in hunk_body(recorded)][:40],
+        }
+    return rec
 
 
 def main(argv: list) -> int:
@@ -86,6 +120,16 @@ def main(argv: list) -> int:
             ("outside scope", "src/secrets.py", ["src/api/**"], False),
             ("basename match", "x.py", ["*.py"], True),
         ]
+        rec_diff = "--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-old\n+new\n"
+        same = "diff --git a/x.py b/x.py\nindex 1..2\n--- a/x.py\n+++ b/x.py\n@@ -1,1 +1,1 @@\n-old\n+new\n"
+        edited = same.replace("+new", "+newer")
+        for name, applied, want_div in [("identical hunks, different headers", same, False),
+                                         ("a correction at landing", edited, True)]:
+            got = "divergedFrom" in landing_record("r", "c1", rec_diff, applied, ["x.py"])
+            ok = got == want_div
+            print(f"  {'ok  ' if ok else 'FAIL'} landing record: {name} -> diverged={got}")
+            if not ok:
+                fails.append(name)
         for name, path, scope, want in scope_cases:
             got = in_scope(path, scope)
             ok = got == want
@@ -181,7 +225,30 @@ def main(argv: list) -> int:
               file=sys.stderr)
         return 1
 
-    print(f"landed {args.candidate}: {', '.join(paths_in_diff(diff))}")
+    paths = paths_in_diff(diff)
+    after = subprocess.run(["git", "diff", "--", *paths], capture_output=True, text=True).stdout
+    rec = landing_record(args.run, args.candidate, diff, after, paths)
+    landed = Path(args.root) / args.run / "landed.json"
+    try:
+        fd = os.open(landed, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError:
+        print(f"WARNING: {landed} already exists; a run lands exactly once, so this second "
+              "landing is recorded only as an event.", file=sys.stderr)
+    else:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump(rec, fh, indent=2)
+    try:
+        run = run_record.open_run("arbeitsplan", args.run)
+        run.append({"trace_id": args.run, "span_id": f"{args.run}.landed.{args.candidate}",
+                    "parent_span_id": f"{args.run}.root", "span": "execute_tool land_candidate",
+                    "node_id": args.candidate, "status": "accepted",
+                    "detail": {"paths": paths, "diverged": "divergedFrom" in rec}})
+    except run_record.RecordError as exc:
+        print(f"WARNING: landed, but the event could not be recorded: {exc}", file=sys.stderr)
+    if "divergedFrom" in rec:
+        print(f"NOTE: what landed differs from candidates/{args.candidate}.json; recorded as "
+              f"divergedFrom in {landed}")
+    print(f"landed {args.candidate}: {', '.join(paths)}")
     print("Nothing was merged. Delete the losing worktrees with:")
     print(f"  python3 plugins/arbeitsplan/scripts/worktree_pool.py destroy --run {args.run} "
           f"--keep {args.candidate}")

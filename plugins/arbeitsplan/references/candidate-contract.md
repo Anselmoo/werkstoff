@@ -5,7 +5,7 @@ the referee is **not** allowed to see.
 
 ## The three roles
 
-**Contents** — [the three roles](#the-three-roles) · [builder input](#builder-input) · [builder output](#builder-output) · [referee input](#referee-input--deliberately-starved) · [referee output](#referee-output) · [selection](#selection)
+**Contents** — [the three roles](#the-three-roles) · [builder input](#builder-input) · [builder output](#builder-output) · [referee input](#referee-input--deliberately-starved) · [referee output](#referee-output) · [selection](#selection) · [inventory output](#inventory-output) · [single-writer output](#single-writer-output) · [kept in sync by a check](#kept-in-sync-by-a-check)
 
 | role | holds Write? | sees other candidates? | sees the builder's rationale? |
 |---|---|---|---|
@@ -128,3 +128,56 @@ never by asking a model to prefer one.
 
 If **no** candidate is `accepted`, the run **halts and surfaces**. It does not re-dispatch. All-N
 failing the same way is a statement about the contract.
+
+## Inventory output
+
+One `inventory-extractor` per partition of a `fanout-readonly` phase. Item ids are derived from what
+an item *is*, so a blind re-derivation of the same partition compares by id.
+
+```json
+{
+  "source": "src/api/**",
+  "items": [
+    { "id": "handler:GET /search", "path": "src/api/search.py", "line": 41, "note": null }
+  ],
+  "truncated": false,
+  "stoppedAt": null
+}
+```
+
+`truncated: true` with `stoppedAt` is a **doubt**, recorded with what would resolve it — never a
+short list presented as whole.
+
+## Single-writer output
+
+One agent per `single-writer` phase: `synthesizer`, `implementer` or `refactorer`. Only `diff` is
+required by the schema; the rest depends on the agent, and two rules are enforced in code, not here:
+a `borrowed` hunk whose `beatsOn` is outside the phase's `borrowGate` halts the phase, and an
+`implementer` or `refactorer` that leaves any `forgotten` key blank halts it too.
+
+```json
+{
+  "measured": true,
+  "baseCandidateId": "c2",
+  "diff": "diff --git a/src/api/search.py b/src/api/search.py ...",
+  "filesTouched": ["src/api/search.py"],
+  "borrowed": [{ "from": "c1", "beatsOn": "a3", "hunk": "@@ -12,3 +12,4 @@" }],
+  "checks": [{ "id": "a1", "command": "pytest -q tests/test_ratelimit.py", "exit": 0 }],
+  "cannotEstablish": [],
+  "forgotten": {
+    "rollback": "git revert <landing commit>",
+    "docsSync": "n/a: no page describes the limit",
+    "contractSync": "n/a: no fixture restates it",
+    "deadArtifacts": "n/a: nothing became unreachable",
+    "releaseWiring": "CHANGELOG entry; minor bump at release"
+  },
+  "note": null
+}
+```
+
+## Kept in sync by a check
+
+The four fenced examples above are not illustrations: `scripts/check_contract_sync.py` evaluates
+`workflows/run.js`, reads each schema's `properties`, and fails when a key exists on one side only.
+It compares against the live script, never against a snapshot, because a snapshot taken while the
+two already disagreed would stay green forever.

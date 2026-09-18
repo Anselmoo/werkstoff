@@ -29,11 +29,41 @@ from pathlib import Path
 # the unnamespaced directory and every other run's stale files, which is exactly
 # the isolation runId exists to provide. ".." was already blocked; "." was not.
 RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
-KINDS = {"fanout-redundant", "fanout-blind", "single-writer"}
+KINDS = {"fanout-redundant", "fanout-blind", "fanout-readonly", "single-writer"}
 TIERS = {"haiku", "sonnet", "opus"}
 SHAPES = {"change", "question"}
-BACKENDS = {"in-session", "matrix"}
-SCHEMA_VERSION = "1"
+MODES = {"auto", "plan"}
+WRITES = {"none", "worktree", "shared"}
+SCHEMA_VERSION = "2"
+MAX_PHASES = 12
+
+# What each fan-out kind may write, fixed by the kind rather than declared per
+# phase: a blind referee that could write would stop being blind to its own
+# effect, and a redundant candidate that wrote the shared tree would make the
+# "exactly one diff lands" invariant a hope.
+KIND_WRITES = {
+    "fanout-readonly": {"none"},
+    "fanout-blind": {"none"},
+    "fanout-redundant": {"worktree"},
+    "single-writer": WRITES,
+}
+
+# backend.why is a closed vocabulary, one id per row of
+# references/backend-selection.md's decision table, each naming the backends it
+# can justify. A free-text reason is a label, not a decision: nothing can check
+# that "because it is faster" actually selects the backend it sits next to.
+BACKEND_WHY = {
+    "edited-this-session": {"matrix"},
+    "does-it-fire": {"matrix"},
+    "tier-is-the-variable": {"matrix"},
+    "writes-shared-tree": {"matrix", "in-session"},
+    "runtime-fanout-width": {"in-session"},
+    "script-sequence": {"in-session"},
+    "fixed-graph-returns-data": {"workflow"},
+    "context-exceeds-session": {"workflow"},
+}
+BACKEND_KINDS = {"in-session", "matrix", "workflow"}
+KNOWN_GAPS = {"workflow-tool-unhooked"}
 
 
 def catalog_patterns(root: Path) -> tuple:
@@ -59,7 +89,13 @@ def validate(spec: dict, accepted: set, rejected: set) -> list:
     def err(where: str, msg: str) -> None:
         errors.append(f"{where}: {msg}")
 
-    if spec.get("schemaVersion") != SCHEMA_VERSION:
+    sv = spec.get("schemaVersion")
+    if sv == "1":
+        err("schemaVersion", "'1' is no longer compiled. Migrate to '2': make 'backend' an "
+                             "object {kind, why[], acknowledgedGaps[]}, and give every phase "
+                             "'mode' (auto|plan), 'writes' (none|worktree|shared) and "
+                             "'agentType' -- see references/workflow-spec-schema.md")
+    elif sv != SCHEMA_VERSION:
         err("schemaVersion", f"must be {SCHEMA_VERSION!r}; a reader that does not "
                              "recognise it refuses rather than guessing")
 
@@ -128,8 +164,37 @@ def validate(spec: dict, accepted: set, rejected: set) -> list:
     if not isinstance(phases, list) or not phases:
         err("phases", "must be a non-empty list")
         return errors
-    if len(phases) > 8:
-        err("phases", f"{len(phases)} phases; the ceiling is 8")
+    if len(phases) > MAX_PHASES:
+        err("phases", f"{len(phases)} phases; the ceiling is {MAX_PHASES}")
+
+    backend = spec.get("backend")
+    bkind = None
+    if not isinstance(backend, dict):
+        err("backend", "must be an object {kind, why[], acknowledgedGaps[]}; a bare string "
+                       "records a choice without the reason that selected it")
+    else:
+        bkind = backend.get("kind")
+        if bkind not in BACKEND_KINDS:
+            err("backend.kind", f"must be one of {sorted(BACKEND_KINDS)}")
+            bkind = None
+        why = backend.get("why")
+        if not isinstance(why, list) or not why:
+            err("backend.why", "must be a non-empty list of decision ids from "
+                               "references/backend-selection.md")
+        else:
+            for w in why:
+                if w not in BACKEND_WHY:
+                    err("backend.why", f"{w!r} is not a decision id; allowed: {sorted(BACKEND_WHY)}")
+                elif bkind and bkind not in BACKEND_WHY[w]:
+                    err("backend.why", f"{w!r} selects {sorted(BACKEND_WHY[w])}, not {bkind!r}")
+        gaps = backend.get("acknowledgedGaps") or []
+        if not isinstance(gaps, list) or any(g not in KNOWN_GAPS for g in gaps):
+            err("backend.acknowledgedGaps", f"must be a list drawn from {sorted(KNOWN_GAPS)}")
+        elif bkind == "workflow" and "workflow-tool-unhooked" not in gaps:
+            err("backend.acknowledgedGaps", "the workflow backend needs 'workflow-tool-unhooked' "
+                                            "acknowledged: no PreToolUse hook here matches the "
+                                            "Workflow tool, so its dispatches are unattributed")
+    acceptance_ids = {a.get("id") for a in (problem.get("acceptance") or []) if isinstance(a, dict)}
 
     markers, ids, fanout_total = {}, set(), 0
     for i, ph in enumerate(phases):
@@ -163,7 +228,70 @@ def validate(spec: dict, accepted: set, rejected: set) -> list:
             err(where, f"'modelTier' must be one of {sorted(TIERS)} and is never omitted -- "
                        "an omitted tier inherits the session's model")
 
-        if kind in ("fanout-redundant", "fanout-blind"):
+        # mode and writes are required for the modelTier reason: an omitted value
+        # inherits the session's, and a plan-mode session silently turned four
+        # builders into UNMEASURED cells in the run that motivated this key.
+        mode = ph.get("mode")
+        if mode not in MODES:
+            err(where, f"'mode' must be one of {sorted(MODES)} and is never omitted")
+        writes = ph.get("writes")
+        if writes not in WRITES:
+            err(where, f"'writes' must be one of {sorted(WRITES)} and is never omitted")
+        elif kind in KIND_WRITES and writes not in KIND_WRITES[kind]:
+            err(where, f"a {kind!r} phase may only write {sorted(KIND_WRITES[kind])}, not {writes!r}")
+        elif mode == "plan" and writes != "none":
+            err(where, "a plan-mode phase writes nothing; plan mode denies every write but the "
+                       "plan file, so declaring writes here is a phase that cannot run")
+        if bkind == "workflow" and writes == "shared":
+            err(where, "the workflow backend cannot run a phase that writes the shared tree: no "
+                       "hook sees a Workflow dispatch's writes. Return the diff as data "
+                       "(writes: worktree) and land it in-session, or pick in-session")
+
+        agent_type = ph.get("agentType")
+        if bkind == "matrix":
+            if agent_type is not None:
+                err(where, "a matrix cell is a fresh `claude -p` process, not a dispatch; "
+                           "drop 'agentType' or pick another backend")
+        elif not isinstance(agent_type, str) or ":" not in agent_type:
+            err(where, "'agentType' must be a namespaced agent (plugin:name); a phase without one "
+                       "is work the session does inline, unattributed")
+
+        if pattern == "map-reduce-disjoint":
+            srcs = ph.get("sources")
+            if not isinstance(srcs, list) or len(srcs) != ph.get("fanOut"):
+                err(where, "'sources' must list exactly fanOut partitions for map-reduce-disjoint")
+            elif len(set(srcs)) != len(srcs):
+                err(where, "'sources' overlap; map-reduce-disjoint needs pairwise distinct partitions")
+            rd = ph.get("reDerive")
+            if not isinstance(rd, dict):
+                err(where, "map-reduce-disjoint needs 'reDerive' {samplePct, seed}: under-extraction "
+                           "is its named failure, and an unchecked extraction has no evidence")
+            else:
+                pct, seed = rd.get("samplePct"), rd.get("seed")
+                if not isinstance(pct, int) or not 1 <= pct <= 100:
+                    err(where, "'reDerive.samplePct' must be an integer 1..100")
+                if not isinstance(seed, int):
+                    err(where, "'reDerive.seed' must be an integer; the sample is picked in code")
+
+        gate = ph.get("borrowGate")
+        if gate is not None:
+            must = gate.get("mustBeatWinnerOn") if isinstance(gate, dict) else None
+            if pattern != "select-then-synthesize":
+                err(where, "'borrowGate' only applies to select-then-synthesize")
+            elif not isinstance(must, list) or not must:
+                err(where, "'borrowGate.mustBeatWinnerOn' must name at least one acceptance id")
+            else:
+                for aid in must:
+                    if aid not in acceptance_ids:
+                        err(where, f"'borrowGate' names {aid!r}, which is not an acceptance id")
+
+        cannot = ph.get("cannotCheck")
+        if cannot is not None and (not isinstance(cannot, list)
+                                   or not all(isinstance(c, str) and c for c in cannot)):
+            err(where, "'cannotCheck' must be a list of non-empty strings, declared before "
+                       "any candidate exists")
+
+        if kind in ("fanout-redundant", "fanout-blind", "fanout-readonly"):
             fan = ph.get("fanOut")
             if not isinstance(fan, int) or not 1 <= fan <= 16:
                 err(where, "'fanOut' must be an integer 1..16 for a fan-out phase")
@@ -197,32 +325,40 @@ def validate(spec: dict, accepted: set, rejected: set) -> list:
         err("budget.totalDispatches", f"{total} is below the sum of every phase's fanOut "
                                       f"({fanout_total}); the run could not finish")
 
-    if spec.get("backend") not in BACKENDS:
-        err("backend", f"must be one of {sorted(BACKENDS)}")
-
     return errors
 
 
 GOOD = {
-    "schemaVersion": "1", "runId": "ap-2026-09-12-a3f1",
+    "schemaVersion": "2", "runId": "ap-2026-09-12-a3f1",
     "problem": {"statement": "s", "shape": "change",
                 "acceptance": [{"id": "a1", "criterion": "c", "check": "true"}]},
     "writeScope": ["src/**"], "budget": {"totalDispatches": 7, "wallClockMinutes": 25},
     "phases": [
         {"id": "build", "kind": "fanout-redundant", "pattern": "best-of-n", "fanOut": 3,
-         "modelTier": "sonnet", "angles": ["a", "b", "c"], "requires": [], "marker": "built"},
+         "modelTier": "sonnet", "mode": "auto", "writes": "worktree",
+         "agentType": "arbeitsplan:candidate-builder",
+         "angles": ["a", "b", "c"], "requires": [], "marker": "built"},
         {"id": "referee", "kind": "fanout-blind", "pattern": "blind-referee", "fanOut": 3,
-         "modelTier": "sonnet", "requires": ["built"], "marker": "refereed"},
+         "modelTier": "sonnet", "mode": "auto", "writes": "none",
+         "agentType": "arbeitsplan:candidate-referee", "requires": ["built"], "marker": "refereed"},
         {"id": "land", "kind": "single-writer", "pattern": "select-then-synthesize",
-         "modelTier": "sonnet", "requires": ["refereed"], "marker": "landed"},
+         "modelTier": "sonnet", "mode": "auto", "writes": "shared",
+         "agentType": "arbeitsplan:synthesizer", "requires": ["refereed"], "marker": "landed"},
     ],
-    "backend": "in-session",
+    "backend": {"kind": "in-session", "why": ["writes-shared-tree"], "acknowledgedGaps": []},
 }
 
+# The six-phase shape from the request that motivated schema v2, compiled for the
+# workflow backend. It lives in ONE committed file because two instruments read
+# it: this selftest proves it compiles, and scripts/test_run_workflow.js proves
+# workflows/run.js executes it. A literal here would let the two drift apart.
+SIX = json.loads((Path(__file__).resolve().parent / "fixtures" / "six-phase.workflow.json")
+                 .read_text(encoding="utf-8"))
 
-def _mut(**over) -> dict:
+
+def _mut(base: dict | None = None, **over) -> dict:
     import copy
-    d = copy.deepcopy(GOOD)
+    d = copy.deepcopy(GOOD if base is None else base)
     for k, v in over.items():
         cur, *rest = k.split(".")
         if rest:
@@ -232,6 +368,10 @@ def _mut(**over) -> dict:
     return d
 
 
+def _drop(d: dict, key: str) -> dict:
+    return {k: v for k, v in d.items() if k != key}
+
+
 def selftest(root: Path) -> int:
     accepted, rejected = catalog_patterns(root)
     if not accepted:
@@ -239,7 +379,9 @@ def selftest(root: Path) -> int:
         return 1
     cases = [
         ("clean spec", GOOD, 0),
-        ("wrong schemaVersion", _mut(schemaVersion="2"), 1),
+        ("six-phase workflow spec", SIX, 0),
+        ("schemaVersion 1 is refused by name", _mut(schemaVersion="1"), 1),
+        ("unknown schemaVersion", _mut(schemaVersion="3"), 1),
         ("bad runId", _mut(runId="../esc"), 1),
         ("empty writeScope", _mut(writeScope=[]), 1),
         ("no runnable check", _mut(problem=dict(GOOD["problem"],
@@ -250,11 +392,40 @@ def selftest(root: Path) -> int:
         ("duplicate angles", _mut(phases=[dict(GOOD["phases"][0], angles=["a", "a", "a"])]), 1),
         ("rejected pattern", _mut(phases=[dict(GOOD["phases"][0], pattern="serial-fix-loop")]), 1),
         ("unknown pattern", _mut(phases=[dict(GOOD["phases"][0], pattern="vibes")]), 1),
-        ("missing modelTier", _mut(phases=[{k: v for k, v in GOOD["phases"][0].items()
-                                            if k != "modelTier"}]), 1),
+        ("missing modelTier", _mut(phases=[_drop(GOOD["phases"][0], "modelTier")]), 1),
+        ("missing mode", _mut(phases=[_drop(GOOD["phases"][0], "mode")]), 1),
+        ("missing writes", _mut(phases=[_drop(GOOD["phases"][0], "writes")]), 1),
+        ("missing agentType", _mut(phases=[_drop(GOOD["phases"][0], "agentType")]), 1),
+        ("un-namespaced agentType", _mut(phases=[dict(GOOD["phases"][0],
+            agentType="candidate-builder")]), 1),
+        ("referee that writes", _mut(phases=[GOOD["phases"][0], dict(GOOD["phases"][1],
+            writes="worktree")]), 1),
+        ("plan-mode phase that writes", _mut(phases=[dict(GOOD["phases"][0], mode="plan")]), 1),
         ("dangling requires", _mut(phases=[dict(GOOD["phases"][0], requires=["nope"])]), 1),
         ("duplicate marker", _mut(phases=[GOOD["phases"][0], dict(GOOD["phases"][1],
             marker="built")]), 1),
+        ("more than 12 phases", _mut(phases=[dict(GOOD["phases"][0], id=f"p{i}",
+            marker=f"m{i}", fanOut=1, angles=["a"]) for i in range(13)],
+            budget={"totalDispatches": 20, "wallClockMinutes": 5}), 1),
+        ("backend as a bare string", _mut(backend="in-session"), 1),
+        ("backend.why empty", _mut(backend={"kind": "in-session", "why": []}), 1),
+        ("backend.why free text", _mut(backend={"kind": "in-session", "why": ["it is faster"]}), 1),
+        ("backend.why selects another kind", _mut(backend={"kind": "in-session",
+            "why": ["does-it-fire"]}), 1),
+        ("workflow without the acknowledged gap", _mut(SIX, backend=dict(SIX["backend"],
+            acknowledgedGaps=[])), 1),
+        ("workflow with a shared-tree writer", _mut(SIX, phases=SIX["phases"][:4] + [dict(
+            SIX["phases"][4], writes="shared")] + SIX["phases"][5:]), 1),
+        ("matrix phase carrying agentType", _mut(backend={"kind": "matrix",
+            "why": ["does-it-fire"]}), 1),
+        ("map-reduce without reDerive", _mut(SIX, phases=[_drop(SIX["phases"][0], "reDerive")]
+            + SIX["phases"][1:]), 1),
+        ("map-reduce with overlapping sources", _mut(SIX, phases=[dict(SIX["phases"][0],
+            sources=["a", "a", "b", "c"])] + SIX["phases"][1:]), 1),
+        ("borrowGate naming an unknown acceptance id", _mut(SIX, phases=SIX["phases"][:4] + [dict(
+            SIX["phases"][4], borrowGate={"mustBeatWinnerOn": ["zz"]})] + SIX["phases"][5:]), 1),
+        ("borrowGate on the wrong pattern", _mut(phases=[dict(GOOD["phases"][0],
+            borrowGate={"mustBeatWinnerOn": ["a1"]})]), 1),
         ("question carries phases", _mut(problem=dict(GOOD["problem"],
             shape="question")), 1),
         ("question with no phases", {**_mut(problem=dict(GOOD["problem"],

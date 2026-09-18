@@ -27,6 +27,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import run_record  # vendored copy of tools/run-record/run_record.py
+
 LOCK = Path("analysis/arbeitsplan/run_scope.json")
 
 
@@ -50,6 +53,16 @@ def cmd_open(args) -> int:
     ph = phase_of(spec, args.phase)
     run_id = spec["runId"]
     kind = ph.get("kind")
+    # The plan-node stop, made unconstructible. With this lock open a plan-mode
+    # session has no legal write: the guard denies its plan file and plan mode
+    # denies everything else. So a plan-mode phase never runs under a lock --
+    # close, run it, re-open the next phase. Loop state lives in the skill.
+    if ph.get("mode") == "plan":
+        print(f"REFUSED: phase {args.phase!r} is mode 'plan'. A run-scope lock and plan mode "
+              "together leave no legal write, so no lock is opened for it. Close any held "
+              "lock (worktree_pool.py close), run this phase in plan mode, then open the "
+              "next phase.", file=sys.stderr)
+        return 1
     candidates = []
     if kind in ("fanout-redundant", "fanout-blind"):
         for i in range(1, int(ph.get("fanOut", 0)) + 1):
@@ -91,6 +104,12 @@ def cmd_open(args) -> int:
 
     LOCK.parent.mkdir(parents=True, exist_ok=True)
     LOCK.write_text(json.dumps(lock, indent=2) + "\n")
+    # The phase boundary goes into the record at the moment it happens, so a phase
+    # that later ends without saying how is visible as open -- see cmd_close.
+    run_record.open_run("arbeitsplan", run_id).append({
+        "trace_id": run_id, "span_id": f"{run_id}.lock.{args.phase}.opened",
+        "parent_span_id": f"{run_id}.root", "span": f"phase {args.phase}",
+        "node_id": args.phase, "status": "opened"})
     print(f"lock open: run {run_id}, phase '{args.phase}' ({kind}), "
           f"{len(candidates)} candidate slot(s), shared tree "
           f"{'writable' if lock['sharedTreeWritable'] else 'CLOSED'}")
@@ -102,6 +121,29 @@ def cmd_close(args) -> int:
         print("no lock open")
         return 0
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
+    run_id, phase = lock.get("runId"), lock.get("phase")
+    # A phase that ends without saying how is the shape this repository keeps
+    # finding: a halt that left no trace is indistinguishable from an abandoned
+    # run. So closing requires a terminal event for the phase -- closed, or a
+    # halt with its reason, which --halt records here.
+    if run_id and phase:
+        try:
+            run = run_record.open_run("arbeitsplan", run_id)
+            halt = getattr(args, "halt", None)
+            if halt:
+                run.halt(halt, phase)
+            terminal = {e["status"] for e in run.events()
+                        if e["node_id"] == phase and e["status"] in ("closed", "halted")}
+        except run_record.RecordError as exc:
+            print(f"REFUSED: the run record cannot be read ({exc}); fix it before closing.",
+                  file=sys.stderr)
+            return 1
+        if not terminal:
+            print(f"REFUSED: phase {phase!r} of run {run_id!r} recorded no terminal event. Record "
+                  f"how it ended first -- `record_event.py phase --run {run_id} --phase {phase} "
+                  f"--status closed` -- or close with --halt \"<specific reason>\".",
+                  file=sys.stderr)
+            return 1
     LOCK.unlink()
     print(f"lock closed (was run {lock.get('runId')}, phase {lock.get('phase')!r})")
     return 0
@@ -162,6 +204,7 @@ def cmd_selftest(args) -> int:
         "phases": [
             {"id": "build", "kind": "fanout-redundant", "fanOut": 3},
             {"id": "land", "kind": "single-writer"},
+            {"id": "contract", "kind": "single-writer", "mode": "plan"},
         ],
     }
     fails = []
@@ -191,7 +234,22 @@ def cmd_selftest(args) -> int:
                 print(f"  {'ok  ' if ok else 'FAIL'} {name}")
                 if not ok:
                     fails.append(name)
-            cmd_close(argparse.Namespace())
+            rc = cmd_close(argparse.Namespace(halt=None))
+            ok = rc == 1 and LOCK.exists()
+            print(f"  {'ok  ' if ok else 'FAIL'} close refuses a phase that recorded no terminal event")
+            if not ok:
+                fails.append("close without terminal event")
+            rc = cmd_close(argparse.Namespace(halt="selftest: stopping here on purpose"))
+            ok = rc == 0 and not LOCK.exists() and any(
+                e["status"] == "halted" for e in run_record.open_run("arbeitsplan", "ap-t-1").events())
+            print(f"  {'ok  ' if ok else 'FAIL'} close --halt records the halt, then closes")
+            if not ok:
+                fails.append("close --halt")
+            rc = cmd_open(argparse.Namespace(spec="spec.json", phase="contract"))
+            ok = rc == 1 and not LOCK.exists()
+            print(f"  {'ok  ' if ok else 'FAIL'} a plan-mode phase opens no lock")
+            if not ok:
+                fails.append("plan-mode phase")
             ok = not LOCK.exists()
             print(f"  {'ok  ' if ok else 'FAIL'} close removes the lock")
             if not ok:
@@ -218,7 +276,8 @@ def main(argv: list) -> int:
     p.add_argument("--phase", required=True)
     p.set_defaults(fn=cmd_open)
 
-    p = sub.add_parser("close", help="release the lock")
+    p = sub.add_parser("close", help="release the lock (the phase must have recorded how it ended)")
+    p.add_argument("--halt", help="record a halt with this reason, then close")
     p.set_defaults(fn=cmd_close)
 
     p = sub.add_parser("create", help="create one worktree per candidate")

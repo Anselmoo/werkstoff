@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 97 in
+Every example prompt shipped by the 12 plugin READMEs, 98 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -63,7 +63,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## arbeitsplan
 
-[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 6 prompts.
+[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 7 prompts.
 
 ### Turn a vague piece of work into something runnable
 
@@ -105,13 +105,21 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 > Triggers `arbeitsplan-start`: matches the task to one of the four approved workflows in `references/approved-workflows.md`, names the plugins still missing with their exact install command, and states the permission mode to run in. Recommend-only — it never installs anything or writes `workflow.json` itself. "No fit" is a valid answer.
 
+### Decide how the work should run
+
+````prompt
+"should this run as a workflow of parallel agents, a matrix of fresh processes, or just in this session?"
+````
+
+> Triggers `arbeitsplan-backend`: walks the decision table in `references/backend-selection.md` and returns the `backend` object `workflow.json` needs — the kind, the table rows that chose it, and the acknowledged gap when it is `workflow`. Refuses `workflow` for any phase that writes the shared tree. Recommend-only.
+
 ### Find out why something was refused
 
 ````prompt
 "the swarm just stopped and said the contract is wrong — what happened?"
 ````
 
-> Triggers `arbeitsplan-status`: phases done, candidate outcomes, referee verdicts, budget used, and whether a lock is still open.
+> Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt with its reason, refuted candidates, open doubts, budget used, whether a lock is still open — and quotes the single next command.
 
 ## cli-scaffold
 

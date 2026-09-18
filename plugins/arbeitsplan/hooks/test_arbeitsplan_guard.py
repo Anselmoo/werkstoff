@@ -158,6 +158,30 @@ def main() -> int:
         rc, out = run(tmp, "Edit", {"file_path": str(link)})
         check("in-worktree SYMLINK pointing outside -> DENY", rc, DENY, out)
 
+        # Plan mode's plan file, written while the lock is open. Still a DENY -- the
+        # point is the message: it must name the move out of the deadlock, which the
+        # generic "outside the repository" denial never did.
+        with tempfile.TemporaryDirectory() as home:
+            plan = Path(home) / ".claude" / "plans" / "p.md"
+            rc, out = run(tmp, "Write", {"file_path": str(plan)})
+            check("plan-file write under a lock -> DENY", rc, DENY, out)
+            check("  ...and the denial names worktree_pool.py close",
+                  ALLOW if "worktree_pool.py close" in out else DENY, ALLOW, out)
+
+        # The declared floor, against a real old interpreter when one exists.
+        old = Path("/usr/bin/python3")
+        is_old = old.is_file() and subprocess.run(
+            [str(old), "-c", "import sys; sys.exit(sys.version_info[:2] < (3, 11))"]).returncode == 1
+        if is_old:
+            p = subprocess.run([str(old), str(GUARD)], capture_output=True, text=True,
+                               input=json.dumps({"cwd": str(tmp), "tool_name": "Edit",
+                                                 "tool_input": {"file_path": str(c1 / "src" / "api" / "x.py")}}))
+            check("below the Python floor, run in flight -> DENY", p.returncode, DENY, p.stderr)
+            check("  ...and the denial names the floor",
+                  ALLOW if "Python >= 3.11" in p.stderr else DENY, ALLOW, p.stderr)
+        else:
+            print("  skip below-the-floor case: no python3 older than 3.11 on this machine")
+
         rc, out = run(tmp, "Edit", {"file_path": str(c1 / "src" / "secrets.py")})
         check("in-worktree write OUTSIDE scope -> DENY", rc, DENY, out)
 
