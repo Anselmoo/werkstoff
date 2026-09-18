@@ -170,6 +170,13 @@ def discover_skill_names(plugin_dirs: list) -> set:
     A plugin_dir is normally a whole plugin (`<dir>/skills/<name>/SKILL.md`);
     it may also point directly at one skill (`<dir>/SKILL.md`). Both are honoured.
 
+    COMMANDS AND AGENTS COUNT TOO. The sentinel asks the model what it can invoke,
+    and a session lists a plugin's commands and agents alongside its skills. Scanning
+    only `skills/` marked every command as leakage: measured on a 12-plugin arm where
+    34 of 40 cells came back UNMEASURED naming `codebase-consistency:consistency-align`
+    (a command) and `cli-scaffold:cli-scaffold` (a command whose stem is its plugin) --
+    every one of them supplied by the arm's own --plugin-dir set.
+
     BOTH SPELLINGS are returned: the bare directory name and the `<plugin>:<skill>`
     form a session actually reports. Returning only the bare name marked every
     supplied skill as foreign -- measured on the first real cell, where compass and
@@ -200,6 +207,21 @@ def discover_skill_names(plugin_dirs: list) -> set:
             for entry in skills_dir.iterdir():
                 if (entry / "SKILL.md").is_file():
                     add(plugin, entry.name)
+        wf = base / "workflows"
+        if wf.is_dir():
+            for entry in sorted(wf.glob("*.js")):
+                # A workflow is listed under its meta.name, which differs from the
+                # file stem (align.js declares `consistency-align-batch`). Both are
+                # added: the declared name is what a session reports.
+                m = re.search(r"\bname:\s*['\"]([^'\"]+)['\"]", entry.read_text(encoding="utf-8", errors="replace")[:2000])
+                if m:
+                    add(plugin, m.group(1))
+                add(plugin, entry.stem)
+        for kind in ("commands", "agents"):
+            sub = base / kind
+            if sub.is_dir():
+                for entry in sub.rglob("*.md"):
+                    add(plugin, entry.stem)
         if (base / "SKILL.md").is_file():
             add(plugin, base.name)
     return names
@@ -547,6 +569,30 @@ def _stub(tmp: Path, name: str, body: str) -> str:
     return str(p)
 
 
+def _selftest_discover(tmp: Path) -> list:
+    """A plugin supplies its skills, its commands and its agents."""
+    root = tmp / "plug"
+    (root / ".claude-plugin").mkdir(parents=True)
+    (root / ".claude-plugin" / "plugin.json").write_text('{"name": "demo"}')
+    (root / "skills" / "do-thing").mkdir(parents=True)
+    (root / "skills" / "do-thing" / "SKILL.md").write_text("---\nname: do-thing\n---\n")
+    (root / "commands").mkdir()
+    (root / "commands" / "demo-cmd.md").write_text("---\ndescription: x\n---\n")
+    (root / "agents").mkdir()
+    (root / "agents" / "helper.md").write_text("---\nname: helper\n---\n")
+    (root / "workflows").mkdir()
+    (root / "workflows" / "run.js").write_text("export const meta = {\n  name: 'demo-batch',\n}\n")
+    names = discover_skill_names([str(root)])
+    return [
+        ("discover: skill, both spellings", {"do-thing", "demo:do-thing"} <= names),
+        ("discover: a command is supplied, not leakage", {"demo-cmd", "demo:demo-cmd"} <= names),
+        ("discover: an agent is supplied, not leakage", {"helper", "demo:helper"} <= names),
+        ("discover: a workflow's declared meta.name is supplied, not its file stem alone",
+         {"demo-batch", "demo:demo-batch"} <= names),
+        ("discover: a name nothing supplies is still foreign", "demo:ghost" not in names),
+    ]
+
+
 def selftest() -> int:
     fails = []
     total = [0]
@@ -556,6 +602,10 @@ def selftest() -> int:
         print(f"  {'ok  ' if ok else 'FAIL'} {name}" + (f": {detail}" if detail and not ok else ""))
         if not ok:
             fails.append(name)
+
+    with tempfile.TemporaryDirectory() as raw:
+        for name, ok in _selftest_discover(Path(raw)):
+            check(name, ok)
 
     # ---- score_cell oracle -------------------------------------------------
     base_transcript = {"raw_bytes": 500, "final_text": "all good", "skills_fired": ["arbeitsplan:build"]}
