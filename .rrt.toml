@@ -305,6 +305,19 @@ path = "plugins/arbeitsplan/scripts/run_record.py"
 description = "arbeitsplan's synced copy of tools/run-record/run_record.py"
 command = ["cp", "tools/run-record/run_record.py", "plugins/arbeitsplan/scripts/run_record.py"]
 
+# The single-cell headless executor (tools/subrun/). arbeitsplan's matrix runner and
+# nacharbeit's trigger probe both run cells through it; each plugin carries a
+# byte-identical copy so neither depends on the other being installed.
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/scripts/subrun.py"
+description = "arbeitsplan's synced copy of tools/subrun/subrun.py"
+command = ["cp", "tools/subrun/subrun.py", "plugins/arbeitsplan/scripts/subrun.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/scripts/subrun.py"
+description = "nacharbeit's synced copy of tools/subrun/subrun.py"
+command = ["cp", "tools/subrun/subrun.py", "plugins/nacharbeit/scripts/subrun.py"]
+
 # lib/ canary (issue #24): a real, committed file at the root of every
 # plugin's scripts/lib/ package, so a `.gitignore` regression that swallows
 # that directory again makes `rrt artifacts --check --strict` fail on the

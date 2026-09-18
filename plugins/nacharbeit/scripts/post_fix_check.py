@@ -12,9 +12,16 @@ and writes <state>/fix-check.json.
 contract was LOST or MOVED. A lock that stays open denies every further edit, which
 is the safe direction; nacharbeit-status reports a stale one with this command.
 
+A fix to a routing-family rule (a description edited so a skill fires, or stops
+capturing a sibling) cannot be verified by re-reading the description: definitions
+load once per session. It is verified by RE-MEASUREMENT in a fresh process --
+trigger_probe.py. That costs money, so it is opt-in: without --probe the check
+records `routingRecheck: pending` with the exact command; with --probe MODEL it runs
+the probe and a skill that still does not fire makes the check unclean.
+
 Usage: post_fix_check.py [--state-dir analysis/nacharbeit] [--plugins-root plugins]
                          [--contract-diff tools/plugin-serializer/contract_diff.py]
-                         [--release-lock] [--force]
+                         [--probe MODEL] [--release-lock] [--force]
 Exit: 0 all post-checks passed and no contract moved (lock released if asked);
       1 a post-check failed or a contract was lost/moved (lock kept unless --force);
       2 bad arguments or missing inputs.
@@ -35,6 +42,10 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
 
+# Rules whose fix changes what a router picks. Their fixes are verified by measuring.
+ROUTING_FAMILY = {"Q-ROUTE-MISS", "Q-CANN-CAPTURE", "Q-CANN-OVERLAP", "Q-CANN-NEGATIVE",
+                  "Q-CANN-INTERNAL", "PQ-PROMPTS-ROUTE", "Q-PROC-WHATWHEN"}
+
 
 def run_cmd(cmd: str) -> tuple[bool, str]:
     try:
@@ -51,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--state-dir", type=Path, default=None)
     ap.add_argument("--plugins-root", type=Path, default=nc.DEFAULT_PLUGINS_ROOT)
     ap.add_argument("--contract-diff", type=Path, default=nc.DEFAULT_CONTRACT_DIFF, help="contract_diff.py to run (skipped loudly when absent)")
+    ap.add_argument("--probe", metavar="MODEL", help="re-measure routing-family fixes with trigger_probe.py on this model (costs money)")
     ap.add_argument("--release-lock", action="store_true")
     ap.add_argument("--force", action="store_true", help="release the lock even when a check failed (state your reason in the commit)")
     a = ap.parse_args(argv)
@@ -96,11 +108,38 @@ def main(argv: list[str] | None = None) -> int:
             if not ok:
                 print(f"FAIL contract diff {snap.name}:\n{out}")
 
-    clean = not failed and all(c["status"] in {"clean", "skipped"} for c in contracts)
+    # Which fixed files touched a routing-family rule, and which skill each one is.
+    touched = sorted({Path(it["file"]).parent.name for it in items
+                      if Path(it["file"]).name == "SKILL.md"
+                      and any(set(e.get("rule_ids") or []) & ROUTING_FAMILY for e in it.get("entries", []))})
+    recheck: dict = {"skills": touched, "status": "not-needed"}
+    if touched:
+        cmd = ("python3 " + shlex.quote(str(HERE / "trigger_probe.py")) + " --model " + shlex.quote(a.probe or "<model>")
+               + "".join(f" --only {shlex.quote(s)}" for s in touched) + " --out " + shlex.quote(str(state / "probe")))
+        recheck["command"] = cmd
+        if not a.probe:
+            recheck["status"] = "pending"
+            print(f"PENDING routing re-measurement for {len(touched)} skill(s) -- a description fix is verified in a "
+                  f"fresh process, not by re-reading it. Run (costs money):\n     {cmd}")
+        else:
+            try:
+                r = subprocess.run(shlex.split(cmd), capture_output=True, text=True, timeout=7200)
+                rc, out = r.returncode, (r.stdout + r.stderr).strip()
+            except (OSError, subprocess.TimeoutExpired) as e:
+                rc, out = 2, f"{type(e).__name__}: {e}"
+            # trigger_probe: 0 fired, 1 captured/silent/UNSTABLE, 2 nothing measured.
+            # Unmeasured is neither a pass nor a failure of the fix -- it is recorded as
+            # such and leaves `clean` alone, exactly as UNMEASURED leaves every rate.
+            status = {0: "fired", 1: "not-fired"}.get(rc, "unmeasured")
+            recheck.update(status=status, output=out[-2000:])
+            print(f"{ {'fired': 'ok  ', 'not-fired': 'FAIL'}.get(status, 'SKIP')} routing re-measurement ({a.probe}): "
+                  f"{status}; {out.splitlines()[-1] if out else ''}")
+    clean = not failed and all(c["status"] in {"clean", "skipped"} for c in contracts) and recheck["status"] != "not-fired"
     report = {
         "checkedAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "postChecks": {"passed": passed, "failed": failed},
         "contracts": contracts,
+        "routingRecheck": recheck,
         "clean": clean,
         "lockReleased": False,
     }

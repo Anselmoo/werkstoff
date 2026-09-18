@@ -1078,6 +1078,11 @@
           "description": "Use FIRST, before any other nacharbeit skill, to inventory what the target plugin directories contain (skills, agents, hooks, scripts, viewers, manifest, docs wiring), which checkers this environment can run, which other plugins' guard hooks are live in the repository, and whether a nacharbeit fix lock is already open. Trigger on 'what would nacharbeit check here', 'is this plugin ready for a review', 'nacharbeit preflight', or as the automatic first step of nacharbeit-review and nacharbeit-fix. Read-only — writes nothing, grades nothing; grading is nacharbeit-lint and nacharbeit-review."
         },
         {
+          "id": "nacharbeit:nacharbeit-probe",
+          "name": "nacharbeit-probe",
+          "description": "Use to measure whether a documented example prompt actually fires the skill it names, by running it headless in fresh claude -p processes — the real answer the review's haiku routing simulation only approximates. Trigger on 'does this prompt actually fire the skill', 'did my description fix work', 'why does this skill never trigger', 're-measure routing after the fix'. Costs real money per cell, so it always dry-runs and states the estimate first. Not for grading prompt quality (nacharbeit-review) or for benchmarking plugin-present versus plugin-absent sweeps (arbeitsplan-matrix)."
+        },
+        {
           "id": "nacharbeit:nacharbeit-review",
           "name": "nacharbeit-review",
           "description": "Use to run the calibrated judgement review of one or more Claude Code plugins against the nacharbeit rubric: a sonnet finder tuned on planted-defect fixtures until it clears a recall floor for every rule family, measured once on a sealed hold-out, then two-lens finders with gap rounds per (plugin, kind) batch, a haiku routing simulation for cannibalization, an adversarial refuter, and an opus synthesis into a tiered backlog and a findings report. Trigger on 'review this plugin against the Anthropic standard', 'where do these skills and hooks fall short', 'run the nacharbeit review', 'prompt-quality review'. Runs nacharbeit-lint first; never applies a fix (that is nacharbeit-fix). Writes only analysis/nacharbeit/ and, inside werkstoff, the generated findings report."
@@ -1430,6 +1435,7 @@
     "nacharbeit:nacharbeit-fix",
     "nacharbeit:nacharbeit-lint",
     "nacharbeit:nacharbeit-preflight",
+    "nacharbeit:nacharbeit-probe",
     "nacharbeit:nacharbeit-review",
     "nacharbeit:nacharbeit-status",
     "self-assess:self-assess-arch-health",

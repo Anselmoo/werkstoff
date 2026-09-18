@@ -8,6 +8,12 @@ All notable changes to the `nacharbeit` plugin are documented here.
 - `Q-ROUTE-MISS` and `Q-CANN-CAPTURE`, produced in code from the routing simulation — the
   misroute it always computed and discarded is now a finding, and a handoff that still loses
   its own documented prompts to the sibling it names is no longer excused.
+- `nacharbeit-probe` and `scripts/trigger_probe.py`: run a documented prompt headless in
+  fresh processes and record which skill fired — fired, captured (named), silent, UNSTABLE,
+  UNMEASURED — with `--routing` comparing the simulation against reality. Cells run through
+  `scripts/subrun.py`, vendored from `tools/subrun/` and shared with arbeitsplan.
+- `post_fix_check.py --probe MODEL` re-measures routing-family fixes; without it the
+  re-measurement is recorded as `pending` with its command.
 - `status.py --fail-on-severity blocker,major` for CI (exit 1 on a match, 2 on an unknown
   severity).
 - `scripts/test_review_routing.js` executes `review.js` against stub hooks and sabotages its

@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 98 in
+Every example prompt shipped by the 12 plugin READMEs, 99 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -639,7 +639,7 @@ we actually do, and make the important ones actually enforced"
 
 ## nacharbeit
 
-[`plugins/nacharbeit/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/nacharbeit/README.md) — 5 prompts.
+[`plugins/nacharbeit/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/nacharbeit/README.md) — 6 prompts.
 
 ### See what a review would measure here
 
@@ -672,6 +672,14 @@ we actually do, and make the important ones actually enforced"
 ````
 
 > Triggers `nacharbeit-fix`: the lock opens, the guard denies everything outside it, each file is reworked and blind-verified, the opus and human entries are listed for you.
+
+### Check that a skill actually fires
+
+````prompt
+"does the documented prompt for compass-clarify-scope actually fire it? measure it, don't guess"
+````
+
+> Triggers `nacharbeit-probe`: dry-runs first with a cost estimate, then runs the prompt headless in fresh processes and reports fired, captured (naming the capturing skill), silent, or UNSTABLE — with the model the rate belongs to.
 
 ### Find out what is waiting on a person
 
