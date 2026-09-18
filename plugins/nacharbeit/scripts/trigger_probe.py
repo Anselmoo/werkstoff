@@ -91,7 +91,7 @@ def bare(name: str) -> str:
 
 
 def cell_config(entry: dict, rep: int, model: str, arm: str, plugins_root: Path,
-                claude_bin: str, budget: float | None) -> dict:
+                claude_bin: str, budget: float | None, fixture: str | None = None) -> dict:
     argv = [claude_bin, "-p", entry["prompt"], "--model", model, "--permission-mode", "plan",
             "--output-format", "json", "--strict-mcp-config"]
     plugin_dirs = []
@@ -116,7 +116,29 @@ def cell_config(entry: dict, rep: int, model: str, arm: str, plugins_root: Path,
         # because a transcript may report `plugin:skill` where the index says `skill`.
         "expect_skills": [], "forbid_skills": [], "max_budget_usd": budget,
         "timeout_s": 600,
+        # subrun copies the fixture into the cell's own temp dir and git-inits it. An
+        # EMPTY cwd was measured to decide the verdict: 21 of 23 prompts went silent
+        # because the model ran `ls`, found nothing, and asked instead of acting.
+        **({"fixture": fixture} if fixture else {}),
     }
+
+
+def compose_fixture(mounts: list, dest: Path) -> Path:
+    """Build one probe repository from `sub=dir` mounts (`.` is the root).
+
+    Composed at run time from the committed academic fixtures rather than committed
+    as a second copy, so the probe repo cannot drift from the fixtures it is made of.
+    Generated noise (__pycache__, .pyc) is left out.
+    """
+    dest.mkdir(parents=True, exist_ok=True)
+    ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".git")
+    for m in mounts:
+        sub, _, src = m.partition("=")
+        if not src or not Path(src).is_dir():
+            raise SystemExit(f"--mount {m!r}: expected SUB=DIR with an existing DIR")
+        target = dest if sub in (".", "") else dest / sub
+        shutil.copytree(src, target, dirs_exist_ok=True, ignore=ignore)
+    return dest
 
 
 def verdict(entry: dict, cells: list) -> dict:
@@ -162,7 +184,16 @@ def compare_routing(results: list, routing: dict) -> dict:
         total += 1
         agree += int(bare(sim or "") == (real or ""))
         rows.append({"id": r["id"], "simulation": sim, "probe": real})
-    return {"compared": total, "agree": agree, "agreement": round(agree / total, 3) if total else None, "rows": rows}
+    # Conditional agreement: only prompts where the probe saw SOME skill fire. The
+    # simulation always picks a component; silence is a thing it cannot express, so
+    # counting silent prompts against it measures the difference between the two
+    # questions, not the simulation's accuracy.
+    fired_rows = [row for row in rows if row["probe"]]
+    fired_agree = sum(1 for row in fired_rows if bare(row["simulation"] or "") == row["probe"])
+    return {"compared": total, "agree": agree, "agreement": round(agree / total, 3) if total else None,
+            "firedCompared": len(fired_rows), "firedAgree": fired_agree,
+            "firedAgreement": round(fired_agree / len(fired_rows), 3) if fired_rows else None,
+            "rows": rows}
 
 
 def run(args) -> int:
@@ -189,11 +220,15 @@ def run(args) -> int:
         return 0
     out = Path(args.out or tempfile.mkdtemp(prefix="trigger-probe-"))
     (out / "cells").mkdir(parents=True, exist_ok=True)
+    fixture = None
+    if args.mount:
+        fixture = str(compose_fixture(args.mount, out / "fixture").resolve())
+        print(f"fixture: composed {len(args.mount)} mount(s) into {fixture}; every cell gets its own git-initialised copy")
     results = []
     for e in entries:
         got = []
         for rep in range(1, args.repeats + 1):
-            cfg = cell_config(e, rep, args.model, args.arm, Path(args.plugins_root), claude, args.max_budget_usd)
+            cfg = cell_config(e, rep, args.model, args.arm, Path(args.plugins_root), claude, args.max_budget_usd, fixture)
             path = out / "cells" / f"{cfg['label']}.json"
             try:
                 cell = subrun.run_one_cell(cfg, path)
@@ -208,14 +243,15 @@ def run(args) -> int:
         r = results[-1]
         print(f"  {r['verdict']:<10} {r['expected']:<32} measured {r['measured']}/{r['cells']}"
               + (f"  captured by {r['capturedBy']}" if r.get("capturedBy") else ""))
-    summary = {"model": args.model, "arm": args.arm, "repeats": args.repeats, "results": results,
+    summary = {"model": args.model, "arm": args.arm, "repeats": args.repeats, "mounts": args.mount or [], "results": results,
                "unmeasured": sum(r["verdict"] == "UNMEASURED" for r in results),
                "cost_usd": round(sum(r["cost_usd"] for r in results), 4)}
     if args.routing:
         summary["routingAgreement"] = compare_routing(results, json.loads(Path(args.routing).read_text(encoding="utf-8")))
         ra = summary["routingAgreement"]
         print(f"simulation vs probe: {ra['agree']}/{ra['compared']} agree"
-              + (f" ({ra['agreement']:.2f})" if ra["agreement"] is not None else ""))
+              + (f" ({ra['agreement']:.2f})" if ra["agreement"] is not None else "")
+              + f"; where a skill fired: {ra['firedAgree']}/{ra['firedCompared']}")
     (out / "summary.json").write_text(json.dumps(summary, indent=1))
     print(f"{summary['unmeasured']} prompt(s) unmeasured (excluded from every rate); spent ${summary['cost_usd']}; wrote {out}/summary.json")
     measured = [r for r in results if r["verdict"] != "UNMEASURED"]
@@ -270,11 +306,26 @@ def selftest() -> int:
     ok("no fair repeat is UNMEASURED, with reasons",
        verdict(e, [c("UNMEASURED", [], unmeasured_reason="auth")])["verdict"] == "UNMEASURED")
 
+    with tempfile.TemporaryDirectory() as raw:
+        a_dir, b_dir = Path(raw) / "a", Path(raw) / "b"
+        (a_dir / "__pycache__").mkdir(parents=True)
+        (a_dir / "README.md").write_text("root")
+        (a_dir / "__pycache__" / "x.pyc").write_text("noise")
+        b_dir.mkdir()
+        (b_dir / "index.html").write_text("<p>")
+        fx = compose_fixture([f".={a_dir}", f"ui={b_dir}"], Path(raw) / "fx")
+        ok("compose: root and sub mounts, pycache left out",
+           (fx / "README.md").is_file() and (fx / "ui" / "index.html").is_file() and not (fx / "__pycache__").exists())
+        ok("a fixture reaches the cell config", cell_config(es[0], 1, "haiku", "isolated", Path("plugins"), "claude", None, str(fx))["fixture"] == str(fx))
+
     res = [verdict(e, [c("PASS", ["other-help"]), c("PASS", ["other-help"])])]
     ra = compare_routing(res, {"misrouted": [{"text": "do the thing", "got": "other-help"}]})
     ok("routing agreement: a simulated misroute the probe confirms agrees", ra == {**ra, "compared": 1, "agree": 1})
     ra = compare_routing(res, {"misrouted": []})
     ok("routing agreement: a simulation that said 'fine' disagrees with a real capture", ra["agree"] == 0)
+    silent = verdict(e, [c("PASS", []), c("PASS", [])])
+    ra = compare_routing([silent, verdict(e, [c("PASS", ["demo-do"]), c("PASS", ["demo-do"])])], {"misrouted": []})
+    ok("conditional agreement ignores silent prompts", ra["firedCompared"] == 1 and ra["firedAgree"] == 1 and ra["agree"] == 1)
 
     ok("--repeats 1 is refused", main(["--model", "haiku", "--only", "demo-do", "--repeats", "1"]) == 2)
     ok("no --model is refused (a rate without its tier is not a rate)", main(["--only", "demo-do"]) == 2)
@@ -300,6 +351,8 @@ def main(argv: list) -> int:
     ap.add_argument("--index", default="docs/prompt-index.md")
     ap.add_argument("--plugins-root", default="plugins")
     ap.add_argument("--routing", help="a review's routing.json to compare the simulation against")
+    ap.add_argument("--mount", action="append", default=[], metavar="SUB=DIR",
+                    help="compose a probe repository from fixture dirs (`.=DIR` for the root); repeatable")
     ap.add_argument("--out")
     ap.add_argument("--max-budget-usd", type=float, default=None)
     ap.add_argument("--dry-run", action="store_true")

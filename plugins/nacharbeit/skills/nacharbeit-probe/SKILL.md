@@ -43,6 +43,11 @@ it can be, since definitions load once per session.
   `installed` fact — say which arm a result came from.
 - **The tier travels with the rate.** haiku and sonnet route differently (3/14 vs 8/14 on one
   measured set). Never quote a rate without its model, and never compare rates across models.
+- **Seed a repository for repo-shaped prompts.** In an empty directory the model runs
+  `ls`, finds nothing and asks instead of acting — measured: 21 of 23 prompts silent. Pass
+  `--mount .=<fixture>` (repeatable, `SUB=DIR`) to compose an academic probe repo; every cell
+  gets its own git-initialised copy. Quote the conditional agreement (`firedAgreement`, over
+  prompts where a skill fired) beside the raw one: the simulation cannot express silence.
 - **`UNMEASURED` has no rate.** A logged-out CLI or a failed sentinel means nothing was
   measured; fix the environment, never re-run into it.
 
