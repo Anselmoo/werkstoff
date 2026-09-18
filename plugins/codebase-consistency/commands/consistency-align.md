@@ -98,6 +98,25 @@ moving to the next.
 and result, and any playbook gap it surfaced. This is the input
 `/consistency-verify` reads to know what to check.
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage align --status closed
+```
+
+If it stopped instead — no approved brief, a `needs-human-decision` dimension, or the workflow returned `abortedEarly` (use its `abortReason` verbatim) — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage align --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Present
 
 Report modules aligned / failed / blocked / not-yet-attempted, and the

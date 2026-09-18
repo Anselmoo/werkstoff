@@ -251,6 +251,40 @@ def cmd_autopilot_fix_gate(args):
     _print({"fix_approved": True})
 
 
+def _phase_record(repo, s, phase):
+    """The execution record of one transform phase, or None when it cannot be kept.
+
+    transform-execute applied a phase of MODERNIZATION_BRIEF.md and kept nothing:
+    the scope lock held only {mode, allowedFiles, openedAt} and close removed it.
+    This record, analysis/self-assess/transform-phase-<N>/run.jsonl, survives the
+    lock. GUARDED: it needs Python >= 3.11 (run_record's floor), and below that the
+    phase still runs -- only its record is lost, with one note on stderr.
+    """
+    try:
+        import run_record  # vendored copy of tools/run-record/run_record.py
+    except (ImportError, SystemExit) as exc:
+        sys.stderr.write(f"note: phase record not written ({exc})\n")
+        return None
+    out = os.path.join(repo, (s or {}).get("output_dir") or "analysis/self-assess")
+    run_id = f"transform-phase-{phase}"
+    return run_record.open_run("self-assess", run_id, directory=run_record.Path(out) / run_id)
+
+
+def _phase_event(run, phase, status, detail):
+    run.append({"trace_id": run.run_id, "span_id": f"{run.run_id}.{status}.{len(run.events())}",
+                "parent_span_id": f"{run.run_id}.root", "span": f"phase {phase}", "node_id": str(phase),
+                "status": status, "detail": detail})
+
+
+def _changed(repo, files):
+    """Which allowed files the phase actually changed, measured by git -- never
+    taken from the executor's own account of what it did."""
+    import subprocess
+    r = subprocess.run(["git", "-C", repo, "status", "--porcelain", "--", *files],
+                       capture_output=True, text=True)
+    return sorted({line[3:].strip() for line in r.stdout.splitlines() if line.strip()}) if r.returncode == 0 else None
+
+
 def cmd_open_edit_scope(args):
     s = settings_mod.load_settings(args.repo)
     if args.mode == "idiom_fix":
@@ -258,12 +292,33 @@ def cmd_open_edit_scope(args):
     else:
         gates.check_transform_mode(s)
     path, resolved = edit_scope.open_scope(args.repo, mode=args.mode, allowed_files=args.files)
-    _print({"scopePath": path, "allowedFiles": resolved})
+    record = None
+    if args.phase is not None:
+        run = _phase_record(args.repo, s, args.phase)
+        if run is not None:
+            _phase_event(run, args.phase, "opened", {"mode": args.mode, "allowedFiles": args.files})
+            record = str(run.log)
+    _print({"scopePath": path, "allowedFiles": resolved, "record": record})
 
 
 def cmd_close_edit_scope(args):
+    record = None
+    if args.phase is not None:
+        s = settings_mod.load_settings(args.repo)
+        run = _phase_record(args.repo, s, args.phase)
+        if run is not None:
+            opened = [e for e in run.events() if e["status"] == "opened"]
+            allowed = (opened[-1].get("detail") or {}).get("allowedFiles", []) if opened else []
+            if args.halt:
+                run.halt(args.halt, str(args.phase))
+            else:
+                changed = _changed(args.repo, allowed) if allowed else None
+                _phase_event(run, args.phase, "closed", {
+                    "changed": changed, "unchanged": sorted(set(allowed) - set(changed or [])),
+                    "measuredBy": "git status --porcelain"})
+            record = str(run.log)
     edit_scope.close_scope(args.repo)
-    _print({"closed": True})
+    _print({"closed": True, "record": record})
 
 
 def build_parser():
@@ -430,10 +485,13 @@ def build_parser():
     p.add_argument("--repo", required=True)
     p.add_argument("--mode", required=True, choices=("idiom_fix", "transform"))
     p.add_argument("--files", required=True, nargs="+")
+    p.add_argument("--phase", default=None, help="record this transform phase under analysis/self-assess/transform-phase-<N>/")
     p.set_defaults(func=cmd_open_edit_scope)
 
     p = sub.add_parser("close-edit-scope")
     p.add_argument("--repo", required=True)
+    p.add_argument("--phase", default=None, help="close the phase's record with what git says changed")
+    p.add_argument("--halt", default=None, help="record that the phase stopped, and why, instead of closing it")
     p.set_defaults(func=cmd_close_edit_scope)
 
     return parser

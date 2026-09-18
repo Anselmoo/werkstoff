@@ -65,8 +65,11 @@ might not honor:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py open-edit-scope --repo <repo_root> \
-    --mode transform --files <phase N's declared stage-scope files>
+    --mode transform --phase <N> --files <phase N's declared stage-scope files>
 ```
+
+`--phase <N>` opens this phase's execution record,
+`analysis/self-assess/transform-phase-<N>/run.jsonl`, which outlives the lock.
 
 Then dispatch the `transform-executor` agent with exactly phase `<N>`'s decision, its declared
 stage scope, and its (now-resolved) Open Questions. The agent refuses a second phase in the
@@ -75,8 +78,13 @@ same dispatch -- one phase, one dispatch.
 Once the dispatch finishes, close the lock:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py close-edit-scope --repo <repo_root>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/self_assess_cli.py close-edit-scope --repo <repo_root> --phase <N>
 ```
+
+Closing records which of the allowed files the phase **actually changed**, measured with
+`git status`, never taken from the executor's own account. If the phase stopped instead —
+the agent refused, a gate tripped mid-dispatch — close with
+`--halt "<the specific reason>"`, so the stop is on disk rather than only in the chat.
 
 ## Step 6: Hand off to verification -- never self-verify
 

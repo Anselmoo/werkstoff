@@ -52,6 +52,15 @@ exactly what `state-find` returned.
 Run the phases yourself, calling the guard between each. **MUST run in this order:
 Clarify -> Explore (conditional) -> Decompose -> Execute -> Revise.**
 
+### Record the run as it goes
+Pick the run's `<id>` before Clarify — the same `<id>` the final `state-write` uses — and
+record every phase boundary as it happens, not only at the end:
+`echo '{"run_id":"<id>","phase":"clarify","status":"opened"}' | $GUARD run-event -`
+and `"status":"closed"` when the phase is done. `state.json` is written once, at the end,
+so without these a run that paused or stopped mid-pipeline left **nothing** on disk — a
+paused run was indistinguishable from an abandoned one. The record lands beside
+`state.json` in `.compass/runs/<id>/run.jsonl`.
+
 ### 1. Clarify
 **First, check for a prior run** (rule: solve-reuses-prior-standalone-run) so a
 task someone already scoped with `compass-clarify-scope` doesn't get redone blind:
@@ -66,7 +75,10 @@ Then, whichever `clarify` object you now have (fresh or reused), validate it and
 the pause decision: `echo '<clarify-json>' | $GUARD clarify -`
 - The result's `must_pause` is a first-class field. **If `must_pause` is true you
   MUST stop and wait for user input before Explore.** Do not silently adopt a
-  default for a blocking uncertainty. Present the `blocking_uncertainties` and halt.
+  default for a blocking uncertainty. Present the `blocking_uncertainties` and halt —
+  and record the halt first, with the questions as its reason:
+  `echo '{"run_id":"<id>","phase":"clarify","status":"halted","reason":"must_pause: <the blocking questions>"}' | $GUARD run-event -`
+  A halt with no reason is refused by the guard.
 
 ### 2. Explore (conditional)
 - **Skip Explore entirely** if the scoped task has one obvious approach and no real

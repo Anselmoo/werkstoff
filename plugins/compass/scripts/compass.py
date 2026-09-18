@@ -188,6 +188,49 @@ def _cli_state_find(p, a):
     return {"found": True, "path": winner["path"], "state": winner["state"]}
 
 
+def _cli_run_event(p, a):
+    """Append one phase boundary or halt to .compass/runs/<run_id>/run.jsonl.
+
+    compass-solve used to write state.json once, at the end, so a run that paused
+    for the user (must_pause) or stopped mid-pipeline left nothing on disk. The
+    skill calls this at every phase boundary and at every pause; the record sits
+    beside state.json, in the same run directory. A halt without a reason is a
+    violation: a halt is an event, and an empty reason is an absence.
+
+    Payload: {"run_id", "phase", "status": opened|closed|halted, "reason"?, "detail"?}
+    The record needs Python >= 3.11 (run_record's floor); below it the call reports
+    {"recorded": false, "why": ...} rather than failing the pipeline around it.
+    """
+    out_dir = _opt(a, "--output-dir", C.DEFAULT_OUTPUT_DIR)
+    run_id = p.get("run_id") if isinstance(p, dict) else None
+    phase = p.get("phase") if isinstance(p, dict) else None
+    status = p.get("status") if isinstance(p, dict) else None
+    if not run_id or not phase or status not in ("opened", "closed", "halted"):
+        raise C.GuardError('run-event requires {"run_id", "phase", "status": opened|closed|halted}')
+    if status == "halted" and not str(p.get("reason") or "").strip():
+        raise C.GuardError("a halted run-event needs a specific reason; a halt with none is an absence")
+    safe = C.enforce_write_scope(os.path.join("runs", run_id, "run.jsonl"), out_dir)  # throws before any write
+    try:
+        import run_record  # vendored copy of tools/run-record/run_record.py
+    except (ImportError, SystemExit) as exc:
+        return {"recorded": False, "why": str(exc)}
+    try:
+        # open_run validates run_id itself: enforce_write_scope accepts
+        # `runs/../x`, which still lands inside .compass/ but outside runs/.
+        run = run_record.open_run("compass", run_id, directory=run_record.Path(os.path.dirname(safe)))
+        if status == "halted":
+            run.halt(str(p["reason"]), phase)
+        else:
+            ev = {"trace_id": run_id, "span_id": f"{run_id}.{phase}.{status}", "parent_span_id": f"{run_id}.root",
+                  "span": f"phase {phase}", "node_id": phase, "status": status}
+            if isinstance(p.get("detail"), dict):
+                ev["detail"] = p["detail"]
+            run.append(ev)
+    except run_record.RecordError as exc:
+        raise C.GuardError(f"run-event refused: {exc}") from exc
+    return {"recorded": True, "record": safe, "next": run.status()["next"]}
+
+
 CHECKS = {
     "clarify": _cli_clarify,
     "decompose": _cli_decompose,
@@ -211,6 +254,7 @@ CHECKS = {
     "state-write": _cli_state_write,
     "state-read": _cli_state_read,
     "state-find": _cli_state_find,
+    "run-event": _cli_run_event,
 }
 
 

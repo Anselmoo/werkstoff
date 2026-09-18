@@ -118,6 +118,25 @@ Create `analysis/$1/CONSISTENCY_SCAN.md` in human-readable form:
 - **Out-of-scope appendix** — dimensions found but routed to documented-
   convention or version-modernization tooling, with the one-line reason
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage scan --status closed
+```
+
+If it stopped instead — no dimension could be surveyed, or the area is out of scope — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage scan --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Present
 
 Report the count of in-scope divergent dimensions and total affected

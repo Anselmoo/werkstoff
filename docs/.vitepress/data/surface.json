@@ -801,7 +801,7 @@
         {
           "id": "lehre:lehre-gauge",
           "name": "lehre-gauge",
-          "description": "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Read-only — reports violations, never fixes them."
+          "description": "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Changes no source file — reports violations, never fixes them, and records each sweep under .lehre/gauge/."
         },
         {
           "id": "lehre:lehre-pin",

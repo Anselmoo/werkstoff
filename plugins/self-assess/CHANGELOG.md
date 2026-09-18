@@ -4,6 +4,9 @@ All notable changes to the `self-assess` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `open-edit-scope`/`close-edit-scope --phase N` keep `analysis/self-assess/transform-phase-<N>/run.jsonl`, which outlives the scope lock: the files the phase **actually changed**, measured with `git status`, and `--halt "<reason>"` when it stopped. `transform-execute` used to apply a phase and record nothing.
+
 ## [0.10.0] - 2026-09-12
 
 ### Added

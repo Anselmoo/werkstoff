@@ -305,6 +305,31 @@ path = "plugins/arbeitsplan/scripts/run_record.py"
 description = "arbeitsplan's synced copy of tools/run-record/run_record.py"
 command = ["cp", "tools/run-record/run_record.py", "plugins/arbeitsplan/scripts/run_record.py"]
 
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/scripts/run_record.py"
+description = "cli-scaffold's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/cli-scaffold/scripts/run_record.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/lehre/scripts/run_record.py"
+description = "lehre's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/lehre/scripts/run_record.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/compass/scripts/run_record.py"
+description = "compass's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/compass/scripts/run_record.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/self-assess/scripts/run_record.py"
+description = "self-assess's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/self-assess/scripts/run_record.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/codebase-consistency/scripts/run_record.py"
+description = "codebase-consistency's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/codebase-consistency/scripts/run_record.py"]
+
 # The single-cell headless executor (tools/subrun/). arbeitsplan's matrix runner and
 # nacharbeit's trigger probe both run cells through it; each plugin carries a
 # byte-identical copy so neither depends on the other being installed.

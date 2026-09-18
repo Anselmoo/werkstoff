@@ -1,6 +1,6 @@
 ---
 name: lehre-gauge
-description: "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Read-only — reports violations, never fixes them."
+description: "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Changes no source file — reports violations, never fixes them, and records each sweep under .lehre/gauge/."
 ---
 
 Measure the tree as it actually is. This skill changes nothing.
@@ -22,6 +22,12 @@ which is the failure this plugin exists to remove reintroduced one level up.
    unusable. Exit 2 means stop and fix the ruleset; it does **not** mean the
    code is clean. Exit 1 covers violations **and** files that could not be
    judged — a rule cannot be reported as holding over a file it never reached.
+
+   The JSON's `record` names `.lehre/gauge/<runId>/`, where this sweep's full findings
+   and its run record now live. Quote that path when you report, so the next step — or
+   the next sweep — can compare against what this one actually found. `record: null`
+   means only the record was lost (Python below 3.11, or a write error); the sweep
+   itself still stands.
 
 2. **Read `unevaluated_unparseable` as a separate category and report it
    separately.** A file that would not parse was not judged. Collapsing "could

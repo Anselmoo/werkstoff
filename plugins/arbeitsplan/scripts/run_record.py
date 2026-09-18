@@ -219,8 +219,17 @@ def run_dir(plugin: str, run_id: str, root: Path | None = None) -> Path:
     return (root or Path.cwd()) / "analysis" / plugin / run_id
 
 
-def open_run(plugin: str, run_id: str, root: Path | None = None) -> Run:
+def open_run(plugin: str, run_id: str, root: Path | None = None, directory: Path | None = None) -> Run:
+    """Open (creating if needed) one run's record.
+
+    `directory` places the record beside a plugin's existing per-run state --
+    cli-scaffold's report directory, compass's `.compass/runs/<id>/` -- instead of
+    under analysis/<plugin>/, so one run is never scattered across two trees. The
+    run id is still validated, and the header still refuses a sibling's record.
+    """
     d = run_dir(plugin, run_id, root)
+    if directory is not None:
+        d = Path(directory)
     d.mkdir(parents=True, exist_ok=True)
     run = Run(d, plugin, run_id)
     header = {"kind": "header", "plugin": plugin, "run_id": run_id, "schema": SCHEMA}
@@ -309,6 +318,11 @@ def selftest() -> int:
         ok("a damaged line is an error, not a skip", raises(run2.status))
 
         # Parallel appenders: 8 processes x 50 lines must yield 400 whole records.
+        placed = open_run("demo", "r-4", root, directory=root / ".demo-reports" / "x")
+        ok("directory places the record beside existing state", placed.log == root / ".demo-reports" / "x" / "run.jsonl")
+        ok("a placed record still refuses another run's id", raises(lambda: open_run("demo", "r-5", root, directory=root / ".demo-reports" / "x")))
+        ok("a placed record still validates its run id", raises(lambda: open_run("demo", "../x", root, directory=root / "y")))
+
         run3 = open_run("demo", "r-3", root)
         # Values arrive through argv, never interpolated into the source: printf-style
         # `%` into code is the TypeError-then-stale-output defect this repo tabled.
