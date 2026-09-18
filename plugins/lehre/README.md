@@ -229,16 +229,22 @@ by intent.
 ##### Start a new project so it cannot drift
 
 ````prompt
-"I'm starting a CLI that ingests CSV from three vendors and writes Parquet. Set it up
-properly — I don't want the usual mess where everything imports everything."
+"I'm starting a CLI that ingests CSV from three vendors and writes Parquet. Set it up properly — I don't want the usual mess where everything imports everything."
 ````
+
+> Triggers `lehre-preflight`: reports blank page versus existing tree, what doctrine the
+> repository already declares, and what lehre can and cannot enforce here — the automatic
+> first step of any lehre pipeline, which then hands a greenfield repo to `lehre-decompose`.
 
 ##### Establish and enforce a doctrine on an existing repo
 
 ````prompt
-"research what rules this codebase should follow for its stack, check them against what
-we actually do, and make the important ones actually enforced"
+"research what rules this codebase should follow for its stack, check them against what we actually do, and make the important ones actually enforced"
 ````
+
+> Triggers `lehre-codify`: researches doctrine from external authority plus real repository
+> evidence and writes `.lehre/ruleset.json` as machine-checkable rules. Every rule cites an
+> authority; a rule nobody can justify is refused.
 
 ##### Find where the code violates its own architecture
 
@@ -246,17 +252,27 @@ we actually do, and make the important ones actually enforced"
 "where do we violate our own layering, and which of those are real"
 ````
 
+> Triggers `lehre-gauge`: sweeps the tree against `.lehre/ruleset.json` and reports every
+> violation with file:line, keeping "could not be evaluated" separate from "clean", and
+> records the sweep under `.lehre/gauge/`.
+
 ##### Make the rules survive without the plugin
 
 ````prompt
 "pin these rules into CI so they still hold when nobody's running Claude"
 ````
 
+> Triggers `lehre-pin`: emits a CI check that runs the doctrine with no agent in the loop,
+> plus behaviour tests around the code that was changed to conform.
+
 ##### Ask what is currently blocked
 
 ````prompt
 "lehre status — what can I build next?"
 ````
+
+> Triggers `lehre-status`: which units are validated, blocked or ready, how many rules are
+> in force, and what is denied at write time right now.
 
 ## Verifying a change to this plugin
 
