@@ -21,7 +21,11 @@ for (const k of ['runStamp', 'rubricHash', 'rubric', 'lint', 'batches', 'corpus'
 }
 const FIXTURE_PREFIX = A.fixturePrefix || 'test/plugins/fixtures/'
 const MECHANICAL_IDS = A.mechanicalIds || []
-const JUDGEMENT_IDS = A.judgementIds || []
+// Rules produced by CODE from the routing simulation, never by a finder: one file
+// cannot show which sibling a router preferred. Withheld from the finder's rule list,
+// and dropped if a finder reports one anyway.
+const CODE_ONLY = new Set(['Q-ROUTE-MISS', 'Q-CANN-CAPTURE'])
+const JUDGEMENT_IDS = (A.judgementIds || []).filter(id => !CODE_ONLY.has(id))
 const REPO_NAME = A.repoName || 'this plugin set'
 const REPO_NOTES = A.repoNotes || ''
 const familyOf = id => String(id || '').split('-')[0]
@@ -326,8 +330,13 @@ if (weakFamilies.length) {
 }
 const FINDER = finderPrompt // frozen — never retuned after this line
 
-// ---- Phase 3: Route + Judge, concurrent with Find/Verify --------------------
-async function routeAll() {
+// ---- Phase 3: Route, awaited BEFORE Find; Judge concurrent with Find/Verify --
+// Routing used to run entirely concurrently with the finders, so Q-CANN-OVERLAP
+// and PQ-PROMPTS-ROUTE -- whose rubric rows say they are judged "from the routing
+// simulation" -- were judged without it. The haiku votes are cheap, so they are
+// awaited first and handed to the finders; only the expensive opus pair judging
+// stays concurrent.
+async function routeVotes() {
   const votes = []
   const corpusFor = router => Object.entries(A.corpus[router]).map(([id, e]) => ({ id, plugin: e.plugin, description: e.description }))
   for (const router of ['skill', 'agent']) {
@@ -390,7 +399,13 @@ async function routeAll() {
   const MAX_PAIRS = 24
   if (pairs.length > MAX_PAIRS) log(`Route: ${pairs.length} collision pairs; judging the ${MAX_PAIRS} most frequent, ${pairs.length - MAX_PAIRS} left unjudged`)
   log(`Route: known-answer top-1 accuracy ${accuracy.toFixed(2)} (${correct}/${ka.length}; top-3 ${top3}/${ka.length}); ${pairs.length} collision pair(s) on ${A.ambiguous.length} ambiguous prompts`)
-  const measured = accuracy >= 0.8
+  const measured = accuracy >= ROUTING_FLOOR
+  const winners = Object.fromEntries(ka.map(p => [p.id, majorityTop(p.id)]))
+  return { accuracy, correct, top3, knownAnswerCount: ka.length, measured, misrouted, inventedPicks: invented, perPrompt, pairs, winners, MAX_PAIRS }
+}
+
+async function judgePairs(rv) {
+  const { pairs, MAX_PAIRS } = rv
   const lookup = id => A.corpus.skill[id] || A.corpus.agent[id] || null
   const judged = await parallel(
     pairs.slice(0, MAX_PAIRS).map(p => () =>
@@ -400,21 +415,42 @@ async function routeAll() {
       ).then(v => { if (v == null) failures.push(`judge:${p.a}~${p.b}`); return v ? { ...p, ...v } : null }),
     ),
   )
-  return { accuracy, correct, top3, knownAnswerCount: ka.length, measured, misrouted, inventedPicks: invented, perPrompt, pairs, judged: judged.filter(Boolean), note: measured ? 'router proxy accurate; collisions are measured' : 'router proxy below 0.8 accuracy; collisions are hints, not measurements' }
+  return judged.filter(Boolean)
 }
-const routingP = routeAll()
+
+const ROUTING_FLOOR = 0.8
+phase('Route')
+const votes = await routeVotes()
+const judgedP = judgePairs(votes)
+const componentOf = file => {
+  for (const kind of ['skill', 'agent']) for (const [id, e] of Object.entries(A.corpus[kind])) if (e.path === file) return id
+  return null
+}
+// What the finders are told. Below the floor it is labelled HINTS, and the
+// rules that depend on it are named as unable to rest on it alone.
+function routingBlockFor(files) {
+  const ids = new Set(files.map(componentOf).filter(Boolean))
+  if (!ids.size) return ''
+  const mis = votes.misrouted.filter(m => ids.has(m.expected) || ids.has(m.got))
+  const prs = votes.pairs.filter(p => ids.has(p.a) || ids.has(p.b)).map(p => ({ a: p.a, b: p.b, prompts: p.promptIds.length }))
+  if (!mis.length && !prs.length) return ''
+  const label = votes.measured
+    ? `MEASURED routing evidence (router proxy accuracy ${votes.accuracy.toFixed(2)} >= ${ROUTING_FLOOR}); use it for Q-CANN-OVERLAP and PQ-PROMPTS-ROUTE`
+    : `HINTS ONLY (router proxy accuracy ${votes.accuracy.toFixed(2)} < ${ROUTING_FLOOR}); never report Q-CANN-OVERLAP or PQ-PROMPTS-ROUTE from these alone`
+  return `\nRouting simulation for these components -- ${label}:\n${fence(JSON.stringify({ misrouted: mis.map(m => ({ prompt: m.text, expected: m.expected, got: m.got })), collisionPairs: prs }, null, 1))}`
+}
 
 // ---- Loop B: Find (per batch) — inside pipeline, no cross-batch barrier -----
 async function findBatch(b, angleHint) {
   const seen = new Map()
   const lintForBatch = A.lint.filter(l => b.files.includes(l.file))
-  const lintBlock = lintForBatch.length ? `\nMechanical (M-*) findings already recorded for these files — out of scope for you:\n${fence(lintForBatch.map(l => `- ${l.file} [${l.rule_id}] ${l.claim}`).join('\n'))}` : ''
+  const lintBlock = (lintForBatch.length ? `\nMechanical (M-*) findings already recorded for these files — out of scope for you:\n${fence(lintForBatch.map(l => `- ${l.file} [${l.rule_id}] ${l.claim}`).join('\n'))}` : '') + routingBlockFor(b.files)
   const r1 = await parallel(lensesFor(b.kind).map(l => () => runFinder(FINDER, b.files, angleHint || l, lintBlock, `find:${b.key}:${(angleHint || l).split(' ')[0]}`, 'Find', b.kind)))
-  for (const f of r1.filter(Boolean).flatMap(x => x.findings || [])) if (!seen.has(key(f))) seen.set(key(f), { ...f, batchKey: b.key, plugin: b.plugin })
+  for (const f of r1.filter(Boolean).flatMap(x => x.findings || [])) if (!CODE_ONLY.has(f.rule_id) && !seen.has(key(f))) seen.set(key(f), { ...f, batchKey: b.key, plugin: b.plugin })
   const MAX_GAP_ROUNDS = 2
   for (let round = 1; round <= MAX_GAP_ROUNDS; round++) {
     const r = await runFinder(FINDER, b.files, angleHint ? `${angleHint} — what the prior pass missed` : 'gaps: any angle the prior two lenses missed', lintBlock + alreadyBlock([...seen.values()]), `find:${b.key}:gap${round}`, 'Find', b.kind)
-    const fresh = ((r && r.findings) || []).filter(f => !seen.has(key(f)))
+    const fresh = ((r && r.findings) || []).filter(f => !CODE_ONLY.has(f.rule_id) && !seen.has(key(f)))
     if (!fresh.length) break
     fresh.forEach(f => seen.set(key(f), { ...f, batchKey: b.key, plugin: b.plugin }))
   }
@@ -470,7 +506,42 @@ log(`Find/Verify: ${rawCount} raw findings → ${findings.length} verified acros
 
 // ---- Loop C: Synthesize + completeness critic → at most one targeted round --
 phase('Synthesize')
-const routing = await routingP
+const judged = await judgedP
+// Rules that cannot rest on an inaccurate proxy, recorded rather than silently skipped.
+const ROUTING_RULES = ['Q-ROUTE-MISS', 'Q-CANN-CAPTURE']
+const routing = {
+  ...votes, judged, routingUsable: votes.measured,
+  rulesSkipped: votes.measured ? [] : ROUTING_RULES,
+  note: votes.measured ? 'router proxy accurate; collisions are measured' : `router proxy below ${ROUTING_FLOOR} accuracy; collisions are hints, not measurements, and ${ROUTING_RULES.join(', ')} were not emitted`,
+}
+const pathOf = id => (A.corpus.skill[id] || A.corpus.agent[id] || {}).path
+const pluginOf = id => (A.corpus.skill[id] || A.corpus.agent[id] || {}).plugin
+// Q-ROUTE-MISS: a known-answer prompt whose majority route is not its documented
+// target. Produced in code from the simulation, so it is verified by construction
+// -- a finder reading one file cannot see which sibling a router preferred.
+const routeFindings = !votes.measured ? [] : votes.misrouted.filter(m => pathOf(m.expected)).map(m => ({
+  file: pathOf(m.expected), line: 1, quote: m.text, rule_id: 'Q-ROUTE-MISS', angle: 'routing', severity: 'major',
+  claim: `the documented prompt "${m.text}" routes to ${m.got || 'nothing (no majority)'} instead of ${m.expected}`,
+  suggested_fix: `make ${m.expected}'s description claim this trigger${m.got ? ` and name ${m.got} as the sibling for the adjacent job` : ''}; verify by re-measuring in a fresh process`,
+  fix_tier: 'human', source: 'routing', plugin: pluginOf(m.expected), batchKey: 'routing',
+  verifyReason: 'measured by the routing simulation above the accuracy floor; finders structurally cannot produce this finding',
+}))
+// Q-CANN-CAPTURE: naming a sibling excuses an overlap only when each side still
+// wins its OWN documented prompts. An 'intended-handoff' or 'leave' verdict over a
+// pair where one side's prompts route to the other is a capture, not a handoff.
+const EXCUSED = new Set(['intended-handoff', 'leave'])
+const captureFindings = !votes.measured ? [] : judged.filter(j => EXCUSED.has(j.verdict)).flatMap(j =>
+  [[j.a, j.b], [j.b, j.a]].flatMap(([own, other]) => {
+    const lost = A.knownAnswers.filter(p => p.expected === own && votes.winners[p.id] === other)
+    return lost.length && pathOf(own) ? [{
+      file: pathOf(own), line: 1, quote: lost[0].text, rule_id: 'Q-CANN-CAPTURE', angle: 'routing', severity: 'major',
+      claim: `${other} captures ${lost.length} of ${own}'s own documented prompt(s) although the pair was judged '${j.verdict}'`,
+      suggested_fix: `narrow ${other}'s description or add a negative trigger naming ${own}; the handoff wording is correct and does not excuse the capture`,
+      fix_tier: 'human', source: 'routing', plugin: pluginOf(own), batchKey: 'routing',
+      verifyReason: 'measured: known-answer prompts for this component route to its named sibling',
+    }] : []
+  }))
+const uncalibrated = new Set(A.uncalibratedKinds || [])
 const tally = fs => {
   const t = {}
   for (const f of fs) { t[f.batchKey] = t[f.batchKey] || {}; t[f.batchKey][f.angle] = (t[f.batchKey][f.angle] || 0) + 1 }
@@ -485,7 +556,15 @@ if (critic && critic.gaps && critic.gaps.length > gaps.length) log(`Critic named
 const extraBatches = gaps.map(g => ({ ...A.batches.find(b => b.key === g.batchKey), key: `${g.batchKey}:${g.angle}`, angle: g.angle }))
 const extra = (await pipeline(extraBatches, b => findBatch(b, b.angle), verifyBatch)).filter(Boolean).flatMap(v => v.verified)
 if (extraBatches.length) log(`Critic round: ${extra.length} additional verified finding(s) from ${extraBatches.length} targeted re-run(s)`)
-const allFindings = [...findings, ...extra]
+// A finding whose fix would make the component worse is not backlog: it is kept,
+// listed as declined, and never handed to the synthesis as work to do.
+const labelled = [...findings, ...extra, ...routeFindings, ...captureFindings].map(f => {
+  const kind = (A.batches.find(b => b.key === f.batchKey) || {}).kind
+  return uncalibrated.has(kind) ? { ...f, calibrated: false } : f
+})
+const declined = labelled.filter(f => f.fixMakesWorse)
+const allFindings = labelled.filter(f => !f.fixMakesWorse)
+if (declined.length) log(`Synthesize: ${declined.length} finding(s) declined because the suggested fix makes the component worse`)
 
 const plugins = [...new Set(A.batches.map(b => b.plugin))]
 const perPlugin = await parallel(
@@ -515,6 +594,9 @@ return {
   verifiedCount: findings.length,
   batches: verifiedBatches.map(v => ({ key: v.batch.key, files: v.batch.files.length, raw: v.raw, verified: v.verified.length })),
   findings: allFindings,
+  declined,
+  routeFindings: routeFindings.length,
+  captureFindings: captureFindings.length,
   routing,
   perPlugin: perPlugin.filter(Boolean),
   critic,

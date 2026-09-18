@@ -197,6 +197,7 @@ evidence that nothing in the reviewed plugin exercised that family.
 
 ```bash
 python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 92 rules planted, blanked, synced
+node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/nacharbeit --docs-root docs   # the plugin lints clean under its own rules
 python3 test/plugins/lint-frontmatter.py plugins/nacharbeit

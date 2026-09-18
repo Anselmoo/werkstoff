@@ -109,7 +109,10 @@ def main(argv: list[str] | None = None) -> int:
             "judged": len((ret["routing"] or {}).get("judged", [])),
         },
     }
-    write_atomic(OUT / "findings.json", {"runStamp": ret["runStamp"], "lint": lint.get("findings", []), "verified": ret["findings"]})
+    # `declined`: verified findings whose suggested fix would make the component worse.
+    # Kept on disk -- a finding is not erased by declining its fix -- but never backlog.
+    write_atomic(OUT / "findings.json", {"runStamp": ret["runStamp"], "lint": lint.get("findings", []),
+                                         "verified": ret["findings"], "declined": ret.get("declined", [])})
     write_atomic(OUT / "routing.json", {"runStamp": ret["runStamp"], **(ret["routing"] or {})})
     write_atomic(OUT / "synthesis.json", {"runStamp": ret["runStamp"], "perPlugin": ret["perPlugin"], "critic": ret.get("critic"), "cross": ret["cross"]})
     write_atomic(OUT / "run.json", run)  # last: its presence means the other three are complete
