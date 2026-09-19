@@ -4,6 +4,7 @@ All notable changes to the `cli-scaffold` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-09-19
 ### Added
 - `verify_scaffold.py` keeps an execution record, `<reports>/<scaffold-id>/run.jsonl`, beside its ledger: each attempt opened and closed with its verdict, and the `MAX_FIX_ITERATIONS` halt **recorded before the return** — the ledger alone read `attempts: 5`, indistinguishable from a run not yet re-verified. The record needs Python ≥ 3.11 and is guarded: below it, verification runs unchanged and one note says the record was not written.
 
