@@ -33,6 +33,7 @@ import re
 import sys
 
 import report_validator
+
 from constants import (
     DISPOSITION_FIXABLE,
     DISPOSITION_NEEDS_HUMAN,
@@ -49,6 +50,41 @@ from constants import (
     VERDICT_GAPS,
     VERDICT_PASS,
 )
+
+# The execution record (vendored tools/run-record/run_record.py). GUARDED: it
+# needs Python >= 3.11 and this engine never did, so an older interpreter loses
+# the record -- with one warning -- and never the verification itself.
+try:
+    import run_record
+except (ImportError, SystemExit) as _exc:  # SystemExit is run_record's version gate
+    run_record = None
+    _RECORD_OFF = str(_exc)
+else:
+    _RECORD_OFF = None
+
+
+def _record(out_dir, sid, kind, node, status=None, detail=None):
+    """Append one event to <out_dir>/run.jsonl; a halt persists its reason.
+
+    The ledger counts attempts and is overwritten each time, so it could never say
+    that a run STOPPED, or why. This is that record. Failing to write it warns and
+    never changes the verdict or the exit code.
+    """
+    if run_record is None:
+        sys.stderr.write("note: run record not written (%s)\n" % _RECORD_OFF)
+        return
+    try:
+        run = run_record.open_run("cli-scaffold", sid, directory=out_dir)
+        if kind == "halt":
+            run.halt(detail["reason"], node)
+            return
+        run.append({"trace_id": sid, "span_id": "%s.%s.%s" % (sid, node, status),
+                    "parent_span_id": "%s.root" % sid, "span": kind, "node_id": node,
+                    "status": status, **({"detail": detail} if detail else {})})
+        if kind == "phase %s" % node and status == "closed" and (detail or {}).get("verdict") == VERDICT_PASS:
+            run.finish({"verdict": VERDICT_PASS, "attempt": node})
+    except (OSError, ValueError, run_record.RecordError) as exc:
+        sys.stderr.write("note: run record not written (%s)\n" % exc)
 
 MANIFEST_NAME = "cli-scaffold.manifest.json"
 
@@ -522,10 +558,18 @@ def main(argv):
                 "HALT: reached MAX_FIX_ITERATIONS (%d) for this scaffold without "
                 "converging. Surface remaining gaps to a human instead of "
                 "re-verifying.\n" % MAX_FIX_ITERATIONS)
+            # Recorded BEFORE the return. The halt used to leave no trace: the
+            # ledger still read attempts=5, indistinguishable from a run that
+            # simply had not been re-verified yet.
+            _record(out_dir, sid, "halt", "attempt-%d" % next_attempt,
+                    detail={"reason": "MAX_FIX_ITERATIONS (%d) reached without converging; "
+                                      "surface remaining gaps to a human" % MAX_FIX_ITERATIONS})
             return EXIT_RUNTIME_ERROR
     except HaltError as exc:
         sys.stderr.write("HALT: %s\n" % exc)
+        _record(out_dir, sid, "halt", "ledger", detail={"reason": str(exc)})
         return EXIT_RUNTIME_ERROR
+    _record(out_dir, sid, "phase attempt-%d" % next_attempt, "attempt-%d" % next_attempt, "opened")
 
     findings = run_checks(manifest, scaffold_dir, language, paradigm)
     has_fail = any(f["status"] == STATUS_FAIL for f in findings)
@@ -562,6 +606,9 @@ def main(argv):
     with open(ledger_path, "w", encoding="utf-8") as fh:
         json.dump(new_ledger, fh, indent=2, sort_keys=True)
         fh.write("\n")
+    _record(out_dir, sid, "phase attempt-%d" % next_attempt, "attempt-%d" % next_attempt, "closed",
+            detail={"verdict": verdict, "fail": report["summary"]["fail"],
+                    "fixable": report["summary"]["fixable"], "needs_human": report["summary"]["needs_human"]})
 
     # human-readable summary to stderr (diagnostics), machine report path to stdout
     sys.stderr.write(

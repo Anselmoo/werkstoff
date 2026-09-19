@@ -123,7 +123,7 @@ python3 plugins/compass/scripts/build_branch_comparison_html.py /tmp/compass-dem
 ##### Clarify a fuzzy scope
 
 ````prompt
-"the scope of this request is fuzzy, help me pin it down first"
+"add caching to the reporting pipeline — the scope is fuzzy, help me pin it down before anything gets built"
 ````
 
 > Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated

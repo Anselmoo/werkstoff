@@ -45,11 +45,18 @@ def beats_for(spec: dict) -> list:
         requires = ph.get("requires") or []
         if not requires:
             continue
+        # agentType is ALREADY namespaced ("arbeitsplan:candidate-referee"). This
+        # used to prefix it again, emitting "arbeitsplan:arbeitsplan:candidate-referee"
+        # -- a beat no dispatch can ever match -- and, for a phase with no agentType,
+        # `.rstrip(":")` turned "arbeitsplan:" into a bare "arbeitsplan" beat.
+        skills = ["arbeitsplan-run"]
+        if isinstance(ph.get("agentType"), str) and ph["agentType"]:
+            skills.append(ph["agentType"])
         for marker in requires:
             beats.append({
                 "id": f"{ph['id']}-after-{marker}",
                 "tools": ["Skill", "Task", "Agent"],
-                "skills": ["arbeitsplan-run", f"arbeitsplan:{ph.get('agentType', '')}".rstrip(":")],
+                "skills": skills,
                 "require": marker,
                 "reason": (
                     f"phase '{ph['id']}' consumes what phase marker '{marker}' records; "
@@ -286,8 +293,10 @@ def selftest() -> int:
         "runId": "ap-t-1",
         "phases": [
             {"id": "build", "requires": [], "marker": "built"},
-            {"id": "referee", "requires": ["built"], "marker": "refereed"},
-            {"id": "land", "requires": ["refereed"], "marker": "landed"},
+            {"id": "referee", "requires": ["built"], "marker": "refereed",
+             "agentType": "arbeitsplan:candidate-referee"},
+            {"id": "land", "requires": ["refereed"], "marker": "landed",
+             "agentType": "arbeitsplan:synthesizer"},
         ],
         "delegates": [{"plugin": "compass", "skill": "compass-explore-branches",
                        "beat": "branches-explored", "optional": True}],
@@ -303,6 +312,13 @@ def selftest() -> int:
         ("every beat gates something", all(b["skills"] and b["require"] for b in beats)),
         ("no beat uses a slash in require under a runId",
          all("/" not in b["require"] for b in beats)),
+        # The assertion no selftest made before: every agent a beat names is an
+        # agent that exists on disk. A doubled prefix fails it; so does a typo.
+        ("every agent a beat names exists in agents/",
+         all((Path(__file__).resolve().parent.parent / "agents" / f"{s.split(':', 1)[1]}.md").is_file()
+             for b in beats for s in b["skills"] if s.startswith("arbeitsplan:"))
+         and any(s.startswith("arbeitsplan:") for b in beats for s in b["skills"])),
+        ("no beat names a bare plugin", all(s != "arbeitsplan" for b in beats for s in b["skills"])),
     ]
     for name, ok in checks:
         print(f"  {'ok  ' if ok else 'FAIL'} {name}")

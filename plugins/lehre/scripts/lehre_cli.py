@@ -159,6 +159,48 @@ def cmd_validate(args) -> int:
     return EXIT_OK
 
 
+def persist_gauge(root: str, result: dict) -> str | None:
+    """Write this sweep's findings and a run record under .lehre/gauge/<runId>/.
+
+    The gauge used to print its findings and keep nothing, so no later step could
+    say what a sweep found or compare two sweeps. It still changes no source file;
+    `.lehre/` is in SKIP_DIRS, so a record is never swept as code. The record is
+    GUARDED: below Python 3.11 (run_record's floor, which lehre never declared),
+    or on any write error, the sweep still reports -- only the record is lost,
+    with one note saying so.
+    """
+    try:
+        import hashlib
+        from datetime import UTC, datetime
+
+        import run_record  # vendored copy of tools/run-record/run_record.py
+    except (ImportError, SystemExit) as exc:
+        print(f"note: gauge record not written ({exc})", file=sys.stderr)
+        return None
+    body = json.dumps(result, indent=2, sort_keys=True)
+    # Stamp + pid + content hash: two sweeps in the same second with the same
+    # findings got the same id, and the second record was refused by O_EXCL.
+    run_id = (f"gauge-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}-"
+              f"{hashlib.sha256(body.encode()).hexdigest()[:6]}")
+    directory = os.path.join(root, ".lehre", "gauge", run_id)
+    try:
+        run = run_record.open_run("lehre", run_id, directory=run_record.Path(directory))
+        with open(os.path.join(directory, "findings.json"), "x", encoding="utf-8") as fh:
+            fh.write(body + "\n")
+        ev = {"trace_id": run_id, "parent_span_id": f"{run_id}.root", "span": "phase gauge", "node_id": "gauge"}
+        run.append({**ev, "span_id": f"{run_id}.gauge.opened", "status": "opened"})
+        blocking = sum(1 for v in result["violations"] if v.get("severity") == "blocking")
+        run.append({**ev, "span_id": f"{run_id}.gauge.closed", "status": "closed", "detail": {
+            "violations": len(result["violations"]), "blocking": blocking,
+            "sweep_complete": result["sweep_complete"], "files_swept": result["files_swept"],
+            "findings": "findings.json"}})
+        run.finish({"violations": len(result["violations"]), "blocking": blocking})
+    except (OSError, ValueError, run_record.RecordError) as exc:
+        print(f"note: gauge record not written ({exc})", file=sys.stderr)
+        return None
+    return os.path.relpath(directory, root)
+
+
 def cmd_gauge(args) -> int:
     root = os.path.abspath(args.root)
     data = load_or_die(args.ruleset or default_ruleset(root))
@@ -213,19 +255,21 @@ def cmd_gauge(args) -> int:
                 # and collapsing the two is how a sweep quietly under-reports.
                 unparseable.append(f"{path} (rule {rule['id']})")
 
+    result = {
+        "violations": [v.as_dict() for v in violations],
+        "unevaluated_unparseable": sorted(set(unparseable)),
+        "unevaluated_rules": unevaluated_rules,
+        "unreadable_files": unreadable_files,
+        "unreadable_directories": unreadable,
+        "needs_judgement_pass": judgement,
+        "sweep_complete": not (unreadable or unevaluated_rules
+                               or unreadable_files or unparseable),
+        "files_swept": len(paths),
+        "rules_applied": len(wanted),
+    }
+    record_path = persist_gauge(root, result)
     if args.json:
-        print(json.dumps({
-            "violations": [v.as_dict() for v in violations],
-            "unevaluated_unparseable": sorted(set(unparseable)),
-            "unevaluated_rules": unevaluated_rules,
-            "unreadable_files": unreadable_files,
-            "unreadable_directories": unreadable,
-            "needs_judgement_pass": judgement,
-            "sweep_complete": not (unreadable or unevaluated_rules
-                                   or unreadable_files or unparseable),
-            "files_swept": len(paths),
-            "rules_applied": len(wanted),
-        }, indent=2))
+        print(json.dumps({**result, "record": record_path}, indent=2))
     else:
         for violation in violations:
             print(violation)
@@ -251,6 +295,8 @@ def cmd_gauge(args) -> int:
                  if unreadable else "")
               + (f"; {len(judgement)} rule(s) need a judgement pass (dispatch violation-auditor)"
                  if judgement else ""))
+        if record_path:
+            print(f"recorded: {record_path}")
     return (EXIT_VIOLATIONS
             if (violations or unparseable or unreadable
                 or unevaluated_rules or unreadable_files)

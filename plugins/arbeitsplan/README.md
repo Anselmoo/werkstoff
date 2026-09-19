@@ -117,14 +117,37 @@ by intent.
 > proves the environment can authenticate with one cheap call, then runs it — one fresh
 > process per cell, with a real per-cell `--model`.
 
+##### Find out where to even start
+
+````prompt
+"which workflow fits fixing this bug, what do I need to install, and should I use plan mode?"
+````
+
+> Triggers `arbeitsplan-start`: matches the task to one of the four approved workflows in
+> `references/approved-workflows.md`, names the plugins still missing with their exact
+> install command, and states the permission mode to run in. Recommend-only — it never
+> installs anything or writes `workflow.json` itself. "No fit" is a valid answer.
+
+##### Decide how the work should run
+
+````prompt
+"should this run as a workflow of parallel agents, a matrix of fresh processes, or just in this session?"
+````
+
+> Triggers `arbeitsplan-backend`: walks the decision table in
+> `references/backend-selection.md` and returns the `backend` object `workflow.json` needs —
+> the kind, the table rows that chose it, and the acknowledged gap when it is `workflow`.
+> Refuses `workflow` for any phase that writes the shared tree. Recommend-only.
+
 ##### Find out why something was refused
 
 ````prompt
 "the swarm just stopped and said the contract is wrong — what happened?"
 ````
 
-> Triggers `arbeitsplan-status`: phases done, candidate outcomes, referee verdicts, budget
-> used, and whether a lock is still open.
+> Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt
+> with its reason, refuted candidates, open doubts, budget used, whether a lock is still open —
+> and quotes the single next command.
 
 ## The two inversions
 
@@ -153,9 +176,52 @@ a batch that has started failing, and fires one full expensive batch too late.
 | `accepted × 3 < measured × 2` | under two thirds usable | **contract problem** — *the correct response is a better contract, not more agents* |
 | no candidate accepted | all N failed the same way | **halt and surface** — never re-dispatch |
 
+## The run directory is the plan of record
+
+The plan is a file the compiler writes once; until this release the *execution* was a chat
+transcript, so a halted run looked exactly like an abandoned one and no run could be resumed.
+Now both live on disk, each written by code:
+
+```
+analysis/arbeitsplan/<runId>/
+  workflow.json         the plan — immutable after compile         compile_spec.py
+  run.jsonl             the execution — append-only, span-shaped   record_event.py, worktree_pool.py
+  candidates/<id>.json  one file per candidate, written once       record_event.py
+  referee/<id>.json     one file per verdict, written once         record_event.py
+  phases/<id>.json      a plan-mode phase's output                 record_event.py
+  landed.json           what landed, with divergedFrom if edited   land_candidate.py
+  dispatch/<sha>.json   the re-dispatch ledger                     arbeitsplan_guard.py
+```
+
+`run.jsonl`'s events carry OpenTelemetry-GenAI-shaped ids (`trace_id`, `span_id`,
+`parent_span_id`, `span`, `node_id`) with no OTel dependency, and a status from a closed set
+— `proposed | accepted | refuted | doubt` plus lifecycle states. A losing candidate stays in
+the record as `refuted`; a `doubt` must carry `resolves_if`. The writer is
+`tools/run-record/run_record.py`, vendored here as `scripts/run_record.py`.
+
+Three refusals make the record load-bearing rather than a log nobody writes:
+`worktree_pool.py close` refuses a phase that recorded no terminal event (`--halt "<reason>"`
+records one); a `Stop` hook refuses **one** completion while an armed phase is unrecorded; and
+`reconcile.py` joins every acceptance id to recorded evidence, running each check itself with
+`--run-checks` rather than trusting the referee's transcript.
+
+## Backends, and the plan-node stop
+
+`backend` is an object — `{kind, why[], acknowledgedGaps[]}` — and `arbeitsplan-backend` picks
+it from `references/backend-selection.md`. Under `workflow`, `workflows/run.js` executes
+`spec.phases` itself, counts the dispatch budget in code (no hook sees a Workflow dispatch),
+and **halts before every `mode: "plan"` phase** with `pending_plan_node`: with a run-scope
+lock open, plan mode has no legal write. `worktree_pool.py open` refuses a plan-mode phase
+for the same reason. The compiler refuses `workflow` for any phase that writes the shared
+tree; candidates return diffs as data and the session lands one with `land_candidate.py`.
+
+`scripts/test_run_workflow.js` executes `run.js` against stub hooks — no tokens — and then
+sabotages it nine ways; each planted defect must turn the suite red.
+
 ## Hooks
 
-One `PreToolUse` hook, `type: "command"`, matching `Skill|Task|Agent|Write|Edit|MultiEdit`.
+A `PreToolUse` hook, `type: "command"`, matching `Skill|Task|Agent|Write|Edit|MultiEdit`, and
+a `Stop` hook (below).
 Never `type: "prompt"` — a prompt hook asks a model to decide, and a model asked whether it
 may retry is the thing being governed.
 
@@ -175,7 +241,12 @@ its gate; parallel writers are exactly the case that breaks repo-level gating, a
 writers are this plugin's premise.
 
 **Inert** unless `analysis/arbeitsplan/run_scope.json` exists. **Fail-closed** past that
-point.
+point. **Python ≥ 3.11**, checked once a run is in flight: below it the guard denies naming
+the version it found, instead of failing on the first 3.11-only call with a bare traceback.
+
+The `Stop` hook refuses one completion while the armed phase has recorded no terminal event
+in `run.jsonl`, naming the two legal moves. It never blocks twice — `stop_hook_active` allows
+— so it cannot trap a session.
 
 ## The matrix backend
 
@@ -267,8 +338,21 @@ python3 plugins/arbeitsplan/scripts/compile_spec.py --selftest
 python3 plugins/arbeitsplan/scripts/emit_beats.py --selftest
 python3 plugins/arbeitsplan/scripts/worktree_pool.py selftest
 python3 plugins/arbeitsplan/scripts/land_candidate.py --selftest
-node --check plugins/arbeitsplan/workflows/run.js
+python3 plugins/arbeitsplan/scripts/run_record.py selftest
+python3 plugins/arbeitsplan/scripts/record_event.py selftest
+python3 plugins/arbeitsplan/scripts/reconcile.py --selftest
+python3 plugins/arbeitsplan/scripts/sample_rederive.py --selftest
+python3 plugins/arbeitsplan/scripts/sweep_artifacts.py --selftest
+python3 plugins/arbeitsplan/scripts/check_contract_sync.py --selftest
+python3 plugins/arbeitsplan/hooks/test_record_stop_guard.py
+node plugins/arbeitsplan/scripts/test_run_workflow.js
+bash scripts/ci/check-js-syntax.sh
 ```
+
+`node --check` is gone from this list on purpose. Under Node's module auto-detection,
+`export const meta` makes it parse a workflow as an ES module, where the top-level `return`
+every correct workflow carries is illegal — all fifteen failed under Node 26 without a file
+changing. `check-js-syntax.sh` parses the body as the runtime does, as an async function.
 
 `test_arbeitsplan_guard.py` is sabotage-tested, and the sabotages are worth running rather
 than trusting — each is named in its docstring. Make `dispatch_signature` return a constant

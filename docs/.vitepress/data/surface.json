@@ -90,6 +90,11 @@
       "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm — N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted — and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and — only behind an explicit approval gate — to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
       "skills": [
         {
+          "id": "arbeitsplan:arbeitsplan-backend",
+          "name": "arbeitsplan-backend",
+          "description": "Decides whether a compiled arbeitsplan run executes in-session, as a headless matrix of fresh claude -p processes, or inside the Workflow tool, and emits the checked backend object workflow.json requires. Use when the user asks whether to run something as a workflow or a matrix, whether a job should run in parallel agents or in this session, or why a run had to be forced into one. Recommend-only. For which pattern fits, hand off to arbeitsplan-patterns; for which of the four approved workflows applies, to arbeitsplan-start."
+        },
+        {
           "id": "arbeitsplan:arbeitsplan-compile",
           "name": "arbeitsplan-compile",
           "description": "Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at compass when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md."
@@ -115,12 +120,27 @@
           "description": "Executes a compiled workflow as a redundant swarm — N candidates over the same scope in their own git worktrees, judged blind, exactly one landed. Use after arbeitsplan-compile, or when the user asks to run the workflow, start the swarm, or build several versions and pick one. Halts and surfaces rather than retrying when candidates fail; convergence comes from widening, never from repeating. Writes only inside candidate worktrees until the landing step."
         },
         {
+          "id": "arbeitsplan:arbeitsplan-start",
+          "name": "arbeitsplan-start",
+          "description": "Names which of four approved workflows fits a stated task, the plugins to install for it, and the permission mode to run it in — and says plainly when none of the four fits. Use when the user asks where to start, which workflow or plugin combination applies, whether to use plan mode or auto mode for something, what to install before beginning, or how to combine werkstoff's plugins for a build, an unfamiliar-repo read, a bug fix, or a UI/plugin review. Recommend-only — it never installs anything, writes workflow.json, or changes permission mode itself."
+        },
+        {
           "id": "arbeitsplan:arbeitsplan-status",
           "name": "arbeitsplan-status",
-          "description": "Read-only report on an arbeitsplan run that has already started — phases done, candidates built, referee verdicts, dispatch budget used, and whether a lock is open. Use when the user asks how the run is going, what the swarm decided, why something was denied, or what is still holding a lock. Advances nothing and writes nothing."
+          "description": "Read-only report on an arbeitsplan run that has already started — phases done, candidates built and refuted, referee verdicts, open doubts, halts with their reasons, dispatch budget used, whether a lock is open, and the single next command. Use when the user asks how the run is going, what the swarm decided, why it stopped, how to resume it, why something was denied, or what is still holding a lock. Advances nothing and writes nothing."
         }
       ],
       "agents": [
+        {
+          "id": "arbeitsplan:adjudicator",
+          "name": "adjudicator",
+          "description": "Use this agent for the final plan-mode ADJUDICATE phase of an arbeitsplan run — it reads the whole round (contract, candidates, blind verdicts, synthesis) and decides whether the round established what the contract asked, owning the cannotEstablish list. Typical triggers include arbeitsplan-run reaching ADJUDICATE (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a review of a halted run before deciding to re-compile. Never overturns a referee verdict — a disagreement is recorded as doubt with what would resolve it. Never writes code; landing belongs to the session and land_candidate.py. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
         {
           "id": "arbeitsplan:candidate-builder",
           "name": "candidate-builder",
@@ -146,6 +166,51 @@
           ]
         },
         {
+          "id": "arbeitsplan:cleaner",
+          "name": "cleaner",
+          "description": "Use this agent to PROPOSE a removal set for an arbeitsplan run — dead files, orphaned fixtures, stale analysis/arbeitsplan run directories, leftover worktrees and branches — each path with evidence that nothing reaches it. Typical triggers include a cleanup phase after a landing, and a sweep before release. Read-only by design, it proposes, and scripts/sweep_artifacts.py (dry-run by default) performs the removal after a human approves. Never dispatched to restructure (refactorer) or to implement (implementer). See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "arbeitsplan:contract-author",
+          "name": "contract-author",
+          "description": "Use this agent to turn an arbeitsplan INVENTORY into the acceptance contract every later phase runs under — criteria with runnable checks, plus the cannotCheck list of what no check can decide — BEFORE any candidate exists. Typical triggers include arbeitsplan-run reaching a plan-mode CONTRACT phase (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a re-contract after a CONTRACT PROBLEM halt. Never writes code, and is never dispatched once candidates exist, because authoring a check after seeing what it will grade is retuning an oracle to its subject. Hands the contract to candidate-builder and candidate-referee; scope stays with scope-prover. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "arbeitsplan:implementer",
+          "name": "implementer",
+          "description": "Use this agent for a single-writer arbeitsplan phase that implements one scoped change against a fixed contract — one writer, one worktree, one diff returned as data. Typical triggers include a compiled phase with kind single-writer and agentType arbeitsplan:implementer, where the work has one correct answer and a deterministic check, so N redundant candidates would buy N diffs and one decision the check already made. Refuses fan-out (N writers over one scope is best-of-n with candidate-builder) and refuses to widen writeScope. Hands its diff to the landing step; behaviour-preserving restructuring goes to refactorer, removals to cleaner. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash",
+            "Write",
+            "Edit"
+          ]
+        },
+        {
+          "id": "arbeitsplan:inventory-extractor",
+          "name": "inventory-extractor",
+          "description": "Use this agent to extract every item of one kind from ONE source partition of an arbeitsplan read-only fan-out — the map half of map-reduce-disjoint — returning a complete list with stable ids and paths, or an explicit truncation marker. Typical triggers include workflows/run.js dispatching one extractor per partition of a fanout-readonly phase, and the seeded re-derivation that extracts a sampled partition a second time, blind to the first answer. One partition per dispatch; never summarises, never judges what it found. Hands its list to contract-author, which reads it; never dispatched to decide scope (scope-prover) or pattern (pattern-researcher). See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
           "id": "arbeitsplan:pattern-researcher",
           "name": "pattern-researcher",
           "description": "Use this agent to propose which agentic pattern fits a stated problem, grounded first in the frozen catalog at references/patterns.md and only then in outside sources. Typical triggers include arbeitsplan-patterns being asked what shape a problem should be run in, arbeitsplan-compile needing a pattern for one phase, and a request to check whether a pattern the user names is actually a good fit. Returns proposals with citations; it never writes workflow.json and never edits the catalog. A pattern the catalog marks rejected is never proposed, whatever an outside source says. See \"When to invoke\" in the agent body for worked scenarios.",
@@ -158,6 +223,19 @@
           ]
         },
         {
+          "id": "arbeitsplan:refactorer",
+          "name": "refactorer",
+          "description": "Use this agent for a single-writer arbeitsplan phase that restructures code WITHOUT changing behaviour — rename, extract, move, inline — proving equivalence by running the same checks before and after. Typical triggers include a compiled phase with agentType arbeitsplan:refactorer after a contract names the structure to reach, and a cleanup phase after a synthesis landed working but tangled code. Refuses any behaviour change and refuses to run inside a fan-out phase (N restructurings of one scope are not comparable). New behaviour goes to implementer, removals to cleaner. See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash",
+            "Write",
+            "Edit"
+          ]
+        },
+        {
           "id": "arbeitsplan:scope-prover",
           "name": "scope-prover",
           "description": "Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Typical triggers include arbeitsplan-compile needing a writeScope for workflow.json, and a map-reduce-disjoint phase needing its disjointness established BEFORE any builder is dispatched. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable. See \"When to invoke\" in the agent body for worked scenarios.",
@@ -166,13 +244,27 @@
             "Glob",
             "Grep"
           ]
+        },
+        {
+          "id": "arbeitsplan:synthesizer",
+          "name": "synthesizer",
+          "description": "Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Typical triggers include workflows/run.js dispatching the SYNTHESIZE phase after a blind referee, and an in-session landing phase compiled with agentType arbeitsplan:synthesizer. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did). See \"When to invoke\" in the agent body for worked scenarios.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash",
+            "Write",
+            "Edit"
+          ]
         }
       ],
       "commands": [],
       "hooks": {
         "present": true,
         "events": [
-          "PreToolUse"
+          "PreToolUse",
+          "Stop"
         ]
       },
       "workflows": [
@@ -709,7 +801,7 @@
         {
           "id": "lehre:lehre-gauge",
           "name": "lehre-gauge",
-          "description": "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Read-only — reports violations, never fixes them."
+          "description": "Use to sweep a codebase against the doctrine in .lehre/ruleset.json and report every violation with file:line, after lehre-codify has written rules. Trigger on 'check this code against our standards', 'where do we violate our own architecture', 'audit for antipatterns', 'gauge this repo', or 'lehre gauge'. Changes no source file — reports violations, never fixes them, and records each sweep under .lehre/gauge/."
         },
         {
           "id": "lehre:lehre-pin",
@@ -984,6 +1076,11 @@
           "id": "nacharbeit:nacharbeit-preflight",
           "name": "nacharbeit-preflight",
           "description": "Use FIRST, before any other nacharbeit skill, to inventory what the target plugin directories contain (skills, agents, hooks, scripts, viewers, manifest, docs wiring), which checkers this environment can run, which other plugins' guard hooks are live in the repository, and whether a nacharbeit fix lock is already open. Trigger on 'what would nacharbeit check here', 'is this plugin ready for a review', 'nacharbeit preflight', or as the automatic first step of nacharbeit-review and nacharbeit-fix. Read-only — writes nothing, grades nothing; grading is nacharbeit-lint and nacharbeit-review."
+        },
+        {
+          "id": "nacharbeit:nacharbeit-probe",
+          "name": "nacharbeit-probe",
+          "description": "Use to measure whether a documented example prompt actually fires the skill it names, by running it headless in fresh claude -p processes — the real answer the review's haiku routing simulation only approximates. Trigger on 'does this prompt actually fire the skill', 'did my description fix work', 'why does this skill never trigger', 're-measure routing after the fix'. Costs real money per cell, so it always dry-runs and states the estimate first. Not for grading prompt quality (nacharbeit-review) or for benchmarking plugin-present versus plugin-absent sweeps (arbeitsplan-matrix)."
         },
         {
           "id": "nacharbeit:nacharbeit-review",
@@ -1264,11 +1361,13 @@
     "andon:andon-propose",
     "andon:andon-status",
     "andon:andon-verify",
+    "arbeitsplan:arbeitsplan-backend",
     "arbeitsplan:arbeitsplan-compile",
     "arbeitsplan:arbeitsplan-matrix",
     "arbeitsplan:arbeitsplan-patterns",
     "arbeitsplan:arbeitsplan-preflight",
     "arbeitsplan:arbeitsplan-run",
+    "arbeitsplan:arbeitsplan-start",
     "arbeitsplan:arbeitsplan-status",
     "cli-scaffold:cli-architecture",
     "cli-scaffold:cli-scaffold-compiled",
@@ -1336,6 +1435,7 @@
     "nacharbeit:nacharbeit-fix",
     "nacharbeit:nacharbeit-lint",
     "nacharbeit:nacharbeit-preflight",
+    "nacharbeit:nacharbeit-probe",
     "nacharbeit:nacharbeit-review",
     "nacharbeit:nacharbeit-status",
     "self-assess:self-assess-arch-health",
@@ -1360,10 +1460,17 @@
     "andon:andon-challenger",
     "andon:andon-defender",
     "andon:andon-verifier",
+    "arbeitsplan:adjudicator",
     "arbeitsplan:candidate-builder",
     "arbeitsplan:candidate-referee",
+    "arbeitsplan:cleaner",
+    "arbeitsplan:contract-author",
+    "arbeitsplan:implementer",
+    "arbeitsplan:inventory-extractor",
     "arbeitsplan:pattern-researcher",
+    "arbeitsplan:refactorer",
     "arbeitsplan:scope-prover",
+    "arbeitsplan:synthesizer",
     "cli-scaffold:cli-scaffold-verifier",
     "codebase-consistency:align-executor",
     "codebase-consistency:consistency-critic",

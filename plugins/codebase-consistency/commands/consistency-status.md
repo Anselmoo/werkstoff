@@ -31,6 +31,20 @@ inspect, never modify.
 - `VERIFICATION.md` older than its phase's `ALIGN_NOTES.md` → re-run
   `/consistency-verify` for that phase.
 
+## 2b — How each stage ended
+
+An artifact's presence says a stage wrote something; it does not say the stage finished.
+Read the record, which each stage writes when it closes or stops:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" status --area $1
+```
+
+A `halted` stage outranks its artifacts: report the halt and its reason first — an
+`ALIGN_NOTES.md` from a fan-out the circuit breaker stopped is a partial record, not a
+completed stage. No `run.jsonl` means the area predates the record; say so and fall back
+to the inventory above.
+
 ## 3 — Verdict
 
 End with three lines:

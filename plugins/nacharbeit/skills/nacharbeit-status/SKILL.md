@@ -40,7 +40,15 @@ nacharbeit status — state analysis/nacharbeit
   fix pass 2026-09-09T07:02:11Z (review 2026-09-09T06:12:04Z): 41 file(s), 9 excluded
   post-fix check 2026-09-09T07:41:50Z: 1 failed post-check(s) or a moved contract; lock released: False
   fix lock OPEN (50 files, age 9.3 h, STALE) — every edit outside it is denied; release with: python3 plugins/nacharbeit/scripts/post_fix_check.py --release-lock
+  declined: 5 verified finding(s) whose fix would make the component worse (kept, never backlog)
+  gate --fail-on-severity blocker,major: 2 matching finding(s)
+    [major] Q-ROUTE-MISS plugins/compass/skills/compass-clarify-scope/SKILL.md
+    [blocker] S-JS-SYNTAX plugins/x/workflows/y.js
 ```
+
+As a CI gate, `--fail-on-severity blocker,major` exits 1 when a verified or lint finding
+carries one of those severities, and 2 on an unknown severity — a typo never gates on
+nothing and passes.
 
 ## Rules
 

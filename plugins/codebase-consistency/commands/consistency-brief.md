@@ -101,6 +101,25 @@ Approved by: ________________  Date: __________
 Approval covers: Phase 1 only | Full plan
 ```
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage brief --status closed
+```
+
+If it stopped instead — the brief could not be approved, or an input artifact is missing — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage brief --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Present
 
 Present a summary and **stop — write nothing further until the user

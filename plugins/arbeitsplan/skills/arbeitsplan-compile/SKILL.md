@@ -44,10 +44,20 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    `references/patterns.md`'s machine-readable index. An unknown id is rejected, never
    improvised.
 
-7. **Set the budget.** `totalDispatches` must be at least the sum of every phase's `fanOut`.
+   Give **every** phase `modelTier`, `mode` (`auto`, or `plan` for a planning phase) and
+   `writes` (`worktree` for builders, `none` for referees and extractors, `shared` only for an
+   in-session landing), plus a namespaced `agentType`. All four are required: an omitted
+   value inherits the session's, and an inherited plan mode is how four builders became
+   UNMEASURED in the run that added these keys.
+
+7. **Choose the backend.** Invoke `arbeitsplan-backend`, which walks
+   `references/backend-selection.md`'s table and returns `{kind, why[], acknowledgedGaps[]}`.
+   Never write a bare string and never a free-text `why` — both are rejected.
+
+8. **Set the budget.** `totalDispatches` must be at least the sum of every phase's `fanOut`.
    This is the ceiling the hook enforces; the run cannot raise it, only a re-compile can.
 
-8. **Write the spec.**
+9. **Write the spec.**
 
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --out analysis/arbeitsplan --write
@@ -55,7 +65,7 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
 
    It validates before writing and names the offending key on refusal.
 
-9. **Emit the takt beats — behind an approval gate.**
+10. **Emit the takt beats — behind an approval gate.**
 
    Ordering belongs to `takt`, not to this plugin's hook. But writing `.claude/takt.local.md`
    makes takt **live and fail-closed** in this repository, so it is the user's decision, not
@@ -90,10 +100,11 @@ arbeitsplan compile — run ap-2026-09-12-a3f1
   scope        src/api/search.py, src/api/limits/**, tests/test_ratelimit.py
   acceptance   3 criteria, 3 with runnable checks
   budget       9 dispatches / 25 min
-  phases       build (best-of-n, fanOut 3, sonnet) -> referee (blind-referee, 3, sonnet)
-               -> land (select-then-synthesize, 1 writer)
+  phases       build (best-of-n, fanOut 3, sonnet, auto, writes worktree)
+               -> referee (blind-referee, 3, sonnet, auto, writes none)
+               -> land (select-then-synthesize, 1, sonnet, auto, writes shared)
   delegates    compass:compass-explore-branches (installed) -> beat branches-explored
-  backend      in-session
+  backend      in-session  (why: writes-shared-tree)
 
 wrote analysis/arbeitsplan/ap-2026-09-12-a3f1/workflow.json
 takt beats NOT written — approval required. Writing them makes takt live and
@@ -121,3 +132,4 @@ arbeitsplan compile — REFUSED
 - `references/patterns.md` — the accepted patterns, and the rejected ones with the
   measurement that rejected them.
 - `references/candidate-contract.md` — what the phases you compile will actually exchange.
+- `references/backend-selection.md` — the backend decision table, via `arbeitsplan-backend`.

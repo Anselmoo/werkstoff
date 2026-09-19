@@ -43,7 +43,9 @@ Contract (Claude Code's PreToolUse hook protocol):
 Inert unless analysis/arbeitsplan/run_scope.json exists. Fail-closed past that.
 Escape hatch: ARBEITSPLAN_DISABLE_GUARD=1.
 
-STDLIB ONLY -- it must run under a bare system python3 on any machine.
+STDLIB ONLY. Python >= 3.11, CHECKED once a run is in flight: below it the guard
+denies with the version it found, instead of failing on the first 3.11-only call
+(datetime.UTC in _iso_now) and denying with nothing but a traceback.
 """
 
 from __future__ import annotations
@@ -85,6 +87,7 @@ except Exception as _exc:
 
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
+MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = (
     "Set ARBEITSPLAN_DISABLE_GUARD=1 to bypass this guard, or close the run "
@@ -259,6 +262,17 @@ def main() -> NoReturn:
     if not lock_path.is_file():
         allow()  # inert: no arbeitsplan run is in flight
 
+    # The declared floor, checked rather than assumed. A hook runs under whatever
+    # python3 is on PATH -- a stock macOS ships 3.9 -- and below the floor this
+    # guard used to deny delegation cases with nothing but a traceback to explain
+    # why. Past the inert check, so a repository with no run in flight never pays.
+    if sys.version_info < MIN_PYTHON:
+        deny(
+            f"arbeitsplan needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
+
     # Past this point a run is in flight, so errors deny rather than allow.
     try:
         lock = json.loads(lock_path.read_text(encoding="utf-8"))
@@ -430,6 +444,22 @@ def main() -> NoReturn:
                         f"a merge conflict possible again. {ESCAPE_HATCH}"
                     )
                 cwd_real = os.path.realpath(cwd)
+                # Plan mode's one legal write is its plan file, under ~/.claude/plans/.
+                # With a run-scope lock open that write is denied here and every other
+                # write is denied by plan mode, so the session has NO legal move --
+                # reproduced in under a second. The generic message below named no way
+                # out; this one names the move: close the lock, run the plan-mode phase,
+                # re-open. worktree_pool.py open refuses a plan-mode phase for the same
+                # reason, so a compiled run never reaches this state on purpose.
+                if f"{os.sep}.claude{os.sep}plans{os.sep}" in target_real + os.sep and not (
+                        target_real.startswith(cwd_real + os.sep)):
+                    deny(
+                        f"arbeitsplan: '{target}' is a plan-mode plan file, written while run "
+                        f"'{run_id}' holds the run-scope lock (phase '{phase}'). Plan mode "
+                        f"and an open lock leave no legal write. Close the lock first -- "
+                        f"`python3 plugins/arbeitsplan/scripts/worktree_pool.py close` -- run "
+                        f"the plan-mode phase, then re-open the next phase. {ESCAPE_HATCH}"
+                    )
                 if not (target_real == cwd_real or target_real.startswith(cwd_real + os.sep)):
                     deny(
                         f"arbeitsplan: '{target}' resolves to '{target_real}', outside the "

@@ -1,0 +1,11 @@
+.card {
+  background: #fafafa;
+  color: #999999;
+  border-radius: 7px;
+  padding: 11px;
+  font-family: Helvetica, sans-serif;
+  width: 320px;
+}
+.symbol { font-size: 41px; color: #a0a0a0; }
+.name { font-size: 19px; }
+.more { background: #efefef; color: #b0b0b0; border-radius: 3px; }

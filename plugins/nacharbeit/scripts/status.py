@@ -8,7 +8,9 @@ and lint counts), the backlog by tier with every opus- and human-tier entry verb
 its post-check result, and an open lock with its age.
 
 Usage: status.py [--state-dir analysis/nacharbeit] [--format text|json]
-Exit: 0 printed (an empty state directory is a valid status); 2 bad arguments.
+                 [--fail-on-severity blocker,major]
+Exit: 0 printed (an empty state directory is a valid status); 1 --fail-on-severity
+matched a verified or lint finding; 2 bad arguments (including an unknown severity).
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+SEVERITIES = {"blocker", "major", "minor", "nit"}
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
@@ -42,8 +45,17 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="nacharbeit status (read-only).")
     ap.add_argument("--state-dir", type=Path, default=None)
     ap.add_argument("--format", choices=["text", "json"], default="text")
+    ap.add_argument("--fail-on-severity", default="",
+                    help="comma-separated severities (blocker,major,minor,nit); exit 1 when a verified "
+                         "review finding or a lint finding carries one. Declined findings never gate.")
     a = ap.parse_args(argv)
     state = nc.state_dir(a.state_dir)
+    gate = {s.strip() for s in a.fail_on_severity.split(",") if s.strip()}
+    unknown = gate - SEVERITIES
+    if unknown:
+        # A typo'd severity must not gate on nothing and report success.
+        print(f"unknown severity {sorted(unknown)}; allowed: {sorted(SEVERITIES)}", file=sys.stderr)
+        return 2
 
     lint, run, synth = load(state, "lint.json"), load(state, "run.json"), load(state, "synthesis.json")
     fix_args, fix_check = load(state, "fix-args.json"), load(state, "fix-check.json")
@@ -87,9 +99,17 @@ def main(argv: list[str] | None = None) -> int:
     else:
         out["fixLock"] = {"open": False}
 
+    findings = load(state, "findings.json")
+    gated: list = []
+    if findings and "_error" not in findings:
+        out["declined"] = len(findings.get("declined", []))
+        if gate:
+            gated = [f for f in findings.get("verified", []) + findings.get("lint", []) if f.get("severity") in gate]
+    out["gate"] = {"severities": sorted(gate), "matched": len(gated)}
+
     if a.format == "json":
         print(json.dumps(out, indent=1, ensure_ascii=False))
-        return 0
+        return 1 if gated else 0
 
     print(f"nacharbeit status — state {state.as_posix()}")
     if failed:
@@ -126,7 +146,13 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  fix lock OPEN ({lk['files']} files, age {lk['ageHours']} h{', STALE' if lk['stale'] else ''}) — every edit outside it is denied; release with: python3 plugins/nacharbeit/scripts/post_fix_check.py --release-lock")
     else:
         print("  fix lock: none open")
-    return 0
+    if out.get("declined"):
+        print(f"  declined: {out['declined']} verified finding(s) whose fix would make the component worse (kept, never backlog)")
+    if gate:
+        print(f"  gate --fail-on-severity {','.join(sorted(gate))}: {len(gated)} matching finding(s)")
+        for f in gated[:10]:
+            print(f"    [{f.get('severity')}] {f.get('rule_id')} {f.get('file')}")
+    return 1 if gated else 0
 
 
 if __name__ == "__main__":

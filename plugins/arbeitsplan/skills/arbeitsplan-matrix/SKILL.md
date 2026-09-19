@@ -79,6 +79,17 @@ Two honest caveats that survive the change:
   surface — the runner rejects it and says so. `disallowed_tools` restricts; `expected_tools`
   is the assertion that actually gates.
 - **Never quote a pass rate over a sweep with unmeasured cells** without saying how many.
+- **Reach for `runner: "subrun"` when a cell needs real isolated-testing evidence**, not just an
+  exit code: a fixture to run against, `expect_skills`/`forbid_skills` to assert against, or a
+  transcript to parse for `skills_fired`/`hook_denials`/`cost_usd`. It changes nothing about a
+  matrix that does not set it — `run_matrix.sh --selftest` asserts the legacy argv stays
+  byte-identical.
+- **A logged-out CLI is reported by name, never inferred from a banner.** `subrun.py` asks
+  `claude auth status` before every cell; `loggedIn: false` is *"run `claude auth login`"* and
+  exits 3, not a guess read off `OAuth session expired`.
+- **The isolation self-check is not optional once `runner: "subrun"` is set.** A sentinel call
+  per arm asks the model to list its skills; a name outside that arm's `--plugin-dir` set makes
+  the cell `UNMEASURED`, named — this is the matrix verifying its own clean box, automatically.
 
 ## Output format
 
@@ -123,6 +134,10 @@ arbeitsplan matrix results — ap-2026-09-12-a3f1
 
 ## Resources
 
-- `references/matrix-schema.md` — the schema, the two ablation modes, the five outcomes, and
-  why `--allowedTools` is refused.
+- `references/matrix-schema.md` — the schema, the two ablation modes, the five outcomes,
+  why `--allowedTools` is refused, and the `subrun` runner (auth preflight, clean box,
+  isolation self-check, fixture seeding, transcript parsing, `score_cell()`).
 - `scripts/run_matrix.sh` — the runner; `--help` for its flags, `--selftest` to validate.
+  Orchestration and argv assembly live here regardless of `runner`.
+- `scripts/subrun.py` — the thin per-cell executor behind `runner: "subrun"`. `--selftest`
+  exercises its oracle, transcript parsing, clean box and auth preflight in isolation.

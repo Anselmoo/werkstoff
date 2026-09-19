@@ -73,8 +73,10 @@ not is a reviewer with an unknown false-negative rate, and its output is an opin
 nacharbeit review 2026-09-09T06:12:04Z · rubric 3f9c1a2b7d0e · 3 plugins, 19 batches, 20 fixtures (kinds: assets, docs, hooks, manifest, scripts, skills)
 calibration: r1 recall 0.76 (min angle 0.40, min family 0.50) → rewrite → r2 recall 0.83 (min angle 0.60, min family 0.67)
 sealed hold-out: 0.79 overall; Q 0.81, HQ 0.75, SQ 0.67, AQ 0.75, PQ 0.80, DQ 1.00 — every family above its floor, finder frozen
-router proxy: 0.97 top-1 on 70 known-answer prompts → collisions are measured (24 pairs judged)
-raw 312 → verified 164 (+9 from the critic round); lint 41
+router proxy: 0.97 top-1 on 70 known-answer prompts → collisions are measured (24 pairs judged); routing handed to the finders
+routing findings: 3 Q-ROUTE-MISS, 1 Q-CANN-CAPTURE (produced in code from the simulation)
+raw 312 → verified 164 (+9 from the critic round); declined 5 (fix would make it worse); lint 41
+uncalibrated kinds: agents, commands, workflows — their findings carry calibrated:false
 
   plugin   verdict      verified  lint  summary
   andon    needs-work   38        9     andon-loop's argument-hint promises a filter no phase reads; …
@@ -100,6 +102,14 @@ next: nacharbeit-fix applies the haiku and sonnet tiers under the lock; the four
 - **Never grade a kind that has no sealed fixture.** `build_args.py` refuses; do not
   remove the fixture requirement to make it pass.
 - **Read the transcript of any single-pass surprise** before believing a tally.
+- **Routing below 0.8 is hints, and says so.** The review then emits no `Q-ROUTE-MISS` or
+  `Q-CANN-CAPTURE` and records them under `routing.rulesSkipped`; report that, never a rate.
+- **A `Q-ROUTE-MISS` fix is verified by re-measurement in a fresh process**, never by
+  re-reading the description: definitions load once per session.
+- **Declined findings are not backlog.** Report their count; never hand them to
+  `nacharbeit-fix`.
+- **`calibrated: false` is said aloud.** A finding from a kind with no fixture pair of its own
+  is reported as uncalibrated, not merged into the calibrated tally.
 
 ## Resources
 

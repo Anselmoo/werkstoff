@@ -4,6 +4,38 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `Q-ROUTE-MISS` and `Q-CANN-CAPTURE`, produced in code from the routing simulation — the
+  misroute it always computed and discarded is now a finding, and a handoff that still loses
+  its own documented prompts to the sibling it names is no longer excused.
+- `nacharbeit-probe` and `scripts/trigger_probe.py`: run a documented prompt headless in
+  fresh processes and record which skill fired — fired, captured (named), silent, UNSTABLE,
+  UNMEASURED — with `--routing` comparing the simulation against reality. Cells run through
+  `scripts/subrun.py`, vendored from `tools/subrun/` and shared with arbeitsplan.
+- `scripts/route_sim.py` runs only the review's haiku routing simulation, headless, reading
+  `ROUTE_PROMPT`/`ROUTE_SCHEMA` out of `review.js` so it cannot drift; `trigger_probe.py`
+  gains a `werkstoff` arm (every plugin in a clean box — the simulation's own corpus) and
+  `--prompts FILE` for a sample chosen outside the prober.
+- `post_fix_check.py --probe MODEL` re-measures routing-family fixes; without it the
+  re-measurement is recorded as `pending` with its command.
+- `status.py --fail-on-severity blocker,major` for CI (exit 1 on a match, 2 on an unknown
+  severity).
+- `scripts/test_review_routing.js` executes `review.js` against stub hooks and sabotages its
+  routing behaviour seven ways.
+
+### Changed
+- Routing votes are awaited **before** the finders and handed to them, labelled `MEASURED`
+  or `HINTS ONLY` by the 0.8 floor; only the opus pair judging stays concurrent. Below the
+  floor the routing rules are recorded under `routing.rulesSkipped`, never emitted.
+- Findings whose fix would make the component worse are `declined`: kept on disk, never
+  backlog. Findings from a kind with no fixture pair of its own carry `calibrated: false`.
+- `H-DENY-SHAPE` and `H-FAIL-CLOSED` accept a `Stop` hook's `{"decision": "block"}` and
+  `block()`.
+
+### Fixed
+- `S-JS-SYNTAX` parses a workflow as the runtime does, not with `node --check`, which under
+  Node's module auto-detection rejected every correct workflow.
+
 ## [0.3.0] - 2026-09-12
 ### Added
 - `S-WF-SHAPE` (blocker) — a `workflows/*.js` file must carry a top-level `return`. The

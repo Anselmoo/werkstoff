@@ -295,10 +295,18 @@ def main(argv: list[str] | None = None) -> int:
     if uncalibrated:
         print(f"ERROR: batch kind(s) {uncalibrated} have no tuning + sealed fixture pair; a finder cannot grade what it was never calibrated on", file=sys.stderr)
         return 1
+    # agents, commands and workflows may be graded without a fixture pair of their
+    # own (the skills calibration covers the Q-* rules they share). That exemption
+    # was silent; it is now carried into args, and every finding from such a batch
+    # is labelled calibrated:false in the results instead of reading as calibrated.
+    exempted = sorted((kinds_reviewed - kinds_calibrated) & {"agents", "commands", "workflows"})
+    if exempted:
+        print(f"  note: kind(s) {exempted} have no fixture pair of their own; their findings are labelled calibrated:false")
 
     args = {
         "runStamp": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "rubricHash": rubric_hash,
+        "uncalibratedKinds": exempted,
         "rubric": rubric_text,
         "mechanicalIds": mechanical_ids,
         "judgementIds": judgement_ids,

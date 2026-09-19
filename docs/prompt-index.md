@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 96 in
+Every example prompt shipped by the 12 plugin READMEs, 99 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -63,7 +63,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## arbeitsplan
 
-[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 5 prompts.
+[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 7 prompts.
 
 ### Turn a vague piece of work into something runnable
 
@@ -97,13 +97,29 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 > Triggers `arbeitsplan-matrix`: compiles a `cases × models × plugin_states × repeats` sweep, proves the environment can authenticate with one cheap call, then runs it — one fresh process per cell, with a real per-cell `--model`.
 
+### Find out where to even start
+
+````prompt
+"which workflow fits fixing this bug, what do I need to install, and should I use plan mode?"
+````
+
+> Triggers `arbeitsplan-start`: matches the task to one of the four approved workflows in `references/approved-workflows.md`, names the plugins still missing with their exact install command, and states the permission mode to run in. Recommend-only — it never installs anything or writes `workflow.json` itself. "No fit" is a valid answer.
+
+### Decide how the work should run
+
+````prompt
+"should this run as a workflow of parallel agents, a matrix of fresh processes, or just in this session?"
+````
+
+> Triggers `arbeitsplan-backend`: walks the decision table in `references/backend-selection.md` and returns the `backend` object `workflow.json` needs — the kind, the table rows that chose it, and the acknowledged gap when it is `workflow`. Refuses `workflow` for any phase that writes the shared tree. Recommend-only.
+
 ### Find out why something was refused
 
 ````prompt
 "the swarm just stopped and said the contract is wrong — what happened?"
 ````
 
-> Triggers `arbeitsplan-status`: phases done, candidate outcomes, referee verdicts, budget used, and whether a lock is still open.
+> Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt with its reason, refuted candidates, open doubts, budget used, whether a lock is still open — and quotes the single next command.
 
 ## cli-scaffold
 
@@ -240,7 +256,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ### Clarify a fuzzy scope
 
 ````prompt
-"the scope of this request is fuzzy, help me pin it down first"
+"add caching to the reporting pipeline — the scope is fuzzy, help me pin it down before anything gets built"
 ````
 
 > Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated success criteria before any work starts.
@@ -532,16 +548,18 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ### Start a new project so it cannot drift
 
 ````prompt
-"I'm starting a CLI that ingests CSV from three vendors and writes Parquet. Set it up
-properly — I don't want the usual mess where everything imports everything."
+"I'm starting a CLI that ingests CSV from three vendors and writes Parquet. Set it up properly — I don't want the usual mess where everything imports everything."
 ````
+
+> Triggers `lehre-preflight`: reports blank page versus existing tree, what doctrine the repository already declares, and what lehre can and cannot enforce here — the automatic first step of any lehre pipeline, which then hands a greenfield repo to `lehre-decompose`.
 
 ### Establish and enforce a doctrine on an existing repo
 
 ````prompt
-"research what rules this codebase should follow for its stack, check them against what
-we actually do, and make the important ones actually enforced"
+"research what rules this codebase should follow for its stack, check them against what we actually do, and make the important ones actually enforced"
 ````
+
+> Triggers `lehre-codify`: researches doctrine from external authority plus real repository evidence and writes `.lehre/ruleset.json` as machine-checkable rules. Every rule cites an authority; a rule nobody can justify is refused.
 
 ### Find where the code violates its own architecture
 
@@ -549,17 +567,23 @@ we actually do, and make the important ones actually enforced"
 "where do we violate our own layering, and which of those are real"
 ````
 
+> Triggers `lehre-gauge`: sweeps the tree against `.lehre/ruleset.json` and reports every violation with file:line, keeping "could not be evaluated" separate from "clean", and records the sweep under `.lehre/gauge/`.
+
 ### Make the rules survive without the plugin
 
 ````prompt
 "pin these rules into CI so they still hold when nobody's running Claude"
 ````
 
+> Triggers `lehre-pin`: emits a CI check that runs the doctrine with no agent in the loop, plus behaviour tests around the code that was changed to conform.
+
 ### Ask what is currently blocked
 
 ````prompt
 "lehre status — what can I build next?"
 ````
+
+> Triggers `lehre-status`: which units are validated, blocked or ready, how many rules are in force, and what is denied at write time right now.
 
 ## matrize
 
@@ -623,7 +647,7 @@ we actually do, and make the important ones actually enforced"
 
 ## nacharbeit
 
-[`plugins/nacharbeit/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/nacharbeit/README.md) — 5 prompts.
+[`plugins/nacharbeit/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/nacharbeit/README.md) — 6 prompts.
 
 ### See what a review would measure here
 
@@ -656,6 +680,14 @@ we actually do, and make the important ones actually enforced"
 ````
 
 > Triggers `nacharbeit-fix`: the lock opens, the guard denies everything outside it, each file is reworked and blind-verified, the opus and human entries are listed for you.
+
+### Check that a skill actually fires
+
+````prompt
+"does the documented prompt for compass-clarify-scope actually fire it? measure it, don't guess"
+````
+
+> Triggers `nacharbeit-probe`: dry-runs first with a cost estimate, then runs the prompt headless in fresh processes and reports fired, captured (naming the capturing skill), silent, or UNSTABLE — with the model the rate belongs to.
 
 ### Find out what is waiting on a person
 

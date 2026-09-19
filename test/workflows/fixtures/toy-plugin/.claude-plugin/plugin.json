@@ -1,0 +1,7 @@
+{
+  "name": "toy-check",
+  "version": "0.1.0",
+  "description": "A toy plugin used as a teaching fixture for plugin review.",
+  "author": { "name": "werkstoff fixtures" },
+  "license": "MIT"
+}

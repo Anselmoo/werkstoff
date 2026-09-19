@@ -135,6 +135,16 @@ by intent.
 > Triggers `nacharbeit-fix`: the lock opens, the guard denies everything outside it,
 > each file is reworked and blind-verified, the opus and human entries are listed for you.
 
+##### Check that a skill actually fires
+
+````prompt
+"does the documented prompt for compass-clarify-scope actually fire it? measure it, don't guess"
+````
+
+> Triggers `nacharbeit-probe`: dry-runs first with a cost estimate, then runs the prompt
+> headless in fresh processes and reports fired, captured (naming the capturing skill),
+> silent, or UNSTABLE — with the model the rate belongs to.
+
 ##### Find out what is waiting on a person
 
 ````prompt
@@ -197,6 +207,8 @@ evidence that nothing in the reviewed plugin exercised that family.
 
 ```bash
 python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 92 rules planted, blanked, synced
+node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
+python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest  # the probe's parser, verdicts and refusals; no tokens
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/nacharbeit --docs-root docs   # the plugin lints clean under its own rules
 python3 test/plugins/lint-frontmatter.py plugins/nacharbeit

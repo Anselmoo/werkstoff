@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "2",
+  "runId": "ap-2026-09-18-6a6a",
+  "problem": {
+    "statement": "s",
+    "shape": "change",
+    "acceptance": [
+      {
+        "id": "a1",
+        "criterion": "c",
+        "check": "true"
+      },
+      {
+        "id": "a2",
+        "criterion": "d",
+        "check": "true"
+      }
+    ]
+  },
+  "writeScope": [
+    "src/**"
+  ],
+  "budget": {
+    "totalDispatches": 16,
+    "wallClockMinutes": 90
+  },
+  "phases": [
+    {
+      "id": "inventory",
+      "kind": "fanout-readonly",
+      "pattern": "map-reduce-disjoint",
+      "fanOut": 4,
+      "modelTier": "haiku",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:inventory-extractor",
+      "sources": [
+        "src/a/**",
+        "src/b/**",
+        "src/c/**",
+        "docs/**"
+      ],
+      "reDerive": {
+        "samplePct": 25,
+        "seed": 7
+      },
+      "requires": [],
+      "marker": "inventoried"
+    },
+    {
+      "id": "contract",
+      "kind": "single-writer",
+      "pattern": "calibrate-then-measure",
+      "modelTier": "opus",
+      "mode": "plan",
+      "writes": "none",
+      "agentType": "arbeitsplan:contract-author",
+      "cannotCheck": [
+        "tone of the docs"
+      ],
+      "requires": [
+        "inventoried"
+      ],
+      "marker": "contracted"
+    },
+    {
+      "id": "build",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 3,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": [
+        "x",
+        "y",
+        "z"
+      ],
+      "requires": [
+        "contracted"
+      ],
+      "marker": "built"
+    },
+    {
+      "id": "referee",
+      "kind": "fanout-blind",
+      "pattern": "blind-referee",
+      "fanOut": 3,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:candidate-referee",
+      "requires": [
+        "built"
+      ],
+      "marker": "refereed"
+    },
+    {
+      "id": "synthesize",
+      "kind": "single-writer",
+      "pattern": "select-then-synthesize",
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:synthesizer",
+      "borrowGate": {
+        "mustBeatWinnerOn": [
+          "a2"
+        ]
+      },
+      "requires": [
+        "refereed"
+      ],
+      "marker": "synthesized"
+    },
+    {
+      "id": "adjudicate",
+      "kind": "single-writer",
+      "pattern": "tribunal",
+      "modelTier": "opus",
+      "mode": "plan",
+      "writes": "none",
+      "agentType": "arbeitsplan:adjudicator",
+      "requires": [
+        "synthesized"
+      ],
+      "marker": "adjudicated"
+    }
+  ],
+  "backend": {
+    "kind": "workflow",
+    "why": [
+      "fixed-graph-returns-data",
+      "context-exceeds-session"
+    ],
+    "acknowledgedGaps": [
+      "workflow-tool-unhooked"
+    ]
+  }
+}

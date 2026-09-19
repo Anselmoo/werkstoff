@@ -17,7 +17,14 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
 ## Steps
 
 1. **Read `workflow.json`.** Read the file; do not work from a summary of it. Refuse a
-   `schemaVersion` you do not recognise rather than guessing at it.
+   `schemaVersion` other than `"2"` rather than guessing at it. Then branch on
+   `backend.kind` — it is a decision the spec already made, never yours to re-make:
+   `workflow` → follow [The workflow backend](#the-workflow-backend) below; `matrix` →
+   `arbeitsplan-matrix`; `in-session` → the steps here.
+
+   A phase with `mode: "plan"` never runs under the lock: `worktree_pool.py open` refuses it,
+   because plan mode plus an open lock leaves no legal write. Close, run that phase in plan
+   mode, then open the next one.
 
 2. **Open the run scope lock** before any dispatch:
 
@@ -36,9 +43,8 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    angle, its worktree, the scope, and the acceptance list — and **never** another
    candidate's angle or output.
 
-   With the Workflow tool available, `workflows/run.js` does this with the breaker in code.
-   Without it, dispatch the agents directly — the workflow is an optimisation, never the only
-   path.
+   These are in-session dispatches, so the guard sees each one. The workflow backend is a
+   different run, compiled for it — never switch to it mid-run.
 
 5. **Apply the breaker, per batch, never cumulatively.**
 
@@ -68,8 +74,47 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    plus **explicitly named** elements to borrow. It must beat the plain winner on at least one
    declared criterion, or the plain winner lands unchanged.
 
-9. **Delete the losers** — worktrees and branches — then close the lock and create the phase
-   marker under `.takt/<runId>/`.
+9. **Delete the losers** — worktrees and branches — then record the phase as closed and close
+   the lock:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" phase --run <runId> --phase land --status closed
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" close
+   ```
+
+   `close` **refuses** a phase that recorded no terminal event. On a halt, close with
+   `--halt "<the specific reason>"`: a halt is an event in `run.jsonl`, never an absence.
+
+## The workflow backend
+
+When `backend.kind` is `"workflow"`, the whole phase graph runs inside `workflows/run.js`,
+and this session does only the three things the Workflow tool cannot: read files, run
+plan-mode phases, and land.
+
+1. **Launch it with the spec as data.** The Workflow tool has no filesystem, so pass the
+   parsed `workflow.json` verbatim: `args: {spec}` (plus `startAt` and `carry` on a resume).
+   No run-scope lock is open while it runs — nothing inside writes the shared tree.
+2. **Persist what it returns, before reading it.** Every return carries `events`:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" workflow --run <runId> --result result.json
+   ```
+
+   A halt is an event. Record it even — especially — when the run aborted.
+3. **On `pending_plan_node`, run that phase here, in plan mode**, by dispatching its
+   `agentType` with the carried data. Record its output, add it to `carry` under the phase id
+   (`carry.contract.acceptance` replaces the compiled acceptance for later phases), and
+   relaunch with `startAt: <resumeWith>`. Loop state lives here, never in the script.
+   That same command writes `candidates/<id>.json` and `referee/<id>.json` for every
+   candidate the return carries, once each, never overwriting.
+3b. **Record a plan-mode phase's output** the same way:
+   `record_event.py phase-output --run <runId> --phase <id> --output <file>`. An adjudicator's
+   `verdict: "land"` is what gives a borrowed synthesis its referee record; without it,
+   `land_candidate.py` refuses the synthesis like any unjudged candidate.
+4. **On completion, land in-session.** `worktree_pool.py open --phase <last>` and
+   `land_candidate.py`, where the hook and the `writeScope` check both run. The workflow never
+   lands. `land_candidate.py` writes `landed.json`, with `divergedFrom` if what landed differs
+   from the recorded candidate.
 
 ## Rules
 
@@ -129,5 +174,6 @@ arbeitsplan run — ap-2026-09-12-a3f1 HALTED at phase referee
   plugin declares, the append-only ledger, and the depth cap plus cycle detection that bound
   how far a delegation may nest.
 - `references/patterns.md` — the breaker's thresholds and the reason they are per-batch.
-- `workflows/run.js` — the same fan-out with the breaker in code, when the Workflow tool is
-  available.
+- `workflows/run.js` — the workflow backend: executes `spec.phases`, halts before each
+  plan-mode phase, counts the dispatch budget in code, and returns span-shaped `events`.
+- `references/backend-selection.md` — why a run was compiled for the backend it names.

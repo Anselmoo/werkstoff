@@ -3,5 +3,5 @@
   "plugin": "arbeitsplan",
   "produces": [],
   "requires": [],
-  "note": "The compass 'branches-explored' requirement was REMOVED: it was optional, and its evidence lives at a run-scoped UUID path no fixed require can name. arbeitsplan-compile's own 'if compass is installed' check already covers the real behaviour. Per-run phase beats (built/refereed/landed) are compiled per runId by emit_beats.py from workflow.json and are not declared here."
+  "note": "The compass 'branches-explored' requirement was REMOVED: it was optional, and its evidence lives at a run-scoped UUID path no fixed require can name. arbeitsplan-compile's own 'if compass is installed' check already covers the real behaviour. Per-run phase beats (built/refereed/landed) are compiled per runId by emit_beats.py from workflow.json and are not declared here. arbeitsplan-start (skills/arbeitsplan-start/SKILL.md) produces no marker and requires none: it is read-only recommendation over references/approved-workflows.md and gates nothing."
 }

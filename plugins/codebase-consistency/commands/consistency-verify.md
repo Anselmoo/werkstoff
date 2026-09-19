@@ -82,6 +82,25 @@ bought.
   considered done, each tied back to the `ALIGN_NOTES.md` entry it
   concerns
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage verify --status closed
+```
+
+If it stopped instead — the verification could not run, or an input artifact is missing — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage verify --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Present
 
 If clean: tell the user this phase is verified and the branch is ready

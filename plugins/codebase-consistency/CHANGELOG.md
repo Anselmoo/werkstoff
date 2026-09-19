@@ -4,6 +4,9 @@ All notable changes to the `codebase-consistency` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `scripts/consistency_record.py` and a `## Record` step in every stage command: each stage records `closed`, or `halted` with its reason — including an align fan-out the circuit breaker stopped — in `analysis/<area>/run.jsonl`. `/consistency-status` reads it and ranks a halt above an artifact's presence.
+
 ## [0.5.0] - 2026-09-12
 
 ### Added

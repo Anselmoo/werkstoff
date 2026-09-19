@@ -156,6 +156,8 @@ Angles map to the user's review axes: `meaning`, `contract`, `clarity`, `step-lo
 | `Q-CANN-NEGATIVE` | cannibalization | Where a sibling component covers an adjacent job, the description says when *not* to use this one and names the sibling. | major | plugin-dev agent-development "Do not invoke when…" |
 | `Q-CANN-OVERLAP` | cannibalization | Two components do not claim the same job for the same trigger unless one names the other as an intended handoff. Judged from the routing simulation, not from prose alone. | major | platform best-practices "Claude uses it to choose the right Skill from potentially 100+" |
 | `Q-CANN-INTERNAL` | cannibalization | Within one plugin, skills have distinct triggers a router can separate. | major | plugin-dev component-patterns "distinct, non-overlapping roles" |
+| `Q-ROUTE-MISS` | cannibalization | A documented example prompt (one carrying a `> Triggers` line in the prompt index) routes, by majority of the routing simulation, to the component it names. **Produced in code from the simulation, never by a finder**, and only when the router proxy clears 0.8 accuracy on known answers; below it the rule is recorded as skipped, not emitted. | major | `docs/prompt-index.md` known answers; the misroute the simulation always computed and discarded |
+| `Q-CANN-CAPTURE` | cannibalization | Naming a sibling as a handoff excuses an overlap only while each side still wins its **own** documented prompts. A pair judged `intended-handoff` or `leave` where one side's known-answer prompts route to the other is a capture. **Produced in code**, measured runs only. | major | cupertino: `cupertino-council` fired 2/2 on `cupertino-backwards`'s documented prompts while the handoff wording excused the overlap |
 
 ### Other
 
@@ -188,10 +190,10 @@ instead of `permissionDecisionReason`, makes the runtime silently ignore the den
 | `H-MATCHER-KNOWN` | `matcher` is `\|`-joined documented tool names (or empty / `*`). | hooks | minor | hooks docs (a matcher that matches nothing is a hook that never runs) |
 | `H-MATCHER-MULTIEDIT` | A matcher naming `Edit` or `Write` also names `MultiEdit`. | hooks | nit | hazards.md ("andon's matcher does not list MultiEdit") |
 | `H-INERT-STATED` | `hooks.json`'s `description` states when the hook is inert. | hooks | nit | hazards.md cards ("Inert unless") |
-| `H-DENY-SHAPE` | A script that emits `permissionDecision` also emits `hookEventName`; a script using `systemMessage` without `permissionDecisionReason` fails; a script that never emits a decision fails. | hookscript | major | hooks docs (PreToolUse decision control); CLAUDE.md silent-defect row |
+| `H-DENY-SHAPE` | A script that emits `permissionDecision` also emits `hookEventName`; a script using `systemMessage` without `permissionDecisionReason` fails; a script that never emits a decision fails. A `Stop`/`SubagentStop` hook's decision is `{"decision": "block", "reason": …}` and counts as one. | hookscript | major | hooks docs (PreToolUse decision control; Stop decision control); CLAUDE.md silent-defect row |
 | `H-EXIT-2` | The deny path exits 2 (`sys.exit(2)`, `return 2` through `sys.exit(main())`, or a `DENY`/`BLOCK` constant equal to 2). | hookscript | major | hooks docs ("exit code 2 = blocking error") |
 | `H-ESCAPE-HATCH` | The script reads a `<NAME>_DISABLE_GUARD` env var and names it again in a deny reason. | hookscript | minor | hazards.md ("escape hatch named in the hook's own deny message") |
-| `H-FAIL-CLOSED` | The last broad `except` handler calls `deny(…)`, not `allow()`/`exit(0)` (AST proxy; documented). | hookscript | minor | hazards.md "All fail closed"; takt docstring |
+| `H-FAIL-CLOSED` | The last broad `except` handler calls `deny(…)` (or `block(…)` in a `Stop` hook), not `allow()`/`exit(0)` (AST proxy; documented). | hookscript | minor | hazards.md "All fail closed"; takt docstring |
 | `H-MULTI-PATH` | An edit-gating script reads `edits[].file_path` and `file_paths` besides `file_path`. | hookscript | minor | `takt_guard.py::edit_targets`; `test/plugins/verify-takt-payload-shapes.py` |
 | `H-TEST-EXISTS` | `test_<stem>.py` exists beside the hook script (or anywhere under the plugin). | hookscript | minor | CLAUDE.md "verify the instrument"; lehre/andon/self-assess convention |
 
@@ -360,4 +362,6 @@ once (lehre shipped without a root-README bullet or a hazards card).
 - A fenced example that is a *template* is only a finding when the content of the format
   is non-obvious (`Q-CLARITY-EXAMPLE`).
 - Handoffs a description names explicitly ("hands off to `andon-verify`") are intended
-  overlaps, not `Q-CANN-OVERLAP`.
+  overlaps, not `Q-CANN-OVERLAP` — **unless the simulation shows a capture**
+  (`Q-CANN-CAPTURE`). Human-tier is right about the *fix* (the handoff wording is
+  correct); it must not suppress the *finding* (one side no longer wins its own prompts).

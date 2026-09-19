@@ -1,5 +1,5 @@
 ---
-description: Derive the canonical form for each divergent, undocumented, non-deprecated convention — with a provenance-tracked Pattern Card per dimension
+description: Use after /consistency-scan to decide which variant of a divergent convention is canonical, with a provenance-tracked Pattern Card each
 argument-hint: <area-dir> [dimension-pattern]
 ---
 
@@ -141,6 +141,25 @@ parallel, running Steps 1–3 above. Then verify each candidate yourself: for
 variant's sites to confirm the frequency claim; for `synthesized-new`
 cards, confirm no documented or majority signal was actually available
 before accepting the synthesis.
+
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage canonize --status closed
+```
+
+If it stopped instead — a tied signal left a dimension undecidable, or an input artifact is missing — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage canonize --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
 
 ## Present
 

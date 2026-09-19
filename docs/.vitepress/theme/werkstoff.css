@@ -147,8 +147,16 @@
   /* The text measure. Not a member of the spacing scale -- it is a line length,
    * not a gap -- but it is a token because two rules consume it (the prose
    * max-width and the terminal node's centring box) and the revision rule in
-   * the measure section below changes ONE number, not two. */
-  --wk-measure: 36rem;
+   * the measure section below changes ONE number, not two.
+   *
+   * 100% = the content container, i.e. THE SAME WIDTH AS TABLES AND CODE BLOCKS.
+   * It was 36rem (~72 characters), which read well on its own but left prose
+   * visibly narrower than the tables and code samples beside it -- two different
+   * left-to-right extents stacked down one page, which reads as a layout defect
+   * rather than as a considered measure. Maintainer's call, 2026-09-14: one
+   * width for everything. Restore a cap by setting a rem value here; both
+   * consumers follow it. */
+  --wk-measure: 100%;
 
   /* ---- Two rule tokens, and the difference between them is load-bearing ----
    * --wk-rule is the SOLE carrier of a section break, so WCAG 1.4.11's 3:1
@@ -477,6 +485,12 @@ div[class*='language-prompt'] {
  * `div[class*=language-]`, `img`, `hr`, `.catalog-grid`, `.pairing-cards`,
  * `.recipe-beats`, and any `:::` container. A table or code sample that wraps
  * is real information loss; a long prose line is only a reading cost.
+ *
+ * THAT EXCLUSION IS WHY THE CAP IS NOW 100%: with a 36rem cap, prose ended
+ * 112px short of every table and code block on the same page. The exclusions
+ * below are kept exactly as they were -- they simply no longer differ from the
+ * prose width. The reading-cost argument for a shorter measure still stands and
+ * is recorded above; it lost to alignment, on purpose.
  *
  * The h2 rule inherits this max-width, so it spans the text measure rather than
  * the container -- correct, because it marks a break in *the text*, and a 688px

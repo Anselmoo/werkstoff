@@ -109,6 +109,25 @@ config, a separate CI job, a separate CODEOWNERS entry) treats as its own
 domain? If so, note it — `/consistency-align` must not silently reach
 across an owned boundary to "fix" someone else's area.
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage preflight --status closed
+```
+
+If it stopped instead — a check that says the area is not ready — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage preflight --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Report
 
 Write `analysis/$1/PREFLIGHT.md`: the Check 0 answers verbatim, a status

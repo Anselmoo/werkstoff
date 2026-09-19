@@ -1,0 +1,97 @@
+{
+  "cases": [
+    {
+      "id": "build-feature",
+      "prompt": "Add a numerically stable logsumexp to this package, with tests. Scope the work before writing code, then implement it so the existing suite and the new one both pass.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:numerics-greenfield}",
+      "expect_skills": [
+        "compass:compass-clarify-scope"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:compass}",
+        "${PLUGIN:superpowers}"
+      ]
+    },
+    {
+      "id": "fix-bug",
+      "prompt": "ISSUE.md reports a wrong result. Find the root cause before changing anything, then fix it and prove the fix.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:median-seeded}",
+      "expect_skills": [
+        "superpowers:systematic-debugging"
+      ],
+      "plugins": [
+        "${PLUGIN:superpowers}"
+      ]
+    },
+    {
+      "id": "design-ui",
+      "prompt": "Here is a UI brief and a first attempt at the card. Work out what it should be before touching the markup, then say what you would change and why.",
+      "expect_exit": 0,
+      "fixture": "${FIXTURE:element-card-ui}",
+      "expect_skills": [
+        "cupertino:cupertino-backwards"
+      ],
+      "plugins": [
+        "${REPO_PLUGIN:cupertino}"
+      ]
+    }
+  ],
+  "models": [
+    "sonnet"
+  ],
+  "plugin_states": [
+    {
+      "id": "with",
+      "plugin_dir": "${CASE_PLUGINS}"
+    }
+  ],
+  "repeats": 2,
+  "ablation": "isolated",
+  "runner": "subrun",
+  "transcript": true,
+  "max_budget_usd": 2.0,
+  "permission_mode": "auto",
+  "timeout_s": 900,
+  "expected_tools": [
+    "Skill",
+    "ToolSearch",
+    "Read",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    "Glob",
+    "Grep",
+    "TodoWrite",
+    "Task",
+    "Agent",
+    "NotebookEdit",
+    "LSP"
+  ],
+  "disallowed_tools": [
+    "Workflow",
+    "CronCreate",
+    "CronDelete",
+    "CronList",
+    "RemoteTrigger",
+    "PushNotification",
+    "Artifact",
+    "SendUserFile",
+    "ReportFindings",
+    "AskUserQuestion",
+    "EnterWorktree",
+    "ExitWorktree",
+    "WebFetch",
+    "WebSearch",
+    "Monitor",
+    "DesignSync",
+    "SendMessage",
+    "ListAgents",
+    "TaskOutput",
+    "TaskStop",
+    "ScheduleWakeup",
+    "SlashCommand"
+  ]
+}

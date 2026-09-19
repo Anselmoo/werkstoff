@@ -96,8 +96,21 @@ def check_frontmatter(path: Path) -> int:
     return ok()
 
 
+# Parsed as the runtime evaluates a workflow -- `meta`'s export stripped, the body
+# compiled as an async function -- never with `node --check`. Under Node's module
+# auto-detection `export const meta` makes `--check` parse the file as an ES
+# module, where every correct workflow's top-level `return` is illegal (all
+# fifteen failed under Node 26). Same model as scripts/ci/check-js-syntax.sh.
+WF_PARSE_JS = (
+    'const f=process.argv[1];const s=require("fs").readFileSync(f,"utf8");'
+    "const A=Object.getPrototypeOf(async function(){}).constructor;"
+    'try{new A(s.replace(/^export\\s+(?=const\\s+meta\\b)/m,""))}'
+    'catch(e){console.error(f+": "+e.name+": "+e.message);process.exit(1)}'
+)
+
+
 def check_js(path: Path) -> int:
-    rc, out = run(["node", "--check", str(path)])
+    rc, out = run(["node", "-e", WF_PARSE_JS, str(path)])
     return ok() if rc == 0 else fail(f"[gate] {path.relative_to(REPO)} does not parse:\n{out}")
 
 

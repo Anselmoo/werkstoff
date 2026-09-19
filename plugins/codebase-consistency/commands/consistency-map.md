@@ -87,6 +87,25 @@ diagnostic aid for *why* the codebase diverged, not a required artifact —
 skip it unless it's asked for or the clustering hypothesis is worth
 checking.
 
+## Record
+
+Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts — before
+presenting, every time:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage map --status closed
+```
+
+If it stopped instead — `consistency.json` is missing or the render failed — record that, with the specific reason, and do not
+record `closed`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/consistency_record.py" event --area $1 --stage map --status halted --reason "<the specific reason>"
+```
+
+A stop that exists only in the chat is indistinguishable, to the next stage, from a stage
+that never ran.
+
 ## Present
 
 Tell the user to open `analysis/$1/CONSISTENCY_MATRIX.html`, sort by
