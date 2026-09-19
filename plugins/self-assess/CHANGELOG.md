@@ -4,6 +4,7 @@ All notable changes to the `self-assess` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-09-19
 ### Fixed
 - `write_guard.resolve_output_path` now refuses an `output_dir` that resolves outside the repository (`..`, an absolute path). It only checked the filename against `output_dir`, and `guard_target_edit.py` allows every write inside that directory, so a hostile `output_dir` bypassed the edit gate; it now fails closed. The transform-phase record writes through the same guard, and a phase id that is not a safe path component is refused before the edit-scope lock opens.
 
