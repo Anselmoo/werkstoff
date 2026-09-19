@@ -4,6 +4,7 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-19
 ### Added
 - **schema v2**: `backend` is an object `{kind, why[], acknowledgedGaps[]}` with a closed
   `why` vocabulary; every phase requires `mode`, `writes` and a namespaced `agentType`;
