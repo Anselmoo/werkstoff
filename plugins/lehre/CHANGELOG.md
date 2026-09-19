@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-19
 ### Added
 - `lehre_cli.py gauge` persists each sweep under `.lehre/gauge/<runId>/` (`findings.json` plus a run record) and names it in its output (`record`); it used to print its findings and keep nothing. It still changes no source file. Guarded below Python 3.11: the sweep stands, only the record is lost, with a note.
 
