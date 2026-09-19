@@ -4,6 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-19
 ### Added
 - `Q-ROUTE-MISS` and `Q-CANN-CAPTURE`, produced in code from the routing simulation — the
   misroute it always computed and discarded is now a finding, and a handoff that still loses
