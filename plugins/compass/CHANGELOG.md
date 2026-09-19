@@ -4,6 +4,7 @@ All notable changes to the `compass` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-19
 ### Added
 - `compass.py run-event` records phase boundaries and halts in `.compass/runs/<id>/run.jsonl`, beside `state.json`; `compass-solve` calls it at every boundary and before halting on `must_pause`. `state.json` is written once, at the end, so a paused or stopped run used to leave nothing on disk. A halt without a reason is a violation.
 
