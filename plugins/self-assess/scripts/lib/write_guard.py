@@ -7,7 +7,17 @@ from lib.errors import WriteScopeError
 def resolve_output_path(repo, output_dir, filename):
     """Resolve filename against <repo>/<output_dir>. filename="." resolves
     to output_dir itself. Raises WriteScopeError on any escape."""
-    base = os.path.realpath(os.path.join(os.path.realpath(repo), output_dir))
+    repo_real = os.path.realpath(repo)
+    base = os.path.realpath(os.path.join(repo_real, output_dir))
+    # output_dir itself must stay inside the repository. Only the filename was
+    # checked against it, so `output_dir: ".."` (or an absolute path) moved the
+    # whole report directory out of the repo -- and guard_target_edit.py allows
+    # every write inside that directory, so the edit gate was bypassed with it.
+    if base != repo_real and not base.startswith(repo_real + os.sep):
+        raise WriteScopeError(
+            f"output_dir {output_dir!r} resolves to {base!r}, outside the repository "
+            f"{repo_real!r} (rule: write-scope-enforcement)."
+        )
     if filename in (".", ""):
         return base
     if os.path.isabs(filename):

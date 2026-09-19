@@ -38,7 +38,7 @@ from lib import (  # noqa: E402
     version_detect,
     write_guard,
 )
-from lib.errors import SelfAssessError  # noqa: E402
+from lib.errors import SelfAssessError, WriteScopeError  # noqa: E402
 
 
 def _load_json_arg(value):
@@ -265,9 +265,18 @@ def _phase_record(repo, s, phase):
     except (ImportError, SystemExit) as exc:
         sys.stderr.write(f"note: phase record not written ({exc})\n")
         return None
-    out = os.path.join(repo, (s or {}).get("output_dir") or "analysis/self-assess")
     run_id = f"transform-phase-{phase}"
-    return run_record.open_run("self-assess", run_id, directory=run_record.Path(out) / run_id)
+    # Through the same write guard every other self-assess write uses: a
+    # misconfigured output_dir (`..`, an absolute path) or a phase id that
+    # traverses is refused, never written outside the repository.
+    directory = write_guard.resolve_output_path(
+        repo, (s or {}).get("output_dir") or "analysis/self-assess", run_id)
+    try:
+        return run_record.open_run("self-assess", run_id, directory=run_record.Path(directory))
+    except run_record.RecordError as exc:
+        # A refusal like every other in this CLI -- REFUSED and exit 1 -- never a
+        # traceback (a phase id such as `../x` is not a safe path component).
+        raise WriteScopeError(f"phase record refused: {exc}") from exc
 
 
 def _phase_event(run, phase, status, detail):
@@ -291,10 +300,12 @@ def cmd_open_edit_scope(args):
         gates.check_idiom_fix_mode(s)
     else:
         gates.check_transform_mode(s)
+    # The record is opened -- and so validated -- BEFORE the lock: a phase id or
+    # output_dir the guard refuses must not leave an edit-scope lock behind it.
+    run = _phase_record(args.repo, s, args.phase) if args.phase is not None else None
     path, resolved = edit_scope.open_scope(args.repo, mode=args.mode, allowed_files=args.files)
     record = None
     if args.phase is not None:
-        run = _phase_record(args.repo, s, args.phase)
         if run is not None:
             _phase_event(run, args.phase, "opened", {"mode": args.mode, "allowedFiles": args.files})
             record = str(run.log)
