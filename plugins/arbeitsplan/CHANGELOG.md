@@ -21,6 +21,11 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   `tools/run-record/run_record.py`; `record_event.py`, `reconcile.py`, `sample_rederive.py`,
   `sweep_artifacts.py`, `check_contract_sync.py`; `landed.json` with `divergedFrom`.
 - A `Stop` hook that refuses one completion while an armed phase is unrecorded.
+- **arbeitsplan**: a front door that recommends and nothing else
+- **arbeitsplan**: isolated testing the matrix can prove
+- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
+- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
+- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
 
 ### Changed
 - `worktree_pool.py open` refuses a plan-mode phase; `close` refuses a phase with no terminal
@@ -34,17 +39,6 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 - `run_matrix.sh --dry-run` created an empty output directory under `analysis/`.
 - The guard used `datetime.UTC` (3.11+) while claiming to run on any python3; under 3.9 it
   denied delegation with a bare traceback.
-
-## [0.3.0] - 2026-09-14
-
-### Added
-- **arbeitsplan**: a front door that recommends and nothing else
-- **arbeitsplan**: isolated testing the matrix can prove
-- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
-- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
-- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
-
-### Fixed
 - **ci**: install PyYAML in auto-version-bump.yml (#57)
 - **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
 
