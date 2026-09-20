@@ -4,6 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-20
 ### Added
 - `M-DESC-POINTER` (minor): a `description` must not refer the reader to the file's own
   body. The description is loaded into every session, the body only on dispatch, so a
