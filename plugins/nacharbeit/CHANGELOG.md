@@ -4,6 +4,32 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `M-DESC-POINTER` (minor): a `description` must not refer the reader to the file's own
+  body. The description is loaded into every session, the body only on dispatch, so a
+  pointer from the always-loaded field to the on-demand one is paid for by every session
+  that never dispatches the agent. Exact, not heuristic: it fired on 56 of 62 agent
+  descriptions in this marketplace before the 2026-09-20 trim and on 0 of 62 after.
+- `P-DESC-BUDGET` (major): agent and skill `description` totals across every linted
+  plugin stay under `DESC_BUDGET` — 32000 chars for agents, derived from the platform's
+  15k-token cap on the agent listing, and 56000 for skills, which is a ratchet rather
+  than a derived limit because no platform cap for the skill listing is documented.
+  Reported once, on the largest contributor's manifest; skipped, loudly, when only a
+  subset of the marketplace is linted, because a subset cannot decide a corpus budget.
+  This marketplace measured 32958 agent chars before the trim and 24765 after, so the
+  budget separates the state that triggered the platform warning from the one that did not.
+- `Q-PROC-DESC-DUP` (minor, judgement): a `description` does not restate what the file's
+  own body already carries — the mirror of `Q-PROC-CLAUDEMD-DUP`, and the expensive
+  direction. Judgement rather than mechanical on purpose; F8 in the rubric records the
+  calibration that ruled a mechanical predicate out.
+
+### Changed
+- Rubric decision F8: word-overlap between a description sentence and the body was
+  calibrated on 203 labelled sentences and found INVERTED — duplicated sentences scored
+  a median 0.43, retained ones 0.67, because a trigger sentence names other components'
+  vocabulary while "what this agent does" reuses the body's own words. No threshold
+  separates them. Recorded so the rule is not re-invented as a similarity score.
+
 ## [0.4.0] - 2026-09-19
 ### Added
 - `Q-ROUTE-MISS` and `Q-CANN-CAPTURE`, produced in code from the routing simulation — the

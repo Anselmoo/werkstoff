@@ -125,6 +125,20 @@ def build_positive(root: Path) -> dict[str, str]:
     skill(root, P, "whenonly", desc='This skill should be used when the user asks to "audit"')
     exp["M-DESC-WHENONLY"] = f"{P}/skills/whenonly/SKILL.md"
     skill(root, P, "named-wrong", fm_override=FM.format(name="Named_Wrong", desc=GOOD_DESC, extra=""))
+    agent(root, P, "pointer-desc",
+          desc="Audits widget scaffolds and reports drift. Use when the user asks to audit widgets. "
+               "See the agent body for worked scenarios.")
+    exp["M-DESC-POINTER"] = f"{P}/agents/pointer-desc.md"
+    # P-DESC-BUDGET is an AGGREGATE: no single file is at fault, so the overrun is
+    # spread over all three bad plugins and `bad` is made the largest on purpose --
+    # that is the anchor the rule has to pick. Each of these also trips M-DESC-LEN,
+    # which is the point: a per-file cap and a corpus budget are different questions,
+    # and a corpus can blow the budget with every file individually legal.
+    _hog = "Audits one widget and reports it. "
+    agent(root, P, "budget-hog", desc=_hog * 600)
+    agent(root, "plugins/bad2", "budget-hog", desc=_hog * 250)
+    agent(root, "plugins/bad3", "budget-hog", desc=_hog * 200)
+    exp["P-DESC-BUDGET"] = f"{P}/.claude-plugin/plugin.json"
     exp["M-NAME-FORMAT"] = f"{P}/skills/named-wrong/SKILL.md"
     skill(root, P, "too-long", body="\n# T\n" + "line\n" * 520)
     exp["M-BODY-LINES"] = f"{P}/skills/too-long/SKILL.md"
