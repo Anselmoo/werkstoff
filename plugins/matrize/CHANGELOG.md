@@ -4,6 +4,23 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-20
+
+### Added
+- arbeitsplan backends and run records, a nacharbeit trigger probe, and docs that start somewhere (#63)
+- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
+- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
+- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
+
+### Fixed
+- **matrize**: drop dispatch mechanics from agent descriptions (#65)
+- **ci**: install PyYAML in auto-version-bump.yml (#57)
+- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
+
+### Documentation
+- **changelog**: describe what the 2026-09-20 patch releases actually changed (#64)
+- harmonize the docs and enforce the corporate design tokens (#61)
+
 ## [0.3.0] - 2026-09-12
 ### Changed
 - the Specimen speaks **English**. `build_sketchbook_html.py` hardcoded German chrome —

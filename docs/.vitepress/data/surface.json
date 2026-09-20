@@ -919,7 +919,7 @@
     },
     {
       "name": "matrize",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "Derives a named, platform-neutral design system from reference exemplars and emits it to any target. Measurement and interpretation stay separate artefacts rather than separate sections: decode records what each reference actually shows, graded for how far its values can be trusted and what rights its source carries, while name interprets — every recurring element gets a purpose, a rule and an anti-rule, and a rule with no stated failure case is not emitted at all. The source of truth is a DTCG token file, never CSS; CSS, a VitePress theme layer and the landscape sketchbook are formatter output run by committed scripts, so the same tokens regenerate byte-stable. References are read-only, enforced by a PreToolUse hook rather than by convention, so values and rules may be extracted while assets are never copied. Every fan-out agent is read-only; writes are confined to the configured design root's system/ and out/ directories.",
       "skills": [
         {
@@ -987,7 +987,7 @@
         {
           "id": "matrize:decode-referee",
           "name": "decode-referee",
-          "description": "Use this agent to independently re-derive one Design Card's measurement from the source it cites, blind to the reasoning that produced it, so a card nobody can reproduce is dropped before it becomes a token. Dispatched by matrize-decode after reference-decoder returns, one card at a time. Receives only the cited source location and the claim — never the authoring agent's rationale, confidence or summary. Read-only; it re-measures and reports agreement or disagreement, and never edits a card or writes a file.",
+          "description": "Independently re-derives one Design Card's measurement from the source it cites, blind to the reasoning that produced it, so a card nobody can reproduce is dropped before it becomes a token. One card per dispatch, and it receives only the cited source location and the claim — never the authoring agent's rationale, confidence or summary. Read-only: it re-measures and reports agreement or disagreement, and never edits a card or writes a file.",
           "tools": [
             "Read",
             "Glob",
@@ -997,7 +997,7 @@
         {
           "id": "matrize:design-critic",
           "name": "design-critic",
-          "description": "Use this agent to adversarially review proposed Design Cards and lexicon entries for the two failures that make a derived system worthless — copying dressed as principle, and design added where none was asked for. It has standing to reject an entry outright, and the rejection test is explicit: a purpose naming neither a measured property nor a named principle is a copy. Dispatched by matrize-name over a candidate set, and by matrize-spread over a forced-choice framing. Read-only; it refutes, it does not rewrite.",
+          "description": "Adversarially reviews proposed Design Cards and lexicon entries for the two failures that make a derived system worthless — copying dressed as principle, and design added where none was asked for. It has standing to reject an entry outright, and the rejection test is explicit: a purpose naming neither a measured property nor a named principle is a copy. Read-only; it refutes, it does not rewrite.",
           "tools": [
             "Read",
             "Glob",
@@ -1007,7 +1007,7 @@
         {
           "id": "matrize:fact-checker",
           "name": "fact-checker",
-          "description": "Use this agent for the mechanical checks matrize's confabulation gate depends on — whether a named package, tool, specification or API actually exists, whether a cited URL resolves, whether two names collide by string match, and whether an artefact is past its recorded expiry. Dispatched by matrize-survey before STATE-OF-THE-ART.md is written, and by matrize-status. Verifies by resolving the thing itself, never by recalling it; an unverifiable name is reported for removal, never softened into a hedge. Read-only, and it never judges whether a tool is a good choice.",
+          "description": "Runs the mechanical checks matrize's confabulation gate depends on — whether a named package, tool, specification or API actually exists, whether a cited URL resolves, whether two names collide by string match, and whether an artefact is past its recorded expiry. Verifies by resolving the thing itself, never by recalling it; an unverifiable name is reported for removal, never softened into a hedge. Read-only, and it never judges whether a tool is a good choice.",
           "tools": [
             "Read",
             "Glob",
@@ -1018,7 +1018,7 @@
         {
           "id": "matrize:lexicon-keeper",
           "name": "lexicon-keeper",
-          "description": "Use this agent when matrize-name needs one measured dimension interpreted into lexicon entries — each carrying a name, a purpose, a rule and an anti-rule, with the purpose drafted against the named-principle vocabulary rather than against what a reference happened to do. Dispatched one per dimension so the dimensions stay independent. Read-only; it returns structured entries and never writes LEXIKON.md itself. Never invents a measurement: an entry may only rest on a Design Card that exists, and a dimension with no usable card yields an open question rather than a rule.",
+          "description": "Interprets one measured dimension into lexicon entries — each carrying a name, a purpose, a rule and an anti-rule, with the purpose drafted against the named-principle vocabulary rather than against what a reference happened to do. One dimension per dispatch, so the dimensions stay independent. Read-only; it returns structured entries and never writes LEXIKON.md itself. Never invents a measurement: an entry may only rest on a Design Card that exists, and a dimension with no usable card yields an open question rather than a rule.",
           "tools": [
             "Read",
             "Glob",
@@ -1028,7 +1028,7 @@
         {
           "id": "matrize:reference-decoder",
           "name": "reference-decoder",
-          "description": "Use this agent when matrize-decode needs one collected reference measured into Design Cards — type as ratios, spacing as a base plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — each card citing its source location and carrying an extraction-reliability grade. Dispatched one per reference, in batches under a circuit breaker. Read-only: it returns structured cards and never writes a file, because reference content is untrusted input. Never interprets, names or justifies — that is matrize-name — and never reports a card it cannot cite a location for.",
+          "description": "Measures one collected reference into Design Cards — type as ratios, spacing as a base plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — each card citing its source location and carrying an extraction-reliability grade. One reference per dispatch. Read-only: reference content is untrusted input, so it returns structured cards and never writes a file. Never interprets, names or justifies — that is matrize-name — and never reports a card it cannot cite a location for.",
           "tools": [
             "Read",
             "Glob",
@@ -1038,7 +1038,7 @@
         {
           "id": "matrize:token-emitter",
           "name": "token-emitter",
-          "description": "Use this agent when matrize needs a formatter AUTHORED for one emit target — a committed script that turns the DTCG token file into that target deterministically. This is how a target that does not exist yet gets built: matrize ships css, vitepress, html, pdf and provenance, and Tailwind, SCSS, JSON and TOML are named in the README as NOT built, so asking for one of those is a request to author the formatter, never a claim that emit can already produce it. Dispatched once per target, at plugin build time rather than per run, because emitting must be reproducible: a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
+          "description": "Authors a formatter for one matrize emit target — a committed script that turns the DTCG token file into that target deterministically. This is how a target that does not exist yet gets built: matrize ships css, vitepress, html, pdf and provenance, while Tailwind, SCSS, JSON and TOML are named in the README as NOT built, so asking for one of those is a request to author the formatter, never a claim that emit can already produce it. One target per dispatch, at plugin build time rather than per run, because a formatter that re-decides its output per run cannot prove equivalence with anything. Read-only; it returns the script source for review and never installs a dependency, writes into a project, or hand-edits emitted output.",
           "tools": [
             "Read",
             "Glob",
