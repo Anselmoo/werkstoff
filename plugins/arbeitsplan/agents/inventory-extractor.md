@@ -1,6 +1,6 @@
 ---
 name: inventory-extractor
-description: Use this agent to extract every item of one kind from ONE source partition of an arbeitsplan read-only fan-out — the map half of map-reduce-disjoint — returning a complete list with stable ids and paths, or an explicit truncation marker. Typical triggers include workflows/run.js dispatching one extractor per partition of a fanout-readonly phase, and the seeded re-derivation that extracts a sampled partition a second time, blind to the first answer. One partition per dispatch; never summarises, never judges what it found. Hands its list to contract-author, which reads it; never dispatched to decide scope (scope-prover) or pattern (pattern-researcher). See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to extract every item of one kind from ONE source partition of an arbeitsplan read-only fan-out — the map half of map-reduce-disjoint — returning a complete list with stable ids and paths, or an explicit truncation marker. One partition per dispatch; never summarises, never judges what it found. Hands its list to contract-author, which reads it; never dispatched to decide scope (scope-prover) or pattern (pattern-researcher).
 model: haiku
 color: cyan
 tools: Read, Glob, Grep

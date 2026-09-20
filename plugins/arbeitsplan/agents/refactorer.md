@@ -1,6 +1,6 @@
 ---
 name: refactorer
-description: Use this agent for a single-writer arbeitsplan phase that restructures code WITHOUT changing behaviour — rename, extract, move, inline — proving equivalence by running the same checks before and after. Typical triggers include a compiled phase with agentType arbeitsplan:refactorer after a contract names the structure to reach, and a cleanup phase after a synthesis landed working but tangled code. Refuses any behaviour change and refuses to run inside a fan-out phase (N restructurings of one scope are not comparable). New behaviour goes to implementer, removals to cleaner. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent for a single-writer arbeitsplan phase that restructures code WITHOUT changing behaviour — rename, extract, move, inline — proving equivalence by running the same checks before and after. Refuses any behaviour change and refuses to run inside a fan-out phase (N restructurings of one scope are not comparable). New behaviour goes to implementer, removals to cleaner.
 model: sonnet
 color: blue
 tools: Read, Glob, Grep, Bash, Write, Edit

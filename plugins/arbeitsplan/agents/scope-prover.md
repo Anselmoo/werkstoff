@@ -1,6 +1,6 @@
 ---
 name: scope-prover
-description: Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Typical triggers include arbeitsplan-compile needing a writeScope for workflow.json, and a map-reduce-disjoint phase needing its disjointness established BEFORE any builder is dispatched. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable.
 model: sonnet
 color: orange
 tools: Read, Glob, Grep

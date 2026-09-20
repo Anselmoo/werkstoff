@@ -1,6 +1,6 @@
 ---
 name: candidate-referee
-description: Use this agent to judge ONE arbeitsplan candidate against the acceptance criteria, given its diff and nothing else — no builder rationale, no angle, no other candidate, no prior verdict. Typical triggers include arbeitsplan-run dispatching one referee per candidate in a single parallel batch after a fan-out phase closes, and a re-judgement after the acceptance criteria themselves were revised. One candidate per dispatch, always; a dispatch carrying two candidates is out of scope and only the first is judged. Never dispatched to compare candidates against each other — ranking is a deterministic rule in the calling skill, not a judgement call. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to judge ONE arbeitsplan candidate against the acceptance criteria, given its diff and nothing else — no builder rationale, no angle, no other candidate, no prior verdict. One candidate per dispatch, always; a dispatch carrying two candidates is out of scope and only the first is judged. Never dispatched to compare candidates against each other — ranking is a deterministic rule in the calling skill, not a judgement call.
 model: sonnet
 color: purple
 tools: Read, Glob, Grep, Bash

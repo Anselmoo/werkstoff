@@ -1,6 +1,6 @@
 ---
 name: adjudicator
-description: Use this agent for the final plan-mode ADJUDICATE phase of an arbeitsplan run — it reads the whole round (contract, candidates, blind verdicts, synthesis) and decides whether the round established what the contract asked, owning the cannotEstablish list. Typical triggers include arbeitsplan-run reaching ADJUDICATE (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a review of a halted run before deciding to re-compile. Never overturns a referee verdict — a disagreement is recorded as doubt with what would resolve it. Never writes code; landing belongs to the session and land_candidate.py. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent for the final plan-mode ADJUDICATE phase of an arbeitsplan run — it reads the whole round (contract, candidates, blind verdicts, synthesis) and decides whether the round established what the contract asked, owning the cannotEstablish list. Never overturns a referee verdict — a disagreement is recorded as doubt with what would resolve it. Never writes code; landing belongs to the session and land_candidate.py.
 model: opus
 color: purple
 tools: Read, Glob, Grep

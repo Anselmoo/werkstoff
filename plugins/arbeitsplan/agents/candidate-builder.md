@@ -1,6 +1,6 @@
 ---
 name: candidate-builder
-description: Use this agent when one candidate of an arbeitsplan fan-out phase must be built in its own git worktree, under exactly one assigned angle, against the acceptance criteria in workflow.json. Typical triggers include arbeitsplan-run dispatching N builders in a single parallel batch, one per angle, and a re-dispatch under a NEW angle after a batch was too narrow. Every dispatch names exactly ONE angle and ONE worktree; a dispatch naming several is out of scope and only the first is handled. Never dispatched to "improve" a previous candidate — that is the serial retry loop this plugin exists to prevent, and the PreToolUse guard denies an identical re-dispatch outright. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when one candidate of an arbeitsplan fan-out phase must be built in its own git worktree, under exactly one assigned angle, against the acceptance criteria in workflow.json. Every dispatch names exactly ONE angle and ONE worktree; a dispatch naming several is out of scope and only the first is handled. Never dispatched to "improve" a previous candidate — that is the serial retry loop this plugin exists to prevent, and the PreToolUse guard denies an identical re-dispatch outright.
 model: sonnet
 color: blue
 tools: Read, Glob, Grep, Write, Edit, Bash

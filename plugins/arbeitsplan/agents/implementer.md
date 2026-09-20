@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: Use this agent for a single-writer arbeitsplan phase that implements one scoped change against a fixed contract — one writer, one worktree, one diff returned as data. Typical triggers include a compiled phase with kind single-writer and agentType arbeitsplan:implementer, where the work has one correct answer and a deterministic check, so N redundant candidates would buy N diffs and one decision the check already made. Refuses fan-out (N writers over one scope is best-of-n with candidate-builder) and refuses to widen writeScope. Hands its diff to the landing step; behaviour-preserving restructuring goes to refactorer, removals to cleaner. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent for a single-writer arbeitsplan phase that implements one scoped change against a fixed contract — one writer, one worktree, one diff returned as data. Refuses fan-out (N writers over one scope is best-of-n with candidate-builder) and refuses to widen writeScope. Hands its diff to the landing step; behaviour-preserving restructuring goes to refactorer, removals to cleaner.
 model: sonnet
 color: blue
 tools: Read, Glob, Grep, Bash, Write, Edit

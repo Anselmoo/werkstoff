@@ -1,6 +1,6 @@
 ---
 name: synthesizer
-description: Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Typical triggers include workflows/run.js dispatching the SYNTHESIZE phase after a blind referee, and an in-session landing phase compiled with agentType arbeitsplan:synthesizer. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did). See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did).
 model: sonnet
 color: green
 tools: Read, Glob, Grep, Bash, Write, Edit

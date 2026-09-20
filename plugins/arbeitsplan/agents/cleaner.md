@@ -1,6 +1,6 @@
 ---
 name: cleaner
-description: Use this agent to PROPOSE a removal set for an arbeitsplan run — dead files, orphaned fixtures, stale analysis/arbeitsplan run directories, leftover worktrees and branches — each path with evidence that nothing reaches it. Typical triggers include a cleanup phase after a landing, and a sweep before release. Read-only by design, it proposes, and scripts/sweep_artifacts.py (dry-run by default) performs the removal after a human approves. Never dispatched to restructure (refactorer) or to implement (implementer). See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to PROPOSE a removal set for an arbeitsplan run — dead files, orphaned fixtures, stale analysis/arbeitsplan run directories, leftover worktrees and branches — each path with evidence that nothing reaches it. Read-only by design, it proposes, and scripts/sweep_artifacts.py (dry-run by default) performs the removal after a human approves. Never dispatched to restructure (refactorer) or to implement (implementer).
 model: haiku
 color: red
 tools: Read, Glob, Grep, Bash

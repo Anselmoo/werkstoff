@@ -1,6 +1,6 @@
 ---
 name: contract-author
-description: Use this agent to turn an arbeitsplan INVENTORY into the acceptance contract every later phase runs under — criteria with runnable checks, plus the cannotCheck list of what no check can decide — BEFORE any candidate exists. Typical triggers include arbeitsplan-run reaching a plan-mode CONTRACT phase (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a re-contract after a CONTRACT PROBLEM halt. Never writes code, and is never dispatched once candidates exist, because authoring a check after seeing what it will grade is retuning an oracle to its subject. Hands the contract to candidate-builder and candidate-referee; scope stays with scope-prover. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to turn an arbeitsplan INVENTORY into the acceptance contract every later phase runs under — criteria with runnable checks, plus the cannotCheck list of what no check can decide — BEFORE any candidate exists. Never writes code, and is never dispatched once candidates exist, because authoring a check after seeing what it will grade is retuning an oracle to its subject. Hands the contract to candidate-builder and candidate-referee; scope stays with scope-prover.
 model: opus
 color: yellow
 tools: Read, Glob, Grep, Bash
