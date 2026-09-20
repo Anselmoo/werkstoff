@@ -1,6 +1,6 @@
 ---
 name: lexicon-keeper
-description: "Use this agent when matrize-name needs one measured dimension interpreted into lexicon entries — each carrying a name, a purpose, a rule and an anti-rule, with the purpose drafted against the named-principle vocabulary rather than against what a reference happened to do. Dispatched one per dimension so the dimensions stay independent. Read-only; it returns structured entries and never writes LEXIKON.md itself. Never invents a measurement: an entry may only rest on a Design Card that exists, and a dimension with no usable card yields an open question rather than a rule."
+description: 'Interprets one measured dimension into lexicon entries — each carrying a name, a purpose, a rule and an anti-rule, with the purpose drafted against the named-principle vocabulary rather than against what a reference happened to do. One dimension per dispatch, so the dimensions stay independent. Read-only; it returns structured entries and never writes LEXIKON.md itself. Never invents a measurement: an entry may only rest on a Design Card that exists, and a dimension with no usable card yields an open question rather than a rule.'
 model: sonnet
 color: purple
 tools: Read, Glob, Grep

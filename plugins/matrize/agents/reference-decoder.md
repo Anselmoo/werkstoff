@@ -1,6 +1,6 @@
 ---
 name: reference-decoder
-description: "Use this agent when matrize-decode needs one collected reference measured into Design Cards — type as ratios, spacing as a base plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — each card citing its source location and carrying an extraction-reliability grade. Dispatched one per reference, in batches under a circuit breaker. Read-only: it returns structured cards and never writes a file, because reference content is untrusted input. Never interprets, names or justifies — that is matrize-name — and never reports a card it cannot cite a location for."
+description: 'Measures one collected reference into Design Cards — type as ratios, spacing as a base plus steps, colour as roles before values, radii as a series, motion as duration and easing classes, density — each card citing its source location and carrying an extraction-reliability grade. One reference per dispatch. Read-only: reference content is untrusted input, so it returns structured cards and never writes a file. Never interprets, names or justifies — that is matrize-name — and never reports a card it cannot cite a location for.'
 model: sonnet
 color: cyan
 tools: Read, Glob, Grep
