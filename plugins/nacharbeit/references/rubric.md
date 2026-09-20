@@ -66,6 +66,7 @@ redesign step order), `human` (changes a plugin's contract or pipeline order).
 | `M-FM-PARSE` | Frontmatter starts at line 1 with `---`, parses as YAML, is a mapping with a non-empty `description` (and `name` for agents). | skill, agent, command | blocker | code.claude.com/skills "YAML frontmatter must start at line 1"; sub-agents "A file without name or description is skipped" |
 | `M-DESC-LEN` | `description` ≤ 1024 characters. | skill, agent | major | platform best-practices "Maximum 1,024 characters" |
 | `M-DESC-XML` | `description` contains no XML-style tags such as `<example>`. | skill, agent | major | platform best-practices "Cannot contain XML tags" |
+| `M-DESC-POINTER` | `description` does not refer the reader to the file's own body ("see the agent body", "details in the body below", "see the … section"). | skill, agent | minor | F8 decision below; sub-agents "the description is what the router reads" |
 | `M-DESC-PERSON` | `description` is third person: no "I can", "I will", "You can use this", "you should". | skill, agent | minor | platform best-practices "Always write in third person" |
 | `M-DESC-VAGUE` | `description` is not a generic capability claim ("Helps with…", "Processes data", "Does stuff"). | skill, agent, command | major | platform best-practices "Avoid vague descriptions" |
 | `M-DESC-WHENONLY` | Skill `description` does not open with the when-only template `This skill should be used when/after/…` — it must lead with what the skill does. | skill | minor | F1 decision below; code.claude.com/skills "Put the key use case first" |
@@ -147,6 +148,7 @@ Angles map to the user's review axes: `meaning`, `contract`, `clarity`, `step-lo
 | `Q-PROC-OUTPUT-SHOWN` | procedure | A component producing a structured artifact shows one fenced instance of the shape, including the empty branch, rather than naming fields in prose. | minor | output-shape-findings §4; platform best-practices "Template pattern" |
 | `Q-PROC-DISCLOSURE` | procedure | Content sits at the right level: always-loaded description is short; body is the standing instruction; bulky reference goes to `references/` and is pointed at with when-to-read guidance. | minor | code.claude.com/skills "Add supporting files"; platform best-practices "Progressive disclosure" |
 | `Q-PROC-CLAUDEMD-DUP` | procedure | An agent body does not restate repository CLAUDE.md rules that load automatically. | nit | sub-agents "Don't duplicate CLAUDE.md" |
+| `Q-PROC-DESC-DUP` | procedure | A `description` does not restate what the file's own body already carries. The mirror of `Q-PROC-CLAUDEMD-DUP`, and the expensive direction: the description is loaded into every session, the body only on dispatch. Judgement only — see F8 for why no mechanical predicate decides it. | minor | F8 decision below |
 | `Q-PROC-FORK-TASK` | procedure | A skill with `context: fork` contains an actionable task, not only guidelines. | major | code.claude.com/skills "Avoid forked skills without task instructions" |
 
 ### Cannibalization
@@ -288,6 +290,7 @@ marketplace entry lives outside the plugin.
 | `P-MARKETPLACE-MEMBER` | The marketplace entry exists; `author.name` and `description` equal the manifest's; `source` points at `./plugins/<name>`. | manifest | major | lint-plugin-authors; `.rrt.toml` field_targets |
 | `P-MANIFEST-KEYWORDS` | `keywords` is a non-empty list. | manifest | nit | takt convention |
 | `P-MANIFEST-LICENSE` | `license` is present. | manifest | nit | takt convention |
+| `P-DESC-BUDGET` | Agent and skill `description` totals across every linted plugin stay under `nacharbeit_lint.DESC_BUDGET` (agent 32000 chars, skill 56000). Reported once, on the largest contributor's manifest; skipped when only a subset of the marketplace is linted. | manifest | major | F8 decision below; platform cap of 15k tokens for the agent listing |
 | `P-README-H1` | `README.md` exists and its first heading is `# <name>`. | readme | minor | lehre/takt |
 | `P-README-THESIS` | A bold one-line thesis sits directly under the H1. | readme | nit | lehre/takt |
 | `P-README-WHY-NOT` | `## Why this exists` and `## What it is not` are present. | readme | minor | lehre |
@@ -351,6 +354,7 @@ once (lehre shipped without a root-README bullet or a hazards card).
 | F5 | hook docs contradict themselves on prompt-hook events and `hooks.json` shape | **In scope, as `H-*` / `HQ-*`.** An enforcement hook is `type: "command"` (a prompt hook asks a model to decide, which is the model-mediated path a hook exists to replace — hazards.md); `H-TYPE-COMMAND` reports a prompt hook. The `hooks.json` shape graded is the one every command hook in the wild uses: `hooks.<event>[].{matcher, hooks[].{type, command, timeout}}`. |
 | F6 | `.claude/commands/` is "legacy" | Reported **once**, as a cross-plugin `nit` against codebase-consistency's command set, not per file. |
 | F7 | ALL-CAPS / rigid structure is a yellow flag vs bulletproofing toolkit | **Form follows failure type** (`Q-OTHER-RIGIDITY`). Density of MUST/NEVER is never a finding on its own. |
+| F8 | description-restates-body: mechanical rule or judgement? | **Judgement (`Q-PROC-DESC-DUP`), not mechanical — measured, not assumed.** Word-overlap between a description sentence and the body was calibrated on a labelled corpus of 203 sentences (112 known-duplicated, removed 2026-09-20; 91 known-good, retained). The measure is INVERTED: duplicated sentences scored a median 0.43 overlap, retained ones 0.67, because a trigger sentence names other components' vocabulary while "what this agent does" reuses the body's own words. No threshold separates them — at every cut, false positives outnumber true ones (0.70: 13/112 caught, 35/91 wrongly flagged). What IS exact is the pointer sentence (`M-DESC-POINTER`, 56/62 before the 2026-09-20 trim, 0/62 after) and the aggregate cost (`P-DESC-BUDGET`). Do not replace F8 with a similarity threshold without re-running that calibration. |
 
 ## Known mis-flags the finders must avoid
 

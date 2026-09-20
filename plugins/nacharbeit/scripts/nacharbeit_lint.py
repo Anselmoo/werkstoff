@@ -64,6 +64,33 @@ OPTIONS: dict = {
 }
 SKIPPED: list[dict] = []
 
+# Aggregate description budgets, in characters.
+#
+# Every agent and skill description is loaded into EVERY session; only the body is
+# loaded on dispatch. The platform caps the AGENT listing at 15k tokens across all
+# ENABLED plugins -- a number no single marketplace can see, because it depends on
+# what else the user has turned on. These budgets are this marketplace's self-imposed
+# share of that allowance, so one marketplace cannot quietly spend all of it.
+#
+# agent = 32000 chars: ~7500 tokens at the ~4.25 chars/token this corpus measures,
+#   i.e. about half the documented 15k-token cap. DERIVED from that cap.
+# skill = 56000 chars: NOT derived from anything. No platform cap for the skill
+#   listing is documented. This is a ratchet set just above the corpus size on the
+#   day the rule was written, so unnoticed growth trips it and a deliberate increase
+#   has to be an edit to this line. DO NOT cite it as a platform limit.
+DESC_BUDGET: dict[str, int] = {"agent": 32_000, "skill": 56_000}
+
+# A description that refers the reader to the file's own body. Always waste: the
+# description is in context already, the body is one dispatch away, and the pointer
+# is paid for in every session that never dispatches the agent.
+RE_DESC_POINTER = re.compile(
+    r"\b(?:see|refer to|as (?:described|documented) in|details? in)\b[^.]{0,60}?"
+    r"\b(?:the )?(?:agent |skill )?body\b"
+    r"|\bin the body below\b"
+    r"|\bsee the [^.]{0,40}\bsection\b",
+    re.I,
+)
+
 # severity + angle per rule, mirrored from the rubric tables. test_nacharbeit_lint.py
 # asserts that this dict and the rubric's mechanical rows are the same set.
 META: dict[str, tuple[str, str]] = {
@@ -71,6 +98,7 @@ META: dict[str, tuple[str, str]] = {
     "M-FM-PARSE": ("blocker", "procedure"),
     "M-DESC-LEN": ("major", "procedure"),
     "M-DESC-XML": ("major", "procedure"),
+    "M-DESC-POINTER": ("minor", "procedure"),
     "M-DESC-PERSON": ("minor", "procedure"),
     "M-DESC-VAGUE": ("major", "meaning"),
     "M-DESC-WHENONLY": ("minor", "procedure"),
@@ -141,6 +169,7 @@ META: dict[str, tuple[str, str]] = {
     "P-MARKETPLACE-MEMBER": ("major", "contract"),
     "P-MANIFEST-KEYWORDS": ("nit", "procedure"),
     "P-MANIFEST-LICENSE": ("nit", "procedure"),
+    "P-DESC-BUDGET": ("major", "procedure"),
     "P-README-H1": ("minor", "meaning"),
     "P-README-THESIS": ("nit", "meaning"),
     "P-README-WHY-NOT": ("minor", "cannibalization"),
@@ -479,6 +508,19 @@ def r_desc_xml(u: Unit, ctx: list[Unit]) -> list[dict]:
         return []
     return [_finding(u, "M-DESC-XML", f"description contains an XML-style tag {m.group(0)!r}; descriptions cannot contain XML tags",
                      "move <example> blocks into a `## When to invoke` body section", line=_line_of(u, "description:"), quote=d[max(0, m.start() - 40): m.end() + 40])]
+
+
+def r_desc_pointer(u: Unit, ctx: list[Unit]) -> list[dict]:
+    d = _desc(u)
+    if u.kind not in {"skill", "agent"} or d is None:
+        return []
+    m = RE_DESC_POINTER.search(d)
+    if not m:
+        return []
+    return [_finding(u, "M-DESC-POINTER", f"description points at the file's own body ({m.group(0)!r})",
+                     "delete the pointer and keep the content it points at where it already is; "
+                     "the description is loaded into every session, the body only on dispatch",
+                     line=_line_of(u, "description:"), quote=d[max(0, m.start() - 40): m.end() + 40])]
 
 
 def r_desc_person(u: Unit, ctx: list[Unit]) -> list[dict]:
@@ -1517,6 +1559,59 @@ def r_p_manifest_license(u: Unit, ctx: list[Unit]) -> list[dict]:
     return [_finding(u, "P-MANIFEST-LICENSE", "no license field", "add `\"license\": \"MIT\"` (or the license the plugin carries)", line=1, quote="license")]
 
 
+def r_p_desc_budget(u: Unit, ctx: list[Unit]) -> list[dict]:
+    # A CORPUS rule wearing a manifest's clothes: the budget is about every plugin
+    # linted together, but findings have to hang off a file. It therefore reports
+    # ONCE, on the biggest contributor's manifest, with ties broken by name so the
+    # anchor does not wander between runs.
+    if u.kind != "manifest":
+        return []
+
+    # Linting a subset cannot decide a marketplace-wide budget, and silently passing
+    # would be a gate that disarms itself exactly when it is pointed at one plugin
+    # (F147). Say so instead. marketplace.json is the only thing that knows how many
+    # plugins there should be; without it, the subset is undetectable.
+    mk = OPTIONS.get("marketplace")
+    linted = {v.plugin for v in ctx if v.kind == "manifest"}
+    if mk:
+        try:
+            declared = {p["name"] for p in json.loads(Path(mk).read_text(encoding="utf-8"))["plugins"]}
+        except Exception:  # noqa: BLE001
+            declared = set()
+        if declared and not declared <= linted:
+            _skip("P-DESC-BUDGET", f"only {len(linted)} of {len(declared)} marketplace plugins were linted; "
+                                   "a marketplace-wide budget cannot be decided from a subset")
+            return []
+    elif len(linted) < 2:
+        _skip("P-DESC-BUDGET", "a single plugin was linted and no --marketplace was given; "
+                               "a marketplace-wide budget cannot be decided from a subset")
+        return []
+
+    out = []
+    for kind, budget in DESC_BUDGET.items():
+        per: dict[str, int] = {}
+        for v in ctx:
+            if v.kind != kind:
+                continue
+            d = _desc(v)
+            if d:
+                per[v.plugin] = per.get(v.plugin, 0) + len(d)
+        total = sum(per.values())
+        if not per or total <= budget:
+            continue
+        worst = min(per, key=lambda p: (-per[p], p))
+        if u.plugin != worst:
+            continue
+        out.append(_finding(
+            u, "P-DESC-BUDGET",
+            f"{kind} descriptions total {total} chars across {len(per)} plugins, over the "
+            f"{budget} budget; {worst} is the largest at {per[worst]}",
+            f"cut the longest {kind} descriptions to what a router needs -- what it does, when, "
+            "and the boundaries that stop a wrong dispatch; move the rest into the body",
+            line=1, quote=f"{kind}: {total} > {budget}"))
+    return out
+
+
 def _readme(u: Unit) -> bool:
     return u.kind == "readme"
 
@@ -1905,6 +2000,7 @@ RULES = {
     "M-FM-PARSE": r_fm_parse,
     "M-DESC-LEN": r_desc_len,
     "M-DESC-XML": r_desc_xml,
+    "M-DESC-POINTER": r_desc_pointer,
     "M-DESC-PERSON": r_desc_person,
     "M-DESC-VAGUE": r_desc_vague,
     "M-DESC-WHENONLY": r_desc_whenonly,
@@ -1970,6 +2066,7 @@ RULES = {
     "P-MARKETPLACE-MEMBER": r_p_marketplace_member,
     "P-MANIFEST-KEYWORDS": r_p_manifest_keywords,
     "P-MANIFEST-LICENSE": r_p_manifest_license,
+    "P-DESC-BUDGET": r_p_desc_budget,
     "A-VIEWER-REQUIRED": r_a_viewer_required,
     "P-README-H1": r_p_readme_h1,
     "P-README-THESIS": r_p_readme_thesis,
