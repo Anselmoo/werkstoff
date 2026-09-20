@@ -1,6 +1,6 @@
 ---
 name: decode-referee
-description: "Use this agent to independently re-derive one Design Card's measurement from the source it cites, blind to the reasoning that produced it, so a card nobody can reproduce is dropped before it becomes a token. Dispatched by matrize-decode after reference-decoder returns, one card at a time. Receives only the cited source location and the claim — never the authoring agent's rationale, confidence or summary. Read-only; it re-measures and reports agreement or disagreement, and never edits a card or writes a file."
+description: 'Independently re-derives one Design Card''s measurement from the source it cites, blind to the reasoning that produced it, so a card nobody can reproduce is dropped before it becomes a token. One card per dispatch, and it receives only the cited source location and the claim — never the authoring agent''s rationale, confidence or summary. Read-only: it re-measures and reports agreement or disagreement, and never edits a card or writes a file.'
 model: sonnet
 color: green
 tools: Read, Glob, Grep
