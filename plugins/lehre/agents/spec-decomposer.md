@@ -1,6 +1,6 @@
 ---
 name: spec-decomposer
-description: Use this agent when one concern of a stated project intent needs turning into candidate build units — what each owns, what it must not know about, and which seams it participates in. Typical triggers include lehre-decompose dispatching one agent per concern in a single parallel batch so the concerns stay independent, and a re-decomposition after the user revises the intent. Every dispatch names exactly ONE concern; a dispatch naming several is out of scope and only the first is handled. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when one concern of a stated project intent needs turning into candidate build units — what each owns, what it must not know about, and which seams it participates in. Every dispatch names exactly ONE concern; a dispatch naming several is out of scope and only the first is handled.
 model: inherit
 color: cyan
 tools: Read, Glob, Grep

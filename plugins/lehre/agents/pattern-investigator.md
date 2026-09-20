@@ -1,6 +1,6 @@
 ---
 name: pattern-investigator
-description: Use this agent when an existing codebase needs surveying for how it actually handles one convention dimension, with real file:line evidence, so a researched rule can be upgraded to evidence-backed provenance or dropped for contradicting settled practice. Typical triggers include lehre-codify dispatching one agent per dimension during a brownfield run, and a check on whether a specific proposed rule would break existing deliberate practice. Brownfield only — never dispatched on a blank page. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when an existing codebase needs surveying for how it actually handles one convention dimension, with real file:line evidence, so a researched rule can be upgraded to evidence-backed provenance or dropped for contradicting settled practice. Brownfield only — never dispatched on a blank page.
 model: inherit
 color: green
 tools: Read, Glob, Grep, Bash

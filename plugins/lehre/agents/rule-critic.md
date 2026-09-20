@@ -1,6 +1,6 @@
 ---
 name: rule-critic
-description: Use this agent to adversarially review a candidate ruleset before it is written to .lehre/ruleset.json — independently re-deriving whether each rule's sourceMode claim is honest, hunting for forced consistency where genuine variation was warranted, and catching blocking rules whose predicate cannot actually decide them. Typical triggers include lehre-codify dispatching it once over the whole candidate set before writing, and a re-review after candidates were revised. Read-only; it refutes, it does not rewrite. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to adversarially review a candidate ruleset before it is written to .lehre/ruleset.json — independently re-deriving whether each rule's sourceMode claim is honest, hunting for forced consistency where genuine variation was warranted, and catching blocking rules whose predicate cannot actually decide them. Read-only; it refutes, it does not rewrite.
 model: inherit
 color: red
 tools: Read, Glob, Grep

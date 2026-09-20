@@ -1,6 +1,6 @@
 ---
 name: spec-fidelity-auditor
-description: Use this agent when a completed unit needs checking against the project intent it was built for — does it deliver what the recorded intent said, and does it respect what the decomposition declared it must not know? Typical triggers include lehre-validate dispatching it before closing any unit, and a direct question about whether a finished unit is actually the unit that was asked for. Answers a question no rule can express; every rule passing is not the same as the unit being right. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a completed unit needs checking against the project intent it was built for — does it deliver what the recorded intent said, and does it respect what the decomposition declared it must not know? Answers a question no rule can express; every rule passing is not the same as the unit being right.
 model: inherit
 color: purple
 tools: Read, Glob, Grep

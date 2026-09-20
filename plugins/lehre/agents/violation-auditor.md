@@ -1,6 +1,6 @@
 ---
 name: violation-auditor
-description: Use this agent when a rule that has no deterministic predicate — an advisory rule the closed check vocabulary cannot express — needs a codebase surveyed for violations by reading, since the gauge script cannot decide it. Typical triggers include lehre-gauge dispatching one auditor per advisory rule with no machine check, and a targeted request to find where a specific named design rule is broken. Never dispatched for a rule the gauge can already decide — re-auditing those by hand produces a second, drifting opinion. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a rule that has no deterministic predicate — an advisory rule the closed check vocabulary cannot express — needs a codebase surveyed for violations by reading, since the gauge script cannot decide it. Never dispatched for a rule the gauge can already decide — re-auditing those by hand produces a second, drifting opinion.
 model: inherit
 color: yellow
 tools: Read, Glob, Grep

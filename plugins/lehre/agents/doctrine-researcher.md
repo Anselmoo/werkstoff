@@ -1,6 +1,6 @@
 ---
 name: doctrine-researcher
-description: Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Typical triggers include lehre-codify dispatching one agent per rule-domain in a single parallel batch, and a re-research pass after the project's target version changed. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence.
 model: inherit
 color: blue
 tools: Read, Glob, Grep, Bash

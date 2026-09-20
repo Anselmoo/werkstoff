@@ -1,6 +1,6 @@
 ---
 name: violation-verifier
-description: Use this agent to independently re-confirm one candidate violation at its exact file:line, blind to the reasoning that produced it, so a false positive is caught before a remediation is planned around it. Typical triggers include lehre-gauge sampling one violation per rule before presenting a large set, and lehre-validate re-checking a file the gauge reported as UNEVALUATED. Judges one location per dispatch and never infers one location's verdict from another's, even within the same file and rule. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent to independently re-confirm one candidate violation at its exact file:line, blind to the reasoning that produced it, so a false positive is caught before a remediation is planned around it. Judges one location per dispatch and never infers one location's verdict from another's, even within the same file and rule.
 model: inherit
 color: red
 tools: Read, Glob, Grep, Bash
