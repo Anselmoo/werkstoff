@@ -1,6 +1,6 @@
 ---
 name: convention-auditor
-description: Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config. Typical triggers include self-assess-lint-audit dispatching a Find+Verify pass over a capped set of extracted rules, a pre-PR conventions check, and a targeted spot-check of one specific documented rule across the whole codebase. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config.
 model: inherit
 color: green
 tools: Read, Glob, Grep

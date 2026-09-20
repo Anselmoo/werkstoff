@@ -1,6 +1,6 @@
 ---
 name: idiom-auditor
-description: Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells. Typical triggers include self-assess-code-idiom dispatching a Find pass with a manifest-detected version per language, a Verify pass re-confirming one candidate finding, and a direct user request to modernize idioms in place or catch code smells. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells.
 model: inherit
 color: magenta
 tools: Read, Glob, Grep

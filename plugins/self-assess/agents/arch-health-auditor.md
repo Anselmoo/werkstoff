@@ -1,6 +1,6 @@
 ---
 name: arch-health-auditor
-description: Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source. Typical triggers include self-assess-arch-health dispatching one confirmation pass per mechanically-flagged candidate (a high-fan-in stage, a strongly-connected component of size >= 2), and a direct user request to check architecture health or find dependency cycles. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source.
 model: inherit
 color: red
 tools: Read, Glob, Grep

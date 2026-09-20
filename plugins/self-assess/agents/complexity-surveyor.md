@@ -1,6 +1,6 @@
 ---
 name: complexity-surveyor
-description: Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index. Typical triggers include self-assess-complexity-score dispatching one surveyor per stage in parallel, and a direct user request to measure the size/complexity of one specific module. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index.
 model: inherit
 color: yellow
 tools: Read, Glob, Bash

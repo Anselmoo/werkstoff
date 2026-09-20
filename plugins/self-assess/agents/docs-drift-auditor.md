@@ -1,6 +1,6 @@
 ---
 name: docs-drift-auditor
-description: Use this agent when documentation needs checking for drift against the actual current state of the codebase. Typical triggers include self-assess-docs-drift dispatching verification for every extracted, in-scope claim, a post-refactor sweep after CLI flags or symbols were renamed, and a targeted verification of one specific doc file's claims. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when documentation needs checking for drift against the actual current state of the codebase.
 model: inherit
 color: cyan
 tools: Read, Glob, Grep, Bash

@@ -1,6 +1,6 @@
 ---
 name: ci-topology-auditor
-description: Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation. Typical triggers include self-assess-ci-topology dispatching a full remotes/CI health check, a review of a PR that adds a new remote or mirror step, and a narrow request to verify one specific claim about remotes or CI config. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation.
 model: inherit
 color: yellow
 tools: Read, Glob, Grep, Bash

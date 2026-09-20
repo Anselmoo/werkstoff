@@ -1,6 +1,6 @@
 ---
 name: stage-mapper
-description: Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory. Typical triggers include self-assess-stage-map's Step 2 dispatching one extraction per detected language, a Verify-phase request to confirm one candidate wire by reading its actual import statement, and a direct user request to map real module boundaries in a polyglot repo where naive directory-based detection would be wrong. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory.
 model: inherit
 color: blue
 tools: Read, Glob, Grep, Bash
