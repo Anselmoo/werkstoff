@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-09-20
+
+### Added
+- arbeitsplan backends and run records, a nacharbeit trigger probe, and docs that start somewhere (#63)
+- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
+- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
+- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
+
+### Fixed
+- **ci**: install PyYAML in auto-version-bump.yml (#57)
+- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
+
+### Documentation
+- harmonize the docs and enforce the corporate design tokens (#61)
+
 ## [0.6.0] - 2026-09-19
 ### Added
 - `lehre_cli.py gauge` persists each sweep under `.lehre/gauge/<runId>/` (`findings.json` plus a run record) and names it in its output (`record`); it used to print its findings and keep nothing. It still changes no source file. Guarded below Python 3.11: the sweep stands, only the record is lost, with a note.
