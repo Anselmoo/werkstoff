@@ -6,20 +6,15 @@ All notable changes to the `matrize` plugin are documented here.
 
 ## [0.3.1] - 2026-09-20
 
-### Added
-- arbeitsplan backends and run records, a nacharbeit trigger probe, and docs that start somewhere (#63)
-- **arbeitsplan**: a twelfth plugin that compiles a problem into a swarm — and the dead workflow it exposed (#60)
-- **matrize**: an eleventh plugin that derives a design system from exemplars (#59)
-- **nacharbeit**: a tenth plugin that reworks a plugin to the Anthropic standard (#58)
-
 ### Fixed
-- **matrize**: drop dispatch mechanics from agent descriptions (#65)
-- **ci**: install PyYAML in auto-version-bump.yml (#57)
-- **ci**: checkout repo and scope changelog extraction to workspace root in github-release job
-
-### Documentation
-- **changelog**: describe what the 2026-09-20 patch releases actually changed (#64)
-- harmonize the docs and enforce the corporate design tokens (#61)
+- **agents**: dropped the `Dispatched by ...` orchestration sentence from all six
+  agent descriptions, and led with the verb instead of `Use this agent to`. A
+  description is loaded into every session; the dispatching skill already knows its
+  own order, and that sentence never helped decide whether an agent is the right one.
+  Everything that discriminates is kept verbatim: `decode-referee`'s blindness to the
+  authoring agent's rationale, `design-critic`'s explicit rejection test,
+  `token-emitter`'s list of targets that are NOT built, every `Read-only` promise and
+  every `Never` rule. 3583 -> 3107 description characters, no agent body changed. (#65)
 
 ## [0.3.0] - 2026-09-12
 ### Changed
