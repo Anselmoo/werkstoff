@@ -86,7 +86,7 @@
     },
     {
       "name": "arbeitsplan",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm — N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted — and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and — only behind an explicit approval gate — to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
       "skills": [
         {
@@ -134,7 +134,7 @@
         {
           "id": "arbeitsplan:adjudicator",
           "name": "adjudicator",
-          "description": "Use this agent for the final plan-mode ADJUDICATE phase of an arbeitsplan run — it reads the whole round (contract, candidates, blind verdicts, synthesis) and decides whether the round established what the contract asked, owning the cannotEstablish list. Typical triggers include arbeitsplan-run reaching ADJUDICATE (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a review of a halted run before deciding to re-compile. Never overturns a referee verdict — a disagreement is recorded as doubt with what would resolve it. Never writes code; landing belongs to the session and land_candidate.py. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent for the final plan-mode ADJUDICATE phase of an arbeitsplan run — it reads the whole round (contract, candidates, blind verdicts, synthesis) and decides whether the round established what the contract asked, owning the cannotEstablish list. Never overturns a referee verdict — a disagreement is recorded as doubt with what would resolve it. Never writes code; landing belongs to the session and land_candidate.py.",
           "tools": [
             "Read",
             "Glob",
@@ -144,7 +144,7 @@
         {
           "id": "arbeitsplan:candidate-builder",
           "name": "candidate-builder",
-          "description": "Use this agent when one candidate of an arbeitsplan fan-out phase must be built in its own git worktree, under exactly one assigned angle, against the acceptance criteria in workflow.json. Typical triggers include arbeitsplan-run dispatching N builders in a single parallel batch, one per angle, and a re-dispatch under a NEW angle after a batch was too narrow. Every dispatch names exactly ONE angle and ONE worktree; a dispatch naming several is out of scope and only the first is handled. Never dispatched to \"improve\" a previous candidate — that is the serial retry loop this plugin exists to prevent, and the PreToolUse guard denies an identical re-dispatch outright. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one candidate of an arbeitsplan fan-out phase must be built in its own git worktree, under exactly one assigned angle, against the acceptance criteria in workflow.json. Every dispatch names exactly ONE angle and ONE worktree; a dispatch naming several is out of scope and only the first is handled. Never dispatched to \"improve\" a previous candidate — that is the serial retry loop this plugin exists to prevent, and the PreToolUse guard denies an identical re-dispatch outright.",
           "tools": [
             "Read",
             "Glob",
@@ -157,7 +157,7 @@
         {
           "id": "arbeitsplan:candidate-referee",
           "name": "candidate-referee",
-          "description": "Use this agent to judge ONE arbeitsplan candidate against the acceptance criteria, given its diff and nothing else — no builder rationale, no angle, no other candidate, no prior verdict. Typical triggers include arbeitsplan-run dispatching one referee per candidate in a single parallel batch after a fan-out phase closes, and a re-judgement after the acceptance criteria themselves were revised. One candidate per dispatch, always; a dispatch carrying two candidates is out of scope and only the first is judged. Never dispatched to compare candidates against each other — ranking is a deterministic rule in the calling skill, not a judgement call. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to judge ONE arbeitsplan candidate against the acceptance criteria, given its diff and nothing else — no builder rationale, no angle, no other candidate, no prior verdict. One candidate per dispatch, always; a dispatch carrying two candidates is out of scope and only the first is judged. Never dispatched to compare candidates against each other — ranking is a deterministic rule in the calling skill, not a judgement call.",
           "tools": [
             "Read",
             "Glob",
@@ -168,7 +168,7 @@
         {
           "id": "arbeitsplan:cleaner",
           "name": "cleaner",
-          "description": "Use this agent to PROPOSE a removal set for an arbeitsplan run — dead files, orphaned fixtures, stale analysis/arbeitsplan run directories, leftover worktrees and branches — each path with evidence that nothing reaches it. Typical triggers include a cleanup phase after a landing, and a sweep before release. Read-only by design, it proposes, and scripts/sweep_artifacts.py (dry-run by default) performs the removal after a human approves. Never dispatched to restructure (refactorer) or to implement (implementer). See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to PROPOSE a removal set for an arbeitsplan run — dead files, orphaned fixtures, stale analysis/arbeitsplan run directories, leftover worktrees and branches — each path with evidence that nothing reaches it. Read-only by design, it proposes, and scripts/sweep_artifacts.py (dry-run by default) performs the removal after a human approves. Never dispatched to restructure (refactorer) or to implement (implementer).",
           "tools": [
             "Read",
             "Glob",
@@ -179,7 +179,7 @@
         {
           "id": "arbeitsplan:contract-author",
           "name": "contract-author",
-          "description": "Use this agent to turn an arbeitsplan INVENTORY into the acceptance contract every later phase runs under — criteria with runnable checks, plus the cannotCheck list of what no check can decide — BEFORE any candidate exists. Typical triggers include arbeitsplan-run reaching a plan-mode CONTRACT phase (run.js halts there with pending_plan_node and the session dispatches this agent in plan mode), and a re-contract after a CONTRACT PROBLEM halt. Never writes code, and is never dispatched once candidates exist, because authoring a check after seeing what it will grade is retuning an oracle to its subject. Hands the contract to candidate-builder and candidate-referee; scope stays with scope-prover. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to turn an arbeitsplan INVENTORY into the acceptance contract every later phase runs under — criteria with runnable checks, plus the cannotCheck list of what no check can decide — BEFORE any candidate exists. Never writes code, and is never dispatched once candidates exist, because authoring a check after seeing what it will grade is retuning an oracle to its subject. Hands the contract to candidate-builder and candidate-referee; scope stays with scope-prover.",
           "tools": [
             "Read",
             "Glob",
@@ -190,7 +190,7 @@
         {
           "id": "arbeitsplan:implementer",
           "name": "implementer",
-          "description": "Use this agent for a single-writer arbeitsplan phase that implements one scoped change against a fixed contract — one writer, one worktree, one diff returned as data. Typical triggers include a compiled phase with kind single-writer and agentType arbeitsplan:implementer, where the work has one correct answer and a deterministic check, so N redundant candidates would buy N diffs and one decision the check already made. Refuses fan-out (N writers over one scope is best-of-n with candidate-builder) and refuses to widen writeScope. Hands its diff to the landing step; behaviour-preserving restructuring goes to refactorer, removals to cleaner. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent for a single-writer arbeitsplan phase that implements one scoped change against a fixed contract — one writer, one worktree, one diff returned as data. Refuses fan-out (N writers over one scope is best-of-n with candidate-builder) and refuses to widen writeScope. Hands its diff to the landing step; behaviour-preserving restructuring goes to refactorer, removals to cleaner.",
           "tools": [
             "Read",
             "Glob",
@@ -203,7 +203,7 @@
         {
           "id": "arbeitsplan:inventory-extractor",
           "name": "inventory-extractor",
-          "description": "Use this agent to extract every item of one kind from ONE source partition of an arbeitsplan read-only fan-out — the map half of map-reduce-disjoint — returning a complete list with stable ids and paths, or an explicit truncation marker. Typical triggers include workflows/run.js dispatching one extractor per partition of a fanout-readonly phase, and the seeded re-derivation that extracts a sampled partition a second time, blind to the first answer. One partition per dispatch; never summarises, never judges what it found. Hands its list to contract-author, which reads it; never dispatched to decide scope (scope-prover) or pattern (pattern-researcher). See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to extract every item of one kind from ONE source partition of an arbeitsplan read-only fan-out — the map half of map-reduce-disjoint — returning a complete list with stable ids and paths, or an explicit truncation marker. One partition per dispatch; never summarises, never judges what it found. Hands its list to contract-author, which reads it; never dispatched to decide scope (scope-prover) or pattern (pattern-researcher).",
           "tools": [
             "Read",
             "Glob",
@@ -213,7 +213,7 @@
         {
           "id": "arbeitsplan:pattern-researcher",
           "name": "pattern-researcher",
-          "description": "Use this agent to propose which agentic pattern fits a stated problem, grounded first in the frozen catalog at references/patterns.md and only then in outside sources. Typical triggers include arbeitsplan-patterns being asked what shape a problem should be run in, arbeitsplan-compile needing a pattern for one phase, and a request to check whether a pattern the user names is actually a good fit. Returns proposals with citations; it never writes workflow.json and never edits the catalog. A pattern the catalog marks rejected is never proposed, whatever an outside source says. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to propose which agentic pattern fits a stated problem, grounded first in the frozen catalog at references/patterns.md and only then in outside sources. Returns proposals with citations; it never writes workflow.json and never edits the catalog. A pattern the catalog marks rejected is never proposed, whatever an outside source says.",
           "tools": [
             "Read",
             "Glob",
@@ -225,7 +225,7 @@
         {
           "id": "arbeitsplan:refactorer",
           "name": "refactorer",
-          "description": "Use this agent for a single-writer arbeitsplan phase that restructures code WITHOUT changing behaviour — rename, extract, move, inline — proving equivalence by running the same checks before and after. Typical triggers include a compiled phase with agentType arbeitsplan:refactorer after a contract names the structure to reach, and a cleanup phase after a synthesis landed working but tangled code. Refuses any behaviour change and refuses to run inside a fan-out phase (N restructurings of one scope are not comparable). New behaviour goes to implementer, removals to cleaner. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent for a single-writer arbeitsplan phase that restructures code WITHOUT changing behaviour — rename, extract, move, inline — proving equivalence by running the same checks before and after. Refuses any behaviour change and refuses to run inside a fan-out phase (N restructurings of one scope are not comparable). New behaviour goes to implementer, removals to cleaner.",
           "tools": [
             "Read",
             "Glob",
@@ -238,7 +238,7 @@
         {
           "id": "arbeitsplan:scope-prover",
           "name": "scope-prover",
-          "description": "Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Typical triggers include arbeitsplan-compile needing a writeScope for workflow.json, and a map-reduce-disjoint phase needing its disjointness established BEFORE any builder is dispatched. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to derive the concrete write scope a phase needs and, for a partitioned fan-out, to prove the partitions cannot overlap. Returns a proof or a refusal — a partition whose scope cannot be derived is reported as unprovable, never assumed disjoint. Never dispatched to widen a scope mid-run — the scope is the contract candidates were dispatched under, and changing it makes them incomparable.",
           "tools": [
             "Read",
             "Glob",
@@ -248,7 +248,7 @@
         {
           "id": "arbeitsplan:synthesizer",
           "name": "synthesizer",
-          "description": "Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Typical triggers include workflows/run.js dispatching the SYNTHESIZE phase after a blind referee, and an in-session landing phase compiled with agentType arbeitsplan:synthesizer. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did). See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did).",
           "tools": [
             "Read",
             "Glob",
@@ -828,7 +828,7 @@
         {
           "id": "lehre:conformance-remediator",
           "name": "conformance-remediator",
-          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Typical triggers include lehre-conform dispatching one remediator per (file, rule) cluster after the approval gate closes. Only ever dispatched by lehre-conform against a lehre rule-card finding — not for self-assess-code-idiom \"modernization\" findings (self-assess's idiom-remediator) and not for cupertino-handbook-check mechanical findings (cupertino's handbook-remediator), and not from a bare user request carrying no pipeline context. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Only ever dispatched by lehre-conform against a lehre rule-card finding — not for self-assess-code-idiom \"modernization\" findings (self-assess's idiom-remediator) and not for cupertino-handbook-check mechanical findings (cupertino's handbook-remediator), and not from a bare user request carrying no pipeline context. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output.",
           "tools": [
             "Read",
             "Edit"
@@ -837,7 +837,7 @@
         {
           "id": "lehre:doctrine-researcher",
           "name": "doctrine-researcher",
-          "description": "Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Typical triggers include lehre-codify dispatching one agent per rule-domain in a single parallel batch, and a re-research pass after the project's target version changed. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence.",
           "tools": [
             "Read",
             "Glob",
@@ -848,7 +848,7 @@
         {
           "id": "lehre:pattern-investigator",
           "name": "pattern-investigator",
-          "description": "Use this agent when an existing codebase needs surveying for how it actually handles one convention dimension, with real file:line evidence, so a researched rule can be upgraded to evidence-backed provenance or dropped for contradicting settled practice. Typical triggers include lehre-codify dispatching one agent per dimension during a brownfield run, and a check on whether a specific proposed rule would break existing deliberate practice. Brownfield only — never dispatched on a blank page. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when an existing codebase needs surveying for how it actually handles one convention dimension, with real file:line evidence, so a researched rule can be upgraded to evidence-backed provenance or dropped for contradicting settled practice. Brownfield only — never dispatched on a blank page.",
           "tools": [
             "Read",
             "Glob",
@@ -859,7 +859,7 @@
         {
           "id": "lehre:rule-critic",
           "name": "rule-critic",
-          "description": "Use this agent to adversarially review a candidate ruleset before it is written to .lehre/ruleset.json — independently re-deriving whether each rule's sourceMode claim is honest, hunting for forced consistency where genuine variation was warranted, and catching blocking rules whose predicate cannot actually decide them. Typical triggers include lehre-codify dispatching it once over the whole candidate set before writing, and a re-review after candidates were revised. Read-only; it refutes, it does not rewrite. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to adversarially review a candidate ruleset before it is written to .lehre/ruleset.json — independently re-deriving whether each rule's sourceMode claim is honest, hunting for forced consistency where genuine variation was warranted, and catching blocking rules whose predicate cannot actually decide them. Read-only; it refutes, it does not rewrite.",
           "tools": [
             "Read",
             "Glob",
@@ -869,7 +869,7 @@
         {
           "id": "lehre:spec-decomposer",
           "name": "spec-decomposer",
-          "description": "Use this agent when one concern of a stated project intent needs turning into candidate build units — what each owns, what it must not know about, and which seams it participates in. Typical triggers include lehre-decompose dispatching one agent per concern in a single parallel batch so the concerns stay independent, and a re-decomposition after the user revises the intent. Every dispatch names exactly ONE concern; a dispatch naming several is out of scope and only the first is handled. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one concern of a stated project intent needs turning into candidate build units — what each owns, what it must not know about, and which seams it participates in. Every dispatch names exactly ONE concern; a dispatch naming several is out of scope and only the first is handled.",
           "tools": [
             "Read",
             "Glob",
@@ -879,7 +879,7 @@
         {
           "id": "lehre:spec-fidelity-auditor",
           "name": "spec-fidelity-auditor",
-          "description": "Use this agent when a completed unit needs checking against the project intent it was built for — does it deliver what the recorded intent said, and does it respect what the decomposition declared it must not know? Typical triggers include lehre-validate dispatching it before closing any unit, and a direct question about whether a finished unit is actually the unit that was asked for. Answers a question no rule can express; every rule passing is not the same as the unit being right. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a completed unit needs checking against the project intent it was built for — does it deliver what the recorded intent said, and does it respect what the decomposition declared it must not know? Answers a question no rule can express; every rule passing is not the same as the unit being right.",
           "tools": [
             "Read",
             "Glob",
@@ -889,7 +889,7 @@
         {
           "id": "lehre:violation-auditor",
           "name": "violation-auditor",
-          "description": "Use this agent when a rule that has no deterministic predicate — an advisory rule the closed check vocabulary cannot express — needs a codebase surveyed for violations by reading, since the gauge script cannot decide it. Typical triggers include lehre-gauge dispatching one auditor per advisory rule with no machine check, and a targeted request to find where a specific named design rule is broken. Never dispatched for a rule the gauge can already decide — re-auditing those by hand produces a second, drifting opinion. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a rule that has no deterministic predicate — an advisory rule the closed check vocabulary cannot express — needs a codebase surveyed for violations by reading, since the gauge script cannot decide it. Never dispatched for a rule the gauge can already decide — re-auditing those by hand produces a second, drifting opinion.",
           "tools": [
             "Read",
             "Glob",
@@ -899,7 +899,7 @@
         {
           "id": "lehre:violation-verifier",
           "name": "violation-verifier",
-          "description": "Use this agent to independently re-confirm one candidate violation at its exact file:line, blind to the reasoning that produced it, so a false positive is caught before a remediation is planned around it. Typical triggers include lehre-gauge sampling one violation per rule before presenting a large set, and lehre-validate re-checking a file the gauge reported as UNEVALUATED. Judges one location per dispatch and never infers one location's verdict from another's, even within the same file and rule. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent to independently re-confirm one candidate violation at its exact file:line, blind to the reasoning that produced it, so a false positive is caught before a remediation is planned around it. Judges one location per dispatch and never infers one location's verdict from another's, even within the same file and rule.",
           "tools": [
             "Read",
             "Glob",
@@ -1218,7 +1218,7 @@
         {
           "id": "self-assess:arch-health-auditor",
           "name": "arch-health-auditor",
-          "description": "Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source. Typical triggers include self-assess-arch-health dispatching one confirmation pass per mechanically-flagged candidate (a high-fan-in stage, a strongly-connected component of size >= 2), and a direct user request to check architecture health or find dependency cycles. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source.",
           "tools": [
             "Read",
             "Glob",
@@ -1228,7 +1228,7 @@
         {
           "id": "self-assess:business-rules-miner",
           "name": "business-rules-miner",
-          "description": "Use this agent when a codebase's executable business/domain logic needs mining into testable Given/When/Then rule specs with file:line citations, priority, and confidence. Typical triggers include self-assess-extract-rules dispatching one lens-scoped miner per round (calculations / validations-and-eligibility / state-and-lifecycle), a Verify-phase request for an independent citation referee, and a P0-panel request to judge one P0-rated rule. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a codebase's executable business/domain logic needs mining into testable Given/When/Then rule specs with file:line citations, priority, and confidence.",
           "tools": [
             "Read",
             "Glob",
@@ -1238,7 +1238,7 @@
         {
           "id": "self-assess:ci-topology-auditor",
           "name": "ci-topology-auditor",
-          "description": "Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation. Typical triggers include self-assess-ci-topology dispatching a full remotes/CI health check, a review of a PR that adds a new remote or mirror step, and a narrow request to verify one specific claim about remotes or CI config. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation.",
           "tools": [
             "Read",
             "Glob",
@@ -1249,7 +1249,7 @@
         {
           "id": "self-assess:complexity-surveyor",
           "name": "complexity-surveyor",
-          "description": "Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index. Typical triggers include self-assess-complexity-score dispatching one surveyor per stage in parallel, and a direct user request to measure the size/complexity of one specific module. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index.",
           "tools": [
             "Read",
             "Glob",
@@ -1259,7 +1259,7 @@
         {
           "id": "self-assess:convention-auditor",
           "name": "convention-auditor",
-          "description": "Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config. Typical triggers include self-assess-lint-audit dispatching a Find+Verify pass over a capped set of extracted rules, a pre-PR conventions check, and a targeted spot-check of one specific documented rule across the whole codebase. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config.",
           "tools": [
             "Read",
             "Glob",
@@ -1269,7 +1269,7 @@
         {
           "id": "self-assess:docs-drift-auditor",
           "name": "docs-drift-auditor",
-          "description": "Use this agent when documentation needs checking for drift against the actual current state of the codebase. Typical triggers include self-assess-docs-drift dispatching verification for every extracted, in-scope claim, a post-refactor sweep after CLI flags or symbols were renamed, and a targeted verification of one specific doc file's claims. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when documentation needs checking for drift against the actual current state of the codebase.",
           "tools": [
             "Read",
             "Glob",
@@ -1280,7 +1280,7 @@
         {
           "id": "self-assess:idiom-auditor",
           "name": "idiom-auditor",
-          "description": "Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells. Typical triggers include self-assess-code-idiom dispatching a Find pass with a manifest-detected version per language, a Verify pass re-confirming one candidate finding, and a direct user request to modernize idioms in place or catch code smells. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells.",
           "tools": [
             "Read",
             "Glob",
@@ -1290,7 +1290,7 @@
         {
           "id": "self-assess:idiom-remediator",
           "name": "idiom-remediator",
-          "description": "Use this agent when a cluster of same-file, same-idiom-kind, already-verified self-assess-code-idiom \"modernization\"-category findings needs exactly those mechanical rewrites applied at their cited locations, and nothing else. Typical trigger is self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. Only ever dispatched by self-assess-idiom-fix against code-idiom findings -- not for lehre rule-card conformance findings (lehre's conformance-remediator), not for cupertino handbook findings (cupertino's handbook-remediator), not for `smell`-category or `severityNote`-flagged findings, and not from a bare user request carrying no pipeline context. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a cluster of same-file, same-idiom-kind, already-verified self-assess-code-idiom \"modernization\"-category findings needs exactly those mechanical rewrites applied at their cited locations, and nothing else. Typical trigger is self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. Only ever dispatched by self-assess-idiom-fix against code-idiom findings -- not for lehre rule-card conformance findings (lehre's conformance-remediator), not for cupertino handbook findings (cupertino's handbook-remediator), not for `smell`-category or `severityNote`-flagged findings, and not from a bare user request carrying no pipeline context.",
           "tools": [
             "Read",
             "Edit"
@@ -1299,7 +1299,7 @@
         {
           "id": "self-assess:stage-mapper",
           "name": "stage-mapper",
-          "description": "Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory. Typical triggers include self-assess-stage-map's Step 2 dispatching one extraction per detected language, a Verify-phase request to confirm one candidate wire by reading its actual import statement, and a direct user request to map real module boundaries in a polyglot repo where naive directory-based detection would be wrong. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory.",
           "tools": [
             "Read",
             "Glob",
@@ -1310,7 +1310,7 @@
         {
           "id": "self-assess:transform-executor",
           "name": "transform-executor",
-          "description": "Use this agent when a single, already-authorized phase from MODERNIZATION_BRIEF.md (a Merge, Split, or layering-violation fix) needs its code changes actually applied, with every Open Question for that phase already resolved by a human. Typical triggers include self-assess-transform-execute dispatching this agent for exactly one human-authorized phase after all of its gates have passed. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a single, already-authorized phase from MODERNIZATION_BRIEF.md (a Merge, Split, or layering-violation fix) needs its code changes actually applied, with every Open Question for that phase already resolved by a human.",
           "tools": [
             "Read",
             "Glob",
@@ -1322,7 +1322,7 @@
         {
           "id": "self-assess:ui-auditor",
           "name": "ui-auditor",
-          "description": "Use this agent when a codebase's UI surface (JSX/TSX, Vue/Svelte, HTML, CSS/SCSS) needs a static, read-only audit for accessibility, semantic-markup, and hardcoded design-value problems. Typical triggers include self-assess-ui-audit dispatching a Find pass over detected UI files, a Verify pass re-confirming one candidate finding, and a direct user request to audit UI/UX or accessibility of the code. See \"When to invoke\" in the agent body for worked scenarios.",
+          "description": "Use this agent when a codebase's UI surface (JSX/TSX, Vue/Svelte, HTML, CSS/SCSS) needs a static, read-only audit for accessibility, semantic-markup, and hardcoded design-value problems.",
           "tools": [
             "Read",
             "Glob",
