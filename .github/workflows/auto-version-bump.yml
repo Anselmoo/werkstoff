@@ -42,7 +42,7 @@ on:
   workflow_call:
     inputs:
       groups_and_levels:
-        description: "Comma-separated group:level pairs, e.g. 'confab:patch,compass:patch'"
+        description: "Comma-separated group:level pairs, e.g. 'confab:patch,zirkel:patch'"
         required: true
         type: string
     outputs:
@@ -169,13 +169,13 @@ jobs:
           # this uses MATCHED_GROUPS throughout instead.
           CHANGED=$(git diff --name-only HEAD~1 HEAD)
           MATCHED_GROUPS=""
-          echo "$CHANGED" | grep -q '^plugins/self-assess/' && MATCHED_GROUPS="$MATCHED_GROUPS self-assess"
+          echo "$CHANGED" | grep -q '^plugins/befund/' && MATCHED_GROUPS="$MATCHED_GROUPS befund"
           echo "$CHANGED" | grep -q '^plugins/confab/' && MATCHED_GROUPS="$MATCHED_GROUPS confab"
-          echo "$CHANGED" | grep -q '^plugins/compass/' && MATCHED_GROUPS="$MATCHED_GROUPS compass"
+          echo "$CHANGED" | grep -q '^plugins/zirkel/' && MATCHED_GROUPS="$MATCHED_GROUPS zirkel"
           echo "$CHANGED" | grep -q '^plugins/cupertino/' && MATCHED_GROUPS="$MATCHED_GROUPS cupertino"
           echo "$CHANGED" | grep -q '^plugins/andon/' && MATCHED_GROUPS="$MATCHED_GROUPS andon"
           echo "$CHANGED" | grep -q '^plugins/cli-scaffold/' && MATCHED_GROUPS="$MATCHED_GROUPS cli-scaffold"
-          echo "$CHANGED" | grep -q '^plugins/codebase-consistency/' && MATCHED_GROUPS="$MATCHED_GROUPS codebase-consistency"
+          echo "$CHANGED" | grep -q '^plugins/passung/' && MATCHED_GROUPS="$MATCHED_GROUPS passung"
           echo "$CHANGED" | grep -q '^plugins/lehre/' && MATCHED_GROUPS="$MATCHED_GROUPS lehre"
           echo "$CHANGED" | grep -q '^plugins/takt/' && MATCHED_GROUPS="$MATCHED_GROUPS takt"
           echo "$CHANGED" | grep -q '^plugins/nacharbeit/' && MATCHED_GROUPS="$MATCHED_GROUPS nacharbeit"

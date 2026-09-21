@@ -43,7 +43,7 @@ if a recipe body is missing either component.
 Three conventions hold throughout the catalog.
 
 **Leaves only.** Beats name leaf skills and dispatchable agents. Orchestrators —
-`andon:andon-loop`, `self-assess:self-assess-autopilot`, `compass:compass-solve`,
+`andon:andon-loop`, `befund:befund-autopilot`, `zirkel:zirkel-solve`,
 `cupertino:cupertino-review`, `confab:confab-cycle`, the `/consistency-*` command chain,
 `code-modernization`'s eight-stage pipeline — each own a whole task and must never be
 wedged in as a step inside another workflow. Choosing between them is a routing question;
@@ -52,8 +52,8 @@ see [`routing.md`](/orchestration/references/routing).
 **Declared position is binding.** A skill whose own frontmatter says "before any code"
 does not get retrofitted afterwards. `cupertino:cupertino-council` states it directly:
 "Always run before code, never after — retrofitting the council onto finished code
-defeats the purpose." `compass:compass-clarify-scope` declares itself for use "before any
-work begins". `codebase-consistency` is the mirror case: genuinely post-hoc, and wrong as
+defeats the purpose." `zirkel:zirkel-clarify-scope` declares itself for use "before any
+work begins". `passung` is the mirror case: genuinely post-hoc, and wrong as
 a preamble.
 
 **Honest gaps.** Three recipes are marked **No werkstoff fit**. Those tasks are better

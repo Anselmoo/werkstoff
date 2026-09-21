@@ -24,7 +24,7 @@ checks below.
 Determine availability flags by inspection (do this yourself; the script
 takes them as booleans since it has no way to query your installed agents):
 
-- `--self-assess-stage-mapper` if the `self-assess:stage-mapper` agent resolves.
+- `--befund-stage-mapper` if the `befund:stage-mapper` agent resolves.
 - `--confab-skill` if the `confab:confab-agentic-reliability` skill resolves.
 - `--lsp-tool` if an `LSP` tool is available in this session.
 - `--structural-index` if a Kythe/SCIP/LSIF index file exists on disk (check
@@ -38,7 +38,7 @@ Then:
 
 ```
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py preflight <repo_root> \
-  [--self-assess-stage-mapper] [--confab-skill] [--lsp-tool] [--structural-index] \
+  [--befund-stage-mapper] [--confab-skill] [--lsp-tool] [--structural-index] \
   [--property-lib-python] [--property-lib-js] [--property-lib-other]
 ```
 

@@ -4,7 +4,7 @@ Written from a cloud session that hit real limits: it runs as **root** (so the
 test harness's default permission mode is refused outright), has **no ssh**
 (so the live `spectrafit-core` ledger on `terra` was unreachable), and pays
 full LLM latency per test case with no local caching. Everything below is
-committed on `claude/self-assess-docs-drift-perf-cbhuaq`.
+committed on `claude/befund-docs-drift-perf-cbhuaq`.
 
 ## What this pilot is testing
 
@@ -54,7 +54,7 @@ Two findings recorded there rather than resolved:
   `Edit`, and `andon-propose` only *describes* a fix. Yet
   `andon-loop/SKILL.md:163` says "do not apply the fix or proceed to Phase 4",
   which only parses if an authorized apply path exists. Ingest mode delegates
-  to self-assess's Edit skills; the default path has no named applier. A
+  to befund's Edit skills; the default path has no named applier. A
   documented core capability may be unimplemented.
 - Likely-arbitrary constants (sub-cycle depth 2, reopen count 3), overlapping
   proof strategies (b/f, c/g) separated only by tie-break rules.
@@ -125,7 +125,7 @@ and ssh access to `terra` for the real `spectrafit-core` ledger.
 ### Step 1 — finish the honest baseline (~15 min)
 
 ```bash
-git checkout claude/self-assess-docs-drift-perf-cbhuaq && git pull
+git checkout claude/befund-docs-drift-perf-cbhuaq && git pull
 test/plugins/run.sh thrash-escalate     # sanity: should PASS
 test/plugins/run.sh                     # all 7 cases
 ```

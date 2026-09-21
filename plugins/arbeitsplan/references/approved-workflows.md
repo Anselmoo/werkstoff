@@ -18,21 +18,21 @@ Hooks that may deny, Evidence.
 | | |
 |---|---|
 | **Mode** | `plan`, then approve with "Yes, and use auto mode" |
-| **Install** | `compass@werkstoff` + `superpowers` + `pr-review-toolkit` |
+| **Install** | `zirkel@werkstoff` + `superpowers` + `pr-review-toolkit` |
 | **Opening prompt** | Scope it before writing code, then build it, then gate the diff |
-| **Writes to repo** | `.compass/runs/<run-id>/state.json` |
+| **Writes to repo** | `.zirkel/runs/<run-id>/state.json` |
 | **Hooks that may deny** | None of these three register one |
-| **Evidence** | measured, 6 cells: the expected `compass-clarify-scope` never fired, on either model or mode -- [/examples/build-feature](/examples/build-feature) |
+| **Evidence** | measured, 6 cells: the expected `zirkel-clarify-scope` never fired, on either model or mode -- [/examples/build-feature](/examples/build-feature) |
 
 ## B. Understand an unfamiliar repo
 
 | | |
 |---|---|
 | **Mode** | `plan` throughout — it is read-only work |
-| **Install** | `self-assess@werkstoff` (+ `compass@werkstoff`) |
+| **Install** | `befund@werkstoff` (+ `zirkel@werkstoff`) |
 | **Opening prompt** | Map the real module boundaries and what depends on what |
-| **Writes to repo** | `analysis/self-assess/**` |
-| **Hooks that may deny** | self-assess's guard is inert until `analysis/self-assess/edit_scope.json` exists |
+| **Writes to repo** | `analysis/befund/**` |
+| **Hooks that may deny** | befund's guard is inert until `analysis/befund/edit_scope.json` exists |
 | **Evidence** | measured, 4 cells: fired in 2 of 4, sonnet only -- [/examples/understand-repo](/examples/understand-repo) |
 
 ## C. Fix a bug, or harden a repo

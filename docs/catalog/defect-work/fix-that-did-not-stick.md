@@ -5,7 +5,7 @@ summary: "Re-prove a supposedly-fixed bug from scratch, blind to the prior verdi
 openingPrompt: "This bug was supposedly fixed and it's back -- before we touch anything, list what we're assuming about that prior fix, re-verify it completely from scratch with reviewers who never saw the original fix or its verdict, and check whether any test would actually catch it if it came back again."
 external: []
 beats:
-  - skill: "compass:compass-verify-assumptions"
+  - skill: "zirkel:zirkel-verify-assumptions"
     why: "\"It was fixed in the last pass\" is an assumption; re-implementing on top of it repeats the original mistake."
     prompt: "this was supposedly fixed last week and it's back. What are we assuming about that fix that might not be true?"
   - skill: "andon:andon-verify"

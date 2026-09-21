@@ -1,0 +1,95 @@
+---
+name: befund-status
+description: Reports which befund artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run. Use when the user asks "where does befund stand", "what's stale in our analysis", "what should we run next", or "befund status".
+---
+
+# befund-status
+
+Report the current state of befund's analysis for this repository, without inventing
+anything for a skill that has never run.
+
+## Step 0: Settings gate
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-status
+```
+
+## Step 1: Find only artifacts that actually exist
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py status-present-artifacts --repo <repo_root>
+```
+
+The `present` map contains a key ONLY for a finding-producing skill whose artifact
+exists on disk right now. Rule `status-no-fabrication`: never add a key with an empty object,
+a placeholder, or a guessed status for a skill that has not run -- if it is not in `present`,
+omit it from the dashboard entirely.
+
+The same call also returns a `structural` map, built the identical way, for
+`befund-complexity-score`, `befund-stage-map`, and `befund-transform-brief` --
+these are progress/synthesis artifacts, not findings domains, so `structural`'s contents MUST
+NEVER be folded into `present` or counted by `recommend_transform_brief` (running
+befund-stage-map is not itself a finding). But they ARE part of the dashboard: a user
+asking "where does befund stand" needs to know stage-map has already run, not just that no
+findings-producing skill has. Surface `structural` as its own section, distinct from `present`'s
+findings table, applying the same `status-no-fabrication` rule (omit a skill entirely if it is
+not in `structural`, never fabricate a placeholder for one that hasn't run).
+
+## Step 2: Staleness
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py staleness-check --repo <repo_root> --artifact <path1> --artifact <path2> ...
+```
+
+Pass every path from **both** `present` and `structural`. `stale: true` means that artifact's
+mtime predates the repo's latest commit -- surface this per-artifact in the dashboard, in
+whichever section (findings or structural) that artifact belongs to. If the repo has no commits
+or is not under git, `latest_commit_ts` is `null` and every staleness value is `null` (unknown) --
+report it as "staleness unknown," never guess `stale: false`.
+
+## Step 3: Recommend transform-brief when warranted
+
+The same `status-present-artifacts` call returns `recommend_transform_brief: true` when at
+least one artifact exists but `MODERNIZATION_BRIEF.md` does not. Surface this
+recommendation prominently when true.
+
+## Step 4: Write outputs
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename findings-dashboard.html
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename findings_dashboard_data.json
+```
+
+Write `findings-dashboard.html` (a static HTML summary) and `findings_dashboard_data.json`
+(only the keys actually present, plus staleness and the transform-brief recommendation).
+
+Before any finding-producing skill has run, `present` is empty and there is nothing to add
+staleness for -- write the object as-is rather than fabricating an entry:
+
+```json
+{
+  "present": {},
+  "structural": {},
+  "recommend_transform_brief": false
+}
+```
+
+Once a skill has run, its key carries the artifact path and staleness for that path (omit any
+skill not in `present`/`structural`, per `status-no-fabrication` above):
+
+```json
+{
+  "present": {
+    "befund-lint-audit": {
+      "artifact": "analysis/befund/lint-audit.json",
+      "stale": false
+    }
+  },
+  "structural": {},
+  "recommend_transform_brief": true
+}
+```
+
+## Read-only constraint
+
+Never use Write/Edit outside the two resolved output paths.

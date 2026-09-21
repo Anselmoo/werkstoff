@@ -2,7 +2,7 @@
 type: stage
 title: normalize
 order: 2
-confidence: self-assess-backed
+confidence: befund-backed
 description: Coerces every landed record into the canonical unit/timezone/schema triple.
 tags:
   - lane:fast

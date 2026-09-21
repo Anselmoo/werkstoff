@@ -5,8 +5,8 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 ## Layout
 
 `plugins/<name>/` — twelve plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
-`codebase-consistency`, `compass`, `confab`, `cupertino`, `lehre`, `matrize`,
-`nacharbeit`, `self-assess`, `takt`. Each is independently versioned;
+`passung`, `zirkel`, `confab`, `cupertino`, `lehre`, `matrize`,
+`nacharbeit`, `befund`, `takt`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
 `arbeitsplan` is the twelfth and pairs with `takt`: it **compiles** a stated problem into
@@ -57,9 +57,9 @@ extended to hooks, scripts, viewers, manifests, READMEs and docs wiring, with a
 PreToolUse hook that holds the fix scope. Before editing any plugin file by hand, run
 `python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/<name> --docs-root docs`.
 
-The first six (all but `codebase-consistency`, added later) were run through a
-behavior-specification rebuild; four (`andon`, `self-assess`, `cli-scaffold`,
-`confab`) were promoted as regenerated, while `compass` and `cupertino` kept
+The first six (all but `passung`, added later) were run through a
+behavior-specification rebuild; four (`andon`, `befund`, `cli-scaffold`,
+`confab`) were promoted as regenerated, while `zirkel` and `cupertino` kept
 their hand-edited legacy code — see `docs/plugin-rebuild-findings.md`'s `keep`
 column (`rebuild` vs `legacy`) for what that measured, including which
 rebuilds gained enforcement and which lost rules.
@@ -78,7 +78,7 @@ frontmatter, anatomy, progressive disclosure, writing voice) and
 `docs/plugin-authoring/references/output-shape-findings.md` (the evidence: this repo's skills/agents
 are strong on enforcement prose but were weak on showing output shape —
 `plugins/cupertino/agents/handbook-dimension-analyst.md` and
-`plugins/self-assess/agents/business-rules-miner.md` are the two files in
+`plugins/befund/agents/business-rules-miner.md` are the two files in
 this repo that already do it right). The third reference,
 `docs/plugin-authoring/references/report-viewer-standard.md`, covers the twelve plugins'
 HTML report viewers — and records the cupertino-council verdict that until now survived
@@ -189,7 +189,7 @@ python3 test/plugins/lint-tag-releases.py                 # every release tag ac
 
 `rrt artifacts --check` matters for the same reason as everything else in
 this section: it's the only thing that would have caught issue #24 on the
-next fresh checkout. `plugins/{self-assess,confab}/scripts/lib/` -- real,
+next fresh checkout. `plugins/{befund,confab}/scripts/lib/` -- real,
 hand-written source packages, not build output -- were silently excluded
 from every commit by an unanchored `lib/` line in the root `.gitignore`
 (same failure shape as `/analysis/`'s existing anchoring comment already
@@ -329,7 +329,7 @@ deny must emit **both** exit 2 with the reason on stderr **and** stdout JSON
 with `hookEventName` + `permissionDecisionReason`; the hook must be inert unless
 the repo actually uses the plugin; fail **closed** with a named escape hatch.
 
-This only helps plugins whose rules gate *actions*. `compass` is advisory —
+This only helps plugins whose rules gate *actions*. `zirkel` is advisory —
 there is no tool call to deny for "explore branches before scoring", and its
 rebuild gained nothing. `cupertino` is not: `plugins/cupertino/hooks/hooks.json`
 registers a real `type: "command"` PreToolUse hook whose guard
@@ -405,20 +405,20 @@ doctor`) when you want that check.
   `(type, id, stage, status, kind)` as frontmatter keys; every real ledger,
   including 101 production records, encodes them in `tags: ["kind:wire", ...]`.
   Read tolerantly: frontmatter key, then the tags array, then absent.
-- `self-assess` models itself on `anthropics/claude-plugins-official`'s
+- `befund` models itself on `anthropics/claude-plugins-official`'s
   `code-modernization`. Check that plugin's actual source before extending, not
   its description — a prior pass found the docs claimed more mirroring than the
   code did.
 - **Plugin/agent definitions load once per session.** Editing a skill/agent
   file mid-conversation and then dispatching that agent (via the `Agent` tool)
   in the *same* session can still reflect the pre-edit content — confirmed by
-  dispatching `self-assess:business-rules-miner` after editing its "Output
+  dispatching `befund:business-rules-miner` after editing its "Output
   format" section and getting back the old prose verbatim, not the new fenced
   example. Any behavioral test of a just-edited agent/skill (tool grants,
   system-prompt wording, anything) needs a fresh session/process to be
   meaningful — `test/plugins/run.sh` already documents and relies on this
   (each case is its own `claude --print` process for exactly this reason).
-- **Unresolved: `self-assess:arch-health-auditor` reports having only
+- **Unresolved: `befund:arch-health-auditor` reports having only
   `{Read, Bash}` — missing `Glob`/`Grep` — against every tool-declaration
   format tried.** Tested three ways: within-session with the original
   bracket-array `tools: ["Read", "Glob", "Grep", "Bash"]`; within-session
@@ -429,12 +429,12 @@ doctor`) when you want that check.
   cause — neither explanation survives the third test. No working alternative
   hypothesis was found; a planned comparison run against a confab agent in an
   equally fresh process didn't complete cleanly (a `--print`-mode quirk,
-  itself unexplained) before the investigation was stopped. All self-assess
+  itself unexplained) before the investigation was stopped. All befund
   agents are standardized on the comma-string `tools:` form regardless (it's
   the documented canonical format, and two *other* agents —
   `confab:contract-auditor`, `andon:andon-defender` — were confirmed via the
   same self-report method to get exactly their declared tool set with it) —
   but that fix is not proven to be the fix for this specific agent. Treat any
-  self-assess `*-auditor` agent's actual runtime tool access as unverified
+  befund `*-auditor` agent's actual runtime tool access as unverified
   until someone re-tests this with harness-level visibility this
   investigation didn't have.

@@ -26,8 +26,8 @@ default). Read by every andon skill via `andon_core.py load-settings`.
 | `ledger_dir` | `analysis/andon/ledger` | Where the OKF ledger (`stages/`, `gaps/`, `evidence/`, `log.md`) lives, plus the rendered `ANDON_BOARD.html`. |
 | `authorization_level` | `local+reversible` | Ceiling for auto-advancing past a proposal's blast radius. |
 | `skip_verification` | `false` | If `true`, skips the adversarial re-verification pass where a skill offers one. |
-| `gap_source` | `self-scan` | `self-scan` or `self-assess-brief` (ingest mode). |
-| `self_assess_output_dir` | `analysis/self-assess` | Where ingest mode reads `MODERNIZATION_BRIEF.md` from. |
+| `gap_source` | `self-scan` | `self-scan` or `befund-brief` (ingest mode). |
+| `befund_output_dir` | `analysis/befund` | Where ingest mode reads `MODERNIZATION_BRIEF.md` from. |
 | `house_rules_path` | `.claude/house-rules.md` | Where `andon-propose` looks for repo conventions. |
 
 ## Doc types
@@ -41,7 +41,7 @@ patched.
 ### `stage` doc (`stages/<slug>.md`)
 
 - `title` (str), `order` (int) -- stage's position in the stream.
-- `confidence` -- one of `self-assess-backed`, `heuristic`, `single-package`.
+- `confidence` -- one of `befund-backed`, `heuristic`, `single-package`.
 - Optional: `description`.
 
 ### `gap` doc (`gaps/<slug>.md`)

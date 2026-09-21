@@ -15,8 +15,8 @@
 #               loose anti-patterns produce false failures.
 # Lines starting with # and blank lines are ignored. Keep the columns tab-separated.
 # RETIRED — legacy_plugins/ deleted (never committed; original content recoverable from commit 5b448d1's plugins/<name> if ever needed). These were the legacy-arm half of a legacy-vs-rebuild comparison; with legacy gone there is nothing left to compare against. The new-* / armc-* rows below cover the rebuilt plugins.
-# ui-audit	legacy_plugins/self-assess	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
-# stage-map	legacy_plugins/self-assess	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
+# ui-audit	legacy_plugins/befund	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with befund-ui-audit.	analysis/befund/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
+# stage-map	legacy_plugins/befund	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with befund-stage-map.	analysis/befund/STAGE_MAP.md	producer
 # dep-audit	legacy_plugins/confab	test/plugins/fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
 # --- andon pilot: oracle written in Phase 1, BEFORE any rebuild exists.
 # These assert CORRECT behavior per docs/andon-behavior-contract.md.
@@ -67,8 +67,8 @@ new-contested-wire	plugins/andon	test/plugins/fixtures/contested-wire-halts	Run 
 # cli-doctrine	legacy_plugins/cli-scaffold	test/plugins/fixtures/cli-doctrine-violations	Check this CLI project against cli-scaffold's architecture doctrine and report every violation you find.	-	(core|logic|library|domain).{0,90}(import|require|depend|coupl|uses?).{0,40}(click|cli.framework|cli framework|argparse|typer|commander)|(click|cli.framework|cli framework).{0,90}(import(ed)?|inside|within|in).{0,40}(core|logic|library|domain)@@AND@@exit.{0,40}(code )?1.{0,60}(usage|missing|required|invalid|bad)|usage.{0,60}exit.{0,20}(code )?1|(should|must).{0,30}exit.{0,20}(code )?2
 new-cli-doctrine	plugins/cli-scaffold	test/plugins/fixtures/cli-doctrine-violations	Check this CLI project against cli-scaffold's architecture doctrine and report every violation you find.	-	(core|logic|library|domain).{0,90}(import|require|depend|coupl|uses?).{0,40}(click|cli.framework|cli framework|argparse|typer|commander)|(click|cli.framework|cli framework).{0,90}(import(ed)?|inside|within|in).{0,40}(core|logic|library|domain)@@AND@@exit.{0,40}(code )?1.{0,60}(usage|missing|required|invalid|bad)|usage.{0,60}exit.{0,20}(code )?1|(should|must).{0,30}exit.{0,20}(code )?2
 # rebuilt arm for the pre-existing cases (same fixture/prompt/oracle)
-new-ui-audit	plugins/self-assess	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with self-assess-ui-audit.	analysis/self-assess/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
-new-stage-map	plugins/self-assess	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with self-assess-stage-map.	analysis/self-assess/STAGE_MAP.md	producer
+new-ui-audit	plugins/befund	test/plugins/fixtures/ui-missing-alt	Audit the UI accessibility of this repo with befund-ui-audit.	analysis/befund/UI_AUDIT.md	alt|img-no-alt|input-no-label|div-onclick
+new-stage-map	plugins/befund	test/plugins/fixtures/two-package-one-manifest	Map the real import-graph stages and wires of this repo with befund-stage-map.	analysis/befund/STAGE_MAP.md	producer
 new-dep-audit	plugins/confab	test/plugins/fixtures/hallucinated-dependency	Audit this repo's dependencies for hallucinated packages with confab-dependency-audit.	analysis/confab/reports/DEPENDENCY_AUDIT.md	left-pad-definitely-not-real-9f3a
 
 # --- lehre. Oracles calibrated against fabricated transcripts BEFORE first run

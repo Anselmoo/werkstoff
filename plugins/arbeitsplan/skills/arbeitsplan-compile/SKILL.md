@@ -1,6 +1,6 @@
 ---
 name: arbeitsplan-compile
-description: Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at compass when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md.
+description: Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at zirkel when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md.
 argument-hint: "<the problem, in a sentence or two>"
 ---
 
@@ -24,13 +24,13 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    wants an answer.
 
    **A question is a refusal, not a smaller workflow.** Write an `out-of-scope-reasoning`
-   record naming `compass:compass-solve`, write no phases, and stop. Compiling a swarm for a
+   record naming `zirkel:zirkel-solve`, write no phases, and stop. Compiling a swarm for a
    question produces three confident answers and no way to tell which is right.
 
 3. **Scope it.** If the problem is vague, resolve it with the user before compiling — a spec
-   compiled from a guess is precise about the wrong thing. When `compass` is installed,
-   `compass:compass-clarify-scope` does this well; when it is not, ask directly and say that
-   compass is not installed. Never fabricate compass-shaped output.
+   compiled from a guess is precise about the wrong thing. When `zirkel` is installed,
+   `zirkel:zirkel-clarify-scope` does this well; when it is not, ask directly and say that
+   zirkel is not installed. Never fabricate zirkel-shaped output.
 
 4. **Derive acceptance criteria.** Each is `{id, criterion, check}`, and `check` is a command
    that exits 0 on pass. **At least one criterion must carry a real, runnable check.** A spec
@@ -89,7 +89,7 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
   the request. `serial-fix-loop` in particular: say what the catalog measured about it and
   offer `best-of-n` instead.
 - **Never widen `writeScope` to make a candidate fit.** The scope is the contract.
-- Optional delegates (compass, andon) are compiled as *beats*, not as prose instructions. If
+- Optional delegates (zirkel, andon) are compiled as *beats*, not as prose instructions. If
   the plugin is absent, drop the beat, use the bundled fallback, and say so plainly.
 
 ## Output format
@@ -103,7 +103,7 @@ arbeitsplan compile — run ap-2026-09-12-a3f1
   phases       build (best-of-n, fanOut 3, sonnet, auto, writes worktree)
                -> referee (blind-referee, 3, sonnet, auto, writes none)
                -> land (select-then-synthesize, 1, sonnet, auto, writes shared)
-  delegates    compass:compass-explore-branches (installed) -> beat branches-explored
+  delegates    zirkel:zirkel-explore-branches (installed) -> beat branches-explored
   backend      in-session  (why: writes-shared-tree)
 
 wrote analysis/arbeitsplan/ap-2026-09-12-a3f1/workflow.json
@@ -122,7 +122,7 @@ arbeitsplan compile — REFUSED
   reason       "should we use Redis or Postgres for this" alters no files and has no
                runnable check, so a swarm would return three confident answers and no
                way to tell which is right.
-  route        compass:compass-solve
+  route        zirkel:zirkel-solve
   wrote        analysis/arbeitsplan/out-of-scope-reasoning.json
 ```
 

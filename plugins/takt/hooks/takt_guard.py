@@ -11,7 +11,7 @@ usage: takt_guard.py   (no arguments; the hook event arrives as JSON on stdin)
 
 Several skills in this marketplace declare where in a build they belong --
 cupertino-council says "before writing any code ... never after",
-compass-clarify-scope says "before any work begins". A declaration in prose is
+zirkel-clarify-scope says "before any work begins". A declaration in prose is
 honored on the order of 1 run in 3 (see the enforcement ladder in this repo's
 CLAUDE.md); a PreToolUse hook of type "command" is invoked every time. This
 hook is the difference between a documented beat order and an enforced one.
@@ -223,7 +223,7 @@ def edit_targets(cwd: str, tool_input: dict) -> list:
 
     A MultiEdit payload does not reliably carry a single top-level `file_path`.
     This repository already records that shape in
-    `plugins/self-assess/hooks/guard_target_edit.py`, which allows when it cannot
+    `plugins/befund/hooks/guard_target_edit.py`, which allows when it cannot
     find one -- defensible there, because that hook is scope-checking. takt is
     fail-closed, so it gathers every path the payload does expose, and its caller
     denies rather than allows when the set comes back empty.

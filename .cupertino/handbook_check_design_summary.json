@@ -3,7 +3,7 @@
   "generatedAt": "2026-09-07T06:07:11Z",
   "findings": [
     {
-      "file": "/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/codebase-consistency/assets/matrix-viewer.html",
+      "file": "/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/passung/assets/matrix-viewer.html",
       "line": 665,
       "severity": "Medium",
       "title": "Pre-canonization grid cells encode variant identity by hashed hue alone, with no visible-without-interaction legend pairing a specific color to a specific variant name",
@@ -69,7 +69,7 @@
       "dimension": "spacing-and-layout-grid"
     },
     {
-      "file": "plugins/codebase-consistency/assets/matrix-viewer.html",
+      "file": "plugins/passung/assets/matrix-viewer.html",
       "line": 54,
       "severity": "Medium",
       "title": "Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)",
@@ -80,7 +80,7 @@
       "dimension": "spacing-and-layout-grid"
     },
     {
-      "file": "plugins/compass/assets/branch-comparison-viewer.html",
+      "file": "plugins/zirkel/assets/branch-comparison-viewer.html",
       "line": 35,
       "severity": "Low",
       "title": "Off-scale px literals used for margin/padding (not 4/8/12/16/20)",
@@ -124,7 +124,7 @@
       "dimension": "spacing-and-layout-grid"
     },
     {
-      "file": "plugins/self-assess/assets/stage-map-viewer.html",
+      "file": "plugins/befund/assets/stage-map-viewer.html",
       "line": 35,
       "severity": "Low",
       "title": "Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)",
@@ -146,13 +146,13 @@
       "dimension": "spacing-and-layout-grid"
     },
     {
-      "file": "plugins/self-assess/assets/stage-map-viewer.html",
+      "file": "plugins/befund/assets/stage-map-viewer.html",
       "line": 22,
       "severity": "High",
       "title": "Base font set via hardcoded literal instead of design tokens",
       "evidence": "html, body { height: 100%; overflow: hidden; background: var(--bg);\n    color: var(--text); font: 14px/1.45 system-ui, sans-serif; }",
       "mechanical": true,
-      "suggestedFix": "Replace `font: 14px/1.45 system-ui, sans-serif;` with `font: var(--font-size-base)/var(--line-height-base) var(--font-sans);` to match the tokens vendored at plugins/self-assess/assets/tokens.css:144-146 (which already define 14px / 1.45 / the same font stack) instead of re-hardcoding those exact values.",
+      "suggestedFix": "Replace `font: 14px/1.45 system-ui, sans-serif;` with `font: var(--font-size-base)/var(--line-height-base) var(--font-sans);` to match the tokens vendored at plugins/befund/assets/tokens.css:144-146 (which already define 14px / 1.45 / the same font stack) instead of re-hardcoding those exact values.",
       "rule": "Every plugin's HTML report viewer must set its base font-family, font-size, and line-height exclusively via the shared design tokens (`var(--font-sans)`, `var(--font-size-base)`, `var(--line-height-base)`, defined once in tools/design-tokens/tokens.css:144-146 and vendored into every plugins/*/assets/tokens.css) rather than a hardcoded literal font stack/size/line-height.",
       "dimension": "typography-system"
     },
@@ -168,7 +168,7 @@
       "dimension": "typography-system"
     },
     {
-      "file": "plugins/codebase-consistency/assets/matrix-viewer.html",
+      "file": "plugins/passung/assets/matrix-viewer.html",
       "line": 11,
       "severity": "Medium",
       "title": "Base body rule omits line-height token entirely",

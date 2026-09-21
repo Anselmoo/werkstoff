@@ -5,7 +5,7 @@ summary: "Confirm a documented rule is actually being violated before authoring 
 openingPrompt: "I keep breaking this documented rule -- confirm it's actually being violated in the code first, not just assumed, and then turn it into a fast, personal hookify guard that warns me the next time I do it, rather than the plugin-wide reviewed hook a shipped policy would need."
 external: ["claude-plugins-official"]
 beats:
-  - skill: "self-assess:self-assess-lint-audit"
+  - skill: "befund:befund-lint-audit"
     why: "Extracts discrete, checkable rules from CLAUDE.md (falling back from house-rules.md, which this repo doesn't have, and labeling every rule \"CLAUDE.md (best-effort)\") and dispatches convention-auditor to confirm real violations by reading the code -- never invents a rule the doc doesn't state, and by its own stated scope never auto-fixes what it finds."
     prompt: "extract the discrete, checkable rules this repo's CLAUDE.md states, and confirm which ones are actually being violated in the code"
   - skill: "hookify:hookify"
@@ -19,12 +19,12 @@ dos:
 donts:
   - "Don't author a personal guard for a rule that hasn't been confirmed as an actual, repeated violation."
   - "Don't treat a hookify rule as equivalent to a shipped enforcement hook -- hookify's own dispatcher fails open on exception, the opposite of this repo's fail-closed doctrine for shipped enforcement."
-  - "Don't expect self-assess-lint-audit to auto-fix what it finds -- it's explicitly read-only by its own stated scope."
+  - "Don't expect befund-lint-audit to auto-fix what it finds -- it's explicitly read-only by its own stated scope."
 ---
 
 <RecipeHeader />
 
-self-assess-lint-audit is explicitly read-only and never auto-fixes a violation it finds --
+befund-lint-audit is explicitly read-only and never auto-fixes a violation it finds --
 that's deliberate, and it leaves a gap for whoever keeps tripping the same rule. hookify
 fills exactly that gap, but at a different scope and strength than
 `make-strategy-enforced-not-documented`: a `.claude/*.local.md` rule is gitignored,

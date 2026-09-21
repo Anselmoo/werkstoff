@@ -160,8 +160,8 @@ def check(plugin: str, path: str, plugin_dir: str | None = None) -> list[str]:
 
         # The <title> is the machine-readable name; the <h1> is the one a reader
         # actually sees, and they drifted freely while only the former was checked
-        # (codebase-consistency shipped "Consistency Matrix — billing" under a
-        # title of "codebase-consistency — consistency matrix").
+        # (passung shipped "Consistency Matrix — billing" under a
+        # title of "passung — consistency matrix").
         h1 = H1_RE.search(markup)
         if not h1:
             errs.append(f"{rel}: S2 -- no static <h1>")

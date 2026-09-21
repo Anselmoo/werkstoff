@@ -11,7 +11,7 @@ did not make it, and checked by a script that does not care who did.
 
 1. **Preflight.** Run `nacharbeit-preflight`. It must show `run.json=present` and no
    open lock. Name every other live guard: a denial from takt, lehre, andon, confab,
-   self-assess or cupertino during this pass is reported as "blocked by <plugin>" and
+   befund or cupertino during this pass is reported as "blocked by <plugin>" and
    never retried with that plugin's escape hatch.
 
 2. **Build the work items and open the lock:**
@@ -69,7 +69,7 @@ nacharbeit fix 2026-09-09T07:02:11Z (review 2026-09-09T06:12:04Z) — 41 files, 
   skipped with reason (7 entries)
     plugins/andon/skills/andon-loop/SKILL.md #2 — cross-file: the fix needs okf-ledger-schema.md to change first
   excluded (never applied)
-    [opus ] plugins/compass/workflows/solve.js — design a real gate for each stage's output_contract
+    [opus ] plugins/zirkel/workflows/solve.js — design a real gate for each stage's output_contract
     [human] plugins/andon/skills/andon-loop/SKILL.md — decide whether scoped runs are supported at all
 post-fix check: 38 post-checks passed, 1 failed; contracts andon=clean, lehre=clean
 lock: KEPT (1 failed post-check) — fix plugins/lehre/hooks/lehre_guard.py, rerun post_fix_check.py --release-lock

@@ -1,6 +1,6 @@
 # Fixture: two-package-one-manifest
 
-Regression case for the andon-loop bug this plugin's `self-assess-stage-map`
+Regression case for the andon-loop bug this plugin's `befund-stage-map`
 exists to fix: `scripts/stream_scan.py` in `andon-loop` keys stages by
 nearest-manifest-directory (`seen.setdefault(s["dir"], s)`), so `producer/`
 and `consumer/` — two distinct Python packages sharing the one
@@ -8,7 +8,7 @@ and `consumer/` — two distinct Python packages sharing the one
 and the `consumer.process` → `producer.generate` import is never proposed
 as a wire.
 
-**Expected result from `self-assess-stage-map`:** 2 stages (`producer`,
+**Expected result from `befund-stage-map`:** 2 stages (`producer`,
 `consumer`), 1 wire (`consumer/process.py` → `producer/generate.py`, the
 `OrderEvent` data contract).
 

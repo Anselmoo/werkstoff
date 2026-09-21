@@ -18,7 +18,7 @@ number for an experiment that never ran.
 
 ONE MATRIX PER CASE. `plugin_states` is matrix-level, but each workflow needs a different plugin
 set. A single matrix therefore had to load the UNION of every case's plugins, which turned "does
-compass-clarify-scope fire on a build task" into a routing contest against five unrelated plugins
+zirkel-clarify-scope fire on a build task" into a routing contest against five unrelated plugins
 -- caught by a dry run before any tokens were spent. So a template names each case's `plugins`
 (a generator-only key) and an enabled arm of `${CASE_PLUGINS}`; this script emits one matrix per
 case with that arm resolved to exactly that case's plugins, and strips the generator-only key so

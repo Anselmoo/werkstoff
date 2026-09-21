@@ -119,7 +119,7 @@ def validate(spec: dict, accepted: set, rejected: set) -> list:
         # swarm returns N confident answers and no way to choose between them.
         if spec.get("phases"):
             err("phases", "a 'question' spec must carry no phases; route to "
-                          "compass:compass-solve instead")
+                          "zirkel:zirkel-solve instead")
         return errors
 
     acceptance = problem.get("acceptance")
@@ -488,13 +488,13 @@ def main(argv: list) -> int:
         return 1
 
     if spec["problem"]["shape"] == "question":
-        print("REFUSED: this is a question, not a change. Route it to compass:compass-solve.")
+        print("REFUSED: this is a question, not a change. Route it to zirkel:zirkel-solve.")
         if args.write:
             out = Path(args.out)
             out.mkdir(parents=True, exist_ok=True)
             (out / "out-of-scope-reasoning.json").write_text(json.dumps({
                 "runId": spec["runId"], "statement": spec["problem"]["statement"],
-                "route": "compass:compass-solve",
+                "route": "zirkel:zirkel-solve",
                 "why": "a question has no runnable check, so a swarm returns N confident "
                        "answers and no way to choose between them",
             }, indent=2))

@@ -1,0 +1,66 @@
+---
+name: befund-portfolio
+description: Grades each repo in a directory of git repositories Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo. Use when the user asks to "sweep multiple repos", "assess our whole portfolio", "grade all our projects", or names a parent directory containing several git repositories.
+---
+
+# befund-portfolio
+
+Sweep a directory of repositories and grade each one's befund health.
+
+## Step 1: Scope gate -- refuse to infer cwd's parent as the portfolio
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py portfolio-scope-gate --cwd <cwd> --explicit-dir <user-named directory, if any>
+```
+
+Rule `portfolio-cwd-git-repo-check`: if `cwd` is itself a git repository and the user did not
+name an explicit portfolio directory, this refuses. Ask the user to name the portfolio
+directory explicitly rather than walking up to `cwd`'s parent -- a git repo's parent is not an
+implicit portfolio container.
+
+## Step 2: Enumerate repos
+
+List immediate subdirectories of the (now-confirmed) portfolio directory that contain a `.git`
+directory.
+
+## Step 3: Grade each repo, worst-signal-wins
+
+For each repo, resolve its configured `output_dir` first:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py get-settings --repo <repo>
+```
+
+This reads and returns the repo's settings (including `output_dir`) without gating on
+whether befund is enabled there -- do not use `check-enabled` for this, since it hard-fails
+on any repo where befund is disabled, which is exactly a repo this sweep must still be able
+to grade `Gray` rather than abort on. Then check whether `<repo>/analysis/befund/` (or the
+`output_dir` this call returned) has any artifacts. Then:
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py grade-repo --has-artifacts --has-high --has-medium-or-gaps
+```
+
+(Pass `--has-artifacts` only if artifacts exist; pass `--has-high` only if any summary contains
+a High-severity finding; pass `--has-medium-or-gaps` only if any summary contains a
+Medium/Low finding or a `Ready-with-gaps` verdict.) Rule
+`portfolio-grade-worst-signal-wins`: a repo with **no artifacts** always grades `Gray` --
+this branch is checked first in the grading function and cannot be overridden by any
+finding, so a never-assessed repo can never read as falsely healthy (`Green`). Never
+synthesize a placeholder grade for an unassessed repo beyond `Gray`.
+
+## Step 4: Write the portfolio report
+
+```
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <portfolio_dir> --filename befund-portfolio.html
+```
+
+Note the output lands in the **portfolio directory**, not any single repo's `output_dir` --
+this is the one skill whose output is not scoped to a single repo's `analysis/befund/`. Write
+`befund-portfolio.html` with one row per repo: grade, and (for graded repos) a short
+summary of what drove the grade; for `Gray` repos, "not yet assessed" and nothing more.
+
+## Read-only constraint
+
+Never use Write/Edit outside the resolved portfolio report path, and never modify anything
+inside a swept repo.

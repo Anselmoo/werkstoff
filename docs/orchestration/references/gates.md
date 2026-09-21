@@ -65,13 +65,13 @@ not just the commit range.
 
 ````prompt
 "before merging, run andon-verify over the range BASE_SHA..HEAD_SHA. The contract
-to prove: every (file, kind) pair self-assess-idiom-fix rewrote must exactly match
+to prove: every (file, kind) pair befund-idiom-fix rewrote must exactly match
 the modernization pattern its finding cited, and touch no line the finding did not
 name."
 ````
 
 > Supplies the contract `andon-verify` needs up front, mirroring the handoff
-> `self-assess-idiom-fix` already declares to `andon:andon-verify` rather than
+> `befund-idiom-fix` already declares to `andon:andon-verify` rather than
 > self-verifying its own remediation.
 
 ## Routing the gate by what the diff touched
@@ -165,7 +165,7 @@ changes in this diff"
 
 Two categories do not belong in this dispatch slot, for different reasons.
 
-**Orchestrators.** `andon-loop`, `confab-cycle`, and `self-assess-autopilot` are
+**Orchestrators.** `andon-loop`, `confab-cycle`, and `befund-autopilot` are
 fixed sequences that read artifacts their own earlier steps wrote and persist state
 (a ledger, a convergence pass count, an approval-gated brief). Dispatched into a
 single-diff review slot they either refuse for lack of their expected artifacts or

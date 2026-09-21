@@ -22,14 +22,14 @@ one-size-fits-all:
 
 | Type | What it is | werkstoff examples |
 |---|---|---|
-| **Workflow** | a multi-step procedure with gates | `self-assess-extract-rules`, `compass-solve`, `andon-loop`, `confab-cycle` |
-| **Artifact-generator** | produces a document/output | `self-assess-transform-brief` (writes `MODERNIZATION_BRIEF.md`) |
+| **Workflow** | a multi-step procedure with gates | `befund-extract-rules`, `zirkel-solve`, `andon-loop`, `confab-cycle` |
+| **Artifact-generator** | produces a document/output | `befund-transform-brief` (writes `MODERNIZATION_BRIEF.md`) |
 | **Knowledge / reference** | domain facts the agent consults, no phases, no validation loop | `cli-scaffold`'s per-language `references/*.md` files |
-| **Tool-wrapper** | drives a script/CLI deterministically | `self-assess-status` (reads artifact staleness via `self_assess_cli.py`) |
+| **Tool-wrapper** | drives a script/CLI deterministically | `befund-status` (reads artifact staleness via `befund_cli.py`) |
 
 A skill can blend types. What you never do is impose a workflow skill's machinery
 (phases, validation loops, output skeletons) on a skill that isn't one — this is a real
-werkstoff-relevant caution, since `compass`'s advisory skills are deliberately *not*
+werkstoff-relevant caution, since `zirkel`'s advisory skills are deliberately *not*
 gated the way `andon`/`confab`'s enforcement skills are (see
 `CLAUDE.md`'s "Enforcement: only hooks actually enforce" section — the same
 type-proportionality point, arrived at independently).
@@ -51,15 +51,15 @@ skill-name/
 - **scripts/** = "execute this for deterministic, token-free work."
 
 **werkstoff status:** `references/` is already an established pattern (`andon`,
-`cli-scaffold`, `confab`, `cupertino`, `self-assess` all use it, at both plugin-root and
-skill-scope — see `CLAUDE.md`'s own note on `self-assess-extract-rules/references/`).
+`cli-scaffold`, `confab`, `cupertino`, `befund` all use it, at both plugin-root and
+skill-scope — see `CLAUDE.md`'s own note on `befund-extract-rules/references/`).
 `templates/` is not used anywhere in werkstoff today; `assets/` is — all 12 plugins,
 `takt` included, have a plugin-root `assets/` directory (`ls -d plugins/*/assets`),
 referenced from SKILL.md (or,
-for `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`. The
+for `passung`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`. The
 `templates/` vs `references/` distinction (schema-you-fill-in vs. detail-you-read) is
 still collapsed into `references/` for that role, including the three-file split just
-added to `self-assess-extract-rules/references/` (`rule-card-template.md` plays the `templates/`
+added to `befund-extract-rules/references/` (`rule-card-template.md` plays the `templates/`
 role by content, but lives under `references/` by directory, matching this repo's
 existing single-directory convention — see `output-shape-findings.md` §4.6 for why that
 deviation from `Wirasm/prp`'s literal layout was made deliberately, not by oversight).
@@ -75,7 +75,7 @@ A skill draws context from four places — use the cheapest that fits:
    contract-drift findings) is this category — nothing is copied in, the agent reads the
    real location.
 4. **Runtime-gathered** — the skill instructs the agent to obtain context when it runs.
-   `self-assess-code-idiom`'s manifest-detected-version-per-language is this category:
+   `befund-code-idiom`'s manifest-detected-version-per-language is this category:
    gathered fresh each run, never hardcoded.
 
 Choose by ownership and volatility: bundle what you own and want versioned; point to
@@ -88,8 +88,8 @@ moment (current repo state, the user's actual intent).
 |---|---|---|
 | `name` | ≤64 chars, lowercase+hyphens, matches directory | Followed — `name:` always matches the skill's directory name across all 63 SKILL.md files |
 | `description` | ≤1024 chars, third person, WHAT + WHEN + literal phrases | Followed — longest is 631 chars (`cli-scaffold-shell`, as of `1cd5d07`), well under the ceiling; all use the "Use this skill when the user asks to..." trigger-phrase pattern |
-| `version` | not a field Wirasm/prp's spec lists at all (nor is it a documented Claude Code SKILL.md field — see `output-shape-findings.md` §5) | Was present, frozen at `0.1.0`, in all 16 `self-assess` skills only — removed; matches the other five plugins, which never had it |
-| `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `self-assess-idiom-fix`, `self-assess-transform-execute`, and `confab-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
+| `version` | not a field Wirasm/prp's spec lists at all (nor is it a documented Claude Code SKILL.md field — see `output-shape-findings.md` §5) | Was present, frozen at `0.1.0`, in all 16 `befund` skills only — removed; matches the other five plugins, which never had it |
+| `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `befund-idiom-fix`, `befund-transform-execute`, and `confab-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
 
 ## Voice and disclosure
 
@@ -111,7 +111,7 @@ converging on the same number is a stronger signal than either alone.
 
 - **`description` → third person, trigger-rich.** Confirmed followed across werkstoff.
 - **`SKILL.md` body → imperative/infinitive, not second person.**
-  Good: `"Compose the five phases in order."` (`compass-solve/SKILL.md`)
+  Good: `"Compose the five phases in order."` (`zirkel-solve/SKILL.md`)
   Bad (per this rule): `"You route a scaffold request to the correct paradigm skill... You never generate code yourself."` (`cli-scaffold/skills/scaffold-cli/SKILL.md`)
 - **`agents/*.md` system prompt → second-person persona.** The opposite voice from the
   `SKILL.md` body rule above, and deliberately so: a skill body is instructions read by
@@ -121,7 +121,7 @@ converging on the same number is a stronger signal than either alone.
   system prompt that will govern the agent's behavior, written in second person ('You
   are...', 'You will...')."`
 
-**werkstoff status: inconsistent, confirmed by direct comparison.** `compass-solve` and
+**werkstoff status: inconsistent, confirmed by direct comparison.** `zirkel-solve` and
 `confab-cycle` are already imperative. `andon-loop` ("...for you (the orchestrator) to
 persist") and `scaffold-cli` ("You route... You never generate code yourself...") are
 second person. This is a real, citable inconsistency — not a hypothetical — worth
@@ -143,7 +143,7 @@ this rule generalizes that instinct to skill bodies vs. references.
 If a skill's output carries stateful sections — status markers, a lifecycle field, an
 amendments log — something must keep them current, or it's dead weight that quietly
 lies to the reader. **This is not hypothetical for werkstoff — it is exactly what
-happened.** All 16 `self-assess` skills carried `version: 0.1.0` in frontmatter, frozen
+happened.** All 16 `befund` skills carried `version: 0.1.0` in frontmatter, frozen
 since scaffolding, while the plugin itself moved through 0.1.0 → 0.3.2 at the
 `.rrt.toml` group level. Nothing ever bumped the per-skill field; it was removed rather
 than given a maintainer, since no real per-skill versioning need was identified (see
@@ -156,12 +156,12 @@ End the body with a `## Resources` section listing each file and one line on whe
 read it.
 
 **werkstoff status: gap, one file fixed.** Zero of werkstoff's 63 SKILL.md files had a
-`## Resources` section before this pass. `self-assess-extract-rules/SKILL.md` now has
+`## Resources` section before this pass. `befund-extract-rules/SKILL.md` now has
 both: inline pointers to its three `references/*.md` files at their point of use
 (Step 4, with a mandatory-read marker on the report-sample file) *and* a trailing
 `## Resources` section listing all three — the reference example for this rule going
 forward. The other ~62 skills with `references/` (andon, cli-scaffold, confab, cupertino,
-self-assess's other 15) are unaudited for this specific gap — flagged here, not fixed
+befund's other 15) are unaudited for this specific gap — flagged here, not fixed
 here.
 
 ### Cross-provider portability

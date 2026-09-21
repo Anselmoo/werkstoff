@@ -30,8 +30,8 @@ The single global default fixture (an andon ledger with a missing
 blast-radius) is only a real violation for a hook whose rule fires
 unconditionally. Several hooks are SCOPE-CONDITIONAL by design: confab's
 guard_edit_scope.py is only supposed to act when a remediation-scope lock is
-present, self-assess's guard_target_edit.py only when the repo shows evidence
-of being self-assess-managed. Probed with the generic fixture, both correctly
+present, befund's guard_target_edit.py only when the repo shows evidence
+of being befund-managed. Probed with the generic fixture, both correctly
 return "allow" -- which this script would then report as "FAIL: allows a
 violating edit", a false negative. This happened for real: confab's hook was
 reported broken, hand-verified to be correct, and only then was it clear the
@@ -43,7 +43,7 @@ correct violating scenario for that plugin's rule -- construct it to actually
 violate what that specific hook checks, the way each plugin's own author
 would know to. If the fixture directory contains a file named `_GIT_INIT`, the
 probe copy is `git init`-ed and committed before the hook runs (needed for any
-hook that checks tree cleanliness, e.g. self-assess's dirty-tree-gate).
+hook that checks tree cleanliness, e.g. befund's dirty-tree-gate).
 
 Usage:
     verify-hooks-deny.py <plugin-dir> [...] [--violating-fixture DIR] [--fixtures-root DIR]

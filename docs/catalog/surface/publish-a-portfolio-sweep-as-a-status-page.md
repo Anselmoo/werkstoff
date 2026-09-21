@@ -5,13 +5,13 @@ summary: "Grade a portfolio of repos worst-signal-wins first, then hand the verd
 openingPrompt: "Sweep every repo in this portfolio directory and grade each one's health worst-signal-wins first, then publish that sweep as a shareable status page that keeps itself current on re-runs instead of a one-shot local file I have to re-send every time."
 external: ["claude-plugins-official"]
 beats:
-  - skill: "self-assess:self-assess-portfolio"
-    why: "Grades every repo in an explicit portfolio directory Red/Amber/Green/Gray by worst-signal-wins, refuses to synthesize a placeholder grade for an unassessed repo, and writes a one-shot self-assess-portfolio.html into the portfolio directory itself -- local, unshareable, and with no memory of the previous sweep."
-    prompt: "sweep every repo under ~/LocalDocuments/GitHub_Forks and grade each one's self-assess health"
+  - skill: "befund:befund-portfolio"
+    why: "Grades every repo in an explicit portfolio directory Red/Amber/Green/Gray by worst-signal-wins, refuses to synthesize a placeholder grade for an unassessed repo, and writes a one-shot befund-portfolio.html into the portfolio directory itself -- local, unshareable, and with no memory of the previous sweep."
+    prompt: "sweep every repo under ~/LocalDocuments/GitHub_Forks and grade each one's befund health"
   - skill: "project-artifact:project-artifact"
-    why: "Turns that one-shot local file into a living claude.ai page -- status pills, an Attention tab for what's blocked, and a delta-only refresh that reads the previous render's embedded state block -- none of which self-assess-portfolio's own static HTML does on its own."
+    why: "Turns that one-shot local file into a living claude.ai page -- status pills, an Attention tab for what's blocked, and a delta-only refresh that reads the previous render's embedded state block -- none of which befund-portfolio's own static HTML does on its own."
     prompt: "publish that portfolio sweep as a shareable status page I can send the team, and keep it current when I re-run the sweep"
-grounding: "the user's own ~/LocalDocuments/GitHub_Forks directory holds roughly 150 git repositories, including werkstoff itself -- exactly the shape of \"explicit portfolio directory\" self-assess-portfolio's own Step 1 scope gate requires, since it refuses to infer a git repo's parent as the portfolio."
+grounding: "the user's own ~/LocalDocuments/GitHub_Forks directory holds roughly 150 git repositories, including werkstoff itself -- exactly the shape of \"explicit portfolio directory\" befund-portfolio's own Step 1 scope gate requires, since it refuses to infer a git repo's parent as the portfolio."
 dos:
   - "Grade every repo in an explicit portfolio directory, worst-signal-wins, before publishing anything."
   - "Publish the sweep as a page with a delta-only refresh, so re-running it reports only what changed rather than re-narrating everything."
@@ -24,7 +24,7 @@ donts:
 
 <RecipeHeader />
 
-self-assess-portfolio's own output is deliberately narrow: one grade per repo, worst-signal-wins,
+befund-portfolio's own output is deliberately narrow: one grade per repo, worst-signal-wins,
 written once to a local file with no sharing and no delta tracking across sweeps.
 project-artifact adds exactly what that file lacks -- a shareable URL, status pills, an
 Attention tab for what's blocked, and a refresh that reports only what changed since the

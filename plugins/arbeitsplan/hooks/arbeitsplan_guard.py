@@ -18,7 +18,7 @@ covers only what takt structurally cannot -- per-dispatch attribution.
   this asks     "did THIS in-flight dispatch do that?" -> a per-dispatch lock
 
 docs/orchestration/references/hazards.md records why the distinction is not
-cosmetic: self-assess's guard once gated on repo-level state and "swept every
+cosmetic: befund's guard once gated on repo-level state and "swept every
 edit in the whole session, from any plugin or a direct user edit, into the
 gate", blocking three other plugins' remediators. Parallel writers -- this
 plugin's entire premise -- are exactly the case that breaks repo-level gating.
@@ -212,7 +212,7 @@ def is_cross_plugin(target: str, source: str) -> bool:
     like a three-deep chain and trip the breaker on ordinary work.
 
     Using the run owner instead is a real hole, found by the calibration:
-    arbeitsplan -> compass -> arbeitsplan has a final hop whose prefix equals
+    arbeitsplan -> zirkel -> arbeitsplan has a final hop whose prefix equals
     the owner, so it was classified as fan-out and skipped the cycle check --
     letting the one shape the cycle detector exists for pass straight through.
     """

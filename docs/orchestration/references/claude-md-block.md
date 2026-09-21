@@ -7,15 +7,15 @@ already states about itself.
 
 - `cupertino-council`'s own frontmatter: "Always run before code, never after —
   retrofitting the council onto finished code defeats the purpose."
-- `compass-clarify-scope`'s own frontmatter: to be used "before any work begins".
+- `zirkel-clarify-scope`'s own frontmatter: to be used "before any work begins".
 - `confab-assertion-audit` and the gate it fills are documented together in
   [`gates.md`](gates.md)'s "Reviewers that drop in with no setup" table — nothing
   about the audit itself requires the extra sentence, only where it slots in.
 - `andon-verify` routes among seven strategies by reading "the wire's contract" —
   a dispatch with no stated contract has nothing to route against, per
   [`gates.md`](gates.md)'s "Reviewers that need one more input" section.
-- The three briefs (`/modernize-brief`, `self-assess-transform-brief`,
-  `/consistency-brief`) are declared mutually exclusive in
+- The three briefs (`/modernize-brief`, `befund-transform-brief`,
+  `/passung-brief`) are declared mutually exclusive in
   [`routing.md`](routing.md)'s "competition is at the brief, not the plugin" —
   each is an approval gate whose downstream executor reads it as an entry
   criterion, so signing two leaves the executor with two disagreeing orderings.
@@ -27,7 +27,7 @@ already states about itself.
 
 - Before writing any user-facing UI code, run `cupertino-council` first. Never run it
   after code already exists — retrofitting it defeats the purpose.
-- Before starting an ambiguous task, scope it with `compass-clarify-scope`. Do this
+- Before starting an ambiguous task, scope it with `zirkel-clarify-scope`. Do this
   before any other planning step, not after you've already picked an approach.
 - At each review gate (after a task, before a PR), run `confab-assertion-audit` over
   the tests you just wrote, in addition to the general reviewer. See
@@ -36,7 +36,7 @@ already states about itself.
   satisfy, with `andon-verify`. State the contract in the dispatch prompt; it will
   not infer one from the diff.
 - Pick exactly one brief before starting discovery: `/modernize-brief`,
-  `self-assess-transform-brief`, or `/consistency-brief`. Never sign two — see
+  `befund-transform-brief`, or `/passung-brief`. Never sign two — see
   `references/routing.md` for which one owns a given task shape.
 ```
 
@@ -116,7 +116,7 @@ repository declared, and is inert until `.claude/takt.local.md` exists. Installi
 turns these five bullets from instructions into refusals.
 
 Eight other werkstoff plugins hold a `PreToolUse` hook of their own — `andon`,
-`lehre`, `matrize`, and `self-assess` gate write tools, `confab` and `nacharbeit`
+`lehre`, `matrize`, and `befund` gate write tools, `confab` and `nacharbeit`
 also gate `Bash`, `arbeitsplan` matches the same six dispatch-and-write tool types as
 takt itself, and `cupertino` enforces its own internal ordering through
 `GATED_AFTER_BACKWARDS`. All are inert until the repository actually uses the owning

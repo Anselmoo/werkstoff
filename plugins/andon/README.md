@@ -19,7 +19,7 @@ halt is the intended outcome for an unproven fix, not a bug in the loop.
 ## What it is not
 
 - **Not for applying a single authorized phase from a `MODERNIZATION_BRIEF.md`.**
-  That belongs to `self-assess` (`self-assess-transform-execute`) — return to
+  That belongs to `befund` (`befund-transform-execute`) — return to
   `andon-loop`, or straight to `andon-verify`, only for the proof afterward
   (`skills/andon-loop/SKILL.md`).
 - **Not for judging whether an existing test suite's assertions would catch a

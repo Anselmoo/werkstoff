@@ -5,10 +5,10 @@ summary: "Test a brief's load-bearing claims — where something lives, what a j
 openingPrompt: "Before we open a single file to edit, list every load-bearing assumption this brief is resting on, confirm each one against a real file and line number, and check that any new dependencies it names actually exist on the registry."
 external: []
 beats:
-  - skill: "compass:compass-verify-assumptions"
+  - skill: "zirkel:zirkel-verify-assumptions"
     why: "Once implementation starts, a false premise is discovered as a bug rather than as a claim."
     prompt: "before we do any of this, list the assumptions this request is resting on and tell me which ones you can't actually confirm"
-  - skill: "compass:compass-ground-evidence"
+  - skill: "zirkel:zirkel-ground-evidence"
     why: "Grounding is cheap on five claims and expensive on a finished diff."
     prompt: "don't make this up — every claim about this repo needs a file and line number behind it"
   - skill: "confab:confab-dependency-audit"

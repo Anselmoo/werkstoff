@@ -2,7 +2,7 @@
 type: stage
 title: ingest
 order: 1
-confidence: self-assess-backed
+confidence: befund-backed
 description: Pulls raw partner feeds off object storage and writes them untouched to the landing zone.
 tags:
   - lane:fast

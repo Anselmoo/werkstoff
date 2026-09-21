@@ -6,7 +6,7 @@
 # Usage:
 #   test/plugins/scaffold-test.sh <id> <plugin-name> <fixture-name> [artifact]
 # Example:
-#   test/plugins/scaffold-test.sh docs-drift self-assess stale-readme analysis/self-assess/DOCS_DRIFT.md
+#   test/plugins/scaffold-test.sh docs-drift befund stale-readme analysis/befund/DOCS_DRIFT.md
 #
 # It creates plugins/<plugin-name>/test-fixtures/<fixture-name>/ with a README
 # describing the seeded defect + expected finding (you fill in the actual

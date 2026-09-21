@@ -77,7 +77,7 @@ means *the second pole* (samaria), not a second shade.
 | `--rule-soft` | `#46515a` | `werkstoff.css` `.dark` `--wk-rule-soft` | **opinionated default**: rule used **only** where space also carries the break | 2.40:1 on `--bg` — a measurement, not a justification; see note below |
 | `--rule-on-light` | `#8e8e95` | `werkstoff.css:161` `--wk-rule` (light) | load-bearing section break on white | 3.25:1 on `#ffffff`; 3.01:1 on `#f6f6f7` (clears 3:1 by 0.01) |
 | `--rule-soft-on-light` | `#a7a7ac` | `werkstoff.css:162` `--wk-rule-soft` (light) | **opinionated default**: rule used only where space also carries the break | 2.40:1 on `#ffffff` — a measurement, not a justification; see note below |
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, monospace` | 9 literal repeats in 6 viewers: arbeitsplan `run-viewer.html:35,47`; codebase-consistency `matrix-viewer.html:195`; confab `burndown-viewer.html:119`; lehre `doctrine-viewer.html:93`; nacharbeit `review-viewer.html:35,47`; takt `beatgraph-viewer.html:38,52` | monospace family for data cells, code and maths in viewers | not a colour |
+| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, monospace` | 9 literal repeats in 6 viewers: arbeitsplan `run-viewer.html:35,47`; passung `matrix-viewer.html:195`; confab `burndown-viewer.html:119`; lehre `doctrine-viewer.html:93`; nacharbeit `review-viewer.html:35,47`; takt `beatgraph-viewer.html:38,52` | monospace family for data cells, code and maths in viewers | not a colour |
 
 `--rule` and `--rule-soft` are two stops on a ramp the palette already owns. `werkstoff.css`
 records them as `--border #28323a → --muted #8b9aa4` interpolated at t = 0.45 and t = 0.30.
@@ -127,7 +127,7 @@ declarations in the first `:root` only, so the rest of the file's literals are s
 | `rgba(171,109,198,a)` ×4 | same | **maps** `--neodymia` | `#ab6dc6` |
 | `rgba(189,81,55,a)` ×2 | recipe cards | **maps** `--ferria` | `#bd5137` |
 | `rgba(76,141,90,.12)`, `rgba(181,139,58,.12)`, `rgba(176,80,63,.12)`, `rgba(74,113,156,.12)` | `.dark` custom blocks | **map** `--status-good`, `--status-warn`, `--status-bad`, `--status-unknown` | value-identical |
-| `rgba(255,255,255,.85)` | `codebase-consistency/assets/matrix-viewer.html:159` | **named baseline exception** | neutral overlay, not a brand colour |
+| `rgba(255,255,255,.85)` | `passung/assets/matrix-viewer.html:159` | **named baseline exception** | neutral overlay, not a brand colour |
 | `rgba(0,0,0,.5)` | `lehre/assets/doctrine-viewer.html:111` (box-shadow) | **named baseline exception** | shadow, not a brand colour |
 | off-token hex in viewers: `stage-map-viewer.html` (4), `derivation-viewer.html` (9), `architecture-tree-viewer.html` (1), incl. `#111`/`#fff`/`#ccc` | viewers | **named baseline exceptions, carried unsettled** | PREFLIGHT lists them as findings for `matrize-retrofit`; deciding each needs the viewer's data shape, which this brief does not have |
 
@@ -189,7 +189,7 @@ Follow-ups, not settled here.
    contrast figures above hold for text and for a white label either way.
 6. **Font-size and spacing have no enforcement.** Either add T-FONT-SIZE / T-SPACING rules with
    their own baselines, or accept them as unguarded. It is decided by nothing today.
-7. **Colours computed in JS evade all four rules.** `plugins/self-assess/assets/stage-map-viewer.html:198`
+7. **Colours computed in JS evade all four rules.** `plugins/befund/assets/stage-map-viewer.html:198`
    builds `rgba(${(n >> 16) & 255},…)` from integers; T-COLOR-FN only matches literal arguments.
    PREFLIGHT's "matrix (8-hue ramp)" is the same risk wherever that ramp is expressed as numbers.
 8. **`#f6f6f7`** as VitePress's light `--vp-c-bg-soft` is assumed, not read from source. `--accent-on-light` on it
@@ -204,7 +204,7 @@ Follow-ups, not settled here.
    viewers *remove* the browser default without replacing it:
    `plugins/lehre/assets/doctrine-viewer.html:73` (`.snode:focus { outline: none; }`),
    `plugins/matrize/assets/provenance-viewer.html:54` (`.node:focus { outline: none; }`), and
-   `plugins/self-assess/assets/stage-map-viewer.html:66` (`outline: none` on a focusable
+   `plugins/befund/assets/stage-map-viewer.html:66` (`outline: none` on a focusable
    element). None of the four T-* rules would catch either shape — there is no
    T-FOCUS-RING and no rule that flags an `outline: none` with no visible replacement.
    Disabled, loading and empty states have neither a token nor a rule at all. Also open:

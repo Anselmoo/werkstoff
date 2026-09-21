@@ -20,12 +20,12 @@
       "title": "cli-scaffold ships a slash command not enumerated in any Commands section",
       "evidence": "plugins/cli-scaffold/commands/cli-scaffold.md exists on disk (frontmatter: name: cli-scaffold, description: 'Scaffold a production-grade CLI...'), but plugins/cli-scaffold/README.md's heading list (`grep -n \"^#\" README.md`) contains no '## Commands' or combined 'Skills/Commands' heading -- the command is only referenced informally in prose/example prompts ('/cli-scaffold rust called myapp'), never enumerated as a shipped command the way the '## Skills (5)' (line 157) and '## Agents (1)' (line 167) sections enumerate skills and agents.",
       "mechanical": false,
-      "suggestedFix": "Add a '## Commands (1)' section (or fold it into a combined 'Skills/Commands' heading) that lists `/cli-scaffold` with a one-line description of what it dispatches, consistent with codebase-consistency's README '## Commands' section style.",
+      "suggestedFix": "Add a '## Commands (1)' section (or fold it into a combined 'Skills/Commands' heading) that lists `/cli-scaffold` with a one-line description of what it dispatches, consistent with passung's README '## Commands' section style.",
       "rule": "Every plugin's README.md must include a Skills/Commands section and an Agents section (each labeled with its exact count where a count is used, e.g. \"## Skills (16)\") that enumerates every skill, command, and agent file actually shipped under that plugin's skills/, commands/, and agents/ directories \u2014 no shipped skill, command, or agent may be omitted, and no documented one may be missing from disk.",
       "dimension": "api-reference-completeness"
     },
     {
-      "file": "plugins/self-assess/agents/complexity-surveyor.md",
+      "file": "plugins/befund/agents/complexity-surveyor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -36,7 +36,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/ci-topology-auditor.md",
+      "file": "plugins/befund/agents/ci-topology-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -47,7 +47,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/stage-mapper.md",
+      "file": "plugins/befund/agents/stage-mapper.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -58,7 +58,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/idiom-remediator.md",
+      "file": "plugins/befund/agents/idiom-remediator.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -69,7 +69,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/docs-drift-auditor.md",
+      "file": "plugins/befund/agents/docs-drift-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -80,18 +80,18 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/transform-executor.md",
+      "file": "plugins/befund/agents/transform-executor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
-      "evidence": "You are transform-executor, the only Write/Edit-capable agent in self-assess. You apply exactly",
+      "evidence": "You are transform-executor, the only Write/Edit-capable agent in befund. You apply exactly",
       "mechanical": false,
       "suggestedFix": "Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.",
       "rule": "Skill/agent frontmatter `description` fields must be written in third person and trigger-rich (describing when/why to invoke), while the SKILL.md/agent body must be written in imperative/infinitive mood addressed to the acting agent, never second person (\"you\") \u2014 e.g. \"Compose the five phases in order,\" not \"You route a scaffold request... You never generate code yourself.\"",
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/convention-auditor.md",
+      "file": "plugins/befund/agents/convention-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -102,7 +102,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/ui-auditor.md",
+      "file": "plugins/befund/agents/ui-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -113,7 +113,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/business-rules-miner.md",
+      "file": "plugins/befund/agents/business-rules-miner.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -124,7 +124,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/arch-health-auditor.md",
+      "file": "plugins/befund/agents/arch-health-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -135,7 +135,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/agents/idiom-auditor.md",
+      "file": "plugins/befund/agents/idiom-auditor.md",
       "line": 9,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -377,7 +377,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/skills/self-assess-autopilot/SKILL.md",
+      "file": "plugins/befund/skills/befund-autopilot/SKILL.md",
       "line": 27,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -388,18 +388,18 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/self-assess/skills/self-assess-transform-execute/SKILL.md",
+      "file": "plugins/befund/skills/befund-transform-execute/SKILL.md",
       "line": 54,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
-      "evidence": "`.claude/self-assess.local.md` AND you have told them plainly what changed paths exist. A",
+      "evidence": "`.claude/befund.local.md` AND you have told them plainly what changed paths exist. A",
       "mechanical": false,
       "suggestedFix": "Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.",
       "rule": "Skill/agent frontmatter `description` fields must be written in third person and trigger-rich (describing when/why to invoke), while the SKILL.md/agent body must be written in imperative/infinitive mood addressed to the acting agent, never second person (\"you\") \u2014 e.g. \"Compose the five phases in order,\" not \"You route a scaffold request... You never generate code yourself.\"",
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/agents/branch-proposer.md",
+      "file": "plugins/zirkel/agents/branch-proposer.md",
       "line": 17,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -410,7 +410,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/agents/instruction-candidate.md",
+      "file": "plugins/zirkel/agents/instruction-candidate.md",
       "line": 17,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -421,7 +421,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/agents/reasoning-path.md",
+      "file": "plugins/zirkel/agents/reasoning-path.md",
       "line": 16,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -564,7 +564,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/codebase-consistency/agents/pattern-analyst.md",
+      "file": "plugins/passung/agents/pattern-analyst.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -575,7 +575,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/codebase-consistency/agents/consistency-critic.md",
+      "file": "plugins/passung/agents/passung-critic.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -586,7 +586,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/codebase-consistency/agents/align-executor.md",
+      "file": "plugins/passung/agents/align-executor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -597,7 +597,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/codebase-consistency/agents/pattern-extractor.md",
+      "file": "plugins/passung/agents/pattern-extractor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -608,7 +608,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/codebase-consistency/agents/equivalence-verifier.md",
+      "file": "plugins/passung/agents/equivalence-verifier.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -696,7 +696,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-investigate-dynamically/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-investigate-dynamically/SKILL.md",
       "line": 21,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -707,7 +707,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-reason-verify/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-reason-verify/SKILL.md",
       "line": 62,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -718,7 +718,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-clarify-scope/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-clarify-scope/SKILL.md",
       "line": 35,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -729,7 +729,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-explore-branches/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-explore-branches/SKILL.md",
       "line": 34,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -740,7 +740,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-calibrate-format/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-calibrate-format/SKILL.md",
       "line": 27,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -751,7 +751,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-solve/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-solve/SKILL.md",
       "line": 31,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -762,7 +762,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/compass/skills/compass-draft-revise/SKILL.md",
+      "file": "plugins/zirkel/skills/zirkel-draft-revise/SKILL.md",
       "line": 36,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -953,7 +953,7 @@
       "line": 56,
       "severity": "Medium",
       "title": "Unpinned codebase-state count (8 of 9 plugins have assets/)",
-      "evidence": "`templates/` is not used anywhere in werkstoff today; `assets/` is \u2014 8 of the 9 plugins\n(all but `takt`) have a plugin-root `assets/` directory, referenced from SKILL.md (or,\nfor `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`.",
+      "evidence": "`templates/` is not used anywhere in werkstoff today; `assets/` is \u2014 8 of the 9 plugins\n(all but `takt`) have a plugin-root `assets/` directory, referenced from SKILL.md (or,\nfor `passung`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`.",
       "mechanical": false,
       "suggestedFix": "Pin to a commit hash or checked-date, as this same document already does at line 89 (\"as of `1cd5d07`\") and line 102.",
       "rule": "Any documentation claim that measures, counts, or characterizes the current state of the codebase (character/word counts, tool-grant lists, hook/enforcement inventories, third-party plugin behavior) must be pinned to the commit hash or checked-date it was measured against (e.g. \"as of `1cd5d07`\", \"commit `0c10fa0`\", \"checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`\") rather than stated as a timeless fact, so a later drift is visible as staleness instead of silently becoming false.",
@@ -982,11 +982,11 @@
       "dimension": "versioning-of-docs"
     },
     {
-      "file": "plugins/self-assess/README.md",
+      "file": "plugins/befund/README.md",
       "line": 245,
       "severity": "Low",
       "title": "Unpinned codebase-state count (16 skills / 11 agents)",
-      "evidence": "\u251c\u2500\u2500 skills/self-assess-*/SKILL.md   # 16 skills, one per spec entry\n\u2514\u2500\u2500 agents/*.md                     # 11 agents, one per spec entry",
+      "evidence": "\u251c\u2500\u2500 skills/befund-*/SKILL.md   # 16 skills, one per spec entry\n\u2514\u2500\u2500 agents/*.md                     # 11 agents, one per spec entry",
       "mechanical": false,
       "suggestedFix": "Pin these skill/agent counts to a commit hash or checked-date so a later addition/removal is visible as staleness.",
       "rule": "Any documentation claim that measures, counts, or characterizes the current state of the codebase (character/word counts, tool-grant lists, hook/enforcement inventories, third-party plugin behavior) must be pinned to the commit hash or checked-date it was measured against (e.g. \"as of `1cd5d07`\", \"commit `0c10fa0`\", \"checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`\") rather than stated as a timeless fact, so a later drift is visible as staleness instead of silently becoming false.",

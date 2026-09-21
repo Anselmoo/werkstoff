@@ -45,8 +45,8 @@ describes; superpowers never gives a reader an agent name of its own to invoke.
 and CI config still agree, then report both"
 ````
 
-> Two calls in the same response — `self-assess-stage-map` and
-> `self-assess-ci-topology` — run in parallel because neither reads the other's
+> Two calls in the same response — `befund-stage-map` and
+> `befund-ci-topology` — run in parallel because neither reads the other's
 > output. A single call naming both, or two calls split across separate responses,
 > would run sequentially instead.
 
@@ -105,15 +105,15 @@ leaving these agents' own defaults in place:
 | plugin | agents | declared model |
 |---|---|---|
 | cli-scaffold | cli-scaffold-verifier | `sonnet` |
-| compass | branch-proposer, instruction-candidate, reasoning-path | `sonnet` |
+| zirkel | branch-proposer, instruction-candidate, reasoning-path | `sonnet` |
 | cupertino | handbook-dimension-analyst, handbook-drift-auditor, handbook-remediator, handbook-verifier | `sonnet` |
-| self-assess | arch-health-auditor, business-rules-miner, ci-topology-auditor, complexity-surveyor, convention-auditor, docs-drift-auditor, idiom-auditor, idiom-remediator, stage-mapper, transform-executor, ui-auditor | `inherit` (declared explicitly) |
+| befund | arch-health-auditor, business-rules-miner, ci-topology-auditor, complexity-surveyor, convention-auditor, docs-drift-auditor, idiom-auditor, idiom-remediator, stage-mapper, transform-executor, ui-auditor | `inherit` (declared explicitly) |
 | andon | andon-adjudicator, andon-challenger, andon-defender, andon-verifier | none declared |
 | confab | agentic-reliability-auditor, assertion-auditor, confab-remediator, contract-auditor, dependency-auditor | none declared |
-| codebase-consistency | align-executor, consistency-critic, equivalence-verifier, pattern-analyst, pattern-extractor | none declared |
+| passung | align-executor, passung-critic, equivalence-verifier, pattern-analyst, pattern-extractor | none declared |
 
-Two rows read the same at runtime but say different things on the page: self-assess's
-agents spell out `model: inherit`, while andon, confab, and codebase-consistency omit
+Two rows read the same at runtime but say different things on the page: befund's
+agents spell out `model: inherit`, while andon, confab, and passung omit
 the field entirely. Both resolve to the dispatching session's model — but only the
 first row documents that choice; the other three rows are silent, and a reader
 scanning their frontmatter for a model line finds nothing rather than a decision.
@@ -157,7 +157,7 @@ session default where the row says "none declared."
   producing any error a reader would notice.
 - **Asking one agent to both build and verify its own work.** This repository already
   separates the two roles rather than trusting a single agent's self-review:
-  `self-assess-idiom-fix` and `self-assess-transform-execute` both hand off to
+  `befund-idiom-fix` and `befund-transform-execute` both hand off to
   `andon:andon-verify` explicitly without self-verifying, and `andon-verify`'s own
   tribunal strategy dispatches `andon-defender` and `andon-challenger` in parallel,
   each blind to the other's case and to any prior verdict. Building and verifying in

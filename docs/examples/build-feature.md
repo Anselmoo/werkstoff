@@ -13,7 +13,7 @@ Measured evidence for the `build-feature` case. The expected skill never fired, 
 
 **Why the failing runs failed**
 
-- expected skill(s) never fired: compass:compass-clarify-scope
+- expected skill(s) never fired: zirkel:zirkel-clarify-scope
 
 **What the permission mode refused** -- 12 call(s), tool(s): `Bash`. One verbatim:
 
@@ -23,7 +23,7 @@ Measured evidence for the `build-feature` case. The expected skill never fired, 
 
 > **Context:** The repo is a tiny `numerics` package (`kahan_sum` in `summation.py`). The README already specifies the task precisely: implement `logsumexp(values)` in `numerics/stable.py`, export it from `numerics/__init__.py`, and it must pass the existing (currently failing) `tests/test_logsumexp.py`. **Design:** - `numerics/stable.py`: `logsumexp(values: Iterable[float]) -> float` using the standard max-shift trick: materialize `values` into a list, find `m = max(values)`, return `m + log(sum(
 
-`compass:compass-clarify-scope` did not fire in any run, across two models and two permission modes, with compass the only werkstoff plugin loaded and a prompt that says "scope the work before writing code". That is not a model-tier result: it points at the skill's own description.
+`zirkel:zirkel-clarify-scope` did not fire in any run, across two models and two permission modes, with zirkel the only werkstoff plugin loaded and a prompt that says "scope the work before writing code". That is not a model-tier result: it points at the skill's own description.
 
 ---
 

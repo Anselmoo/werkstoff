@@ -72,8 +72,13 @@ jobs:
           # returns the whole string, which matches no group below. That
           # matters -- a bare tag belongs to cicd.yml's PyPI publish, never
           # here.
+          # The trailing three are RETIRED names, listed in
+          # test/plugins/retired-groups.txt. They have no plugins/<name>/ directory,
+          # but their published tags do exist, and the workflow_dispatch recovery
+          # path above parses the group out of the tag -- so dropping them would make
+          # every pre-rename tag permanently unrecoverable.
           case "$GROUP" in
-            self-assess|confab|compass|cupertino|andon|cli-scaffold|codebase-consistency|nacharbeit|lehre|takt|matrize|arbeitsplan) ;;
+            befund|confab|zirkel|cupertino|andon|cli-scaffold|passung|nacharbeit|lehre|takt|matrize|arbeitsplan|compass|codebase-consistency|self-assess) ;;
             *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
           esac
           if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then

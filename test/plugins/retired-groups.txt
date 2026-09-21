@@ -1,0 +1,30 @@
+# Retired plugin-group names: names that plugin-release.yml's tag allowlist may
+# still contain although no plugins/<name>/ directory exists.
+#
+# A plugin that has been renamed leaves its published tags behind under the old
+# name. Those tags and their GitHub Releases are real and stay reachable, and
+# plugin-release.yml's `workflow_dispatch` recovery path is the documented way to
+# re-publish one whose release went missing. That path parses the group out of the
+# tag, so dropping the old name from the allowlist makes every pre-rename tag
+# permanently unrecoverable.
+#
+# lint-release-wiring.py therefore exempts these names from its "no such
+# plugins/<name>/ directory" check FOR THE TAG ALLOWLIST ONLY. The other three
+# lists -- .rrt.toml version_groups, .rrt.toml field_targets, and
+# auto-version-bump.yml's changed-group matcher -- all describe work on a
+# directory that exists, so a retired name in any of them is still a failure.
+#
+# THE LIST IS ONLY ALLOWED TO SHRINK. Two things are reported as errors rather
+# than tolerated:
+#   - a name here that is NOT in the tag allowlist (the exemption buys nothing;
+#     delete the line)
+#   - a name here that IS back on disk (the name was reused; delete the line, or
+#     the exemption hides a real drift)
+# Nothing may be added except by a rename that leaves published tags orphaned.
+
+# Renamed to shop-floor terms so every plugin name passes the test stated in
+# docs/glossary.md: named for a manufacturing concept its README states.
+# compass -> zirkel, codebase-consistency -> passung, self-assess -> befund.
+compass
+codebase-consistency
+self-assess

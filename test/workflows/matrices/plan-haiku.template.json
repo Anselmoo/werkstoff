@@ -6,10 +6,10 @@
       "expect_exit": 0,
       "fixture": "${FIXTURE:numerics-greenfield}",
       "expect_skills": [
-        "compass:compass-clarify-scope"
+        "zirkel:zirkel-clarify-scope"
       ],
       "plugins": [
-        "${REPO_PLUGIN:compass}",
+        "${REPO_PLUGIN:zirkel}",
         "${PLUGIN:superpowers}"
       ]
     },
@@ -19,10 +19,10 @@
       "expect_exit": 0,
       "fixture": "${FIXTURE:toy-pipeline}",
       "expect_skills": [
-        "self-assess:self-assess-stage-map"
+        "befund:befund-stage-map"
       ],
       "plugins": [
-        "${REPO_PLUGIN:self-assess}"
+        "${REPO_PLUGIN:befund}"
       ]
     },
     {

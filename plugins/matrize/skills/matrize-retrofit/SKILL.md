@@ -1,6 +1,6 @@
 ---
 name: matrize-retrofit
-description: "Use to lift an existing project's ad-hoc CSS into the design-system taxonomy WITHOUT changing anything visually — naming what is already there, recording where each value came from, and proving zero visual diff rather than asserting it. Trigger on 'organise this project's scattered CSS', 'name what we already have', 'same pixels, just systematised', 'matrize retrofit'. Never redesigns: a value that would change is surfaced as a question, not adopted. Not for deriving a new system from external exemplars (matrize-decode) and not for auditing a repo for convention divergence, which is codebase-consistency's job."
+description: "Use to lift an existing project's ad-hoc CSS into the design-system taxonomy WITHOUT changing anything visually — naming what is already there, recording where each value came from, and proving zero visual diff rather than asserting it. Trigger on 'organise this project's scattered CSS', 'name what we already have', 'same pixels, just systematised', 'matrize retrofit'. Never redesigns: a value that would change is surfaced as a question, not adopted. Not for deriving a new system from external exemplars (matrize-decode) and not for auditing a repo for convention divergence, which is passung's job."
 argument-hint: "<system>"
 ---
 
@@ -70,5 +70,5 @@ End with three lists:
 ## What this is not
 
 Not a drift audit. It never asks whether the code still matches a system — matrize
-creates the system, `codebase-consistency` guards it. And it never scans for convention
-divergence across a repo; the moment that is the question, `/consistency-scan` owns it.
+creates the system, `passung` guards it. And it never scans for convention
+divergence across a repo; the moment that is the question, `/passung-scan` owns it.

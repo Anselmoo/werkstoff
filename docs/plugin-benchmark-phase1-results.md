@@ -16,7 +16,7 @@ anything downstream actually consumes it — that's Phase 2, not yet run.
 
 ---
 
-## 1. werkstoff — hook-enforced family (andon, confab, self-assess, cupertino)
+## 1. werkstoff — hook-enforced family (andon, confab, befund, cupertino)
 
 Fixed threshold (from the plan): **PASS** needs median ≥ 3 **and** every scored file at EXIT = 1.
 A plugin at median exactly 3 with any file at EXIT = 0 is still FAIL — the exit-code dimension is
@@ -26,7 +26,7 @@ a hard gate for this family, not something the median can average over.
 |---|---|---|---|---|---|---|
 | andon | 8 | 0 | 1 | 4 | No (4 tribunal agents = 0) | **FAIL** |
 | confab | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |
-| self-assess | 4 | 1 | 3 | 4 | No (`stage-mapper` agent = 0) | **FAIL** |
+| befund | 4 | 1 | 3 | 4 | No (`stage-mapper` agent = 0) | **FAIL** |
 | cupertino | 12 | 0 | 2 | 4 | No (5 files = 0) | **FAIL** |
 
 **All four hook-enforced plugins fail the plan's own fixed structural bar.** Not narrowly — in
@@ -38,7 +38,7 @@ dispatches score at or near 0/4** because they have no Write/Edit tool grant, so
 - andon: all 4 tribunal agents (`andon-defender/challenger/verifier/adjudicator`) score **0/4** —
   no schema, no next-field, no sidecar, no exit-code coverage (`tools: [Read, Grep, Glob(, Bash)]`,
   explicitly "Refuse to edit, create, or modify any files").
-- self-assess: `stage-mapper` agent scores **1/4** — has a schema block but is Read/Glob/Grep/Bash
+- befund: `stage-mapper` agent scores **1/4** — has a schema block but is Read/Glob/Grep/Bash
   only, no hook coverage.
 - cupertino: 4 of 9 internal review stages (`prototype`, `elevate`, `unbox`, `reveal`) score
   **0/4** — no schema beyond a single string wrapper, no hook gate at all (confirmed absent from
@@ -55,22 +55,22 @@ machine-parseable handoff, even inside plugins whose hook layer is otherwise rea
 
 ---
 
-## 2. werkstoff — advisory-only family (compass, cli-scaffold)
+## 2. werkstoff — advisory-only family (zirkel, cli-scaffold)
 
 Fixed threshold: **PASS** needs median ≥ 2, no exit-code requirement (by design — this family has
 no hook).
 
 | Plugin | n | min | median | max | Verdict |
 |---|---|---|---|---|---|
-| compass | 4 | 1 | 1 | 3 | **FAIL** |
+| zirkel | 4 | 1 | 1 | 3 | **FAIL** |
 | cli-scaffold | 7 | 1 | 2 | 2 | **PASS** |
 
-compass's failure is concentrated the same way as the hook-enforced family: `compass-solve`
-(the orchestrator) scores 3/4 — real sidecar (`.compass/runs/<id>/state.json`) and explicit
-per-phase next-skill invocations — but `compass-clarify-scope`, `compass-explore-branches`, and
+zirkel's failure is concentrated the same way as the hook-enforced family: `zirkel-solve`
+(the orchestrator) scores 3/4 — real sidecar (`.zirkel/runs/<id>/state.json`) and explicit
+per-phase next-skill invocations — but `zirkel-clarify-scope`, `zirkel-explore-branches`, and
 the `branch-proposer` agent each score only 1/4: they define real output schemas but never name a
 literal next skill in their own body text (that naming only happens one level up, in
-`compass-solve`'s own dispatch instructions). `cli-scaffold` passes cleanly: every one of its 7
+`zirkel-solve`'s own dispatch instructions). `cli-scaffold` passes cleanly: every one of its 7
 chain-relevant files scores 2/4, driven by a consistent manifest-handoff pattern
 (`cli-scaffold.manifest.json`, read by all three paradigm skills and the verifier agent).
 
@@ -121,10 +121,10 @@ strictly lower than the matched reference median in ≥ 2 of 3 repos.
 
 | werkstoff plugin | median | vs prp (2.5) | vs code-modernization (2) | vs superpowers (1) | Claim 2 |
 |---|---|---|---|---|---|
-| compass | 1 | lower | lower | tied | **CONFIRMED** (2 of 3 strictly lower) |
+| zirkel | 1 | lower | lower | tied | **CONFIRMED** (2 of 3 strictly lower) |
 | cli-scaffold | 2 | lower | tied | higher | **FALSIFIED** (only 1 of 3 strictly lower) |
 
-So of the two advisory-only plugins, the original thesis holds for `compass` and is **falsified**
+So of the two advisory-only plugins, the original thesis holds for `zirkel` and is **falsified**
 for `cli-scaffold` — a uniform "advisory plugins are behind industry standard" claim would have
 been wrong for half this family.
 
@@ -132,7 +132,7 @@ been wrong for half this family.
 
 Claim 1's falsifier requires inspecting an actual downstream `tool_call_input` payload on an
 executed chain — that's Phase 2, not yet run. What Phase 1 *does* establish, comparably across all
-four codebases: werkstoff's hook-enforced plugins' median scores (andon 1, confab 2, self-assess
+four codebases: werkstoff's hook-enforced plugins' median scores (andon 1, confab 2, befund
 3, cupertino 2) are **not obviously worse** than the three references' medians (2.5, 2, 1) — two of
 werkstoff's four plugins tie or beat two of the three references on raw structural score. The
 recurring failure mode (read-only agents scoring near-0) is also present in the references

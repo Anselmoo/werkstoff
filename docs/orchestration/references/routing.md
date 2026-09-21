@@ -1,7 +1,7 @@
 # Routing: which pipeline owns the task
 
 Four pipelines can plausibly be pointed at the same repository — `code-modernization`,
-`self-assess`, `codebase-consistency`, and `andon`. They look interchangeable from the
+`befund`, `passung`, and `andon`. They look interchangeable from the
 outside and are not. This reference decides between them, quotes the boundary the
 plugins already declare themselves, and names the two overlaps that are real.
 
@@ -15,8 +15,8 @@ downstream reads that brief and treats its phases as entry criteria.
 |Brief|Required inputs (refuses without them)|Phase ordering|
 |---|---|---|
 |`/modernize-brief`|`ASSESSMENT.md`, `topology.json`, `BUSINESS_RULES.md` — "If any are missing, say so and stop". Plus `DELTA_CATALOG.md` whenever the target is a newer version of the same stack|Target-architecture-first; enters plan mode as a human-in-the-loop gate|
-|`self-assess-transform-brief`|`stage_graph.json`; without it the skill writes a "Ready-with-gaps" stub and stops. Structural decisions derive from `arch_health_summary.json` only|Leaf-first topological sort of the stage graph, work items ranked severity x complexity|
-|`/consistency-brief`|`consistency.json`, `matrix.json`, `PATTERN_CARDS.md`/`CANON.json` — "If any are missing, say so and stop"|Dependency-first, then smallest blast radius first — stated explicitly as "not largest-first, unlike a legacy-modernization plan"|
+|`befund-transform-brief`|`stage_graph.json`; without it the skill writes a "Ready-with-gaps" stub and stops. Structural decisions derive from `arch_health_summary.json` only|Leaf-first topological sort of the stage graph, work items ranked severity x complexity|
+|`/passung-brief`|`consistency.json`, `matrix.json`, `PATTERN_CARDS.md`/`CANON.json` — "If any are missing, say so and stop"|Dependency-first, then smallest blast radius first — stated explicitly as "not largest-first, unlike a legacy-modernization plan"|
 
 The three orderings are not reconcilable. A leaf-first refactor plan, a
 target-architecture rewrite plan, and a bank-the-small-wins alignment plan disagree
@@ -24,7 +24,7 @@ about what phase 1 is, by design. Pick the pipeline before the discovery pass, n
 after.
 
 One further hazard is worth stating without overclaiming: `code-modernization` and
-`self-assess` both write a file named `MODERNIZATION_BRIEF.md`, with different
+`befund` both write a file named `MODERNIZATION_BRIEF.md`, with different
 schemas, and no collision guard was found in either plugin. Treat a repo that has run
 both as ambiguous until the file's provenance is confirmed by reading it. This is an
 observed filename clash, not a documented conflict.
@@ -33,17 +33,17 @@ observed filename clash, not a documented conflict.
 
 |Situation|Pipeline that owns it|What not to reach for, and why|
 |---|---|---|
-|Legacy or cross-stack rewrite — COBOL to Java, a monolith rebuilt on a new architecture|`code-modernization`: `/modernize-assess` -> `/modernize-map` -> `/modernize-extract-rules` -> `/modernize-brief` -> `/modernize-transform` or `/modernize-reimagine`|Not `self-assess-autopilot`. Its brief derives every `Keep`/`Merge`/`Split` decision from arch-health findings on the graph that exists today, so it can plan a refactor of the current system and never a rewrite from extracted intent|
-|Same-stack version uplift — .NET Framework 4.8 to .NET 8, Java 8 to 21|`/modernize-uplift`, whose phase order comes from `DELTA_CATALOG.md`, because "an uplift's phase order is decided by its version deltas"|Not `self-assess-code-idiom`. It judges idioms against the language version the repo's manifest already declares, so it cannot plan a move to a version the manifest has not reached|
-|Modern repo, unknown health, no specific complaint|`self-assess-autopilot` — CHECK, PLAN, approval gate, then FIX+VALIDATE handed to `andon-loop`|Not `/modernize-assess`. `code-modernization` assumes the code lives at `legacy/<system-dir>/` and is shaped for a legacy inventory and a steering-committee artifact; pointing it at a healthy modern repo produces a document nobody is going to approve|
-|Modern repo that grew internally divergent — two or more valid, currently-used, undocumented ways of doing the same thing|`codebase-consistency`: `/consistency-scan` -> `/consistency-map` -> `/consistency-canonize` -> `/consistency-brief` -> `/consistency-align` -> `/consistency-verify`|Not `self-assess` and not `code-modernization`. Both classes of finding they own are declared out of scope here and actively routed out (see below), so running them for this produces the two categories `codebase-consistency` deliberately refuses to catalogue|
-|A change that should be attempted several ways at once, where the criteria are checkable and you want the best attempt rather than the first|`arbeitsplan`: `arbeitsplan-compile` -> `arbeitsplan-run`, with ordering delegated to `takt`'s generated beats|Not `compass-solve`. compass reasons about a *question* and writes nothing to source; arbeitsplan compiles and executes a *change*. arbeitsplan refuses a question outright and routes it here, so the two never both own a task. And not `superpowers:subagent-driven-development`: its serial fix loop and its ban on parallel implementers are the two shapes arbeitsplan exists to replace|
+|Legacy or cross-stack rewrite — COBOL to Java, a monolith rebuilt on a new architecture|`code-modernization`: `/modernize-assess` -> `/modernize-map` -> `/modernize-extract-rules` -> `/modernize-brief` -> `/modernize-transform` or `/modernize-reimagine`|Not `befund-autopilot`. Its brief derives every `Keep`/`Merge`/`Split` decision from arch-health findings on the graph that exists today, so it can plan a refactor of the current system and never a rewrite from extracted intent|
+|Same-stack version uplift — .NET Framework 4.8 to .NET 8, Java 8 to 21|`/modernize-uplift`, whose phase order comes from `DELTA_CATALOG.md`, because "an uplift's phase order is decided by its version deltas"|Not `befund-code-idiom`. It judges idioms against the language version the repo's manifest already declares, so it cannot plan a move to a version the manifest has not reached|
+|Modern repo, unknown health, no specific complaint|`befund-autopilot` — CHECK, PLAN, approval gate, then FIX+VALIDATE handed to `andon-loop`|Not `/modernize-assess`. `code-modernization` assumes the code lives at `legacy/<system-dir>/` and is shaped for a legacy inventory and a steering-committee artifact; pointing it at a healthy modern repo produces a document nobody is going to approve|
+|Modern repo that grew internally divergent — two or more valid, currently-used, undocumented ways of doing the same thing|`passung`: `/passung-scan` -> `/passung-map` -> `/passung-canonize` -> `/passung-brief` -> `/passung-align` -> `/passung-verify`|Not `befund` and not `code-modernization`. Both classes of finding they own are declared out of scope here and actively routed out (see below), so running them for this produces the two categories `passung` deliberately refuses to catalogue|
+|A change that should be attempted several ways at once, where the criteria are checkable and you want the best attempt rather than the first|`arbeitsplan`: `arbeitsplan-compile` -> `arbeitsplan-run`, with ordering delegated to `takt`'s generated beats|Not `zirkel-solve`. zirkel reasons about a *question* and writes nothing to source; arbeitsplan compiles and executes a *change*. arbeitsplan refuses a question outright and routes it here, so the two never both own a task. And not `superpowers:subagent-driven-development`: its serial fix loop and its ban on parallel implementers are the two shapes arbeitsplan exists to replace|
 |One identified gap whose fix has to be proven, not asserted|`andon-loop`, or `andon-propose` and `andon-verify` standalone|Not a brief pipeline at all. None of the three briefs is reachable without its discovery artifacts, and none of them proves a fix; `andon` is the only family whose output is evidence rather than a plan|
 
 ## Where the boundary is already declared
 
-`codebase-consistency` does not leave this to inference. Its README carries a section
-titled "Scope — read this before installing both this and `self-assess`", which states
+`passung` does not leave this to inference. Its README carries a section
+titled "Scope — read this before installing both this and `befund`", which states
 that the plugin does one specific thing "that a documented-convention checker and a
 version-modernization checker structurally cannot": derive which variant becomes
 canonical when two or more valid, currently-used, undocumented ways of doing something
@@ -51,20 +51,20 @@ coexist. It then routes the other two cases out by name:
 
 > A convention already written down somewhere (`CLAUDE.md`, `house-rules.md`, a linter
 > config, an ADR) is **out of scope** — that's a documented-convention auditor's job
-> (e.g. `self-assess`'s `convention-auditor`).
+> (e.g. `befund`'s `convention-auditor`).
 
 > An idiom made obsolete by the language/framework version this codebase targets is
-> **also out of scope** — that's version-driven modernization (e.g. `self-assess`'s
+> **also out of scope** — that's version-driven modernization (e.g. `befund`'s
 > `idiom-auditor` / `idiom-remediator`).
 
-The routing is implemented, not just asserted. `/consistency-scan` emits
+The routing is implemented, not just asserted. `/passung-scan` emits
 `out-of-scope-documented` and `out-of-scope-deprecated` records for those two
-categories and does not detail them further — so a scan run alongside `self-assess`
+categories and does not detail them further — so a scan run alongside `befund`
 hands back a list of what the other plugin should look at rather than a duplicate
 finding set. The same section notes there is no hard dependency either way: the plugin
 works standalone when neither neighbour is installed.
 
-The genealogy is declared too. `codebase-consistency` states that it is a Derivative
+The genealogy is declared too. `passung` states that it is a Derivative
 Work, within the meaning of the Apache License 2.0, of Anthropic's
 `code-modernization` plugin — the pipeline discipline, workflow-orchestration
 mechanics (dependency-aware batching, circuit breaker, loop-until-dry extraction with
@@ -81,8 +81,8 @@ Everything above separates cleanly. Two things genuinely do not, and a third loo
 like a fifth "audit then fix" pipeline until the object is named.
 
 **Same shape, different object.** `nacharbeit-review` and `nacharbeit-fix` read like
-`cupertino-handbook-check` and `cupertino-handbook-fix`, like `self-assess-idiom-fix`,
-like `lehre-conform` and `/consistency-align`: an audit that writes findings, then a
+`cupertino-handbook-check` and `cupertino-handbook-fix`, like `befund-idiom-fix`,
+like `lehre-conform` and `/passung-align`: an audit that writes findings, then a
 fix pass that applies the mechanical subset and refuses the rest. The discriminator is
 what is on the bench. Every one of those four is pointed at the *application* a plugin
 is installed against; nacharbeit is pointed at the *plugin* — its SKILL.md files,
@@ -98,9 +98,9 @@ whatever doctrine the repository declared. Run nacharbeit first there; a doctrin
 violation in a plugin script is a lehre finding on a file nacharbeit has already
 judged fit to ship.
 
-**Same vocabulary, opposite direction.** `self-assess-code-idiom` and
+**Same vocabulary, opposite direction.** `befund-code-idiom` and
 `/modernize-uplift` both talk about deprecated idioms and version targets.
-`self-assess-code-idiom` judges idioms against the version the manifest *already*
+`befund-code-idiom` judges idioms against the version the manifest *already*
 declares — it cleans up after a version moved. `/modernize-uplift` *performs* the
 move, preserving structure and making "the smallest diffs that compile and behave
 identically on the target", driven by the known breaking changes between source and
@@ -109,7 +109,7 @@ is the correct use. A session that confuses the two will file a pile of findings
 the uplift was about to resolve anyway.
 
 **Same extraction, different consumer.** `code-modernization`'s
-`business-rules-extractor` and `self-assess-extract-rules` both mine calculations,
+`business-rules-extractor` and `befund-extract-rules` both mine calculations,
 validations and state transitions into Given/When/Then rules with `file:line`
 citations. The difference is what consumes the output: the former feeds
 `BUSINESS_RULES.md`, a hard input to `/modernize-brief`, so that a rewrite can be
@@ -158,9 +158,9 @@ from extracted intent and `/modernize-uplift` makes the smallest diffs that beha
 identically on a new runtime — and both leave a codebase where the migrated modules
 and the untouched ones now do the same thing two valid ways, with neither variant
 written down as the standard. That is precisely the input condition
-`codebase-consistency` exists for: N >= 2 variants, all still valid, none documented.
+`passung` exists for: N >= 2 variants, all still valid, none documented.
 
-So the honest sequence after a completed migration is `/consistency-scan` over the
+So the honest sequence after a completed migration is `/passung-scan` over the
 affected area, not another modernization pass.
 
 This one is an **inference from the two scope statements, not a documented handoff**.

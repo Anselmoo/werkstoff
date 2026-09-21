@@ -51,8 +51,8 @@ CASE_NOTES = {
         "does not depend on the thing it measures is a case that needs a better prompt."
     ),
     "build-feature": (
-        "`compass:compass-clarify-scope` did not fire in any run, across two models and two "
-        "permission modes, with compass the only werkstoff plugin loaded and a prompt that "
+        "`zirkel:zirkel-clarify-scope` did not fire in any run, across two models and two "
+        "permission modes, with zirkel the only werkstoff plugin loaded and a prompt that "
         "says \"scope the work before writing code\". That is not a model-tier result: it "
         "points at the skill's own description."
     ),

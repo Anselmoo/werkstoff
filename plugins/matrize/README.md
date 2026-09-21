@@ -55,11 +55,11 @@ measurement, and the whole point is being able to tell those apart later.
 ## What it is not
 
 - **Not a drift auditor.** It never checks whether code still matches the system.
-  matrize **creates** the system; `codebase-consistency` **guards** it.
-- **Not `consistency-canonize`.** That derives a form from *the repository's own
+  matrize **creates** the system; `passung` **guards** it.
+- **Not `passung-canonize`.** That derives a form from *the repository's own
   divergent sites* and feeds an in-place rewrite. matrize derives from *external
   reference exemplars* and feeds an emit. matrize never scans a repo for divergence —
-  the moment it does, `/consistency-scan` owns the question instead.
+  the moment it does, `/passung-scan` owns the question instead.
 - **Not `cupertino`.** `cupertino-council` designs one screen from taste principles
   before code; `cupertino-handbook-draft` describes one domain *as it already is* and
   explicitly disclaims researching external authority. Deriving from external exemplars

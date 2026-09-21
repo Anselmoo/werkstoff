@@ -26,8 +26,8 @@ denial message.
 
 ## What it is not
 
-- Not a post-hoc auditor of documented conventions — that is `self-assess`.
-- Not a deriver of canon from undocumented variants — that is `codebase-consistency`.
+- Not a post-hoc auditor of documented conventions — that is `befund`.
+- Not a deriver of canon from undocumented variants — that is `passung`.
 - Not a sequencing gate for cross-plugin beats — that is `takt`, which gates *whether a
   step ran*. lehre gates *what the code may look like*, and enforces its own unit order
   internally, so it needs neither.

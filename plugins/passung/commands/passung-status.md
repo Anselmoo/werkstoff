@@ -1,0 +1,74 @@
+---
+description: Where does harmonization of this area stand — artifact inventory, staleness, next step
+argument-hint: <area-dir>
+---
+
+Report where harmonization of `$1` stands, in one screen. Read-only —
+inspect, never modify.
+
+## 1 — Artifact inventory
+
+| Stage | Artifacts |
+|---|---|
+| preflight | `PREFLIGHT.md` (note whether Check 0 answers and the Check 6 scope note are present) |
+| scan | `CONSISTENCY_SCAN.md`, `consistency.json` |
+| map | `matrix.json`, `CONSISTENCY_MATRIX.html` |
+| canonize | `PATTERN_CARDS.md`, `CANON.json` (note split by provenance) |
+| brief | `CONSISTENCY_BRIEF.md` (note whether the Approval Block is signed, and which phases) |
+| align | `PLAYBOOK.md`, `ALIGN_NOTES.md` (note per phase: pilot done? fan-out complete or stopped early?) |
+| verify | `VERIFICATION.md` (note per phase: clean, or blockers outstanding) |
+
+## 2 — Staleness
+
+- `CONSISTENCY_BRIEF.md` older than `consistency.json`, `matrix.json`, or
+  `PATTERN_CARDS.md` → the brief no longer reflects discovery; recommend
+  re-running `/passung-brief`.
+- `CONSISTENCY_MATRIX.html` older than `matrix.json` → re-run the
+  injection step from `/passung-map`.
+- Any `ALIGN_NOTES.md` phase older than the `PATTERN_CARDS.md` entry it
+  implements → the applied alignment may not match the current canon;
+  flag which phase.
+- `VERIFICATION.md` older than its phase's `ALIGN_NOTES.md` → re-run
+  `/passung-verify` for that phase.
+
+## 2b — How each stage ended
+
+An artifact's presence says a stage wrote something; it does not say the stage finished.
+Read the record, which each stage writes when it closes or stops:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" status --area $1
+```
+
+A `halted` stage outranks its artifacts: report the halt and its reason first — an
+`ALIGN_NOTES.md` from a fan-out the circuit breaker stopped is a partial record, not a
+completed stage. No `run.jsonl` means the area predates the record; say so and fall back
+to the inventory above.
+
+## 3 — Verdict
+
+End with three lines:
+- **Where you are** — furthest completed stage, and roughly how much of
+  the area it covers (e.g. "3 of 5 dimensions canonized, 1 of those
+  aligned and verified").
+- **What's stale** — or "nothing".
+- **Next command** — the single most useful next step, with a one-line
+  reason.
+
+## Example
+
+```
+| Stage | Artifacts |
+|---|---|
+| preflight | PREFLIGHT.md (Check 0 answered, Check 6 scope note present) |
+| scan | CONSISTENCY_SCAN.md, consistency.json |
+| map | matrix.json, CONSISTENCY_MATRIX.html |
+| canonize | PATTERN_CARDS.md, CANON.json (3 of 5 dimensions canonized) |
+| brief | CONSISTENCY_BRIEF.md (Approval Block signed for phases 1-2) |
+| align | PLAYBOOK.md, ALIGN_NOTES.md (phase 1: pilot done, fan-out complete; phase 2: not started) |
+| verify | VERIFICATION.md (phase 1: clean) |
+
+**Where you are** — 3 of 5 dimensions canonized, 1 of those aligned and verified.
+**What's stale** — nothing.
+**Next command** — `/passung-align` for phase 2; its playbook is signed but unapplied.
+```

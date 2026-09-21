@@ -37,7 +37,7 @@ OTHER_GUARDS = [
     ("lehre", ".lehre/ruleset.json", "LEHRE_DISABLE_GUARD=1"),
     ("andon", ".claude/andon.local.md", "enforcement: off in .claude/andon.local.md"),
     ("confab", "analysis/confab/remediation_scope.json", "delete the lock or run without --fix"),
-    ("self-assess", "analysis/self-assess/edit_scope.json", "named in its deny message"),
+    ("befund", "analysis/befund/edit_scope.json", "named in its deny message"),
     ("cupertino", ".cupertino", "CUPERTINO_DISABLE_GUARD=1"),
 ]
 STALE_HOURS = 6

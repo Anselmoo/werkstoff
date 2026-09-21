@@ -36,7 +36,7 @@
       "dimension": "test-naming"
     },
     {
-      "file": "plugins/compass/scripts/test_build_branch_comparison_html.py",
+      "file": "plugins/zirkel/scripts/test_build_branch_comparison_html.py",
       "line": 1,
       "severity": "High",
       "title": "Test file has zero pytest-discoverable test functions",
@@ -47,7 +47,7 @@
       "dimension": "test-naming"
     },
     {
-      "file": "plugins/compass/scripts/test_compass.py",
+      "file": "plugins/zirkel/scripts/test_zirkel.py",
       "line": 1,
       "severity": "High",
       "title": "Test file has zero pytest-discoverable test functions",
@@ -139,7 +139,7 @@
       "line": 40,
       "severity": "High",
       "title": "Answer key embedded inline in the audited file itself, not in a stripped _EXPECTED.md",
-      "evidence": "Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points self-assess-ui-audit at this exact directory. run.sh (line 139) only does `rm -f \"$tmp/_EXPECTED.md\"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.",
+      "evidence": "Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points befund-ui-audit at this exact directory. run.sh (line 139) only does `rm -f \"$tmp/_EXPECTED.md\"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.",
       "mechanical": true,
       "suggestedFix": "Move the 'SEEDED-DEFECT FIXTURE' / 'EXPECTED FINDINGS' / 'EXPECTED NON-FINDINGS' commentary out of index.html into a new test/plugins/fixtures/ui-missing-alt/_EXPECTED.md, leaving index.html containing only the seeded HTML defects (and non-defects) with no narration of what is expected, since run.sh only strips a file literally named _EXPECTED.md.",
       "rule": "Any fixture that seeds a defect for a headless behavioral test case must live under test/plugins/fixtures/ (never nested inside the plugin it exercises, so fixtures stay arm-independent and reusable across legacy/rebuilt/official arms of the same case), must document the seeded defect and expected finding in a checked-in `_EXPECTED.md` in that fixture directory, and the harness that copies the fixture into the subject-under-test's working directory must strip `_EXPECTED.md` before invoking the tool, so the answer key is never handed to the system being graded.",

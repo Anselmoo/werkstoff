@@ -71,7 +71,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 "I know roughly what I want to change but not how to actually run it as an agentic workflow — turn it into one"
 ````
 
-> Triggers `arbeitsplan-compile`: scopes the problem, derives acceptance criteria with real commands, picks patterns from the frozen catalog, sets a dispatch budget, and writes `workflow.json`. Refuses and points at `compass` if the problem turns out to be a question.
+> Triggers `arbeitsplan-compile`: scopes the problem, derives acceptance criteria with real commands, picks patterns from the frozen catalog, sets a dispatch budget, and writes `workflow.json`. Refuses and points at `zirkel` if the problem turns out to be a question.
 
 ### Build several versions and keep the best one
 
@@ -121,6 +121,138 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 > Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt with its reason, refuted candidates, open doubts, budget used, whether a lock is still open — and quotes the single next command.
 
+## befund
+
+[`plugins/befund/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/befund/README.md) — 16 prompts.
+
+### Map the architecture
+
+````prompt
+"map this repo's architecture"
+````
+
+> Triggers `befund-stage-map` — import-graph-based stage/wire detection, not naive directory guessing.
+
+### Run the auto-pilot
+
+````prompt
+"run the auto-pilot"
+````
+
+> Triggers `befund-autopilot` — full check → plan → gate → fix/validate, gated behind explicit settings before anything is written.
+
+### Check status
+
+````prompt
+"where does befund stand"
+````
+
+> Triggers `befund-status` — read-only board of what's been run and what's stale.
+
+### Sweep a portfolio
+
+````prompt
+"sweep our whole portfolio of repos"
+````
+
+> Triggers `befund-portfolio` — multi-repo dashboard, graded worst-signal-wins.
+
+### Check readiness first
+
+````prompt
+"can befund actually analyze this codebase?"
+````
+
+> Triggers `befund-preflight` — verifies language detection, tool availability, house-rules presence, and git/CI presence, then assigns a Ready/Ready-with-gaps/ Not-ready verdict per downstream skill.
+
+### Find architecture problems
+
+````prompt
+"find god-modules or dependency cycles in this codebase"
+````
+
+> Triggers `befund-arch-health` — reads the stage graph from `befund-stage-map` and confirms every candidate god-module or cycle against actual code, not just the graph.
+
+### Audit git/CI setup
+
+````prompt
+"check our git remotes and CI setup for redundant mirrors"
+````
+
+> Triggers `befund-ci-topology` — audits remote topology and CI config for redundancy and mirror risk, masking every credential to a short preview.
+
+### Find modernization opportunities
+
+````prompt
+"find deprecated idioms and code smells in this repo"
+````
+
+> Triggers `befund-code-idiom` — judges idioms against the actual language version declared in the repo's own manifest, never a fixed list, and separates fixable modernization from judgment-requiring smells.
+
+### Score complexity per module
+
+````prompt
+"which module needs attention first? score complexity per stage"
+````
+
+> Triggers `befund-complexity-score` — computes a relative complexity index (2.94 × KSLOC^1.10) per stage, and lists unmeasured stages plainly rather than inventing numbers.
+
+### Check documentation accuracy
+
+````prompt
+"does our README still match what the code actually does?"
+````
+
+> Triggers `befund-docs-drift` — extracts falsifiable claims from CLAUDE.md/README/ADRs and verifies each one against the cited code.
+
+### Mine the hidden business rules
+
+````prompt
+"document the domain rules hidden in this code as testable specs"
+````
+
+> Triggers `befund-extract-rules` — mines calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule.
+
+### Apply the modernization findings
+
+````prompt
+"apply the modernization findings befund-code-idiom found"
+````
+
+> Triggers `befund-idiom-fix` — applies only eligible modernization-category findings, gated behind `idiom_fix.mode: fix`, one remediator dispatch per (file, kind) cluster, then hands off to `andon-verify` unverified.
+
+### Check our own conventions
+
+````prompt
+"audit this code against our house rules"
+````
+
+> Triggers `befund-lint-audit` — extracts discrete rules from `.claude/house-rules.md` (or CLAUDE.md as a fallback) and verifies violations, capped at `lint_max_rules` dispatches.
+
+### Turn findings into a plan
+
+````prompt
+"synthesize all the findings into a modernization brief"
+````
+
+> Triggers `befund-transform-brief` — synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan.
+
+### Execute one authorized phase
+
+````prompt
+"execute phase 3 from the modernization brief"
+````
+
+> Triggers `befund-transform-execute` — applies exactly one human-authorized phase, gated behind `transform.mode: execute`, a clean tree, and every Open Question resolved.
+
+### Audit UI accessibility
+
+````prompt
+"check our components for accessibility issues and hardcoded design values"
+````
+
+> Triggers `befund-ui-audit` — statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS for accessibility and design-token problems, never running or rendering the app.
+
 ## cli-scaffold
 
 [`plugins/cli-scaffold/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cli-scaffold/README.md) — 5 prompts.
@@ -164,190 +296,6 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > `scaffold-cli` refuses outright and lists the 12 supported languages rather than picking one for you — ambiguity is never silently resolved.
-
-## codebase-consistency
-
-[`plugins/codebase-consistency/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/codebase-consistency/README.md) — 8 prompts.
-
-### Check readiness first
-
-````prompt
-"is this area ready for a consistency pass?"
-````
-
-> Triggers `consistency-preflight` — read-only readiness report (stack detection, tooling, test-suite baseline, documented-convention inventory, scope check).
-
-### Find the divergence
-
-````prompt
-"find the undocumented style/pattern inconsistencies in billing"
-````
-
-> Triggers `consistency-scan` — inventories undocumented, non-deprecated divergence per dimension, actively filtering out documented conventions and version-deprecated idioms.
-
-### See it as a matrix
-
-````prompt
-"show me the consistency matrix for billing"
-````
-
-> Triggers `consistency-map` — renders the scan as a module × dimension heatmap (`matrix.json` + an interactive `CONSISTENCY_MATRIX.html`).
-
-### Derive the canon
-
-````prompt
-"decide which pattern should be the canonical one, with provenance"
-````
-
-> Triggers `consistency-canonize` — weighs frequency, git-history maturity, and adoption recency per dimension, tagging each pick `documented` / `derived-majority` / `synthesized-new` / `needs-human-decision` rather than forcing a tie.
-
-### Get the approval-ready plan
-
-````prompt
-"write up the alignment brief for billing so I can approve it"
-````
-
-> Triggers `consistency-brief` — synthesizes discovery into a phased, dependency-first plan with worked before/after examples; enters plan mode as a human approval gate.
-
-### Apply it
-
-````prompt
-"align billing to the approved error-handling-style canon"
-````
-
-> Triggers `consistency-align` — applies the canon in place, one pilot module first, then the rest in dependency-aware escalating batches behind a circuit breaker.
-
-### Prove nothing broke
-
-````prompt
-"verify the error-handling-style alignment on billing"
-````
-
-> Triggers `consistency-verify` — test-suite equivalence (or structural-diff fallback) plus a docs re-sync check, independently re-derived by a second adversarial pass.
-
-### Check progress
-
-````prompt
-"where does the billing consistency pass stand?"
-````
-
-> Triggers `consistency-status` — read-only artifact inventory, staleness flags, and the single most useful next command.
-
-## compass
-
-[`plugins/compass/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/compass/README.md) — 14 prompts.
-
-### Run the full pipeline
-
-````prompt
-"help me think through this, it's complex and I'm not sure of the right approach"
-````
-
-> Triggers `compass-solve` — runs the full Clarify → Explore → Decompose → Execute → Revise pipeline.
-
-### Explore before committing
-
-````prompt
-"before we commit to an approach, explore a few different ones"
-````
-
-> Triggers `compass-explore-branches` — proposes and scores multiple viable approaches instead of anchoring on the first.
-
-### Clarify a fuzzy scope
-
-````prompt
-"add caching to the reporting pipeline — the scope is fuzzy, help me pin it down before anything gets built"
-````
-
-> Triggers `compass-clarify-scope` — surfaces ambiguous phrasing and unstated success criteria before any work starts.
-
-### Break a problem into stages
-
-````prompt
-"break this into steps — what depends on what"
-````
-
-> Triggers `compass-decompose-chain` — splits the problem into a 2-5 stage pipeline with explicit input/output contracts per stage, and derives which stages can run in parallel from the dependency graph.
-
-### Score and fix a draft
-
-````prompt
-"score this draft against these criteria and fix what's weak"
-````
-
-> Triggers `compass-draft-revise` — rates 1-5 against each criterion, revises only what falls at or below threshold, and reports exactly what changed (capped at 2 revision cycles).
-
-### Ground every claim
-
-````prompt
-"don't make this up — ground every claim in the actual code or docs"
-````
-
-> Triggers `compass-ground-evidence` — requires a file:line, URL, or explicitly-flagged prior knowledge behind every factual claim, and refuses to assert anything unverified.
-
-### Investigate step by step
-
-````prompt
-"I don't know where the problem is — go find it"
-````
-
-> Triggers `compass-investigate-dynamically` — runs a Reasoning/Action/Observation loop where each observation decides the next step, for cases where the sequence of actions can't be planned upfront.
-
-### Trace a multi-hop chain
-
-````prompt
-"trace how A affects D through the whole dependency chain"
-````
-
-> Triggers `compass-map-relationships` — extracts indexed relationship triples and traverses them hop by hop, citing the triple index at every hop.
-
-### Combine the best of two approaches
-
-````prompt
-"the winner's good, but can we fold in what I liked from the runner-up?"
-````
-
-> Triggers `compass-negotiate-tradeoffs` — synthesizes a hybrid from 2-3 already-scored branches, but only presents it if it actually beats every source branch on at least one axis.
-
-### Tune a reusable prompt
-
-````prompt
-"find the best wording for this system prompt — I have test cases"
-````
-
-> Triggers `compass-optimize-instruction` — generates one candidate per APE framing, scores each against your real test cases, and critiques the winner. Needs representative test cases; not for one-off prompts.
-
-### Guard against a silent reasoning error
-
-````prompt
-"walk through this calculation carefully, I can't afford a wrong assumption here"
-````
-
-> Triggers `compass-reason-verify` — climbs a 4-rung ladder (zero-shot → Chain-of-Thought → self-consistency → PAL) matched to the actual failure-mode risk, applying Multimodal-CoT first if there's an image or diagram involved.
-
-### Anchor a fuzzy output format
-
-````prompt
-"I can't describe the format, but here's an example — make it look like this"
-````
-
-> Triggers `compass-calibrate-format` — anchors the target shape to 2-5 concrete input/output examples instead of more prose, enforcing at least one near-boundary example so the set actually pins the decision.
-
-### Write up a finished run
-
-````prompt
-"summarize what we just did for the PR"
-````
-
-> Triggers `compass-summarize-trace` — produces a fixed 7-section record (asked, assumed, weighed, run, produced, revised, not done) after a `compass-solve` pipeline finishes.
-
-### Check one blocking assumption
-
-````prompt
-"before we rely on this, verify it's actually true"
-````
-
-> Triggers `compass-verify-assumptions` — checks exactly one named assumption against real evidence in at most 3 steps; for more than one uncertainty, invoke it once per uncertainty.
 
 ## confab
 
@@ -684,7 +632,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ### Check that a skill actually fires
 
 ````prompt
-"does the documented prompt for compass-clarify-scope actually fire it? measure it, don't guess"
+"does the documented prompt for zirkel-clarify-scope actually fire it? measure it, don't guess"
 ````
 
 > Triggers `nacharbeit-probe`: dry-runs first with a cost estimate, then runs the prompt headless in fresh processes and reports fired, captured (naming the capturing skill), silent, or UNSTABLE — with the model the rate belongs to.
@@ -697,137 +645,73 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 > Triggers `nacharbeit-status`: the last run, the held entries verbatim, and a stale lock with its release command.
 
-## self-assess
+## passung
 
-[`plugins/self-assess/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/self-assess/README.md) — 16 prompts.
-
-### Map the architecture
-
-````prompt
-"map this repo's architecture"
-````
-
-> Triggers `self-assess-stage-map` — import-graph-based stage/wire detection, not naive directory guessing.
-
-### Run the auto-pilot
-
-````prompt
-"run the auto-pilot"
-````
-
-> Triggers `self-assess-autopilot` — full check → plan → gate → fix/validate, gated behind explicit settings before anything is written.
-
-### Check status
-
-````prompt
-"where does self-assess stand"
-````
-
-> Triggers `self-assess-status` — read-only board of what's been run and what's stale.
-
-### Sweep a portfolio
-
-````prompt
-"sweep our whole portfolio of repos"
-````
-
-> Triggers `self-assess-portfolio` — multi-repo dashboard, graded worst-signal-wins.
+[`plugins/passung/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/passung/README.md) — 8 prompts.
 
 ### Check readiness first
 
 ````prompt
-"can self-assess actually analyze this codebase?"
+"is this area ready for a consistency pass?"
 ````
 
-> Triggers `self-assess-preflight` — verifies language detection, tool availability, house-rules presence, and git/CI presence, then assigns a Ready/Ready-with-gaps/ Not-ready verdict per downstream skill.
+> Triggers `passung-preflight` — read-only readiness report (stack detection, tooling, test-suite baseline, documented-convention inventory, scope check).
 
-### Find architecture problems
+### Find the divergence
 
 ````prompt
-"find god-modules or dependency cycles in this codebase"
+"find the undocumented style/pattern inconsistencies in billing"
 ````
 
-> Triggers `self-assess-arch-health` — reads the stage graph from `self-assess-stage-map` and confirms every candidate god-module or cycle against actual code, not just the graph.
+> Triggers `passung-scan` — inventories undocumented, non-deprecated divergence per dimension, actively filtering out documented conventions and version-deprecated idioms.
 
-### Audit git/CI setup
+### See it as a matrix
 
 ````prompt
-"check our git remotes and CI setup for redundant mirrors"
+"show me the consistency matrix for billing"
 ````
 
-> Triggers `self-assess-ci-topology` — audits remote topology and CI config for redundancy and mirror risk, masking every credential to a short preview.
+> Triggers `passung-map` — renders the scan as a module × dimension heatmap (`matrix.json` + an interactive `CONSISTENCY_MATRIX.html`).
 
-### Find modernization opportunities
+### Derive the canon
 
 ````prompt
-"find deprecated idioms and code smells in this repo"
+"decide which pattern should be the canonical one, with provenance"
 ````
 
-> Triggers `self-assess-code-idiom` — judges idioms against the actual language version declared in the repo's own manifest, never a fixed list, and separates fixable modernization from judgment-requiring smells.
+> Triggers `passung-canonize` — weighs frequency, git-history maturity, and adoption recency per dimension, tagging each pick `documented` / `derived-majority` / `synthesized-new` / `needs-human-decision` rather than forcing a tie.
 
-### Score complexity per module
+### Get the approval-ready plan
 
 ````prompt
-"which module needs attention first? score complexity per stage"
+"write up the alignment brief for billing so I can approve it"
 ````
 
-> Triggers `self-assess-complexity-score` — computes a relative complexity index (2.94 × KSLOC^1.10) per stage, and lists unmeasured stages plainly rather than inventing numbers.
+> Triggers `passung-brief` — synthesizes discovery into a phased, dependency-first plan with worked before/after examples; enters plan mode as a human approval gate.
 
-### Check documentation accuracy
+### Apply it
 
 ````prompt
-"does our README still match what the code actually does?"
+"align billing to the approved error-handling-style canon"
 ````
 
-> Triggers `self-assess-docs-drift` — extracts falsifiable claims from CLAUDE.md/README/ADRs and verifies each one against the cited code.
+> Triggers `passung-align` — applies the canon in place, one pilot module first, then the rest in dependency-aware escalating batches behind a circuit breaker.
 
-### Mine the hidden business rules
+### Prove nothing broke
 
 ````prompt
-"document the domain rules hidden in this code as testable specs"
+"verify the error-handling-style alignment on billing"
 ````
 
-> Triggers `self-assess-extract-rules` — mines calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule.
+> Triggers `passung-verify` — test-suite equivalence (or structural-diff fallback) plus a docs re-sync check, independently re-derived by a second adversarial pass.
 
-### Apply the modernization findings
+### Check progress
 
 ````prompt
-"apply the modernization findings self-assess-code-idiom found"
+"where does the billing consistency pass stand?"
 ````
 
-> Triggers `self-assess-idiom-fix` — applies only eligible modernization-category findings, gated behind `idiom_fix.mode: fix`, one remediator dispatch per (file, kind) cluster, then hands off to `andon-verify` unverified.
-
-### Check our own conventions
-
-````prompt
-"audit this code against our house rules"
-````
-
-> Triggers `self-assess-lint-audit` — extracts discrete rules from `.claude/house-rules.md` (or CLAUDE.md as a fallback) and verifies violations, capped at `lint_max_rules` dispatches.
-
-### Turn findings into a plan
-
-````prompt
-"synthesize all the findings into a modernization brief"
-````
-
-> Triggers `self-assess-transform-brief` — synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan.
-
-### Execute one authorized phase
-
-````prompt
-"execute phase 3 from the modernization brief"
-````
-
-> Triggers `self-assess-transform-execute` — applies exactly one human-authorized phase, gated behind `transform.mode: execute`, a clean tree, and every Open Question resolved.
-
-### Audit UI accessibility
-
-````prompt
-"check our components for accessibility issues and hardcoded design values"
-````
-
-> Triggers `self-assess-ui-audit` — statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS for accessibility and design-token problems, never running or rendering the app.
+> Triggers `passung-status` — read-only artifact inventory, staleness flags, and the single most useful next command.
 
 ## takt
 
@@ -848,3 +732,119 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > The denial names the beat id, the reason, and the missing marker; the escape hatch is `TAKT_DISABLE_GUARD=1` when the order genuinely does not apply.
+
+## zirkel
+
+[`plugins/zirkel/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/zirkel/README.md) — 14 prompts.
+
+### Run the full pipeline
+
+````prompt
+"help me think through this, it's complex and I'm not sure of the right approach"
+````
+
+> Triggers `zirkel-solve` — runs the full Clarify → Explore → Decompose → Execute → Revise pipeline.
+
+### Explore before committing
+
+````prompt
+"before we commit to an approach, explore a few different ones"
+````
+
+> Triggers `zirkel-explore-branches` — proposes and scores multiple viable approaches instead of anchoring on the first.
+
+### Clarify a fuzzy scope
+
+````prompt
+"add caching to the reporting pipeline — the scope is fuzzy, help me pin it down before anything gets built"
+````
+
+> Triggers `zirkel-clarify-scope` — surfaces ambiguous phrasing and unstated success criteria before any work starts.
+
+### Break a problem into stages
+
+````prompt
+"break this into steps — what depends on what"
+````
+
+> Triggers `zirkel-decompose-chain` — splits the problem into a 2-5 stage pipeline with explicit input/output contracts per stage, and derives which stages can run in parallel from the dependency graph.
+
+### Score and fix a draft
+
+````prompt
+"score this draft against these criteria and fix what's weak"
+````
+
+> Triggers `zirkel-draft-revise` — rates 1-5 against each criterion, revises only what falls at or below threshold, and reports exactly what changed (capped at 2 revision cycles).
+
+### Ground every claim
+
+````prompt
+"don't make this up — ground every claim in the actual code or docs"
+````
+
+> Triggers `zirkel-ground-evidence` — requires a file:line, URL, or explicitly-flagged prior knowledge behind every factual claim, and refuses to assert anything unverified.
+
+### Investigate step by step
+
+````prompt
+"I don't know where the problem is — go find it"
+````
+
+> Triggers `zirkel-investigate-dynamically` — runs a Reasoning/Action/Observation loop where each observation decides the next step, for cases where the sequence of actions can't be planned upfront.
+
+### Trace a multi-hop chain
+
+````prompt
+"trace how A affects D through the whole dependency chain"
+````
+
+> Triggers `zirkel-map-relationships` — extracts indexed relationship triples and traverses them hop by hop, citing the triple index at every hop.
+
+### Combine the best of two approaches
+
+````prompt
+"the winner's good, but can we fold in what I liked from the runner-up?"
+````
+
+> Triggers `zirkel-negotiate-tradeoffs` — synthesizes a hybrid from 2-3 already-scored branches, but only presents it if it actually beats every source branch on at least one axis.
+
+### Tune a reusable prompt
+
+````prompt
+"find the best wording for this system prompt — I have test cases"
+````
+
+> Triggers `zirkel-optimize-instruction` — generates one candidate per APE framing, scores each against your real test cases, and critiques the winner. Needs representative test cases; not for one-off prompts.
+
+### Guard against a silent reasoning error
+
+````prompt
+"walk through this calculation carefully, I can't afford a wrong assumption here"
+````
+
+> Triggers `zirkel-reason-verify` — climbs a 4-rung ladder (zero-shot → Chain-of-Thought → self-consistency → PAL) matched to the actual failure-mode risk, applying Multimodal-CoT first if there's an image or diagram involved.
+
+### Anchor a fuzzy output format
+
+````prompt
+"I can't describe the format, but here's an example — make it look like this"
+````
+
+> Triggers `zirkel-calibrate-format` — anchors the target shape to 2-5 concrete input/output examples instead of more prose, enforcing at least one near-boundary example so the set actually pins the decision.
+
+### Write up a finished run
+
+````prompt
+"summarize what we just did for the PR"
+````
+
+> Triggers `zirkel-summarize-trace` — produces a fixed 7-section record (asked, assumed, weighed, run, produced, revised, not done) after a `zirkel-solve` pipeline finishes.
+
+### Check one blocking assumption
+
+````prompt
+"before we rely on this, verify it's actually true"
+````
+
+> Triggers `zirkel-verify-assumptions` — checks exactly one named assumption against real evidence in at most 3 steps; for more than one uncertainty, invoke it once per uncertainty.

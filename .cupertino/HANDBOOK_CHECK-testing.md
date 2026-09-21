@@ -8,8 +8,8 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
-| High | no | test-naming | `plugins/compass/scripts/test_build_branch_comparison_html.py:1` | Test file has zero pytest-discoverable test functions |
-| High | no | test-naming | `plugins/compass/scripts/test_compass.py:1` | Test file has zero pytest-discoverable test functions |
+| High | no | test-naming | `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` | Test file has zero pytest-discoverable test functions |
+| High | no | test-naming | `plugins/zirkel/scripts/test_zirkel.py:1` | Test file has zero pytest-discoverable test functions |
 | High | no | test-naming | `plugins/lehre/hooks/test_lehre_guard.py:1` | Test file has zero pytest-discoverable test functions |
 | High | no | test-naming | `plugins/lehre/scripts/test_lehre_core.py:1` | Test file has zero pytest-discoverable test functions |
 | High | yes | test-data-management | `test/plugins/fixtures/ui-missing-alt/index.html:40` | Answer key embedded inline in the audited file itself, not in a stripped _EXPECTED.md |
@@ -49,7 +49,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Suggested fix:** Restructure into individually named pytest functions (e.g. `def test_bare_except_denies():`, `def test_layering_violation_denies():`, `def test_clean_file_allows():`), one per current expect_deny/expect_allow call, so pytest's default discovery collects and reports each case independently instead of pytest finding 0 tests in a file literally named test_lehre_guard.py.
 
-### `plugins/compass/scripts/test_build_branch_comparison_html.py:1` — Test file has zero pytest-discoverable test functions
+### `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` — Test file has zero pytest-discoverable test functions
 
 **Dimension:** test-naming · **Severity:** High · **Mechanical:** False
 
@@ -57,7 +57,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Suggested fix:** Convert each `ok("label", cond)` call into its own `def test_<snake_case_label>():` function containing a plain `assert cond`, so pytest reports each check individually instead of silently collecting no tests.
 
-### `plugins/compass/scripts/test_compass.py:1` — Test file has zero pytest-discoverable test functions
+### `plugins/zirkel/scripts/test_zirkel.py:1` — Test file has zero pytest-discoverable test functions
 
 **Dimension:** test-naming · **Severity:** High · **Mechanical:** False
 
@@ -139,7 +139,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Dimension:** test-data-management · **Severity:** High · **Mechanical:** True
 
-**Evidence:** Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points self-assess-ui-audit at this exact directory. run.sh (line 139) only does `rm -f "$tmp/_EXPECTED.md"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.
+**Evidence:** Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points befund-ui-audit at this exact directory. run.sh (line 139) only does `rm -f "$tmp/_EXPECTED.md"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.
 
 **Suggested fix:** Move the 'SEEDED-DEFECT FIXTURE' / 'EXPECTED FINDINGS' / 'EXPECTED NON-FINDINGS' commentary out of index.html into a new test/plugins/fixtures/ui-missing-alt/_EXPECTED.md, leaving index.html containing only the seeded HTML defects (and non-defects) with no narration of what is expected, since run.sh only strips a file literally named _EXPECTED.md.
 

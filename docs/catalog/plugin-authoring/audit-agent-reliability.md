@@ -14,7 +14,7 @@ beats:
     why: "Supplies the canonical tools:/description: spec the audit is judged against — without it, 'excessive' has no baseline to be excessive relative to."
   - skill: "andon:andon-verify"
     why: "'The guard exists' and 'the guard runs' are different claims — the distinction this repo has been burned by repeatedly, and the reason a reliability finding needs proof, not just a report."
-grounding: "The unresolved self-assess:arch-health-auditor tool-grant anomaly recorded in this repo's own CLAUDE.md — it reports only {Read, Bash} against three different declared tools: formats tried, including in a fresh claude --print process. A live, currently-open case where a declared grant and the runtime grant disagree and no existing beat in this catalog would have caught it before this recipe existed."
+grounding: "The unresolved befund:arch-health-auditor tool-grant anomaly recorded in this repo's own CLAUDE.md — it reports only {Read, Bash} against three different declared tools: formats tried, including in a fresh claude --print process. A live, currently-open case where a declared grant and the runtime grant disagree and no existing beat in this catalog would have caught it before this recipe existed."
 dos:
   - "Sweep the four fixed reliability categories with verification on by default, not just a Find pass."
   - "Confirm an excessive-tool-grant finding with a strictly read-only auditor -- one that can't paper over the finding by widening its own grant."

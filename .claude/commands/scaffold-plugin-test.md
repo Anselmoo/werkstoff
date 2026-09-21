@@ -14,7 +14,7 @@ Target: **$ARGUMENTS**
 Do this, asking the user only for what you genuinely can't infer:
 
 1. **Identify** the plugin, the skill, the artifact it writes (e.g.
-   `analysis/self-assess/UI_AUDIT.md`), and the single behavior to test.
+   `analysis/befund/UI_AUDIT.md`), and the single behavior to test.
    Read the skill's `SKILL.md` to confirm the artifact path and how the skill
    is triggered — don't guess.
 2. **Design one seeded defect** — the smallest fixture that carries exactly one

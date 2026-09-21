@@ -5,13 +5,13 @@ summary: "Sweep every documentation claim for drift immediately after a change, 
 openingPrompt: "We changed several things this week -- sweep the documentation for drift against the current code right now, while the diff is still legible, check the comments in the same touched files for the same kind of rot, and only once the docs are accurate, survey how the surrounding conventions are actually written."
 external: ["claude-plugins-official"]
 beats:
-  - skill: "self-assess:self-assess-docs-drift"
+  - skill: "befund:befund-docs-drift"
     why: "Verifies every extracted, in-scope claim against the current codebase; run months later it produces a backlog instead of a fix."
     prompt: "we renamed several things this week — check whether the docs still describe what the code actually does"
   - skill: "pr-review-toolkit:comment-analyzer"
     why: "Comments drift from the same edit as docs, and no docs sweep reads them."
     prompt: "check the comments in the files this change touched — are any of them now describing behavior that moved?"
-  - skill: "codebase-consistency:pattern-analyst"
+  - skill: "passung:pattern-analyst"
     why: "Genuinely post-hoc; a convention survey run before the content is correct clusters variants of the wrong text."
     prompt: "now that the docs are accurate, survey how docstrings are actually written across this repo and cluster the variants"
 grounding: "this repo generates part of its own documentation surface: `.rrt.toml` declares `[[tool.rrt.docs.shared_blocks]]`, which is what regenerates the `rrt:auto:start:example-prompts-intro` block visible at the top of every plugin README's Example Prompts section — so a drift sweep must distinguish generated prose from hand-written prose before reporting either."

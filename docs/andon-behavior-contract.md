@@ -678,7 +678,7 @@ preserved:
 | `skip_verification` | bool | `false` | Trades precision for speed by skipping an approach's own independent adversarial/referee sub-pass where one exists. **Must never be able to suppress the non-overridable structural-contradiction hold (§3 condition 3, §6 tier 1)** — this is the one setting explicitly called out as unable to override the plugin's one hard gate, and that carve-out must be preserved exactly. |
 | `lint_max_rules` | number | a conventional cap | Caps how many extracted convention rules the propose-equivalent responsibility folds into its defaults pass; anything beyond the cap must be named as skipped, never silently dropped. |
 | `gap_source` | enum: self-scan / ingest-from-external-brief | self-scan | Selects §7.1's ingest mode vs. ordinary self-scanning. |
-| `self_assess_output_dir` (or equivalent) | path | a conventional default | Only consulted in ingest mode — where to find the external brief and its sidecar. |
+| `befund_output_dir` (or equivalent) | path | a conventional default | Only consulted in ingest mode — where to find the external brief and its sidecar. |
 
 Every entry point must read this configuration **independently at the
 start of its own run** — there is no shared cache assumed across

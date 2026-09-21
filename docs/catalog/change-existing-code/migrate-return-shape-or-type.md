@@ -8,7 +8,7 @@ beats:
   - skill: "pr-review-toolkit:type-design-analyzer"
     why: "Rates encapsulation, invariant expression, and enforcement — cheapest before N call sites adopt the shape."
     prompt: "before we roll this new return type out everywhere, review its design — encapsulation, invariants, whether it's actually enforceable"
-  - skill: "compass:compass-map-relationships"
+  - skill: "zirkel:zirkel-map-relationships"
     why: "An untyped or dynamically-dispatched call site is invisible to tooling and visible to an index."
     prompt: "find every call site that consumes this return value, including the dynamically-dispatched ones"
   - skill: "confab:confab-contract-drift"

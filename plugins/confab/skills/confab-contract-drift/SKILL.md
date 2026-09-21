@@ -1,6 +1,6 @@
 ---
 name: confab-contract-drift
-description: "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use self-assess-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
+description: "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use befund-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
 ---
 
 Find drift between machine-checkable contracts (type hints, function

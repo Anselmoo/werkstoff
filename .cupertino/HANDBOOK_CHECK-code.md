@@ -2,25 +2,25 @@
 
 Checked against `.cupertino/code-handbook.md`'s 6 dimensions. 62 finding(s) survived independent re-verification (4 mechanical, 58 needing design judgment).
 
-**Resolved since this report** (not re-run through the check workflow; noted by hand): the 2 non-mechanical `error-handling` findings (`plugins/self-assess/hooks/guard_target_edit.py:125`, `plugins/confab/scripts/hooks/guard_edit_scope.py:96`) were evaluated via `cupertino-integrate` rather than fixed — verdict: delegate to the guards' existing, documented fail-open behavior (issue #24) rather than force the code to fail closed. A named exception is now recorded in `.cupertino/code-handbook.md`'s "Exceptions & waivers" section; the code itself is unchanged.
+**Resolved since this report** (not re-run through the check workflow; noted by hand): the 2 non-mechanical `error-handling` findings (`plugins/befund/hooks/guard_target_edit.py:125`, `plugins/confab/scripts/hooks/guard_edit_scope.py:96`) were evaluated via `cupertino-integrate` rather than fixed — verdict: delegate to the guards' existing, documented fail-open behavior (issue #24) rather than force the code to fail closed. A named exception is now recorded in `.cupertino/code-handbook.md`'s "Exceptions & waivers" section; the code itself is unchanged.
 
 Independent empirical re-verification during review also found the LLM-based `complexity-limits` count understated: `ruff check --select C901,PLR0915,PLR0912,PLR0913 .` finds **88** real violations, not the 32 listed below. Treat this dimension's findings as a representative sample, not an exhaustive list.
 
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
 | High | no | testing-coverage | `plugins/andon/hooks/test_andon_enforce.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/compass/scripts/test_build_branch_comparison_html.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/compass/scripts/test_compass.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/zirkel/scripts/test_zirkel.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/confab/scripts/hooks/test_guard_edit_scope.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/confab/scripts/test_build_burndown_html.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/confab/scripts/test_cycle_engine.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/cupertino/scripts/test_state.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/lehre/hooks/test_lehre_guard.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/lehre/scripts/test_lehre_core.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/self-assess/hooks/test_guard_target_edit.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/self-assess/scripts/lib/test_staleness.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/self-assess/scripts/lib/test_status.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/self-assess/scripts/test_build_stage_map_html.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/befund/hooks/test_guard_target_edit.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/befund/scripts/lib/test_staleness.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/befund/scripts/lib/test_status.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/befund/scripts/test_build_stage_map_html.py:1` | Test file not invoked by any CI workflow step |
 | High | yes | complexity-limits | `ruff.toml:47` | Repo-root ruff config does not enable C901/PLR0915/PLR0912/PLR0913 |
 | High | no | testing-coverage | `tools/andon-ledger-validator/test_validate_ledger.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `tools/catalog-validator/test_validate_catalog.py:1` | Test file not invoked by any CI workflow step |
@@ -32,8 +32,8 @@ Independent empirical re-verification during review also found the LLM-based `co
 | Medium | no | complexity-limits | `plugins/andon/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
 | Medium | no | complexity-limits | `plugins/cli-scaffold/scripts/selftest.py:36` | Function exceeds PLR0915 statement-count limit |
 | Medium | no | complexity-limits | `plugins/cli-scaffold/scripts/verify_scaffold.py:469` | Function exceeds PLR0915 statement-count limit |
-| Medium | no | complexity-limits | `plugins/compass/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
-| Medium | no | complexity-limits | `plugins/compass/scripts/compass_lib.py:249` | validate_dag exceeds complexity and branch limits |
+| Medium | no | complexity-limits | `plugins/zirkel/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
+| Medium | no | complexity-limits | `plugins/zirkel/scripts/zirkel_lib.py:249` | validate_dag exceeds complexity and branch limits |
 | Medium | no | complexity-limits | `plugins/confab/scripts/agentic_reliability.py:56` | Function exceeds PLR0915 statement-count limit |
 | Medium | no | complexity-limits | `plugins/confab/scripts/assertion_audit.py:65` | Function exceeds PLR0915 statement-count limit |
 | Medium | no | complexity-limits | `plugins/confab/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
@@ -48,12 +48,12 @@ Independent empirical re-verification during review also found the LLM-based `co
 | Medium | no | complexity-limits | `plugins/lehre/scripts/build_doctrine_html.py:90` | build exceeds complexity limit |
 | Medium | no | complexity-limits | `plugins/lehre/scripts/lehre_cli.py:162` | cmd_gauge exceeds complexity and branch limits |
 | Medium | no | complexity-limits | `plugins/lehre/scripts/lehre_core.py:409` | Multiple functions exceed complexity/branch/argument limits |
-| Medium | no | error-handling | `plugins/self-assess/hooks/guard_target_edit.py:125` | Guard fails open (allow) on internal ImportError instead of denying |
-| Medium | no | complexity-limits | `plugins/self-assess/hooks/guard_target_edit.py:96` | run exceeds complexity and branch limits |
-| Medium | no | complexity-limits | `plugins/self-assess/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
-| Medium | no | complexity-limits | `plugins/self-assess/scripts/lib/frontmatter.py:34` | parse_frontmatter exceeds complexity and statement limits |
-| Medium | no | complexity-limits | `plugins/self-assess/scripts/lib/graph.py:4` | find_cycles exceeds complexity limit |
-| Medium | no | complexity-limits | `plugins/self-assess/scripts/self_assess_cli.py:269` | build_parser exceeds PLR0915 statement limit |
+| Medium | no | error-handling | `plugins/befund/hooks/guard_target_edit.py:125` | Guard fails open (allow) on internal ImportError instead of denying |
+| Medium | no | complexity-limits | `plugins/befund/hooks/guard_target_edit.py:96` | run exceeds complexity and branch limits |
+| Medium | no | complexity-limits | `plugins/befund/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
+| Medium | no | complexity-limits | `plugins/befund/scripts/lib/frontmatter.py:34` | parse_frontmatter exceeds complexity and statement limits |
+| Medium | no | complexity-limits | `plugins/befund/scripts/lib/graph.py:4` | find_cycles exceeds complexity limit |
+| Medium | no | complexity-limits | `plugins/befund/scripts/befund_cli.py:269` | build_parser exceeds PLR0915 statement limit |
 | Medium | no | complexity-limits | `plugins/takt/hooks/takt_guard.py:195` | main exceeds complexity, branch, and statement limits |
 | Medium | no | complexity-limits | `tools/catalog-validator/validate_catalog.py:217` | strip_non_rendering exceeds complexity limit |
 | Medium | no | complexity-limits | `tools/enforcement-audit/audit_enforcement.py:268` | main exceeds complexity and branch limits |
@@ -73,7 +73,7 @@ Independent empirical re-verification during review also found the LLM-based `co
 
 ## Details
 
-### `plugins/self-assess/hooks/guard_target_edit.py:125` — Guard fails open (allow) on internal ImportError instead of denying
+### `plugins/befund/hooks/guard_target_edit.py:125` — Guard fails open (allow) on internal ImportError instead of denying
 
 **Dimension:** error-handling · **Severity:** Medium · **Mechanical:** False
 
@@ -84,7 +84,7 @@ except (ImportError, ModuleNotFoundError) as exc:
     print(f"guard_target_edit: internal error ({type(exc).__name__}: {exc}); ... Allowing this edit rather than denying every future edit in this repo ...", file=sys.stderr)
     return allow()
 
-**Suggested fix:** This is inside the opted-in branch (a self-assess edit-scope lock is already confirmed open at this point), so an unexpected import/packaging failure here should deny (return deny(...)) with the exception named and the documented ESCAPE_HATCH, not silently allow the edit through. If the intentional fail-open-on-packaging-defect tradeoff (from issue #24) is to be kept, it needs an explicit, named escape hatch of its own and should be called out as a deliberate rule exception rather than silently contradicting the fail-closed contract.
+**Suggested fix:** This is inside the opted-in branch (a befund edit-scope lock is already confirmed open at this point), so an unexpected import/packaging failure here should deny (return deny(...)) with the exception named and the documented ESCAPE_HATCH, not silently allow the edit through. If the intentional fail-open-on-packaging-defect tradeoff (from issue #24) is to be kept, it needs an explicit, named escape hatch of its own and should be called out as a deliberate rule exception rather than silently contradicting the fail-closed contract.
 
 ### `plugins/confab/scripts/hooks/guard_edit_scope.py:96` — Guard fails open (allow) on internal ImportError instead of denying
 
@@ -121,13 +121,13 @@ if validators is None:
 
 **Suggested fix:** Add a step to .github/workflows/plugin-checks.yml that runs `python3 -m unittest test_andon_enforce -v` with working-directory: plugins/andon/hooks (mirroring the existing symbol-indexer test step at plugin-checks.yml:130-134).
 
-### `plugins/self-assess/hooks/test_guard_target_edit.py:1` — Test file not invoked by any CI workflow step
+### `plugins/befund/hooks/test_guard_target_edit.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
 **Evidence:** 185-line test file for the PreToolUse target-edit guard; no .github/workflows/*.yml step references it, pytest, or unittest for this module.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_guard_target_edit -v` with working-directory: plugins/self-assess/hooks.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_guard_target_edit -v` with working-directory: plugins/befund/hooks.
 
 ### `plugins/lehre/hooks/test_lehre_guard.py:1` — Test file not invoked by any CI workflow step
 
@@ -145,13 +145,13 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_guard_edit_scope -v` with working-directory: plugins/confab/scripts/hooks.
 
-### `plugins/compass/scripts/test_build_branch_comparison_html.py:1` — Test file not invoked by any CI workflow step
+### `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
 **Evidence:** 141-line test file whose own docstring says 'Run: python3 scripts/test_build_branch_comparison_html.py', but no workflow step in .github/workflows/ runs it.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_branch_comparison_html -v` with working-directory: plugins/compass/scripts.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_branch_comparison_html -v` with working-directory: plugins/zirkel/scripts.
 
 ### `plugins/confab/scripts/test_build_burndown_html.py:1` — Test file not invoked by any CI workflow step
 
@@ -161,21 +161,21 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_burndown_html -v` with working-directory: plugins/confab/scripts.
 
-### `plugins/self-assess/scripts/test_build_stage_map_html.py:1` — Test file not invoked by any CI workflow step
+### `plugins/befund/scripts/test_build_stage_map_html.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 153-line test file for self-assess-stage-map's HTML viewer builder; not named by any .github/workflows/*.yml step.
+**Evidence:** 153-line test file for befund-stage-map's HTML viewer builder; not named by any .github/workflows/*.yml step.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_stage_map_html -v` with working-directory: plugins/self-assess/scripts.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_stage_map_html -v` with working-directory: plugins/befund/scripts.
 
-### `plugins/compass/scripts/test_compass.py:1` — Test file not invoked by any CI workflow step
+### `plugins/zirkel/scripts/test_zirkel.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 292-line self-contained test suite for compass_lib guards ('Run: python3 scripts/test_compass.py'); no workflow step names or runs it.
+**Evidence:** 292-line self-contained test suite for zirkel_lib guards ('Run: python3 scripts/test_zirkel.py'); no workflow step names or runs it.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_compass -v` with working-directory: plugins/compass/scripts.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_zirkel -v` with working-directory: plugins/zirkel/scripts.
 
 ### `plugins/confab/scripts/test_cycle_engine.py:1` — Test file not invoked by any CI workflow step
 
@@ -201,21 +201,21 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_state -v` with working-directory: plugins/cupertino/scripts.
 
-### `plugins/self-assess/scripts/lib/test_staleness.py:1` — Test file not invoked by any CI workflow step
+### `plugins/befund/scripts/lib/test_staleness.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 126-line test file for self-assess-autopilot's stage-map freshness check; not named or run by any .github/workflows/*.yml step.
+**Evidence:** 126-line test file for befund-autopilot's stage-map freshness check; not named or run by any .github/workflows/*.yml step.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_staleness -v` with working-directory: plugins/self-assess/scripts/lib.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_staleness -v` with working-directory: plugins/befund/scripts/lib.
 
-### `plugins/self-assess/scripts/lib/test_status.py:1` — Test file not invoked by any CI workflow step
+### `plugins/befund/scripts/lib/test_status.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 99-line test file for self-assess-status's dashboard builder; not named or run by any .github/workflows/*.yml step.
+**Evidence:** 99-line test file for befund-status's dashboard builder; not named or run by any .github/workflows/*.yml step.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_status -v` with working-directory: plugins/self-assess/scripts/lib.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_status -v` with working-directory: plugins/befund/scripts/lib.
 
 ### `tools/catalog-validator/test_validate_catalog.py:1` — Test file not invoked by any CI workflow step
 
@@ -421,7 +421,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract logical sections of the function into helper functions.
 
-### `plugins/compass/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
+### `plugins/zirkel/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -429,7 +429,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Group related parameters into a dataclass/NamedTuple to bring argument counts under the limit.
 
-### `plugins/compass/scripts/compass_lib.py:249` — validate_dag exceeds complexity and branch limits
+### `plugins/zirkel/scripts/zirkel_lib.py:249` — validate_dag exceeds complexity and branch limits
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -541,7 +541,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Decompose validate_ruleset, _find_constructs, and evaluate_file into smaller helper functions; group L390's parameters into a dataclass.
 
-### `plugins/self-assess/hooks/guard_target_edit.py:96` — run exceeds complexity and branch limits
+### `plugins/befund/hooks/guard_target_edit.py:96` — run exceeds complexity and branch limits
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -549,7 +549,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract the guard's condition checks into named helper predicates.
 
-### `plugins/self-assess/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
+### `plugins/befund/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -557,7 +557,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Group related parameters into a dataclass/NamedTuple.
 
-### `plugins/self-assess/scripts/lib/frontmatter.py:34` — parse_frontmatter exceeds complexity and statement limits
+### `plugins/befund/scripts/lib/frontmatter.py:34` — parse_frontmatter exceeds complexity and statement limits
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -565,7 +565,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Split parsing of scalars/lists/nested blocks into separate helper functions.
 
-### `plugins/self-assess/scripts/lib/graph.py:4` — find_cycles exceeds complexity limit
+### `plugins/befund/scripts/lib/graph.py:4` — find_cycles exceeds complexity limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -573,7 +573,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract the Tarjan SCC inner steps (index assignment, lowlink update, stack pop) into helper functions.
 
-### `plugins/self-assess/scripts/self_assess_cli.py:269` — build_parser exceeds PLR0915 statement limit
+### `plugins/befund/scripts/befund_cli.py:269` — build_parser exceeds PLR0915 statement limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 

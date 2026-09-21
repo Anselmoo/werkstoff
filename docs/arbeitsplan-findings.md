@@ -19,7 +19,7 @@ lived in the same ~10 lines of one bash function.
 | 2 | `printf '%s'` with no trailing newline | `read` hit EOF, the loop body never ran, so the **enabled** arm got no `--plugin-dir` at all | the same assertion, after #1 |
 | 3 | `tr '\x1f' '\n'` | `tr` takes **octal**, not hex. `'\x1f'` parsed as the character set `{\, x, 1, f}` — every `f`, `x` and `1` in a path became a newline, shredding `/…/werkstoff/…` into five fragments | a path that reported as "does not exist" |
 | 4 | `claude -p` inherits the loop's stdin | the child consumed the remaining cell list. A 2-cell sweep ran **one** and reported `PASS 1/1` | running a **real** `claude`; no stub could |
-| 5 | comparing `plugin:skill` against `plugin` | the delegation cycle check compared a dispatch id (`"compass:compass-solve"`) against ledger plugin names (`"compass"`). Never matched, so every cycle passed | the guard's own calibration |
+| 5 | comparing `plugin:skill` against `plugin` | the delegation cycle check compared a dispatch id (`"zirkel:zirkel-solve"`) against ledger plugin names (`"zirkel"`). Never matched, so every cycle passed | the guard's own calibration |
 
 **The transferable lesson is narrower than "test more".** #4 is the one that matters: a stub
 that does not exercise the same syscalls as the real binary is not a test of the harness. The
@@ -53,7 +53,7 @@ needed three times in one session, and in each case the instrument was **mine**:
 
 | source | ordering | hard dispatch | optional | boundary prose |
 |---|---|---|---|---|
-| `self-assess` | 0 | 4 | 2 | 1 |
+| `befund` | 0 | 4 | 2 | 1 |
 | `andon` | **2** | 2 | 0 | 1 |
 | `arbeitsplan` | 0 | 0 | 4 | 3 |
 | `nacharbeit` | 0 | 1 | 0 | 0 |
@@ -75,7 +75,7 @@ code all along**, and better than the beat did:
 |---|---|---|
 | files checked | **both** `MODERNIZATION_BRIEF.md` *and* `transform_brief_summary.json` | one |
 | existence test | `os.path.isfile` | `os.path.exists` — a directory satisfies it |
-| when it fires | **only** when `gap_source == "self-assess-brief"` | **always** |
+| when it fires | **only** when `gap_source == "befund-brief"` | **always** |
 
 The last row made the beat actively harmful. `gap_source: self-scan` is **the default** and
 needs no brief at all, so the beat denied `andon-loop` in its ordinary mode — escapable only by
@@ -87,7 +87,7 @@ rule enforced by nothing. Any future run of that audit must grep the executable 
 
 ## Why `takt` was kept
 
-`compass:compass-reason-verify` returned **3/3 unanimous** for
+`zirkel:zirkel-reason-verify` returned **3/3 unanimous** for
 `KEEP_TAKT_BUT_GENERALIZE_DELEGATION`, by forward deduction, backward-from-options and
 constraint mapping independently. The decisive argument, which none of them needed prompting
 for:
@@ -122,7 +122,7 @@ not grounds for deletion.
   depth 2 and sails under any cap. The sabotage tests prove independence: unbound the cap and
   only `DEPTH` goes red; disable the cycle check and only `CYCLE` does.
 - **Compare against the dispatching source, not the run's owner.** Using the owner classified
-  `arbeitsplan → compass → arbeitsplan` as fan-out and skipped the cycle check on precisely the
+  `arbeitsplan → zirkel → arbeitsplan` as fan-out and skipped the cycle check on precisely the
   shape it exists for.
 - **A `.takt/`-prefixed marker is repo-level and must not be namespaced by `runId`.** One
   compiled declaration has to carry both durable facts and per-run markers; namespacing a
@@ -206,16 +206,16 @@ is the exact opposite.
 - `cupertino-council` and `andon-verify` write **nothing**. The council produces a brief, a
   tension log and code, all in conversation; `andon-verify` is explicitly forbidden to write
   ("`andon-loop` persists it").
-- `compass`'s two markers persist to `.compass/runs/<uuid>/…` — predictable directory,
+- `zirkel`'s two markers persist to `.zirkel/runs/<uuid>/…` — predictable directory,
   unpredictable leaf, and takt's `require` has no glob.
 - `lehre-pin` and `matrize-emit` write to caller-chosen paths.
-- `consistency-canonize` writes to `analysis/<area>/`, where `<area>` is the command's argument.
+- `passung-canonize` writes to `analysis/<area>/`, where `<area>` is the command's argument.
 
-Four have real artifacts: self-assess's `stage_graph.json` and `MODERNIZATION_BRIEF.md`,
+Four have real artifacts: befund's `stage_graph.json` and `MODERNIZATION_BRIEF.md`,
 confab's `contract_drift_summary.json`, nacharbeit's `run.json`.
 
 **Existence still under-specifies completion.** `MODERNIZATION_BRIEF.md` is written *even on
-self-assess's degraded "Ready-with-gaps" path*. Two patterns here already solve that and are the
+befund's degraded "Ready-with-gaps" path*. Two patterns here already solve that and are the
 model for any future evidence rule: `nacharbeit/scripts/write_results.py:115` writes `run.json`
 **last**, commented "its presence means the other three are complete"; and `build_report.py`
 refuses when a `FAILED-*` marker is **newer** than `run.json`'s mtime.
@@ -350,15 +350,15 @@ Comparing those nine `catch` blocks surfaced a genuine divergence. Ten workflow 
 
 | plugins | on a string that is not JSON |
 |---|---|
-| `compass` ×4, `nacharbeit` ×2 | **throws with a named, actionable error** — best |
+| `zirkel` ×4, `nacharbeit` ×2 | **throws with a named, actionable error** — best |
 | `cupertino` ×3 | **silently returns the raw string.** `NORMALIZED_ARGS` is then a `str`, every `.field` on it reads `undefined`, and the run fails later, far from the cause |
 | `arbeitsplan` ×1 | bare `JSON.parse` → a `SyntaxError` naming neither the workflow nor the remedy |
 
-arbeitsplan's has been fixed to the compass/nacharbeit shape and its three failure modes proven
+arbeitsplan's has been fixed to the zirkel/nacharbeit shape and its three failure modes proven
 by execution. **cupertino's is left alone deliberately** — it is a released plugin and changing
 its error behaviour is the owner's call, not a lint's.
 
-This is `codebase-consistency`'s exact subject: two or more valid, undocumented variants of one
+This is `passung`'s exact subject: two or more valid, undocumented variants of one
 convention coexisting. The variants differ in how loudly they fail, which is the property that
 matters most.
 
@@ -400,7 +400,7 @@ returns), and all fifteen files now carry one.
 **twelve findings in three plugins** — none a live bug, each read before being listed: nine
 unused `catch (e)` bindings, one O(n²) `reduce` over a list that is never long, one `let` never
 reassigned, one `.forEach` whose callback returns `Map.set`'s own return value.
-`codebase-consistency` 6, `cupertino` 3, `nacharbeit` 3; `arbeitsplan`, `compass` and `matrize`
+`passung` 6, `cupertino` 3, `nacharbeit` 3; `arbeitsplan`, `zirkel` and `matrize`
 are at zero and absent from the baseline so they stay there. Each entry disables only the rules
 that directory actually trips, never the whole set.
 

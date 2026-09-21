@@ -69,7 +69,7 @@ CASES = [
     ("Skill, gated name",
      DISPATCH, "Skill", {"skill": "cupertino-focus"}, {}, DENY),
     ("Skill, ungated name",
-     DISPATCH, "Skill", {"skill": "compass-solve"}, {}, ALLOW),
+     DISPATCH, "Skill", {"skill": "zirkel-solve"}, {}, ALLOW),
     ("Skill, no determinable name -> fail closed",
      DISPATCH, "Skill", {}, {}, DENY),
     ("Agent, gated via subagent_type",

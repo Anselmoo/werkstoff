@@ -8,14 +8,14 @@
   },
   "plugins": [
     {
-      "name": "self-assess",
-      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard \u2014 almost entirely read-only, writes only to a scoped output directory (default analysis/self-assess/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (self-assess-transform-execute, self-assess-idiom-fix) for applying already-authorized findings.",
+      "name": "befund",
+      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard \u2014 almost entirely read-only, writes only to a scoped output directory (default analysis/befund/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (befund-transform-execute, befund-idiom-fix) for applying already-authorized findings.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
       },
       "category": "development",
-      "source": "./plugins/self-assess"
+      "source": "./plugins/befund"
     },
     {
       "name": "confab",
@@ -28,14 +28,14 @@
       "source": "./plugins/confab"
     },
     {
-      "name": "compass",
-      "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 13 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships, negotiate-tradeoffs, verify-assumptions, summarize-trace), composed by compass-solve into an actual workflow rather than exposed as a technique picker.",
+      "name": "zirkel",
+      "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 13 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships, negotiate-tradeoffs, verify-assumptions, summarize-trace), composed by zirkel-solve into an actual workflow rather than exposed as a technique picker.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
       },
       "category": "development",
-      "source": "./plugins/compass"
+      "source": "./plugins/zirkel"
     },
     {
       "name": "cupertino",
@@ -68,14 +68,14 @@
       "source": "./plugins/cli-scaffold"
     },
     {
-      "name": "codebase-consistency",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent \u2014 divergent architecture, docs, code patterns, and style across modules \u2014 with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope \u2014 see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "name": "passung",
+      "description": "Harmonize an already-modern, live codebase that grew inconsistent \u2014 divergent architecture, docs, code patterns, and style across modules \u2014 with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope \u2014 see befund); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
       },
       "category": "development",
-      "source": "./plugins/codebase-consistency"
+      "source": "./plugins/passung"
     },
     {
       "name": "takt",

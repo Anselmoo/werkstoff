@@ -55,6 +55,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 RRT_TOML = REPO_ROOT / ".rrt.toml"
 RELEASE_WF = REPO_ROOT / ".github/workflows/plugin-release.yml"
 BUMP_WF = REPO_ROOT / ".github/workflows/auto-version-bump.yml"
+RETIRED = Path(__file__).resolve().parent / "retired-groups.txt"
 
 #: Plugin/group names in this repo. Explicit class, never a dot-star: a pattern
 #: loose enough to match anything is a pattern that silently matches the wrong
@@ -111,6 +112,26 @@ def rrt_groups_and_field_targets() -> tuple[set[str], set[str]]:
     return groups, targets
 
 
+def retired_groups() -> set[str]:
+    """Renamed groups the tag allowlist may keep so their old tags stay recoverable.
+
+    Exempts the TAG ALLOWLIST only. A retired name in .rrt.toml or in the bump
+    matcher is still a failure: those describe work on a directory, and there is
+    no directory. See retired-groups.txt for why the list may only shrink.
+    """
+    if not RETIRED.is_file():
+        return set()
+    names = set()
+    for raw in RETIRED.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if not re.fullmatch(NAME, line):
+            raise WiringLintError(f"{RETIRED.name}: {line!r} is not a valid group name")
+        names.add(line)
+    return names
+
+
 def release_allowlist() -> set[str]:
     """The `case "$GROUP" in <a>|<b>|...)` allowlist in plugin-release.yml."""
     text = RELEASE_WF.read_text(encoding="utf-8")
@@ -151,6 +172,7 @@ def main() -> int:
         groups, field_targets = rrt_groups_and_field_targets()
         release = release_allowlist()
         bump = bump_matchers()
+        retired = retired_groups()
     except (WiringLintError, OSError, tomllib.TOMLDecodeError) as exc:
         print(f"lint-release-wiring: {exc}", file=sys.stderr)
         return 1
@@ -164,10 +186,26 @@ def main() -> int:
 
     failures: list[str] = []
     for label, names in lists:
+        # The tag allowlist alone may name a retired group, so a renamed plugin's
+        # published tags stay recoverable. Every other list must match disk exactly.
+        exempt = retired if names is release else set()
         for missing in sorted(disk - names):
             failures.append(f"  plugins/{missing}/ exists but is MISSING from {label}")
-        for stale in sorted(names - disk):
+        for stale in sorted(names - disk - exempt):
             failures.append(f"  {label} names '{stale}', which has no plugins/{stale}/ directory")
+
+    # retired-groups.txt may only shrink: an entry that buys no exemption, or one
+    # whose name is back on disk, hides drift rather than permitting a rename.
+    for gone in sorted(retired - release):
+        failures.append(
+            f"  {RETIRED.name} names '{gone}', which is not in the "
+            f"{RELEASE_WF.name} tag allowlist -- the exemption buys nothing; delete the line"
+        )
+    for revived in sorted(retired & disk):
+        failures.append(
+            f"  {RETIRED.name} names '{revived}', but plugins/{revived}/ exists again -- "
+            f"delete the line, or the exemption hides a real drift"
+        )
 
     if failures:
         print(f"{len(failures)} release-wiring problem(s):")

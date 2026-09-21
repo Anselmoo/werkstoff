@@ -1,0 +1,9 @@
+# Per-project zirkel configuration (copy the template, keep yours local)
+.claude/*.local.md
+
+# zirkel run state / persisted artifacts
+.zirkel/
+
+# Python
+__pycache__/
+*.pyc

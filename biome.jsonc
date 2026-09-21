@@ -97,12 +97,12 @@
   // Each entry disables ONLY the rules that directory actually trips, never
   // the whole set -- a blanket "off" would hide the next real defect too.
   //
-  // `arbeitsplan`, `compass` and `matrize` are deliberately ABSENT: all three
+  // `arbeitsplan`, `zirkel` and `matrize` are deliberately ABSENT: all three
   // are at zero and must stay there. A new plugin starts absent too.
   "overrides": [
     {
       // 6 findings: noUnusedVariables 4, noAccumulatingSpread 1, useConst 1
-      "includes": ["plugins/codebase-consistency/workflows/*.js"],
+      "includes": ["plugins/passung/workflows/*.js"],
       "linter": {
         "rules": {
           "correctness": { "noUnusedVariables": "off" },

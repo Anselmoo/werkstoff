@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for confab's PreToolUse edit-scope guard.
 
-Mirrors self-assess's hooks/test_guard_target_edit.py in rigor and
+Mirrors befund's hooks/test_guard_target_edit.py in rigor and
 structure. verify-hooks-deny.py's generic probe can't exercise this hook's
 scope-enforcement branches -- its violating fixture only covers the
 wrong-target-file case. These tests build every other scenario directly:

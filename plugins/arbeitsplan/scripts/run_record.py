@@ -223,7 +223,7 @@ def open_run(plugin: str, run_id: str, root: Path | None = None, directory: Path
     """Open (creating if needed) one run's record.
 
     `directory` places the record beside a plugin's existing per-run state --
-    cli-scaffold's report directory, compass's `.compass/runs/<id>/` -- instead of
+    cli-scaffold's report directory, zirkel's `.zirkel/runs/<id>/` -- instead of
     under analysis/<plugin>/, so one run is never scattered across two trees. The
     run id is still validated, and the header still refuses a sibling's record.
     """

@@ -61,7 +61,7 @@ that gap three ways, in decreasing order of strength:
 2. **The clean box.** The exact `test/plugins/make-clean-box.py` settings `run.sh`
    already uses: every installed plugin disabled, every personal skill turned off. This
    matters even here, where no `--plugin-dir` is ever passed: without it, a real
-   werkstoff/andon/self-assess install already on the machine running this suite would
+   werkstoff/andon/befund install already on the machine running this suite would
    let the model answer the goal by *running* a skill instead of by reading the copied
    `docs/` prose -- exactly the confound `make-clean-box.py`'s own docstring documents
    for the plugin-behavior suite, reused verbatim here for a different reason.

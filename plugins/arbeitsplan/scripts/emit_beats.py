@@ -3,7 +3,7 @@
 
 usage: emit_beats.py [-h] [--write] [--out PATH] [--selftest] [spec]
 
-Ordering between phases -- and between this plugin and compass, andon and the
+Ordering between phases -- and between this plugin and zirkel, andon and the
 rest -- belongs to takt, not to arbeitsplan's own guard. takt's charter says so:
 the beats span plugins, and no single plugin honestly owns that order. This
 script is the compiler for the declaration takt already knows how to enforce.
@@ -112,8 +112,8 @@ def evidence_path(ev: dict, plugin: str, decls: dict) -> str:
     reader can see what was assumed.
     """
     path = ev.get("path", "")
-    if ev.get("relativeTo") == "output_dir" and plugin == "self-assess":
-        return f"analysis/self-assess/{path}"
+    if ev.get("relativeTo") == "output_dir" and plugin == "befund":
+        return f"analysis/befund/{path}"
     return path
 
 
@@ -298,7 +298,7 @@ def selftest() -> int:
             {"id": "land", "requires": ["refereed"], "marker": "landed",
              "agentType": "arbeitsplan:synthesizer"},
         ],
-        "delegates": [{"plugin": "compass", "skill": "compass-explore-branches",
+        "delegates": [{"plugin": "zirkel", "skill": "zirkel-explore-branches",
                        "beat": "branches-explored", "optional": True}],
     }
     fails = []
@@ -308,7 +308,7 @@ def selftest() -> int:
         ("build gets no beat (it requires nothing)",
          not any(b["id"].startswith("build-after") for b in beats)),
         ("referee and land each get one", "referee-after-built" in ids and "land-after-refereed" in ids),
-        ("the delegate gets one", "delegate-compass-branches-explored" in ids),
+        ("the delegate gets one", "delegate-zirkel-branches-explored" in ids),
         ("every beat gates something", all(b["skills"] and b["require"] for b in beats)),
         ("no beat uses a slash in require under a runId",
          all("/" not in b["require"] for b in beats)),

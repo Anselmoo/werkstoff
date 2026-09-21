@@ -113,13 +113,13 @@ this rule was written against:
 A legend is necessary, not sufficient: the marks themselves need a second channel, or a
 reader still has to match hues against it. Two viewers show the pattern that satisfies both:
 
-- `plugins/self-assess/assets/stage-map-viewer.html` encodes state, not identity, so it uses
+- `plugins/befund/assets/stage-map-viewer.html` encodes state, not identity, so it uses
   no categorical hue. Each channel is independent of hue: ring weight (god-module), a dashed
   ring (dead-end), a second inner ring (cycle membership, by shape) and a printed number
   (which cycle). A number that does not fit its circle becomes a tag only where it covers no
   other stage, and is otherwise left out with a visible count, never overlapped. Legend
   swatches are painted by the map's own `drawNodeMark()`.
-- `plugins/codebase-consistency/assets/matrix-viewer.html` prints every cell's key — a variant
+- `plugins/passung/assets/matrix-viewer.html` prints every cell's key — a variant
   letter, or a ✓/≈/✗ conformance glyph — on a solid plate, so the words never depend on the
   fill's contrast. Variant hues use only the categorical slots that cannot be mistaken for the
   page's status colours (`--cat-1`, `--cat-3`); every other variant shares one neutral fill.
@@ -150,9 +150,9 @@ Three archetypes exist and all three are legitimate:
 |---|---|---|
 | centered document | the report is read top-to-bottom | `lehre` (`.wrap`, max-width 1180), `cli-scaffold` |
 | full-bleed + sticky sidebar | a selection drives a detail pane | `andon`, `confab`, `cupertino` |
-| absolute canvas | the view is pannable/zoomable | `self-assess` |
+| absolute canvas | the view is pannable/zoomable | `befund` |
 
-`compass` is currently a fourth thing by accident — `branch-comparison-viewer.html:23`
+`zirkel` is currently a fourth thing by accident — `branch-comparison-viewer.html:23`
 sets `max-width: 900px` with no `margin: auto`, so content hugs the left edge. That is a
 bug, not an archetype.
 
@@ -165,15 +165,15 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
 
 - **CSP meta, `default-src 'none'`** — `.rrt.toml:274-275` already calls this "the same
   constraint every report-viewer plugin's HTML asset needs". Present in five
-  (`andon`, `cli-scaffold`, `codebase-consistency`, `compass`, `self-assess`, each at line 6);
+  (`andon`, `cli-scaffold`, `passung`, `zirkel`, `befund`, each at line 6);
   **absent in `lehre`, `confab`, `cupertino`**.
 - **`<title>` as `<plugin> — <report noun>`**, lowercase plugin name. `lehre — doctrine map`
   is the model. Current titles are inconsistently cased and prefixed.
 - **The static `<h1>` must carry that same string, and must not be rewritten at run time.**
   The title is the machine-readable name; the `<h1>` is the one a reader actually sees, and
-  while only the former was checked the two drifted: `codebase-consistency` shipped a
+  while only the former was checked the two drifted: `passung` shipped a
   heading of "Consistency Matrix — billing" under a title of
-  "codebase-consistency — consistency matrix". Scope that varies with the data — an area
+  "passung — consistency matrix". Scope that varies with the data — an area
   name, a "no data" notice — belongs on the subtitle, which is the provenance line. A
   heading that changes with the data is a heading that can drift unnoticed, so
   `check_viewer_conformance.py` fails both a mismatch and a run-time overwrite of the
@@ -218,7 +218,7 @@ Commit the input beside the builder and cite it from the plugin README with a ru
 command — `plugins/lehre/scripts/fixtures/sample_doctrine_ruleset.json` and the block under
 "The doctrine map" in `plugins/lehre/README.md` are the pattern.
 
-Cite it. `plugins/codebase-consistency/scripts/testdata/sample_matrix.json` is committed and
+Cite it. `plugins/passung/scripts/testdata/sample_matrix.json` is committed and
 referenced by nothing; an uncited fixture rots silently.
 
 ### C3 — Demo data must show the failure the plugin exists for
@@ -260,9 +260,9 @@ is what the check matches. Prose may substitute for swatches (lehre has a `.note
 legend), so R4 accepts either — it fails only when both are absent. On first run it
 reported 36 violations across 8 viewers, independently reproducing findings that had been
 derived by reading — CSP absent in exactly confab/cupertino/lehre, `61px` in exactly
-andon/codebase-consistency/cupertino, R4 failing in exactly confab/self-assess. Three prior HTML-grep precedents
+andon/passung/cupertino, R4 failing in exactly confab/befund. Three prior HTML-grep precedents
 exist — `plugins/cli-scaffold/scripts/selftest.py:166-171`,
-`plugins/compass/scripts/test_build_branch_comparison_html.py:106-108`,
+`plugins/zirkel/scripts/test_build_branch_comparison_html.py:106-108`,
 `plugins/confab/scripts/test_build_burndown_html.py:106-113` — and **none of them runs in
 CI**, which puts all three below "a fenced command in a skill" on this repo's own
 enforcement table.
@@ -272,7 +272,7 @@ agent reading the rendered report.
 
 **The lint cannot see a stale screenshot.** It checks that the JPEG exists and is 1600
 wide; it has no way to know the image was rendered from an older build of the viewer
-beside it. That is not hypothetical — `plugins/self-assess/assets/stage-map-viewer-screenshot.jpg`
+beside it. That is not hypothetical — `plugins/befund/assets/stage-map-viewer-screenshot.jpg`
 was committed in `821a14a`, *the commit that migrated the viewer onto `tokens.css`*, and
 its background pixels were `#1e1e1e`: the pre-migration `--bg`, not the `#0a0d10` the
 tokens define. The image never matched the code it documented, and nothing noticed for

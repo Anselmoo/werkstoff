@@ -29,7 +29,7 @@ explicitly out of scope and deferred to sibling plugins:
   hints, docstrings, and API/OpenAPI/GraphQL schemas against real
   call-site or handler usage. A claim in `CLAUDE.md`, `README.md`,
   `ARCHITECTURE.md`, `DECISIONS.md` or an ADR file no longer matching the
-  code is `self-assess:self-assess-docs-drift`'s job, not confab's.
+  code is `befund:befund-docs-drift`'s job, not confab's.
 - **Not a verifier of a specific change, fix, wire, or numeric claim.**
   `confab-assertion-audit` judges only whether the *tests* would catch a
   bug — it is explicitly "not for proving that a specific change, fix,

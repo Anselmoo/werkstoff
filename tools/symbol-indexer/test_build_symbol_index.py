@@ -27,7 +27,7 @@ def _vendored_plugin_dirs(filename: str) -> list[Path]:
     not every directory under plugins/. Only some plugins came out of the
     rebuild pipeline that vendors build_symbol_index.py and
     parallel-safe-research-protocol.md; a plugin outside that lineage (e.g.
-    one forked from a different upstream, like codebase-consistency) has no
+    one forked from a different upstream, like passung) has no
     reason to carry either file, so this must read the same config
     `rrt artifacts --check` treats as authoritative rather than assume every
     plugin dir participates.
@@ -225,7 +225,7 @@ class SymbolIndexerTest(unittest.TestCase):
         # The vendoring convention this test's history refers to (each plugin
         # carrying a byte-identical synced copy of this script) was briefly
         # retired in commit 0c10fa0, then reinstated via `.rrt.toml`'s
-        # artifact_targets once self-assess and confab's own behavior specs
+        # artifact_targets once befund and confab's own behavior specs
         # turned out to still require it. See
         # test_every_vendored_copy_matches_the_canonical_source below for the
         # per-plugin drift guard. What's covered here: the canonical script

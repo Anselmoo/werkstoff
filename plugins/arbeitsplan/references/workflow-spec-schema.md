@@ -31,7 +31,7 @@ describes the spec in prose instead of loading it is the defect this schema exis
 | `writeScope` | string[] | yes | fnmatch globs. **Never empty** — an empty scope is rejected at compile, not treated as "anything" |
 | `budget` | object | yes | `totalDispatches` (int > 0), `wallClockMinutes` (int > 0) |
 | `phases` | object[] | yes | 1..12 phases, see below |
-| `delegates` | object[] | no | optional cross-plugin beats (compass et al.) |
+| `delegates` | object[] | no | optional cross-plugin beats (zirkel et al.) |
 | `backend` | object | yes | `{kind, why[], acknowledgedGaps[]}` — see below |
 
 ### `backend`
@@ -51,7 +51,7 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | key | type | meaning |
 |---|---|---|
 | `statement` | string | the scoped problem, one paragraph |
-| `shape` | `"change"` \| `"question"` | **`"question"` is a refusal**: compile emits an `out-of-scope-reasoning` record pointing at `compass:compass-solve` and writes no phases |
+| `shape` | `"change"` \| `"question"` | **`"question"` is a refusal**: compile emits an `out-of-scope-reasoning` record pointing at `zirkel:zirkel-solve` and writes no phases |
 | `acceptance` | object[] | `{id, criterion, check}`. `check` is a shell command that exits 0 on pass. At least one entry, and **at least one with a non-null `check`** — a spec whose every criterion is unverifiable is rejected |
 
 ### `phases[]`
@@ -139,7 +139,7 @@ use the bundled fallback, and say so plainly. Never fabricate the delegate's out
     }
   ],
   "delegates": [
-    { "plugin": "compass", "skill": "compass-explore-branches", "beat": "branches-explored", "optional": true }
+    { "plugin": "zirkel", "skill": "zirkel-explore-branches", "beat": "branches-explored", "optional": true }
   ],
   "backend": { "kind": "in-session", "why": ["writes-shared-tree"], "acknowledgedGaps": [] }
 }
@@ -165,7 +165,7 @@ as `compile_spec.py --selftest`'s `SIX` fixture does. Three consequences are the
 A spec is **not written** if any of these hold. Each is a refusal with the offending key named, never
 a default silently supplied:
 
-- `problem.shape == "question"` — emit `out-of-scope-reasoning`, point at `compass:compass-solve`
+- `problem.shape == "question"` — emit `out-of-scope-reasoning`, point at `zirkel:zirkel-solve`
 - `schemaVersion` is not `"2"` (`"1"` is refused by name, with the migration)
 - `writeScope` empty or absent
 - no acceptance criterion carries a runnable `check`

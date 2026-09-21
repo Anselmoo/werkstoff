@@ -9,7 +9,7 @@
         {
           "id": "andon:andon-loop",
           "name": "andon-loop",
-          "description": "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use self-assess-transform-execute for that, then return here (or to andon-verify) for the proof."
+          "description": "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use befund-transform-execute for that, then return here (or to andon-verify) for the proof."
         },
         {
           "id": "andon:andon-preflight",
@@ -97,7 +97,7 @@
         {
           "id": "arbeitsplan:arbeitsplan-compile",
           "name": "arbeitsplan-compile",
-          "description": "Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at compass when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md."
+          "description": "Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at zirkel when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md."
         },
         {
           "id": "arbeitsplan:arbeitsplan-matrix",
@@ -272,6 +272,217 @@
       ]
     },
     {
+      "name": "befund",
+      "version": "0.11.1",
+      "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
+      "skills": [
+        {
+          "id": "befund:befund-arch-health",
+          "name": "befund-arch-health",
+          "description": "Reads the full stage_graph.json from befund-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code. Use when the user asks to \"find architecture deficiencies\", \"find god-objects or god-modules\", \"detect dependency cycles\", \"check for layering violations\", or as part of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-autopilot",
+          "name": "befund-autopilot",
+          "description": "Runs befund's full workflow (CHECK → PLAN → approval gate → FIX+VALIDATE) with andon-loop, halting on unproven wires or unmet blockers. Use when the user asks to \"run the auto-pilot\", \"check, plan, fix and validate this repo\", or wants the full befund value stream."
+        },
+        {
+          "id": "befund:befund-ci-topology",
+          "name": "befund-ci-topology",
+          "description": "Audits git remote topology and CI/CD configuration for redundancy, mirror risk, doc-vs-config drift, and commit-signing inconsistencies, masking every credential to a short preview. Use when the user asks to \"audit our git remotes\", \"check CI setup\", \"find redundant mirrors\", \"verify docs about CI/CD are accurate\", or as part of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-code-idiom",
+          "name": "befund-code-idiom",
+          "description": "Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell. Use when the user asks to \"find modernization opportunities\", \"check for deprecated idioms\", \"find code smells\", or as part of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-complexity-score",
+          "name": "befund-complexity-score",
+          "description": "Computes a relative complexity/attention-priority index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers. Use when the user asks \"which module needs attention first\", \"score complexity per stage\", \"what's our tech debt hotspot\", or as part of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-docs-drift",
+          "name": "befund-docs-drift",
+          "description": "Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of befund-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by befund-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift."
+        },
+        {
+          "id": "befund:befund-extract-rules",
+          "name": "befund-extract-rules",
+          "description": "Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule. Use when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of befund-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written."
+        },
+        {
+          "id": "befund:befund-idiom-fix",
+          "name": "befund-idiom-fix",
+          "description": "Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode=\"fix\", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying. Use when the user explicitly asks to \"apply the modernization findings\", \"fix the idiom findings\", or \"auto-fix what code-idiom found\". Not for design-handbook conformance findings from a cupertino-handbook-check pass -- use cupertino-handbook-fix for those. If no code_idiom_summary.json exists, this is not the audit the user means."
+        },
+        {
+          "id": "befund:befund-lint-audit",
+          "name": "befund-lint-audit",
+          "description": "Extracts discrete, checkable rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and dispatches finders to verify violations against the actual code, capping dispatch at lint_max_rules. Reports violations only -- for mechanical fixes see befund-idiom-fix. Use when the user asks to \"check our conventions\", \"check this code against our standards\", \"does the code follow the conventions we wrote down\", \"audit against house rules\", \"verify code follows CLAUDE.md\", or as part of befund-autopilot's CHECK phase. Not for auditing work against a cupertino domain handbook under .cupertino/ -- use cupertino:cupertino-handbook-check for that."
+        },
+        {
+          "id": "befund:befund-portfolio",
+          "name": "befund-portfolio",
+          "description": "Grades each repo in a directory of git repositories Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo. Use when the user asks to \"sweep multiple repos\", \"assess our whole portfolio\", \"grade all our projects\", or names a parent directory containing several git repositories."
+        },
+        {
+          "id": "befund:befund-preflight",
+          "name": "befund-preflight",
+          "description": "Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill. Use when the user asks to \"check if this repo is ready for befund\", \"run preflight\", \"can befund analyze this codebase\", or before any other befund-* skill runs for the first time in a repo; also invoked at the start of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-stage-map",
+          "name": "befund-stage-map",
+          "description": "Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other befund skills depend on. Use when the user asks to \"map the repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\", or as the first step of befund-autopilot's CHECK phase."
+        },
+        {
+          "id": "befund:befund-status",
+          "name": "befund-status",
+          "description": "Reports which befund artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run. Use when the user asks \"where does befund stand\", \"what's stale in our analysis\", \"what should we run next\", or \"befund status\"."
+        },
+        {
+          "id": "befund:befund-transform-brief",
+          "name": "befund-transform-brief",
+          "description": "Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan. Use after befund's finding skills have run, when the user asks to \"synthesize the findings into a plan\", \"write the modernization brief\", \"what should we fix and in what order\", or as the PLAN step of befund-autopilot."
+        },
+        {
+          "id": "befund:befund-transform-execute",
+          "name": "befund-transform-execute",
+          "description": "Applies exactly one human-authorized phase of MODERNIZATION_BRIEF.md to the codebase. Use when the user explicitly asks to \"execute phase N from the modernization brief\", \"apply this transform phase\", or \"run the merge/split transform-execute proposed\". It applies exactly one human-authorized phase from MODERNIZATION_BRIEF.md, gated behind transform.mode=\"execute\", a clean tree, and every Open Question resolved -- then hands off to andon-verify without self-verifying. Not for applying a set of approved fixes across a repo, or for proving each fix as it lands -- that is andon-loop; this skill requires a numbered phase in MODERNIZATION_BRIEF.md and refuses without one."
+        },
+        {
+          "id": "befund:befund-ui-audit",
+          "name": "befund-ui-audit",
+          "description": "Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", \"review this UI before we ship\", or as part of befund-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review."
+        }
+      ],
+      "agents": [
+        {
+          "id": "befund:arch-health-auditor",
+          "name": "arch-health-auditor",
+          "description": "Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "befund:business-rules-miner",
+          "name": "business-rules-miner",
+          "description": "Use this agent when a codebase's executable business/domain logic needs mining into testable Given/When/Then rule specs with file:line citations, priority, and confidence.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "befund:ci-topology-auditor",
+          "name": "ci-topology-auditor",
+          "description": "Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "befund:complexity-surveyor",
+          "name": "complexity-surveyor",
+          "description": "Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Bash"
+          ]
+        },
+        {
+          "id": "befund:convention-auditor",
+          "name": "convention-auditor",
+          "description": "Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "befund:docs-drift-auditor",
+          "name": "docs-drift-auditor",
+          "description": "Use this agent when documentation needs checking for drift against the actual current state of the codebase.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "befund:idiom-auditor",
+          "name": "idiom-auditor",
+          "description": "Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "befund:idiom-remediator",
+          "name": "idiom-remediator",
+          "description": "Use this agent when a cluster of same-file, same-idiom-kind, already-verified befund-code-idiom \"modernization\"-category findings needs exactly those mechanical rewrites applied at their cited locations, and nothing else. Typical trigger is befund-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. Only ever dispatched by befund-idiom-fix against code-idiom findings -- not for lehre rule-card conformance findings (lehre's conformance-remediator), not for cupertino handbook findings (cupertino's handbook-remediator), not for `smell`-category or `severityNote`-flagged findings, and not from a bare user request carrying no pipeline context.",
+          "tools": [
+            "Read",
+            "Edit"
+          ]
+        },
+        {
+          "id": "befund:stage-mapper",
+          "name": "stage-mapper",
+          "description": "Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "befund:transform-executor",
+          "name": "transform-executor",
+          "description": "Use this agent when a single, already-authorized phase from MODERNIZATION_BRIEF.md (a Merge, Split, or layering-violation fix) needs its code changes actually applied, with every Open Question for that phase already resolved by a human.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Write",
+            "Edit"
+          ]
+        },
+        {
+          "id": "befund:ui-auditor",
+          "name": "ui-auditor",
+          "description": "Use this agent when a codebase's UI surface (JSX/TSX, Vue/Svelte, HTML, CSS/SCSS) needs a static, read-only audit for accessibility, semantic-markup, and hardcoded design-value problems.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": []
+    },
+    {
       "name": "cli-scaffold",
       "version": "0.10.0",
       "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
@@ -324,212 +535,6 @@
       "workflows": []
     },
     {
-      "name": "codebase-consistency",
-      "version": "0.6.0",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see self-assess); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
-      "skills": [],
-      "agents": [
-        {
-          "id": "codebase-consistency:align-executor",
-          "name": "align-executor",
-          "description": "Applies an approved canonical pattern to ONE module of an in-flight alignment pass by following a proven pilot playbook — minimal diff, then runs that module's real tests to prove it. Refuses to align anything if no playbook exists yet. Write access is scoped to its own module's directory. Use only AFTER a pilot module has been aligned and its playbook written.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Write",
-            "Edit",
-            "Bash"
-          ]
-        },
-        {
-          "id": "codebase-consistency:consistency-critic",
-          "name": "consistency-critic",
-          "description": "Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the second-judge pass in canonize and verify.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "codebase-consistency:equivalence-verifier",
-          "name": "equivalence-verifier",
-          "description": "Independently re-checks that an aligned module behaves identically to before alignment and that its docs/comments still match the code. Re-derives evidence from the diff and the module's tests rather than trusting the aligner's own report. Use as the verification pass after consistency-align.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "codebase-consistency:pattern-analyst",
-          "name": "pattern-analyst",
-          "description": "Surveys a live codebase to find how a given convention dimension (error handling, logging, docstrings, module layout, naming, test structure, ...) is actually handled, clustering distinct approaches into variants with file:line evidence and a maturity/recency read from git history. Use for discovery, variant clustering, and re-deriving a maturity signal as a referee check.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "codebase-consistency:pattern-extractor",
-          "name": "pattern-extractor",
-          "description": "Derives which variant of an undocumented, non-deprecated convention should become the canonical form — weighing frequency, maturity, and recency, and refusing to force a pick when the signal is genuinely tied. Use when a divergent dimension from consistency.json needs a Pattern Card.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        }
-      ],
-      "commands": [
-        "consistency-align",
-        "consistency-brief",
-        "consistency-canonize",
-        "consistency-map",
-        "consistency-preflight",
-        "consistency-scan",
-        "consistency-status",
-        "consistency-verify"
-      ],
-      "hooks": {
-        "present": false,
-        "events": []
-      },
-      "workflows": [
-        "consistency-align-batch",
-        "consistency-canonize",
-        "consistency-scan",
-        "consistency-verify-scan"
-      ]
-    },
-    {
-      "name": "compass",
-      "version": "0.9.0",
-      "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
-      "skills": [
-        {
-          "id": "compass:compass-calibrate-format",
-          "name": "compass-calibrate-format",
-          "description": "Pins down an ambiguous output format, style, tone, or schema by anchoring it to 2-5 concrete input/output examples instead of more prose. Use when prose keeps under- or over-specifying the target shape: when the target cannot be described in words, is non-standard, or involves subtle tone or layout choices, or when a compass-solve stage output shape is fuzzy."
-        },
-        {
-          "id": "compass:compass-clarify-scope",
-          "name": "compass-clarify-scope",
-          "description": "Scopes an ambiguous task before any work begins — restates it with defaults made explicit, lists known facts (flagging low-confidence ones), and surfaces the interpretation forks that could send the work the wrong way. Use when a task's phrasing supports multiple reasonable interpretations, success criteria aren't stated, or scope is underspecified: \"what exactly do you want here\", \"before I start, let me pin this down\", a vague one-line request, or the first phase of compass-solve."
-        },
-        {
-          "id": "compass:compass-decompose-chain",
-          "name": "compass-decompose-chain",
-          "description": "Breaks a scoped problem or selected approach into a 2-5 stage pipeline, each stage with an explicit input contract, output contract, and dependsOn list, and derives the parallel-safe wave grouping from the dependency graph. Use when a task is big enough to need staging with clear hand-offs between steps: \"break this into steps\", \"what's the pipeline here\", \"map the stages\", \"what depends on what\", or the Decompose phase of compass-solve."
-        },
-        {
-          "id": "compass:compass-draft-revise",
-          "name": "compass-draft-revise",
-          "description": "Scores an already-drafted artifact 1-5 against explicit numbered criteria and selectively revises only the criteria that fall at or below threshold, leaving what already works untouched — then reports exactly what changed. Use when a draft exists and needs targeted iteration rather than a rewrite: \"score this against these criteria and fix what's weak\", \"revise selectively\", \"which parts fall short\", \"iterate on this draft\", or the Revise phase of compass-solve."
-        },
-        {
-          "id": "compass:compass-explore-branches",
-          "name": "compass-explore-branches",
-          "description": "Explores multiple genuinely-distinct approaches to a scoped problem in parallel, scores each on Feasibility/Impact/Risk, and selects a winner — so the work does not anchor on the first idea. Use when a task has more than one viable approach and picking the first that comes to mind would be a mistake: \"what are our options here\", \"don't just do the obvious thing\", \"weigh a few approaches\", \"explore alternatives\", or the Explore phase of compass-solve."
-        },
-        {
-          "id": "compass:compass-ground-evidence",
-          "name": "compass-ground-evidence",
-          "description": "Checks that every factual claim in an answer or artifact is traceable to a specific source — a file:line, a URL, or explicitly-flagged prior knowledge — and refuses to assert anything beyond what's actually verified. Use whenever an answer, summary, or report makes assertions that need grounding rather than recall: \"cite your sources\", \"don't make this up\", \"ground this in the actual transcript/code/docs/data\", a number or metric that must trace back to where it came from, \"verify before asserting\", or a factual-claim-heavy stage of compass-solve."
-        },
-        {
-          "id": "compass:compass-investigate-dynamically",
-          "name": "compass-investigate-dynamically",
-          "description": "Works a problem whose next action can only be chosen after seeing the last result — a Reasoning / Action / Observation loop where each observation determines the next step. Use when the sequence of tool calls cannot be planned upfront: \"figure out why X is happening\", \"trace this through the system\", \"I don't know where the problem is, go find it\", open-ended debugging or discovery, or an Execute stage of compass-solve whose steps are unknown at the start."
-        },
-        {
-          "id": "compass:compass-map-relationships",
-          "name": "compass-map-relationships",
-          "description": "Answers a question that turns on entity/dependency/causal structure by extracting indexed relationship triples and traversing them hop by hop, citing the triple index at every hop. Use when the answer requires following a chain through named entities and relationships: \"how does A affect D through the chain\", \"trace the dependency path\", \"who reports to whom\", \"what causes what here\", multi-hop \"why\" questions, or a compass-solve stage that needs graph traversal. Not for deriving a repository's real import/module graph from source — \"map this repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\" belong to self-assess-stage-map, which parses imports per language and writes the stage graph other skills consume. Use this skill only to reason over a relationship graph whose entities are already established, in code or any other domain."
-        },
-        {
-          "id": "compass:compass-negotiate-tradeoffs",
-          "name": "compass-negotiate-tradeoffs",
-          "description": "After compass-explore-branches has selected a winner, synthesizes a hybrid that combines strengths from 2-3 branches — but only presents it if it actually beats every source branch on at least one axis. Use when a single winner leaves value on the table and you want the best of several: \"can we combine the best of these approaches\", \"what if we merged A and B\", \"the winner's good but I liked X from the runner-up\". Runs strictly AFTER branch selection, never as a substitute for it."
-        },
-        {
-          "id": "compass:compass-optimize-instruction",
-          "name": "compass-optimize-instruction",
-          "description": "Optimizes the exact wording of an instruction/prompt for a recurring task using APE — generates one candidate per framing, scores them against real test cases, and critiques the winner. Use when a prompt will be reused and its wording matters: \"tune this prompt\", \"find the best wording for this instruction\", \"optimize this system prompt\", \"which phrasing works best\", with representative test cases available. Not for one-off prompts with no test cases."
-        },
-        {
-          "id": "compass:compass-reason-verify",
-          "name": "compass-reason-verify",
-          "description": "Matches reasoning effort to concrete failure-mode signals by climbing a 4-rung ladder — zero-shot, Chain-of-Thought, Self-consistency, or PAL (code offload) — and applies Multimodal-CoT first when the input has an image or diagram. Use when a task shows a real risk of a silent reasoning error: multi-step arithmetic, a single-correct-answer puzzle where a wrong early assumption is costly, a precision-critical calculation, or an image/diagram input. Not for well-trodden single-step questions."
-        },
-        {
-          "id": "compass:compass-solve",
-          "name": "compass-solve",
-          "description": "Runs the full compass pipeline — Clarify -> Explore (conditional) -> Decompose -> Execute -> Revise — for a task that is complex/ambiguous AND needs staged decomposition AND carries real ambiguity or multiple viable approaches worth weighing. Use when a request is too big or too underspecified to answer in one shot: \"solve this properly\", \"work through this step by step\", \"this is complex, break it down and do it\", or any multi-faceted task where jumping straight to an answer would anchor on the wrong interpretation or approach. Not for simple, well-specified, single-step tasks."
-        },
-        {
-          "id": "compass:compass-summarize-trace",
-          "name": "compass-summarize-trace",
-          "description": "After a compass-solve pipeline finishes, produces a compact written record for handoff, PR comment, or documentation — 7 sections (6 if Explore did not run) covering what was asked, assumed, weighed, run, produced, revised, and NOT done. Use when a finished multi-stage run needs to be captured: \"summarize what we did\", \"write this up for the PR\", \"hand this off\", \"document the run\", after compass-solve completes."
-        },
-        {
-          "id": "compass:compass-verify-assumptions",
-          "name": "compass-verify-assumptions",
-          "description": "Checks exactly ONE named assumption against real evidence in at most 3 steps and reports one outcome: confidence raised (>=90), reading changed, or still unresolved. Use to resolve a single load-bearing uncertainty — typically a blocking entry surfaced by compass-clarify-scope: \"verify this one assumption\", \"is it actually true that X\", \"check this before we rely on it\". For multiple uncertainties, invoke once per uncertainty — the step budget is never shared."
-        }
-      ],
-      "agents": [
-        {
-          "id": "compass:branch-proposer",
-          "name": "branch-proposer",
-          "description": "Generates one genuinely distinct approach to a scoped problem under an assigned angle (conservative/ambitious/pragmatic/contrarian/minimal/maximal), OR scores one existing branch on Feasibility/Impact/Risk and names its biggest blocker. Dispatched in parallel by compass-explore-branches so no branch anchors the others. Use when a scoped problem has multiple viable approaches that must be generated or scored independently.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "compass:instruction-candidate",
-          "name": "instruction-candidate",
-          "description": "Drafts one candidate instruction under a specific APE framing (rule-based, example-based, definition-based, question-based, or chain-of-thought-based), OR scores a candidate against fixed test cases, OR critiques the winning candidate against meta-prompting's 4-item checklist. Dispatched per-step by compass-optimize-instruction. Use when optimizing exact instruction wording for a recurring task with real test cases.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "compass:reasoning-path",
-          "name": "reasoning-path",
-          "description": "Produces exactly one independent reasoning attempt under a specific assigned strategy (forward deduction, backward from options, or constraint mapping), in complete isolation from any parallel attempt. Dispatched three-at-once by compass-reason-verify's self-consistency tier (Rung 2a). Use when a single-correct-answer task needs multiple isolated reasoning passes that vote.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        }
-      ],
-      "commands": [],
-      "hooks": {
-        "present": false,
-        "events": []
-      },
-      "workflows": [
-        "compass-explore-branches",
-        "compass-optimize-instruction",
-        "compass-reason-verify",
-        "compass-solve"
-      ]
-    },
-    {
       "name": "confab",
       "version": "0.10.0",
       "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
@@ -552,7 +557,7 @@
         {
           "id": "confab:confab-contract-drift",
           "name": "confab-contract-drift",
-          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use self-assess-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
+          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use befund-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
         },
         {
           "id": "confab:confab-cycle",
@@ -655,7 +660,7 @@
         {
           "id": "cupertino:cupertino-council",
           "name": "cupertino-council",
-          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for reviewing an interface that already exists: for accessibility, semantic-markup or hardcoded-design-value problems in shipped source use self-assess-ui-audit, and for a full-lifecycle design pass over an existing project use cupertino-review."
+          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for reviewing an interface that already exists: for accessibility, semantic-markup or hardcoded-design-value problems in shipped source use befund-ui-audit, and for a full-lifecycle design pass over an existing project use cupertino-review."
         },
         {
           "id": "cupertino:cupertino-elevate",
@@ -675,7 +680,7 @@
         {
           "id": "cupertino:cupertino-handbook-check",
           "name": "cupertino-handbook-check",
-          "description": "Use when the user wants to compare new or changed work against an existing domain handbook at .cupertino/DOMAIN-handbook.md (one file per domain) to find divergence. Trigger on 'does this comply with our handbook', 'audit these files against the code handbook', 'check this against the code handbook'. Requires a handbook previously produced by cupertino-handbook-draft. Not for repo-wide conventions written in CLAUDE.md or .claude/house-rules.md — use self-assess:self-assess-lint-audit for those. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
+          "description": "Use when the user wants to compare new or changed work against an existing domain handbook at .cupertino/DOMAIN-handbook.md (one file per domain) to find divergence. Trigger on 'does this comply with our handbook', 'audit these files against the code handbook', 'check this against the code handbook'. Requires a handbook previously produced by cupertino-handbook-draft. Not for repo-wide conventions written in CLAUDE.md or .claude/house-rules.md — use befund:befund-lint-audit for those. Read-only — never modifies target files. Zero findings is a valid, expected outcome, not something to work around."
         },
         {
           "id": "cupertino:cupertino-handbook-draft",
@@ -685,7 +690,7 @@
         {
           "id": "cupertino:cupertino-handbook-fix",
           "name": "cupertino-handbook-fix",
-          "description": "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes. Not for code-modernization or idiom findings from code_idiom_summary.json — those belong to self-assess-idiom-fix. If no handbook_check_DOMAIN_summary.json exists for the domain, this is not the audit the user means."
+          "description": "Use only when the user has explicitly enabled fix mode for a domain, to apply the mechanical findings from a prior cupertino-handbook-check pass. Trigger only on explicit requests like 'fix the mechanical handbook findings' AFTER the user has turned on fix mode — never infer consent from a check report alone. Never touches mechanical:false findings, never commits or pushes. Not for code-modernization or idiom findings from code_idiom_summary.json — those belong to befund-idiom-fix. If no handbook_check_DOMAIN_summary.json exists for the domain, this is not the audit the user means."
         },
         {
           "id": "cupertino:cupertino-integrate",
@@ -742,7 +747,7 @@
         {
           "id": "cupertino:handbook-remediator",
           "name": "handbook-remediator",
-          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true design-handbook finding's exact rewrite at its cited file:line, and nothing else. Findings originate only from cupertino-handbook-check's design/UI handbook rules — not for language-idiom or modernization rewrites, which belong to self-assess's idiom-remediator. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch may cover several findings if they cluster on the same (file, rule); it touches only the exact locations cited and never anything else. Not selected from a bare \"apply this mechanical fix\" request — dispatch always comes from cupertino-handbook-fix.",
+          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true design-handbook finding's exact rewrite at its cited file:line, and nothing else. Findings originate only from cupertino-handbook-check's design/UI handbook rules — not for language-idiom or modernization rewrites, which belong to befund's idiom-remediator. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch may cover several findings if they cluster on the same (file, rule); it touches only the exact locations cited and never anything else. Not selected from a bare \"apply this mechanical fix\" request — dispatch always comes from cupertino-handbook-fix.",
           "tools": [
             "Read",
             "Edit"
@@ -786,7 +791,7 @@
         {
           "id": "lehre:lehre-codify",
           "name": "lehre-codify",
-          "description": "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused. Not for mining the business or domain logic the code already implements — calculations, validations, state transitions — use self-assess-extract-rules for that. Not for a standalone, human-readable per-domain handbook (code, design, testing, documentation) recording what a project already does, one rule per dimension — use cupertino:cupertino-handbook-draft for that. This skill governs how code is written, not what the code decides."
+          "description": "Use after lehre-preflight (brownfield) or lehre-decompose (greenfield) to research a code style, pattern and architecture doctrine from external authority plus real repository evidence, and write it to .lehre/ruleset.json as machine-checkable rules. Trigger on 'establish our code standards', 'what rules should this project follow', 'codify our architecture', 'research best practice for this stack', or 'lehre codify'. Every rule must cite an authority; a rule nobody can justify is refused. Not for mining the business or domain logic the code already implements — calculations, validations, state transitions — use befund-extract-rules for that. Not for a standalone, human-readable per-domain handbook (code, design, testing, documentation) recording what a project already does, one rule per dimension — use cupertino:cupertino-handbook-draft for that. This skill governs how code is written, not what the code decides."
         },
         {
           "id": "lehre:lehre-conform",
@@ -828,7 +833,7 @@
         {
           "id": "lehre:conformance-remediator",
           "name": "conformance-remediator",
-          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Only ever dispatched by lehre-conform against a lehre rule-card finding — not for self-assess-code-idiom \"modernization\" findings (self-assess's idiom-remediator) and not for cupertino-handbook-check mechanical findings (cupertino's handbook-remediator), and not from a bare user request carrying no pipeline context. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output.",
+          "description": "Use this agent when one cluster of already-verified, brief-approved MECHANICAL findings sharing a single (file, rule) pair needs its exact rewrite applied, and nothing else. Only ever dispatched by lehre-conform against a lehre rule-card finding — not for befund-code-idiom \"modernization\" findings (befund's idiom-remediator) and not for cupertino-handbook-check mechanical findings (cupertino's handbook-remediator), and not from a bare user request carrying no pipeline context. Never dispatched for a judgement finding, never for a batch spanning several files, and never for an unverified finding. Does not verify its own work — lehre-validate does that, blind to this agent's output.",
           "tools": [
             "Read",
             "Edit"
@@ -965,7 +970,7 @@
         {
           "id": "matrize:matrize-retrofit",
           "name": "matrize-retrofit",
-          "description": "Use to lift an existing project's ad-hoc CSS into the design-system taxonomy WITHOUT changing anything visually — naming what is already there, recording where each value came from, and proving zero visual diff rather than asserting it. Trigger on 'organise this project's scattered CSS', 'name what we already have', 'same pixels, just systematised', 'matrize retrofit'. Never redesigns: a value that would change is surfaced as a question, not adopted. Not for deriving a new system from external exemplars (matrize-decode) and not for auditing a repo for convention divergence, which is codebase-consistency's job."
+          "description": "Use to lift an existing project's ad-hoc CSS into the design-system taxonomy WITHOUT changing anything visually — naming what is already there, recording where each value came from, and proving zero visual diff rather than asserting it. Trigger on 'organise this project's scattered CSS', 'name what we already have', 'same pixels, just systematised', 'matrize retrofit'. Never redesigns: a value that would change is surfaced as a question, not adopted. Not for deriving a new system from external exemplars (matrize-decode) and not for auditing a repo for convention divergence, which is passung's job."
         },
         {
           "id": "matrize:matrize-spread",
@@ -1097,7 +1102,7 @@
         {
           "id": "nacharbeit:component-finder",
           "name": "component-finder",
-          "description": "Use this agent when the nacharbeit-review skill has no Workflow tool and one batch of plugin files (one plugin, one kind — skills, agents, commands, workflows, hooks, scripts, assets, manifest or docs) must be graded against the judgement rules of the nacharbeit rubric for one lens. Returns findings that quote the file verbatim and cite a rule id; every result it returns is uncalibrated, because no planted-defect calibration and no refuter ran around it. Never modifies a file, never reports a mechanical rule id, and is never dispatched by anything but nacharbeit-review. Not for reviewing application code (self-assess, lehre) or for judging a report viewer's rendered output (the AQ-* rules need the demo data).",
+          "description": "Use this agent when the nacharbeit-review skill has no Workflow tool and one batch of plugin files (one plugin, one kind — skills, agents, commands, workflows, hooks, scripts, assets, manifest or docs) must be graded against the judgement rules of the nacharbeit rubric for one lens. Returns findings that quote the file verbatim and cite a rule id; every result it returns is uncalibrated, because no planted-defect calibration and no refuter ran around it. Never modifies a file, never reports a mechanical rule id, and is never dispatched by anything but nacharbeit-review. Not for reviewing application code (befund, lehre) or for judging a report viewer's rendered output (the AQ-* rules need the demo data).",
           "tools": [
             "Read",
             "Glob",
@@ -1129,215 +1134,89 @@
       ]
     },
     {
-      "name": "self-assess",
-      "version": "0.11.1",
-      "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
-      "skills": [
-        {
-          "id": "self-assess:self-assess-arch-health",
-          "name": "self-assess-arch-health",
-          "description": "Reads the full stage_graph.json from self-assess-stage-map and finds god-modules, circular dependencies, and layering violations, verifying each against actual code. Use when the user asks to \"find architecture deficiencies\", \"find god-objects or god-modules\", \"detect dependency cycles\", \"check for layering violations\", or as part of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-autopilot",
-          "name": "self-assess-autopilot",
-          "description": "Runs self-assess's full workflow (CHECK → PLAN → approval gate → FIX+VALIDATE) with andon-loop, halting on unproven wires or unmet blockers. Use when the user asks to \"run the auto-pilot\", \"check, plan, fix and validate this repo\", or wants the full self-assess value stream."
-        },
-        {
-          "id": "self-assess:self-assess-ci-topology",
-          "name": "self-assess-ci-topology",
-          "description": "Audits git remote topology and CI/CD configuration for redundancy, mirror risk, doc-vs-config drift, and commit-signing inconsistencies, masking every credential to a short preview. Use when the user asks to \"audit our git remotes\", \"check CI setup\", \"find redundant mirrors\", \"verify docs about CI/CD are accurate\", or as part of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-code-idiom",
-          "name": "self-assess-code-idiom",
-          "description": "Judges idioms against the actual language version declared in the repo's manifest, never a fixed list, and categorizes each finding as modernization or smell. Use when the user asks to \"find modernization opportunities\", \"check for deprecated idioms\", \"find code smells\", or as part of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-complexity-score",
-          "name": "self-assess-complexity-score",
-          "description": "Computes a relative complexity/attention-priority index per stage using the fixed formula 2.94 x (KSLOC)^1.10, and lists unmeasured stages plainly rather than inventing numbers. Use when the user asks \"which module needs attention first\", \"score complexity per stage\", \"what's our tech debt hotspot\", or as part of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-docs-drift",
-          "name": "self-assess-docs-drift",
-          "description": "Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of self-assess-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by self-assess-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift."
-        },
-        {
-          "id": "self-assess:self-assess-extract-rules",
-          "name": "self-assess-extract-rules",
-          "description": "Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule. Use when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of self-assess-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written."
-        },
-        {
-          "id": "self-assess:self-assess-idiom-fix",
-          "name": "self-assess-idiom-fix",
-          "description": "Applies only eligible modernization-category findings from code_idiom_summary.json, gated behind idiom_fix.mode=\"fix\", one remediator dispatch per (file, kind) cluster, then hands off to andon-verify without self-verifying. Use when the user explicitly asks to \"apply the modernization findings\", \"fix the idiom findings\", or \"auto-fix what code-idiom found\". Not for design-handbook conformance findings from a cupertino-handbook-check pass -- use cupertino-handbook-fix for those. If no code_idiom_summary.json exists, this is not the audit the user means."
-        },
-        {
-          "id": "self-assess:self-assess-lint-audit",
-          "name": "self-assess-lint-audit",
-          "description": "Extracts discrete, checkable rules from .claude/house-rules.md (or CLAUDE.md as a best-effort fallback) and dispatches finders to verify violations against the actual code, capping dispatch at lint_max_rules. Reports violations only -- for mechanical fixes see self-assess-idiom-fix. Use when the user asks to \"check our conventions\", \"check this code against our standards\", \"does the code follow the conventions we wrote down\", \"audit against house rules\", \"verify code follows CLAUDE.md\", or as part of self-assess-autopilot's CHECK phase. Not for auditing work against a cupertino domain handbook under .cupertino/ -- use cupertino:cupertino-handbook-check for that."
-        },
-        {
-          "id": "self-assess:self-assess-portfolio",
-          "name": "self-assess-portfolio",
-          "description": "Grades each repo in a directory of git repositories Red/Amber/Green/Gray by worst-signal-wins, and requires an explicit portfolio directory when cwd is itself a git repo. Use when the user asks to \"sweep multiple repos\", \"assess our whole portfolio\", \"grade all our projects\", or names a parent directory containing several git repositories."
-        },
-        {
-          "id": "self-assess:self-assess-preflight",
-          "name": "self-assess-preflight",
-          "description": "Verifies language detection, tool availability, smoke-parseability, house-rules presence, git/CI presence, and doc presence, then assigns a Ready/Ready-with-gaps/Not-ready verdict per downstream skill. Use when the user asks to \"check if this repo is ready for self-assess\", \"run preflight\", \"can self-assess analyze this codebase\", or before any other self-assess-* skill runs for the first time in a repo; also invoked at the start of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-stage-map",
-          "name": "self-assess-stage-map",
-          "description": "Extracts the real import/use graph per detected language, clusters files into stages by shallowest package boundary (never by manifest directory), and writes the full stage graph other self-assess skills depend on. Use when the user asks to \"map the repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\", or as the first step of self-assess-autopilot's CHECK phase."
-        },
-        {
-          "id": "self-assess:self-assess-status",
-          "name": "self-assess-status",
-          "description": "Reports which self-assess artifacts exist, whether they're stale relative to the latest commit, and never fabricates data for a skill that has not run. Use when the user asks \"where does self-assess stand\", \"what's stale in our analysis\", \"what should we run next\", or \"self-assess status\"."
-        },
-        {
-          "id": "self-assess:self-assess-transform-brief",
-          "name": "self-assess-transform-brief",
-          "description": "Synthesizes stage-map, arch-health, and every other domain summary into a phased, ranked, read-only transformation plan. Use after self-assess's finding skills have run, when the user asks to \"synthesize the findings into a plan\", \"write the modernization brief\", \"what should we fix and in what order\", or as the PLAN step of self-assess-autopilot."
-        },
-        {
-          "id": "self-assess:self-assess-transform-execute",
-          "name": "self-assess-transform-execute",
-          "description": "Applies exactly one human-authorized phase of MODERNIZATION_BRIEF.md to the codebase. Use when the user explicitly asks to \"execute phase N from the modernization brief\", \"apply this transform phase\", or \"run the merge/split transform-execute proposed\". It applies exactly one human-authorized phase from MODERNIZATION_BRIEF.md, gated behind transform.mode=\"execute\", a clean tree, and every Open Question resolved -- then hands off to andon-verify without self-verifying. Not for applying a set of approved fixes across a repo, or for proving each fix as it lands -- that is andon-loop; this skill requires a numbered phase in MODERNIZATION_BRIEF.md and refuses without one."
-        },
-        {
-          "id": "self-assess:self-assess-ui-audit",
-          "name": "self-assess-ui-audit",
-          "description": "Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", \"review this UI before we ship\", or as part of self-assess-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review."
-        }
-      ],
+      "name": "passung",
+      "version": "0.6.0",
+      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see befund); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "skills": [],
       "agents": [
         {
-          "id": "self-assess:arch-health-auditor",
-          "name": "arch-health-auditor",
-          "description": "Use this agent when a repository's real stage/wire dependency graph (as built by stage-mapper) needs to be judged for god-modules, circular dependencies, or layering violations, with every candidate confirmed against actual source.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "self-assess:business-rules-miner",
-          "name": "business-rules-miner",
-          "description": "Use this agent when a codebase's executable business/domain logic needs mining into testable Given/When/Then rule specs with file:line citations, priority, and confidence.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "self-assess:ci-topology-auditor",
-          "name": "ci-topology-auditor",
-          "description": "Use this agent when a repository's git remote topology and CI configuration need auditing for redundancy, mirror risk, or drift against CI documentation.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "self-assess:complexity-surveyor",
-          "name": "complexity-surveyor",
-          "description": "Use this agent when one stage, module, or language slice of the repo needs SLOC, file count, and cyclomatic-complexity measurement for a tech-debt prioritization index.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Bash"
-          ]
-        },
-        {
-          "id": "self-assess:convention-auditor",
-          "name": "convention-auditor",
-          "description": "Use this agent when code needs to be verified against documented project conventions from CLAUDE.md, house-rules.md, CONTRIBUTING, ADRs, or linter config.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "self-assess:docs-drift-auditor",
-          "name": "docs-drift-auditor",
-          "description": "Use this agent when documentation needs checking for drift against the actual current state of the codebase.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "self-assess:idiom-auditor",
-          "name": "idiom-auditor",
-          "description": "Use this agent when a codebase needs checking for deprecated language/library idioms judged against the actual version the repo targets, plus generic code smells.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "self-assess:idiom-remediator",
-          "name": "idiom-remediator",
-          "description": "Use this agent when a cluster of same-file, same-idiom-kind, already-verified self-assess-code-idiom \"modernization\"-category findings needs exactly those mechanical rewrites applied at their cited locations, and nothing else. Typical trigger is self-assess-idiom-fix dispatching one remediator per (file, kind) cluster of eligible findings, never a batch spanning multiple files. Only ever dispatched by self-assess-idiom-fix against code-idiom findings -- not for lehre rule-card conformance findings (lehre's conformance-remediator), not for cupertino handbook findings (cupertino's handbook-remediator), not for `smell`-category or `severityNote`-flagged findings, and not from a bare user request carrying no pipeline context.",
-          "tools": [
-            "Read",
-            "Edit"
-          ]
-        },
-        {
-          "id": "self-assess:stage-mapper",
-          "name": "stage-mapper",
-          "description": "Use this agent when a repository's real import/use graph needs extraction and clustering into architectural stages by shallowest package boundary, never by manifest directory.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "self-assess:transform-executor",
-          "name": "transform-executor",
-          "description": "Use this agent when a single, already-authorized phase from MODERNIZATION_BRIEF.md (a Merge, Split, or layering-violation fix) needs its code changes actually applied, with every Open Question for that phase already resolved by a human.",
+          "id": "passung:align-executor",
+          "name": "align-executor",
+          "description": "Applies an approved canonical pattern to ONE module of an in-flight alignment pass by following a proven pilot playbook — minimal diff, then runs that module's real tests to prove it. Refuses to align anything if no playbook exists yet. Write access is scoped to its own module's directory. Use only AFTER a pilot module has been aligned and its playbook written.",
           "tools": [
             "Read",
             "Glob",
             "Grep",
             "Write",
-            "Edit"
+            "Edit",
+            "Bash"
           ]
         },
         {
-          "id": "self-assess:ui-auditor",
-          "name": "ui-auditor",
-          "description": "Use this agent when a codebase's UI surface (JSX/TSX, Vue/Svelte, HTML, CSS/SCSS) needs a static, read-only audit for accessibility, semantic-markup, and hardcoded design-value problems.",
+          "id": "passung:passung-critic",
+          "name": "passung-critic",
+          "description": "Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the second-judge pass in canonize and verify.",
           "tools": [
             "Read",
             "Glob",
-            "Grep"
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "passung:equivalence-verifier",
+          "name": "equivalence-verifier",
+          "description": "Independently re-checks that an aligned module behaves identically to before alignment and that its docs/comments still match the code. Re-derives evidence from the diff and the module's tests rather than trusting the aligner's own report. Use as the verification pass after passung-align.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "passung:pattern-analyst",
+          "name": "pattern-analyst",
+          "description": "Surveys a live codebase to find how a given convention dimension (error handling, logging, docstrings, module layout, naming, test structure, ...) is actually handled, clustering distinct approaches into variants with file:line evidence and a maturity/recency read from git history. Use for discovery, variant clustering, and re-deriving a maturity signal as a referee check.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "passung:pattern-extractor",
+          "name": "pattern-extractor",
+          "description": "Derives which variant of an undocumented, non-deprecated convention should become the canonical form — weighing frequency, maturity, and recency, and refusing to force a pick when the signal is genuinely tied. Use when a divergent dimension from consistency.json needs a Pattern Card.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
           ]
         }
       ],
-      "commands": [],
+      "commands": [
+        "passung-align",
+        "passung-brief",
+        "passung-canonize",
+        "passung-map",
+        "passung-preflight",
+        "passung-scan",
+        "passung-status",
+        "passung-verify"
+      ],
       "hooks": {
-        "present": true,
-        "events": [
-          "PreToolUse"
-        ]
+        "present": false,
+        "events": []
       },
-      "workflows": []
+      "workflows": [
+        "passung-align-batch",
+        "passung-canonize",
+        "passung-scan",
+        "passung-verify-scan"
+      ]
     },
     {
       "name": "takt",
@@ -1353,6 +1232,127 @@
         ]
       },
       "workflows": []
+    },
+    {
+      "name": "zirkel",
+      "version": "0.9.0",
+      "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
+      "skills": [
+        {
+          "id": "zirkel:zirkel-calibrate-format",
+          "name": "zirkel-calibrate-format",
+          "description": "Pins down an ambiguous output format, style, tone, or schema by anchoring it to 2-5 concrete input/output examples instead of more prose. Use when prose keeps under- or over-specifying the target shape: when the target cannot be described in words, is non-standard, or involves subtle tone or layout choices, or when a zirkel-solve stage output shape is fuzzy."
+        },
+        {
+          "id": "zirkel:zirkel-clarify-scope",
+          "name": "zirkel-clarify-scope",
+          "description": "Scopes an ambiguous task before any work begins — restates it with defaults made explicit, lists known facts (flagging low-confidence ones), and surfaces the interpretation forks that could send the work the wrong way. Use when a task's phrasing supports multiple reasonable interpretations, success criteria aren't stated, or scope is underspecified: \"what exactly do you want here\", \"before I start, let me pin this down\", a vague one-line request, or the first phase of zirkel-solve."
+        },
+        {
+          "id": "zirkel:zirkel-decompose-chain",
+          "name": "zirkel-decompose-chain",
+          "description": "Breaks a scoped problem or selected approach into a 2-5 stage pipeline, each stage with an explicit input contract, output contract, and dependsOn list, and derives the parallel-safe wave grouping from the dependency graph. Use when a task is big enough to need staging with clear hand-offs between steps: \"break this into steps\", \"what's the pipeline here\", \"map the stages\", \"what depends on what\", or the Decompose phase of zirkel-solve."
+        },
+        {
+          "id": "zirkel:zirkel-draft-revise",
+          "name": "zirkel-draft-revise",
+          "description": "Scores an already-drafted artifact 1-5 against explicit numbered criteria and selectively revises only the criteria that fall at or below threshold, leaving what already works untouched — then reports exactly what changed. Use when a draft exists and needs targeted iteration rather than a rewrite: \"score this against these criteria and fix what's weak\", \"revise selectively\", \"which parts fall short\", \"iterate on this draft\", or the Revise phase of zirkel-solve."
+        },
+        {
+          "id": "zirkel:zirkel-explore-branches",
+          "name": "zirkel-explore-branches",
+          "description": "Explores multiple genuinely-distinct approaches to a scoped problem in parallel, scores each on Feasibility/Impact/Risk, and selects a winner — so the work does not anchor on the first idea. Use when a task has more than one viable approach and picking the first that comes to mind would be a mistake: \"what are our options here\", \"don't just do the obvious thing\", \"weigh a few approaches\", \"explore alternatives\", or the Explore phase of zirkel-solve."
+        },
+        {
+          "id": "zirkel:zirkel-ground-evidence",
+          "name": "zirkel-ground-evidence",
+          "description": "Checks that every factual claim in an answer or artifact is traceable to a specific source — a file:line, a URL, or explicitly-flagged prior knowledge — and refuses to assert anything beyond what's actually verified. Use whenever an answer, summary, or report makes assertions that need grounding rather than recall: \"cite your sources\", \"don't make this up\", \"ground this in the actual transcript/code/docs/data\", a number or metric that must trace back to where it came from, \"verify before asserting\", or a factual-claim-heavy stage of zirkel-solve."
+        },
+        {
+          "id": "zirkel:zirkel-investigate-dynamically",
+          "name": "zirkel-investigate-dynamically",
+          "description": "Works a problem whose next action can only be chosen after seeing the last result — a Reasoning / Action / Observation loop where each observation determines the next step. Use when the sequence of tool calls cannot be planned upfront: \"figure out why X is happening\", \"trace this through the system\", \"I don't know where the problem is, go find it\", open-ended debugging or discovery, or an Execute stage of zirkel-solve whose steps are unknown at the start."
+        },
+        {
+          "id": "zirkel:zirkel-map-relationships",
+          "name": "zirkel-map-relationships",
+          "description": "Answers a question that turns on entity/dependency/causal structure by extracting indexed relationship triples and traversing them hop by hop, citing the triple index at every hop. Use when the answer requires following a chain through named entities and relationships: \"how does A affect D through the chain\", \"trace the dependency path\", \"who reports to whom\", \"what causes what here\", multi-hop \"why\" questions, or a zirkel-solve stage that needs graph traversal. Not for deriving a repository's real import/module graph from source — \"map this repo's architecture\", \"show me the real module boundaries\", \"map stages and wires\" belong to befund-stage-map, which parses imports per language and writes the stage graph other skills consume. Use this skill only to reason over a relationship graph whose entities are already established, in code or any other domain."
+        },
+        {
+          "id": "zirkel:zirkel-negotiate-tradeoffs",
+          "name": "zirkel-negotiate-tradeoffs",
+          "description": "After zirkel-explore-branches has selected a winner, synthesizes a hybrid that combines strengths from 2-3 branches — but only presents it if it actually beats every source branch on at least one axis. Use when a single winner leaves value on the table and you want the best of several: \"can we combine the best of these approaches\", \"what if we merged A and B\", \"the winner's good but I liked X from the runner-up\". Runs strictly AFTER branch selection, never as a substitute for it."
+        },
+        {
+          "id": "zirkel:zirkel-optimize-instruction",
+          "name": "zirkel-optimize-instruction",
+          "description": "Optimizes the exact wording of an instruction/prompt for a recurring task using APE — generates one candidate per framing, scores them against real test cases, and critiques the winner. Use when a prompt will be reused and its wording matters: \"tune this prompt\", \"find the best wording for this instruction\", \"optimize this system prompt\", \"which phrasing works best\", with representative test cases available. Not for one-off prompts with no test cases."
+        },
+        {
+          "id": "zirkel:zirkel-reason-verify",
+          "name": "zirkel-reason-verify",
+          "description": "Matches reasoning effort to concrete failure-mode signals by climbing a 4-rung ladder — zero-shot, Chain-of-Thought, Self-consistency, or PAL (code offload) — and applies Multimodal-CoT first when the input has an image or diagram. Use when a task shows a real risk of a silent reasoning error: multi-step arithmetic, a single-correct-answer puzzle where a wrong early assumption is costly, a precision-critical calculation, or an image/diagram input. Not for well-trodden single-step questions."
+        },
+        {
+          "id": "zirkel:zirkel-solve",
+          "name": "zirkel-solve",
+          "description": "Runs the full zirkel pipeline — Clarify -> Explore (conditional) -> Decompose -> Execute -> Revise — for a task that is complex/ambiguous AND needs staged decomposition AND carries real ambiguity or multiple viable approaches worth weighing. Use when a request is too big or too underspecified to answer in one shot: \"solve this properly\", \"work through this step by step\", \"this is complex, break it down and do it\", or any multi-faceted task where jumping straight to an answer would anchor on the wrong interpretation or approach. Not for simple, well-specified, single-step tasks."
+        },
+        {
+          "id": "zirkel:zirkel-summarize-trace",
+          "name": "zirkel-summarize-trace",
+          "description": "After a zirkel-solve pipeline finishes, produces a compact written record for handoff, PR comment, or documentation — 7 sections (6 if Explore did not run) covering what was asked, assumed, weighed, run, produced, revised, and NOT done. Use when a finished multi-stage run needs to be captured: \"summarize what we did\", \"write this up for the PR\", \"hand this off\", \"document the run\", after zirkel-solve completes."
+        },
+        {
+          "id": "zirkel:zirkel-verify-assumptions",
+          "name": "zirkel-verify-assumptions",
+          "description": "Checks exactly ONE named assumption against real evidence in at most 3 steps and reports one outcome: confidence raised (>=90), reading changed, or still unresolved. Use to resolve a single load-bearing uncertainty — typically a blocking entry surfaced by zirkel-clarify-scope: \"verify this one assumption\", \"is it actually true that X\", \"check this before we rely on it\". For multiple uncertainties, invoke once per uncertainty — the step budget is never shared."
+        }
+      ],
+      "agents": [
+        {
+          "id": "zirkel:branch-proposer",
+          "name": "branch-proposer",
+          "description": "Generates one genuinely distinct approach to a scoped problem under an assigned angle (conservative/ambitious/pragmatic/contrarian/minimal/maximal), OR scores one existing branch on Feasibility/Impact/Risk and names its biggest blocker. Dispatched in parallel by zirkel-explore-branches so no branch anchors the others. Use when a scoped problem has multiple viable approaches that must be generated or scored independently.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "zirkel:instruction-candidate",
+          "name": "instruction-candidate",
+          "description": "Drafts one candidate instruction under a specific APE framing (rule-based, example-based, definition-based, question-based, or chain-of-thought-based), OR scores a candidate against fixed test cases, OR critiques the winning candidate against meta-prompting's 4-item checklist. Dispatched per-step by zirkel-optimize-instruction. Use when optimizing exact instruction wording for a recurring task with real test cases.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "zirkel:reasoning-path",
+          "name": "reasoning-path",
+          "description": "Produces exactly one independent reasoning attempt under a specific assigned strategy (forward deduction, backward from options, or constraint mapping), in complete isolation from any parallel attempt. Dispatched three-at-once by zirkel-reason-verify's self-consistency tier (Rung 2a). Use when a single-correct-answer task needs multiple isolated reasoning passes that vote.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": false,
+        "events": []
+      },
+      "workflows": [
+        "zirkel-explore-branches",
+        "zirkel-optimize-instruction",
+        "zirkel-reason-verify",
+        "zirkel-solve"
+      ]
     }
   ],
   "skillIds": [
@@ -1369,25 +1369,27 @@
     "arbeitsplan:arbeitsplan-run",
     "arbeitsplan:arbeitsplan-start",
     "arbeitsplan:arbeitsplan-status",
+    "befund:befund-arch-health",
+    "befund:befund-autopilot",
+    "befund:befund-ci-topology",
+    "befund:befund-code-idiom",
+    "befund:befund-complexity-score",
+    "befund:befund-docs-drift",
+    "befund:befund-extract-rules",
+    "befund:befund-idiom-fix",
+    "befund:befund-lint-audit",
+    "befund:befund-portfolio",
+    "befund:befund-preflight",
+    "befund:befund-stage-map",
+    "befund:befund-status",
+    "befund:befund-transform-brief",
+    "befund:befund-transform-execute",
+    "befund:befund-ui-audit",
     "cli-scaffold:cli-architecture",
     "cli-scaffold:cli-scaffold-compiled",
     "cli-scaffold:cli-scaffold-interpreted",
     "cli-scaffold:cli-scaffold-shell",
     "cli-scaffold:scaffold-cli",
-    "compass:compass-calibrate-format",
-    "compass:compass-clarify-scope",
-    "compass:compass-decompose-chain",
-    "compass:compass-draft-revise",
-    "compass:compass-explore-branches",
-    "compass:compass-ground-evidence",
-    "compass:compass-investigate-dynamically",
-    "compass:compass-map-relationships",
-    "compass:compass-negotiate-tradeoffs",
-    "compass:compass-optimize-instruction",
-    "compass:compass-reason-verify",
-    "compass:compass-solve",
-    "compass:compass-summarize-trace",
-    "compass:compass-verify-assumptions",
     "confab:confab-agentic-reliability",
     "confab:confab-assertion-audit",
     "confab:confab-code-change",
@@ -1438,22 +1440,20 @@
     "nacharbeit:nacharbeit-probe",
     "nacharbeit:nacharbeit-review",
     "nacharbeit:nacharbeit-status",
-    "self-assess:self-assess-arch-health",
-    "self-assess:self-assess-autopilot",
-    "self-assess:self-assess-ci-topology",
-    "self-assess:self-assess-code-idiom",
-    "self-assess:self-assess-complexity-score",
-    "self-assess:self-assess-docs-drift",
-    "self-assess:self-assess-extract-rules",
-    "self-assess:self-assess-idiom-fix",
-    "self-assess:self-assess-lint-audit",
-    "self-assess:self-assess-portfolio",
-    "self-assess:self-assess-preflight",
-    "self-assess:self-assess-stage-map",
-    "self-assess:self-assess-status",
-    "self-assess:self-assess-transform-brief",
-    "self-assess:self-assess-transform-execute",
-    "self-assess:self-assess-ui-audit"
+    "zirkel:zirkel-calibrate-format",
+    "zirkel:zirkel-clarify-scope",
+    "zirkel:zirkel-decompose-chain",
+    "zirkel:zirkel-draft-revise",
+    "zirkel:zirkel-explore-branches",
+    "zirkel:zirkel-ground-evidence",
+    "zirkel:zirkel-investigate-dynamically",
+    "zirkel:zirkel-map-relationships",
+    "zirkel:zirkel-negotiate-tradeoffs",
+    "zirkel:zirkel-optimize-instruction",
+    "zirkel:zirkel-reason-verify",
+    "zirkel:zirkel-solve",
+    "zirkel:zirkel-summarize-trace",
+    "zirkel:zirkel-verify-assumptions"
   ],
   "agentIds": [
     "andon:andon-adjudicator",
@@ -1471,15 +1471,18 @@
     "arbeitsplan:refactorer",
     "arbeitsplan:scope-prover",
     "arbeitsplan:synthesizer",
+    "befund:arch-health-auditor",
+    "befund:business-rules-miner",
+    "befund:ci-topology-auditor",
+    "befund:complexity-surveyor",
+    "befund:convention-auditor",
+    "befund:docs-drift-auditor",
+    "befund:idiom-auditor",
+    "befund:idiom-remediator",
+    "befund:stage-mapper",
+    "befund:transform-executor",
+    "befund:ui-auditor",
     "cli-scaffold:cli-scaffold-verifier",
-    "codebase-consistency:align-executor",
-    "codebase-consistency:consistency-critic",
-    "codebase-consistency:equivalence-verifier",
-    "codebase-consistency:pattern-analyst",
-    "codebase-consistency:pattern-extractor",
-    "compass:branch-proposer",
-    "compass:instruction-candidate",
-    "compass:reasoning-path",
     "confab:agentic-reliability-auditor",
     "confab:assertion-auditor",
     "confab:confab-remediator",
@@ -1505,16 +1508,13 @@
     "matrize:token-emitter",
     "nacharbeit:component-finder",
     "nacharbeit:fix-verifier",
-    "self-assess:arch-health-auditor",
-    "self-assess:business-rules-miner",
-    "self-assess:ci-topology-auditor",
-    "self-assess:complexity-surveyor",
-    "self-assess:convention-auditor",
-    "self-assess:docs-drift-auditor",
-    "self-assess:idiom-auditor",
-    "self-assess:idiom-remediator",
-    "self-assess:stage-mapper",
-    "self-assess:transform-executor",
-    "self-assess:ui-auditor"
+    "passung:align-executor",
+    "passung:passung-critic",
+    "passung:equivalence-verifier",
+    "passung:pattern-analyst",
+    "passung:pattern-extractor",
+    "zirkel:branch-proposer",
+    "zirkel:instruction-candidate",
+    "zirkel:reasoning-path"
   ]
 }

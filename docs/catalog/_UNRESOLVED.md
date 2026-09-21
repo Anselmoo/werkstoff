@@ -34,12 +34,12 @@ All nine have since been restored as prompt-less beats directly in their recipes
 `beats:` list, in the table position the old catalog gave them, with the table's "Why
 here, not later" cell copied in verbatim as `why:` and no `prompt:` key:
 
-- **Scope an ambiguous task** — `compass:compass-negotiate-tradeoffs` restored (position
+- **Scope an ambiguous task** — `zirkel:zirkel-negotiate-tradeoffs` restored (position
   3 of 4).
 - **Scaffold a new project or CLI** — `cli-scaffold:cli-architecture` restored (position
   2 of 4).
 - **Refactor for maintainability** — `superpowers:test-driven-development` (position 3 of
-  5) and `codebase-consistency:equivalence-verifier` (position 5 of 5) restored.
+  5) and `passung:equivalence-verifier` (position 5 of 5) restored.
 - **Collapse duplication hand-synced across N sites** — `confab:confab-contract-drift`
   restored (position 3 of 4).
 - **Migrate a return shape or type representation** — `andon:andon-verify` restored
@@ -59,7 +59,7 @@ case the schema fix supports, and one of them (`superpowers:writing-plans`) is a
 cross-ecosystem beat of exactly the kind this catalog exists to surface. They were
 restored on the same rule, each with its own entry's "Why here, not later" cell verbatim:
 
-- **Read-only design study with an evidence legend** — `compass:compass-summarize-trace`
+- **Read-only design study with an evidence legend** — `zirkel:zirkel-summarize-trace`
 - **A release path that has never succeeded** — `superpowers:writing-plans`
 - **Same-stack version uplift** — `confab:confab-dependency-audit`
 

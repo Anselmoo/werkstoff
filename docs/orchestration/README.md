@@ -23,11 +23,11 @@ one is wrong. And `claude-security` sets `disable-model-invocation: true`, so th
 can never reach for it on its own.
 
 Within werkstoff, eight of the twelve target one distinct failure mode each — `andon` on
-handoffs between stages that were never proven, `self-assess` on a repo that cannot
+handoffs between stages that were never proven, `befund` on a repo that cannot
 describe its own health, `confab` on assertions, contracts and dependency manifests
-that look right and are not, `compass` on reasoning stages silently skipped under
+that look right and are not, `zirkel` on reasoning stages silently skipped under
 pressure, `cupertino` on interfaces decorated instead of designed, `cli-scaffold` on
-CLIs that are not production-grade, and `codebase-consistency` on the narrow case of
+CLIs that are not production-grade, and `passung` on the narrow case of
 two or more valid, undocumented variants of the same convention coexisting, and
 `lehre` on code written against a doctrine nothing enforced at write time. The ninth,
 `takt`, ships no skills at all: it is one `PreToolUse` hook that denies an
@@ -85,12 +85,12 @@ into another workflow's beats and gates.
 |---|---|
 |`andon-loop`|Owns and persists the OKF ledger; a pass is a traversal of the whole stream|
 |`confab-cycle`|Re-runs audits to convergence under a pass cap enforced by `scripts/cycle_engine.py`|
-|`self-assess-autopilot`|CHECK -> PLAN -> approval gate -> FIX+VALIDATE, each phase consuming the last|
-|`self-assess-transform-brief`|Gated on `stage_graph.json`; degrades to "Ready-with-gaps" without it|
-|`self-assess-transform-execute`|Applies exactly one human-authorized phase of `MODERNIZATION_BRIEF.md`|
-|`compass-solve`|Clarify -> Explore -> Decompose -> Execute -> Revise as one fixed pipeline|
+|`befund-autopilot`|CHECK -> PLAN -> approval gate -> FIX+VALIDATE, each phase consuming the last|
+|`befund-transform-brief`|Gated on `stage_graph.json`; degrades to "Ready-with-gaps" without it|
+|`befund-transform-execute`|Applies exactly one human-authorized phase of `MODERNIZATION_BRIEF.md`|
+|`zirkel-solve`|Clarify -> Explore -> Decompose -> Execute -> Revise as one fixed pipeline|
 |`cupertino-handbook-fix`|Applies mechanical findings from a prior `cupertino-handbook-check` pass|
-|`/consistency-map`, `/consistency-canonize`, `/consistency-brief`, `/consistency-align`, `/consistency-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
+|`/passung-map`, `/passung-canonize`, `/passung-brief`, `/passung-align`, `/passung-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
 |`nacharbeit-review`|Bakes its args, calibrates a finder against planted fixtures and a sealed hold-out, then finds, routes, verifies and synthesizes; every later step reads what the calibration froze|
 |`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
 |`arbeitsplan-compile`|Scopes the problem, derives acceptance criteria, proves the write scope and picks patterns, then writes the spec every later phase reads; a phase invoked without it has no contract to run under|
@@ -98,11 +98,11 @@ into another workflow's beats and gates.
 |`matrize-decode`|Fans reference-decoders out under a circuit breaker, then has each card re-derived from its cited source by a blind referee; a card that skips the referee is an unverified claim|
 |`matrize-brief`|Stops outright if any discovery artefact is missing, and its signed approval block is what the three build methods read as their entry gate|
 |`matrize-emit`|Runs the committed formatters against a `tokens.json` the earlier phases wrote; there is nothing to format before they have|
-|`andon-status`, `confab-status`, `self-assess-status`, `nacharbeit-status`, `matrize-status`, `arbeitsplan-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/consistency-status` behaves the same way)|
+|`andon-status`, `confab-status`, `befund-status`, `nacharbeit-status`, `matrize-status`, `arbeitsplan-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/passung-status` behaves the same way)|
 
-Everything else in werkstoff is a leaf. That covers all of `compass`'s reasoning
+Everything else in werkstoff is a leaf. That covers all of `zirkel`'s reasoning
 skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
-paradigm and doctrine skills, `self-assess`'s finding skills, `lehre`'s gauge and
+paradigm and doctrine skills, `befund`'s finding skills, `lehre`'s gauge and
 validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `matrize`'s `collect`, `name`,
 `retrofit` and `dolmetsch`, every
 `*-preflight`, and every named agent across all twelve plugins — including nacharbeit's
@@ -136,17 +136,17 @@ eight agents state they are not for direct invocation (as of `claude-security@0.
 Most multi-plugin work fits the same four beats. Name leaves at each beat, and reach
 for an orchestrator only when one of them owns the task outright.
 
-**Inspect and research.** `compass-clarify-scope` before any work begins, then
-`self-assess-stage-map` for the real import graph, `self-assess-arch-health`,
-`compass-map-relationships` and `compass-ground-evidence` for grounding, and the
+**Inspect and research.** `zirkel-clarify-scope` before any work begins, then
+`befund-stage-map` for the real import graph, `befund-arch-health`,
+`zirkel-map-relationships` and `zirkel-ground-evidence` for grounding, and the
 official `legacy-analyst` or `code-explorer` where the code is unfamiliar.
 `cupertino-backwards` goes first in any design-shaped task — before `cupertino-focus`
 or any other cupertino technique.
 
 **Split into workstreams.** superpowers `brainstorming` then `writing-plans` produce
-the plan; `compass-decompose-chain` produces the dependency order;
-`compass-explore-branches` produces genuinely distinct options before one is picked;
-`compass-negotiate-tradeoffs` settles the fork the plan cannot.
+the plan; `zirkel-decompose-chain` produces the dependency order;
+`zirkel-explore-branches` produces genuinely distinct options before one is picked;
+`zirkel-negotiate-tradeoffs` settles the fork the plan cannot.
 
 **Execute in parallel.** superpowers `dispatching-parallel-agents` supplies the only
 parallel primitive that matters, verbatim: "Multiple dispatch calls in one response =
@@ -154,7 +154,7 @@ parallel execution. One per response = sequential." Pair it with
 `subagent-driven-development`, `test-driven-development`, and `using-git-worktrees`
 for isolation. Leaf work at this beat: `scaffold-cli` under the `cli-architecture`
 doctrine, `cupertino-council` at UI build-time before any code is written, and
-`self-assess-idiom-fix` for mechanical rewrites.
+`befund-idiom-fix` for mechanical rewrites.
 
 **Verify.** `andon-verify` proves one named wire through whichever of seven strategies
 its type calls for; `confab-assertion-audit` asks whether the tests would catch a
@@ -178,7 +178,7 @@ break this plan into independent workstreams -- tell me what actually depends on
 and what can truly run in parallel
 ````
 
-That single ask dispatches `compass:compass-decompose-chain` to derive the split, then
+That single ask dispatches `zirkel:zirkel-decompose-chain` to derive the split, then
 hands each independent workstream to `superpowers:subagent-driven-development` and
 `superpowers:dispatching-parallel-agents`, with `andon:andon-verify` proving each one
 before it counts as done.
@@ -193,9 +193,9 @@ changes actually affect our code?
 
 `code-modernization:version-delta-analyst` is dispatched directly — `modernize-brief.md`
 sanctions exactly this, and the eight-stage pipeline around it would refuse without
-artifacts this task has no reason to produce. `self-assess:self-assess-code-idiom` then
+artifacts this task has no reason to produce. `befund:befund-code-idiom` then
 judges idioms against the version this repo actually targets, and
-`self-assess:self-assess-idiom-fix` applies only the mechanical fixes.
+`befund:befund-idiom-fix` applies only the mechanical fixes.
 
 **`pr-review-toolkit:code-simplifier`, at the "Verify" beat** — from
 [`audit-against-documented-conventions`](../catalog/quality-verification/audit-against-documented-conventions):
@@ -206,8 +206,8 @@ the code against them
 ````
 
 `code-simplifier` runs last in that recipe, deliberately: it simplifies the now-aligned
-code only after `self-assess` has audited the documented rules and
-`codebase-consistency` has canonized the undocumented ones, so nothing gets simplified
+code only after `befund` has audited the documented rules and
+`passung` has canonized the undocumented ones, so nothing gets simplified
 twice.
 
 ## What is already wired
@@ -215,13 +215,13 @@ twice.
 Three handoffs exist in the skill definitions. Orchestrating them by hand duplicates
 work and can double-apply a fix.
 
-- `self-assess-autopilot` hands FIX+VALIDATE to `andon:andon-loop` once its approval
+- `befund-autopilot` hands FIX+VALIDATE to `andon:andon-loop` once its approval
   gate passes, and never edits source itself. Without the `andon` plugin installed it
   reports that the plan is ready and stops.
-- `self-assess-idiom-fix` and `self-assess-transform-execute` both declare their own
+- `befund-idiom-fix` and `befund-transform-execute` both declare their own
   changes unverified and hand off to `andon:andon-verify` — or `andon-loop` for a
   ledger-recorded proof — rather than self-verifying.
-- `self-assess-autopilot`'s `autopilot-confab-optional` rule attempts confab's audit
+- `befund-autopilot`'s `autopilot-confab-optional` rule attempts confab's audit
   skills only when confab actually appears in the session's skill listing, reports
   "confab not installed" plainly when it does not, and never fabricates confab-shaped
   findings to fill the gap.

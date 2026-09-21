@@ -5,7 +5,7 @@ summary: "Enumerate every copy, fan updates out in parallel, then prove the tree
 openingPrompt: "This vendored artifact needs propagating to every copy -- list every copy and its canonical source exhaustively first, update them all in parallel in one dispatch, and then prove the working tree actually matches the committed lock instead of trusting that the copy loop worked."
 external: ["superpowers"]
 beats:
-  - skill: "compass:compass-map-relationships"
+  - skill: "zirkel:zirkel-map-relationships"
     why: "The count must be exhaustive before the first write; a missed copy is silent drift."
     prompt: "list every vendored copy of this artifact and the canonical source they're supposed to track"
   - skill: "superpowers:dispatching-parallel-agents"

@@ -197,7 +197,7 @@ instead of `permissionDecisionReason`, makes the runtime silently ignore the den
 | `H-ESCAPE-HATCH` | The script reads a `<NAME>_DISABLE_GUARD` env var and names it again in a deny reason. | hookscript | minor | hazards.md ("escape hatch named in the hook's own deny message") |
 | `H-FAIL-CLOSED` | The last broad `except` handler calls `deny(…)` (or `block(…)` in a `Stop` hook), not `allow()`/`exit(0)` (AST proxy; documented). | hookscript | minor | hazards.md "All fail closed"; takt docstring |
 | `H-MULTI-PATH` | An edit-gating script reads `edits[].file_path` and `file_paths` besides `file_path`. | hookscript | minor | `takt_guard.py::edit_targets`; `test/plugins/verify-takt-payload-shapes.py` |
-| `H-TEST-EXISTS` | `test_<stem>.py` exists beside the hook script (or anywhere under the plugin). | hookscript | minor | CLAUDE.md "verify the instrument"; lehre/andon/self-assess convention |
+| `H-TEST-EXISTS` | `test_<stem>.py` exists beside the hook script (or anywhere under the plugin). | hookscript | minor | CLAUDE.md "verify the instrument"; lehre/andon/befund convention |
 
 ### Judgement
 
@@ -352,7 +352,7 @@ once (lehre shipped without a root-README bullet or a hazards card).
 | F3 | five different body-length ceilings | **< 500 lines** (official). Word-count targets are advisory and produce no finding. |
 | F4 | `version:` in frontmatter | Not a documented field. `M-VERSION-FIELD`, `nit`. |
 | F5 | hook docs contradict themselves on prompt-hook events and `hooks.json` shape | **In scope, as `H-*` / `HQ-*`.** An enforcement hook is `type: "command"` (a prompt hook asks a model to decide, which is the model-mediated path a hook exists to replace — hazards.md); `H-TYPE-COMMAND` reports a prompt hook. The `hooks.json` shape graded is the one every command hook in the wild uses: `hooks.<event>[].{matcher, hooks[].{type, command, timeout}}`. |
-| F6 | `.claude/commands/` is "legacy" | Reported **once**, as a cross-plugin `nit` against codebase-consistency's command set, not per file. |
+| F6 | `.claude/commands/` is "legacy" | Reported **once**, as a cross-plugin `nit` against passung's command set, not per file. |
 | F7 | ALL-CAPS / rigid structure is a yellow flag vs bulletproofing toolkit | **Form follows failure type** (`Q-OTHER-RIGIDITY`). Density of MUST/NEVER is never a finding on its own. |
 | F8 | description-restates-body: mechanical rule or judgement? | **Judgement (`Q-PROC-DESC-DUP`), not mechanical — measured, not assumed.** Word-overlap between a description sentence and the body was calibrated on a labelled corpus of 203 sentences (112 known-duplicated, removed 2026-09-20; 91 known-good, retained). The measure is INVERTED: duplicated sentences scored a median 0.43 overlap, retained ones 0.67, because a trigger sentence names other components' vocabulary while "what this agent does" reuses the body's own words. No threshold separates them — at every cut, false positives outnumber true ones (0.70: 13/112 caught, 35/91 wrongly flagged). What IS exact is the pointer sentence (`M-DESC-POINTER`, 56/62 before the 2026-09-20 trim, 0/62 after) and the aggregate cost (`P-DESC-BUDGET`). Do not replace F8 with a similarity threshold without re-running that calibration. |
 
