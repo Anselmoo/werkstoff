@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-21
+
+_No notable changes recorded._
+
 ## [0.6.1] - 2026-09-20
 
 ### Changed
