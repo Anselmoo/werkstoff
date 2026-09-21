@@ -273,7 +273,7 @@
     },
     {
       "name": "befund",
-      "version": "0.11.1",
+      "version": "1.0.0",
       "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
       "skills": [
         {

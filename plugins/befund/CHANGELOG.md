@@ -5,6 +5,8 @@ Releases before the rename were published as `self-assess`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `self-assess` to `befund`** -- a *Befund* is the written finding of an inspection: it records a condition and
   does not pass or reject the part, which is why `lehre` is the gauge and this is not.
