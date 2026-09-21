@@ -4,6 +4,10 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-21
+
+_No notable changes recorded._
+
 ## [0.3.1] - 2026-09-20
 
 ### Changed
