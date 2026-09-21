@@ -4,6 +4,10 @@ All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-21
+
+_No notable changes recorded._
+
 ## [0.10.0] - 2026-09-12
 
 ### Added
