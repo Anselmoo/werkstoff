@@ -5,6 +5,8 @@ Releases before the rename were published as `codebase-consistency`; tags under 
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `codebase-consistency` to `passung`** -- a *Passung* is the ISO fit class that decides whether two mating parts go
   together -- a property of the pair, which is exactly the failure this plugin is for.
