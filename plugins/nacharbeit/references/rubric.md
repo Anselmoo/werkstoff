@@ -135,7 +135,7 @@ Angles map to the user's review axes: `meaning`, `contract`, `clarity`, `step-lo
 | `Q-STEPS-NUMBERED` | step-logic | Multi-step work is numbered, in execution order, ideally with a copyable checklist. | minor | platform best-practices "Use workflows for complex tasks" |
 | `Q-STEPS-INPUTS` | step-logic | Every step consumes only artifacts an earlier step or a named input produced; no forward reference. | major | platform best-practices workflow pattern |
 | `Q-STEPS-GATE` | step-logic | A step that can fail names its gate and where to return ("Only proceed when…"; "If X fails, return to step N"). | major | platform best-practices "Implement feedback loops" |
-| `Q-STEPS-TERMINATION` | step-logic | Every loop or retry names its stop condition and its escalation path. | major | confab agentic-reliability categories; superpowers writing-skills |
+| `Q-STEPS-TERMINATION` | step-logic | Every loop or retry names its stop condition and its escalation path. | major | zeugnis agentic-reliability categories; superpowers writing-skills |
 | `Q-STEPS-PREDICATE` | step-logic | Branches key off an observable predicate, not an unconditional rule plus exemption clauses ("unless it matters"). | minor | superpowers writing-skills "observable conditional" |
 
 ### Procedure

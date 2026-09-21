@@ -22,7 +22,7 @@ one-size-fits-all:
 
 | Type | What it is | werkstoff examples |
 |---|---|---|
-| **Workflow** | a multi-step procedure with gates | `befund-extract-rules`, `zirkel-solve`, `andon-loop`, `confab-cycle` |
+| **Workflow** | a multi-step procedure with gates | `befund-extract-rules`, `zirkel-solve`, `andon-loop`, `zeugnis-cycle` |
 | **Artifact-generator** | produces a document/output | `befund-transform-brief` (writes `MODERNIZATION_BRIEF.md`) |
 | **Knowledge / reference** | domain facts the agent consults, no phases, no validation loop | `cli-scaffold`'s per-language `references/*.md` files |
 | **Tool-wrapper** | drives a script/CLI deterministically | `befund-status` (reads artifact staleness via `befund_cli.py`) |
@@ -30,7 +30,7 @@ one-size-fits-all:
 A skill can blend types. What you never do is impose a workflow skill's machinery
 (phases, validation loops, output skeletons) on a skill that isn't one — this is a real
 werkstoff-relevant caution, since `zirkel`'s advisory skills are deliberately *not*
-gated the way `andon`/`confab`'s enforcement skills are (see
+gated the way `andon`/`zeugnis`'s enforcement skills are (see
 `CLAUDE.md`'s "Enforcement: only hooks actually enforce" section — the same
 type-proportionality point, arrived at independently).
 
@@ -51,7 +51,7 @@ skill-name/
 - **scripts/** = "execute this for deterministic, token-free work."
 
 **werkstoff status:** `references/` is already an established pattern (`andon`,
-`cli-scaffold`, `confab`, `cupertino`, `befund` all use it, at both plugin-root and
+`cli-scaffold`, `zeugnis`, `cupertino`, `befund` all use it, at both plugin-root and
 skill-scope — see `CLAUDE.md`'s own note on `befund-extract-rules/references/`).
 `templates/` is not used anywhere in werkstoff today; `assets/` is — all 12 plugins,
 `takt` included, have a plugin-root `assets/` directory (`ls -d plugins/*/assets`),
@@ -89,7 +89,7 @@ moment (current repo state, the user's actual intent).
 | `name` | ≤64 chars, lowercase+hyphens, matches directory | Followed — `name:` always matches the skill's directory name across all 63 SKILL.md files |
 | `description` | ≤1024 chars, third person, WHAT + WHEN + literal phrases | Followed — longest is 631 chars (`cli-scaffold-shell`, as of `1cd5d07`), well under the ceiling; all use the "Use this skill when the user asks to..." trigger-phrase pattern |
 | `version` | not a field Wirasm/prp's spec lists at all (nor is it a documented Claude Code SKILL.md field — see `output-shape-findings.md` §5) | Was present, frozen at `0.1.0`, in all 16 `befund` skills only — removed; matches the other five plugins, which never had it |
-| `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `befund-idiom-fix`, `befund-transform-execute`, and `confab-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
+| `allowed-tools` / `disable-model-invocation` / `user-invocable` | invocation-control fields; a **distributed** skill auto-invoking a **side-effecting** action (commits, writes, deletes) should set `disable-model-invocation: true` in the shipped copy | Not used anywhere in werkstoff's SKILL.md frontmatter today. Worth a deliberate look, not an automatic change: `andon-loop`, `befund-idiom-fix`, `befund-transform-execute`, and `zeugnis-cycle` (fix mode) are auto-invocable, side-effecting workflow skills shipped in a plugin — exactly the case this rule is written for. Whether werkstoff wants that invocation-control tightening is a product decision for whoever maintains those plugins, not something this doc decides on its own. |
 
 ## Voice and disclosure
 
@@ -122,7 +122,7 @@ converging on the same number is a stronger signal than either alone.
   are...', 'You will...')."`
 
 **werkstoff status: inconsistent, confirmed by direct comparison.** `zirkel-solve` and
-`confab-cycle` are already imperative. `andon-loop` ("...for you (the orchestrator) to
+`zeugnis-cycle` are already imperative. `andon-loop` ("...for you (the orchestrator) to
 persist") and `scaffold-cli` ("You route... You never generate code yourself...") are
 second person. This is a real, citable inconsistency — not a hypothetical — worth
 converging on for new/edited skills, though rewriting all existing bodies for voice
@@ -160,7 +160,7 @@ read it.
 both: inline pointers to its three `references/*.md` files at their point of use
 (Step 4, with a mandatory-read marker on the report-sample file) *and* a trailing
 `## Resources` section listing all three — the reference example for this rule going
-forward. The other ~62 skills with `references/` (andon, cli-scaffold, confab, cupertino,
+forward. The other ~62 skills with `references/` (andon, cli-scaffold, zeugnis, cupertino,
 befund's other 15) are unaudited for this specific gap — flagged here, not fixed
 here.
 

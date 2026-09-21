@@ -4,7 +4,7 @@
 Mirrors andon's test_andon_enforce.py in rigor. verify-hooks-deny.py's generic
 probe cannot exercise this hook meaningfully -- its violating fixture has no
 edit-scope lock open, so the correct response to it is "inert", not "deny"
-(the same situation confab's scope-conditional hooks are in). These tests
+(the same situation zeugnis's scope-conditional hooks are in). These tests
 build the actual befund-managed scenarios instead.
 
 Run: python3 plugins/befund/hooks/test_guard_target_edit.py

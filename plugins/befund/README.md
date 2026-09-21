@@ -336,7 +336,7 @@ edit in every repo would be strictly worse than one missed check.
 | `transform-brief-gate-on-stage-graph` | skill-level file-existence check, degrades to a short brief |
 | `transform-brief-attributes-findings-via-lookup` | `attribution.attribute()` |
 | `transform-brief-work-item-ranking` | `formulas.work_item_rank()` — fixed `SEVERITY_WEIGHT` map |
-| `transform-brief-confab-routing` | `transform_routing.route_confab_finding()` |
+| `transform-brief-zeugnis-routing` | `transform_routing.route_zeugnis_finding()` |
 | `transform-execute-gate-transform-mode` | `gates.check_transform_mode()` / `check_phase_authorized()` |
 | `transform-execute-open-question-resolution` | `gates.check_open_questions_resolved()` |
 | `portfolio-grade-worst-signal-wins` | `portfolio.grade_repo()` — `Gray` branch checked first, unconditionally |
@@ -409,10 +409,10 @@ choice unstated, this is what was chosen and why:
   rather than trusting the model to recall it asked, approval must be recorded as
   `autopilot.fix_approved: true` (and optionally `autopilot.approved_phases`) in
   `.claude/befund.local.md` before `befund_cli.py autopilot-fix-gate` will pass.
-- **Confab-installed detection is best-effort.** There is no API a plugin script can call to
+- **Zeugnis-installed detection is best-effort.** There is no API a plugin script can call to
   query "is plugin X installed" from inside this session. `befund-autopilot` checks
-  whether a `confab:`-prefixed skill appears in the current session's available-skills listing;
-  if it does not, it reports "confab not installed" and continues. This cannot be made fully
+  whether a `zeugnis:`-prefixed skill appears in the current session's available-skills listing;
+  if it does not, it reports "zeugnis not installed" and continues. This cannot be made fully
   mechanical without a host-level plugin registry API.
 - **Portfolio report location.** `befund-portfolio` is the one skill whose output is not
   scoped to a single repo's `output_dir` — its `befund-portfolio.html` lands in the

@@ -108,7 +108,7 @@ Scan **only** the cursor's current stage -- never re-scan completed stages
 every pass. In self-scan mode look for: failing tests, wires with no
 evidence doc or a red/unknown one, TODOs, schema drift, dead handoffs. In
 ingest mode, gaps come from the brief's Work Items for this phase instead
-(pre-classified: code-idiom/lint/ui-audit/confab findings become `kind:bug`,
+(pre-classified: code-idiom/lint/ui-audit/zeugnis findings become `kind:bug`,
 architectural Merge/Split/layering decisions become `kind:wire`,
 documented-absent behavior becomes `kind:feature`; carry `file:line` and the
 fix-owner agent name into the gap doc; the phase's Behavior Contract becomes

@@ -59,7 +59,7 @@ No grade-C reference is in play, so no token rests on an estimate.
 | `$type` on alias tokens | ⚠️ | 10× `V-TYPE-MISSING` on `var()` aliases (`--accent`, `--cat-*`, `--diverging-*`) | a matrize tooling gap — follow-up, out of scope for a no-bump pass |
 | Enforcement of token usage | ❌ | no check flags a hard-coded colour, font or radius anywhere | `scripts/ci/check_design_tokens.py` + shrink-only baseline |
 | Chromium for `emit --target pdf` / visual arm | ✅ | Google Chrome at `/Applications` | — |
-| Node deps for docs build | ❌ | `node_modules` absent; install refused by the confab guard in this session | user runs `npm ci` once |
+| Node deps for docs build | ❌ | `node_modules` absent; install refused by the zeugnis guard in this session | user runs `npm ci` once |
 
 ## Verdict per phase
 

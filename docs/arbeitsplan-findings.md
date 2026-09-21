@@ -57,7 +57,7 @@ needed three times in one session, and in each case the instrument was **mine**:
 | `andon` | **2** | 2 | 0 | 1 |
 | `arbeitsplan` | 0 | 0 | 4 | 3 |
 | `nacharbeit` | 0 | 1 | 0 | 0 |
-| `confab` / `cupertino` / `lehre` | 0 | 0 | 0 | 1 each |
+| `zeugnis` / `cupertino` / `lehre` | 0 | 0 | 0 | 1 each |
 | `takt` | 0 | 0 | 0 | 0 |
 
 > **CORRECTED IN ROUND 3.** What stood here claimed this dependency was unenforced and that a
@@ -212,7 +212,7 @@ is the exact opposite.
 - `passung-canonize` writes to `analysis/<area>/`, where `<area>` is the command's argument.
 
 Four have real artifacts: befund's `stage_graph.json` and `MODERNIZATION_BRIEF.md`,
-confab's `contract_drift_summary.json`, nacharbeit's `run.json`.
+zeugnis's `contract_drift_summary.json`, nacharbeit's `run.json`.
 
 **Existence still under-specifies completion.** `MODERNIZATION_BRIEF.md` is written *even on
 befund's degraded "Ready-with-gaps" path*. Two patterns here already solve that and are the
@@ -311,7 +311,7 @@ against this repository. Each found something ruff structurally cannot.
 ### `vulture` — remarkably clean, and that is the result
 
 Two findings across **all twelve plugins**, and both are false positives: an unused parameter
-in a `cli-scaffold` test fixture, and `def __exit__(self, *exc_info)` in confab, where the
+in a `cli-scaffold` test fixture, and `def __exit__(self, *exc_info)` in zeugnis, where the
 parameter is required by the context-manager protocol whether or not it is read. **No dead
 guards.** Given CLAUDE.md's warning that this repo "has been burned repeatedly by guards that
 exist and are never called", that is worth recording as a measurement rather than an assumption.

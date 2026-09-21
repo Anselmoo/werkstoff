@@ -1,6 +1,6 @@
 ---
 name: befund-docs-drift
-description: Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to "check documentation accuracy", "find doc drift", "verify our docs match the code", or as part of befund-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by befund-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift.
+description: Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to "check documentation accuracy", "find doc drift", "verify our docs match the code", or as part of befund-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by befund-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by zeugnis-contract-drift.
 ---
 
 # befund-docs-drift

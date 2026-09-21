@@ -201,7 +201,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/agents/agentic-reliability-auditor.md",
+      "file": "plugins/zeugnis/agents/agentic-reliability-auditor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -212,7 +212,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/agents/confab-remediator.md",
+      "file": "plugins/zeugnis/agents/zeugnis-remediator.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -223,7 +223,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/agents/contract-auditor.md",
+      "file": "plugins/zeugnis/agents/contract-auditor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -234,7 +234,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/agents/dependency-auditor.md",
+      "file": "plugins/zeugnis/agents/dependency-auditor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -245,7 +245,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/agents/assertion-auditor.md",
+      "file": "plugins/zeugnis/agents/assertion-auditor.md",
       "line": 7,
       "severity": "High",
       "title": "Agent body written in second person (\"You are...\") instead of imperative mood",
@@ -267,7 +267,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-assertion-audit/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-assertion-audit/SKILL.md",
       "line": 29,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -278,7 +278,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-status/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-status/SKILL.md",
       "line": 41,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -289,7 +289,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-cycle/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-cycle/SKILL.md",
       "line": 12,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -300,7 +300,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-contract-drift/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-contract-drift/SKILL.md",
       "line": 45,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -311,7 +311,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-dependency-audit/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-dependency-audit/SKILL.md",
       "line": 11,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -322,7 +322,7 @@
       "dimension": "tone-and-audience"
     },
     {
-      "file": "plugins/confab/skills/confab-preflight/SKILL.md",
+      "file": "plugins/zeugnis/skills/zeugnis-preflight/SKILL.md",
       "line": 20,
       "severity": "Medium",
       "title": "SKILL.md body uses second-person \"you\" instead of imperative mood",
@@ -1041,7 +1041,7 @@
       "line": 25,
       "severity": "High",
       "title": "Entire benchmark-results document has no commit/date pin for measured file/score counts",
-      "evidence": "| Plugin | n | min | median | max | Every file EXIT=1? | Verdict |\n|---|---|---|---|---|---|---|\n| andon | 8 | 0 | 1 | 4 | No (4 tribunal agents = 0) | **FAIL** |\n| confab | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |",
+      "evidence": "| Plugin | n | min | median | max | Every file EXIT=1? | Verdict |\n|---|---|---|---|---|---|---|\n| andon | 8 | 0 | 1 | 4 | No (4 tribunal agents = 0) | **FAIL** |\n| zeugnis | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |",
       "mechanical": false,
       "suggestedFix": "Add a commit hash or checked-date to the document header (or per-table) stating which checkout of werkstoff/prp/code-modernization/superpowers these per-file scores and counts were measured against \u2014 none currently exists in this file.",
       "rule": "Any documentation claim that measures, counts, or characterizes the current state of the codebase (character/word counts, tool-grant lists, hook/enforcement inventories, third-party plugin behavior) must be pinned to the commit hash or checked-date it was measured against (e.g. \"as of `1cd5d07`\", \"commit `0c10fa0`\", \"checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`\") rather than stated as a timeless fact, so a later drift is visible as staleness instead of silently becoming false.",

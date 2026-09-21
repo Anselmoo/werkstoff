@@ -297,74 +297,6 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 > `scaffold-cli` refuses outright and lists the 12 supported languages rather than picking one for you — ambiguity is never silently resolved.
 
-## confab
-
-[`plugins/confab/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/confab/README.md) — 8 prompts.
-
-### Check for hallucinated dependencies
-
-````prompt
-"check if any of our dependencies are hallucinated"
-````
-
-> Triggers `confab-dependency-audit` — flags package names that don't exist in the real registry, independently re-verified before being reported.
-
-### Check test strength
-
-````prompt
-"would our tests actually catch a bug here?"
-````
-
-> Triggers `confab-assertion-audit` — mutation-testing pass checking whether tests assert anything meaningful, not just execute the code.
-
-### Run the full cycle
-
-````prompt
-"run the confab cycle on this repo"
-````
-
-> Triggers `confab-cycle` — bounded self-optimization loop: re-runs all four audits pass by pass, optionally applying fixes, until convergence.
-
-### Check status
-
-````prompt
-"where does confab stand on this repo"
-````
-
-> Triggers `confab-status` — read-only dashboard: what's run, what's stale, what to run next.
-
-### Check for contract drift
-
-````prompt
-"check if our type signatures and docstrings still match how the code is actually called"
-````
-
-> Triggers `confab-contract-drift` — compares type hints, docstrings, and API/OpenAPI/GraphQL schemas against real call-site or handler usage, independently re-verified by default.
-
-### Audit the plugin's own agent design
-
-````prompt
-"is our own agent design safe — any unbounded retries or missing escalation paths?"
-````
-
-> Triggers `confab-agentic-reliability` — audits this repo's own skill/agent/workflow definitions for unbounded retry loops, unwired Find/Verify phases, and excessive tool grants.
-
-### Quick pre-commit check
-
-````prompt
-"is this diff okay to commit?"
-````
-
-> Triggers `confab-code-change` — runs only the domains whose file patterns match what actually changed, and always produces an advisory verdict that never blocks the commit.
-
-### Check readiness first
-
-````prompt
-"is confab set up correctly in this repo?"
-````
-
-> Triggers `confab-preflight` — five independent readiness checks, one verdict per domain skill, before any audit actually runs.
-
 ## cupertino
 
 [`plugins/cupertino/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/README.md) — 15 prompts.
@@ -732,6 +664,74 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > The denial names the beat id, the reason, and the missing marker; the escape hatch is `TAKT_DISABLE_GUARD=1` when the order genuinely does not apply.
+
+## zeugnis
+
+[`plugins/zeugnis/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/zeugnis/README.md) — 8 prompts.
+
+### Check for hallucinated dependencies
+
+````prompt
+"check if any of our dependencies are hallucinated"
+````
+
+> Triggers `zeugnis-dependency-audit` — flags package names that don't exist in the real registry, independently re-verified before being reported.
+
+### Check test strength
+
+````prompt
+"would our tests actually catch a bug here?"
+````
+
+> Triggers `zeugnis-assertion-audit` — mutation-testing pass checking whether tests assert anything meaningful, not just execute the code.
+
+### Run the full cycle
+
+````prompt
+"run the zeugnis cycle on this repo"
+````
+
+> Triggers `zeugnis-cycle` — bounded self-optimization loop: re-runs all four audits pass by pass, optionally applying fixes, until convergence.
+
+### Check status
+
+````prompt
+"where does zeugnis stand on this repo"
+````
+
+> Triggers `zeugnis-status` — read-only dashboard: what's run, what's stale, what to run next.
+
+### Check for contract drift
+
+````prompt
+"check if our type signatures and docstrings still match how the code is actually called"
+````
+
+> Triggers `zeugnis-contract-drift` — compares type hints, docstrings, and API/OpenAPI/GraphQL schemas against real call-site or handler usage, independently re-verified by default.
+
+### Audit the plugin's own agent design
+
+````prompt
+"is our own agent design safe — any unbounded retries or missing escalation paths?"
+````
+
+> Triggers `zeugnis-agentic-reliability` — audits this repo's own skill/agent/workflow definitions for unbounded retry loops, unwired Find/Verify phases, and excessive tool grants.
+
+### Quick pre-commit check
+
+````prompt
+"is this diff okay to commit?"
+````
+
+> Triggers `zeugnis-code-change` — runs only the domains whose file patterns match what actually changed, and always produces an advisory verdict that never blocks the commit.
+
+### Check readiness first
+
+````prompt
+"is zeugnis set up correctly in this repo?"
+````
+
+> Triggers `zeugnis-preflight` — five independent readiness checks, one verdict per domain skill, before any audit actually runs.
 
 ## zirkel
 

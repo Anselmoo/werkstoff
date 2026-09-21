@@ -2,7 +2,7 @@
 
 Checked against `.cupertino/code-handbook.md`'s 6 dimensions. 62 finding(s) survived independent re-verification (4 mechanical, 58 needing design judgment).
 
-**Resolved since this report** (not re-run through the check workflow; noted by hand): the 2 non-mechanical `error-handling` findings (`plugins/befund/hooks/guard_target_edit.py:125`, `plugins/confab/scripts/hooks/guard_edit_scope.py:96`) were evaluated via `cupertino-integrate` rather than fixed — verdict: delegate to the guards' existing, documented fail-open behavior (issue #24) rather than force the code to fail closed. A named exception is now recorded in `.cupertino/code-handbook.md`'s "Exceptions & waivers" section; the code itself is unchanged.
+**Resolved since this report** (not re-run through the check workflow; noted by hand): the 2 non-mechanical `error-handling` findings (`plugins/befund/hooks/guard_target_edit.py:125`, `plugins/zeugnis/scripts/hooks/guard_edit_scope.py:96`) were evaluated via `cupertino-integrate` rather than fixed — verdict: delegate to the guards' existing, documented fail-open behavior (issue #24) rather than force the code to fail closed. A named exception is now recorded in `.cupertino/code-handbook.md`'s "Exceptions & waivers" section; the code itself is unchanged.
 
 Independent empirical re-verification during review also found the LLM-based `complexity-limits` count understated: `ruff check --select C901,PLR0915,PLR0912,PLR0913 .` finds **88** real violations, not the 32 listed below. Treat this dimension's findings as a representative sample, not an exhaustive list.
 
@@ -11,9 +11,9 @@ Independent empirical re-verification during review also found the LLM-based `co
 | High | no | testing-coverage | `plugins/andon/hooks/test_andon_enforce.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/zirkel/scripts/test_zirkel.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/confab/scripts/hooks/test_guard_edit_scope.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/confab/scripts/test_build_burndown_html.py:1` | Test file not invoked by any CI workflow step |
-| High | no | testing-coverage | `plugins/confab/scripts/test_cycle_engine.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/zeugnis/scripts/test_build_burndown_html.py:1` | Test file not invoked by any CI workflow step |
+| High | no | testing-coverage | `plugins/zeugnis/scripts/test_cycle_engine.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/cupertino/scripts/test_state.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/lehre/hooks/test_lehre_guard.py:1` | Test file not invoked by any CI workflow step |
 | High | no | testing-coverage | `plugins/lehre/scripts/test_lehre_core.py:1` | Test file not invoked by any CI workflow step |
@@ -34,14 +34,14 @@ Independent empirical re-verification during review also found the LLM-based `co
 | Medium | no | complexity-limits | `plugins/cli-scaffold/scripts/verify_scaffold.py:469` | Function exceeds PLR0915 statement-count limit |
 | Medium | no | complexity-limits | `plugins/zirkel/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
 | Medium | no | complexity-limits | `plugins/zirkel/scripts/zirkel_lib.py:249` | validate_dag exceeds complexity and branch limits |
-| Medium | no | complexity-limits | `plugins/confab/scripts/agentic_reliability.py:56` | Function exceeds PLR0915 statement-count limit |
-| Medium | no | complexity-limits | `plugins/confab/scripts/assertion_audit.py:65` | Function exceeds PLR0915 statement-count limit |
-| Medium | no | complexity-limits | `plugins/confab/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
-| Medium | no | complexity-limits | `plugins/confab/scripts/code_change_review.py:74` | main exceeds complexity and statement limits |
-| Medium | no | complexity-limits | `plugins/confab/scripts/cycle_engine.py:173` | Functions exceed complexity/branch limits |
-| Medium | no | error-handling | `plugins/confab/scripts/hooks/guard_edit_scope.py:96` | Guard fails open (allow) on internal ImportError instead of denying |
-| Medium | no | complexity-limits | `plugins/confab/scripts/hooks/guard_edit_scope.py:73` | run exceeds complexity limit |
-| Medium | no | complexity-limits | `plugins/confab/scripts/lib/ledger.py:70` | Function exceeds PLR0913 argument-count limit |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/agentic_reliability.py:56` | Function exceeds PLR0915 statement-count limit |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/assertion_audit.py:65` | Function exceeds PLR0915 statement-count limit |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/code_change_review.py:74` | main exceeds complexity and statement limits |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/cycle_engine.py:173` | Functions exceed complexity/branch limits |
+| Medium | no | error-handling | `plugins/zeugnis/scripts/hooks/guard_edit_scope.py:96` | Guard fails open (allow) on internal ImportError instead of denying |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/hooks/guard_edit_scope.py:73` | run exceeds complexity limit |
+| Medium | no | complexity-limits | `plugins/zeugnis/scripts/lib/ledger.py:70` | Function exceeds PLR0913 argument-count limit |
 | Medium | no | complexity-limits | `plugins/cupertino/hooks/pretooluse_guard.py:185` | handle_skill and main exceed complexity limit |
 | Medium | no | complexity-limits | `plugins/cupertino/scripts/build_symbol_index.py:370` | Functions exceed PLR0913 argument-count limit |
 | Medium | no | complexity-limits | `plugins/lehre/hooks/lehre_guard.py:236` | Multiple functions exceed complexity/branch/statement limits |
@@ -86,7 +86,7 @@ except (ImportError, ModuleNotFoundError) as exc:
 
 **Suggested fix:** This is inside the opted-in branch (a befund edit-scope lock is already confirmed open at this point), so an unexpected import/packaging failure here should deny (return deny(...)) with the exception named and the documented ESCAPE_HATCH, not silently allow the edit through. If the intentional fail-open-on-packaging-defect tradeoff (from issue #24) is to be kept, it needs an explicit, named escape hatch of its own and should be called out as a deliberate rule exception rather than silently contradicting the fail-closed contract.
 
-### `plugins/confab/scripts/hooks/guard_edit_scope.py:96` — Guard fails open (allow) on internal ImportError instead of denying
+### `plugins/zeugnis/scripts/hooks/guard_edit_scope.py:96` — Guard fails open (allow) on internal ImportError instead of denying
 
 **Dimension:** error-handling · **Severity:** Medium · **Mechanical:** False
 
@@ -97,7 +97,7 @@ except (ImportError, ModuleNotFoundError) as exc:
     print(f"guard_edit_scope: internal error ({type(exc).__name__}: {exc}); ... Allowing this edit rather than denying every future edit in this repo ...", file=sys.stderr)
     return allow()
 
-**Suggested fix:** This check runs only after confirming analysis/confab/ exists (i.e. the repo has opted into confab), so an unexpected import failure at this point should deny with the exception named and the documented ESCAPE_HATCH rather than allow. Keep the fail-open behavior only if it is intentionally scoped and documented as a named, separate exception to the fail-closed contract, not folded silently into the general 'internal error' path.
+**Suggested fix:** This check runs only after confirming analysis/zeugnis/ exists (i.e. the repo has opted into zeugnis), so an unexpected import failure at this point should deny with the exception named and the documented ESCAPE_HATCH rather than allow. Keep the fail-open behavior only if it is intentionally scoped and documented as a named, separate exception to the fail-closed contract, not folded silently into the general 'internal error' path.
 
 ### `plugins/cupertino/hooks/pretooluse_guard.py:31` — Import failure is swallowed without capturing the exception, so the eventual denial cannot name the internal error
 
@@ -137,13 +137,13 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_lehre_guard -v` with working-directory: plugins/lehre/hooks.
 
-### `plugins/confab/scripts/hooks/test_guard_edit_scope.py:1` — Test file not invoked by any CI workflow step
+### `plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 132-line test file for confab's PreToolUse edit-scope guard; absent from every .github/workflows/*.yml run: line.
+**Evidence:** 132-line test file for zeugnis's PreToolUse edit-scope guard; absent from every .github/workflows/*.yml run: line.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_guard_edit_scope -v` with working-directory: plugins/confab/scripts/hooks.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_guard_edit_scope -v` with working-directory: plugins/zeugnis/scripts/hooks.
 
 ### `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` — Test file not invoked by any CI workflow step
 
@@ -153,13 +153,13 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_branch_comparison_html -v` with working-directory: plugins/zirkel/scripts.
 
-### `plugins/confab/scripts/test_build_burndown_html.py:1` — Test file not invoked by any CI workflow step
+### `plugins/zeugnis/scripts/test_build_burndown_html.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 181-line test file for confab-status's burndown chart builder; not named by any .github/workflows/*.yml step.
+**Evidence:** 181-line test file for zeugnis-status's burndown chart builder; not named by any .github/workflows/*.yml step.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_burndown_html -v` with working-directory: plugins/confab/scripts.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_build_burndown_html -v` with working-directory: plugins/zeugnis/scripts.
 
 ### `plugins/befund/scripts/test_build_stage_map_html.py:1` — Test file not invoked by any CI workflow step
 
@@ -177,13 +177,13 @@ if validators is None:
 
 **Suggested fix:** Add a CI step invoking `python3 -m unittest test_zirkel -v` with working-directory: plugins/zirkel/scripts.
 
-### `plugins/confab/scripts/test_cycle_engine.py:1` — Test file not invoked by any CI workflow step
+### `plugins/zeugnis/scripts/test_cycle_engine.py:1` — Test file not invoked by any CI workflow step
 
 **Dimension:** testing-coverage · **Severity:** High · **Mechanical:** False
 
-**Evidence:** 134-line test file for confab-cycle's constraint-domain picker; no workflow step in .github/workflows/*.yml runs it.
+**Evidence:** 134-line test file for zeugnis-cycle's constraint-domain picker; no workflow step in .github/workflows/*.yml runs it.
 
-**Suggested fix:** Add a CI step invoking `python3 -m unittest test_cycle_engine -v` with working-directory: plugins/confab/scripts.
+**Suggested fix:** Add a CI step invoking `python3 -m unittest test_cycle_engine -v` with working-directory: plugins/zeugnis/scripts.
 
 ### `plugins/lehre/scripts/test_lehre_core.py:1` — Test file not invoked by any CI workflow step
 
@@ -437,7 +437,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract the individual validation checks (cycle detection, orphan detection, etc.) into separate helper functions.
 
-### `plugins/confab/scripts/agentic_reliability.py:56` — Function exceeds PLR0915 statement-count limit
+### `plugins/zeugnis/scripts/agentic_reliability.py:56` — Function exceeds PLR0915 statement-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -445,7 +445,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Split the function into smaller helpers by responsibility.
 
-### `plugins/confab/scripts/assertion_audit.py:65` — Function exceeds PLR0915 statement-count limit
+### `plugins/zeugnis/scripts/assertion_audit.py:65` — Function exceeds PLR0915 statement-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -453,7 +453,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Split the function into smaller helpers by responsibility.
 
-### `plugins/confab/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
+### `plugins/zeugnis/scripts/build_symbol_index.py:370` — Functions exceed PLR0913 argument-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -461,7 +461,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Group related parameters into a dataclass/NamedTuple to bring argument counts under the limit.
 
-### `plugins/confab/scripts/code_change_review.py:74` — main exceeds complexity and statement limits
+### `plugins/zeugnis/scripts/code_change_review.py:74` — main exceeds complexity and statement limits
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -469,7 +469,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract argument parsing and each review step into separate helper functions.
 
-### `plugins/confab/scripts/cycle_engine.py:173` — Functions exceed complexity/branch limits
+### `plugins/zeugnis/scripts/cycle_engine.py:173` — Functions exceed complexity/branch limits
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -477,7 +477,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract branch-heavy logic in _pick_constraint_domain and cmd_record_pass_result into smaller helper functions.
 
-### `plugins/confab/scripts/hooks/guard_edit_scope.py:73` — run exceeds complexity limit
+### `plugins/zeugnis/scripts/hooks/guard_edit_scope.py:73` — run exceeds complexity limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 
@@ -485,7 +485,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 **Suggested fix:** Extract the guard's decision branches into named helper predicates.
 
-### `plugins/confab/scripts/lib/ledger.py:70` — Function exceeds PLR0913 argument-count limit
+### `plugins/zeugnis/scripts/lib/ledger.py:70` — Function exceeds PLR0913 argument-count limit
 
 **Dimension:** complexity-limits · **Severity:** Medium · **Mechanical:** False
 

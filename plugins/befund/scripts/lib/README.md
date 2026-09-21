@@ -5,7 +5,7 @@ tracking for that directory is working. If it's ever *missing* right after
 a fresh clone while the rest of `scripts/lib/` looks populated on an
 existing checkout, that's not a merge artifact -- it means `.gitignore` has
 started matching this directory again, the same way it silently did for
-`plugins/befund/scripts/lib/` and `plugins/confab/scripts/lib/` from
+`plugins/befund/scripts/lib/` and `plugins/zeugnis/scripts/lib/` from
 the moment they were first written until issue #24 found it: an unanchored
 `lib/` line (generic Python-template boilerplate for build output) matched
 these directories too, at any depth, so nothing under them was ever
@@ -29,5 +29,5 @@ This file exists to make that failure mode loud instead of silent:
 
 **If you add a `scripts/lib/` package to a new plugin**, add a matching
 `artifact_targets` entry for `plugins/<name>/scripts/lib/README.md` in
-`.rrt.toml` (copy an existing befund/confab entry), then run
+`.rrt.toml` (copy an existing befund/zeugnis entry), then run
 `rrt artifacts --regenerate` to vendor this file and update the lock.

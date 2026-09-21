@@ -82,7 +82,7 @@ PREREQ_FLAG_BY_STRATEGY = {
     "b": None,  # no external prerequisite
     "f": "available_property_lib",
     "g": None,
-    "d": "available_confab",
+    "d": "available_zeugnis",
     "c": None,
     "a": None,  # tribunal always available (Read/Grep/Glob agents only)
 }
@@ -701,12 +701,12 @@ def route_wire(signals, availability):
 # Strategy d exact dispatch target (rule: strategy-d-skill-name-exact)
 # ---------------------------------------------------------------------------
 
-STRATEGY_D_PREFERRED_SKILL = "confab:confab-agentic-reliability"
-STRATEGY_D_ALLOWED_FALLBACK_AGENT = "confab:agentic-reliability-auditor"
+STRATEGY_D_PREFERRED_SKILL = "zeugnis:zeugnis-agentic-reliability"
+STRATEGY_D_ALLOWED_FALLBACK_AGENT = "zeugnis:agentic-reliability-auditor"
 STRATEGY_D_REJECTED_TYPOS = [
-    "confab:confab-agentic-reliability-auditor",
-    "confab-agentic-reliability",
-    "confab:agentic-reliability",
+    "zeugnis:zeugnis-agentic-reliability-auditor",
+    "zeugnis-agentic-reliability",
+    "zeugnis:agentic-reliability",
 ]
 
 
@@ -826,7 +826,7 @@ def scan_and_mask_credentials(text, file_line="unknown:0"):
 # testing writability of the ledger parent directory)
 # ---------------------------------------------------------------------------
 
-def run_preflight(repo_root, settings, befund_stage_mapper_present, confab_skill_present,
+def run_preflight(repo_root, settings, befund_stage_mapper_present, zeugnis_skill_present,
                    lsp_tool_present, structural_index_present, property_lib_python,
                    property_lib_js, property_lib_other):
     # Check 1: stage legibility
@@ -865,7 +865,7 @@ def run_preflight(repo_root, settings, befund_stage_mapper_present, confab_skill
     # Check 4: cross-plugin availability
     cross_plugin = {
         "befund_stage_mapper": befund_stage_mapper_present,
-        "confab_agentic_reliability_skill": confab_skill_present,
+        "zeugnis_agentic_reliability_skill": zeugnis_skill_present,
         "lsp_tool": lsp_tool_present,
         "structural_index_on_disk": structural_index_present,
         "property_testing_python": property_lib_python,
@@ -895,7 +895,7 @@ def run_preflight(repo_root, settings, befund_stage_mapper_present, confab_skill
 
 def _verify_verdict(cross_plugin):
     degraded = []
-    if not cross_plugin["confab_agentic_reliability_skill"]:
+    if not cross_plugin["zeugnis_agentic_reliability_skill"]:
         degraded.append("strategy d (agentic-reliability) degrades to agent fallback or unavailable")
     if not (cross_plugin["lsp_tool"] or cross_plugin["structural_index_on_disk"]):
         degraded.append("strategy e (structural-graph) degrades below Tier 1")
@@ -1105,7 +1105,7 @@ def main(argv=None):
     p = sub.add_parser("preflight")
     p.add_argument("repo_root")
     p.add_argument("--befund-stage-mapper", action="store_true")
-    p.add_argument("--confab-skill", action="store_true")
+    p.add_argument("--zeugnis-skill", action="store_true")
     p.add_argument("--lsp-tool", action="store_true")
     p.add_argument("--structural-index", action="store_true")
     p.add_argument("--property-lib-python", action="store_true")
@@ -1200,7 +1200,7 @@ def main(argv=None):
             settings = load_settings(args.repo_root)
             _print_json(run_preflight(
                 args.repo_root, settings,
-                args.befund_stage_mapper, args.confab_skill,
+                args.befund_stage_mapper, args.zeugnis_skill,
                 args.lsp_tool, args.structural_index,
                 args.property_lib_python, args.property_lib_js, args.property_lib_other,
             ))

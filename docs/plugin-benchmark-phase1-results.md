@@ -16,7 +16,7 @@ anything downstream actually consumes it — that's Phase 2, not yet run.
 
 ---
 
-## 1. werkstoff — hook-enforced family (andon, confab, befund, cupertino)
+## 1. werkstoff — hook-enforced family (andon, zeugnis, befund, cupertino)
 
 Fixed threshold (from the plan): **PASS** needs median ≥ 3 **and** every scored file at EXIT = 1.
 A plugin at median exactly 3 with any file at EXIT = 0 is still FAIL — the exit-code dimension is
@@ -25,7 +25,7 @@ a hard gate for this family, not something the median can average over.
 | Plugin | n | min | median | max | Every file EXIT=1? | Verdict |
 |---|---|---|---|---|---|---|
 | andon | 8 | 0 | 1 | 4 | No (4 tribunal agents = 0) | **FAIL** |
-| confab | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |
+| zeugnis | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |
 | befund | 4 | 1 | 3 | 4 | No (`stage-mapper` agent = 0) | **FAIL** |
 | cupertino | 12 | 0 | 2 | 4 | No (5 files = 0) | **FAIL** |
 
@@ -45,7 +45,7 @@ dispatches score at or near 0/4** because they have no Write/Edit tool grant, so
   `pretooluse_guard.py`'s own gating logic, contradicting `validators.py`'s comment that scope
   containment is "enforced at the hook layer" — another documentation/code mismatch, same shape
   as the family-classification one already found).
-- confab: the two Find/Verify-only agents (`dependency-auditor`, `assertion-auditor`) and the
+- zeugnis: the two Find/Verify-only agents (`dependency-auditor`, `assertion-auditor`) and the
   standalone audit skills score 2/4 each — real schema blocks, but no next-skill field (they
   report to whoever called them, never naming a successor themselves).
 
@@ -132,7 +132,7 @@ been wrong for half this family.
 
 Claim 1's falsifier requires inspecting an actual downstream `tool_call_input` payload on an
 executed chain — that's Phase 2, not yet run. What Phase 1 *does* establish, comparably across all
-four codebases: werkstoff's hook-enforced plugins' median scores (andon 1, confab 2, befund
+four codebases: werkstoff's hook-enforced plugins' median scores (andon 1, zeugnis 2, befund
 3, cupertino 2) are **not obviously worse** than the three references' medians (2.5, 2, 1) — two of
 werkstoff's four plugins tie or beat two of the three references on raw structural score. The
 recurring failure mode (read-only agents scoring near-0) is also present in the references

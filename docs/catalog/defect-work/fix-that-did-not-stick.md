@@ -11,7 +11,7 @@ beats:
   - skill: "andon:andon-verify"
     why: "Its tribunal agents are dispatched \"never authored or influenced by the session that proposed or built the fix under review.\""
     prompt: "re-verify this fix from scratch — don't read the previous verdict, and don't let whoever wrote the fix judge it"
-  - skill: "confab:confab-assertion-audit"
+  - skill: "zeugnis:zeugnis-assertion-audit"
     why: "A fix that no test guards is a fix scheduled to un-stick again."
     prompt: "if this bug came back tomorrow, would anything in the test suite go red?"
 grounding: "re-proving the \"Verify vendored artifacts match their committed lock\" check by removing one `plugins/*/assets/inline-d3.html` in a disposable worktree and confirming `rrt artifacts --check --strict` actually goes red, rather than trusting that it would."

@@ -14,8 +14,8 @@ const PLUGINS = [
       'Codebase self-assessment: stage/wire mapping, docs-vs-code drift, CI/CD topology, house-rules enforcement, multi-repo dashboard.',
   },
   {
-    name: 'confab',
-    url: '/plugins/confab',
+    name: 'zeugnis',
+    url: '/plugins/zeugnis',
     summary:
       'Catches AI confabulation: hallucinated dependencies, assertion-less tests, contract drift, unreliable agentic loops.',
   },

@@ -22,7 +22,7 @@ Because the placeholders are a template's inputs, not a reviewer's identity,
 nothing about the mechanism requires the dispatched subagent to be the generic
 reviewer prompt. The same `BASE_SHA`/`HEAD_SHA` range, `general-purpose` dispatch,
 and no-further-delegation rule apply equally to a prompt that asks for
-`confab-assertion-audit`, a named `pr-review-toolkit` agent, or `andon-verify`
+`zeugnis-assertion-audit`, a named `pr-review-toolkit` agent, or `andon-verify`
 instead. Swapping the target changes one dispatch call in the session; it edits no
 file in either `superpowers` or the plugin supplying the reviewer.
 
@@ -33,8 +33,8 @@ relevant, their test files — and needs nothing else read or computed first.
 
 |Reviewer|What it catches|What it needs|
 |---|---|---|
-|`confab-assertion-audit`|Whether the tests just written would actually catch a plausible mutation (off-by-one, boundary flip, condition negation) to the target source|Target source files + their test files — exactly the two halves of a diff that touched both|
-|`confab-contract-drift`|Drift between type hints, signatures, docstrings, or API/OpenAPI/GraphQL schemas and how the code actually calls or handles them, "after a refactor" per its own description|Contract source files (typed source, schema files); no test files required|
+|`zeugnis-assertion-audit`|Whether the tests just written would actually catch a plausible mutation (off-by-one, boundary flip, condition negation) to the target source|Target source files + their test files — exactly the two halves of a diff that touched both|
+|`zeugnis-contract-drift`|Drift between type hints, signatures, docstrings, or API/OpenAPI/GraphQL schemas and how the code actually calls or handles them, "after a refactor" per its own description|Contract source files (typed source, schema files); no test files required|
 |`pr-review-toolkit` `code-reviewer`|CLAUDE.md compliance, style violations, bugs, code quality|"Also the agent needs to know which files to focus on for the review" — defaults to `git diff` of unstaged work if not told otherwise|
 |`pr-review-toolkit` `comment-analyzer`|Comment accuracy against the code, comment rot, misleading or outdated comments|The changed files carrying the comments|
 |`pr-review-toolkit` `pr-test-analyzer`|Behavioral test coverage gaps, not line-coverage percentage|The diff and its test files|
@@ -85,11 +85,11 @@ covers, the same shape holds for six touch-categories:
 |Diff touched|Dispatch|
 |---|---|
 |Anything (always)|A general reviewer — the superpowers gate's default `code-reviewer.md` template, or `pr-review-toolkit`'s `code-reviewer`|
-|Tests|`pr-test-analyzer` and `confab-assertion-audit`|
+|Tests|`pr-test-analyzer` and `zeugnis-assertion-audit`|
 |Error handling (catch blocks, fallbacks)|`silent-failure-hunter`|
-|Types or signatures|`type-design-analyzer` and `confab-contract-drift`|
+|Types or signatures|`type-design-analyzer` and `zeugnis-contract-drift`|
 |Comments or docs|`comment-analyzer`|
-|Dependency manifest (`package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`)|`confab-dependency-audit`|
+|Dependency manifest (`package.json`, `requirements.txt`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`)|`zeugnis-dependency-audit`|
 
 ## Gate prompts
 
@@ -105,7 +105,7 @@ HEAD_SHA for this task's range, per requesting-code-review"
 ##### Tests changed
 
 ````prompt
-"run pr-test-analyzer and confab-assertion-audit over the diff between BASE_SHA and
+"run pr-test-analyzer and zeugnis-assertion-audit over the diff between BASE_SHA and
 HEAD_SHA — I want to know both whether coverage is adequate and whether the
 assertions would catch a plausible mutation to the source they test"
 ````
@@ -125,7 +125,7 @@ BASE_SHA and HEAD_SHA"
 ##### Types or signatures changed
 
 ````prompt
-"run type-design-analyzer and confab-contract-drift over the type and signature
+"run type-design-analyzer and zeugnis-contract-drift over the type and signature
 changes between BASE_SHA and HEAD_SHA"
 ````
 
@@ -144,7 +144,7 @@ HEAD_SHA"
 ##### Manifest changed
 
 ````prompt
-"run confab-dependency-audit over this repo's manifest after the dependency
+"run zeugnis-dependency-audit over this repo's manifest after the dependency
 changes in this diff"
 ````
 
@@ -165,7 +165,7 @@ changes in this diff"
 
 Two categories do not belong in this dispatch slot, for different reasons.
 
-**Orchestrators.** `andon-loop`, `confab-cycle`, and `befund-autopilot` are
+**Orchestrators.** `andon-loop`, `zeugnis-cycle`, and `befund-autopilot` are
 fixed sequences that read artifacts their own earlier steps wrote and persist state
 (a ledger, a convergence pass count, an approval-gated brief). Dispatched into a
 single-diff review slot they either refuse for lack of their expected artifacts or

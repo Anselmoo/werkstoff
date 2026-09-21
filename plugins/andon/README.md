@@ -23,7 +23,7 @@ halt is the intended outcome for an unproven fix, not a bug in the loop.
   `andon-loop`, or straight to `andon-verify`, only for the proof afterward
   (`skills/andon-loop/SKILL.md`).
 - **Not for judging whether an existing test suite's assertions would catch a
-  mutation.** That is `confab`'s job (`confab:confab-assertion-audit`), not
+  mutation.** That is `zeugnis`'s job (`zeugnis:zeugnis-assertion-audit`), not
   `andon-verify`'s (`skills/andon-verify/SKILL.md`).
 
 ## Install

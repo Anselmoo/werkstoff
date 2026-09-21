@@ -24,7 +24,7 @@ can never reach for it on its own.
 
 Within werkstoff, eight of the twelve target one distinct failure mode each — `andon` on
 handoffs between stages that were never proven, `befund` on a repo that cannot
-describe its own health, `confab` on assertions, contracts and dependency manifests
+describe its own health, `zeugnis` on assertions, contracts and dependency manifests
 that look right and are not, `zirkel` on reasoning stages silently skipped under
 pressure, `cupertino` on interfaces decorated instead of designed, `cli-scaffold` on
 CLIs that are not production-grade, and `passung` on the narrow case of
@@ -84,7 +84,7 @@ into another workflow's beats and gates.
 |Orchestrator|Why it cannot be dropped mid-flight|
 |---|---|
 |`andon-loop`|Owns and persists the OKF ledger; a pass is a traversal of the whole stream|
-|`confab-cycle`|Re-runs audits to convergence under a pass cap enforced by `scripts/cycle_engine.py`|
+|`zeugnis-cycle`|Re-runs audits to convergence under a pass cap enforced by `scripts/cycle_engine.py`|
 |`befund-autopilot`|CHECK -> PLAN -> approval gate -> FIX+VALIDATE, each phase consuming the last|
 |`befund-transform-brief`|Gated on `stage_graph.json`; degrades to "Ready-with-gaps" without it|
 |`befund-transform-execute`|Applies exactly one human-authorized phase of `MODERNIZATION_BRIEF.md`|
@@ -98,10 +98,10 @@ into another workflow's beats and gates.
 |`matrize-decode`|Fans reference-decoders out under a circuit breaker, then has each card re-derived from its cited source by a blind referee; a card that skips the referee is an unverified claim|
 |`matrize-brief`|Stops outright if any discovery artefact is missing, and its signed approval block is what the three build methods read as their entry gate|
 |`matrize-emit`|Runs the committed formatters against a `tokens.json` the earlier phases wrote; there is nothing to format before they have|
-|`andon-status`, `confab-status`, `befund-status`, `nacharbeit-status`, `matrize-status`, `arbeitsplan-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/passung-status` behaves the same way)|
+|`andon-status`, `zeugnis-status`, `befund-status`, `nacharbeit-status`, `matrize-status`, `arbeitsplan-status`|Report on what has already run; they have nothing to say outside their own pipeline (`/passung-status` behaves the same way)|
 
 Everything else in werkstoff is a leaf. That covers all of `zirkel`'s reasoning
-skills, all of `confab`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
+skills, all of `zeugnis`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
 paradigm and doctrine skills, `befund`'s finding skills, `lehre`'s gauge and
 validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `matrize`'s `collect`, `name`,
 `retrofit` and `dolmetsch`, every
@@ -157,8 +157,8 @@ doctrine, `cupertino-council` at UI build-time before any code is written, and
 `befund-idiom-fix` for mechanical rewrites.
 
 **Verify.** `andon-verify` proves one named wire through whichever of seven strategies
-its type calls for; `confab-assertion-audit` asks whether the tests would catch a
-mutation; `confab-contract-drift` checks contracts after a refactor; superpowers
+its type calls for; `zeugnis-assertion-audit` asks whether the tests would catch a
+mutation; `zeugnis-contract-drift` checks contracts after a refactor; superpowers
 `requesting-code-review` and `verification-before-completion` close the loop; and the
 `pr-review-toolkit` agents cover the diff-shaped checks werkstoff has no equivalent
 for, `silent-failure-hunter` and `type-design-analyzer` in particular.
@@ -221,9 +221,9 @@ work and can double-apply a fix.
 - `befund-idiom-fix` and `befund-transform-execute` both declare their own
   changes unverified and hand off to `andon:andon-verify` — or `andon-loop` for a
   ledger-recorded proof — rather than self-verifying.
-- `befund-autopilot`'s `autopilot-confab-optional` rule attempts confab's audit
-  skills only when confab actually appears in the session's skill listing, reports
-  "confab not installed" plainly when it does not, and never fabricates confab-shaped
+- `befund-autopilot`'s `autopilot-zeugnis-optional` rule attempts zeugnis's audit
+  skills only when zeugnis actually appears in the session's skill listing, reports
+  "zeugnis not installed" plainly when it does not, and never fabricates zeugnis-shaped
   findings to fill the gap.
 
 ## Reading this catalog

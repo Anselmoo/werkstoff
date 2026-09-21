@@ -11,7 +11,7 @@ beats:
   - skill: "superpowers:test-driven-development"
     why: "The shared contract is only observable while all copies still exist."
     prompt: "before we collapse these copies, write tests that pin the behavior all of them share"
-  - skill: "confab:confab-contract-drift"
+  - skill: "zeugnis:zeugnis-contract-drift"
     why: "Consolidation silently changes which signature is authoritative."
   - skill: "andon:andon-verify"
     why: "\"All consumers still work\" is a contract, and a green import is not evidence for it."

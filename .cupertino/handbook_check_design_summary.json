@@ -91,7 +91,7 @@
       "dimension": "spacing-and-layout-grid"
     },
     {
-      "file": "plugins/confab/assets/burndown-viewer.html",
+      "file": "plugins/zeugnis/assets/burndown-viewer.html",
       "line": 24,
       "severity": "Medium",
       "title": "Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)",
@@ -157,7 +157,7 @@
       "dimension": "typography-system"
     },
     {
-      "file": "plugins/confab/assets/burndown-viewer.html",
+      "file": "plugins/zeugnis/assets/burndown-viewer.html",
       "line": 11,
       "severity": "Medium",
       "title": "Base body rule omits line-height token entirely",

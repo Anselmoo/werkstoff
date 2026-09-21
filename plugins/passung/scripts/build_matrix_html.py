@@ -6,7 +6,7 @@ viewer at all before this file: matrix-viewer.html existed as a static asset
 with an injection marker, and passung-map.md's Render step hand-built the
 HTML inline via a Python heredoc instead of calling a script, unlike every
 other report-viewer plugin. This script replaces that heredoc, following the
-same marker-replacement shape as plugins/confab/scripts/build_burndown_html.py
+same marker-replacement shape as plugins/zeugnis/scripts/build_burndown_html.py
 and plugins/cli-scaffold/scripts/build_architecture_tree.py -- three markers
 here instead of one or two, since this is the first viewer to consume the
 shared tools/design-tokens/tokens.css as well as the D3 bundle.

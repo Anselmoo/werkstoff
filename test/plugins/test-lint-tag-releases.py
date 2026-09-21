@@ -89,21 +89,21 @@ CASES = [
     ),
     (
         "a plugin tag with no release, past the grace window",
-        [("andon-v0.10.0", OLD), ("confab-v0.8.0", OLD)],
+        [("andon-v0.10.0", OLD), ("zeugnis-v0.8.0", OLD)],
         ["andon-v0.10.0"],
-        60, 1, "confab-v0.8.0",
+        60, 1, "zeugnis-v0.8.0",
     ),
     (
         "the same tag inside the grace window is not judged yet",
-        [("andon-v0.10.0", OLD), ("confab-v0.8.0", JUST_NOW)],
+        [("andon-v0.10.0", OLD), ("zeugnis-v0.8.0", JUST_NOW)],
         ["andon-v0.10.0"],
         60, 0, "grace window",
     ),
     (
         "grace 0 judges even a just-pushed tag",
-        [("confab-v0.8.0", JUST_NOW)],
+        [("zeugnis-v0.8.0", JUST_NOW)],
         [],
-        0, 1, "confab-v0.8.0",
+        0, 1, "zeugnis-v0.8.0",
     ),
     (
         "werkstoff-cli's bare tag is judged too",
@@ -150,9 +150,9 @@ CASES = [
     ),
     (
         "a NEW unreleased tag still fails even with a baseline present",
-        [("andon-v0.4.0", OLD), ("confab-v0.8.0", OLD)],
+        [("andon-v0.4.0", OLD), ("zeugnis-v0.8.0", OLD)],
         [],
-        60, 1, "confab-v0.8.0",
+        60, 1, "zeugnis-v0.8.0",
         ["andon-v0.4.0"],
     ),
     (

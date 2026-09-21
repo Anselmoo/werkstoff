@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 # An artifact a user reads or scripts against: a report/state file under a
-# directory, e.g. analysis/befund/UI_AUDIT.md or .confab/reports/X.json
+# directory, e.g. analysis/befund/UI_AUDIT.md or .zeugnis/reports/X.json
 ARTIFACT = re.compile(r"(?<![\w/.-])((?:[\w.-]+/)+[A-Za-z0-9_.-]+\.(?:md|json|jsonl|toml|yaml|yml|db|sqlite))")
 # A settings/config file the user is told to create.
 SETTINGS = re.compile(r"(?<![\w/.-])(\.claude/[\w.-]+\.(?:md|json|toml|yaml|yml))")

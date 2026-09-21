@@ -44,7 +44,7 @@ output and one *describes* it. See §3 for the full comparison.
 
 ## 1. Baseline: what werkstoff does today
 
-Read across `befund`, `andon`, `confab`, `cupertino`, `cli-scaffold`,
+Read across `befund`, `andon`, `zeugnis`, `cupertino`, `cli-scaffold`,
 and `zirkel`, the six plugins share a consistent skeleton — see
 [`craft-standards.md`](craft-standards.md) for the general rules this maps to
 (frontmatter spec, anatomy, progressive disclosure). What's specific to the
@@ -163,7 +163,7 @@ easy to under-specify.
 
 **Directly applicable to werkstoff:** none of the andon tribunal agents
 (`andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator`)
-or the confab auditors show what a finished verdict or finding actually
+or the zeugnis auditors show what a finished verdict or finding actually
 reads like end to end. `andon-verifier`'s SKILL.md says "the exact
 command/check run, its exact output (fenced and credential-masked), and
 whether it reproduces the claim" — good prose, no example. A single worked
@@ -252,7 +252,7 @@ of reusable conventions:
   classifying which guidance *form* fixes which failure type: a prohibition
   list stops rule-skipping under pressure but *worsens* wrong-shaped output;
   a positive recipe/template fixes wrong-shaped output but doesn't stop
-  deliberate rule-skipping. Concretely: the andon/confab "refuse to..."
+  deliberate rule-skipping. Concretely: the andon/zeugnis "refuse to..."
   lists are the right form already (they target rule-skipping under
   pressure); the missing output templates (§4.2) are a *different* failure
   type (wrong-shaped output), and a prohibition ("don't invent field names")
@@ -310,7 +310,7 @@ purpose-labeled files** instead of inlining everything into one skill body:
 
 **Directly applicable to werkstoff:** §4.2's fenced-example fix inlines the
 worked instance directly into the agent's own `## Output format` section,
-which is the right first move and is now done for every befund/confab
+which is the right first move and is now done for every befund/zeugnis
 auditor. But for the one pipeline complex enough to have a genuinely reusable
 card format — `befund`'s business-rules pipeline — `prp-core`'s split is
 a stronger long-term shape: a `templates/rule-card.md` (schema, mandatory
@@ -349,7 +349,7 @@ pattern werkstoff needs to import.)
 |---|---|---|---|---|
 | andon | Strong (`andon-verifier.md` "Refusals" section) | Partial | Absent (tribunal verdict/report — §4.4, not yet done) | Absent |
 | befund | Strong (`Read-only constraint`, `Must refuse`) | Present | **Fixed (§4.2)** — all 6 `*-auditor.md` agents + `business-rules-miner.md` now carry a fenced worked example | Absent |
-| confab | Strong (`confab-dependency-audit` "What NOT to do") | Present | **Fixed (§4.2)** — all 4 auditor agents (`dependency-`, `assertion-`, `contract-`, `agentic-reliability-auditor`) now carry a fenced worked example | Absent |
+| zeugnis | Strong (`zeugnis-dependency-audit` "What NOT to do") | Present | **Fixed (§4.2)** — all 4 auditor agents (`dependency-`, `assertion-`, `contract-`, `agentic-reliability-auditor`) now carry a fenced worked example | Absent |
 | cupertino | Strong | `handbook-dimension-analyst.md` shows a real fenced JSON template | Present | Absent |
 | cli-scaffold | Strong (`cli-scaffold-verifier.md` "Hard boundaries") | Present, prose | Absent | Absent |
 | zirkel | Moderate | Present (`zirkel-solve`'s "## Output" bullet list) | Absent | Absent |
@@ -357,10 +357,10 @@ pattern werkstoff needs to import.)
 Takeaway: the enforcement dimension (refuse/MUST language, gates) is
 consistently strong across all six — this is the repo's actual strength and
 should not be diluted. §4.2's literal-output-template fix is now applied to
-every befund and confab auditor agent (10 files, plus
+every befund and zeugnis auditor agent (10 files, plus
 `business-rules-miner.md` as the original reference). What's still open:
 §4.4's sample-rendered-transcript recommendation (andon tribunal verdicts,
-confab report summaries, cupertino design rationale — none of these show a
+zeugnis report summaries, cupertino design rationale — none of these show a
 full worked end-to-end output yet), and cli-scaffold/zirkel's output
 sections, which are prose-only and lower priority since their schemas are
 comparatively self-describing (see §4.3).
@@ -384,17 +384,17 @@ not just name the fields in prose. Model this on `handbook-dimension-
 analyst.md`'s JSON block and `modernize-extract-rules.md`'s Rule Card
 template.
 
-**Status: done for befund and confab.** All 6 befund
+**Status: done for befund and zeugnis.** All 6 befund
 `*-auditor.md` agents (`idiom-`, `ci-topology-`, `ui-`, `docs-drift-`,
 `arch-health-`, `convention-auditor.md`) and `business-rules-miner.md`, plus
-all 4 confab auditors (`dependency-`, `assertion-`, `contract-`,
+all 4 zeugnis auditors (`dependency-`, `assertion-`, `contract-`,
 `agentic-reliability-auditor.md`), now close their output-format section
 with a fenced worked example grounded in the actual validator/schema code
 (`scripts/lib/validators.py` for befund, `scripts/lib/schema.py` for
-confab), not an invented shape.
+zeugnis), not an invented shape.
 
 Still open, lower priority since neither plugin has a validator forcing a
-fixed shape the way befund/confab do:
+fixed shape the way befund/zeugnis do:
 - `cli-scaffold-verifier.md`'s output sections (prose-only).
 - `zirkel-solve`'s "## Output" bullet list — arguably fine as-is per §4.3
   (self-describing labels, not a format).
@@ -413,7 +413,7 @@ because each item is just a label, not a format).
 
 Add a full sample output (not just a schema) for any skill/agent whose job
 ends in a **user-facing narrative artifact** rather than a machine-validated
-one — the andon tribunal's verdict, a confab audit's final report summary,
+one — the andon tribunal's verdict, a zeugnis audit's final report summary,
 cupertino's design rationale. Model this on `code-review.md`'s literal
 "### Code review\n\nFound 3 issues:\n\n1. ..." block, including the
 "no issues found" branch — the boring case is exactly the one that's
@@ -529,7 +529,7 @@ werkstoff's real, meaningful versioning stays exactly where it already was:
 
 ## Sources consulted
 
-- werkstoff (this repo): `plugins/befund/skills/befund-arch-health/SKILL.md`, `plugins/befund/skills/befund-portfolio/SKILL.md`, `plugins/befund/skills/befund-extract-rules/SKILL.md`, `plugins/befund/agents/business-rules-miner.md`, `plugins/andon/agents/andon-verifier.md`, `plugins/confab/skills/confab-dependency-audit/SKILL.md`, `plugins/cupertino/agents/handbook-dimension-analyst.md`, `plugins/zirkel/skills/zirkel-solve/SKILL.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`
+- werkstoff (this repo): `plugins/befund/skills/befund-arch-health/SKILL.md`, `plugins/befund/skills/befund-portfolio/SKILL.md`, `plugins/befund/skills/befund-extract-rules/SKILL.md`, `plugins/befund/agents/business-rules-miner.md`, `plugins/andon/agents/andon-verifier.md`, `plugins/zeugnis/skills/zeugnis-dependency-audit/SKILL.md`, `plugins/cupertino/agents/handbook-dimension-analyst.md`, `plugins/zirkel/skills/zirkel-solve/SKILL.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`
 - `anthropics/skills` (github.com/anthropics/skills): `template/SKILL.md`, `skills/mcp-builder/SKILL.md`, `skills/docx/SKILL.md`
 - `anthropics/claude-plugins-official` (github.com/anthropics/claude-plugins-official): `plugins/pr-review-toolkit/agents/silent-failure-hunter.md`, `plugins/pr-review-toolkit/agents/type-design-analyzer.md`, `plugins/code-review/commands/code-review.md`, `plugins/code-modernization/agents/business-rules-extractor.md`, `plugins/code-modernization/commands/modernize-extract-rules.md`
 - `obra/superpowers` (github.com/obra/superpowers, third-party, actively maintained skills framework): `skills/writing-skills/SKILL.md`, `skills/test-driven-development/SKILL.md`

@@ -46,6 +46,6 @@ payload cannot: is this edit one the in-flight pass was given? (see
 
 - Not a pattern list: matching is exact path equality after normalisation, never a glob.
 - Not repo-level state: it exists only between `build_fix_args.py` and `post_fix_check.py`.
-- Not a substitute for the other guards: takt, lehre, andon, confab, befund and
+- Not a substitute for the other guards: takt, lehre, andon, zeugnis, befund and
   cupertino keep arbitrating the same edits by their own markers, and a denial from one
   of them during a pass is reported as "blocked by that plugin", never bypassed.

@@ -102,9 +102,9 @@ jobs:
         continue-on-error: true
         # marketplace.json credits "Anselm Hahn" correctly for every plugin,
         # but the Claude Code plugin UI displays each per-plugin manifest's
-        # own author field -- three of those (andon, confab, befund)
+        # own author field -- three of those (andon, zeugnis, befund)
         # were found still carrying scaffold placeholders ("andon plugin",
-        # "confab contributors", "befund contributors" / noreply@
+        # "zeugnis contributors", "befund contributors" / noreply@
         # example.com) that nothing had ever compared against marketplace.json.
         run: python3 test/plugins/lint-plugin-authors.py
 

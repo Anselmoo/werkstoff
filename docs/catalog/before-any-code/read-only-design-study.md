@@ -16,7 +16,7 @@ beats:
     prompt: "trace how a change in the shared script would reach each plugin's output"
   - skill: "zirkel:zirkel-summarize-trace"
     why: "A study whose reasoning is not reconstructible cannot be audited by its reader"
-grounding: "a read-only study of how the four werkstoff `PreToolUse` hooks interact, covering `plugins/andon/hooks/`, `plugins/befund/hooks/`, `plugins/confab/hooks/`, and `plugins/cupertino/hooks/`, with each interaction marked [V] or [P]."
+grounding: "a read-only study of how the four werkstoff `PreToolUse` hooks interact, covering `plugins/andon/hooks/`, `plugins/befund/hooks/`, `plugins/zeugnis/hooks/`, and `plugins/cupertino/hooks/`, with each interaction marked [V] or [P]."
 dos:
   - "Let each observation decide what to read next -- a plan written before the first file is opened will miss it."
   - "Mark every claim [V] with a real file:line or URL, or [P] if you're inferring it -- never leave a claim unmarked."

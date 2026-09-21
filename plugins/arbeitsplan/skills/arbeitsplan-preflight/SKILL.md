@@ -18,7 +18,7 @@ cannot make a worktree has already spent N dispatches on a result it cannot use.
    carry no runnable check cannot be refereed, and that is better known now.
 
 3. **Other plugins' live guards.** Report every guard that would see this run's edits — takt,
-   cupertino, lehre, andon, confab, befund, nacharbeit — and its marker. A fix pass runs
+   cupertino, lehre, andon, zeugnis, befund, nacharbeit — and its marker. A fix pass runs
    under them, and a denial from one is that plugin doing its job.
 
    **Never suggest another plugin's escape hatch.** Naming it as an inventory fact is

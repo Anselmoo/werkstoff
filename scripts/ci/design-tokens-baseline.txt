@@ -12,7 +12,7 @@ docs/.vitepress/theme/werkstoff.css	T-RADIUS	1
 plugins/andon/assets/board-viewer.html	T-HEX	1
 plugins/andon/assets/board-viewer.html	T-RADIUS	2
 plugins/zirkel/assets/branch-comparison-viewer.html	T-RADIUS	1
-plugins/confab/assets/burndown-viewer.html	T-RADIUS	2
+plugins/zeugnis/assets/burndown-viewer.html	T-RADIUS	2
 plugins/lehre/assets/doctrine-viewer.html	T-COLOR-FN	1
 plugins/lehre/assets/doctrine-viewer.html	T-RADIUS	1
 plugins/matrize/assets/derivation-viewer.html	T-HEX	9

@@ -89,7 +89,7 @@ rules · 4 units · generated from `.lehre/ruleset.json`"); tiles carry findings
 `.stat`, `.stat .v` and `.stat .k` are byte-identical in three files
 (`board-viewer.html:75-83`, `burndown-viewer.html:31-39`, `matrix-viewer.html:186-191`) —
 a shared component by copy-paste. All three render every number at `22px/600/var(--accent)`.
-So confab's "Escalated" is typographically identical to its "Total passes", and nothing in
+So zeugnis's "Escalated" is typographically identical to its "Total passes", and nothing in
 the design distinguishes a number you must act on from one that is context.
 
 `plugins/lehre/assets/doctrine-viewer.html:36-43` is the only counter-example in the
@@ -106,7 +106,7 @@ simulation (dE00 5.69): *never color alone, always pair with an icon or a label.
 A viewer therefore needs a legend that is visible **without interaction**. The violation
 this rule was written against:
 
-- `plugins/confab/assets/burndown-viewer.html:61-62` defines `.legend` and `.legend .swatch`
+- `plugins/zeugnis/assets/burndown-viewer.html:61-62` defines `.legend` and `.legend .swatch`
   and **uses neither**. Its `open`/`closed`/`escalated` status colours (`:280`) are never
   explained anywhere.
 
@@ -149,7 +149,7 @@ Three archetypes exist and all three are legitimate:
 | archetype | when | current users |
 |---|---|---|
 | centered document | the report is read top-to-bottom | `lehre` (`.wrap`, max-width 1180), `cli-scaffold` |
-| full-bleed + sticky sidebar | a selection drives a detail pane | `andon`, `confab`, `cupertino` |
+| full-bleed + sticky sidebar | a selection drives a detail pane | `andon`, `zeugnis`, `cupertino` |
 | absolute canvas | the view is pannable/zoomable | `befund` |
 
 `zirkel` is currently a fourth thing by accident — `branch-comparison-viewer.html:23`
@@ -166,7 +166,7 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
 - **CSP meta, `default-src 'none'`** — `.rrt.toml:274-275` already calls this "the same
   constraint every report-viewer plugin's HTML asset needs". Present in five
   (`andon`, `cli-scaffold`, `passung`, `zirkel`, `befund`, each at line 6);
-  **absent in `lehre`, `confab`, `cupertino`**.
+  **absent in `lehre`, `zeugnis`, `cupertino`**.
 - **`<title>` as `<plugin> — <report noun>`**, lowercase plugin name. `lehre — doctrine map`
   is the model. Current titles are inconsistently cased and prefixed.
 - **The static `<h1>` must carry that same string, and must not be rewritten at run time.**
@@ -250,7 +250,7 @@ comments — and matches a real opening tag whose `class` attribute carries the 
 the token as a substring anywhere in the file. Both narrowings are load-bearing rather
 than tidy, and both were added after the guard mis-fired:
 
-- confab defines `.legend`/`.legend .swatch` and uses neither, so a substring search for
+- zeugnis defines `.legend`/`.legend .swatch` and uses neither, so a substring search for
   `legend` passed on a viewer that had none;
 - `renderLegend()` in a script, or `class="verdict"` quoted inside one, satisfied the same
   search — so a viewer could delete the element, keep a dead helper, and stay green.
@@ -259,11 +259,11 @@ A render-time-populated legend still qualifies: its **container** is static mark
 is what the check matches. Prose may substitute for swatches (lehre has a `.note` and no
 legend), so R4 accepts either — it fails only when both are absent. On first run it
 reported 36 violations across 8 viewers, independently reproducing findings that had been
-derived by reading — CSP absent in exactly confab/cupertino/lehre, `61px` in exactly
-andon/passung/cupertino, R4 failing in exactly confab/befund. Three prior HTML-grep precedents
+derived by reading — CSP absent in exactly zeugnis/cupertino/lehre, `61px` in exactly
+andon/passung/cupertino, R4 failing in exactly zeugnis/befund. Three prior HTML-grep precedents
 exist — `plugins/cli-scaffold/scripts/selftest.py:166-171`,
 `plugins/zirkel/scripts/test_build_branch_comparison_html.py:106-108`,
-`plugins/confab/scripts/test_build_burndown_html.py:106-113` — and **none of them runs in
+`plugins/zeugnis/scripts/test_build_burndown_html.py:106-113` — and **none of them runs in
 CI**, which puts all three below "a fenced command in a skill" on this repo's own
 enforcement table.
 

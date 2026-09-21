@@ -22,7 +22,7 @@ A five-agent adversarial review ("rubber-duck tribunal") compared werkstoff to
 
 The critical finding: andon's stop rules (reopen-3x escalation, blast-radius
 authorization gate, convergence bookkeeping) exist **only as prose** the model
-must re-read and self-enforce. `plugins/confab/scripts/lib/ledger.py:56,90`
+must re-read and self-enforce. `plugins/zeugnis/scripts/lib/ledger.py:56,90`
 implements the equivalent guards in code rather than prose
 (the cycle-max-passes gate at line 56 raises CycleBoundExceededError; the reopen
 guard at line 90 forces a status transition to `escalated` past max-reopens --
@@ -180,8 +180,8 @@ From `docs/andon-behavior-contract.md` only. Location `plugins/andon-ng/`
 during the pilot so the harness can run both. Invariants:
 
 1. Every stop rule is code with validated args, not prose
-   (`plugins/confab/scripts/lib/ledger.py:56-59` raises for cycle-max-passes;
-   `plugins/confab/scripts/lib/ledger.py:88-90` forces an `escalated` status for
+   (`plugins/zeugnis/scripts/lib/ledger.py:56-59` raises for cycle-max-passes;
+   `plugins/zeugnis/scripts/lib/ledger.py:88-90` forces an `escalated` status for
    the thrash guard -- enforced in code, though only the former throws).
 2. The ledger is validated on read and write; gating fields (`verdict`,
    `non_overridable`, `on_constraint`, `blast_radius`) are first-class

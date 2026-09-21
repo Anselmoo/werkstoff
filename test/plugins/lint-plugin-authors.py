@@ -8,7 +8,7 @@ them. But the Claude Code plugin UI displays the *per-plugin* manifest's
 `author` field on each plugin's card
 (`plugins/<name>/.claude-plugin/plugin.json`), not the marketplace entry --
 and three of those manifests were found still carrying scaffold placeholders
-("andon plugin" / "confab contributors" / "befund contributors", each
+("andon plugin" / "zeugnis contributors" / "befund contributors", each
 paired with `noreply@example.com` or missing `author.email` entirely) left
 over from whatever generator first created them. Nothing caught that drift
 because nothing compared the two files. This is that comparison, run as a

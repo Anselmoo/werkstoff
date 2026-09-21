@@ -11,7 +11,7 @@ beats:
   - skill: "zirkel:zirkel-ground-evidence"
     why: "Grounding is cheap on five claims and expensive on a finished diff."
     prompt: "don't make this up — every claim about this repo needs a file and line number behind it"
-  - skill: "confab:confab-dependency-audit"
+  - skill: "zeugnis:zeugnis-dependency-audit"
     why: "A hallucinated or typosquat-adjacent package name is free to catch now and a supply-chain incident later."
     prompt: "the plan names three new dependencies — check they actually exist on the registry before we add any of them"
 grounding: "a brief asserting that the symbol indexer lives only in `tools/symbol-indexer/` collapses on the first grounding pass: five plugins each carry a byte-identical `scripts/build_symbol_index.py`."

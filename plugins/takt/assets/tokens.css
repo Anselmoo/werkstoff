@@ -127,7 +127,7 @@
 
   /* ---- Semantic status scale — RESERVED, never a categorical slot ----
      good/bad/warn converged on these hexes independently across
-     andon/confab/befund/matrix before they were ever named once;
+     andon/zeugnis/befund/matrix before they were ever named once;
      "unknown" had not converged and was canonicalized on matrix's value.
      Left unchanged by the aerogel identity: status is state, not identity.
      NOTE: --status-good and --status-bad are a red/green pair and are NOT
@@ -232,7 +232,7 @@
 
   /* Monospace family for data cells, code and maths in the report viewers.
    * Pairs with --font-sans. The value is the stack nine viewer declarations
-   * used to repeat verbatim (arbeitsplan, passung, confab, lehre,
+   * used to repeat verbatim (arbeitsplan, passung, zeugnis, lehre,
    * nacharbeit and takt); those declarations now reference this token. The
    * docs theme uses VitePress's own var(--vp-font-family-mono).
    * Contrast: n/a (not a colour). */

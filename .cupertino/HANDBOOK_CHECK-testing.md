@@ -4,7 +4,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Resolved since this report** (not re-run through the check workflow; noted by hand):
 - `test/plugins/fixtures/ui-missing-alt/index.html:40` (test-data-management) — the inline answer key was extracted to a checked-in `_EXPECTED.md`; `run.sh:139` already strips exactly that filename.
-- `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` (test-data-management) — this fixture was never referenced by `cases.tsv`, `run.sh`, or `test_build_burndown_html.py` (which builds its own inline ledger via `tempfile.TemporaryDirectory()`). It was dead code from commit `821a14a`, not an incomplete fixture, so it was removed rather than given an `_EXPECTED.md`.
+- `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` (test-data-management) — this fixture was never referenced by `cases.tsv`, `run.sh`, or `test_build_burndown_html.py` (which builds its own inline ledger via `tempfile.TemporaryDirectory()`). It was dead code from commit `821a14a`, not an incomplete fixture, so it was removed rather than given an `_EXPECTED.md`.
 
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
@@ -21,7 +21,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 | Medium | no | test-naming | `test/plugins/test-lint-release-wiring.py:1` | Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions |
 | Medium | no | test-naming | `test/plugins/test-lint-tag-releases.py:1` | Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions |
 | Medium | no | fixture-and-mocking-policy | `tools/surface-index/test_build_surface_index.py:381` | Test manually overwrites and restores module-internal globals (REPO/PLUGINS/OUTPUT) instead of injecting paths |
-| Low | no | test-data-management | `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` | Seeded-defect-shaped fixture has no checked-in _EXPECTED.md |
+| Low | no | test-data-management | `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` | Seeded-defect-shaped fixture has no checked-in _EXPECTED.md |
 
 ## Details
 
@@ -143,10 +143,10 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Suggested fix:** Move the 'SEEDED-DEFECT FIXTURE' / 'EXPECTED FINDINGS' / 'EXPECTED NON-FINDINGS' commentary out of index.html into a new test/plugins/fixtures/ui-missing-alt/_EXPECTED.md, leaving index.html containing only the seeded HTML defects (and non-defects) with no narration of what is expected, since run.sh only strips a file literally named _EXPECTED.md.
 
-### `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` — Seeded-defect-shaped fixture has no checked-in _EXPECTED.md
+### `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` — Seeded-defect-shaped fixture has no checked-in _EXPECTED.md
 
 **Dimension:** test-data-management · **Severity:** Low · **Mechanical:** False
 
-**Evidence:** The fixture directory test/plugins/fixtures/confab-burndown-pseudo-ledger/ contains only analysis/confab/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'confab-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.
+**Evidence:** The fixture directory test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/ contains only analysis/zeugnis/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'zeugnis-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.
 
-**Suggested fix:** Either add a test/plugins/fixtures/confab-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.
+**Suggested fix:** Either add a test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.

@@ -3,10 +3,10 @@ remediator dispatch has one of these open, and even then it only authorizes
 edits to the files the lock names. Opened/closed by befund_cli.py's
 open-edit-scope/close-edit-scope, called by befund-idiom-fix and
 befund-transform-execute immediately around their remediator dispatch --
-mirrors plugins/confab/scripts/lib/remediation_scope.py's lock, except the
+mirrors plugins/zeugnis/scripts/lib/remediation_scope.py's lock, except the
 lock holds a LIST of allowed files (befund dispatches one remediator per
 independent cluster/phase-file, and those dispatches may run in parallel; a
-single-file lock like confab's would race between them).
+single-file lock like zeugnis's would race between them).
 
 Lives at a fixed path, independent of the user-configurable output_dir
 setting -- this is infrastructure, not a report artifact the user relocates.

@@ -225,7 +225,7 @@ class SymbolIndexerTest(unittest.TestCase):
         # The vendoring convention this test's history refers to (each plugin
         # carrying a byte-identical synced copy of this script) was briefly
         # retired in commit 0c10fa0, then reinstated via `.rrt.toml`'s
-        # artifact_targets once befund and confab's own behavior specs
+        # artifact_targets once befund and zeugnis's own behavior specs
         # turned out to still require it. See
         # test_every_vendored_copy_matches_the_canonical_source below for the
         # per-plugin drift guard. What's covered here: the canonical script

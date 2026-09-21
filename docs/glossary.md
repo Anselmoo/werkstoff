@@ -218,12 +218,13 @@ Every German-named plugin is named for a manufacturing or shop-floor concept its
 states explicitly; the gloss below is quoted or closely paraphrased from that plugin's
 own README, not invented here.
 
-That sentence is the test, and it is why `zirkel`, `passung` and `befund` carry the
-names they do rather than the ones they started with. A German spelling is not the
-point — a *Kompass* is a navigation instrument and would have failed this test as
-surely as `compass` did. Four plugins remain outside the scheme: `cupertino` names a
-place, `confab` is glossed in the root README as short for confabulation, and
-`cli-scaffold` and `andon` are English and Japanese respectively.
+That sentence is the test, and it is why `zirkel`, `passung`, `befund` and `zeugnis`
+carry the names they do rather than the ones they started with. A German spelling is
+not the point — a *Kompass* is a navigation instrument and would have failed this test
+as surely as `compass` did. `andon` was deliberately left alone: it is Japanese rather
+than German, but it already passes, because the rule is about the concept and not the
+language. Two plugins remain outside the scheme — `cupertino` names a place, and
+`cli-scaffold` is plain English.
 
 ### werkstoff
 
@@ -302,6 +303,16 @@ run ahead of the one feeding it" ([`plugins/takt/README.md`](plugins/takt.md)). 
 sequencing is a gate rather than a sentence." ([`plugins/takt/README.md`](plugins/takt.md)).
 It ships no skills or agents of its own — only the `PreToolUse` hook and declaration
 format that turns another plugin's stated ordering into a runtime denial.
+
+### zeugnis
+
+German for the mill certificate — the EN 10204 *Werkszeugnis* or *Abnahmeprüfzeugnis* in
+which a supplier declares what a material actually is. "Its grades are the point: 2.1 is
+the supplier's own word, 3.1 is their own inspector, and 3.2 requires an independent one.
+A claim is worth what the party behind it is worth."
+([`plugins/zeugnis/README.md`](plugins/zeugnis.md)). It audits AI-authored code for claims
+that are confidently false, and no finding counts until a pass that did not produce it
+re-checks it. Renamed from `confab`, whose published tags remain under the old name.
 
 ### zirkel
 

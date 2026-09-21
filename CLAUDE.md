@@ -5,7 +5,7 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 ## Layout
 
 `plugins/<name>/` — twelve plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
-`passung`, `zirkel`, `confab`, `cupertino`, `lehre`, `matrize`,
+`passung`, `zirkel`, `zeugnis`, `cupertino`, `lehre`, `matrize`,
 `nacharbeit`, `befund`, `takt`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
@@ -59,7 +59,7 @@ PreToolUse hook that holds the fix scope. Before editing any plugin file by hand
 
 The first six (all but `passung`, added later) were run through a
 behavior-specification rebuild; four (`andon`, `befund`, `cli-scaffold`,
-`confab`) were promoted as regenerated, while `zirkel` and `cupertino` kept
+`zeugnis`) were promoted as regenerated, while `zirkel` and `cupertino` kept
 their hand-edited legacy code — see `docs/plugin-rebuild-findings.md`'s `keep`
 column (`rebuild` vs `legacy`) for what that measured, including which
 rebuilds gained enforcement and which lost rules.
@@ -189,7 +189,7 @@ python3 test/plugins/lint-tag-releases.py                 # every release tag ac
 
 `rrt artifacts --check` matters for the same reason as everything else in
 this section: it's the only thing that would have caught issue #24 on the
-next fresh checkout. `plugins/{befund,confab}/scripts/lib/` -- real,
+next fresh checkout. `plugins/{befund,zeugnis}/scripts/lib/` -- real,
 hand-written source packages, not build output -- were silently excluded
 from every commit by an unanchored `lib/` line in the root `.gitignore`
 (same failure shape as `/analysis/`'s existing anchoring comment already
@@ -427,12 +427,12 @@ doctor`) when you want that check.
   already on disk (still `{Read, Bash}` only). The fresh-process result rules
   out both "stale session cache" and "the array format specifically" as the
   cause — neither explanation survives the third test. No working alternative
-  hypothesis was found; a planned comparison run against a confab agent in an
+  hypothesis was found; a planned comparison run against a zeugnis agent in an
   equally fresh process didn't complete cleanly (a `--print`-mode quirk,
   itself unexplained) before the investigation was stopped. All befund
   agents are standardized on the comma-string `tools:` form regardless (it's
   the documented canonical format, and two *other* agents —
-  `confab:contract-auditor`, `andon:andon-defender` — were confirmed via the
+  `zeugnis:contract-auditor`, `andon:andon-defender` — were confirmed via the
   same self-report method to get exactly their declared tool set with it) —
   but that fix is not proven to be the fix for this specific agent. Treat any
   befund `*-auditor` agent's actual runtime tool access as unverified

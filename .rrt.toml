@@ -23,12 +23,12 @@ changelog_file = "plugins/befund/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
-name = "confab"
-release_branch = "release/confab/v{version}"
-changelog_file = "plugins/confab/CHANGELOG.md"
+name = "zeugnis"
+release_branch = "release/zeugnis/v{version}"
+changelog_file = "plugins/zeugnis/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/confab/.claude-plugin/plugin.json"
+  path = "plugins/zeugnis/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
@@ -154,10 +154,10 @@ targets = [
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/confab/.claude-plugin/plugin.json"
+source = "plugins/zeugnis/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=confab].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=zeugnis].description" },
 ]
 
 [[tool.rrt.field_targets]]
@@ -263,9 +263,9 @@ description = "zirkel's synced copy of tools/symbol-indexer/build_symbol_index.p
 command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/zirkel/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/scripts/build_symbol_index.py"
-description = "confab's synced copy of tools/symbol-indexer/build_symbol_index.py"
-command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/confab/scripts/build_symbol_index.py"]
+path = "plugins/zeugnis/scripts/build_symbol_index.py"
+description = "zeugnis's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/zeugnis/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cupertino/scripts/build_symbol_index.py"
@@ -288,9 +288,9 @@ description = "zirkel's synced copy of tools/symbol-indexer/parallel-safe-resear
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/zirkel/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/references/parallel-safe-research-protocol.md"
-description = "confab's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/confab/references/parallel-safe-research-protocol.md"]
+path = "plugins/zeugnis/references/parallel-safe-research-protocol.md"
+description = "zeugnis's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/zeugnis/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
@@ -356,9 +356,9 @@ description = "befund's synced copy of tools/plugin-lib-canary/README.md"
 command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/befund/scripts/lib/README.md"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/scripts/lib/README.md"
-description = "confab's synced copy of tools/plugin-lib-canary/README.md"
-command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/confab/scripts/lib/README.md"]
+path = "plugins/zeugnis/scripts/lib/README.md"
+description = "zeugnis's synced copy of tools/plugin-lib-canary/README.md"
+command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/zeugnis/scripts/lib/README.md"]
 
 # Shared vendored D3 v7 subset (d3-hierarchy, d3-zoom, d3-selection,
 # d3-interpolate, d3-ease, d3-force, d3-scale) -- built via
@@ -382,7 +382,7 @@ command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/cli-scaffold/assets/
 # Shared design tokens (tools/design-tokens/tokens.css) -- canonical colors,
 # typography, spacing, and motion values extracted from what all 5 existing
 # report viewers were independently hand-copying into their own :root
-# blocks (confirmed diverging: andon/confab/matrix used --bg-panel/--text-dim
+# blocks (confirmed diverging: andon/zeugnis/matrix used --bg-panel/--text-dim
 # naming and a different font stack than cli-scaffold/befund's
 # --panel/--muted naming). Vendored into all 12 plugins (every plugin on
 # disk carries assets/tokens.css) and into docs/.vitepress/theme/tokens.css,
@@ -395,9 +395,9 @@ description = "andon's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/andon/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/assets/tokens.css"
-description = "confab's synced copy of tools/design-tokens/tokens.css"
-command = ["cp", "tools/design-tokens/tokens.css", "plugins/confab/assets/tokens.css"]
+path = "plugins/zeugnis/assets/tokens.css"
+description = "zeugnis's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/zeugnis/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cli-scaffold/assets/tokens.css"
@@ -465,9 +465,9 @@ description = "andon's synced copy of tools/d3-subset/inline-d3.html"
 command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/andon/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/assets/inline-d3.html"
-description = "confab's synced copy of tools/d3-subset/inline-d3.html"
-command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/confab/assets/inline-d3.html"]
+path = "plugins/zeugnis/assets/inline-d3.html"
+description = "zeugnis's synced copy of tools/d3-subset/inline-d3.html"
+command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/zeugnis/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/passung/assets/inline-d3.html"
@@ -543,8 +543,8 @@ command = ["cp", "plugins/zirkel/assets/branch-comparison-viewer-screenshot.jpg"
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/burndown-viewer-screenshot.jpg"
-description = "docs copy of plugins/confab/assets/burndown-viewer-screenshot.jpg"
-command = ["cp", "plugins/confab/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
+description = "docs copy of plugins/zeugnis/assets/burndown-viewer-screenshot.jpg"
+command = ["cp", "plugins/zeugnis/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/derivation-viewer-screenshot.jpg"

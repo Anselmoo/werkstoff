@@ -40,13 +40,13 @@ here, not later" cell copied in verbatim as `why:` and no `prompt:` key:
   2 of 4).
 - **Refactor for maintainability** — `superpowers:test-driven-development` (position 3 of
   5) and `passung:equivalence-verifier` (position 5 of 5) restored.
-- **Collapse duplication hand-synced across N sites** — `confab:confab-contract-drift`
+- **Collapse duplication hand-synced across N sites** — `zeugnis:zeugnis-contract-drift`
   restored (position 3 of 4).
 - **Migrate a return shape or type representation** — `andon:andon-verify` restored
   (position 4 of 4).
 - **Whole-branch review without re-trusting the branch's own self-assessment** —
   `pr-review-toolkit:silent-failure-hunter`, `pr-review-toolkit:pr-test-analyzer`, and
-  `confab:confab-contract-drift` restored (the old table's row 2 named the first two
+  `zeugnis:zeugnis-contract-drift` restored (the old table's row 2 named the first two
   jointly with `pr-review-toolkit:code-reviewer` as one fan-out beat sharing one prompt
   and one why-cell; each now stands as its own beat, the two new ones carrying that same
   why-cell text verbatim and no prompt, since only `code-reviewer`'s row had a worked
@@ -61,7 +61,7 @@ restored on the same rule, each with its own entry's "Why here, not later" cell 
 
 - **Read-only design study with an evidence legend** — `zirkel:zirkel-summarize-trace`
 - **A release path that has never succeeded** — `superpowers:writing-plans`
-- **Same-stack version uplift** — `confab:confab-dependency-audit`
+- **Same-stack version uplift** — `zeugnis:zeugnis-dependency-audit`
 
 ## Parity
 

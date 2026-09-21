@@ -11,7 +11,7 @@ beats:
   - skill: "befund:befund-code-idiom"
     why: "Judges idioms against the version the repo actually targets, not against the newest one."
     prompt: "find deprecated idioms in this repo, judged against the version we actually target — not the latest one"
-  - skill: "confab:confab-dependency-audit"
+  - skill: "zeugnis:zeugnis-dependency-audit"
     why: "An uplift is when a plausible-but-nonexistent replacement package is most likely to be introduced"
   - skill: "befund:befund-idiom-fix"
     why: "Dispatches one remediator per (file, kind) cluster, never a batch spanning files."

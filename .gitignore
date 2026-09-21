@@ -58,7 +58,7 @@ downloads/
 eggs/
 .eggs/
 # Anchored to the repo root: unanchored, this swallowed
-# plugins/{befund,confab}/scripts/lib/ (a real, hand-written source
+# plugins/{befund,zeugnis}/scripts/lib/ (a real, hand-written source
 # package, not a build artifact) from every commit since the plugins that
 # import it were first added -- see issue #24. Same class of fix as
 # /analysis/ above.

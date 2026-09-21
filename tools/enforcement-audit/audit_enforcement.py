@@ -13,16 +13,16 @@ the source, not of a sampled run.
 WHAT COUNTS AS ENFORCEMENT
 --------------------------
 Counting `throw` is NOT enough, and this is the whole subtlety. Both andon and
-confab throw. Every one of andon's four throws
+zeugnis throw. Every one of andon's four throws
 (`workflows/andon-cycle-scan.js:24-36`) validates a *workflow argument* —
 repoPath traversal, stageFiles entries. Useful hygiene; not a stop rule.
 
-Confab enforces the SAME rule andon only writes down. Its reopen limit is
-control flow (rebuilt from confab-cycle-scan.js into plugins/confab/scripts/lib/ledger.py
+Zeugnis enforces the SAME rule andon only writes down. Its reopen limit is
+control flow (rebuilt from zeugnis-cycle-scan.js into plugins/zeugnis/scripts/lib/ledger.py
 during plugin rebuild):
 
-    plugins/confab/scripts/lib/ledger.py:90   record["status"] = "escalated" if record["reopenCount"] > max_reopens else "open"
-    plugins/confab/scripts/lib/ledger.py:56   raise CycleBoundExceededError(...)
+    plugins/zeugnis/scripts/lib/ledger.py:90   record["status"] = "escalated" if record["reopenCount"] > max_reopens else "open"
+    plugins/zeugnis/scripts/lib/ledger.py:56   raise CycleBoundExceededError(...)
 
 Andon's identical rule ("the same wire reopens three times -> escalate") greps
 to zero hits across its workflows. So the discriminating question is:

@@ -5,10 +5,10 @@ summary: "The after-the-fact half of authoring: a fixed-category reliability swe
 openingPrompt: "Sweep our own skills, agents, and workflows for agentic-reliability defects -- unbounded loops, missing escalation, no verify-wiring, tool grants beyond the stated role -- confirm any excessive-grant finding with a strictly read-only auditor, judge it against the canonical tools/description spec, and then prove any fix actually holds rather than just existing in prose."
 external: ["claude-plugins-official"]
 beats:
-  - skill: "confab:confab-agentic-reliability"
+  - skill: "zeugnis:zeugnis-agentic-reliability"
     why: "Four fixed categories — unbounded retries, absent escalation, missing verify-wiring, excessive tool grants — run with verification on by default."
     prompt: "sweep our skills, agents, and workflows for agentic-reliability defects — unbounded loops, no escalation path, no verify wiring, tool grants beyond the stated role"
-  - skill: "confab:agentic-reliability-auditor"
+  - skill: "zeugnis:agentic-reliability-auditor"
     why: "Read-only by its own tool grant (Read, Glob, Grep only) — it cannot 'fix' an excessive-tool-grant finding by widening its own grant, which is the exact failure mode this beat exists to avoid."
   - skill: "plugin-dev:agent-development"
     why: "Supplies the canonical tools:/description: spec the audit is judged against — without it, 'excessive' has no baseline to be excessive relative to."
@@ -29,8 +29,8 @@ donts:
 <RecipeHeader />
 
 This is the after-the-fact half of authoring, run against skills and agents that already
-exist. `confab:confab-agentic-reliability` sweeps four fixed categories with verification
-on by default; `confab:agentic-reliability-auditor` is deliberately read-only, so it cannot
+exist. `zeugnis:zeugnis-agentic-reliability` sweeps four fixed categories with verification
+on by default; `zeugnis:agentic-reliability-auditor` is deliberately read-only, so it cannot
 paper over an excessive-tool-grant finding by widening its own grant. `plugin-dev:agent-development`
 supplies the canonical `tools:`/`description:` spec a finding of "excessive" is judged
 against, and `andon:andon-verify` closes the gap between a guard that exists in prose and

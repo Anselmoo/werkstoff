@@ -18,7 +18,7 @@ Two things are locked down here, both of which had already rotted once:
 2. The rendered HTML actually carries the report shell the standard requires:
    the S2 title/CSP/marker set, the R1 `class="verdict"` element, and the R4
    legend -- checked against the document with <style> blocks stripped, for
-   the same reason scripts/ci/check_viewer_conformance.py strips them (confab
+   the same reason scripts/ci/check_viewer_conformance.py strips them (zeugnis
    defines a .legend it never uses, so a naive substring search passes on a
    viewer that has no legend at all).
 

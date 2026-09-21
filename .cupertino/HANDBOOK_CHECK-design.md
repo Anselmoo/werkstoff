@@ -25,8 +25,8 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 | Medium | no | spacing-and-layout-grid | `plugins/andon/assets/board-viewer.html:35` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
 | Medium | no | spacing-and-layout-grid | `plugins/passung/assets/matrix-viewer.html:54` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
 | Medium | yes | typography-system | `plugins/passung/assets/matrix-viewer.html:11` | Base body rule omits line-height token entirely |
-| Medium | no | spacing-and-layout-grid | `plugins/confab/assets/burndown-viewer.html:24` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Medium | yes | typography-system | `plugins/confab/assets/burndown-viewer.html:11` | Base body rule omits line-height token entirely |
+| Medium | no | spacing-and-layout-grid | `plugins/zeugnis/assets/burndown-viewer.html:24` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
+| Medium | yes | typography-system | `plugins/zeugnis/assets/burndown-viewer.html:11` | Base body rule omits line-height token entirely |
 | Low | no | spacing-and-layout-grid | `plugins/cli-scaffold/assets/architecture-tree-viewer.html:31` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
 | Low | no | spacing-and-layout-grid | `plugins/zirkel/assets/branch-comparison-viewer.html:35` | Off-scale px literals used for margin/padding (not 4/8/12/16/20) |
 | Low | no | spacing-and-layout-grid | `plugins/cupertino/assets/review-flow-viewer.html:59` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
@@ -99,7 +99,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Replace 5px with `var(--space-1)` (4px) or `var(--space-2)` (8px) and 1px with 0/`var(--space-1)`, whichever preserves the intended visual density.
 
-### `plugins/confab/assets/burndown-viewer.html:24` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
+### `plugins/zeugnis/assets/burndown-viewer.html:24` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
 
 **Dimension:** spacing-and-layout-grid · **Severity:** Medium · **Mechanical:** False
 
@@ -148,7 +148,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Replace `font: 14px/1.45 system-ui, sans-serif;` with `font: var(--font-size-base)/var(--line-height-base) var(--font-sans);` to match the tokens vendored at plugins/befund/assets/tokens.css:144-146 (which already define 14px / 1.45 / the same font stack) instead of re-hardcoding those exact values.
 
-### `plugins/confab/assets/burndown-viewer.html:11` — Base body rule omits line-height token entirely
+### `plugins/zeugnis/assets/burndown-viewer.html:11` — Base body rule omits line-height token entirely
 
 **Dimension:** typography-system · **Severity:** Medium · **Mechanical:** True
 

@@ -10,7 +10,7 @@ did not make it, and checked by a script that does not care who did.
 ## Steps
 
 1. **Preflight.** Run `nacharbeit-preflight`. It must show `run.json=present` and no
-   open lock. Name every other live guard: a denial from takt, lehre, andon, confab,
+   open lock. Name every other live guard: a denial from takt, lehre, andon, zeugnis,
    befund or cupertino during this pass is reported as "blocked by <plugin>" and
    never retried with that plugin's escape hatch.
 

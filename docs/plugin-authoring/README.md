@@ -65,7 +65,7 @@ structure" pattern the craft rules below argue against.
 werkstoff's skills and agents are strong on **enforcement prose** (MUST/refuse language,
 gates, validators) but were weak on **showing the shape of the output** — describing a
 schema in a sentence instead of showing a worked, fenced instance. That gap is now closed
-for every befund and confab auditor agent (see `output-shape-findings.md` §4.2) and
+for every befund and zeugnis auditor agent (see `output-shape-findings.md` §4.2) and
 partially closed structurally for `befund-extract-rules` (a three-file
 schema/example/report split, §4.6). What's still open, and the general rules to apply
 when extending any of the twelve plugins, live in `craft-standards.md`.

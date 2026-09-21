@@ -79,15 +79,16 @@ select = ["E4", "E7", "E9", "F", "PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]
 # `takt` and `arbeitsplan` are deliberately ABSENT: both are at zero and must
 # stay there. A new plugin starts absent too.
 #
-# THREE KEYS BELOW WERE RENAMED, NOT ADDED. `plugins/zirkel/**` was
+# FOUR KEYS BELOW WERE RENAMED, NOT ADDED. `plugins/zirkel/**` was
 # `plugins/compass/**`, `plugins/passung/**` was `plugins/codebase-consistency/**`,
-# and `plugins/befund/**` was `plugins/self-assess/**`. A rename is textually
+# `plugins/befund/**` was `plugins/self-assess/**`, and `plugins/zeugnis/**` was
+# `plugins/confab/**`. A rename is textually
 # indistinguishable from adding a path, which the rule above forbids -- so it is
 # recorded here instead. Every count is unchanged from before the rename; each
 # still may only shrink.
 [lint.per-file-ignores]
 "plugins/cli-scaffold/**"         = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  # 230
-"plugins/confab/**"               = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  # 209
+"plugins/zeugnis/**"               = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  # 209
 "plugins/befund/**"               = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  # 123
 "plugins/zirkel/**"               = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  #  89
 "plugins/nacharbeit/**"           = ["PTH", "UP", "B904", "SIM115", "RUF100", "DTZ"]  #  87

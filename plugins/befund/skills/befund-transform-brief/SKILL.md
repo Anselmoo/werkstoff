@@ -60,13 +60,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py work-item-rank --severity Hi
 from `complexity_score_summary.json` if `befund-complexity-score` has run, else the
 default of 1. Sort each phase's work items by the returned rank, descending.
 
-## Step 5: Route confab findings
+## Step 5: Route zeugnis findings
 
-If confab-plugin findings are present in any domain summary, route each by its `fixability`
+If zeugnis-plugin findings are present in any domain summary, route each by its `fixability`
 field, not by re-reading its prose:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py route-confab-finding --finding <json finding>
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py route-zeugnis-finding --finding <json finding>
 ```
 
 `"advisory"` (only `fixability: "advisory"`) goes to the phase's Advisory notes; `"work_item"`

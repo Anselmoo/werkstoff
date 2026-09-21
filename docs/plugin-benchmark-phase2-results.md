@@ -7,16 +7,16 @@ from raw tool-call payloads (per the plan's definition), never from a transcript
 
 ---
 
-## 1. Hook-enforced family (andon, confab, befund, cupertino)
+## 1. Hook-enforced family (andon, zeugnis, befund, cupertino)
 
 | Plugin | Chain | Verdict |
 |---|---|---|
 | andon | AND-1 preflight → loop | FAILED |
 | andon | AND-2 loop → verify | **WORKED** |
 | andon | AND-3 status → loop | FAILED |
-| confab | CON-1 dependency-audit → cycle | FAILED |
-| confab | CON-2 assertion-audit → cycle | FAILED |
-| confab | CON-3 cycle → status | **WORKED** |
+| zeugnis | CON-1 dependency-audit → cycle | FAILED |
+| zeugnis | CON-2 assertion-audit → cycle | FAILED |
+| zeugnis | CON-3 cycle → status | **WORKED** |
 | befund | SA-1 stage-map → autopilot | FAILED |
 | befund | SA-2 stage-map → status | FAILED |
 | befund | SA-3 autopilot → status | N/A (autopilot itself has no schema — excluded per denominator discipline) |
@@ -29,7 +29,7 @@ Per-plugin ratio against the plan's fixed asymmetric thresholds (PASS ≥ 0.50, 
 | Plugin | Ratio | Verdict |
 |---|---|---|
 | andon | 1/3 = 0.33 | INCONCLUSIVE |
-| confab | 1/3 = 0.33 | INCONCLUSIVE |
+| zeugnis | 1/3 = 0.33 | INCONCLUSIVE |
 | befund | 0/2 = 0.00 | **FAIL** |
 | cupertino | 0/3 = 0.00 | **FAIL** |
 
@@ -43,7 +43,7 @@ result in the whole benchmark, and it recurs for a *specific, mechanical* reason
   (AND-3 FAILED, structurally, not incidentally). The one clean pass, AND-2, works because
   `andon-propose`'s entire JSON output is copied byte-for-byte into `andon-verify`'s dispatch
   prompt — the one place in the plugin where a handoff is coded, not just documented.
-- **confab**: `cycle_engine.py`'s `plan-next-pass` — read directly from source — **has no code
+- **zeugnis**: `cycle_engine.py`'s `plan-next-pass` — read directly from source — **has no code
   path that ever opens a domain's `*_summary.json` sidecar**. Domain selection on a fresh run is a
   hardcoded fallback list (`dependency_audit` first), confirmed live twice: once where it
   coincidentally matched the audit that had just run, once where it picked the wrong domain
@@ -124,7 +124,7 @@ scaffolds), which is the *correct*, expected result for that pre-registered chec
    - `plugins/befund/hooks/guard_target_edit.py` denies any absolute-path Write once its
      output dir exists, with no check that the target is even inside the repo — it will block
      writes to unrelated locations on disk (reproduced live against a scratchpad path).
-   - `plugins/confab`'s `assertion-auditor` agent returned lowercase severity values
+   - `plugins/zeugnis`'s `assertion-auditor` agent returned lowercase severity values
      (`"medium"`/`"low"`) that violate its own shared schema's enum (`{"Low","Medium","High"}`) —
      would have been silently dropped by the writer script with only a stderr warning.
 3. **CUP-2's chain, as named in the plan itself, is not runnable as written** once cupertino has
@@ -141,7 +141,7 @@ but for a specific and fixable reason**: it is not that these plugins' skills la
 found real, often well-designed ones. It's that **the orchestrating skill/script that runs next
 almost never reads the schema back**, across every hook-enforced plugin and one of the two
 advisory plugins. The one chain type that reliably works everywhere it was tested (andon's
-propose→verify, confab's cycle→status, zirkel's Decompose→Execute, cli-scaffold's generate→verify)
+propose→verify, zeugnis's cycle→status, zirkel's Decompose→Execute, cli-scaffold's generate→verify)
 shares one property: **the same file/script that produces the output is the one that consumes it
 one step later**, in a tight, single-orchestrator loop — not a separate skill invocation reading
 another skill's sidecar file cold. That's the concrete, falsifiable gap a fix should target.

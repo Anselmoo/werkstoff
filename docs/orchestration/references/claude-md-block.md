@@ -8,7 +8,7 @@ already states about itself.
 - `cupertino-council`'s own frontmatter: "Always run before code, never after —
   retrofitting the council onto finished code defeats the purpose."
 - `zirkel-clarify-scope`'s own frontmatter: to be used "before any work begins".
-- `confab-assertion-audit` and the gate it fills are documented together in
+- `zeugnis-assertion-audit` and the gate it fills are documented together in
   [`gates.md`](gates.md)'s "Reviewers that drop in with no setup" table — nothing
   about the audit itself requires the extra sentence, only where it slots in.
 - `andon-verify` routes among seven strategies by reading "the wire's contract" —
@@ -29,7 +29,7 @@ already states about itself.
   after code already exists — retrofitting it defeats the purpose.
 - Before starting an ambiguous task, scope it with `zirkel-clarify-scope`. Do this
   before any other planning step, not after you've already picked an approach.
-- At each review gate (after a task, before a PR), run `confab-assertion-audit` over
+- At each review gate (after a task, before a PR), run `zeugnis-assertion-audit` over
   the tests you just wrote, in addition to the general reviewer. See
   `references/gates.md` for what else to route by what the diff touched.
 - Before merge, prove — don't just review — the contract the change claims to
@@ -116,7 +116,7 @@ repository declared, and is inert until `.claude/takt.local.md` exists. Installi
 turns these five bullets from instructions into refusals.
 
 Eight other werkstoff plugins hold a `PreToolUse` hook of their own — `andon`,
-`lehre`, `matrize`, and `befund` gate write tools, `confab` and `nacharbeit`
+`lehre`, `matrize`, and `befund` gate write tools, `zeugnis` and `nacharbeit`
 also gate `Bash`, `arbeitsplan` matches the same six dispatch-and-write tool types as
 takt itself, and `cupertino` enforces its own internal ordering through
 `GATED_AFTER_BACKWARDS`. All are inert until the repository actually uses the owning

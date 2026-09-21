@@ -284,7 +284,7 @@ export default defineConfig({
           { text: 'cli-scaffold', link: '/plugins/cli-scaffold' },
           { text: 'passung', link: '/plugins/passung' },
           { text: 'zirkel', link: '/plugins/zirkel' },
-          { text: 'confab', link: '/plugins/confab' },
+          { text: 'zeugnis', link: '/plugins/zeugnis' },
           { text: 'cupertino', link: '/plugins/cupertino' },
           {
             text: 'lehre',

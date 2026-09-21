@@ -208,7 +208,7 @@ process boundary", "does this handler own business logic" — and `lehre-codify`
 as advisory. The schema then **refused to persist them**, because `check.kind` had to be one
 of the five machine kinds. So the pipeline researched a rule class it could not store, and
 `violation-auditor` — whose entire job is auditing that class — was dispatched by nothing,
-because nothing could ever be in its input set. `confab-agentic-reliability` found it.
+because nothing could ever be in its input set. `zeugnis-agentic-reliability` found it.
 
 `judgement` is the honest home for those: advisory **by schema** (a blocking rule nothing
 can evaluate is a validation error, not a footnote), required to carry the question an

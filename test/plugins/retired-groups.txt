@@ -24,7 +24,10 @@
 
 # Renamed to shop-floor terms so every plugin name passes the test stated in
 # docs/glossary.md: named for a manufacturing concept its README states.
-# compass -> zirkel, codebase-consistency -> passung, self-assess -> befund.
+# compass -> zirkel, codebase-consistency -> passung, self-assess -> befund,
+# confab -> zeugnis. andon is deliberately NOT here: it already satisfied that test
+# as the Toyota andon cord, so it kept its name.
 compass
 codebase-consistency
 self-assess
+confab

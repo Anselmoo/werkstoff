@@ -512,7 +512,7 @@ def write_symbol_graph_okf(run_dir: Path, symbols: list[Symbol], contents: dict[
 def write_symbol_graph_index(run_dir: Path, symbols: list[Symbol]) -> None:
     """Per-file index (symbol-graph/<file-slug>/_index.json: [{name, kind,
     line, slug}]) so a consumer holding only a finding's (file, line) —
-    which is what every finding in befund/cupertino/confab actually
+    which is what every finding in befund/cupertino/zeugnis actually
     carries, never a resolved symbol name — can find the nearest enclosing
     symbol's doc without guessing a name or globbing ambiguous filenames."""
     graph_root = run_dir / "symbol-graph"

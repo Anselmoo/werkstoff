@@ -98,7 +98,7 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
         tmp_path,
         [
             {"name": "befund", "description": "d", "source": "./plugins/befund"},
-            {"name": "confab", "description": "d", "source": "./plugins/confab"},
+            {"name": "zeugnis", "description": "d", "source": "./plugins/zeugnis"},
         ],
     )
     marketplace = core.load_marketplace(repo)
@@ -106,11 +106,11 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
 
     installed = core.install_plugins(marketplace, (), scope="user", run=run)
 
-    assert installed == ["befund", "confab"]
+    assert installed == ["befund", "zeugnis"]
     assert calls[0][1:5] == ["plugin", "marketplace", "add", str(repo)]
     assert calls[1][1:5] == ["plugin", "marketplace", "update", "werkstoff"]
     assert calls[2][1:4] == ["plugin", "install", "befund@werkstoff"]
-    assert calls[3][1:4] == ["plugin", "install", "confab@werkstoff"]
+    assert calls[3][1:4] == ["plugin", "install", "zeugnis@werkstoff"]
 
 
 def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
@@ -119,16 +119,16 @@ def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
         tmp_path,
         [
             {"name": "befund", "description": "d", "source": "./plugins/befund"},
-            {"name": "confab", "description": "d", "source": "./plugins/confab"},
+            {"name": "zeugnis", "description": "d", "source": "./plugins/zeugnis"},
         ],
     )
     marketplace = core.load_marketplace(repo)
     run, calls = _fake_run()
 
-    installed = core.install_plugins(marketplace, ("confab",), scope="project", run=run)
+    installed = core.install_plugins(marketplace, ("zeugnis",), scope="project", run=run)
 
-    assert installed == ["confab"]
-    assert calls[2][1:4] == ["plugin", "install", "confab@werkstoff"]
+    assert installed == ["zeugnis"]
+    assert calls[2][1:4] == ["plugin", "install", "zeugnis@werkstoff"]
     assert calls[2][4:6] == ["--scope", "project"]
 
 

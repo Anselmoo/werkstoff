@@ -20,7 +20,7 @@ but "would this test actually catch a real defect if one were introduced."
    contract changed underneath it without the test being updated?
 
 This mirrors what a dedicated mutation/contract-drift auditor would do
-(e.g. the `confab` plugin's assertion-strength and contract-drift auditors,
+(e.g. the `zeugnis` plugin's assertion-strength and contract-drift auditors,
 if installed) -- prefer dispatching those directly when available, and fall
 back to the manual method above only when they are not.
 

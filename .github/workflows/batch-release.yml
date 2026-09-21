@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       groups_and_levels:
-        description: "Comma-separated group:level pairs, e.g. 'befund:patch,cupertino:patch,confab:patch,zirkel:patch'"
+        description: "Comma-separated group:level pairs, e.g. 'befund:patch,cupertino:patch,zeugnis:patch,zirkel:patch'"
         required: true
         type: string
 

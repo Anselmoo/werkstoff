@@ -215,9 +215,9 @@ def cmd_attribute_citation(args):
     _print({"stage": attribution.attribute(args.citation, file_stage_index)})
 
 
-def cmd_route_confab_finding(args):
+def cmd_route_zeugnis_finding(args):
     finding = _load_json_arg(args.finding)
-    _print({"route": transform_routing.route_confab_finding(finding)})
+    _print({"route": transform_routing.route_zeugnis_finding(finding)})
 
 
 def cmd_flag_p0_blockers(args):
@@ -465,9 +465,9 @@ def build_parser():
     p.add_argument("--file-stage-index")
     p.set_defaults(func=cmd_attribute_citation)
 
-    p = sub.add_parser("route-confab-finding")
+    p = sub.add_parser("route-zeugnis-finding")
     p.add_argument("--finding", required=True)
-    p.set_defaults(func=cmd_route_confab_finding)
+    p.set_defaults(func=cmd_route_zeugnis_finding)
 
     p = sub.add_parser("flag-p0-blockers")
     p.add_argument("--rules", required=True)

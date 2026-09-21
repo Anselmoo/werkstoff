@@ -11,7 +11,7 @@ beats:
   - skill: "zirkel:zirkel-map-relationships"
     why: "An untyped or dynamically-dispatched call site is invisible to tooling and visible to an index."
     prompt: "find every call site that consumes this return value, including the dynamically-dispatched ones"
-  - skill: "confab:confab-contract-drift"
+  - skill: "zeugnis:zeugnis-contract-drift"
     why: "Type hints, signatures, docstring params, and schemas drift apart precisely during this migration."
     prompt: "after the migration, check for drift between the declared signatures and how they're actually called"
   - skill: "andon:andon-verify"

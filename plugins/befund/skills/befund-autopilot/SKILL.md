@@ -40,10 +40,10 @@ Once stage-map's outputs are settled, dispatch the remaining finding domains in 
 `befund-code-idiom`, `befund-extract-rules`, `befund-arch-health`,
 `befund-complexity-score`, `befund-ui-audit`.
 
-Rule `autopilot-confab-optional`: attempt to invoke confab's audit skills (e.g.
-`confab:confab-cycle`) only if the confab plugin is actually installed in this session (it
-will appear in the available-skills listing). If it does not appear, report "confab not
-installed" plainly and continue -- never fabricate confab-shaped findings to fill the gap.
+Rule `autopilot-zeugnis-optional`: attempt to invoke zeugnis's audit skills (e.g.
+`zeugnis:zeugnis-cycle`) only if the zeugnis plugin is actually installed in this session (it
+will appear in the available-skills listing). If it does not appear, report "zeugnis not
+installed" plainly and continue -- never fabricate zeugnis-shaped findings to fill the gap.
 
 Rule `autopilot-check-phase-read-only`: every skill in this phase only reads and produces
 findings. Do not use Edit, and do not use Write for anything other than each skill's own

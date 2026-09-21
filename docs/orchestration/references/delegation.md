@@ -109,11 +109,11 @@ leaving these agents' own defaults in place:
 | cupertino | handbook-dimension-analyst, handbook-drift-auditor, handbook-remediator, handbook-verifier | `sonnet` |
 | befund | arch-health-auditor, business-rules-miner, ci-topology-auditor, complexity-surveyor, convention-auditor, docs-drift-auditor, idiom-auditor, idiom-remediator, stage-mapper, transform-executor, ui-auditor | `inherit` (declared explicitly) |
 | andon | andon-adjudicator, andon-challenger, andon-defender, andon-verifier | none declared |
-| confab | agentic-reliability-auditor, assertion-auditor, confab-remediator, contract-auditor, dependency-auditor | none declared |
+| zeugnis | agentic-reliability-auditor, assertion-auditor, zeugnis-remediator, contract-auditor, dependency-auditor | none declared |
 | passung | align-executor, passung-critic, equivalence-verifier, pattern-analyst, pattern-extractor | none declared |
 
 Two rows read the same at runtime but say different things on the page: befund's
-agents spell out `model: inherit`, while andon, confab, and passung omit
+agents spell out `model: inherit`, while andon, zeugnis, and passung omit
 the field entirely. Both resolve to the dispatching session's model — but only the
 first row documents that choice; the other three rows are silent, and a reader
 scanning their frontmatter for a model line finds nothing rather than a decision.

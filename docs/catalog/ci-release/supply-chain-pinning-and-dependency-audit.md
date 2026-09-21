@@ -5,7 +5,7 @@ summary: "Separate 'does this package exist' from 'is this reference pinned tigh
 openingPrompt: "Audit our dependencies and supply-chain pinning -- check whether every declared package actually exists before trusting the lockfile, run an adversarial security pass over the manifests and workflows, and then prove whether every third-party reference is actually pinned tightly enough to be reproducible rather than assuming it from the CVE scan alone."
 external: ["claude-plugins-official"]
 beats:
-  - skill: "confab:confab-dependency-audit"
+  - skill: "zeugnis:zeugnis-dependency-audit"
     why: "Hallucinated and typosquat-adjacent entries are cheapest to catch at declaration time, before a lockfile blesses them."
     prompt: "audit every dependency in our manifests — I want to know if any of them don't actually exist or look like typosquats"
   - skill: "code-modernization:security-auditor"

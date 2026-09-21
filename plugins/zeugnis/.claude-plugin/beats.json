@@ -1,0 +1,18 @@
+{
+  "$schema": "arbeitsplan/beats/2",
+  "plugin": "zeugnis",
+  "produces": [
+    {
+      "marker": "contracts-audited",
+      "after": "zeugnis-contract-drift",
+      "meaning": "machine-checkable contracts were compared against actual call-site usage",
+      "evidence": {
+        "kind": "artifact",
+        "path": "analysis/zeugnis/contract_drift_summary.json",
+        "relativeTo": "repo",
+        "writtenBy": "plugins/zeugnis/scripts/contract_drift.py"
+      }
+    }
+  ],
+  "requires": []
+}

@@ -1,7 +1,7 @@
-"""Route confab findings and flag under-confident P0 rules for befund-transform-brief."""
+"""Route zeugnis findings and flag under-confident P0 rules for befund-transform-brief."""
 
 
-def route_confab_finding(finding):
+def route_zeugnis_finding(finding):
     return "advisory" if finding.get("fixability") == "advisory" else "work_item"
 
 

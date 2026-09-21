@@ -13,7 +13,7 @@ beats:
     prompt: "check this repo's architecture health — god modules, cycles, layering violations, with evidence"
   - skill: "superpowers:test-driven-development"
     why: "Characterization tests written after the refactor characterize the refactor."
-  - skill: "confab:confab-contract-drift"
+  - skill: "zeugnis:zeugnis-contract-drift"
     why: "Its own description scopes it to checking \"for contract drift after a refactor.\""
     prompt: "check for contract drift after this refactor — signatures, type hints, docstring params, schemas"
   - skill: "passung:equivalence-verifier"

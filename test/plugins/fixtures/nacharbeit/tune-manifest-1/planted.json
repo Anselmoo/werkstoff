@@ -22,7 +22,7 @@
       "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/README.md",
       "rule_id": "PQ-PROMPTS-ROUTE",
       "angle": "cannibalization",
-      "quoteKey": "Triggers `confab-dependency-audit`"
+      "quoteKey": "Triggers `zeugnis-dependency-audit`"
     },
     {
       "file": "test/plugins/fixtures/nacharbeit/tune-manifest-1/.claude-plugin/plugin.json",

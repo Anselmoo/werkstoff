@@ -34,10 +34,10 @@ MultiEdit -- so gating on repo-level state ("does this repo look
 befund-managed") instead of a per-dispatch lock meant EVERY edit in the
 whole session, from any plugin or a direct user edit, got swept into this
 gate the moment a repo had .claude/befund.local.md or analysis/
-befund/ at all (issue: this hook blocked confab/cupertino/
+befund/ at all (issue: this hook blocked zeugnis/cupertino/
 passung remediators and ordinary direct edits in any
-befund-enabled repo). Mirrors confab's guard_edit_scope.py, which is
-inert unless analysis/confab/remediation_scope.json is open -- except this
+befund-enabled repo). Mirrors zeugnis's guard_edit_scope.py, which is
+inert unless analysis/zeugnis/remediation_scope.json is open -- except this
 lock holds a LIST of allowed files rather than one, because befund
 dispatches one remediator per independent (file, kind) cluster / stage file,
 and those dispatches may run in parallel; a single-file lock would race
@@ -61,7 +61,7 @@ import os
 import sys
 
 # This hook lives at plugins/befund/hooks/guard_target_edit.py -- one
-# level under the plugin root, unlike confab's scripts/hooks/ nesting. `lib/`
+# level under the plugin root, unlike zeugnis's scripts/hooks/ nesting. `lib/`
 # is at plugins/befund/scripts/lib/, so the path onto sys.path is
 # <plugin_root>/scripts, computed directly rather than copy-pasted from a
 # different plugin's directory depth (which is what broke this the first time

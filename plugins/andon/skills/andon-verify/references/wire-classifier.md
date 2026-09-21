@@ -34,8 +34,8 @@ not a second, competing decision procedure to reason through by hand.
 5. **d -- agentic-reliability** (`is_autonomous_reliability`): the wire's
    contract concerns the reliability of an autonomous-fix loop itself
    (retry bounds, escalation paths, tool scope) rather than the fix's
-   output. Prerequisite: `available_confab` (the `confab` plugin's
-   `confab-agentic-reliability` skill).
+   output. Prerequisite: `available_zeugnis` (the `zeugnis` plugin's
+   `zeugnis-agentic-reliability` skill).
 
 6. **c -- epistemic rubric** (`is_epistemic_claim`): the wire's contract is a
    claim about the world rather than about code -- a documented assumption,

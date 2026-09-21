@@ -21,14 +21,14 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit,
   house-rules convention enforcement, and a multi-repo portfolio
   dashboard.
-- **[`confab`](plugins/confab/README.md)** — catches where AI-authored
-  code *confabulates* (short for **confabulation** — an LLM confidently
-  filling a gap with plausible-but-false content; not casual chat):
+- **[`zeugnis`](plugins/zeugnis/README.md)** — catches where AI-authored
+  code *confabulates* (**confabulation** — an LLM confidently filling a
+  gap with plausible-but-false content):
   declared dependencies that don't exist (hallucination detection), tests
   that assert nothing (LLM-reasoned assertion/mutation strength), contracts
   drifted from their call-sites (machine-checkable contract-drift), and
   unreliable agentic-loop definitions — plus a bounded autonomous
-  self-optimization cycle (`confab-cycle`) with an opt-in propose/fix mode.
+  self-optimization cycle (`zeugnis-cycle`) with an opt-in propose/fix mode.
 - **[`zirkel`](plugins/zirkel/README.md)** — a prompt-engineering
   technique library for complex/vague tasks, composed by `zirkel-solve`
   into an actual workflow (clarify-scope, explore-branches,
@@ -98,7 +98,7 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 /plugin install befund@werkstoff
 ```
 
-Swap `befund` for any plugin name above (`confab`, `zirkel`,
+Swap `befund` for any plugin name above (`zeugnis`, `zirkel`,
 `cupertino`, `andon`, `arbeitsplan`, `cli-scaffold`, `passung`,
 `takt`, `lehre`, `nacharbeit`, `matrize`) to install
 a different one — each is independent and can be installed on its own.

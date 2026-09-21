@@ -29,7 +29,7 @@
         {
           "id": "andon:andon-verify",
           "name": "andon-verify",
-          "description": "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use confab:confab-assertion-audit for that."
+          "description": "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use zeugnis:zeugnis-assertion-audit for that."
         }
       ],
       "agents": [
@@ -304,7 +304,7 @@
         {
           "id": "befund:befund-docs-drift",
           "name": "befund-docs-drift",
-          "description": "Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of befund-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by befund-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by confab-contract-drift."
+          "description": "Extracts falsifiable claims about current code state from CLAUDE.md, README.md, DECISIONS.md, ARCHITECTURE.md, and ADR files, and verifies each against the cited code. Use when the user asks to \"check documentation accuracy\", \"find doc drift\", \"verify our docs match the code\", or as part of befund-autopilot's CHECK phase. Excludes CI/CD-specific doc claims, handled by befund-ci-topology, and structural contract/docstring drift -- type signatures, docstring parameter/return declarations, or API/OpenAPI/GraphQL schemas versus their call sites -- handled by zeugnis-contract-drift."
         },
         {
           "id": "befund:befund-extract-rules",
@@ -531,114 +531,6 @@
       "hooks": {
         "present": false,
         "events": []
-      },
-      "workflows": []
-    },
-    {
-      "name": "confab",
-      "version": "0.10.0",
-      "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
-      "skills": [
-        {
-          "id": "confab:confab-agentic-reliability",
-          "name": "confab-agentic-reliability",
-          "description": "Use when the user asks to audit this plugin repository's own skill, agent, or workflow definitions for agentic-loop reliability defects, wants to check for unbounded retries, missing escalation paths, unwired Find/Verify phases, or excessive tool grants, or asks 'is our own agent design safe'. Verification runs by default and only skips if the user explicitly says skip_verification. Findings fall into exactly four categories."
-        },
-        {
-          "id": "confab:confab-assertion-audit",
-          "name": "confab-assertion-audit",
-          "description": "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants confab's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests. Every finding is labeled real-tool or llm-reasoned."
-        },
-        {
-          "id": "confab:confab-code-change",
-          "name": "confab-code-change",
-          "description": "Use when the user asks for a pre-commit quality check on staged or uncommitted changes, wants a quick confab pass over 'what I just changed' before committing, or asks 'is this diff okay to commit'. Only runs the domains whose file patterns match the changed files, and always produces an advisory verdict that never blocks the commit."
-        },
-        {
-          "id": "confab:confab-contract-drift",
-          "name": "confab-contract-drift",
-          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants confab's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use befund-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
-        },
-        {
-          "id": "confab:confab-cycle",
-          "name": "confab-cycle",
-          "description": "Use when the user asks for a bounded self-optimization loop that re-runs confab's audits until convergence or a pass cap, wants to 'run the confab cycle', 'keep fixing findings until done', or asks for propose-only vs fix-mode passes. Runs at most max_passes_per_invocation (default 5) passes, applies fixes only in fixable domains, and stops early on convergence — every bound is enforced by scripts/cycle_engine.py, not by this file's instructions."
-        },
-        {
-          "id": "confab:confab-dependency-audit",
-          "name": "confab-dependency-audit",
-          "description": "Use when the user asks to audit declared dependencies for hallucinated, nonexistent, or typosquat-adjacent packages, wants confab's dependency audit run, or asks whether package.json/requirements.txt/pyproject.toml/Cargo.toml/go.mod/Gemfile entries actually exist. Performs bounded, read-only registry lookups with a mandatory-unless-flagged independent verification pass."
-        },
-        {
-          "id": "confab:confab-preflight",
-          "name": "confab-preflight",
-          "description": "Use when the user asks whether this repository is ready for confab audits to run successfully, wants a pre-flight/readiness check before running confab-dependency-audit, confab-assertion-audit, confab-contract-drift, or confab-agentic-reliability, or asks 'is confab set up correctly here'. Runs five independent checks and reports one readiness verdict per domain skill."
-        },
-        {
-          "id": "confab:confab-status",
-          "name": "confab-status",
-          "description": "Use when the user asks where confab's quality analysis stands, which reports are stale, what to run next, or wants a dashboard of all findings so far. Read-only: never triggers an audit itself, only reports on what has already run."
-        }
-      ],
-      "agents": [
-        {
-          "id": "confab:agentic-reliability-auditor",
-          "name": "agentic-reliability-auditor",
-          "description": "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when confab-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, commands/*, and workflows/* files.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "confab:assertion-auditor",
-          "name": "assertion-auditor",
-          "description": "Use this agent to check whether a test suite would actually catch bugs, by proposing plausible small mutations to target source (off-by-one, boundary flip, condition negation) and judging whether existing tests would catch each one. Operates in Find, Verify, or Suggest mode depending on the dispatch prompt. May run a real mutation tool read-only via Bash if one is named and available, and always falls back to llm-reasoned analysis with an explicit note when it isn't. Never modifies source or test files and never installs, uninstalls, or writes via Bash.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        },
-        {
-          "id": "confab:confab-remediator",
-          "name": "confab-remediator",
-          "description": "Use this agent when a single, already-located confab finding (a hallucinated/typosquat dependency-manifest entry, a contract-declaration mismatch, or an excessive-tool-grant in an agent's frontmatter) needs exactly one scoped fix applied and nothing else. Always dispatched once per finding by confab-cycle in fix mode, never for a batch. A PreToolUse hook enforces the single-edit, single-file scope independently of this agent's own behavior. Never invoked for assertion-audit findings or any other agentic-reliability category — those are draft-only or advisory.",
-          "tools": [
-            "Read",
-            "Edit"
-          ]
-        },
-        {
-          "id": "confab:contract-auditor",
-          "name": "contract-auditor",
-          "description": "Use this agent to find drift between machine-checkable contracts — type hints, function signatures, docstring parameter/return descriptions, and API/OpenAPI/GraphQL schemas — and their actual call-site or handler usage. Operates in Find (extract contracts and compare) or Verify (independently re-check one candidate mismatch) mode. Never extracts or verifies prose documentation, and never fixes contracts or code — it only reports mismatches with both the declared and actual-usage locations.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep"
-          ]
-        },
-        {
-          "id": "confab:dependency-auditor",
-          "name": "dependency-auditor",
-          "description": "Use this agent to check whether declared dependencies in manifest files actually exist in their public registries, flagging packages that appear hallucinated (nonexistent) or typosquat-adjacent to a popular package. Performs read-only registry lookups only, via the plugin's bounded-timeout lookup script — never installs, publishes, or otherwise mutates a package, and never treats a registry timeout as a confirmed verdict. Trigger for both whole-manifest audits and single-package re-checks after a prior lookup timed out.",
-          "tools": [
-            "Read",
-            "Glob",
-            "Grep",
-            "Bash"
-          ]
-        }
-      ],
-      "commands": [],
-      "hooks": {
-        "present": true,
-        "events": [
-          "PreToolUse"
-        ]
       },
       "workflows": []
     },
@@ -1234,6 +1126,114 @@
       "workflows": []
     },
     {
+      "name": "zeugnis",
+      "version": "0.10.0",
+      "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
+      "skills": [
+        {
+          "id": "zeugnis:zeugnis-agentic-reliability",
+          "name": "zeugnis-agentic-reliability",
+          "description": "Use when the user asks to audit this plugin repository's own skill, agent, or workflow definitions for agentic-loop reliability defects, wants to check for unbounded retries, missing escalation paths, unwired Find/Verify phases, or excessive tool grants, or asks 'is our own agent design safe'. Verification runs by default and only skips if the user explicitly says skip_verification. Findings fall into exactly four categories."
+        },
+        {
+          "id": "zeugnis:zeugnis-assertion-audit",
+          "name": "zeugnis-assertion-audit",
+          "description": "Use when the user asks whether their test suite would actually catch bugs, wants a mutation-testing pass over target source and test files, asks to check for weak or tautological assertions, or wants zeugnis's assertion audit run. Not for proving that a specific change, fix, wire, or numeric claim is correct -- use andon:andon-verify for adversarial verification of a change; this skill judges only the tests. Every finding is labeled real-tool or llm-reasoned."
+        },
+        {
+          "id": "zeugnis:zeugnis-code-change",
+          "name": "zeugnis-code-change",
+          "description": "Use when the user asks for a pre-commit quality check on staged or uncommitted changes, wants a quick zeugnis pass over 'what I just changed' before committing, or asks 'is this diff okay to commit'. Only runs the domains whose file patterns match the changed files, and always produces an advisory verdict that never blocks the commit."
+        },
+        {
+          "id": "zeugnis:zeugnis-contract-drift",
+          "name": "zeugnis-contract-drift",
+          "description": "Use when the user asks to audit type signatures, docstrings, or API/OpenAPI/GraphQL schemas against actual call-site or handler usage, wants to check for contract drift after a refactor, or wants zeugnis's contract-drift audit run. Scope is structural, machine-checkable declarations only. Not for prose documentation drift — claims in CLAUDE.md, README.md, ARCHITECTURE.md, DECISIONS.md or ADR files no longer matching the code: use befund-docs-drift for that. Verification runs by default and only skips if the user explicitly says skip_verification."
+        },
+        {
+          "id": "zeugnis:zeugnis-cycle",
+          "name": "zeugnis-cycle",
+          "description": "Use when the user asks for a bounded self-optimization loop that re-runs zeugnis's audits until convergence or a pass cap, wants to 'run the zeugnis cycle', 'keep fixing findings until done', or asks for propose-only vs fix-mode passes. Runs at most max_passes_per_invocation (default 5) passes, applies fixes only in fixable domains, and stops early on convergence — every bound is enforced by scripts/cycle_engine.py, not by this file's instructions."
+        },
+        {
+          "id": "zeugnis:zeugnis-dependency-audit",
+          "name": "zeugnis-dependency-audit",
+          "description": "Use when the user asks to audit declared dependencies for hallucinated, nonexistent, or typosquat-adjacent packages, wants zeugnis's dependency audit run, or asks whether package.json/requirements.txt/pyproject.toml/Cargo.toml/go.mod/Gemfile entries actually exist. Performs bounded, read-only registry lookups with a mandatory-unless-flagged independent verification pass."
+        },
+        {
+          "id": "zeugnis:zeugnis-preflight",
+          "name": "zeugnis-preflight",
+          "description": "Use when the user asks whether this repository is ready for zeugnis audits to run successfully, wants a pre-flight/readiness check before running zeugnis-dependency-audit, zeugnis-assertion-audit, zeugnis-contract-drift, or zeugnis-agentic-reliability, or asks 'is zeugnis set up correctly here'. Runs five independent checks and reports one readiness verdict per domain skill."
+        },
+        {
+          "id": "zeugnis:zeugnis-status",
+          "name": "zeugnis-status",
+          "description": "Use when the user asks where zeugnis's quality analysis stands, which reports are stale, what to run next, or wants a dashboard of all findings so far. Read-only: never triggers an audit itself, only reports on what has already run."
+        }
+      ],
+      "agents": [
+        {
+          "id": "zeugnis:agentic-reliability-auditor",
+          "name": "agentic-reliability-auditor",
+          "description": "Use this agent to find agentic-loop reliability defects in a plugin repository's own skill, agent, and workflow definitions: unbounded retry loops, absent escalation paths, Find phases with no adversarial Verify wiring, and tool grants that exceed an agent's stated role. Read-only — it never proposes fixes and never writes or modifies files. Trigger it when zeugnis-agentic-reliability's Find or Verify phase needs one categorized pass over skills/*, agents/*, commands/*, and workflows/* files.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "zeugnis:assertion-auditor",
+          "name": "assertion-auditor",
+          "description": "Use this agent to check whether a test suite would actually catch bugs, by proposing plausible small mutations to target source (off-by-one, boundary flip, condition negation) and judging whether existing tests would catch each one. Operates in Find, Verify, or Suggest mode depending on the dispatch prompt. May run a real mutation tool read-only via Bash if one is named and available, and always falls back to llm-reasoned analysis with an explicit note when it isn't. Never modifies source or test files and never installs, uninstalls, or writes via Bash.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "zeugnis:contract-auditor",
+          "name": "contract-auditor",
+          "description": "Use this agent to find drift between machine-checkable contracts — type hints, function signatures, docstring parameter/return descriptions, and API/OpenAPI/GraphQL schemas — and their actual call-site or handler usage. Operates in Find (extract contracts and compare) or Verify (independently re-check one candidate mismatch) mode. Never extracts or verifies prose documentation, and never fixes contracts or code — it only reports mismatches with both the declared and actual-usage locations.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
+          "id": "zeugnis:dependency-auditor",
+          "name": "dependency-auditor",
+          "description": "Use this agent to check whether declared dependencies in manifest files actually exist in their public registries, flagging packages that appear hallucinated (nonexistent) or typosquat-adjacent to a popular package. Performs read-only registry lookups only, via the plugin's bounded-timeout lookup script — never installs, publishes, or otherwise mutates a package, and never treats a registry timeout as a confirmed verdict. Trigger for both whole-manifest audits and single-package re-checks after a prior lookup timed out.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Bash"
+          ]
+        },
+        {
+          "id": "zeugnis:zeugnis-remediator",
+          "name": "zeugnis-remediator",
+          "description": "Use this agent when a single, already-located zeugnis finding (a hallucinated/typosquat dependency-manifest entry, a contract-declaration mismatch, or an excessive-tool-grant in an agent's frontmatter) needs exactly one scoped fix applied and nothing else. Always dispatched once per finding by zeugnis-cycle in fix mode, never for a batch. A PreToolUse hook enforces the single-edit, single-file scope independently of this agent's own behavior. Never invoked for assertion-audit findings or any other agentic-reliability category — those are draft-only or advisory.",
+          "tools": [
+            "Read",
+            "Edit"
+          ]
+        }
+      ],
+      "commands": [],
+      "hooks": {
+        "present": true,
+        "events": [
+          "PreToolUse"
+        ]
+      },
+      "workflows": []
+    },
+    {
       "name": "zirkel",
       "version": "0.9.0",
       "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
@@ -1390,14 +1390,6 @@
     "cli-scaffold:cli-scaffold-interpreted",
     "cli-scaffold:cli-scaffold-shell",
     "cli-scaffold:scaffold-cli",
-    "confab:confab-agentic-reliability",
-    "confab:confab-assertion-audit",
-    "confab:confab-code-change",
-    "confab:confab-contract-drift",
-    "confab:confab-cycle",
-    "confab:confab-dependency-audit",
-    "confab:confab-preflight",
-    "confab:confab-status",
     "cupertino:cupertino-backwards",
     "cupertino:cupertino-cannibalize",
     "cupertino:cupertino-council",
@@ -1440,6 +1432,14 @@
     "nacharbeit:nacharbeit-probe",
     "nacharbeit:nacharbeit-review",
     "nacharbeit:nacharbeit-status",
+    "zeugnis:zeugnis-agentic-reliability",
+    "zeugnis:zeugnis-assertion-audit",
+    "zeugnis:zeugnis-code-change",
+    "zeugnis:zeugnis-contract-drift",
+    "zeugnis:zeugnis-cycle",
+    "zeugnis:zeugnis-dependency-audit",
+    "zeugnis:zeugnis-preflight",
+    "zeugnis:zeugnis-status",
     "zirkel:zirkel-calibrate-format",
     "zirkel:zirkel-clarify-scope",
     "zirkel:zirkel-decompose-chain",
@@ -1483,11 +1483,6 @@
     "befund:transform-executor",
     "befund:ui-auditor",
     "cli-scaffold:cli-scaffold-verifier",
-    "confab:agentic-reliability-auditor",
-    "confab:assertion-auditor",
-    "confab:confab-remediator",
-    "confab:contract-auditor",
-    "confab:dependency-auditor",
     "cupertino:handbook-dimension-analyst",
     "cupertino:handbook-drift-auditor",
     "cupertino:handbook-remediator",
@@ -1513,6 +1508,11 @@
     "passung:equivalence-verifier",
     "passung:pattern-analyst",
     "passung:pattern-extractor",
+    "zeugnis:agentic-reliability-auditor",
+    "zeugnis:assertion-auditor",
+    "zeugnis:contract-auditor",
+    "zeugnis:dependency-auditor",
+    "zeugnis:zeugnis-remediator",
     "zirkel:branch-proposer",
     "zirkel:instruction-candidate",
     "zirkel:reasoning-path"

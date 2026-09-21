@@ -201,13 +201,13 @@ pairings:
     recipeTask: "Make a strategy enforced rather than documented"
     recipeUrl: "/catalog/quality-verification/make-strategy-enforced-not-documented"
 
-  - id: "type-design-analyzer-confab-contract-drift"
+  - id: "type-design-analyzer-zeugnis-contract-drift"
     skillA: "pr-review-toolkit:type-design-analyzer"
-    skillB: "confab:confab-contract-drift"
+    skillB: "zeugnis:zeugnis-contract-drift"
     source: "claude-plugins-official"
     beat: "verify"
     why: "Changing what a function hands back is a contract change wearing a refactor's clothes -- every call site is a participant, and type hints, signatures, docstring params, and schemas drift apart precisely during a migration like this."
-    how: "type-design-analyzer reviews the new type's design -- encapsulation, invariants, enforceability -- before N call sites adopt the shape, since that's cheapest to fix early. confab-contract-drift then checks, after the migration, whether the declared signatures still agree with how the code is actually called."
+    how: "type-design-analyzer reviews the new type's design -- encapsulation, invariants, enforceability -- before N call sites adopt the shape, since that's cheapest to fix early. zeugnis-contract-drift then checks, after the migration, whether the declared signatures still agree with how the code is actually called."
     prompt: "before we roll this new return type out everywhere, review its design -- encapsulation, invariants, whether it's actually enforceable"
     dos:
       - "Review the type's design before rollout, not after -- it's cheapest before N call sites depend on the shape."
@@ -237,13 +237,13 @@ pairings:
     recipeTask: "Investigate a job that reports success but changed nothing"
     recipeUrl: "/catalog/ci-release/job-reports-success-but-changed-nothing"
 
-  - id: "confab-assertion-audit-pr-test-analyzer"
-    skillA: "confab:confab-assertion-audit"
+  - id: "zeugnis-assertion-audit-pr-test-analyzer"
+    skillA: "zeugnis:zeugnis-assertion-audit"
     skillB: "pr-review-toolkit:pr-test-analyzer"
     source: "claude-plugins-official"
     beat: "verify"
     why: "A green suite proves the tests ran, not that they would notice -- coverage percentages are compatible with assertions that assert nothing."
-    how: "confab-assertion-audit proposes plausible mutations (off-by-one, boundary flip, condition negation) to the target source and checks whether any existing test would catch them. pr-test-analyzer reviews the same tests for behavioral coverage gaps, not line-coverage percentage -- the two angles catch different shapes of the same failure."
+    how: "zeugnis-assertion-audit proposes plausible mutations (off-by-one, boundary flip, condition negation) to the target source and checks whether any existing test would catch them. pr-test-analyzer reviews the same tests for behavioral coverage gaps, not line-coverage percentage -- the two angles catch different shapes of the same failure."
     prompt: "mutate this module -- flip a boundary, negate a condition, shift an index -- and tell me which mutations the tests would not catch"
     dos:
       - "Run both -- mutation testing and behavioral-coverage review catch different shapes of a test suite that passes for the wrong reason."
@@ -251,7 +251,7 @@ pairings:
     donts:
       - "Don't trust a green run, or a high coverage percentage, as evidence the suite would notice a real regression."
       - "Don't stop at line coverage -- pr-test-analyzer is explicitly scoped to behavioral coverage instead."
-    grounding: "auditing plugins/confab/scripts/test_cycle_engine.py and tools/enforcement-audit/test_audit_enforcement.py for assertions whose expected value is the same hardcoded default the code falls back to when the real path never runs."
+    grounding: "auditing plugins/zeugnis/scripts/test_cycle_engine.py and tools/enforcement-audit/test_audit_enforcement.py for assertions whose expected value is the same hardcoded default the code falls back to when the real path never runs."
     recipeTask: "Investigate tests that pass while the code is broken"
     recipeUrl: "/catalog/defect-work/tests-pass-while-code-is-broken"
 
@@ -387,7 +387,7 @@ an existing [catalog](/catalog/) recipe, or one of the three pairings orchestrat
 no recipe behind it -- no real `why`, no real prompt, no real grounding -- is not on this
 page. Extending this list means writing a new catalog recipe with real beats and a real
 prompt first; a card here without one behind it would be exactly the kind of
-plausible-but-false content `confab` exists to catch.
+plausible-but-false content `zeugnis` exists to catch.
 
 Three recipes in the catalog are marked "No werkstoff fit" -- pure Superpowers tasks with
 no werkstoff skill to pair against. They don't appear here for the same reason: there is

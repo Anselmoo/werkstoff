@@ -77,7 +77,7 @@ means *the second pole* (samaria), not a second shade.
 | `--rule-soft` | `#46515a` | `werkstoff.css` `.dark` `--wk-rule-soft` | **opinionated default**: rule used **only** where space also carries the break | 2.40:1 on `--bg` — a measurement, not a justification; see note below |
 | `--rule-on-light` | `#8e8e95` | `werkstoff.css:161` `--wk-rule` (light) | load-bearing section break on white | 3.25:1 on `#ffffff`; 3.01:1 on `#f6f6f7` (clears 3:1 by 0.01) |
 | `--rule-soft-on-light` | `#a7a7ac` | `werkstoff.css:162` `--wk-rule-soft` (light) | **opinionated default**: rule used only where space also carries the break | 2.40:1 on `#ffffff` — a measurement, not a justification; see note below |
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, monospace` | 9 literal repeats in 6 viewers: arbeitsplan `run-viewer.html:35,47`; passung `matrix-viewer.html:195`; confab `burndown-viewer.html:119`; lehre `doctrine-viewer.html:93`; nacharbeit `review-viewer.html:35,47`; takt `beatgraph-viewer.html:38,52` | monospace family for data cells, code and maths in viewers | not a colour |
+| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, monospace` | 9 literal repeats in 6 viewers: arbeitsplan `run-viewer.html:35,47`; passung `matrix-viewer.html:195`; zeugnis `burndown-viewer.html:119`; lehre `doctrine-viewer.html:93`; nacharbeit `review-viewer.html:35,47`; takt `beatgraph-viewer.html:38,52` | monospace family for data cells, code and maths in viewers | not a colour |
 
 `--rule` and `--rule-soft` are two stops on a ramp the palette already owns. `werkstoff.css`
 records them as `--border #28323a → --muted #8b9aa4` interpolated at t = 0.45 and t = 0.30.
@@ -215,7 +215,7 @@ Follow-ups, not settled here.
    `components/PluginGrid.vue`'s `.plugin-card` both carry a
    `@media (prefers-reduced-motion: reduce)` carve-out for their `var(--wk-transition-fast)`
    use, but every `var(--transition-fast)` use in the three viewers that reference it directly
-   — `plugins/andon/assets/board-viewer.html:102`, `plugins/confab/assets/burndown-viewer.html:26`,
+   — `plugins/andon/assets/board-viewer.html:102`, `plugins/zeugnis/assets/burndown-viewer.html:26`,
    and the three uses in `plugins/lehre/assets/doctrine-viewer.html:75,102,112` — has no
    `prefers-reduced-motion` guard at all, so those transitions fire unconditionally for a
    viewer who has asked the OS to suppress motion. No rule here would catch either the

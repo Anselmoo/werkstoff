@@ -24,17 +24,17 @@ card, rather than buried in the third column of a five-column table.
 </div>
 
 <div class="hz-card">
-<div class="hz-head"><code>confab</code><span class="hz-chip">Edit|Write</span></div>
+<div class="hz-head"><code>zeugnis</code><span class="hz-chip">Edit|Write</span></div>
 <p class="hz-script"><code>scripts/hooks/guard_edit_scope.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>a remediation-scope lock is open at <code>analysis/confab/remediation_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a remediation-scope lock is open at <code>analysis/zeugnis/remediation_scope.json</code></p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span>delete the lock file, or run without <code>--fix</code></p>
 </div>
 
 <div class="hz-card">
-<div class="hz-head"><code>confab</code><span class="hz-chip">Bash</span></div>
+<div class="hz-head"><code>zeugnis</code><span class="hz-chip">Bash</span></div>
 <p class="hz-script"><code>scripts/hooks/guard_bash_scope.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/confab/</code> does not exist in the repo</p>
-<p class="hz-row"><span class="hz-row-label">Escape hatch</span>run the command outside a confab-managed session, or remove <code>analysis/confab/</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/zeugnis/</code> does not exist in the repo</p>
+<p class="hz-row"><span class="hz-row-label">Escape hatch</span>run the command outside a zeugnis-managed session, or remove <code>analysis/zeugnis/</code></p>
 </div>
 
 <div class="hz-card">
@@ -105,7 +105,7 @@ cupertino uses that reach for its own ordering — refusing `cupertino-focus`,
 `cupertino-backwards` has run, via `GATED_AFTER_BACKWARDS`. `takt`'s matcher ties
 `arbeitsplan`'s as the widest of the nine — both add `MultiEdit` on top of the same
 three dispatch tools — and `takt` gates declared beat order across plugins rather than
-within one. nacharbeit is the only one besides confab and cupertino that watches
+within one. nacharbeit is the only one besides zeugnis and cupertino that watches
 `Bash`, and for one reason: while its fix lock is open, a `git commit`, `push`,
 `reset` or `checkout` from inside the pass is refused, so a half-applied rework is
 never committed by the thing applying it. The remaining four — andon, lehre, matrize,
@@ -121,7 +121,7 @@ names the escape hatch. andon's own docstring states the reasoning plainly: a ho
 that fails open on its own bug is not an enforcement hook, and three of andon's own
 guards were once observed failing silently that way before this rule was adopted.
 
-befund's and confab's edit-scope guards carve out exactly one shared exception
+befund's and zeugnis's edit-scope guards carve out exactly one shared exception
 to that rule: if the plugin's own shared `scripts/lib/` package is missing or broken
 at import time, the hook degrades to a single stderr warning plus an allow, not a
 deny. The reasoning both docstrings give, nearly word for word: a packaging defect in
@@ -142,11 +142,11 @@ around, verbatim:
 The consequence is concrete, not theoretical: befund's own guard once gated on
 repo-level state — "does this repo look befund-managed" — and that swept every
 edit in the whole session, from any plugin or a direct user edit, into the gate the
-moment a repo merely had `analysis/befund/` on disk, blocking confab, cupertino,
+moment a repo merely had `analysis/befund/` on disk, blocking zeugnis, cupertino,
 and passung remediators along with ordinary direct edits. The general
 rule that follows: gate on a per-dispatch lock, never on repo-level state, whenever
 the question a hook is answering is "did the currently-in-flight remediation issue
-this specific edit." befund's `edit_scope.json`, confab's
+this specific edit." befund's `edit_scope.json`, zeugnis's
 `remediation_scope.json` and arbeitsplan's `run_scope.json` all do exactly that now — opened immediately before a
 remediator agent is dispatched, holding the specific file(s) that dispatch is allowed
 to touch, and closed after. nacharbeit's `fix_scope.json` is the third and the
@@ -158,7 +158,7 @@ post-check script that has re-run every test and diffed every contract.
 That rule does not extend to every hook in the table. andon's and cupertino's guards
 answer a different question — "is the ledger in a stop state" and "has the required
 ordering step already run" — which is legitimately repo-level state rather than a
-per-dispatch attribution problem. Only befund's, confab's, nacharbeit's and arbeitsplan's edit-scope guards are
+per-dispatch attribution problem. Only befund's, zeugnis's, nacharbeit's and arbeitsplan's edit-scope guards are
 solving the "whose edit is this" problem the quoted constraint describes, and only
 those three need a per-dispatch lock rather than a durable flag. lehre's, like
 andon's, answers a repo-level question ("does this write violate the declared

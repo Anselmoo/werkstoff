@@ -36,7 +36,7 @@ OTHER_GUARDS = [
     ("takt", ".claude/takt.local.md", "TAKT_DISABLE_GUARD=1"),
     ("lehre", ".lehre/ruleset.json", "LEHRE_DISABLE_GUARD=1"),
     ("andon", ".claude/andon.local.md", "enforcement: off in .claude/andon.local.md"),
-    ("confab", "analysis/confab/remediation_scope.json", "delete the lock or run without --fix"),
+    ("zeugnis", "analysis/zeugnis/remediation_scope.json", "delete the lock or run without --fix"),
     ("befund", "analysis/befund/edit_scope.json", "named in its deny message"),
     ("cupertino", ".cupertino", "CUPERTINO_DISABLE_GUARD=1"),
 ]

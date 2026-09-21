@@ -44,7 +44,7 @@ Three conventions hold throughout the catalog.
 
 **Leaves only.** Beats name leaf skills and dispatchable agents. Orchestrators —
 `andon:andon-loop`, `befund:befund-autopilot`, `zirkel:zirkel-solve`,
-`cupertino:cupertino-review`, `confab:confab-cycle`, the `/consistency-*` command chain,
+`cupertino:cupertino-review`, `zeugnis:zeugnis-cycle`, the `/consistency-*` command chain,
 `code-modernization`'s eight-stage pipeline — each own a whole task and must never be
 wedged in as a step inside another workflow. Choosing between them is a routing question;
 see [`routing.md`](/orchestration/references/routing).

@@ -78,7 +78,7 @@ jobs:
           # path above parses the group out of the tag -- so dropping them would make
           # every pre-rename tag permanently unrecoverable.
           case "$GROUP" in
-            befund|confab|zirkel|cupertino|andon|cli-scaffold|passung|nacharbeit|lehre|takt|matrize|arbeitsplan|compass|codebase-consistency|self-assess) ;;
+            befund|zeugnis|zirkel|cupertino|andon|cli-scaffold|passung|nacharbeit|lehre|takt|matrize|arbeitsplan|compass|codebase-consistency|self-assess|confab) ;;
             *) echo "Unknown plugin group '$GROUP' from tag '$TAG'"; exit 1 ;;
           esac
           if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then

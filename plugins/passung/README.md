@@ -406,7 +406,7 @@ checks apply only to a plugin that registers a hook, which this one does not.
 default fixture for andon, a `test/plugins/fixtures/hook-violation-<plugin>/` fixture
 for the other eight), but the dedicated `test_*_guard.py`-style unit test is real for
 only seven of them (`andon`, `arbeitsplan`, `lehre`, `matrize`, `nacharbeit`,
-`befund`, `takt`) — confab has one for `guard_edit_scope.py` but none for
+`befund`, `takt`) — zeugnis has one for `guard_edit_scope.py` but none for
 `guard_bash_scope.py`, and cupertino's `pretooluse_guard.py` has no dedicated test at
 all. The demo build command for `assets/matrix-viewer.html`, under "See it as a
 matrix" in Example Prompts, doubles as a verification: a stale template or a broken

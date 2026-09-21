@@ -146,13 +146,13 @@
       "dimension": "test-data-management"
     },
     {
-      "file": "test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json",
+      "file": "test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json",
       "line": 1,
       "severity": "Low",
       "title": "Seeded-defect-shaped fixture has no checked-in _EXPECTED.md",
-      "evidence": "The fixture directory test/plugins/fixtures/confab-burndown-pseudo-ledger/ contains only analysis/confab/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'confab-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.",
+      "evidence": "The fixture directory test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/ contains only analysis/zeugnis/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'zeugnis-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.",
       "mechanical": false,
-      "suggestedFix": "Either add a test/plugins/fixtures/confab-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.",
+      "suggestedFix": "Either add a test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.",
       "rule": "Any fixture that seeds a defect for a headless behavioral test case must live under test/plugins/fixtures/ (never nested inside the plugin it exercises, so fixtures stay arm-independent and reusable across legacy/rebuilt/official arms of the same case), must document the seeded defect and expected finding in a checked-in `_EXPECTED.md` in that fixture directory, and the harness that copies the fixture into the subject-under-test's working directory must strip `_EXPECTED.md` before invoking the tool, so the answer key is never handed to the system being graded.",
       "dimension": "test-data-management"
     }
