@@ -5,6 +5,8 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `confab` to `zeugnis`** -- a *Zeugnis* is the EN 10204 mill
   certificate, whose grades encode who stood behind the claim: 2.1 the supplier's own
