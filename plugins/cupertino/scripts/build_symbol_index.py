@@ -85,7 +85,7 @@ class FileRecord:
 @dataclass
 class SymbolIndex:
     version: str = SCHEMA_VERSION
-    plugin_name: str = "self-assess"
+    plugin_name: str = "befund"
     repo_root: str = "."
     generated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     files_scanned: int = 0
@@ -512,7 +512,7 @@ def write_symbol_graph_okf(run_dir: Path, symbols: list[Symbol], contents: dict[
 def write_symbol_graph_index(run_dir: Path, symbols: list[Symbol]) -> None:
     """Per-file index (symbol-graph/<file-slug>/_index.json: [{name, kind,
     line, slug}]) so a consumer holding only a finding's (file, line) —
-    which is what every finding in self-assess/cupertino/confab actually
+    which is what every finding in befund/cupertino/zeugnis actually
     carries, never a resolved symbol name — can find the nearest enclosing
     symbol's doc without guessing a name or globbing ambiguous filenames."""
     graph_root = run_dir / "symbol-graph"
@@ -675,7 +675,7 @@ def build_or_reuse(repo_root: Path, plugin_name: str, no_fts: bool) -> tuple[dic
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build a parallel-safe repository research snapshot")
     parser.add_argument("--repo-path", default=".")
-    parser.add_argument("--plugin-name", default="self-assess")
+    parser.add_argument("--plugin-name", default="befund")
     parser.add_argument("--output", help="Compatibility output path for symbol_index.json")
     parser.add_argument("--no-fts", action="store_true", help="Skip SQLite FTS5 creation")
     parser.add_argument("--query", help="Query the published FTS index instead of building")

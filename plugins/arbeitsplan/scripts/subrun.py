@@ -173,13 +173,13 @@ def discover_skill_names(plugin_dirs: list) -> set:
     COMMANDS AND AGENTS COUNT TOO. The sentinel asks the model what it can invoke,
     and a session lists a plugin's commands and agents alongside its skills. Scanning
     only `skills/` marked every command as leakage: measured on a 12-plugin arm where
-    34 of 40 cells came back UNMEASURED naming `codebase-consistency:consistency-align`
+    34 of 40 cells came back UNMEASURED naming `passung:passung-align`
     (a command) and `cli-scaffold:cli-scaffold` (a command whose stem is its plugin) --
     every one of them supplied by the arm's own --plugin-dir set.
 
     BOTH SPELLINGS are returned: the bare directory name and the `<plugin>:<skill>`
     form a session actually reports. Returning only the bare name marked every
-    supplied skill as foreign -- measured on the first real cell, where compass and
+    supplied skill as foreign -- measured on the first real cell, where zirkel and
     superpowers were both loaded by the arm and both reported as leakage.
 
     The plugin name comes from .claude-plugin/plugin.json when present, because a
@@ -211,7 +211,7 @@ def discover_skill_names(plugin_dirs: list) -> set:
         if wf.is_dir():
             for entry in sorted(wf.glob("*.js")):
                 # A workflow is listed under its meta.name, which differs from the
-                # file stem (align.js declares `consistency-align-batch`). Both are
+                # file stem (align.js declares `passung-align-batch`). Both are
                 # added: the declared name is what a session reports.
                 m = re.search(r"\bname:\s*['\"]([^'\"]+)['\"]", entry.read_text(encoding="utf-8", errors="replace")[:2000])
                 if m:

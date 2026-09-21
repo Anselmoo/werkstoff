@@ -33,7 +33,7 @@ in a sentence instead ("a JSON list of rules, each with `id`, `given`/`when`/
 proof-point of all four sources: every artifact-producing skill in it ships
 both a schema and a worked example, with neither ever left to prose alone.
 
-The clearest side-by-side is `self-assess`'s business-rules pipeline against
+The clearest side-by-side is `befund`'s business-rules pipeline against
 its closest official analog, `code-modernization`'s. Both plugins do the same
 job — mine business logic into Given/When/Then rules with file:line citations
 — and both have equivalent enforcement (citation verification, a two-judge
@@ -44,8 +44,8 @@ output and one *describes* it. See §3 for the full comparison.
 
 ## 1. Baseline: what werkstoff does today
 
-Read across `self-assess`, `andon`, `confab`, `cupertino`, `cli-scaffold`,
-and `compass`, the six plugins share a consistent skeleton — see
+Read across `befund`, `andon`, `zeugnis`, `cupertino`, `cli-scaffold`,
+and `zirkel`, the six plugins share a consistent skeleton — see
 [`craft-standards.md`](craft-standards.md) for the general rules this maps to
 (frontmatter spec, anatomy, progressive disclosure). What's specific to the
 output-shape finding:
@@ -125,7 +125,7 @@ This is a template, not a schema description — an agent can literally copy
 the skeleton and fill it in, which is a stronger guarantee of consistent
 output shape than a sentence enumerating field names.
 
-**Directly applicable to werkstoff:** every self-assess agent that returns
+**Directly applicable to werkstoff:** every befund agent that returns
 "a JSON list of rules, each with X, Y, Z" (business-rules-miner, idiom-
 auditor, ci-topology-auditor, ui-auditor, docs-drift-auditor, etc.) could
 instead close with a fenced JSON block showing one instance of that shape,
@@ -163,7 +163,7 @@ easy to under-specify.
 
 **Directly applicable to werkstoff:** none of the andon tribunal agents
 (`andon-defender`, `andon-challenger`, `andon-verifier`, `andon-adjudicator`)
-or the confab auditors show what a finished verdict or finding actually
+or the zeugnis auditors show what a finished verdict or finding actually
 reads like end to end. `andon-verifier`'s SKILL.md says "the exact
 command/check run, its exact output (fenced and credential-masked), and
 whether it reproduces the claim" — good prose, no example. A single worked
@@ -209,8 +209,8 @@ output must match:
 **Confidence:** High | Medium | Low — <why...>
 ```
 
-**werkstoff (`plugins/self-assess/agents/business-rules-miner.md` +
-`plugins/self-assess/skills/self-assess-extract-rules/SKILL.md`):**
+**werkstoff (`plugins/befund/agents/business-rules-miner.md` +
+`plugins/befund/skills/befund-extract-rules/SKILL.md`):**
 
 Same job, same enforcement rigor (loop-to-convergence, independent citation
 referee, two-judge P0 panel — arguably *more* rigorous than the official
@@ -252,7 +252,7 @@ of reusable conventions:
   classifying which guidance *form* fixes which failure type: a prohibition
   list stops rule-skipping under pressure but *worsens* wrong-shaped output;
   a positive recipe/template fixes wrong-shaped output but doesn't stop
-  deliberate rule-skipping. Concretely: the andon/confab "refuse to..."
+  deliberate rule-skipping. Concretely: the andon/zeugnis "refuse to..."
   lists are the right form already (they target rule-skipping under
   pressure); the missing output templates (§4.2) are a *different* failure
   type (wrong-shaped output), and a prohibition ("don't invent field names")
@@ -310,9 +310,9 @@ purpose-labeled files** instead of inlining everything into one skill body:
 
 **Directly applicable to werkstoff:** §4.2's fenced-example fix inlines the
 worked instance directly into the agent's own `## Output format` section,
-which is the right first move and is now done for every self-assess/confab
+which is the right first move and is now done for every befund/zeugnis
 auditor. But for the one pipeline complex enough to have a genuinely reusable
-card format — `self-assess`'s business-rules pipeline — `prp-core`'s split is
+card format — `befund`'s business-rules pipeline — `prp-core`'s split is
 a stronger long-term shape: a `templates/rule-card.md` (schema, mandatory
 structure) separate from a `references/rule-card-examples.md` (worked
 instances, explicitly replaceable), rather than one fenced example living
@@ -348,20 +348,20 @@ pattern werkstoff needs to import.)
 | Plugin | MUST/refuse language | Output schema (prose) | Output schema (literal template) | Sample rendered output |
 |---|---|---|---|---|
 | andon | Strong (`andon-verifier.md` "Refusals" section) | Partial | Absent (tribunal verdict/report — §4.4, not yet done) | Absent |
-| self-assess | Strong (`Read-only constraint`, `Must refuse`) | Present | **Fixed (§4.2)** — all 6 `*-auditor.md` agents + `business-rules-miner.md` now carry a fenced worked example | Absent |
-| confab | Strong (`confab-dependency-audit` "What NOT to do") | Present | **Fixed (§4.2)** — all 4 auditor agents (`dependency-`, `assertion-`, `contract-`, `agentic-reliability-auditor`) now carry a fenced worked example | Absent |
+| befund | Strong (`Read-only constraint`, `Must refuse`) | Present | **Fixed (§4.2)** — all 6 `*-auditor.md` agents + `business-rules-miner.md` now carry a fenced worked example | Absent |
+| zeugnis | Strong (`zeugnis-dependency-audit` "What NOT to do") | Present | **Fixed (§4.2)** — all 4 auditor agents (`dependency-`, `assertion-`, `contract-`, `agentic-reliability-auditor`) now carry a fenced worked example | Absent |
 | cupertino | Strong | `handbook-dimension-analyst.md` shows a real fenced JSON template | Present | Absent |
 | cli-scaffold | Strong (`cli-scaffold-verifier.md` "Hard boundaries") | Present, prose | Absent | Absent |
-| compass | Moderate | Present (`compass-solve`'s "## Output" bullet list) | Absent | Absent |
+| zirkel | Moderate | Present (`zirkel-solve`'s "## Output" bullet list) | Absent | Absent |
 
 Takeaway: the enforcement dimension (refuse/MUST language, gates) is
 consistently strong across all six — this is the repo's actual strength and
 should not be diluted. §4.2's literal-output-template fix is now applied to
-every self-assess and confab auditor agent (10 files, plus
+every befund and zeugnis auditor agent (10 files, plus
 `business-rules-miner.md` as the original reference). What's still open:
 §4.4's sample-rendered-transcript recommendation (andon tribunal verdicts,
-confab report summaries, cupertino design rationale — none of these show a
-full worked end-to-end output yet), and cli-scaffold/compass's output
+zeugnis report summaries, cupertino design rationale — none of these show a
+full worked end-to-end output yet), and cli-scaffold/zirkel's output
 sections, which are prose-only and lower priority since their schemas are
 comparatively self-describing (see §4.3).
 
@@ -384,19 +384,19 @@ not just name the fields in prose. Model this on `handbook-dimension-
 analyst.md`'s JSON block and `modernize-extract-rules.md`'s Rule Card
 template.
 
-**Status: done for self-assess and confab.** All 6 self-assess
+**Status: done for befund and zeugnis.** All 6 befund
 `*-auditor.md` agents (`idiom-`, `ci-topology-`, `ui-`, `docs-drift-`,
 `arch-health-`, `convention-auditor.md`) and `business-rules-miner.md`, plus
-all 4 confab auditors (`dependency-`, `assertion-`, `contract-`,
+all 4 zeugnis auditors (`dependency-`, `assertion-`, `contract-`,
 `agentic-reliability-auditor.md`), now close their output-format section
 with a fenced worked example grounded in the actual validator/schema code
-(`scripts/lib/validators.py` for self-assess, `scripts/lib/schema.py` for
-confab), not an invented shape.
+(`scripts/lib/validators.py` for befund, `scripts/lib/schema.py` for
+zeugnis), not an invented shape.
 
 Still open, lower priority since neither plugin has a validator forcing a
-fixed shape the way self-assess/confab do:
+fixed shape the way befund/zeugnis do:
 - `cli-scaffold-verifier.md`'s output sections (prose-only).
-- `compass-solve`'s "## Output" bullet list — arguably fine as-is per §4.3
+- `zirkel-solve`'s "## Output" bullet list — arguably fine as-is per §4.3
   (self-describing labels, not a format).
 
 ### 4.3 When to add a worked example vs. keep it prose-only
@@ -406,14 +406,14 @@ the *content* of the format is non-obvious — e.g. business-rules-miner's
 Given/When/Then benefits from a concrete-numbers example because "encode as
 Given/When/Then" alone doesn't convey the expected precision (rounding rule
 stated inline, exact numbers). Skip it when the schema is self-describing
-(e.g. compass-solve's five-line "## Output" bullet list is fine as prose
+(e.g. zirkel-solve's five-line "## Output" bullet list is fine as prose
 because each item is just a label, not a format).
 
 ### 4.4 When to add a sample rendered transcript
 
 Add a full sample output (not just a schema) for any skill/agent whose job
 ends in a **user-facing narrative artifact** rather than a machine-validated
-one — the andon tribunal's verdict, a confab audit's final report summary,
+one — the andon tribunal's verdict, a zeugnis audit's final report summary,
 cupertino's design rationale. Model this on `code-review.md`'s literal
 "### Code review\n\nFound 3 issues:\n\n1. ..." block, including the
 "no issues found" branch — the boring case is exactly the one that's
@@ -449,16 +449,16 @@ usually left unspecified and drifts.
 
 ### 4.6 Consider a three-file split for reusable card/report formats
 
-**Status: done for self-assess's business-rules pipeline.** For a pipeline
+**Status: done for befund's business-rules pipeline.** For a pipeline
 complex enough to have a genuinely reusable, repeated-record output —
-`self-assess-extract-rules` was the clearest werkstoff candidate —
+`befund-extract-rules` was the clearest werkstoff candidate —
 `Wirasm/prp`'s pattern (§2e) of splitting **schema template**, **worked
 example**, and **rendered end-of-run report** into three separate,
 purpose-labeled files is now applied under
-[`plugins/self-assess/skills/self-assess-extract-rules/references/`](https://github.com/Anselmoo/werkstoff/tree/main/plugins/self-assess/skills/self-assess-extract-rules/references/):
+[`plugins/befund/skills/befund-extract-rules/references/`](https://github.com/Anselmoo/werkstoff/tree/main/plugins/befund/skills/befund-extract-rules/references/):
 
 - `rule-card-template.md` — the abstract Rule Card schema (mirrors
-  `modernize-extract-rules.md`'s template from §2c, adapted to self-assess's
+  `modernize-extract-rules.md`'s template from §2c, adapted to befund's
   actual fields — no invented `Category` field or anything else the real
   schema doesn't have).
 - `rule-card-examples.md` — worked instances with concrete values, annotated
@@ -468,7 +468,7 @@ purpose-labeled files is now applied under
   sample, both a mixed-results run *and* the boring "nothing found" branch —
   closing §4.4 for this pipeline.
 
-`self-assess-extract-rules/SKILL.md`'s Step 4 now points at all three, with
+`befund-extract-rules/SKILL.md`'s Step 4 now points at all three, with
 `business-rules-report-sample.md` marked **mandatory read** before the file
 is first written — the same load-bearing framing `prp-core` uses for
 `plan-template.md`.
@@ -484,7 +484,7 @@ concerns* is what mattered, not the specific folder name.
 
 **Also worth noting honestly:** unlike `plan-template.md` (which real
 downstream skills parse structurally), the Rule Card *Markdown* template has
-no downstream parser today — `self-assess-transform-brief`'s
+no downstream parser today — `befund-transform-brief`'s
 `flag-p0-blockers` reads the *JSON* schema (`business_rules_summary.json`,
 already fixed in §4.2), not `BUSINESS_RULES.md`. `rule-card-template.md`
 says this explicitly rather than overclaiming a machine dependency that
@@ -503,7 +503,7 @@ Not part of the original research pass, but a direct, concrete instance of
 `craft-standards.md`'s "Structure implies a maintainer" rule, so recorded
 here as the evidence for it.
 
-All 16 `self-assess` SKILL.md files carried `version: 0.1.0` in frontmatter
+All 16 `befund` SKILL.md files carried `version: 0.1.0` in frontmatter
 — frozen since scaffolding, while the plugin itself moved through
 `.rrt.toml`-tracked versions 0.1.0 → 0.2.0 → 0.3.0 → 0.3.1 → 0.3.2. None of
 the other five plugins' skills ever had this field. Checked against the
@@ -515,13 +515,13 @@ It's a real field for `plugin.json` and marketplace entries (that's what
 skills.
 
 So the field was pure decoration the harness never read, frozen at a value
-that stopped being true after the plugin's first bump, and only self-assess
+that stopped being true after the plugin's first bump, and only befund
 had it. Rather than build real per-skill version tracking (a second `.rrt.toml`-style
 pinning layer, or a hash-based "did this skill change without a version bump"
 CI check — either a genuine, ongoing maintenance cost, and 16 more things to
 keep in sync, cutting against `CLAUDE.md`'s own "There is no aggregate
 werkstoff version — this is deliberate" stance on granularity), it was
-removed outright, bringing self-assess in line with the other five plugins.
+removed outright, bringing befund in line with the other five plugins.
 werkstoff's real, meaningful versioning stays exactly where it already was:
 `.rrt.toml`'s plugin-level groups.
 
@@ -529,7 +529,7 @@ werkstoff's real, meaningful versioning stays exactly where it already was:
 
 ## Sources consulted
 
-- werkstoff (this repo): `plugins/self-assess/skills/self-assess-arch-health/SKILL.md`, `plugins/self-assess/skills/self-assess-portfolio/SKILL.md`, `plugins/self-assess/skills/self-assess-extract-rules/SKILL.md`, `plugins/self-assess/agents/business-rules-miner.md`, `plugins/andon/agents/andon-verifier.md`, `plugins/confab/skills/confab-dependency-audit/SKILL.md`, `plugins/cupertino/agents/handbook-dimension-analyst.md`, `plugins/compass/skills/compass-solve/SKILL.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`
+- werkstoff (this repo): `plugins/befund/skills/befund-arch-health/SKILL.md`, `plugins/befund/skills/befund-portfolio/SKILL.md`, `plugins/befund/skills/befund-extract-rules/SKILL.md`, `plugins/befund/agents/business-rules-miner.md`, `plugins/andon/agents/andon-verifier.md`, `plugins/zeugnis/skills/zeugnis-dependency-audit/SKILL.md`, `plugins/cupertino/agents/handbook-dimension-analyst.md`, `plugins/zirkel/skills/zirkel-solve/SKILL.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`
 - `anthropics/skills` (github.com/anthropics/skills): `template/SKILL.md`, `skills/mcp-builder/SKILL.md`, `skills/docx/SKILL.md`
 - `anthropics/claude-plugins-official` (github.com/anthropics/claude-plugins-official): `plugins/pr-review-toolkit/agents/silent-failure-hunter.md`, `plugins/pr-review-toolkit/agents/type-design-analyzer.md`, `plugins/code-review/commands/code-review.md`, `plugins/code-modernization/agents/business-rules-extractor.md`, `plugins/code-modernization/commands/modernize-extract-rules.md`
 - `obra/superpowers` (github.com/obra/superpowers, third-party, actively maintained skills framework): `skills/writing-skills/SKILL.md`, `skills/test-driven-development/SKILL.md`

@@ -36,7 +36,7 @@ Every plugin declares what it offers and what it awaits, in
       "meaning": "one named wire has been proven against evidence, not asserted" }
   ],
   "requires": [
-    { "marker": "transform-brief-written", "from": "self-assess", "before": "andon-loop",
+    { "marker": "transform-brief-written", "from": "befund", "before": "andon-loop",
       "optional": false, "reason": "andon-loop already says to STOP and run it first, in prose." }
   ]
 }
@@ -63,7 +63,7 @@ belongs conceptually: it is plugin metadata, not documentation.
 One JSON object per line, append-only.
 
 ```json
-{"id":"d-0003","runId":"ap-2026-09-12-a3f1","parent":"d-0001","depth":2,"source":"arbeitsplan","target":"compass:compass-explore-branches","pattern":"parallel","branches":["b1","b2","b3"],"merge":{"at":"arbeitsplan","strategy":"first_success","combine":"select_winner"},"status":"in_progress","timestamp":"2026-09-12T09:10:00Z"}
+{"id":"d-0003","runId":"ap-2026-09-12-a3f1","parent":"d-0001","depth":2,"source":"arbeitsplan","target":"zirkel:zirkel-explore-branches","pattern":"parallel","branches":["b1","b2","b3"],"merge":{"at":"arbeitsplan","strategy":"first_success","combine":"select_winner"},"status":"in_progress","timestamp":"2026-09-12T09:10:00Z"}
 ```
 
 | key | meaning |
@@ -107,14 +107,14 @@ cap and only the `DEPTH` cases go red; disable the cycle check and only the `CYC
 **A dispatch to this plugin's own agents is fan-out, not delegation**, and is not counted —
 otherwise a three-candidate build would look like a three-deep chain and trip the breaker on
 ordinary work. The comparison is against the **dispatching source**, not the run's owner: using
-the owner left `arbeitsplan → compass → arbeitsplan` classified as fan-out, skipping the cycle
+the owner left `arbeitsplan → zirkel → arbeitsplan` classified as fan-out, skipping the cycle
 check on exactly the shape it exists for. That hole was found by the calibration, not by reading.
 
 ## A worked chain
 
 ```
-d1  depth 0   arbeitsplan -> compass:compass-explore-branches   in_progress
-d2  depth 1   compass     -> andon:andon-verify                 completed
+d1  depth 0   arbeitsplan -> zirkel:zirkel-explore-branches   in_progress
+d2  depth 1   zirkel     -> andon:andon-verify                 completed
 d3  depth 2   andon       -> matrize:matrize-decode             completed
 d4  depth 3   matrize     -> lehre:lehre-gauge                  DENIED — over the cap of 3
 ```
@@ -122,8 +122,8 @@ d4  depth 3   matrize     -> lehre:lehre-gauge                  DENIED — over 
 and a cycle, denied two levels earlier than the cap would have:
 
 ```
-d1  depth 0   arbeitsplan -> compass:compass-solve              completed
-d2  depth 1   compass     -> arbeitsplan:arbeitsplan-run        DENIED — arbeitsplan already
+d1  depth 0   arbeitsplan -> zirkel:zirkel-solve              completed
+d2  depth 1   zirkel     -> arbeitsplan:arbeitsplan-run        DENIED — arbeitsplan already
                                                                  appears in its own ancestor chain
 ```
 

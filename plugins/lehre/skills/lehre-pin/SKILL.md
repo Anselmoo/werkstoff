@@ -59,7 +59,7 @@ Two phases, both run:
 
 6. **Prove the test can fail.** State, per test, the mutation it would catch.
    A test written after the fact that passes against both the old and the new
-   behaviour pins nothing, and this repo's `confab-assertion-audit` exists
+   behaviour pins nothing, and this repo's `zeugnis-assertion-audit` exists
    because that failure is common enough to need its own auditor.
 
 ## Output format

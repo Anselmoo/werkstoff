@@ -31,7 +31,7 @@ with a width, a tier, a stop rule and a cost — or says plainly that nothing fi
   real answer.
 - **Never write `workflow.json`.** That is `arbeitsplan-compile`'s job, and splitting the
   decision from the writing is what lets a human see the shape before it is enforced.
-- Delegate rather than reimplement: `self-consistency-vote` is `compass:compass-reason-verify`
+- Delegate rather than reimplement: `self-consistency-vote` is `zirkel:zirkel-reason-verify`
   and `tribunal` is `andon:andon-verify` when those plugins are installed.
 
 ## Output format

@@ -30,7 +30,7 @@ by intent.
 "which code fences in the docs have no language tag"
 ````
 
-> Triggers `confab-dependency-audit`.
+> Triggers `zeugnis-dependency-audit`.
 
 
 ## Verifying a change to this plugin

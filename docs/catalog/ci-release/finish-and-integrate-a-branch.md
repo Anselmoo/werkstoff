@@ -5,7 +5,7 @@ summary: "How to integrate -- merge, rebase, or PR -- is a decision with a real 
 openingPrompt: "Implementation's done and tests pass -- audit the changed files first, then help me actually decide how this branch should get integrated (merge, rebase, or PR) rather than defaulting to whichever, and once it's in, verify the release artifact was actually produced and prove the release wire itself instead of trusting a green merge."
 external: ["superpowers"]
 beats:
-  - skill: "confab:confab-code-change"
+  - skill: "zeugnis:zeugnis-code-change"
     why: "Changed-files-scoped and advisory only -- it never blocks the commit -- so it belongs before the integration decision, not after."
   - skill: "superpowers:finishing-a-development-branch"
     why: "Fires once implementation is complete and tests pass, to decide how to integrate -- merge, rebase, or PR is a real decision, and making it implicitly is how branches get integrated the wrong way."

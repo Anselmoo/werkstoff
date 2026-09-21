@@ -22,7 +22,7 @@ cannot change — before any that is a preference.
 | # | if | then | `why` id | because |
 |---|---|---|---|---|
 | 1 | a skill, agent or hook under test was **edited this session** | matrix | `edited-this-session` | definitions load once per session; an in-session dispatch grades the pre-edit file |
-| 2 | the question is **does it fire**, or plugin-present vs absent | matrix | `does-it-fire` | measured: `compass-clarify-scope` 0/12 is obtainable only from a fresh process with a controlled `--plugin-dir` |
+| 2 | the question is **does it fire**, or plugin-present vs absent | matrix | `does-it-fire` | measured: `zirkel-clarify-scope` 0/12 is obtainable only from a fresh process with a controlled `--plugin-dir` |
 | 3 | **per-candidate model tier is the variable** | matrix | `tier-is-the-variable` | a cell's `--model` cannot be inherited; tier dominated routing (haiku 3/14 vs sonnet 8/14) |
 | 4 | any phase **writes the shared tree** | matrix or in-session — **never workflow** | `writes-shared-tree` | no hook sees a Workflow dispatch's writes |
 | 5 | **fan-out width is decided at runtime** | in-session | `runtime-fanout-width` | a workflow's node set is a literal |

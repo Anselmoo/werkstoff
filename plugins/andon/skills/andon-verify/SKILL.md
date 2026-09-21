@@ -1,6 +1,6 @@
 ---
 name: andon-verify
-description: "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use confab:confab-assertion-audit for that."
+description: "Proves or refutes one wire using whichever of seven evidence-grounded strategies its type calls for -- adversarial tribunal, oracle-gap numerical V&V, an anonymous falsifiability rubric, agentic-reliability dispatch, a structural graph tier check, property/invariant proof, or verify-the-verifier. Use when andon-loop dispatches it to prove a wire, or when the user directly asks to prove a wire, run the tribunal, check if a numeric claim is right, or verify a fix is actually verified. Not for judging whether an existing test suite's assertions would catch mutations -- use zeugnis:zeugnis-assertion-audit for that."
 allowed-tools: "Read, Grep, Glob, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Agent"
 argument-hint: "<wire-id>"
 ---
@@ -21,7 +21,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py route-wire '<signals_json>' 
 `is_structural_claim`, `is_numerical`, `is_property_invariant`,
 `is_verifier_of_verifier`, `is_autonomous_reliability`, `is_epistemic_claim`.
 `availability` are booleans you determine from the environment:
-`available_lsp_or_index`, `available_property_lib`, `available_confab`.
+`available_lsp_or_index`, `available_property_lib`, `available_zeugnis`.
 
 The script checks triggers in a fixed order (e -> b -> f -> g -> d -> c -> a)
 and only reaches `a` when nothing else matches -- this *is*

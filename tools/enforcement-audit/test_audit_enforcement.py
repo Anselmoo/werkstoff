@@ -55,7 +55,7 @@ class Fixture:
 
 class TestClassification(unittest.TestCase):
     def test_control_flow_guard_is_code(self):
-        """The confab shape: a conditional on the rule's own state that diverts."""
+        """The zeugnis shape: a conditional on the rule's own state that diverts."""
         with Fixture({"workflows/loop.js":
                       "for (const e of entries) {\n"
                       "  if (e.fixAttempts >= maxReopens) return false\n"

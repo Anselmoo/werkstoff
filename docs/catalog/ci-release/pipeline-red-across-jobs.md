@@ -5,10 +5,10 @@ summary: "Tell apart one cause with many symptoms from several unrelated causes 
 openingPrompt: "Several CI jobs went red at once -- audit the CI config itself first to rule out one config-level cause explaining everything, then split the failures into genuinely independent tracks from the real dependency graph, and work each track to root cause before proposing any fix."
 external: ["superpowers"]
 beats:
-  - skill: "self-assess:self-assess-ci-topology"
+  - skill: "befund:befund-ci-topology"
     why: "A config-level defect explains all the symptoms at once; chasing symptoms first wastes the whole first pass."
     prompt: "several CI jobs went red at once — audit the CI config itself before we look at any individual failure"
-  - skill: "compass:compass-decompose-chain"
+  - skill: "zirkel:zirkel-decompose-chain"
     why: "Derives which failures are genuinely independent and can be worked in parallel, from the dependency graph rather than by guess."
     prompt: "break these five red jobs into independent tracks — tell me what depends on what and what can be worked in parallel"
   - skill: "superpowers:systematic-debugging"

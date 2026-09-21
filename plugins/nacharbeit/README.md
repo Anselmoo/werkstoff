@@ -38,8 +38,8 @@ flag with a werkstoff default.
 ## What it is not
 
 - Not a design or code reviewer for the *application* a plugin is pointed at — that is
-  `self-assess` (documented conventions, idioms), `lehre` (an enforced doctrine) and
-  `codebase-consistency` (undocumented variants). nacharbeit's object is the plugin.
+  `befund` (documented conventions, idioms), `lehre` (an enforced doctrine) and
+  `passung` (undocumented variants). nacharbeit's object is the plugin.
 - Not `cupertino-handbook-check` / `cupertino-handbook-fix`, which check *new work*
   against a project's persisted handbook; nacharbeit checks a plugin against a fixed,
   externally sourced rubric.
@@ -138,7 +138,7 @@ by intent.
 ##### Check that a skill actually fires
 
 ````prompt
-"does the documented prompt for compass-clarify-scope actually fire it? measure it, don't guess"
+"does the documented prompt for zirkel-clarify-scope actually fire it? measure it, don't guess"
 ````
 
 > Triggers `nacharbeit-probe`: dry-runs first with a cost estimate, then runs the prompt
@@ -172,7 +172,7 @@ path this plugin exists to replace.
   which agent issued the edit, so a guard that gated on "this repo is mid-review" would
   sweep every edit in the session into the gate — the failure
   [`docs/orchestration/references/hazards.md`](../../docs/orchestration/references/hazards.md)
-  records for self-assess. The lock's fields and lifecycle are in
+  records for befund. The lock's fields and lifecycle are in
   [`references/fix-scope-schema.md`](references/fix-scope-schema.md).
 
 ## Running it outside werkstoff

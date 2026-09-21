@@ -3,8 +3,8 @@
 
 The capability diff compares components: does every skill and agent still
 exist. That passes a rebuild which kept all 16 skills, found every seeded
-defect, and wrote its reports to `.self-assess/` instead of the documented
-`analysis/self-assess/**`. Content correct, location wrong, every gate green.
+defect, and wrote its reports to `.befund/` instead of the documented
+`analysis/befund/**`. Content correct, location wrong, every gate green.
 
 The cause was upstream: the behavior extraction abstracted the path into
 `<output_dir>/UI_AUDIT.md` and never defined `<output_dir>`, so the generator
@@ -21,7 +21,7 @@ something new. A REMOVED or MOVED contract is the failure.
 
 Usage:
     contract_diff.py <source-plugin-dir> <rebuilt-plugin-dir>
-    contract_diff.py <prior-version-dir> plugins/self-assess
+    contract_diff.py <prior-version-dir> plugins/befund
 Exit: 0 if no contract was moved or lost, 1 otherwise.
 """
 
@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 # An artifact a user reads or scripts against: a report/state file under a
-# directory, e.g. analysis/self-assess/UI_AUDIT.md or .confab/reports/X.json
+# directory, e.g. analysis/befund/UI_AUDIT.md or .zeugnis/reports/X.json
 ARTIFACT = re.compile(r"(?<![\w/.-])((?:[\w.-]+/)+[A-Za-z0-9_.-]+\.(?:md|json|jsonl|toml|yaml|yml|db|sqlite))")
 # A settings/config file the user is told to create.
 SETTINGS = re.compile(r"(?<![\w/.-])(\.claude/[\w.-]+\.(?:md|json|toml|yaml|yml))")

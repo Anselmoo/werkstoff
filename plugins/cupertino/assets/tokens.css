@@ -127,7 +127,7 @@
 
   /* ---- Semantic status scale — RESERVED, never a categorical slot ----
      good/bad/warn converged on these hexes independently across
-     andon/confab/self-assess/matrix before they were ever named once;
+     andon/zeugnis/befund/matrix before they were ever named once;
      "unknown" had not converged and was canonicalized on matrix's value.
      Left unchanged by the aerogel identity: status is state, not identity.
      NOTE: --status-good and --status-bad are a red/green pair and are NOT
@@ -158,15 +158,15 @@
   --radius-panel: 8px;
 
   /* Layout. --header-h was a bare `61px` literal copy-pasted into three
-   * viewers (andon, codebase-consistency, cupertino) and defined nowhere, so a
+   * viewers (andon, passung, cupertino) and defined nowhere, so a
    * sticky sidebar's `calc(100vh - 61px)` silently drifted from whatever the
    * header actually measured.
    *
    * This value is a FALLBACK, not a truth: measured, andon's header is ~88px
-   * and codebase-consistency's ~64px, so no single constant is right for every
+   * and passung's ~64px, so no single constant is right for every
    * viewer. Any viewer using it for a sticky offset must re-point it at its own
    * header's measured height on load and resize -- all three that do (andon,
-   * codebase-consistency, cupertino) call a `syncHeaderHeight()` that does
+   * passung, cupertino) call a `syncHeaderHeight()` that does
    * exactly that. The token exists so the value has ONE name, not so it has one
    * number. */
   --header-h: 61px;
@@ -232,7 +232,7 @@
 
   /* Monospace family for data cells, code and maths in the report viewers.
    * Pairs with --font-sans. The value is the stack nine viewer declarations
-   * used to repeat verbatim (arbeitsplan, codebase-consistency, confab, lehre,
+   * used to repeat verbatim (arbeitsplan, passung, zeugnis, lehre,
    * nacharbeit and takt); those declarations now reference this token. The
    * docs theme uses VitePress's own var(--vp-font-family-mono).
    * Contrast: n/a (not a colour). */

@@ -15,7 +15,7 @@ beats:
     why: "All six toolkit agents are diff-shaped and none fetches a PR itself; the caller passes scope, so they parallelize cleanly."
   - skill: "pr-review-toolkit:pr-test-analyzer"
     why: "All six toolkit agents are diff-shaped and none fetches a PR itself; the caller passes scope, so they parallelize cleanly."
-  - skill: "confab:confab-contract-drift"
+  - skill: "zeugnis:zeugnis-contract-drift"
     why: "Drops into a review gate with zero setup, and catches what a prose review reads past."
   - skill: "andon:andon-verify"
     why: "Its tribunal is explicitly \"never authored or influenced by the session that proposed or built the fix under review.\""

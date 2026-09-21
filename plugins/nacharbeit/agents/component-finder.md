@@ -1,6 +1,6 @@
 ---
 name: component-finder
-description: Use this agent when the nacharbeit-review skill has no Workflow tool and one batch of plugin files (one plugin, one kind — skills, agents, commands, workflows, hooks, scripts, assets, manifest or docs) must be graded against the judgement rules of the nacharbeit rubric for one lens. Returns findings that quote the file verbatim and cite a rule id; every result it returns is uncalibrated, because no planted-defect calibration and no refuter ran around it. Never modifies a file, never reports a mechanical rule id, and is never dispatched by anything but nacharbeit-review. Not for reviewing application code (self-assess, lehre) or for judging a report viewer's rendered output (the AQ-* rules need the demo data).
+description: Use this agent when the nacharbeit-review skill has no Workflow tool and one batch of plugin files (one plugin, one kind — skills, agents, commands, workflows, hooks, scripts, assets, manifest or docs) must be graded against the judgement rules of the nacharbeit rubric for one lens. Returns findings that quote the file verbatim and cite a rule id; every result it returns is uncalibrated, because no planted-defect calibration and no refuter ran around it. Never modifies a file, never reports a mechanical rule id, and is never dispatched by anything but nacharbeit-review. Not for reviewing application code (befund, lehre) or for judging a report viewer's rendered output (the AQ-* rules need the demo data).
 model: inherit
 color: yellow
 tools: Read, Glob, Grep

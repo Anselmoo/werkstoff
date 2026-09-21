@@ -10,6 +10,13 @@
 # gains a release is reported as stale and must be deleted from here. Nothing
 # may be added -- a new tag with no release is the failure this guard exists to
 # catch.
+#
+# THE NAMES HERE ARE TAG NAMES, NOT GROUP NAMES, and three groups have since been
+# renamed: compass -> zirkel, codebase-consistency -> passung, self-assess -> befund,
+# confab -> zeugnis.
+# The tags below were pushed under the old names and still exist under them, so the
+# entries are left exactly as pushed -- rewriting them would name tags that do not
+# exist and silently stop exempting the ones that do. See test/plugins/retired-groups.txt.
 andon-v0.4.0
 andon-v0.5.0
 andon-v0.6.0

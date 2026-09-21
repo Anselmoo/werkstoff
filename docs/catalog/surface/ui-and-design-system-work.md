@@ -11,10 +11,10 @@ beats:
   - skill: "frontend-design:frontend-design"
     why: "Implementation after the principles are settled, not in place of settling them."
     prompt: "now implement the design we settled on"
-  - skill: "self-assess:self-assess-ui-audit"
+  - skill: "befund:befund-ui-audit"
     why: "Accessibility, semantic markup, and hardcoded design values are only checkable once the markup exists."
     prompt: "audit the UI we just built for accessibility, semantic markup, and hardcoded design values — statically, don't run the app"
-grounding: "the HTML surfaces this repo already ships — the andon board viewer built by `plugins/andon/scripts/build_board_html.py` and the branch-comparison viewer built by `plugins/compass/scripts/build_branch_comparison_html.py` — checked against the shared token set in `tools/design-tokens/tokens.css`."
+grounding: "the HTML surfaces this repo already ships — the andon board viewer built by `plugins/andon/scripts/build_board_html.py` and the branch-comparison viewer built by `plugins/zirkel/scripts/build_branch_comparison_html.py` — checked against the shared token set in `tools/design-tokens/tokens.css`."
 dos:
   - "Convene the design council before any markup exists -- running it after defeats the purpose by its own stated rule."
   - "Implement only the design the council actually settled on, not an open brief."

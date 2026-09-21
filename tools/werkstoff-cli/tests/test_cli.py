@@ -32,9 +32,9 @@ def _write_marketplace(tmp_path: Path) -> Path:
                 "name": "werkstoff",
                 "plugins": [
                     {
-                        "name": "self-assess",
+                        "name": "befund",
                         "description": "d",
-                        "source": "./plugins/self-assess",
+                        "source": "./plugins/befund",
                     },
                 ],
             }
@@ -54,7 +54,7 @@ def test_list_json(tmp_path) -> None:
     result = runner.invoke(app, ["list", "--repo", str(repo), "--json"])
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload[0]["name"] == "self-assess"
+    assert payload[0]["name"] == "befund"
 
 
 def test_list_missing_repo_exits_1(tmp_path) -> None:
@@ -70,5 +70,5 @@ def test_install_unknown_plugin_exits_2(tmp_path) -> None:
 
 def test_install_bad_scope_exits_2(tmp_path) -> None:
     repo = _write_marketplace(tmp_path)
-    result = runner.invoke(app, ["install", "self-assess", "--repo", str(repo), "--scope", "bogus"])
+    result = runner.invoke(app, ["install", "befund", "--repo", str(repo), "--scope", "bogus"])
     assert result.exit_code == 2

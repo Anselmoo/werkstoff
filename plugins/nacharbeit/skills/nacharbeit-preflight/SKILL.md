@@ -22,7 +22,7 @@ has already spent tokens on a result it cannot use.
    It prints, per plugin, the unit count by kind; which checkers are available
    (`node` for `S-JS-SYNTAX`, the vendored viewer and hook checkers, `contract_diff.py`,
    a prompt index for known-answer routing, a marketplace file, a docs root); which
-   other guard hooks are live (takt, lehre, andon, confab, self-assess, cupertino) with
+   other guard hooks are live (takt, lehre, andon, zeugnis, befund, cupertino) with
    their escape hatches; whether `analysis/nacharbeit/fix_scope.json` is open and how
    old it is; and which state files from earlier runs exist.
 

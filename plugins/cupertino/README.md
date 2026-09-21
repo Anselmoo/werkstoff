@@ -30,11 +30,11 @@ per domain (code / design / testing / documentation).
 - Not a post-hoc auditor of a UI that already exists — `cupertino-council` runs before
   any code is written and is never retrofitted onto finished code; for accessibility,
   semantic-markup or hardcoded-design-value problems in shipped source, use
-  `self-assess:self-assess-ui-audit`, and for a full-lifecycle design pass over an
+  `befund:befund-ui-audit`, and for a full-lifecycle design pass over an
   existing project use `cupertino-review` instead.
 - Not an auditor of repo-wide documented conventions such as `CLAUDE.md` or
   `.claude/house-rules.md` — `cupertino-handbook-check` only compares work against a
-  domain handbook this plugin itself drafted; use `self-assess:self-assess-lint-audit`
+  domain handbook this plugin itself drafted; use `befund:befund-lint-audit`
   for repo-wide convention drift.
 - Not the producer of a machine-checkable ruleset a hook enforces at write time —
   `cupertino-handbook-draft` writes a human-readable, per-dimension handbook describing
@@ -42,7 +42,7 @@ per domain (code / design / testing / documentation).
   enforces comes from `lehre-codify` instead.
 - Not the applier of code-modernization or idiom findings — `cupertino-handbook-fix`
   only applies a prior `cupertino-handbook-check` pass's own mechanical findings, and
-  never touches `code_idiom_summary.json`; route those to `self-assess:self-assess-idiom-fix`.
+  never touches `code_idiom_summary.json`; route those to `befund:befund-idiom-fix`.
 
 ## Install
 

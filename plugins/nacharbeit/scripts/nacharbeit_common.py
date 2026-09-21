@@ -43,7 +43,7 @@ DEFAULT_REPO_NOTES = ""
 # werkstoff itself carries two notes the review must repeat verbatim; any other repo
 # passes its own with --repo-notes or none at all.
 WERKSTOFF_REPO_NOTES = (
-    "Report once, as a nit, that codebase-consistency ships commands rather than skills "
+    "Report once, as a nit, that passung ships commands rather than skills "
     "(rubric F6); do not repeat it elsewhere."
 )
 

@@ -26,7 +26,7 @@
       "gates": "andon",
       "marker": "transform-brief-written",
       "reason": "already enforced in code by plugins/andon/scripts/andon_core.py:check_ingest_prereqs",
-      "why": "check_ingest_prereqs checks BOTH artifacts with isfile, and only when gap_source is 'self-assess-brief'. A beat fires unconditionally, so it would deny andon-loop in its default self-scan mode, which needs no brief at all."
+      "why": "check_ingest_prereqs checks BOTH artifacts with isfile, and only when gap_source is 'befund-brief'. A beat fires unconditionally, so it would deny andon-loop in its default self-scan mode, which needs no brief at all."
     },
     {
       "gates": "widget",

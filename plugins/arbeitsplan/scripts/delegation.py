@@ -114,14 +114,14 @@ def read_ledger(path) -> list:
 def plugin_of(name: str) -> str:
     """The PLUGIN a delegation target names.
 
-    A ledger record stores a plugin ("compass"); a live dispatch target is a
-    `plugin:skill` id ("compass:compass-explore-branches"). Comparing the two
+    A ledger record stores a plugin ("zirkel"); a live dispatch target is a
+    `plugin:skill` id ("zirkel:zirkel-explore-branches"). Comparing the two
     raw strings never matches, so the cycle check silently passed everything --
     a comparison that looks right, never fires, and reports success.
 
     Cycles are a property of PLUGINS, not of individual skills: arbeitsplan
-    calling two different compass skills is not a loop, but arbeitsplan ->
-    compass -> arbeitsplan is, whichever skills those hops name.
+    calling two different zirkel skills is not a loop, but arbeitsplan ->
+    zirkel -> arbeitsplan is, whichever skills those hops name.
     """
     if not isinstance(name, str):
         return ""
@@ -220,14 +220,14 @@ def selftest() -> int:
             fails.append(name)
 
     # --- depth ---------------------------------------------------------
-    a = _rec("d1", "arbeitsplan", "compass", None, 0)
-    b = _rec("d2", "compass", "andon", "d1", 1)
+    a = _rec("d1", "arbeitsplan", "zirkel", None, 0)
+    b = _rec("d2", "zirkel", "andon", "d1", 1)
     c = _rec("d3", "andon", "lehre", "d2", 2)
     led = [a, b, c]
 
-    allowed, depth, why = check([], "arbeitsplan", "compass", None)
+    allowed, depth, why = check([], "arbeitsplan", "zirkel", None)
     ok("DEPTH root delegation allowed", allowed and depth == 0, str(why))
-    allowed, depth, why = check([a], "compass", "andon", "d1")
+    allowed, depth, why = check([a], "zirkel", "andon", "d1")
     ok("DEPTH level 1 allowed", allowed and depth == 1, str(why))
     allowed, depth, why = check([a, b], "andon", "lehre", "d2")
     ok("DEPTH level 2 allowed", allowed and depth == 2, str(why))
@@ -235,26 +235,26 @@ def selftest() -> int:
     ok("DEPTH level 3 DENIED (cap)", (not allowed) and "depth" in (why or ""), str(why))
 
     # --- cycle ---------------------------------------------------------
-    allowed, depth, why = check([a], "compass", "arbeitsplan", "d1")
+    allowed, depth, why = check([a], "zirkel", "arbeitsplan", "d1")
     ok("CYCLE A->B->A denied at depth 1", (not allowed) and "cycle" in (why or ""), str(why))
-    allowed, _, why = check([a, b], "andon", "compass", "d2")
+    allowed, _, why = check([a, b], "andon", "zirkel", "d2")
     ok("CYCLE A->B->C->B denied", (not allowed) and "cycle" in (why or ""), str(why))
     allowed, _, why = check([a, b], "andon", "matrize", "d2")
     ok("CYCLE unrelated target still allowed", allowed, str(why))
 
     # A cycle must be caught BELOW the cap, or the cap is doing the work.
-    allowed, depth, why = check([a], "compass", "arbeitsplan", "d1")
+    allowed, depth, why = check([a], "zirkel", "arbeitsplan", "d1")
     ok("CYCLE caught below the cap, not by it", (not allowed) and depth < MAX_DEPTH and "cycle" in (why or ""))
 
     # --- plugin:skill vs plugin normalization ---------------------------
-    # A ledger stores "compass"; a live dispatch target is
-    # "compass:compass-explore-branches". Comparing them raw never matches, and
+    # A ledger stores "zirkel"; a live dispatch target is
+    # "zirkel:zirkel-explore-branches". Comparing them raw never matches, and
     # the cycle check silently passed everything. Found by the guard's own
     # calibration, not by reading this file.
-    allowed, _, why = check([a], "compass", "arbeitsplan:candidate-builder", "d1")
+    allowed, _, why = check([a], "zirkel", "arbeitsplan:candidate-builder", "d1")
     ok("NORMALIZE plugin:skill target still detects the cycle",
        (not allowed) and "cycle" in (why or ""), str(why))
-    allowed, _, why = check([a, b], "andon", "compass:compass-solve", "d2")
+    allowed, _, why = check([a, b], "andon", "zirkel:zirkel-solve", "d2")
     ok("NORMALIZE a different SKILL of a seen plugin is still a cycle",
        (not allowed) and "cycle" in (why or ""), str(why))
     allowed, _, why = check([a, b], "andon", "matrize:matrize-decode", "d2")

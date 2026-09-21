@@ -64,22 +64,22 @@ this replaces. Only `type: "command"` enforces.
 | plugin | model | gates 0/1 | legacy → rebuilt (code/prose/absent) | keep |
 |---|---|---|---|---|
 | andon | opus | pass | `0/27/4` → **`20/10/1`** | rebuild |
-| self-assess | sonnet | pass | `3/27/3` → **`18/10/5`** | rebuild |
+| befund | sonnet | pass | `3/27/3` → **`18/10/5`** | rebuild |
 | cli-scaffold | opus | pass | `0/19/12` → **`14/6/11`** | rebuild |
-| confab | sonnet | pass | `4/13/2` → **`12/5/2`** | rebuild |
-| compass | opus | pass | `1/44/4` → `1/37/11` | **legacy** |
+| zeugnis | sonnet | pass | `4/13/2` → **`12/5/2`** | rebuild |
+| zirkel | opus | pass | `1/44/4` → `1/37/11` | **legacy** |
 | cupertino | sonnet | — | `0/19/1` → `0/12/8` | **legacy** |
 
 The four that gained enforcement gate *operations* — advance past a wire, apply
-a fix, write a record, exit with a code. As measured in this pass, compass and
-cupertino were both treated as **advisory**: compass shapes reasoning, cupertino
+a fix, write a record, exit with a code. As measured in this pass, zirkel and
+cupertino were both treated as **advisory**: zirkel shapes reasoning, cupertino
 shapes design judgment, and there is no tool call to deny when the rule is
-"explore branches independently before scoring." That still holds for compass.
+"explore branches independently before scoring." That still holds for zirkel.
 It no longer holds for cupertino, whose hand-edited legacy code — kept over the
 rebuild — does register a real `type: "command"` PreToolUse hook; see `CLAUDE.md`'s
 "Enforcement: only hooks actually enforce".
 
-Opus could not raise compass either (1 → 1), which rules out model capability as
+Opus could not raise zirkel either (1 → 1), which rules out model capability as
 the explanation.
 
 **Cost the green gates hide:** `absent` rose in both advisory rebuilds (4→11,
@@ -99,9 +99,9 @@ argument-hint: [repo-path] [--skip-verification]   # two flow sequences: INVALID
 `[` opens a YAML flow sequence, so conventional CLI-usage notation collides with
 it. A file whose frontmatter fails to parse still loads — **with empty metadata,
 no description, no tools** — so the skill silently never triggers. This killed
-8 of 8 confab skills and 3 compass agents.
+8 of 8 zeugnis skills and 3 zirkel agents.
 
-Fixed in the generator prompt and **verified**: confab regenerated on sonnet,
+Fixed in the generator prompt and **verified**: zeugnis regenerated on sonnet,
 gate 0 clean, gate 1 passed, `argument-hint: "[repo-path] [--skip-verification]"`
 quoted as instructed, enforcement `4/13/2` → `12/5/2`, and it shipped a hook on
 requirement 6's first outing.
@@ -138,13 +138,13 @@ assert exit code *and* JSON shape.
 - gate 4 (behavioral, clean box) has not run against the four keepers
 - as originally written here (2026-07-27, commit `0c10fa0`) this bullet claimed
   the PreToolUse hook "exists only in `plugins/andon`" while granting in the same
-  sentence that confab has one too, and further claimed self-assess had none —
+  sentence that zeugnis has one too, and further claimed befund had none —
   that second claim was already wrong the day it was written: the same commit
-  also added `hooks/hooks.json` to `confab`, `cupertino`, and `self-assess`.
+  also added `hooks/hooks.json` to `zeugnis`, `cupertino`, and `befund`.
   Current inventory (checked 2026-09-03 via `ls plugins/*/hooks/hooks.json`):
-  `andon`, `confab`, `cupertino`, `self-assess`, and `takt` each have one;
-  `cli-scaffold`, `codebase-consistency`, and `compass` do not
-- compass/cupertino rebuilds are retained under `plugins/` but should not be
+  `andon`, `zeugnis`, `cupertino`, `befund`, and `takt` each have one;
+  `cli-scaffold`, `passung`, and `zirkel` do not
+- zirkel/cupertino rebuilds are retained under `plugins/` but should not be
   promoted over `legacy_plugins/` — moot as written: `legacy_plugins/` was since
   deleted (see the note below), and both plugins kept their hand-edited legacy
   code rather than being promoted

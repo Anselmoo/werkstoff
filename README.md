@@ -16,21 +16,21 @@ not by feature list. Every plugin README opens with a **Why this exists**
 section explaining the specific failure mode it targets, and an **Example
 Prompts** section showing what to actually say to Claude Code to trigger it.
 
-- **[`self-assess`](plugins/self-assess/README.md)** — codebase
+- **[`befund`](plugins/befund/README.md)** — codebase
   self-assessment for live, actively-maintained repos: import-graph-based
   stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit,
   house-rules convention enforcement, and a multi-repo portfolio
   dashboard.
-- **[`confab`](plugins/confab/README.md)** — catches where AI-authored
-  code *confabulates* (short for **confabulation** — an LLM confidently
-  filling a gap with plausible-but-false content; not casual chat):
+- **[`zeugnis`](plugins/zeugnis/README.md)** — catches where AI-authored
+  code *confabulates* (**confabulation** — an LLM confidently filling a
+  gap with plausible-but-false content):
   declared dependencies that don't exist (hallucination detection), tests
   that assert nothing (LLM-reasoned assertion/mutation strength), contracts
   drifted from their call-sites (machine-checkable contract-drift), and
   unreliable agentic-loop definitions — plus a bounded autonomous
-  self-optimization cycle (`confab-cycle`) with an opt-in propose/fix mode.
-- **[`compass`](plugins/compass/README.md)** — a prompt-engineering
-  technique library for complex/vague tasks, composed by `compass-solve`
+  self-optimization cycle (`zeugnis-cycle`) with an opt-in propose/fix mode.
+- **[`zirkel`](plugins/zirkel/README.md)** — a prompt-engineering
+  technique library for complex/vague tasks, composed by `zirkel-solve`
   into an actual workflow (clarify-scope, explore-branches,
   decompose-chain, reason-verify, and more) rather than exposed as a
   raw technique picker.
@@ -56,11 +56,11 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   POSIX sh), freeform-generated every time against a frozen five-pillar
   doctrine (UX, backend/core separation, stability, idiomatic
   distribution, Unix composability) rather than stored boilerplate.
-- **[`codebase-consistency`](plugins/codebase-consistency/README.md)** —
+- **[`passung`](plugins/passung/README.md)** —
   harmonizes an already-modern, live codebase that grew inconsistent:
   derives the canonical form for undocumented, non-deprecated pattern
   variants (documented conventions and version-deprecated idioms are
-  out of scope — see `self-assess`) via a structured preflight / scan /
+  out of scope — see `befund`) via a structured preflight / scan /
   map / canonize / brief / align / verify / status workflow, with a
   navigable consistency matrix and an equivalence-verified alignment
   pass.
@@ -95,11 +95,11 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
 
 ```
 /plugin marketplace add Anselmoo/werkstoff
-/plugin install self-assess@werkstoff
+/plugin install befund@werkstoff
 ```
 
-Swap `self-assess` for any plugin name above (`confab`, `compass`,
-`cupertino`, `andon`, `arbeitsplan`, `cli-scaffold`, `codebase-consistency`,
+Swap `befund` for any plugin name above (`zeugnis`, `zirkel`,
+`cupertino`, `andon`, `arbeitsplan`, `cli-scaffold`, `passung`,
 `takt`, `lehre`, `nacharbeit`, `matrize`) to install
 a different one — each is independent and can be installed on its own.
 
@@ -107,7 +107,7 @@ Or for local development, point Claude Code straight at a plugin
 directory without registering the marketplace:
 
 ```
-claude --plugin-dir /path/to/werkstoff/plugins/self-assess
+claude --plugin-dir /path/to/werkstoff/plugins/befund
 ```
 
 ## Docs
@@ -137,12 +137,12 @@ count words, the orchestration references) and fail loudly for each one
 still missing. Each plugin is independent — no shared code between them
 beyond convention. The root `LICENSE` (MIT) covers it;
 add a plugin-local `LICENSE` only if it carries forward a different
-license, as `codebase-consistency` does (see License below).
+license, as `passung` does (see License below).
 
 ## License
 
-MIT for the repo and every plugin except `codebase-consistency`, which
+MIT for the repo and every plugin except `passung`, which
 is Apache-2.0 — it's a Derivative Work of Anthropic's `code-modernization`
 plugin and carries that plugin's license forward; see
-`plugins/codebase-consistency/LICENSE` and `NOTICE`. See the repo-root
+`plugins/passung/LICENSE` and `NOTICE`. See the repo-root
 `LICENSE` for everything else.

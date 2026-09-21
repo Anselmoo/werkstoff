@@ -4,7 +4,7 @@ Written from a cloud session that hit real limits: it runs as **root** (so the
 test harness's default permission mode is refused outright), has **no ssh**
 (so the live `spectrafit-core` ledger on `terra` was unreachable), and pays
 full LLM latency per test case with no local caching. Everything below is
-committed on `claude/self-assess-docs-drift-perf-cbhuaq`.
+committed on `claude/befund-docs-drift-perf-cbhuaq`.
 
 ## What this pilot is testing
 
@@ -22,7 +22,7 @@ A five-agent adversarial review ("rubber-duck tribunal") compared werkstoff to
 
 The critical finding: andon's stop rules (reopen-3x escalation, blast-radius
 authorization gate, convergence bookkeeping) exist **only as prose** the model
-must re-read and self-enforce. `plugins/confab/scripts/lib/ledger.py:56,90`
+must re-read and self-enforce. `plugins/zeugnis/scripts/lib/ledger.py:56,90`
 implements the equivalent guards in code rather than prose
 (the cycle-max-passes gate at line 56 raises CycleBoundExceededError; the reopen
 guard at line 90 forces a status transition to `escalated` past max-reopens --
@@ -54,7 +54,7 @@ Two findings recorded there rather than resolved:
   `Edit`, and `andon-propose` only *describes* a fix. Yet
   `andon-loop/SKILL.md:163` says "do not apply the fix or proceed to Phase 4",
   which only parses if an authorized apply path exists. Ingest mode delegates
-  to self-assess's Edit skills; the default path has no named applier. A
+  to befund's Edit skills; the default path has no named applier. A
   documented core capability may be unimplemented.
 - Likely-arbitrary constants (sub-cycle depth 2, reopen count 3), overlapping
   proof strategies (b/f, c/g) separated only by tie-break rules.
@@ -125,7 +125,7 @@ and ssh access to `terra` for the real `spectrafit-core` ledger.
 ### Step 1 — finish the honest baseline (~15 min)
 
 ```bash
-git checkout claude/self-assess-docs-drift-perf-cbhuaq && git pull
+git checkout claude/befund-docs-drift-perf-cbhuaq && git pull
 test/plugins/run.sh thrash-escalate     # sanity: should PASS
 test/plugins/run.sh                     # all 7 cases
 ```
@@ -180,8 +180,8 @@ From `docs/andon-behavior-contract.md` only. Location `plugins/andon-ng/`
 during the pilot so the harness can run both. Invariants:
 
 1. Every stop rule is code with validated args, not prose
-   (`plugins/confab/scripts/lib/ledger.py:56-59` raises for cycle-max-passes;
-   `plugins/confab/scripts/lib/ledger.py:88-90` forces an `escalated` status for
+   (`plugins/zeugnis/scripts/lib/ledger.py:56-59` raises for cycle-max-passes;
+   `plugins/zeugnis/scripts/lib/ledger.py:88-90` forces an `escalated` status for
    the thrash guard -- enforced in code, though only the former throws).
 2. The ledger is validated on read and write; gating fields (`verdict`,
    `non_overridable`, `on_constraint`, `blast_radius`) are first-class

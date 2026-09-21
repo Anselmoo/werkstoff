@@ -32,9 +32,9 @@ A structural unit of a codebase's own graph, not a moment in a workflow.
 [`andon`](plugins/andon.md) walks a repository's *value stream* stage-by-stage — each
 stage is a node such as ingest, normalize, enrich, score, publish — and proves the
 [wire](#wire) between consecutive stages before advancing.
-[`self-assess-stage-map`](plugins/self-assess.md) derives the same kind of object
+[`befund-stage-map`](plugins/befund.md) derives the same kind of object
 independently: it clusters files into stages by shallowest package boundary (never by
-manifest directory) and writes the stage graph other self-assess skills depend on. In
+manifest directory) and writes the stage graph other befund skills depend on. In
 both cases a "stage" is a piece of the *codebase*, not a piece of a *process* — the
 opposite of what [beat](#beat) names. `code-modernization`'s "eight-stage pipeline"
 (cited in [the catalog](catalog/index.md)) is the one place "stage" is used for a
@@ -60,15 +60,15 @@ Not: *handoff, connection, edge* — used informally in prose describing the con
 
 A named subdivision inside *one orchestrator's own* fixed pipeline, scoped to that
 orchestrator rather than shared across plugins the way a [beat](#beat) is.
-`self-assess-autopilot` names its own CHECK, PLAN, and FIX+VALIDATE phases (see
-[`plugins/self-assess`](plugins/self-assess.md)); `andon-loop` internally runs "Phases
+`befund-autopilot` names its own CHECK, PLAN, and FIX+VALIDATE phases (see
+[`plugins/befund`](plugins/befund.md)); `andon-loop` internally runs "Phases
 0-6" (detect topology, init/resume the ledger, scan, dispatch, enforce, advance,
 detect convergence — [`plugins/andon`](plugins/andon.md)). Nothing outside that one
 orchestrator schedules against a phase the way takt schedules against a beat; a phase
 is private to its pipeline.
 
 Not: *step* (used loosely for the same idea in prose, e.g. "first step of
-self-assess-autopilot's CHECK phase" — informal, not a distinct term); *beat* (crosses
+befund-autopilot's CHECK phase" — informal, not a distinct term); *beat* (crosses
 plugin boundaries and can be takt-enforced; a phase cannot).
 
 ### step
@@ -86,7 +86,7 @@ The distinction the whole [orchestration catalog](orchestration/README.md) is bu
 An **orchestrator** is a fixed sequence whose middle steps read artifacts an earlier
 step wrote — it cannot be dropped into another workflow, because a step invoked without
 its predecessor's artifact either refuses or fabricates (`andon-loop`,
-`self-assess-autopilot`, `compass-solve`, the `/consistency-*` command chain,
+`befund-autopilot`, `zirkel-solve`, the `/consistency-*` command chain,
 `arbeitsplan-compile` → `arbeitsplan-run`, and eight more are named by that page). A
 **leaf** is dispatchable at any moment from a scoped prompt, carries no pipeline state,
 and returns a result rather than advancing a ledger — everything else in werkstoff,
@@ -218,6 +218,14 @@ Every German-named plugin is named for a manufacturing or shop-floor concept its
 states explicitly; the gloss below is quoted or closely paraphrased from that plugin's
 own README, not invented here.
 
+That sentence is the test, and it is why `zirkel`, `passung`, `befund` and `zeugnis`
+carry the names they do rather than the ones they started with. A German spelling is
+not the point — a *Kompass* is a navigation instrument and would have failed this test
+as surely as `compass` did. `andon` was deliberately left alone: it is Japanese rather
+than German, but it already passes, because the rule is about the concept and not the
+language. Two plugins remain outside the scheme — `cupertino` names a place, and
+`cli-scaffold` is plain English.
+
 ### werkstoff
 
 German for "material". The [design rationale in
@@ -242,6 +250,15 @@ tooling, how long. That is this plugin's job: problem drawing in, operation sequ
 out." ([`plugins/arbeitsplan/README.md`](plugins/arbeitsplan.md)). It compiles a stated
 problem into an executable, budgeted workflow the same way a shop routing sheet turns a
 drawing into an operation sequence.
+
+### befund
+
+German for the written finding of an inspection — what was measured, where, and what it
+showed. "A *Befund* is the written finding of an inspection ... It records a condition;
+it does not pass or reject the part." ([`plugins/befund/README.md`](plugins/befund.md)).
+It reports on a live codebase with `file:line` evidence and touches source only behind a
+recorded authorization; the gauge that actually rejects work is `lehre`. Renamed from
+`self-assess`, whose published tags remain under the old name.
 
 ### lehre
 
@@ -269,11 +286,39 @@ It reviews another plugin against the official Anthropic standard and reworks wh
 fails, the same way a manufacturing rework pass returns a failed part to spec before it
 ships.
 
+### passung
+
+German for the fit — the ISO tolerance class, H7/g6 and its siblings, that decides
+whether two mating parts go together. "Two parts can each be within spec and still not
+mate, because a fit is a property of the pair, not of either one alone."
+([`plugins/passung/README.md`](plugins/passung.md)). That is the failure it exists for:
+several variants of one convention, each defensible alone, that do not sit together.
+Renamed from `codebase-consistency`, whose published tags remain under the old name.
+
 ### takt
 
-No German-meaning gloss appears in the plugin's own README today, unlike the other six;
-this entry is grounded in what the README says the plugin *does* rather than in a name
-etymology it does not state. "Enforces declared beat order at the tool-call layer, so
+German for the beat — in music the measure that paces a piece, on a line the *Taktzeit*
+that paces production. "the interval every station is built around, so a station cannot
+run ahead of the one feeding it" ([`plugins/takt/README.md`](plugins/takt.md)). "Enforces declared beat order at the tool-call layer, so
 sequencing is a gate rather than a sentence." ([`plugins/takt/README.md`](plugins/takt.md)).
 It ships no skills or agents of its own — only the `PreToolUse` hook and declaration
 format that turns another plugin's stated ordering into a runtime denial.
+
+### zeugnis
+
+German for the mill certificate — the EN 10204 *Werkszeugnis* or *Abnahmeprüfzeugnis* in
+which a supplier declares what a material actually is. "Its grades are the point: 2.1 is
+the supplier's own word, 3.1 is their own inspector, and 3.2 requires an independent one.
+A claim is worth what the party behind it is worth."
+([`plugins/zeugnis/README.md`](plugins/zeugnis.md)). It audits AI-authored code for claims
+that are confidently false, and no finding counts until a pass that did not produce it
+re-checks it. Renamed from `confab`, whose published tags remain under the old name.
+
+### zirkel
+
+German for a pair of dividers — the tool used in *Anreissen*, scribing the layout onto a
+workpiece before a single cut. "It does not remove material; it decides where the
+material will be removed." ([`plugins/zirkel/README.md`](plugins/zirkel.md)). Clarify,
+explore and decompose are the layout; execution follows a line drawn deliberately rather
+than found by cutting. Renamed from `compass`, whose published tags remain under the old
+name.

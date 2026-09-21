@@ -3,24 +3,24 @@
   "generatedAt": "2026-09-07T06:07:11Z",
   "findings": [
     {
-      "file": "plugins/self-assess/hooks/guard_target_edit.py",
+      "file": "plugins/befund/hooks/guard_target_edit.py",
       "line": 125,
       "severity": "Medium",
       "title": "Guard fails open (allow) on internal ImportError instead of denying",
       "evidence": "try:\n    from lib.settings import load_settings  # noqa: E402\n    ...\nexcept (ImportError, ModuleNotFoundError) as exc:\n    print(f\"guard_target_edit: internal error ({type(exc).__name__}: {exc}); ... Allowing this edit rather than denying every future edit in this repo ...\", file=sys.stderr)\n    return allow()",
       "mechanical": false,
-      "suggestedFix": "This is inside the opted-in branch (a self-assess edit-scope lock is already confirmed open at this point), so an unexpected import/packaging failure here should deny (return deny(...)) with the exception named and the documented ESCAPE_HATCH, not silently allow the edit through. If the intentional fail-open-on-packaging-defect tradeoff (from issue #24) is to be kept, it needs an explicit, named escape hatch of its own and should be called out as a deliberate rule exception rather than silently contradicting the fail-closed contract.",
+      "suggestedFix": "This is inside the opted-in branch (a befund edit-scope lock is already confirmed open at this point), so an unexpected import/packaging failure here should deny (return deny(...)) with the exception named and the documented ESCAPE_HATCH, not silently allow the edit through. If the intentional fail-open-on-packaging-defect tradeoff (from issue #24) is to be kept, it needs an explicit, named escape hatch of its own and should be called out as a deliberate rule exception rather than silently contradicting the fail-closed contract.",
       "rule": "Every PreToolUse/hook guard script must wrap its top-level logic in a broad try/except that fails closed on any unexpected exception (deny the action, exit non-zero) rather than failing open or crashing silently, and the denial message must both name the internal error and point to a specific, named escape-hatch mechanism (e.g. an env var or config flag) for overriding it.",
       "dimension": "error-handling"
     },
     {
-      "file": "plugins/confab/scripts/hooks/guard_edit_scope.py",
+      "file": "plugins/zeugnis/scripts/hooks/guard_edit_scope.py",
       "line": 96,
       "severity": "Medium",
       "title": "Guard fails open (allow) on internal ImportError instead of denying",
       "evidence": "try:\n    from lib.paths import UnsafeWritePathError, safe_repo_path  # noqa: E402\n    from lib.remediation_scope import read_scope, mark_consumed  # noqa: E402\nexcept (ImportError, ModuleNotFoundError) as exc:\n    print(f\"guard_edit_scope: internal error ({type(exc).__name__}: {exc}); ... Allowing this edit rather than denying every future edit in this repo ...\", file=sys.stderr)\n    return allow()",
       "mechanical": false,
-      "suggestedFix": "This check runs only after confirming analysis/confab/ exists (i.e. the repo has opted into confab), so an unexpected import failure at this point should deny with the exception named and the documented ESCAPE_HATCH rather than allow. Keep the fail-open behavior only if it is intentionally scoped and documented as a named, separate exception to the fail-closed contract, not folded silently into the general 'internal error' path.",
+      "suggestedFix": "This check runs only after confirming analysis/zeugnis/ exists (i.e. the repo has opted into zeugnis), so an unexpected import failure at this point should deny with the exception named and the documented ESCAPE_HATCH rather than allow. Keep the fail-open behavior only if it is intentionally scoped and documented as a named, separate exception to the fail-closed contract, not folded silently into the general 'internal error' path.",
       "rule": "Every PreToolUse/hook guard script must wrap its top-level logic in a broad try/except that fails closed on any unexpected exception (deny the action, exit non-zero) rather than failing open or crashing silently, and the denial message must both name the internal error and point to a specific, named escape-hatch mechanism (e.g. an env var or config flag) for overriding it.",
       "dimension": "error-handling"
     },
@@ -47,13 +47,13 @@
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/self-assess/hooks/test_guard_target_edit.py",
+      "file": "plugins/befund/hooks/test_guard_target_edit.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
       "evidence": "185-line test file for the PreToolUse target-edit guard; no .github/workflows/*.yml step references it, pytest, or unittest for this module.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_guard_target_edit -v` with working-directory: plugins/self-assess/hooks.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_guard_target_edit -v` with working-directory: plugins/befund/hooks.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
@@ -69,68 +69,68 @@
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/confab/scripts/hooks/test_guard_edit_scope.py",
+      "file": "plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "132-line test file for confab's PreToolUse edit-scope guard; absent from every .github/workflows/*.yml run: line.",
+      "evidence": "132-line test file for zeugnis's PreToolUse edit-scope guard; absent from every .github/workflows/*.yml run: line.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_guard_edit_scope -v` with working-directory: plugins/confab/scripts/hooks.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_guard_edit_scope -v` with working-directory: plugins/zeugnis/scripts/hooks.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/compass/scripts/test_build_branch_comparison_html.py",
+      "file": "plugins/zirkel/scripts/test_build_branch_comparison_html.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
       "evidence": "141-line test file whose own docstring says 'Run: python3 scripts/test_build_branch_comparison_html.py', but no workflow step in .github/workflows/ runs it.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_branch_comparison_html -v` with working-directory: plugins/compass/scripts.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_branch_comparison_html -v` with working-directory: plugins/zirkel/scripts.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/confab/scripts/test_build_burndown_html.py",
+      "file": "plugins/zeugnis/scripts/test_build_burndown_html.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "181-line test file for confab-status's burndown chart builder; not named by any .github/workflows/*.yml step.",
+      "evidence": "181-line test file for zeugnis-status's burndown chart builder; not named by any .github/workflows/*.yml step.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_burndown_html -v` with working-directory: plugins/confab/scripts.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_burndown_html -v` with working-directory: plugins/zeugnis/scripts.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/self-assess/scripts/test_build_stage_map_html.py",
+      "file": "plugins/befund/scripts/test_build_stage_map_html.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "153-line test file for self-assess-stage-map's HTML viewer builder; not named by any .github/workflows/*.yml step.",
+      "evidence": "153-line test file for befund-stage-map's HTML viewer builder; not named by any .github/workflows/*.yml step.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_stage_map_html -v` with working-directory: plugins/self-assess/scripts.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_build_stage_map_html -v` with working-directory: plugins/befund/scripts.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/compass/scripts/test_compass.py",
+      "file": "plugins/zirkel/scripts/test_zirkel.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "292-line self-contained test suite for compass_lib guards ('Run: python3 scripts/test_compass.py'); no workflow step names or runs it.",
+      "evidence": "292-line self-contained test suite for zirkel_lib guards ('Run: python3 scripts/test_zirkel.py'); no workflow step names or runs it.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_compass -v` with working-directory: plugins/compass/scripts.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_zirkel -v` with working-directory: plugins/zirkel/scripts.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/confab/scripts/test_cycle_engine.py",
+      "file": "plugins/zeugnis/scripts/test_cycle_engine.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "134-line test file for confab-cycle's constraint-domain picker; no workflow step in .github/workflows/*.yml runs it.",
+      "evidence": "134-line test file for zeugnis-cycle's constraint-domain picker; no workflow step in .github/workflows/*.yml runs it.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_cycle_engine -v` with working-directory: plugins/confab/scripts.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_cycle_engine -v` with working-directory: plugins/zeugnis/scripts.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
@@ -157,24 +157,24 @@
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/self-assess/scripts/lib/test_staleness.py",
+      "file": "plugins/befund/scripts/lib/test_staleness.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "126-line test file for self-assess-autopilot's stage-map freshness check; not named or run by any .github/workflows/*.yml step.",
+      "evidence": "126-line test file for befund-autopilot's stage-map freshness check; not named or run by any .github/workflows/*.yml step.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_staleness -v` with working-directory: plugins/self-assess/scripts/lib.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_staleness -v` with working-directory: plugins/befund/scripts/lib.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
     {
-      "file": "plugins/self-assess/scripts/lib/test_status.py",
+      "file": "plugins/befund/scripts/lib/test_status.py",
       "line": 1,
       "severity": "High",
       "title": "Test file not invoked by any CI workflow step",
-      "evidence": "99-line test file for self-assess-status's dashboard builder; not named or run by any .github/workflows/*.yml step.",
+      "evidence": "99-line test file for befund-status's dashboard builder; not named or run by any .github/workflows/*.yml step.",
       "mechanical": false,
-      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_status -v` with working-directory: plugins/self-assess/scripts/lib.",
+      "suggestedFix": "Add a CI step invoking `python3 -m unittest test_status -v` with working-directory: plugins/befund/scripts/lib.",
       "rule": "Every test_*.py file committed under plugins/ or tools/ must be invoked by at least one automated CI workflow step in .github/workflows/ (e.g., via `python3 -m unittest <name>` or a pytest run whose working-directory/rootdir actually reaches it) before the PR that adds it merges; a test file that exists on disk but that no workflow step names is not counted as coverage.",
       "dimension": "testing-coverage"
     },
@@ -399,7 +399,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/compass/scripts/build_symbol_index.py",
+      "file": "plugins/zirkel/scripts/build_symbol_index.py",
       "line": 370,
       "severity": "Medium",
       "title": "Functions exceed PLR0913 argument-count limit",
@@ -410,7 +410,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/compass/scripts/compass_lib.py",
+      "file": "plugins/zirkel/scripts/zirkel_lib.py",
       "line": 249,
       "severity": "Medium",
       "title": "validate_dag exceeds complexity and branch limits",
@@ -421,7 +421,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/agentic_reliability.py",
+      "file": "plugins/zeugnis/scripts/agentic_reliability.py",
       "line": 56,
       "severity": "Medium",
       "title": "Function exceeds PLR0915 statement-count limit",
@@ -432,7 +432,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/assertion_audit.py",
+      "file": "plugins/zeugnis/scripts/assertion_audit.py",
       "line": 65,
       "severity": "Medium",
       "title": "Function exceeds PLR0915 statement-count limit",
@@ -443,7 +443,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/build_symbol_index.py",
+      "file": "plugins/zeugnis/scripts/build_symbol_index.py",
       "line": 370,
       "severity": "Medium",
       "title": "Functions exceed PLR0913 argument-count limit",
@@ -454,7 +454,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/code_change_review.py",
+      "file": "plugins/zeugnis/scripts/code_change_review.py",
       "line": 74,
       "severity": "Medium",
       "title": "main exceeds complexity and statement limits",
@@ -465,7 +465,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/cycle_engine.py",
+      "file": "plugins/zeugnis/scripts/cycle_engine.py",
       "line": 173,
       "severity": "Medium",
       "title": "Functions exceed complexity/branch limits",
@@ -476,7 +476,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/hooks/guard_edit_scope.py",
+      "file": "plugins/zeugnis/scripts/hooks/guard_edit_scope.py",
       "line": 73,
       "severity": "Medium",
       "title": "run exceeds complexity limit",
@@ -487,7 +487,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/confab/scripts/lib/ledger.py",
+      "file": "plugins/zeugnis/scripts/lib/ledger.py",
       "line": 70,
       "severity": "Medium",
       "title": "Function exceeds PLR0913 argument-count limit",
@@ -564,7 +564,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/self-assess/hooks/guard_target_edit.py",
+      "file": "plugins/befund/hooks/guard_target_edit.py",
       "line": 96,
       "severity": "Medium",
       "title": "run exceeds complexity and branch limits",
@@ -575,7 +575,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/self-assess/scripts/build_symbol_index.py",
+      "file": "plugins/befund/scripts/build_symbol_index.py",
       "line": 370,
       "severity": "Medium",
       "title": "Functions exceed PLR0913 argument-count limit",
@@ -586,7 +586,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/self-assess/scripts/lib/frontmatter.py",
+      "file": "plugins/befund/scripts/lib/frontmatter.py",
       "line": 34,
       "severity": "Medium",
       "title": "parse_frontmatter exceeds complexity and statement limits",
@@ -597,7 +597,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/self-assess/scripts/lib/graph.py",
+      "file": "plugins/befund/scripts/lib/graph.py",
       "line": 4,
       "severity": "Medium",
       "title": "find_cycles exceeds complexity limit",
@@ -608,7 +608,7 @@
       "dimension": "complexity-limits"
     },
     {
-      "file": "plugins/self-assess/scripts/self_assess_cli.py",
+      "file": "plugins/befund/scripts/befund_cli.py",
       "line": 269,
       "severity": "Medium",
       "title": "build_parser exceeds PLR0915 statement limit",

@@ -13,7 +13,7 @@ beats:
   - skill: "plugin-dev:skill-reviewer"
     why: "Reviews triggering effectiveness specifically — a skill with a weak description never fires, and nothing else in this sequence would catch that."
     prompt: "review this skill's description and frontmatter for triggering effectiveness — will this actually fire when it should?"
-  - skill: "confab:confab-agentic-reliability"
+  - skill: "zeugnis:zeugnis-agentic-reliability"
     why: "Checks for excessive tool grants and missing verify-wiring — the werkstoff-side beat that catches what a style/triggering reviewer reads past."
     prompt: "audit this new skill/agent for agentic reliability defects — unbounded retries, missing verification wiring, tool grants beyond its stated role"
   - skill: "plugin-dev:plugin-validator"
@@ -38,7 +38,7 @@ A new skill or agent that never fires reports no error at all — it just sits u
 indistinguishable from a skill nobody needed. `plugin-dev:skill-development` supplies the
 frontmatter spec and `superpowers:writing-skills` the authoring loop, but neither one
 checks whether the description will actually trigger; that is `plugin-dev:skill-reviewer`'s
-job specifically. `confab:confab-agentic-reliability` catches what a style/triggering
+job specifically. `zeugnis:zeugnis-agentic-reliability` catches what a style/triggering
 review reads past — excessive tool grants and missing verify-wiring — and
 `plugin-dev:plugin-validator` runs last, once there is a real manifest to validate against.
 

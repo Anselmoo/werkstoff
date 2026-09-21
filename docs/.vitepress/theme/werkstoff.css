@@ -462,7 +462,7 @@ div[class*='language-prompt'] {
  *
  * 36rem = 576px is ~72 characters. 72 rather than 66 on purpose: this corpus is
  * full of long unbreakable identifiers (`code-modernization:business-rules-extractor`,
- * `self-assess-transform-execute`) and inline code that cannot hyphenate, and at
+ * `befund-transform-execute`) and inline code that cannot hyphenate, and at
  * 66ch those force ragged lines and mid-identifier wraps. It is still a 16%
  * reduction.
  *

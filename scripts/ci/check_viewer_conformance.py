@@ -7,7 +7,7 @@ NOT checked -- a lint that pretends to decide them would report success on prose
 cannot read, which is the failure mode CLAUDE.md catalogues.
 
 Every content check runs against the document with its <style> blocks REMOVED.
-That is not cosmetic: confab defines `.legend`/`.legend .swatch` and uses neither,
+That is not cosmetic: zeugnis defines `.legend`/`.legend .swatch` and uses neither,
 so a naive substring search for "legend" passes on a viewer that has none. The same
 defence is why test/docs/docs_ux_audit.py strips comments before grepping.
 
@@ -160,8 +160,8 @@ def check(plugin: str, path: str, plugin_dir: str | None = None) -> list[str]:
 
         # The <title> is the machine-readable name; the <h1> is the one a reader
         # actually sees, and they drifted freely while only the former was checked
-        # (codebase-consistency shipped "Consistency Matrix — billing" under a
-        # title of "codebase-consistency — consistency matrix").
+        # (passung shipped "Consistency Matrix — billing" under a
+        # title of "passung — consistency matrix").
         h1 = H1_RE.search(markup)
         if not h1:
             errs.append(f"{rel}: S2 -- no static <h1>")
@@ -194,7 +194,7 @@ def check(plugin: str, path: str, plugin_dir: str | None = None) -> list[str]:
         errs.append(f"{rel}: R1 -- no static element with class=\"verdict\" stating the finding")
 
     # R4 -- a legend a reader gets WITHOUT interacting. A real element, because
-    # confab shipped .legend CSS that nothing used and a dead renderLegend()
+    # zeugnis shipped .legend CSS that nothing used and a dead renderLegend()
     # would otherwise pass. A render-time-populated legend still qualifies: its
     # CONTAINER is static markup, which is what this matches.
     if not LEGEND_RE.search(markup) and not NOTE_RE.search(markup):

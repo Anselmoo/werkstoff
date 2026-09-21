@@ -5,13 +5,13 @@ summary: "Enumerate every copy exhaustively before deleting any of them — N-1 
 openingPrompt: "There are multiple hand-synced copies of this file -- find every single one and everything that references them before deleting anything, pin down the shared behavior they all carry with tests while every copy still exists, and prove afterward that every consumer of the old copies still behaves the same, not just that the imports still resolve."
 external: ["superpowers"]
 beats:
-  - skill: "compass:compass-map-relationships"
+  - skill: "zirkel:zirkel-map-relationships"
     why: "Collapsing N-1 of N copies is worse than collapsing none; the enumeration must be exhaustive before the first deletion."
     prompt: "find every copy of this file and every place that references any of them — I want the complete list before we delete anything"
   - skill: "superpowers:test-driven-development"
     why: "The shared contract is only observable while all copies still exist."
     prompt: "before we collapse these copies, write tests that pin the behavior all of them share"
-  - skill: "confab:confab-contract-drift"
+  - skill: "zeugnis:zeugnis-contract-drift"
     why: "Consolidation silently changes which signature is authoritative."
   - skill: "andon:andon-verify"
     why: "\"All consumers still work\" is a contract, and a green import is not evidence for it."

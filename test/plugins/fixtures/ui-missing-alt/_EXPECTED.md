@@ -1,6 +1,6 @@
 # ui-missing-alt
 
-Seeded-defect fixture for self-assess-ui-audit's behavior test. Each block in
+Seeded-defect fixture for befund-ui-audit's behavior test. Each block in
 `index.html` carries exactly one known accessibility/UI defect the audit must
 catch. Do not "fix" the defects in `index.html` — they are the oracle. Keep
 line numbers stable when editing; the harness asserts on the finding text, not

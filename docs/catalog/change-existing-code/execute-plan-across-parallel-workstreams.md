@@ -7,7 +7,7 @@ external: ["superpowers"]
 beats:
   - skill: "superpowers:executing-plans"
     why: "Execute in a separate session with review checkpoints -- checkpoints cannot be retrofitted onto a run that's already in flight."
-  - skill: "compass:compass-decompose-chain"
+  - skill: "zirkel:zirkel-decompose-chain"
     why: "Derives which workstreams are genuinely independent from the dependency graph rather than by guess; a workstream that waits on another's output is a sequential step wearing a parallel label."
     prompt: "break this plan into independent workstreams -- tell me what actually depends on what and what can truly run in parallel"
   - skill: "superpowers:subagent-driven-development"

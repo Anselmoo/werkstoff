@@ -607,23 +607,64 @@ def read_git_baseline(root: Path, ref: str) -> dict[tuple[str, str], int] | None
         return None
 
 
+#: Files renamed in flight, mapping CURRENT path -> the path it had at the base
+#: ref. A rename makes a baseline key look new to compare_against_ref, which
+#: cannot otherwise tell it from an added one -- the same collision ruff.toml's
+#: shrink-only baseline has, except that this check also compares against git.
+#:
+#: This lives here rather than in the baseline file because --print-baseline
+#: regenerates that file from scratch and would silently drop it.
+#:
+#: SHRINK-ONLY STILL HOLDS: a renamed key's count may not exceed the count its
+#: old path carried at the base ref. An entry is STALE once the base ref carries
+#: the new path -- compare_against_ref reports that, and the line must be deleted.
+BASELINE_RENAMES: dict[str, str] = {
+    "plugins/befund/assets/stage-map-viewer.html": "plugins/self-assess/assets/stage-map-viewer.html",
+    "plugins/passung/assets/matrix-viewer.html": "plugins/codebase-consistency/assets/matrix-viewer.html",
+    "plugins/zeugnis/assets/burndown-viewer.html": "plugins/confab/assets/burndown-viewer.html",
+    "plugins/zirkel/assets/branch-comparison-viewer.html": "plugins/compass/assets/branch-comparison-viewer.html",
+}
+
+
 def compare_against_ref(
-    working: dict[tuple[str, str], int], ref_baseline: dict[tuple[str, str], int]
+    working: dict[tuple[str, str], int],
+    ref_baseline: dict[tuple[str, str], int],
+    renames: dict[str, str] | None = None,
 ) -> list[str]:
     """Shrink-only across history too: the working baseline may never carry
-    a higher count, or a new (path, rule), than the ref it is compared to."""
+    a higher count, or a new (path, rule), than the ref it is compared to.
+
+    `renames` maps a current path to its pre-rename path, so a moved file is
+    compared against its own old entry instead of read as a new one."""
+    renames = BASELINE_RENAMES if renames is None else renames
     failures = []
+    for old_path, new_path in sorted(renames.items()):
+        if any(k[0] == old_path for k in ref_baseline):
+            failures.append(
+                f"FAIL: {old_path}\tBASELINE_RENAMES maps it to {new_path!r}, but the base "
+                f"ref already carries the current path -- the entry is stale, delete it"
+            )
     for path, rule in sorted(working):
         key = (path, rule)
         count = working[key]
-        if key not in ref_baseline:
-            failures.append(
-                f"FAIL: {path}\t{rule}: new baseline entry absent from the base ref (baseline may only shrink)"
-            )
-        elif count > ref_baseline[key]:
-            failures.append(
-                f"FAIL: {path}\t{rule}: baseline count {count} exceeds {ref_baseline[key]} at the base ref"
-            )
+        if key in ref_baseline:
+            if count > ref_baseline[key]:
+                failures.append(
+                    f"FAIL: {path}\t{rule}: baseline count {count} exceeds {ref_baseline[key]} at the base ref"
+                )
+            continue
+        pre_rename = (renames.get(path), rule)
+        if pre_rename[0] is not None and pre_rename in ref_baseline:
+            if count > ref_baseline[pre_rename]:
+                failures.append(
+                    f"FAIL: {path}\t{rule}: baseline count {count} exceeds "
+                    f"{ref_baseline[pre_rename]} carried at the base ref by its pre-rename "
+                    f"path {pre_rename[0]}"
+                )
+            continue
+        failures.append(
+            f"FAIL: {path}\t{rule}: new baseline entry absent from the base ref (baseline may only shrink)"
+        )
     return failures
 
 
@@ -906,6 +947,53 @@ def selftest() -> bool:
 
         ref_lower = compare_against_ref({(existing, "T-HEX"): 1}, {(existing, "T-HEX"): 2})
         check("compare_against_ref: a lower count yields nothing", ref_lower == [])
+
+        # --- BASELINE_RENAMES: a moved file is not a new one, and the exemption
+        # must stay narrow enough that it cannot launder a real increase.
+        _ren = {"new/v.html": "old/v.html"}
+        ren_ok = compare_against_ref(
+            {("new/v.html", "T-HEX"): 2}, {("old/v.html", "T-HEX"): 2}, _ren
+        )
+        check("renames: a moved key matches its pre-rename entry", ren_ok == [])
+
+        ren_lower = compare_against_ref(
+            {("new/v.html", "T-HEX"): 1}, {("old/v.html", "T-HEX"): 2}, _ren
+        )
+        check("renames: a moved key that shrank yields nothing", ren_lower == [])
+
+        ren_grew = compare_against_ref(
+            {("new/v.html", "T-HEX"): 3}, {("old/v.html", "T-HEX"): 2}, _ren
+        )
+        check(
+            "renames: a moved key whose count GREW still fails",
+            any("pre-rename" in f and f.startswith("FAIL:") for f in ren_grew),
+        )
+
+        ren_other = compare_against_ref(
+            {("unrelated/v.html", "T-HEX"): 1}, {("old/v.html", "T-HEX"): 2}, _ren
+        )
+        check(
+            "renames: an unrelated new key still fails (exemption stays narrow)",
+            any("unrelated/v.html" in f and f.startswith("FAIL:") for f in ren_other),
+        )
+
+        ren_stale = compare_against_ref(
+            {("new/v.html", "T-HEX"): 1},
+            {("old/v.html", "T-HEX"): 1, ("new/v.html", "T-HEX"): 1},
+            _ren,
+        )
+        check(
+            "renames: an entry whose old path is still in the ref is reported stale",
+            any("stale" in f for f in ren_stale),
+        )
+
+        ren_wrong_rule = compare_against_ref(
+            {("new/v.html", "T-RADIUS"): 1}, {("old/v.html", "T-HEX"): 1}, _ren
+        )
+        check(
+            "renames: the rule must match too, not just the path",
+            any("T-RADIUS" in f and "new baseline entry" in f for f in ren_wrong_rule),
+        )
 
         original_compare_against_ref = globals()["compare_against_ref"]
         globals()["compare_against_ref"] = lambda working, ref: []

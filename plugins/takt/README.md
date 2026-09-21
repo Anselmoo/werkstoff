@@ -3,12 +3,17 @@
 **Enforces declared beat order at the tool-call layer, so sequencing is a gate rather
 than a sentence.**
 
+*Takt* is the beat: in music the measure that paces a piece, and on a line the
+*Taktzeit* that paces production — the interval every station is built around, so a
+station cannot run ahead of the one feeding it. This plugin is the shop-floor half.
+It holds no opinion about what the work is, only about what may not begin yet.
+
 ## Why this exists
 
 Several skills in this marketplace already declare where in a build they belong.
 `cupertino-council` says to use it "at UI/frontend build-time, before writing any code
 ... Always run before code, never after — retrofitting the council onto finished code
-defeats the purpose." `cupertino-backwards` says "Use FIRST." `compass-clarify-scope`
+defeats the purpose." `cupertino-backwards` says "Use FIRST." `zirkel-clarify-scope`
 scopes a task "before any work begins."
 
 Nothing enforces any of it. A declaration written as prose is a sentence a model may
@@ -30,7 +35,7 @@ plugins, so no single plugin honestly owns that order.
 - **`arbeitsplan`** compiles a problem into a workflow and *writes* the beat declaration
   takt then enforces. If you want the beats authored for you, that is the plugin; takt is
   the runtime underneath it.
-- **`compass`** reasons about what to do. takt has no opinion about whether an order is
+- **`zirkel`** reasons about what to do. takt has no opinion about whether an order is
   wise, only about whether it was followed.
 - **`andon`** proves a wire is actually proven. takt only asks whether a marker exists —
   it never inspects what the marker claims.

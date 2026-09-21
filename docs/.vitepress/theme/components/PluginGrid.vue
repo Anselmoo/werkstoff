@@ -8,22 +8,22 @@ import { withBase } from 'vitepress'
 // just re-encode this exact list from a second source. One list, hand-kept.
 const PLUGINS = [
   {
-    name: 'self-assess',
-    url: '/plugins/self-assess',
+    name: 'befund',
+    url: '/plugins/befund',
     summary:
       'Codebase self-assessment: stage/wire mapping, docs-vs-code drift, CI/CD topology, house-rules enforcement, multi-repo dashboard.',
   },
   {
-    name: 'confab',
-    url: '/plugins/confab',
+    name: 'zeugnis',
+    url: '/plugins/zeugnis',
     summary:
       'Catches AI confabulation: hallucinated dependencies, assertion-less tests, contract drift, unreliable agentic loops.',
   },
   {
-    name: 'compass',
-    url: '/plugins/compass',
+    name: 'zirkel',
+    url: '/plugins/zirkel',
     summary:
-      'A prompt-engineering technique library composed by compass-solve into a clarify → explore → decompose → execute → revise pipeline.',
+      'A prompt-engineering technique library composed by zirkel-solve into a clarify → explore → decompose → execute → revise pipeline.',
   },
   {
     name: 'cupertino',
@@ -48,8 +48,8 @@ const PLUGINS = [
     summary: 'Scaffolds production-grade CLIs across 12 languages against a frozen five-pillar doctrine.',
   },
   {
-    name: 'codebase-consistency',
-    url: '/plugins/codebase-consistency',
+    name: 'passung',
+    url: '/plugins/passung',
     summary: 'Harmonizes undocumented pattern variants in an already-modern, live codebase.',
   },
   {

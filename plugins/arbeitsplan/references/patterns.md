@@ -42,7 +42,7 @@ which is the silent-failure shape this repository keeps getting burned by).
     "unmeasured-counts-as-failure"
   ],
   "delegated": {
-    "self-consistency-vote": "compass:compass-reason-verify",
+    "self-consistency-vote": "zirkel:zirkel-reason-verify",
     "tribunal": "andon:andon-verify"
   }
 }
@@ -61,7 +61,7 @@ which is the silent-failure shape this repository keeps getting burned by).
 | **model tier** | `sonnet`. Raise to `opus` only when the acceptance criteria need design judgement |
 | **stop rule** | one pass. Never re-dispatch a losing angle — widen with a *new* angle instead |
 | **cost** | `fanOut` dispatches + `fanOut` referee dispatches |
-| **evidence** | `measured-here` — `compass-explore-branches` establishes the isolation requirement: "Generate branches independently and in parallel, score each in isolation … Parallel independence is what prevents anchoring — it is **structural**, not a suggestion" |
+| **evidence** | `measured-here` — `zirkel-explore-branches` establishes the isolation requirement: "Generate branches independently and in parallel, score each in isolation … Parallel independence is what prevents anchoring — it is **structural**, not a suggestion" |
 
 Each candidate gets a distinct **angle**, and `angles.length == fanOut` is enforced. Angles are how
 this pattern widens; identical prompts N times measure sampling noise, not approaches.
@@ -126,7 +126,7 @@ Two distinct aborts, never conflated:
 | **model tier** | `sonnet` |
 | **stop rule** | the hybrid must beat the plain winner on **≥1 declared acceptance criterion**, or the plain winner lands unchanged |
 | **cost** | 1 dispatch, only when opted into |
-| **evidence** | `measured-here` — `compass-negotiate-tradeoffs`' guard "refuses (non-zero exit) unless the hybrid outperforms EVERY source on at least one axis" |
+| **evidence** | `measured-here` — `zirkel-negotiate-tradeoffs`' guard "refuses (non-zero exit) unless the hybrid outperforms EVERY source on at least one axis" |
 
 One writer, so still zero merge conflict. The borrowed elements are **named explicitly** in the
 dispatch; "take the good bits" is not a specification.
@@ -140,9 +140,9 @@ dispatch; "take the good bits" is not a specification.
 | **model tier** | `sonnet` |
 | **stop rule** | majority; report agreement as `N/3` |
 | **cost** | 3 dispatches |
-| **evidence** | `measured-here` — `compass-reason-verify` Rung 2a |
+| **evidence** | `measured-here` — `zirkel-reason-verify` Rung 2a |
 
-**Delegate to `compass:compass-reason-verify` when compass is installed.** arbeitsplan does not
+**Delegate to `zirkel:zirkel-reason-verify` when zirkel is installed.** arbeitsplan does not
 reimplement it.
 
 ### `tribunal` — defender, challenger, adjudicator

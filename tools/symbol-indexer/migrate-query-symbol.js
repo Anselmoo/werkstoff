@@ -38,9 +38,9 @@ const REPAIRS = {
       replace: "never trust the generating skill's own claim that it followed the\n   reference; re-derive compliance from the actual generated files.\n2. Check each of the five pillars",
     },
   ],
-  'confab/agents/contract-auditor.md': [
+  'zeugnis/agents/contract-auditor.md': [
     {
-      find: '- **Research-Snapshot-First Protocol:** Resolve `analysis/confab/current.json` first, then use its immutable symbol, file catalog, FTS, artifact, and evidence records before raw `Grep` sweeps. If it is missing, generate it via `python3 ${CLAUDE_PLUGIN_ROOT}/skills/confab-query-symbol/scripts/build_symbol_index.py --repo-path . --plugin-name confab`.\n- Use Grep/Glob only when the snapshot cannot answer the target question or exhaustive coverage is explicitly required. Check more than one usage site when multiple exist, since a contract can be honored in one place and violated in another.',
+      find: '- **Research-Snapshot-First Protocol:** Resolve `analysis/zeugnis/current.json` first, then use its immutable symbol, file catalog, FTS, artifact, and evidence records before raw `Grep` sweeps. If it is missing, generate it via `python3 ${CLAUDE_PLUGIN_ROOT}/skills/zeugnis-query-symbol/scripts/build_symbol_index.py --repo-path . --plugin-name zeugnis`.\n- Use Grep/Glob only when the snapshot cannot answer the target question or exhaustive coverage is explicitly required. Check more than one usage site when multiple exist, since a contract can be honored in one place and violated in another.',
       replace: '- Use Grep/Glob to locate every call site, handler, or resolver that uses the declared contract — check more than one usage site when multiple exist, since a contract can be honored in one place and violated in another.',
     },
   ],
@@ -50,15 +50,15 @@ const REPAIRS = {
       replace: '- **Find phase.** Given the rule "every caught exception is logged with\n  the original exception object attached, never swallowed with a bare\n  `except: pass`" and a list of target files, grep for exception-handling\n  blocks in those files',
     },
   ],
-  'self-assess/agents/arch-health-auditor.md': [
+  'befund/agents/arch-health-auditor.md': [
     {
-      find: 'imports/files (`file:line` where feasible) that make it genuine. Resolve `analysis/self-assess/current.json` first and use its immutable symbol, file catalog, FTS, artifact, and evidence records before launching `grep` commands. When the code',
+      find: 'imports/files (`file:line` where feasible) that make it genuine. Resolve `analysis/befund/current.json` first and use its immutable symbol, file catalog, FTS, artifact, and evidence records before launching `grep` commands. When the code',
       replace: 'imports/files (`file:line` where feasible) that make it genuine. When the code',
     },
   ],
-  'self-assess/agents/docs-drift-auditor.md': [
+  'befund/agents/docs-drift-auditor.md': [
     {
-      find: '- **Research-Snapshot-First Protocol:** Before issuing raw `Grep` or `Bash` sweeps, resolve `analysis/self-assess/current.json`. Use its immutable symbol, file catalog, FTS, artifact, and evidence records. If it is missing, generate it via `python3 ${CLAUDE_PLUGIN_ROOT}/skills/self-assess-query-symbol/scripts/build_symbol_index.py --repo-path .`.\n- Fall back to `Grep`/`Glob` only when the snapshot cannot answer the target question or requires inline regex inspection.\n- Use Read to inspect the specific line context identified by the snapshot.',
+      find: '- **Research-Snapshot-First Protocol:** Before issuing raw `Grep` or `Bash` sweeps, resolve `analysis/befund/current.json`. Use its immutable symbol, file catalog, FTS, artifact, and evidence records. If it is missing, generate it via `python3 ${CLAUDE_PLUGIN_ROOT}/skills/befund-query-symbol/scripts/build_symbol_index.py --repo-path .`.\n- Fall back to `Grep`/`Glob` only when the snapshot cannot answer the target question or requires inline regex inspection.\n- Use Read to inspect the specific line context identified by the snapshot.',
       replace: '- Use Grep/Glob to locate the corresponding implementation (function definitions, argument parsers, config loaders, route handlers, exported symbols).\n- Use Read to inspect the real signature, flag list, default values, or behavior.',
     },
   ],
@@ -66,7 +66,7 @@ const REPAIRS = {
 
 const PLUGINS = [
   {
-    name: 'self-assess',
+    name: 'befund',
     agentFiles: [
       'arch-health-auditor.md', 'business-rules-miner.md', 'ci-topology-auditor.md',
       'complexity-surveyor.md', 'convention-auditor.md', 'docs-drift-auditor.md',
@@ -74,19 +74,19 @@ const PLUGINS = [
       'transform-executor.md', 'ui-auditor.md',
     ],
     consumingSkills: [
-      { skill: 'self-assess-docs-drift', workflow: 'docs-drift-scan.js' },
-      { skill: 'self-assess-lint-audit', workflow: 'lint-audit-scan.js' },
-      { skill: 'self-assess-arch-health', workflow: 'arch-health-scan.js' },
-      { skill: 'self-assess-ci-topology', workflow: 'ci-topology-scan.js' },
+      { skill: 'befund-docs-drift', workflow: 'docs-drift-scan.js' },
+      { skill: 'befund-lint-audit', workflow: 'lint-audit-scan.js' },
+      { skill: 'befund-arch-health', workflow: 'arch-health-scan.js' },
+      { skill: 'befund-ci-topology', workflow: 'ci-topology-scan.js' },
     ],
     extraCleanup: true, // README line + symbol-index-scan.js
   },
   { name: 'andon', agentFiles: ['andon-adjudicator.md', 'andon-challenger.md', 'andon-defender.md', 'andon-verifier.md'], consumingSkills: [] },
-  { name: 'compass', agentFiles: ['branch-proposer.md', 'instruction-candidate.md', 'reasoning-path.md'], consumingSkills: [] },
+  { name: 'zirkel', agentFiles: ['branch-proposer.md', 'instruction-candidate.md', 'reasoning-path.md'], consumingSkills: [] },
   {
-    name: 'confab',
-    agentFiles: ['agentic-reliability-auditor.md', 'assertion-auditor.md', 'confab-remediator.md', 'contract-auditor.md', 'dependency-auditor.md'],
-    consumingSkills: [{ skill: 'confab-dependency-audit', workflow: 'dependency-audit-scan.js' }],
+    name: 'zeugnis',
+    agentFiles: ['agentic-reliability-auditor.md', 'assertion-auditor.md', 'zeugnis-remediator.md', 'contract-auditor.md', 'dependency-auditor.md'],
+    consumingSkills: [{ skill: 'zeugnis-dependency-audit', workflow: 'dependency-audit-scan.js' }],
   },
   { name: 'cupertino', agentFiles: ['handbook-dimension-analyst.md', 'handbook-drift-auditor.md', 'handbook-remediator.md', 'handbook-verifier.md'], consumingSkills: [] },
   { name: 'cli-scaffold', agentFiles: ['cli-scaffold-verifier.md'], consumingSkills: [] },
@@ -168,11 +168,11 @@ Return filesEdited: the list of paths you wrote.`,
           : ''
 
         const cleanup = p.extraCleanup
-          ? `\n\nAlso, specific to this plugin:\n- Remove the line referencing "self-assess-query-symbol" from README.md's skill list (it no longer exists).\n- Delete plugins/self-assess/workflows/symbol-index-scan.js entirely — confirmed dead code, nothing invokes it, and its job is now done by the Step-0 wiring above.`
+          ? `\n\nAlso, specific to this plugin:\n- Remove the line referencing "befund-query-symbol" from README.md's skill list (it no longer exists).\n- Delete plugins/befund/workflows/symbol-index-scan.js entirely — confirmed dead code, nothing invokes it, and its job is now done by the Step-0 wiring above.`
           : ''
 
         return agent(
-          `In the "${p.name}" plugin (repo root is the current directory), do the following file operations using Bash/git and Edit — this plugin's changes are independent of every other plugin, so don't touch anything outside plugins/${p.name}/ (or self-assess's own README.md/workflows if this is self-assess).
+          `In the "${p.name}" plugin (repo root is the current directory), do the following file operations using Bash/git and Edit — this plugin's changes are independent of every other plugin, so don't touch anything outside plugins/${p.name}/ (or befund's own README.md/workflows if this is befund).
 
 1. Create plugins/${p.name}/scripts/ if it doesn't exist, then \`git mv plugins/${p.name}/skills/${p.name}-query-symbol/scripts/build_symbol_index.py plugins/${p.name}/scripts/build_symbol_index.py\`.
 2. \`git rm -r plugins/${p.name}/skills/${p.name}-query-symbol/\` (removes the now-empty skill dir; its only remaining contents are a gitignored __pycache__).

@@ -5,7 +5,7 @@ summary: "Find where a reported behavior lives, reach root cause, write a failin
 openingPrompt: "I don't know where this reported bug actually lives -- go find it first rather than working from a guessed file list, work it to root cause with no fix proposed until the cause is proven, write the failing regression test before touching the fix, and then run a blind tribunal on the result rather than trusting your own review of it."
 external: ["superpowers"]
 beats:
-  - skill: "compass:compass-investigate-dynamically"
+  - skill: "zirkel:zirkel-investigate-dynamically"
     why: "The location is unknown; a pre-planned file list cannot adapt to what each observation reveals."
     prompt: "I don't know where this behavior is implemented — go find it before we talk about fixing it"
   - skill: "superpowers:systematic-debugging"

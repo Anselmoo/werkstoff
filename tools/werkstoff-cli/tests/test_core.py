@@ -43,16 +43,16 @@ def test_load_marketplace_parses_plugins(tmp_path):
         tmp_path,
         [
             {
-                "name": "self-assess",
+                "name": "befund",
                 "description": "d",
-                "source": "./plugins/self-assess",
+                "source": "./plugins/befund",
                 "category": "development",
             }
         ],
     )
     marketplace = core.load_marketplace(repo)
     assert marketplace.name == "werkstoff"
-    assert marketplace.plugins[0].name == "self-assess"
+    assert marketplace.plugins[0].name == "befund"
     assert marketplace.plugins[0].category == "development"
 
 
@@ -76,7 +76,7 @@ def test_load_marketplace_rejects_missing_field(tmp_path):
 
 def test_marketplace_plugin_raises_on_unknown_name(tmp_path):
     repo = _write_marketplace(
-        tmp_path, [{"name": "self-assess", "description": "d", "source": "./plugins/self-assess"}]
+        tmp_path, [{"name": "befund", "description": "d", "source": "./plugins/befund"}]
     )
     marketplace = core.load_marketplace(repo)
     with pytest.raises(core.WerkstoffError):
@@ -85,10 +85,10 @@ def test_marketplace_plugin_raises_on_unknown_name(tmp_path):
 
 def test_unknown_plugin_names_filters_known(tmp_path):
     repo = _write_marketplace(
-        tmp_path, [{"name": "self-assess", "description": "d", "source": "./plugins/self-assess"}]
+        tmp_path, [{"name": "befund", "description": "d", "source": "./plugins/befund"}]
     )
     marketplace = core.load_marketplace(repo)
-    assert core.unknown_plugin_names(marketplace, ("self-assess", "ghost")) == ["ghost"]
+    assert core.unknown_plugin_names(marketplace, ("befund", "ghost")) == ["ghost"]
     assert core.unknown_plugin_names(marketplace, ()) == []
 
 
@@ -97,8 +97,8 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
     repo = _write_marketplace(
         tmp_path,
         [
-            {"name": "self-assess", "description": "d", "source": "./plugins/self-assess"},
-            {"name": "confab", "description": "d", "source": "./plugins/confab"},
+            {"name": "befund", "description": "d", "source": "./plugins/befund"},
+            {"name": "zeugnis", "description": "d", "source": "./plugins/zeugnis"},
         ],
     )
     marketplace = core.load_marketplace(repo)
@@ -106,11 +106,11 @@ def test_install_plugins_adds_updates_and_installs_each(tmp_path, monkeypatch):
 
     installed = core.install_plugins(marketplace, (), scope="user", run=run)
 
-    assert installed == ["self-assess", "confab"]
+    assert installed == ["befund", "zeugnis"]
     assert calls[0][1:5] == ["plugin", "marketplace", "add", str(repo)]
     assert calls[1][1:5] == ["plugin", "marketplace", "update", "werkstoff"]
-    assert calls[2][1:4] == ["plugin", "install", "self-assess@werkstoff"]
-    assert calls[3][1:4] == ["plugin", "install", "confab@werkstoff"]
+    assert calls[2][1:4] == ["plugin", "install", "befund@werkstoff"]
+    assert calls[3][1:4] == ["plugin", "install", "zeugnis@werkstoff"]
 
 
 def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
@@ -118,23 +118,23 @@ def test_install_plugins_honors_explicit_subset(tmp_path, monkeypatch):
     repo = _write_marketplace(
         tmp_path,
         [
-            {"name": "self-assess", "description": "d", "source": "./plugins/self-assess"},
-            {"name": "confab", "description": "d", "source": "./plugins/confab"},
+            {"name": "befund", "description": "d", "source": "./plugins/befund"},
+            {"name": "zeugnis", "description": "d", "source": "./plugins/zeugnis"},
         ],
     )
     marketplace = core.load_marketplace(repo)
     run, calls = _fake_run()
 
-    installed = core.install_plugins(marketplace, ("confab",), scope="project", run=run)
+    installed = core.install_plugins(marketplace, ("zeugnis",), scope="project", run=run)
 
-    assert installed == ["confab"]
-    assert calls[2][1:4] == ["plugin", "install", "confab@werkstoff"]
+    assert installed == ["zeugnis"]
+    assert calls[2][1:4] == ["plugin", "install", "zeugnis@werkstoff"]
     assert calls[2][4:6] == ["--scope", "project"]
 
 
 def test_install_plugin_rejects_unknown_name(tmp_path):
     repo = _write_marketplace(
-        tmp_path, [{"name": "self-assess", "description": "d", "source": "./plugins/self-assess"}]
+        tmp_path, [{"name": "befund", "description": "d", "source": "./plugins/befund"}]
     )
     marketplace = core.load_marketplace(repo)
     run, _ = _fake_run()
@@ -151,7 +151,7 @@ def test_ensure_claude_cli_raises_when_missing(monkeypatch):
 def test_run_raises_on_nonzero_exit(tmp_path, monkeypatch):
     monkeypatch.setattr(core.shutil, "which", lambda name: "/usr/bin/claude")
     repo = _write_marketplace(
-        tmp_path, [{"name": "self-assess", "description": "d", "source": "./plugins/self-assess"}]
+        tmp_path, [{"name": "befund", "description": "d", "source": "./plugins/befund"}]
     )
     marketplace = core.load_marketplace(repo)
     run, _ = _fake_run(returncode=1)

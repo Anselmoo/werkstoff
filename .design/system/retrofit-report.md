@@ -202,7 +202,7 @@ exact same colour it did before the retrofit.
 - `--vp-button-brand-text: #ffffff` (werkstoff.css `:root`) — white carries no
   aerogel meaning; inventing a `--white` token was explicitly rejected in
   BRIEF's "Not adopted".
-- `rgba(255, 255, 255, .85)` (`codebase-consistency/assets/matrix-viewer.html:159`)
+- `rgba(255, 255, 255, .85)` (`passung/assets/matrix-viewer.html:159`)
   and `rgba(0, 0, 0, .5)` (`lehre/assets/doctrine-viewer.html:111`, a
   `box-shadow`) — neutral overlay / shadow, not brand colours. Out of this
   integrator's write scope (viewer assets are not listed in WRITE SCOPE); left
@@ -277,7 +277,7 @@ for at most two rounds:
   left swatch (≥3:1 on both sides for all five slots); the sixth role, `completion`, folds into a
   neutral `--muted` swatch, the "Other" treatment `tokens.css` prescribes; the `#fff` label literal
   is gone. The critic reproduced the committed screenshot from the current template.
-- **`self-assess/assets/stage-map-viewer.html` and `codebase-consistency/assets/matrix-viewer.html`
+- **`befund/assets/stage-map-viewer.html` and `passung/assets/matrix-viewer.html`
   — reverted to `HEAD`.** Round 1 introduced reserved-hue collisions and sub-4.5:1 labels; round 2
   introduced a 2.84:1 cycle ring and badge occlusion (stage-map), and 4.09:1 cell text on
   `--status-bad` plus digits broken by the reused-slot texture (matrix). Two rejected rounds ended
@@ -297,7 +297,7 @@ version of this attempt was itself rejected by an independent reviewer that rend
 it (number tags landed on nodes in a 30-cycle graph; variant hues matched the page's status
 colours), and the design below is the revision that answered those findings:
 
-- **`self-assess/assets/stage-map-viewer.html`** uses no categorical hue. Nodes are opaque 18%
+- **`befund/assets/stage-map-viewer.html`** uses no categorical hue. Nodes are opaque 18%
   tints of a status colour on `--bg`, with channels that do not depend on hue: outer ring weight
   (god-module), a dashed ring (dead-end), a second, inner red ring (cycle membership, by shape;
   on circles too small for two rings, a red core inside a painted `--bg` gap and the state ring,
@@ -307,7 +307,7 @@ colours), and the design below is the revision that answered those findings:
   node, tag or HTML panel, whose leader crosses no other leader and grazes no node, and which is
   nearer its own node than any other; there is no least-bad fallback, and numbers left out are counted
   in a note pinned to the bottom of the HUD, whose height follows the hint bar as actually laid out. Legend swatches go through the map's own `markFor()`/`drawNodeMark()`.
-- **`codebase-consistency/assets/matrix-viewer.html`** prints each cell's key (variant letter, or
+- **`passung/assets/matrix-viewer.html`** prints each cell's key (variant letter, or
   a ✓/≈/✗ conformance glyph, or "–" for a cell with no score once a canon exists) with its site
   count on a solid `--bg` plate (15.44:1 on every fill). Variant hues are only `--cat-1` and
   `--cat-3`: `--cat-5`, `--cat-2` and `--cat-4` read as the page's red/green/amber status meanings.
@@ -317,6 +317,6 @@ colours), and the design below is the revision that answered those findings:
 
 The baseline lines for both files were lowered in the same change, to **79 findings across 29
 (path, rule) entries** (T-HEX 27, T-COLOR-FN 8, T-FONT-FAMILY 11, T-RADIUS 33). No other entry moved.
-After review, five more viewers (arbeitsplan, confab, lehre, nacharbeit, takt) replaced the literal
+After review, five more viewers (arbeitsplan, zeugnis, lehre, nacharbeit, takt) replaced the literal
 monospace stack with `var(--font-mono)`, lowering the baseline to **71 findings across 24 entries**
 (T-FONT-FAMILY 3).

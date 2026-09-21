@@ -14,30 +14,30 @@
 # scheme.
 
 [[tool.rrt.version_groups]]
-name = "self-assess"
-release_branch = "release/self-assess/v{version}"
-changelog_file = "plugins/self-assess/CHANGELOG.md"
+name = "befund"
+release_branch = "release/befund/v{version}"
+changelog_file = "plugins/befund/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/self-assess/.claude-plugin/plugin.json"
+  path = "plugins/befund/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
-name = "confab"
-release_branch = "release/confab/v{version}"
-changelog_file = "plugins/confab/CHANGELOG.md"
+name = "zeugnis"
+release_branch = "release/zeugnis/v{version}"
+changelog_file = "plugins/zeugnis/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/confab/.claude-plugin/plugin.json"
+  path = "plugins/zeugnis/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
-name = "compass"
-release_branch = "release/compass/v{version}"
-changelog_file = "plugins/compass/CHANGELOG.md"
+name = "zirkel"
+release_branch = "release/zirkel/v{version}"
+changelog_file = "plugins/zirkel/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/compass/.claude-plugin/plugin.json"
+  path = "plugins/zirkel/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
@@ -68,12 +68,12 @@ changelog_file = "plugins/cli-scaffold/CHANGELOG.md"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
-name = "codebase-consistency"
-release_branch = "release/codebase-consistency/v{version}"
-changelog_file = "plugins/codebase-consistency/CHANGELOG.md"
+name = "passung"
+release_branch = "release/passung/v{version}"
+changelog_file = "plugins/passung/CHANGELOG.md"
 
   [[tool.rrt.version_groups.version_targets]]
-  path = "plugins/codebase-consistency/.claude-plugin/plugin.json"
+  path = "plugins/passung/.claude-plugin/plugin.json"
   kind = "package_json"
 
 [[tool.rrt.version_groups]]
@@ -147,24 +147,24 @@ targets = [
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/self-assess/.claude-plugin/plugin.json"
+source = "plugins/befund/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=self-assess].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=befund].description" },
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/confab/.claude-plugin/plugin.json"
+source = "plugins/zeugnis/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=confab].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=zeugnis].description" },
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/compass/.claude-plugin/plugin.json"
+source = "plugins/zirkel/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=compass].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=zirkel].description" },
 ]
 
 [[tool.rrt.field_targets]]
@@ -189,10 +189,10 @@ targets = [
 ]
 
 [[tool.rrt.field_targets]]
-source = "plugins/codebase-consistency/.claude-plugin/plugin.json"
+source = "plugins/passung/.claude-plugin/plugin.json"
 source_field = "description"
 targets = [
-  { path = ".claude-plugin/marketplace.json", field = "plugins[name=codebase-consistency].description" },
+  { path = ".claude-plugin/marketplace.json", field = "plugins[name=passung].description" },
 ]
 
 [[tool.rrt.field_targets]]
@@ -248,9 +248,9 @@ targets = ["plugins/*/README.md"]
 # repo-release-tools docs; artifact_targets + command is the real mechanism.)
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/scripts/build_symbol_index.py"
-description = "self-assess's synced copy of tools/symbol-indexer/build_symbol_index.py"
-command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/self-assess/scripts/build_symbol_index.py"]
+path = "plugins/befund/scripts/build_symbol_index.py"
+description = "befund's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/befund/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/andon/scripts/build_symbol_index.py"
@@ -258,14 +258,14 @@ description = "andon's synced copy of tools/symbol-indexer/build_symbol_index.py
 command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/andon/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/compass/scripts/build_symbol_index.py"
-description = "compass's synced copy of tools/symbol-indexer/build_symbol_index.py"
-command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/compass/scripts/build_symbol_index.py"]
+path = "plugins/zirkel/scripts/build_symbol_index.py"
+description = "zirkel's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/zirkel/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/scripts/build_symbol_index.py"
-description = "confab's synced copy of tools/symbol-indexer/build_symbol_index.py"
-command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/confab/scripts/build_symbol_index.py"]
+path = "plugins/zeugnis/scripts/build_symbol_index.py"
+description = "zeugnis's synced copy of tools/symbol-indexer/build_symbol_index.py"
+command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/zeugnis/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cupertino/scripts/build_symbol_index.py"
@@ -273,9 +273,9 @@ description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_inde
 command = ["cp", "tools/symbol-indexer/build_symbol_index.py", "plugins/cupertino/scripts/build_symbol_index.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/references/parallel-safe-research-protocol.md"
-description = "self-assess's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/self-assess/references/parallel-safe-research-protocol.md"]
+path = "plugins/befund/references/parallel-safe-research-protocol.md"
+description = "befund's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/befund/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/andon/references/parallel-safe-research-protocol.md"
@@ -283,14 +283,14 @@ description = "andon's synced copy of tools/symbol-indexer/parallel-safe-researc
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/andon/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/compass/references/parallel-safe-research-protocol.md"
-description = "compass's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/compass/references/parallel-safe-research-protocol.md"]
+path = "plugins/zirkel/references/parallel-safe-research-protocol.md"
+description = "zirkel's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/zirkel/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/references/parallel-safe-research-protocol.md"
-description = "confab's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/confab/references/parallel-safe-research-protocol.md"]
+path = "plugins/zeugnis/references/parallel-safe-research-protocol.md"
+description = "zeugnis's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
+command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/zeugnis/references/parallel-safe-research-protocol.md"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
@@ -316,19 +316,19 @@ description = "lehre's synced copy of tools/run-record/run_record.py"
 command = ["cp", "tools/run-record/run_record.py", "plugins/lehre/scripts/run_record.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/compass/scripts/run_record.py"
-description = "compass's synced copy of tools/run-record/run_record.py"
-command = ["cp", "tools/run-record/run_record.py", "plugins/compass/scripts/run_record.py"]
+path = "plugins/zirkel/scripts/run_record.py"
+description = "zirkel's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/zirkel/scripts/run_record.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/scripts/run_record.py"
-description = "self-assess's synced copy of tools/run-record/run_record.py"
-command = ["cp", "tools/run-record/run_record.py", "plugins/self-assess/scripts/run_record.py"]
+path = "plugins/befund/scripts/run_record.py"
+description = "befund's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/befund/scripts/run_record.py"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/codebase-consistency/scripts/run_record.py"
-description = "codebase-consistency's synced copy of tools/run-record/run_record.py"
-command = ["cp", "tools/run-record/run_record.py", "plugins/codebase-consistency/scripts/run_record.py"]
+path = "plugins/passung/scripts/run_record.py"
+description = "passung's synced copy of tools/run-record/run_record.py"
+command = ["cp", "tools/run-record/run_record.py", "plugins/passung/scripts/run_record.py"]
 
 # The single-cell headless executor (tools/subrun/). arbeitsplan's matrix runner and
 # nacharbeit's trigger probe both run cells through it; each plugin carries a
@@ -351,14 +351,14 @@ command = ["cp", "tools/subrun/subrun.py", "plugins/nacharbeit/scripts/subrun.py
 # scripts/lib/ package.
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/scripts/lib/README.md"
-description = "self-assess's synced copy of tools/plugin-lib-canary/README.md"
-command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/self-assess/scripts/lib/README.md"]
+path = "plugins/befund/scripts/lib/README.md"
+description = "befund's synced copy of tools/plugin-lib-canary/README.md"
+command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/befund/scripts/lib/README.md"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/scripts/lib/README.md"
-description = "confab's synced copy of tools/plugin-lib-canary/README.md"
-command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/confab/scripts/lib/README.md"]
+path = "plugins/zeugnis/scripts/lib/README.md"
+description = "zeugnis's synced copy of tools/plugin-lib-canary/README.md"
+command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/zeugnis/scripts/lib/README.md"]
 
 # Shared vendored D3 v7 subset (d3-hierarchy, d3-zoom, d3-selection,
 # d3-interpolate, d3-ease, d3-force, d3-scale) -- built via
@@ -370,9 +370,9 @@ command = ["cp", "tools/plugin-lib-canary/README.md", "plugins/confab/scripts/li
 # vendored the same way build_symbol_index.py is, so both consumers can
 # never drift apart.
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/assets/inline-d3.html"
-description = "self-assess's synced copy of tools/d3-subset/inline-d3.html"
-command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/self-assess/assets/inline-d3.html"]
+path = "plugins/befund/assets/inline-d3.html"
+description = "befund's synced copy of tools/d3-subset/inline-d3.html"
+command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/befund/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cli-scaffold/assets/inline-d3.html"
@@ -382,8 +382,8 @@ command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/cli-scaffold/assets/
 # Shared design tokens (tools/design-tokens/tokens.css) -- canonical colors,
 # typography, spacing, and motion values extracted from what all 5 existing
 # report viewers were independently hand-copying into their own :root
-# blocks (confirmed diverging: andon/confab/matrix used --bg-panel/--text-dim
-# naming and a different font stack than cli-scaffold/self-assess's
+# blocks (confirmed diverging: andon/zeugnis/matrix used --bg-panel/--text-dim
+# naming and a different font stack than cli-scaffold/befund's
 # --panel/--muted naming). Vendored into all 12 plugins (every plugin on
 # disk carries assets/tokens.css) and into docs/.vitepress/theme/tokens.css,
 # so no future rebuild needs a separate artifact_targets addition just for
@@ -395,9 +395,9 @@ description = "andon's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/andon/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/assets/tokens.css"
-description = "confab's synced copy of tools/design-tokens/tokens.css"
-command = ["cp", "tools/design-tokens/tokens.css", "plugins/confab/assets/tokens.css"]
+path = "plugins/zeugnis/assets/tokens.css"
+description = "zeugnis's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/zeugnis/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cli-scaffold/assets/tokens.css"
@@ -405,9 +405,9 @@ description = "cli-scaffold's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/cli-scaffold/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/codebase-consistency/assets/tokens.css"
-description = "codebase-consistency's synced copy of tools/design-tokens/tokens.css"
-command = ["cp", "tools/design-tokens/tokens.css", "plugins/codebase-consistency/assets/tokens.css"]
+path = "plugins/passung/assets/tokens.css"
+description = "passung's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/passung/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/lehre/assets/tokens.css"
@@ -415,9 +415,9 @@ description = "lehre's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/lehre/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/self-assess/assets/tokens.css"
-description = "self-assess's synced copy of tools/design-tokens/tokens.css"
-command = ["cp", "tools/design-tokens/tokens.css", "plugins/self-assess/assets/tokens.css"]
+path = "plugins/befund/assets/tokens.css"
+description = "befund's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/befund/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/arbeitsplan/assets/tokens.css"
@@ -445,9 +445,9 @@ description = "cupertino's synced copy of tools/design-tokens/tokens.css"
 command = ["cp", "tools/design-tokens/tokens.css", "plugins/cupertino/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/compass/assets/tokens.css"
-description = "compass's synced copy of tools/design-tokens/tokens.css"
-command = ["cp", "tools/design-tokens/tokens.css", "plugins/compass/assets/tokens.css"]
+path = "plugins/zirkel/assets/tokens.css"
+description = "zirkel's synced copy of tools/design-tokens/tokens.css"
+command = ["cp", "tools/design-tokens/tokens.css", "plugins/zirkel/assets/tokens.css"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/.vitepress/theme/tokens.css"
@@ -465,14 +465,14 @@ description = "andon's synced copy of tools/d3-subset/inline-d3.html"
 command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/andon/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/confab/assets/inline-d3.html"
-description = "confab's synced copy of tools/d3-subset/inline-d3.html"
-command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/confab/assets/inline-d3.html"]
+path = "plugins/zeugnis/assets/inline-d3.html"
+description = "zeugnis's synced copy of tools/d3-subset/inline-d3.html"
+command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/zeugnis/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/codebase-consistency/assets/inline-d3.html"
-description = "codebase-consistency's synced copy of tools/d3-subset/inline-d3.html"
-command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/codebase-consistency/assets/inline-d3.html"]
+path = "plugins/passung/assets/inline-d3.html"
+description = "passung's synced copy of tools/d3-subset/inline-d3.html"
+command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/passung/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
 path = "plugins/cupertino/assets/inline-d3.html"
@@ -480,9 +480,9 @@ description = "cupertino's synced copy of tools/d3-subset/inline-d3.html"
 command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/cupertino/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
-path = "plugins/compass/assets/inline-d3.html"
-description = "compass's synced copy of tools/d3-subset/inline-d3.html"
-command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/compass/assets/inline-d3.html"]
+path = "plugins/zirkel/assets/inline-d3.html"
+description = "zirkel's synced copy of tools/d3-subset/inline-d3.html"
+command = ["cp", "tools/d3-subset/inline-d3.html", "plugins/zirkel/assets/inline-d3.html"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/prompt-index.md"
@@ -538,13 +538,13 @@ command = ["cp", "plugins/andon/assets/board-viewer-screenshot.jpg", "docs/plugi
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"
-description = "docs copy of plugins/compass/assets/branch-comparison-viewer-screenshot.jpg"
-command = ["cp", "plugins/compass/assets/branch-comparison-viewer-screenshot.jpg", "docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"]
+description = "docs copy of plugins/zirkel/assets/branch-comparison-viewer-screenshot.jpg"
+command = ["cp", "plugins/zirkel/assets/branch-comparison-viewer-screenshot.jpg", "docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/burndown-viewer-screenshot.jpg"
-description = "docs copy of plugins/confab/assets/burndown-viewer-screenshot.jpg"
-command = ["cp", "plugins/confab/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
+description = "docs copy of plugins/zeugnis/assets/burndown-viewer-screenshot.jpg"
+command = ["cp", "plugins/zeugnis/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/derivation-viewer-screenshot.jpg"
@@ -563,8 +563,8 @@ command = ["cp", "plugins/matrize/assets/icon-system-screenshot.jpg", "docs/plug
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/matrix-viewer-screenshot.jpg"
-description = "docs copy of plugins/codebase-consistency/assets/matrix-viewer-screenshot.jpg"
-command = ["cp", "plugins/codebase-consistency/assets/matrix-viewer-screenshot.jpg", "docs/plugins/assets/matrix-viewer-screenshot.jpg"]
+description = "docs copy of plugins/passung/assets/matrix-viewer-screenshot.jpg"
+command = ["cp", "plugins/passung/assets/matrix-viewer-screenshot.jpg", "docs/plugins/assets/matrix-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/provenance-viewer-screenshot.jpg"
@@ -593,5 +593,5 @@ command = ["cp", "plugins/matrize/assets/sketchbook-screenshot.jpg", "docs/plugi
 
 [[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/stage-map-viewer-screenshot.jpg"
-description = "docs copy of plugins/self-assess/assets/stage-map-viewer-screenshot.jpg"
-command = ["cp", "plugins/self-assess/assets/stage-map-viewer-screenshot.jpg", "docs/plugins/assets/stage-map-viewer-screenshot.jpg"]
+description = "docs copy of plugins/befund/assets/stage-map-viewer-screenshot.jpg"
+command = ["cp", "plugins/befund/assets/stage-map-viewer-screenshot.jpg", "docs/plugins/assets/stage-map-viewer-screenshot.jpg"]

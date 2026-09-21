@@ -21,7 +21,7 @@
 #   2. The clean-box settings from test/plugins/make-clean-box.py, exactly as
 #      run.sh uses them: every installed plugin disabled, every personal
 #      skill turned off. This is necessary even here, where no --plugin-dir
-#      is ever passed -- without it, a real werkstoff/andon/self-assess
+#      is ever passed -- without it, a real werkstoff/andon/befund
 #      install already on this machine would answer the goal by RUNNING a
 #      skill instead of by reading the copied docs/ prose, which is exactly
 #      the confound test/plugins/make-clean-box.py's own docstring documents.

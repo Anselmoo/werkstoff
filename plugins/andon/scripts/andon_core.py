@@ -28,7 +28,7 @@ DEFAULT_OUTPUT_DIR = "analysis/andon"
 DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
 DEFAULT_AUTHORIZATION_LEVEL = "local+reversible"
 DEFAULT_GAP_SOURCE = "self-scan"
-DEFAULT_SELF_ASSESS_OUTPUT_DIR = "analysis/self-assess"
+DEFAULT_BEFUND_OUTPUT_DIR = "analysis/befund"
 DEFAULT_HOUSE_RULES_PATH = ".claude/house-rules.md"
 DEFAULT_SKIP_VERIFICATION = False
 DEFAULT_ENABLED = True
@@ -37,7 +37,7 @@ SETTINGS_PATH = ".claude/andon.local.md"
 
 BLAST_RADIUS_ORDER = ["local+reversible", "hard-to-reverse", "shared-state-visible"]
 GAP_KINDS = ["bug", "feature", "wire"]
-STAGE_CONFIDENCE_LEVELS = ["self-assess-backed", "heuristic", "single-package"]
+STAGE_CONFIDENCE_LEVELS = ["befund-backed", "heuristic", "single-package"]
 GAP_STATUSES = ["open", "closed"]
 WIRE_VERDICTS = ["green", "red", "unknown"]
 STRATEGY_LETTERS = ["a", "b", "c", "d", "e", "f", "g"]
@@ -82,7 +82,7 @@ PREREQ_FLAG_BY_STRATEGY = {
     "b": None,  # no external prerequisite
     "f": "available_property_lib",
     "g": None,
-    "d": "available_confab",
+    "d": "available_zeugnis",
     "c": None,
     "a": None,  # tribunal always available (Read/Grep/Glob agents only)
 }
@@ -243,7 +243,7 @@ def default_settings():
         "authorization_level": DEFAULT_AUTHORIZATION_LEVEL,
         "skip_verification": DEFAULT_SKIP_VERIFICATION,
         "gap_source": DEFAULT_GAP_SOURCE,
-        "self_assess_output_dir": DEFAULT_SELF_ASSESS_OUTPUT_DIR,
+        "befund_output_dir": DEFAULT_BEFUND_OUTPUT_DIR,
         "house_rules_path": DEFAULT_HOUSE_RULES_PATH,
     }
 
@@ -701,12 +701,12 @@ def route_wire(signals, availability):
 # Strategy d exact dispatch target (rule: strategy-d-skill-name-exact)
 # ---------------------------------------------------------------------------
 
-STRATEGY_D_PREFERRED_SKILL = "confab:confab-agentic-reliability"
-STRATEGY_D_ALLOWED_FALLBACK_AGENT = "confab:agentic-reliability-auditor"
+STRATEGY_D_PREFERRED_SKILL = "zeugnis:zeugnis-agentic-reliability"
+STRATEGY_D_ALLOWED_FALLBACK_AGENT = "zeugnis:agentic-reliability-auditor"
 STRATEGY_D_REJECTED_TYPOS = [
-    "confab:confab-agentic-reliability-auditor",
-    "confab-agentic-reliability",
-    "confab:agentic-reliability",
+    "zeugnis:zeugnis-agentic-reliability-auditor",
+    "zeugnis-agentic-reliability",
+    "zeugnis:agentic-reliability",
 ]
 
 
@@ -738,18 +738,18 @@ def check_strategy_d_target(dispatch_name, used_fallback=False):
 # self-scan when the brief is missing.
 # ---------------------------------------------------------------------------
 
-def check_ingest_prereqs(repo_root, gap_source, self_assess_output_dir):
-    if gap_source != "self-assess-brief":
+def check_ingest_prereqs(repo_root, gap_source, befund_output_dir):
+    if gap_source != "befund-brief":
         return {"ingest_mode": False, "ok": True}
-    brief_path = os.path.join(repo_root, self_assess_output_dir, "MODERNIZATION_BRIEF.md")
-    summary_path = os.path.join(repo_root, self_assess_output_dir, "transform_brief_summary.json")
+    brief_path = os.path.join(repo_root, befund_output_dir, "MODERNIZATION_BRIEF.md")
+    summary_path = os.path.join(repo_root, befund_output_dir, "transform_brief_summary.json")
     missing = [p for p in (brief_path, summary_path) if not os.path.isfile(p)]
     if missing:
         raise AndonError(
             "INGEST_PREREQS_MISSING",
-            f"gap_source is 'self-assess-brief' but required file(s) are missing: {missing}. "
+            f"gap_source is 'befund-brief' but required file(s) are missing: {missing}. "
             f"Refusing to silently fall back to self-scan -- run "
-            f"self-assess:self-assess-transform-brief first.",
+            f"befund:befund-transform-brief first.",
         )
     return {"ingest_mode": True, "ok": True, "brief_path": brief_path, "summary_path": summary_path}
 
@@ -826,13 +826,13 @@ def scan_and_mask_credentials(text, file_line="unknown:0"):
 # testing writability of the ledger parent directory)
 # ---------------------------------------------------------------------------
 
-def run_preflight(repo_root, settings, self_assess_stage_mapper_present, confab_skill_present,
+def run_preflight(repo_root, settings, befund_stage_mapper_present, zeugnis_skill_present,
                    lsp_tool_present, structural_index_present, property_lib_python,
                    property_lib_js, property_lib_other):
     # Check 1: stage legibility
     manifest_hits = 0
-    if self_assess_stage_mapper_present:
-        stage_legibility = "self-assess-backed"
+    if befund_stage_mapper_present:
+        stage_legibility = "befund-backed"
     else:
         # heuristic Glob-based single vs multi package guess (best-effort, read-only)
         manifest_names = ["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "Gemfile"]
@@ -842,7 +842,7 @@ def run_preflight(repo_root, settings, self_assess_stage_mapper_present, confab_
                 if f in manifest_names:
                     manifest_hits += 1
         stage_legibility = "single-package" if manifest_hits <= 1 else "heuristic"
-    stage_count_estimate = 1 if stage_legibility == "single-package" else max(1, manifest_hits if not self_assess_stage_mapper_present else 2)
+    stage_count_estimate = 1 if stage_legibility == "single-package" else max(1, manifest_hits if not befund_stage_mapper_present else 2)
 
     # Check 2: ledger writability -- create parent dir ONLY, to test writability.
     ledger_dir = settings["ledger_dir"]
@@ -864,8 +864,8 @@ def run_preflight(repo_root, settings, self_assess_stage_mapper_present, confab_
 
     # Check 4: cross-plugin availability
     cross_plugin = {
-        "self_assess_stage_mapper": self_assess_stage_mapper_present,
-        "confab_agentic_reliability_skill": confab_skill_present,
+        "befund_stage_mapper": befund_stage_mapper_present,
+        "zeugnis_agentic_reliability_skill": zeugnis_skill_present,
         "lsp_tool": lsp_tool_present,
         "structural_index_on_disk": structural_index_present,
         "property_testing_python": property_lib_python,
@@ -878,7 +878,7 @@ def run_preflight(repo_root, settings, self_assess_stage_mapper_present, confab_
         "andon-verify": _verify_verdict(cross_plugin),
         "andon-loop": (
             "Not-ready" if not ledger_writable
-            else ("Ready-with-gaps" if stage_legibility != "self-assess-backed" else "Ready")
+            else ("Ready-with-gaps" if stage_legibility != "befund-backed" else "Ready")
         ),
     }
 
@@ -895,7 +895,7 @@ def run_preflight(repo_root, settings, self_assess_stage_mapper_present, confab_
 
 def _verify_verdict(cross_plugin):
     degraded = []
-    if not cross_plugin["confab_agentic_reliability_skill"]:
+    if not cross_plugin["zeugnis_agentic_reliability_skill"]:
         degraded.append("strategy d (agentic-reliability) degrades to agent fallback or unavailable")
     if not (cross_plugin["lsp_tool"] or cross_plugin["structural_index_on_disk"]):
         degraded.append("strategy e (structural-graph) degrades below Tier 1")
@@ -1093,7 +1093,7 @@ def main(argv=None):
     p = sub.add_parser("check-ingest-prereqs")
     p.add_argument("repo_root")
     p.add_argument("gap_source")
-    p.add_argument("self_assess_output_dir")
+    p.add_argument("befund_output_dir")
 
     p = sub.add_parser("check-no-persona")
     p.add_argument("text_file")
@@ -1104,8 +1104,8 @@ def main(argv=None):
 
     p = sub.add_parser("preflight")
     p.add_argument("repo_root")
-    p.add_argument("--self-assess-stage-mapper", action="store_true")
-    p.add_argument("--confab-skill", action="store_true")
+    p.add_argument("--befund-stage-mapper", action="store_true")
+    p.add_argument("--zeugnis-skill", action="store_true")
     p.add_argument("--lsp-tool", action="store_true")
     p.add_argument("--structural-index", action="store_true")
     p.add_argument("--property-lib-python", action="store_true")
@@ -1184,7 +1184,7 @@ def main(argv=None):
             _print_json(check_strategy_d_target(args.dispatch_name, args.used_fallback))
 
         elif args.command == "check-ingest-prereqs":
-            _print_json(check_ingest_prereqs(args.repo_root, args.gap_source, args.self_assess_output_dir))
+            _print_json(check_ingest_prereqs(args.repo_root, args.gap_source, args.befund_output_dir))
 
         elif args.command == "check-no-persona":
             with io.open(args.text_file, "r", encoding="utf-8") as fh:
@@ -1200,7 +1200,7 @@ def main(argv=None):
             settings = load_settings(args.repo_root)
             _print_json(run_preflight(
                 args.repo_root, settings,
-                args.self_assess_stage_mapper, args.confab_skill,
+                args.befund_stage_mapper, args.zeugnis_skill,
                 args.lsp_tool, args.structural_index,
                 args.property_lib_python, args.property_lib_js, args.property_lib_other,
             ))

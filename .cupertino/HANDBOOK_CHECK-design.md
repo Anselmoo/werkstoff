@@ -19,23 +19,23 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 | High | yes | color-and-contrast | `plugins/lehre/assets/doctrine-viewer.html:352` | -deep tokens used as Sankey node fill (a standalone chart mark), not a decorative fill/border |
 | High | yes | color-and-contrast | `plugins/lehre/assets/doctrine-viewer.html:85` | --ferria-deep used as the stroke of a blocked-dependency edge (a standalone chart mark) |
 | High | yes | empty-and-error-states | `plugins/lehre/assets/doctrine-viewer.html:520` | Missing-data path shows no regeneration command and never throws |
-| High | yes | typography-system | `plugins/self-assess/assets/stage-map-viewer.html:22` | Base font set via hardcoded literal instead of design tokens |
-| Medium | no | accessibility-baseline | `/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/codebase-consistency/assets/matrix-viewer.html:665` | Pre-canonization grid cells encode variant identity by hashed hue alone, with no visible-without-interaction legend pairing a specific color to a specific variant name |
+| High | yes | typography-system | `plugins/befund/assets/stage-map-viewer.html:22` | Base font set via hardcoded literal instead of design tokens |
+| Medium | no | accessibility-baseline | `/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/passung/assets/matrix-viewer.html:665` | Pre-canonization grid cells encode variant identity by hashed hue alone, with no visible-without-interaction legend pairing a specific color to a specific variant name |
 | Medium | no | spacing-and-layout-grid | `docs/.vitepress/theme/werkstoff.css:813` | Hazard-card block spacing uses rem values off the documented --wk-space-* scale |
 | Medium | no | spacing-and-layout-grid | `plugins/andon/assets/board-viewer.html:35` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Medium | no | spacing-and-layout-grid | `plugins/codebase-consistency/assets/matrix-viewer.html:54` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Medium | yes | typography-system | `plugins/codebase-consistency/assets/matrix-viewer.html:11` | Base body rule omits line-height token entirely |
-| Medium | no | spacing-and-layout-grid | `plugins/confab/assets/burndown-viewer.html:24` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Medium | yes | typography-system | `plugins/confab/assets/burndown-viewer.html:11` | Base body rule omits line-height token entirely |
+| Medium | no | spacing-and-layout-grid | `plugins/passung/assets/matrix-viewer.html:54` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
+| Medium | yes | typography-system | `plugins/passung/assets/matrix-viewer.html:11` | Base body rule omits line-height token entirely |
+| Medium | no | spacing-and-layout-grid | `plugins/zeugnis/assets/burndown-viewer.html:24` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
+| Medium | yes | typography-system | `plugins/zeugnis/assets/burndown-viewer.html:11` | Base body rule omits line-height token entirely |
 | Low | no | spacing-and-layout-grid | `plugins/cli-scaffold/assets/architecture-tree-viewer.html:31` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Low | no | spacing-and-layout-grid | `plugins/compass/assets/branch-comparison-viewer.html:35` | Off-scale px literals used for margin/padding (not 4/8/12/16/20) |
+| Low | no | spacing-and-layout-grid | `plugins/zirkel/assets/branch-comparison-viewer.html:35` | Off-scale px literals used for margin/padding (not 4/8/12/16/20) |
 | Low | no | spacing-and-layout-grid | `plugins/cupertino/assets/review-flow-viewer.html:59` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
 | Low | no | spacing-and-layout-grid | `plugins/lehre/assets/doctrine-viewer.html:41` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
-| Low | no | spacing-and-layout-grid | `plugins/self-assess/assets/stage-map-viewer.html:35` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
+| Low | no | spacing-and-layout-grid | `plugins/befund/assets/stage-map-viewer.html:35` | Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20) |
 
 ## Details
 
-### `/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/codebase-consistency/assets/matrix-viewer.html:665` — Pre-canonization grid cells encode variant identity by hashed hue alone, with no visible-without-interaction legend pairing a specific color to a specific variant name
+### `/Users/hahn/LocalDocuments/GitHub_Forks/werkstoff/.claude/worktrees/angry-mcclintock-d4cd76/plugins/passung/assets/matrix-viewer.html:665` — Pre-canonization grid cells encode variant identity by hashed hue alone, with no visible-without-interaction legend pairing a specific color to a specific variant name
 
 **Dimension:** accessibility-baseline · **Severity:** Medium · **Mechanical:** False
 
@@ -83,7 +83,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Round to the nearest scale token: 2px/1px -> `var(--space-1)` (4px) or accept 0 where it's a hairline; 6px -> `var(--space-2)` (8px), reviewing each spot visually.
 
-### `plugins/codebase-consistency/assets/matrix-viewer.html:54` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
+### `plugins/passung/assets/matrix-viewer.html:54` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
 
 **Dimension:** spacing-and-layout-grid · **Severity:** Medium · **Mechanical:** False
 
@@ -91,7 +91,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Migrate each literal to the nearest `--space-*` token consistently with the file's existing `var(--space-N)` usage elsewhere (e.g. lines 23, 31, 47, 86).
 
-### `plugins/compass/assets/branch-comparison-viewer.html:35` — Off-scale px literals used for margin/padding (not 4/8/12/16/20)
+### `plugins/zirkel/assets/branch-comparison-viewer.html:35` — Off-scale px literals used for margin/padding (not 4/8/12/16/20)
 
 **Dimension:** spacing-and-layout-grid · **Severity:** Low · **Mechanical:** False
 
@@ -99,7 +99,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Replace 5px with `var(--space-1)` (4px) or `var(--space-2)` (8px) and 1px with 0/`var(--space-1)`, whichever preserves the intended visual density.
 
-### `plugins/confab/assets/burndown-viewer.html:24` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
+### `plugins/zeugnis/assets/burndown-viewer.html:24` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
 
 **Dimension:** spacing-and-layout-grid · **Severity:** Medium · **Mechanical:** False
 
@@ -123,7 +123,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Round each literal to the nearest `--space-*` token (2px/1px->4px, 6px/7px->8px, 10px->8px or 12px), including the inline `margin-left:6px` string at line 253.
 
-### `plugins/self-assess/assets/stage-map-viewer.html:35` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
+### `plugins/befund/assets/stage-map-viewer.html:35` — Off-scale px literals used for margin/padding/gap (not 4/8/12/16/20)
 
 **Dimension:** spacing-and-layout-grid · **Severity:** Low · **Mechanical:** False
 
@@ -139,16 +139,16 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Replace the rem literals with the `--wk-space-*` tokens expressed in rem/px equivalents (e.g. 0.6rem -> var(--wk-space-2) 8px or var(--wk-space-3) 12px, 1.25rem -> var(--wk-space-4) 16px or var(--wk-space-6) 24px, 0.3rem/0.1rem -> var(--wk-space-1) 4px), choosing per-instance to preserve the hazard cards' intended density.
 
-### `plugins/self-assess/assets/stage-map-viewer.html:22` — Base font set via hardcoded literal instead of design tokens
+### `plugins/befund/assets/stage-map-viewer.html:22` — Base font set via hardcoded literal instead of design tokens
 
 **Dimension:** typography-system · **Severity:** High · **Mechanical:** True
 
 **Evidence:** html, body { height: 100%; overflow: hidden; background: var(--bg);
     color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
 
-**Suggested fix:** Replace `font: 14px/1.45 system-ui, sans-serif;` with `font: var(--font-size-base)/var(--line-height-base) var(--font-sans);` to match the tokens vendored at plugins/self-assess/assets/tokens.css:144-146 (which already define 14px / 1.45 / the same font stack) instead of re-hardcoding those exact values.
+**Suggested fix:** Replace `font: 14px/1.45 system-ui, sans-serif;` with `font: var(--font-size-base)/var(--line-height-base) var(--font-sans);` to match the tokens vendored at plugins/befund/assets/tokens.css:144-146 (which already define 14px / 1.45 / the same font stack) instead of re-hardcoding those exact values.
 
-### `plugins/confab/assets/burndown-viewer.html:11` — Base body rule omits line-height token entirely
+### `plugins/zeugnis/assets/burndown-viewer.html:11` — Base body rule omits line-height token entirely
 
 **Dimension:** typography-system · **Severity:** Medium · **Mechanical:** True
 
@@ -162,7 +162,7 @@ All 9 `spacing-and-layout-grid` findings are now resolved, via a second `cuperti
 
 **Suggested fix:** Add `line-height: var(--line-height-base);` to the body rule so all three base typography properties (font-family, font-size, line-height) come from the shared tokens, matching the pattern used in plugins/andon/assets/board-viewer.html:15-17 and plugins/cupertino/assets/review-flow-viewer.html:15-17.
 
-### `plugins/codebase-consistency/assets/matrix-viewer.html:11` — Base body rule omits line-height token entirely
+### `plugins/passung/assets/matrix-viewer.html:11` — Base body rule omits line-height token entirely
 
 **Dimension:** typography-system · **Severity:** Medium · **Mechanical:** True
 

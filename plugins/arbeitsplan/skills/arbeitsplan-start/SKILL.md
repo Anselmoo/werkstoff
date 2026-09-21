@@ -61,7 +61,7 @@ A "no fit" answer looks like this instead of forcing one of the four above:
 arbeitsplan start — "explain what this function does"
 
 no fit — none of the four approved workflows matches a plain read-and-explain request with
-no artifact and no repo change. Ask the question directly, or use compass@werkstoff if the
+no artifact and no repo change. Ask the question directly, or use zirkel@werkstoff if the
 answer needs grounded, cited reasoning rather than a workflow.
 ```
 

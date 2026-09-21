@@ -2,7 +2,7 @@
 
 Checked against `.cupertino/documentation-handbook.md`'s 6 dimensions. 97 finding(s) survived independent re-verification (0 mechanical, 97 needing design judgment).
 
-**Resolved since this report** (not re-run through the check workflow; noted by hand): all 41 `tone-and-audience` findings on agent files — every file under `plugins/*/agents/*.md` flagged by this check — are now rewritten to imperative/infinitive mood, done in two passes. First pass (20 files) covered the ones opening with second-person persona framing (`"You are <name>, a <role>..."`): `plugins/andon/agents/{andon-challenger,andon-defender}.md`, `plugins/codebase-consistency/agents/{align-executor,consistency-critic,equivalence-verifier,pattern-analyst,pattern-extractor}.md`, `plugins/confab/agents/confab-remediator.md`, `plugins/lehre/agents/violation-verifier.md`, and 11 files under `plugins/self-assess/agents/`. Second pass (21 files) covered files flagged for scattered mid-body second-person phrasing that didn't necessarily open with "You are": `plugins/andon/agents/{andon-adjudicator,andon-verifier}.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`, `plugins/compass/agents/{branch-proposer,instruction-candidate,reasoning-path}.md`, `plugins/confab/agents/{agentic-reliability-auditor,assertion-auditor,contract-auditor,dependency-auditor}.md`, `plugins/cupertino/agents/{handbook-dimension-analyst,handbook-drift-auditor,handbook-remediator,handbook-verifier}.md`, and 7 files under `plugins/lehre/agents/`. Verified with a full re-grep for `you`/`your`/`yourself` across all 41 files (one legitimate exception left: a quoted hypothetical doc string inside `docs-drift-auditor.md`'s example output).
+**Resolved since this report** (not re-run through the check workflow; noted by hand): all 41 `tone-and-audience` findings on agent files — every file under `plugins/*/agents/*.md` flagged by this check — are now rewritten to imperative/infinitive mood, done in two passes. First pass (20 files) covered the ones opening with second-person persona framing (`"You are <name>, a <role>..."`): `plugins/andon/agents/{andon-challenger,andon-defender}.md`, `plugins/passung/agents/{align-executor,passung-critic,equivalence-verifier,pattern-analyst,pattern-extractor}.md`, `plugins/zeugnis/agents/zeugnis-remediator.md`, `plugins/lehre/agents/violation-verifier.md`, and 11 files under `plugins/befund/agents/`. Second pass (21 files) covered files flagged for scattered mid-body second-person phrasing that didn't necessarily open with "You are": `plugins/andon/agents/{andon-adjudicator,andon-verifier}.md`, `plugins/cli-scaffold/agents/cli-scaffold-verifier.md`, `plugins/zirkel/agents/{branch-proposer,instruction-candidate,reasoning-path}.md`, `plugins/zeugnis/agents/{agentic-reliability-auditor,assertion-auditor,contract-auditor,dependency-auditor}.md`, `plugins/cupertino/agents/{handbook-dimension-analyst,handbook-drift-auditor,handbook-remediator,handbook-verifier}.md`, and 7 files under `plugins/lehre/agents/`. Verified with a full re-grep for `you`/`your`/`yourself` across all 41 files (one legitimate exception left: a quoted hypothetical doc string inside `docs-drift-auditor.md`'s example output).
 
 Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — incidental mid-sentence "you" in otherwise-imperative prose, not persona framing. A materially softer case than the agent-file findings, not yet addressed.
 
@@ -15,19 +15,19 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 | High | no | tone-and-audience | `plugins/andon/agents/andon-defender.md:12` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/andon/agents/andon-verifier.md:13` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/cli-scaffold/agents/cli-scaffold-verifier.md:39` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/codebase-consistency/agents/align-executor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/codebase-consistency/agents/consistency-critic.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/codebase-consistency/agents/equivalence-verifier.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/codebase-consistency/agents/pattern-analyst.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/codebase-consistency/agents/pattern-extractor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/compass/agents/branch-proposer.md:17` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/compass/agents/instruction-candidate.md:17` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/compass/agents/reasoning-path.md:16` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/confab/agents/agentic-reliability-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/confab/agents/assertion-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/confab/agents/confab-remediator.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/confab/agents/contract-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/confab/agents/dependency-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/passung/agents/align-executor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/passung/agents/passung-critic.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/passung/agents/equivalence-verifier.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/passung/agents/pattern-analyst.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/passung/agents/pattern-extractor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zirkel/agents/branch-proposer.md:17` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zirkel/agents/instruction-candidate.md:17` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zirkel/agents/reasoning-path.md:16` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zeugnis/agents/agentic-reliability-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zeugnis/agents/assertion-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zeugnis/agents/zeugnis-remediator.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zeugnis/agents/contract-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/zeugnis/agents/dependency-auditor.md:7` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/cupertino/agents/handbook-dimension-analyst.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/cupertino/agents/handbook-drift-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/cupertino/agents/handbook-remediator.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
@@ -41,17 +41,17 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 | High | no | tone-and-audience | `plugins/lehre/agents/spec-fidelity-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/lehre/agents/violation-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
 | High | no | tone-and-audience | `plugins/lehre/agents/violation-verifier.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/arch-health-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/business-rules-miner.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/ci-topology-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/complexity-surveyor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/convention-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/docs-drift-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/idiom-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/idiom-remediator.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/stage-mapper.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/transform-executor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
-| High | no | tone-and-audience | `plugins/self-assess/agents/ui-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/arch-health-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/business-rules-miner.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/ci-topology-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/complexity-surveyor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/convention-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/docs-drift-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/idiom-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/idiom-remediator.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/stage-mapper.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/transform-executor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
+| High | no | tone-and-audience | `plugins/befund/agents/ui-auditor.md:9` | Agent body written in second person ("You are...") instead of imperative mood |
 | Medium | no | versioning-of-docs | `docs/orchestration/README.md:26` | Unpinned third-party plugin behavior claim (superpowers skill/agent/hook counts) |
 | Medium | no | versioning-of-docs | `docs/orchestration/README.md:31` | Unpinned third-party inventory claim (39 plugin directories in claude-plugins-official) |
 | Medium | no | versioning-of-docs | `docs/orchestration/README.md:36` | Unpinned third-party plugin agent-count claims (pr-review-toolkit/feature-dev/code-modernization/claude-security) |
@@ -72,19 +72,19 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 | Medium | no | tone-and-audience | `plugins/cli-scaffold/skills/cli-scaffold-interpreted/SKILL.md:8` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/cli-scaffold/skills/cli-scaffold-shell/SKILL.md:8` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/cli-scaffold/skills/scaffold-cli/SKILL.md:8` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-calibrate-format/SKILL.md:27` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-clarify-scope/SKILL.md:35` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-draft-revise/SKILL.md:36` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-explore-branches/SKILL.md:34` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-investigate-dynamically/SKILL.md:21` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-reason-verify/SKILL.md:62` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/compass/skills/compass-solve/SKILL.md:31` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-assertion-audit/SKILL.md:29` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-contract-drift/SKILL.md:45` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-cycle/SKILL.md:12` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-dependency-audit/SKILL.md:11` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-preflight/SKILL.md:20` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/confab/skills/confab-status/SKILL.md:41` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-calibrate-format/SKILL.md:27` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-clarify-scope/SKILL.md:35` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-draft-revise/SKILL.md:36` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-explore-branches/SKILL.md:34` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-investigate-dynamically/SKILL.md:21` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-reason-verify/SKILL.md:62` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zirkel/skills/zirkel-solve/SKILL.md:31` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-assertion-audit/SKILL.md:29` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-contract-drift/SKILL.md:45` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-cycle/SKILL.md:12` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-dependency-audit/SKILL.md:11` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-preflight/SKILL.md:20` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/zeugnis/skills/zeugnis-status/SKILL.md:41` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/cupertino/skills/cupertino-backwards/SKILL.md:12` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/cupertino/skills/cupertino-cannibalize/SKILL.md:6` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/cupertino/skills/cupertino-council/SKILL.md:6` | SKILL.md body uses second-person "you" instead of imperative mood |
@@ -99,12 +99,12 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 | Medium | no | tone-and-audience | `plugins/lehre/skills/lehre-codify/SKILL.md:44` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/lehre/skills/lehre-gauge/SKILL.md:91` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Medium | no | tone-and-audience | `plugins/lehre/skills/lehre-validate/SKILL.md:13` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/self-assess/skills/self-assess-autopilot/SKILL.md:27` | SKILL.md body uses second-person "you" instead of imperative mood |
-| Medium | no | tone-and-audience | `plugins/self-assess/skills/self-assess-transform-execute/SKILL.md:54` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/befund/skills/befund-autopilot/SKILL.md:27` | SKILL.md body uses second-person "you" instead of imperative mood |
+| Medium | no | tone-and-audience | `plugins/befund/skills/befund-transform-execute/SKILL.md:54` | SKILL.md body uses second-person "you" instead of imperative mood |
 | Low | no | versioning-of-docs | `docs/plugin-authoring/references/craft-standards.md:88` | Unpinned codebase-state count (63 SKILL.md files) |
 | Low | no | versioning-of-docs | `docs/plugin-authoring/references/craft-standards.md:150` | Unpinned codebase-state count (Resources-section gap across 63 SKILL.md files) |
 | Low | no | tone-and-audience | `plugins/cupertino/skills/cupertino-review/SKILL.md:13` | SKILL.md heading uses second-person "you" instead of imperative mood |
-| Low | no | versioning-of-docs | `plugins/self-assess/README.md:245` | Unpinned codebase-state count (16 skills / 11 agents) |
+| Low | no | versioning-of-docs | `plugins/befund/README.md:245` | Unpinned codebase-state count (16 skills / 11 agents) |
 
 ## Details
 
@@ -122,9 +122,9 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Evidence:** plugins/cli-scaffold/commands/cli-scaffold.md exists on disk (frontmatter: name: cli-scaffold, description: 'Scaffold a production-grade CLI...'), but plugins/cli-scaffold/README.md's heading list (`grep -n "^#" README.md`) contains no '## Commands' or combined 'Skills/Commands' heading -- the command is only referenced informally in prose/example prompts ('/cli-scaffold rust called myapp'), never enumerated as a shipped command the way the '## Skills (5)' (line 157) and '## Agents (1)' (line 167) sections enumerate skills and agents.
 
-**Suggested fix:** Add a '## Commands (1)' section (or fold it into a combined 'Skills/Commands' heading) that lists `/cli-scaffold` with a one-line description of what it dispatches, consistent with codebase-consistency's README '## Commands' section style.
+**Suggested fix:** Add a '## Commands (1)' section (or fold it into a combined 'Skills/Commands' heading) that lists `/cli-scaffold` with a one-line description of what it dispatches, consistent with passung's README '## Commands' section style.
 
-### `plugins/self-assess/agents/complexity-surveyor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/complexity-surveyor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -132,7 +132,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona ("You are X, you do Y") to imperative/infinitive instructions addressed to the acting agent (e.g. "Do Y."), throughout the file — not just the cited line.
 
-### `plugins/self-assess/agents/ci-topology-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/ci-topology-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -140,7 +140,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/stage-mapper.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/stage-mapper.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -148,7 +148,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/idiom-remediator.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/idiom-remediator.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -156,7 +156,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/docs-drift-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/docs-drift-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -164,15 +164,15 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/transform-executor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/transform-executor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
-**Evidence:** You are transform-executor, the only Write/Edit-capable agent in self-assess. You apply exactly
+**Evidence:** You are transform-executor, the only Write/Edit-capable agent in befund. You apply exactly
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/convention-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/convention-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -180,7 +180,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/ui-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/ui-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -188,7 +188,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/business-rules-miner.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/business-rules-miner.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -196,7 +196,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/arch-health-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/arch-health-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -204,7 +204,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/self-assess/agents/idiom-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/befund/agents/idiom-auditor.md:9` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -252,7 +252,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/agents/agentic-reliability-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zeugnis/agents/agentic-reliability-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -260,7 +260,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/confab/agents/confab-remediator.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zeugnis/agents/zeugnis-remediator.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -268,7 +268,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/confab/agents/contract-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zeugnis/agents/contract-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -276,7 +276,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/confab/agents/dependency-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zeugnis/agents/dependency-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -284,7 +284,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/confab/agents/assertion-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zeugnis/agents/assertion-auditor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -300,7 +300,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/confab/skills/confab-assertion-audit/SKILL.md:29` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-assertion-audit/SKILL.md:29` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -308,7 +308,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/skills/confab-status/SKILL.md:41` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-status/SKILL.md:41` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -316,7 +316,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/skills/confab-cycle/SKILL.md:12` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-cycle/SKILL.md:12` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -324,7 +324,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/skills/confab-contract-drift/SKILL.md:45` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-contract-drift/SKILL.md:45` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -332,7 +332,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/skills/confab-dependency-audit/SKILL.md:11` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-dependency-audit/SKILL.md:11` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -340,7 +340,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/confab/skills/confab-preflight/SKILL.md:20` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zeugnis/skills/zeugnis-preflight/SKILL.md:20` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -380,7 +380,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form, e.g. "Route a scaffold request... Never generate code directly."
 
-### `plugins/self-assess/skills/self-assess-autopilot/SKILL.md:27` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/befund/skills/befund-autopilot/SKILL.md:27` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -388,15 +388,15 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/self-assess/skills/self-assess-transform-execute/SKILL.md:54` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/befund/skills/befund-transform-execute/SKILL.md:54` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
-**Evidence:** `.claude/self-assess.local.md` AND you have told them plainly what changed paths exist. A
+**Evidence:** `.claude/befund.local.md` AND you have told them plainly what changed paths exist. A
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/agents/branch-proposer.md:17` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zirkel/agents/branch-proposer.md:17` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -404,7 +404,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/compass/agents/instruction-candidate.md:17` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zirkel/agents/instruction-candidate.md:17` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -412,7 +412,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/compass/agents/reasoning-path.md:16` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/zirkel/agents/reasoning-path.md:16` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -516,7 +516,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/codebase-consistency/agents/pattern-analyst.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/passung/agents/pattern-analyst.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -524,7 +524,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/codebase-consistency/agents/consistency-critic.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/passung/agents/passung-critic.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -532,7 +532,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/codebase-consistency/agents/align-executor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/passung/agents/align-executor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -540,7 +540,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body (e.g. "Convert one module...") to imperative/infinitive instructions throughout the file — the whole file, including 'Your job', 'you're handed', 'your module', is second person.
 
-### `plugins/codebase-consistency/agents/pattern-extractor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/passung/agents/pattern-extractor.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -548,7 +548,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite the agent body from a second-person persona to imperative/infinitive instructions throughout the file.
 
-### `plugins/codebase-consistency/agents/equivalence-verifier.md:7` — Agent body written in second person ("You are...") instead of imperative mood
+### `plugins/passung/agents/equivalence-verifier.md:7` — Agent body written in second person ("You are...") instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** High · **Mechanical:** False
 
@@ -612,7 +612,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-investigate-dynamically/SKILL.md:21` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-investigate-dynamically/SKILL.md:21` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -620,7 +620,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-reason-verify/SKILL.md:62` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-reason-verify/SKILL.md:62` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -628,7 +628,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-clarify-scope/SKILL.md:35` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-clarify-scope/SKILL.md:35` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -636,7 +636,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-explore-branches/SKILL.md:34` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-explore-branches/SKILL.md:34` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -644,7 +644,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-calibrate-format/SKILL.md:27` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-calibrate-format/SKILL.md:27` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -652,7 +652,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-solve/SKILL.md:31` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-solve/SKILL.md:31` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -660,7 +660,7 @@ Remaining open: 38 `tone-and-audience` findings, all in `SKILL.md` files — inc
 
 **Suggested fix:** Rewrite this sentence (and any other second-person phrasing in the file) into imperative/infinitive form.
 
-### `plugins/compass/skills/compass-draft-revise/SKILL.md:36` — SKILL.md body uses second-person "you" instead of imperative mood
+### `plugins/zirkel/skills/zirkel-draft-revise/SKILL.md:36` — SKILL.md body uses second-person "you" instead of imperative mood
 
 **Dimension:** tone-and-audience · **Severity:** Medium · **Mechanical:** False
 
@@ -806,7 +806,7 @@ measured over ~40 runs:
 
 **Evidence:** `templates/` is not used anywhere in werkstoff today; `assets/` is — 8 of the 9 plugins
 (all but `takt`) have a plugin-root `assets/` directory, referenced from SKILL.md (or,
-for `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`.
+for `passung`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`.
 
 **Suggested fix:** Pin to a commit hash or checked-date, as this same document already does at line 89 ("as of `1cd5d07`") and line 102.
 
@@ -827,11 +827,11 @@ for `codebase-consistency`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/..
 
 **Suggested fix:** Pin this claim to the commit hash or checked-date it was measured against, consistent with this document's own pattern elsewhere (line 89, 102).
 
-### `plugins/self-assess/README.md:245` — Unpinned codebase-state count (16 skills / 11 agents)
+### `plugins/befund/README.md:245` — Unpinned codebase-state count (16 skills / 11 agents)
 
 **Dimension:** versioning-of-docs · **Severity:** Low · **Mechanical:** False
 
-**Evidence:** ├── skills/self-assess-*/SKILL.md   # 16 skills, one per spec entry
+**Evidence:** ├── skills/befund-*/SKILL.md   # 16 skills, one per spec entry
 └── agents/*.md                     # 11 agents, one per spec entry
 
 **Suggested fix:** Pin these skill/agent counts to a commit hash or checked-date so a later addition/removal is visible as staleness.
@@ -879,7 +879,7 @@ it run":
 **Evidence:** | Plugin | n | min | median | max | Every file EXIT=1? | Verdict |
 |---|---|---|---|---|---|---|
 | andon | 8 | 0 | 1 | 4 | No (4 tribunal agents = 0) | **FAIL** |
-| confab | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |
+| zeugnis | 7 | 2 | 2 | 4 | No (3 files = 0) | **FAIL** |
 
 **Suggested fix:** Add a commit hash or checked-date to the document header (or per-table) stating which checkout of werkstoff/prp/code-modernization/superpowers these per-file scores and counts were measured against — none currently exists in this file.
 

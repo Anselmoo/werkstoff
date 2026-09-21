@@ -2,7 +2,7 @@
 type: stage
 title: score
 order: 4
-confidence: self-assess-backed
+confidence: befund-backed
 description: Applies the risk model to each enriched record and attaches a score plus model version.
 tags:
   - lane:slow

@@ -55,7 +55,7 @@ it can be, since definitions load once per session.
 
 ```
 trigger probe — 2 prompt(s) x 2 repeat(s) = 4 cell(s), model haiku, arm isolated; estimate ~$1.36 at $0.34/cell
-  captured   compass-clarify-scope            measured 2/2  captured by compass-solve
+  captured   zirkel-clarify-scope            measured 2/2  captured by zirkel-solve
   fired      cupertino-backwards              measured 2/2
 simulation vs probe: 1/2 agree (0.50)
 0 prompt(s) unmeasured (excluded from every rate); spent $1.29; wrote analysis/nacharbeit/probe/summary.json

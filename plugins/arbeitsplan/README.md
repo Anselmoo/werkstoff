@@ -47,10 +47,10 @@ occur**. Integration cost goes from O(N) conflicts to zero.
 ## What it is not
 
 - **Not a reasoning aid.** A problem that turns out to be a *question* rather than a *change*
-  is refused and routed to **`compass`**, with an `out-of-scope-reasoning` record — the
-  boundary is implemented, not asserted. compass already does parallel branch generation,
+  is refused and routed to **`zirkel`**, with an `out-of-scope-reasoning` record — the
+  boundary is implemented, not asserted. zirkel already does parallel branch generation,
   self-consistency voting and gated hybrid synthesis well; arbeitsplan does not reimplement
-  any of it. compass reasons about a question; this compiles and executes a change.
+  any of it. zirkel reasons about a question; this compiles and executes a change.
 - **Not the ordering runtime.** Ordering is **`takt`**'s charter — the beats span plugins, so
   no single plugin honestly owns that order. `arbeitsplan-compile` *writes* the beat
   declaration; takt enforces it. This plugin's own hook covers only per-dispatch attribution,
@@ -87,7 +87,7 @@ by intent.
 
 > Triggers `arbeitsplan-compile`: scopes the problem, derives acceptance criteria with real
 > commands, picks patterns from the frozen catalog, sets a dispatch budget, and writes
-> `workflow.json`. Refuses and points at `compass` if the problem turns out to be a question.
+> `workflow.json`. Refuses and points at `zirkel` if the problem turns out to be a question.
 
 ##### Build several versions and keep the best one
 

@@ -30,8 +30,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GUARD = "test/plugins/lint-release-wiring.py"
+RETIRED = "test/plugins/retired-groups.txt"
 WORKFLOWS = ("plugin-release.yml", "auto-version-bump.yml")
 FAILURES: list[str] = []
+RAN: list[str] = []
 
 
 def build_box() -> Path:
@@ -40,6 +42,7 @@ def build_box() -> Path:
     (box / "test/plugins").mkdir(parents=True)
     (box / ".github/workflows").mkdir(parents=True)
     shutil.copy(REPO_ROOT / GUARD, box / GUARD)
+    shutil.copy(REPO_ROOT / RETIRED, box / RETIRED)
     shutil.copy(REPO_ROOT / ".rrt.toml", box / ".rrt.toml")
     for name in WORKFLOWS:
         shutil.copy(REPO_ROOT / ".github/workflows" / name, box / ".github/workflows" / name)
@@ -84,6 +87,7 @@ def edit_allowlist(text: str, fn) -> str:
 
 
 def case(label: str, mutate, want_rc: int, want_text: str) -> None:
+    RAN.append(label)
     box = build_box()
     try:
         mutate(box)
@@ -133,6 +137,37 @@ case("stale name in allowlist (no plugin dir)",
                         t, lambda line: line.replace(f"|{PROBE}", f"|{PROBE}|ghost", 1))),
      1, "no plugins/ghost/")
 
+# The retired-groups exemption. It lets the tag allowlist name a renamed group so
+# that group's published tags stay re-publishable -- and it must stay narrow: an
+# exemption that swallowed any unknown name would turn this guard into a rubber
+# stamp, which is the failure the whole file exists to prevent.
+
+case("retired name in allowlist is exempt",
+     lambda b: (edit(b, RETIRED, lambda t: t + "ghost\n"),
+                edit(b, RELEASE, lambda t: edit_allowlist(
+                    t, lambda line: line.replace(f"|{PROBE}", f"|{PROBE}|ghost", 1)))),
+     0, "0 failure(s)")
+
+case("retired exemption does NOT cover other stale names",
+     lambda b: (edit(b, RETIRED, lambda t: t + "ghost\n"),
+                edit(b, RELEASE, lambda t: edit_allowlist(
+                    t, lambda line: line.replace(f"|{PROBE}", f"|{PROBE}|ghost|phantom", 1)))),
+     1, "no plugins/phantom/")
+
+case("retired exemption does NOT cover .rrt.toml",
+     lambda b: (edit(b, RETIRED, lambda t: t + PROBE + "\n"),
+                edit(b, ".rrt.toml", lambda t: t.replace(
+                    f'name = "{PROBE}"', 'name = "ghost"', 1))),
+     1, "version_groups")
+
+case("retired name absent from allowlist is reported",
+     lambda b: edit(b, RETIRED, lambda t: t + "ghost\n"),
+     1, "exemption buys nothing")
+
+case("retired name back on disk is reported",
+     lambda b: edit(b, RETIRED, lambda t: t + PROBE + "\n"),
+     1, "exists again")
+
 # Structural changes must fail LOUDLY. A guard that silently finds zero names in
 # a restructured file and reports success is the exact defect it exists to stop.
 case("restructured release wf fails loudly",
@@ -149,4 +184,4 @@ case("empty plugin set refuses to pass",
 if FAILURES:
     print(f"\n{len(FAILURES)} calibration case(s) failed -- fix the GUARD before trusting it")
     sys.exit(1)
-print("\nlint-release-wiring: instrument verified against 9 known answers")
+print(f"\nlint-release-wiring: instrument verified against {len(RAN)} known answers")

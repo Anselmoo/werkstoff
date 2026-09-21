@@ -4,12 +4,12 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Resolved since this report** (not re-run through the check workflow; noted by hand):
 - `test/plugins/fixtures/ui-missing-alt/index.html:40` (test-data-management) — the inline answer key was extracted to a checked-in `_EXPECTED.md`; `run.sh:139` already strips exactly that filename.
-- `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` (test-data-management) — this fixture was never referenced by `cases.tsv`, `run.sh`, or `test_build_burndown_html.py` (which builds its own inline ledger via `tempfile.TemporaryDirectory()`). It was dead code from commit `821a14a`, not an incomplete fixture, so it was removed rather than given an `_EXPECTED.md`.
+- `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` (test-data-management) — this fixture was never referenced by `cases.tsv`, `run.sh`, or `test_build_burndown_html.py` (which builds its own inline ledger via `tempfile.TemporaryDirectory()`). It was dead code from commit `821a14a`, not an incomplete fixture, so it was removed rather than given an `_EXPECTED.md`.
 
 | Severity | Mechanical | Dimension | Location | Title |
 |---|---|---|---|---|
-| High | no | test-naming | `plugins/compass/scripts/test_build_branch_comparison_html.py:1` | Test file has zero pytest-discoverable test functions |
-| High | no | test-naming | `plugins/compass/scripts/test_compass.py:1` | Test file has zero pytest-discoverable test functions |
+| High | no | test-naming | `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` | Test file has zero pytest-discoverable test functions |
+| High | no | test-naming | `plugins/zirkel/scripts/test_zirkel.py:1` | Test file has zero pytest-discoverable test functions |
 | High | no | test-naming | `plugins/lehre/hooks/test_lehre_guard.py:1` | Test file has zero pytest-discoverable test functions |
 | High | no | test-naming | `plugins/lehre/scripts/test_lehre_core.py:1` | Test file has zero pytest-discoverable test functions |
 | High | yes | test-data-management | `test/plugins/fixtures/ui-missing-alt/index.html:40` | Answer key embedded inline in the audited file itself, not in a stripped _EXPECTED.md |
@@ -21,7 +21,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 | Medium | no | test-naming | `test/plugins/test-lint-release-wiring.py:1` | Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions |
 | Medium | no | test-naming | `test/plugins/test-lint-tag-releases.py:1` | Calibration script named with a hyphen, not `test_<subject>.py`, and has no `def test_*` functions |
 | Medium | no | fixture-and-mocking-policy | `tools/surface-index/test_build_surface_index.py:381` | Test manually overwrites and restores module-internal globals (REPO/PLUGINS/OUTPUT) instead of injecting paths |
-| Low | no | test-data-management | `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` | Seeded-defect-shaped fixture has no checked-in _EXPECTED.md |
+| Low | no | test-data-management | `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` | Seeded-defect-shaped fixture has no checked-in _EXPECTED.md |
 
 ## Details
 
@@ -49,7 +49,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Suggested fix:** Restructure into individually named pytest functions (e.g. `def test_bare_except_denies():`, `def test_layering_violation_denies():`, `def test_clean_file_allows():`), one per current expect_deny/expect_allow call, so pytest's default discovery collects and reports each case independently instead of pytest finding 0 tests in a file literally named test_lehre_guard.py.
 
-### `plugins/compass/scripts/test_build_branch_comparison_html.py:1` — Test file has zero pytest-discoverable test functions
+### `plugins/zirkel/scripts/test_build_branch_comparison_html.py:1` — Test file has zero pytest-discoverable test functions
 
 **Dimension:** test-naming · **Severity:** High · **Mechanical:** False
 
@@ -57,7 +57,7 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Suggested fix:** Convert each `ok("label", cond)` call into its own `def test_<snake_case_label>():` function containing a plain `assert cond`, so pytest reports each check individually instead of silently collecting no tests.
 
-### `plugins/compass/scripts/test_compass.py:1` — Test file has zero pytest-discoverable test functions
+### `plugins/zirkel/scripts/test_zirkel.py:1` — Test file has zero pytest-discoverable test functions
 
 **Dimension:** test-naming · **Severity:** High · **Mechanical:** False
 
@@ -139,14 +139,14 @@ Checked against `.cupertino/testing-handbook.md`'s 6 dimensions. 14 finding(s) s
 
 **Dimension:** test-data-management · **Severity:** High · **Mechanical:** True
 
-**Evidence:** Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points self-assess-ui-audit at this exact directory. run.sh (line 139) only does `rm -f "$tmp/_EXPECTED.md"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.
+**Evidence:** Lines 1-11 and 40-49 of index.html contain an HTML comment block titled 'SEEDED-DEFECT FIXTURE ... EXPECTED FINDINGS (the harness asserts the audit surfaces these): - a11y img-no-alt ... - semantics div-onclick ... - a11y input-no-label ... EXPECTED NON-FINDINGS ...'. This fixture has no _EXPECTED.md at all (confirmed: `ls test/plugins/fixtures/ui-missing-alt/` shows only index.html). The fixture is actively used by the live case `new-ui-audit` in test/plugins/cases.tsv:70, which points befund-ui-audit at this exact directory. run.sh (line 139) only does `rm -f "$tmp/_EXPECTED.md"` before invoking the CLI -- it never touches index.html -- so the literal answer-key comment ('EXPECTED FINDINGS ... the harness asserts the audit surfaces these') is handed straight to the tool being graded, the exact hand-the-answer-key-to-the-system-under-test failure the rule exists to prevent.
 
 **Suggested fix:** Move the 'SEEDED-DEFECT FIXTURE' / 'EXPECTED FINDINGS' / 'EXPECTED NON-FINDINGS' commentary out of index.html into a new test/plugins/fixtures/ui-missing-alt/_EXPECTED.md, leaving index.html containing only the seeded HTML defects (and non-defects) with no narration of what is expected, since run.sh only strips a file literally named _EXPECTED.md.
 
-### `test/plugins/fixtures/confab-burndown-pseudo-ledger/analysis/confab/ledger.json:1` — Seeded-defect-shaped fixture has no checked-in _EXPECTED.md
+### `test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/analysis/zeugnis/ledger.json:1` — Seeded-defect-shaped fixture has no checked-in _EXPECTED.md
 
 **Dimension:** test-data-management · **Severity:** Low · **Mechanical:** False
 
-**Evidence:** The fixture directory test/plugins/fixtures/confab-burndown-pseudo-ledger/ contains only analysis/confab/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'confab-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.
+**Evidence:** The fixture directory test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/ contains only analysis/zeugnis/ledger.json (a ledger whose per-finding statuses -- e.g. 'agentic-2': status 'open', 'code-1': status 'escalated' with reopenCount 4 -- look deliberately inconsistent with a clean burndown, i.e. a 'pseudo' ledger) and no _EXPECTED.md. A repo-wide grep for 'zeugnis-burndown-pseudo-ledger' and for its content elsewhere (e.g. in test/plugins/cases.tsv or any test_*.py under the checked paths) returns zero references, so this fixture is not currently wired to any test case that would exercise it, but it is shaped and named exactly like a seeded-defect fixture the rule targets.
 
-**Suggested fix:** Either add a test/plugins/fixtures/confab-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.
+**Suggested fix:** Either add a test/plugins/fixtures/zeugnis-burndown-pseudo-ledger/_EXPECTED.md documenting the seeded pseudo-ledger inconsistency and the expected finding once a case wires this fixture in, or remove the orphaned fixture if it is dead weight left over from a retired case.

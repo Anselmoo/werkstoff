@@ -1,6 +1,6 @@
 ---
 name: andon-loop
-description: "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use self-assess-transform-execute for that, then return here (or to andon-verify) for the proof."
+description: "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use befund-transform-execute for that, then return here (or to andon-verify) for the proof."
 allowed-tools: "Read, Write, Edit, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Bash(python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py\":*), Glob, Grep, Agent"
 argument-hint: "[stage-or-gap-filter]"
 ---
@@ -33,32 +33,32 @@ the script raised, so you halt.
 
 If it succeeds, its JSON `settings` object gives you `output_dir`,
 `ledger_dir`, `authorization_level`, `skip_verification`, `gap_source`, and
-`self_assess_output_dir` for every phase below (defaults documented in
+`befund_output_dir` for every phase below (defaults documented in
 `${CLAUDE_PLUGIN_ROOT}/references/okf-ledger-schema.md` apply when the
 settings file is absent -- the script already applied them, just use the
 returned values).
 
 ## Phase 0: topology detection
 
-If `gap_source` is `self-assess-brief` (ingest mode), **skip all heuristic
+If `gap_source` is `befund-brief` (ingest mode), **skip all heuristic
 steps below** and check the prerequisite in code first:
 
 ```
-python3 SCRIPTS check-ingest-prereqs <repo_root> <gap_source> <self_assess_output_dir>
+python3 SCRIPTS check-ingest-prereqs <repo_root> <gap_source> <befund_output_dir>
 ```
 
 If this exits non-zero, `MODERNIZATION_BRIEF.md` or `transform_brief_summary.json`
-is missing from `self_assess_output_dir`. **Stop** and tell the user to run
-`self-assess:self-assess-transform-brief` first -- never silently fall back to
+is missing from `befund_output_dir`. **Stop** and tell the user to run
+`befund:befund-transform-brief` first -- never silently fall back to
 self-scan; that silent fallback is exactly the failure mode this check exists
 to prevent. If it succeeds, take the stream from the brief's phases (already
-leaf-first / Kahn-sorted) with confidence `self-assess-backed`, and go straight
+leaf-first / Kahn-sorted) with confidence `befund-backed`, and go straight
 to Phase 1 using those stages.
 
 Otherwise (`gap_source: self-scan`, the default), detect stages and wires:
 
-1. Prefer dispatching the `self-assess:stage-mapper` agent if the `self-assess`
-   plugin is installed. Confidence: `self-assess-backed`.
+1. Prefer dispatching the `befund:stage-mapper` agent if the `befund`
+   plugin is installed. Confidence: `befund-backed`.
 2. If unavailable, degrade to a built-in heuristic: `Glob` for manifest files
    (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `Gemfile`, ...)
    and cluster by directory. Confidence: `heuristic` (flag this in the stage
@@ -108,7 +108,7 @@ Scan **only** the cursor's current stage -- never re-scan completed stages
 every pass. In self-scan mode look for: failing tests, wires with no
 evidence doc or a red/unknown one, TODOs, schema drift, dead handoffs. In
 ingest mode, gaps come from the brief's Work Items for this phase instead
-(pre-classified: code-idiom/lint/ui-audit/confab findings become `kind:bug`,
+(pre-classified: code-idiom/lint/ui-audit/zeugnis findings become `kind:bug`,
 architectural Merge/Split/layering decisions become `kind:wire`,
 documented-absent behavior becomes `kind:feature`; carry `file:line` and the
 fix-owner agent name into the gap doc; the phase's Behavior Contract becomes

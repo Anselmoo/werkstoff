@@ -26,8 +26,8 @@ denial message.
 
 ## What it is not
 
-- Not a post-hoc auditor of documented conventions — that is `self-assess`.
-- Not a deriver of canon from undocumented variants — that is `codebase-consistency`.
+- Not a post-hoc auditor of documented conventions — that is `befund`.
+- Not a deriver of canon from undocumented variants — that is `passung`.
 - Not a sequencing gate for cross-plugin beats — that is `takt`, which gates *whether a
   step ran*. lehre gates *what the code may look like*, and enforces its own unit order
   internally, so it needs neither.
@@ -208,7 +208,7 @@ process boundary", "does this handler own business logic" — and `lehre-codify`
 as advisory. The schema then **refused to persist them**, because `check.kind` had to be one
 of the five machine kinds. So the pipeline researched a rule class it could not store, and
 `violation-auditor` — whose entire job is auditing that class — was dispatched by nothing,
-because nothing could ever be in its input set. `confab-agentic-reliability` found it.
+because nothing could ever be in its input set. `zeugnis-agentic-reliability` found it.
 
 `judgement` is the honest home for those: advisory **by schema** (a blocking rule nothing
 can evaluate is a validation error, not a footnote), required to carry the question an

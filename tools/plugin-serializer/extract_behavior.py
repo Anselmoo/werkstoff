@@ -80,8 +80,8 @@ HARD RULES
    output — that reads as an obligation and carries none, so the rebuild
    invents its own value and silently breaks every existing installation.
    This has happened: an extraction emitted "<output_dir>/UI_AUDIT.md" without
-   ever defining <output_dir>, and the rebuilt plugin wrote to ".self-assess/"
-   instead of the documented "analysis/self-assess/**". Every seeded test still
+   ever defining <output_dir>, and the rebuilt plugin wrote to ".befund/"
+   instead of the documented "analysis/befund/**". Every seeded test still
    passed on content; only the location was wrong, so nothing caught it.
    Copy the literal default verbatim for:
      - output/report directories and file names the user reads or scripts
@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Retry a malformed response. cupertino failed to parse on its first pass and
     # succeeded unchanged on the second — and it has the SMALLEST input of the six
-    # (100k chars vs self-assess's 225k, which parsed first time), so this is a
+    # (100k chars vs befund's 225k, which parsed first time), so this is a
     # transient generation artifact, not a size limit. Without a retry, one bad
     # roll silently drops a plugin from the batch: the driver saw no spec and
     # skipped generation entirely, which reads exactly like "this plugin has no

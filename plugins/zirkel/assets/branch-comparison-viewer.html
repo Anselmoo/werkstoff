@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>zirkel — branch comparison</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: var(--font-size-base)/var(--line-height-base) var(--font-sans);
+  }
+  /* Centered-document archetype (report-viewer-standard.md S1): this report is
+     read top-to-bottom -- verdict, then legend, then one card per branch -- and
+     nothing here drives a detail pane or pans. `margin: 0 auto` is the whole
+     difference between that archetype and a page whose content hugs the left
+     edge, which is what this viewer used to be. */
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-5); }
+  header { margin-bottom: var(--space-4); }
+  header h1 { font-size: 18px; color: var(--accent); margin-bottom: var(--space-1); }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); padding: var(--space-4);
+    margin-bottom: var(--space-4);
+  }
+  .panel h2 { font-size: 0.95rem; margin-bottom: var(--space-2); color: var(--smoke); font-weight: 600; }
+  .verdict { font-size: 14px; line-height: 1.5; color: var(--text); }
+  .note { color: var(--muted); font-size: 0.78rem; margin-top: var(--space-2); }
+  .legend { display: flex; gap: var(--space-4); font-size: 11px; color: var(--muted);
+    margin: var(--space-3) 0 var(--space-5); flex-wrap: wrap; }
+  .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px;
+    margin-right: var(--space-1); vertical-align: middle; }
+  .rows { display: flex; flex-direction: column; gap: var(--space-3); }
+  /* Column budget, rebalanced (R5): the description is the part a reader spends
+     time in and the bars are the part that carries the comparison, so both get
+     an fr share; only the Total needs a fixed column, and 72px fits a 2-digit
+     numeral plus its caption. The old fixed 220px description / 90px total left
+     the bars starved in the middle of an otherwise empty row. */
+  .row {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+    padding: var(--space-4); display: grid;
+    grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.4fr) 72px;
+    gap: var(--space-4); align-items: center;
+  }
+  .row.winner { border-left: 3px solid var(--accent-2); background: var(--panel-2); }
+  .row .name { font-weight: 600; }
+  .row .badge {
+    display: inline-block; margin-left: var(--space-2); font-size: 10px; color: var(--accent-2);
+    border: 1px solid var(--accent-2); border-radius: var(--radius-sm); padding: var(--space-1) var(--space-1);
+    vertical-align: middle;
+  }
+  .row .desc { color: var(--muted); font-size: 12px; margin-top: var(--space-1); line-height: 1.4; }
+  .row .blocker { color: var(--muted); font-size: 11px; margin-top: var(--space-2); font-style: italic; }
+  /* A fixed 64px is legitimate here, unlike the fixed heights R5 rejects
+     elsewhere: the axis count is not data-driven. Every branch is scored on
+     exactly Feasibility, Impact and Risk -- zirkel_lib.validate_branch_scores
+     requires all three and accepts no fourth -- so this panel can never gain a
+     row and cannot clip or float. The WIDTH, which IS data-independent dead
+     space if left to a fixed viewBox, is measured from the container instead
+     (see layoutBars below). */
+  .row .bars svg { width: 100%; height: 64px; display: block; }
+  .row .total { text-align: right; }
+  .row .total .n { font-size: 24px; font-weight: 700; color: var(--text); }
+  .row.winner .total .n { color: var(--accent-2); }
+  .row .total .k { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  #err { position: absolute; inset: 0; display: none; place-items: center; }
+  #err .panel { margin-bottom: 0; }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="wrap">
+  <header>
+    <h1 id="title">zirkel — branch comparison</h1>
+    <div class="sub" id="subtitle"></div>
+  </header>
+
+  <section class="panel" id="verdict-panel">
+    <h2>Which branch wins, and what does winning cost?</h2>
+    <p class="verdict" id="verdict"></p>
+    <p class="note">
+      Total is the <em>raw</em> sum of Feasibility + Impact + Risk — Risk is never inverted,
+      so a branch can win on Total while carrying the highest risk on the board, and an
+      exact tie on Total goes to the lower Risk score. The winning row is the one with the
+      amber left border and the WINNER badge, never colour alone.
+    </p>
+  </section>
+
+  <div class="legend" id="legend">
+    <span><span class="swatch" style="background:var(--status-good)"></span>Feasibility</span>
+    <span><span class="swatch" style="background:var(--accent)"></span>Impact</span>
+    <span><span class="swatch" style="background:var(--status-bad)"></span>Risk</span>
+    <span><span class="swatch" style="background:var(--accent-2)"></span>Total / winner</span>
+  </div>
+
+  <div class="rows" id="rows"></div>
+</div>
+<div id="err"><div class="panel"><p></p></div></div>
+
+<!--__D3_SUBSET__-->
+<script type="module">
+const d3 = window.d3;
+
+// Injected by build_branch_comparison_html.py.
+const DATA = /*__BRANCH_DATA__*/ null;
+
+if (!DATA || !DATA.branches || !DATA.branches.length) {
+  const err = document.getElementById("err");
+  const p = err.querySelector("p");
+  p.textContent = "No branch-comparison data found in this file. " +
+    "Re-run zirkel-explore-branches to regenerate it.";
+  err.style.display = "grid";
+  for (const id of ["verdict-panel", "legend", "rows"]) {
+    document.getElementById(id).style.display = "none";
+  }
+  throw new Error("no data");
+}
+
+document.getElementById("subtitle").textContent = DATA.rawTask + " — winner: " + DATA.selected;
+
+// The verdict names the winner, its MARGIN, and the blocker that margin has to
+// survive. The margin is deliberately the only integer here: every per-branch
+// Total is already printed once in its own row, and R2 forbids printing the
+// same number twice on one page.
+function verdictText(data) {
+  const winner = data.branches.find(b => b.isWinner) || data.branches[0];
+  const rest = data.branches
+    .filter(b => b !== winner)
+    .sort((a, b) => b.total - a.total || a.risk - b.risk);
+  const runnerUp = rest[0];
+
+  let head;
+  if (!runnerUp) {
+    head = `${winner.name} is the only branch that was scored, so it wins by default rather ` +
+      `than on a comparison`;
+  } else if (winner.total === runnerUp.total) {
+    head = `${winner.name} ties ${runnerUp.name} on Total and takes it only on the ` +
+      `lower Risk score`;
+  } else {
+    const margin = winner.total - runnerUp.total;
+    head = `${winner.name} wins by ${margin} point${margin === 1 ? "" : "s"} over ` +
+      `${runnerUp.name}`;
+  }
+
+  if (!winner.biggestBlocker) {
+    return `${head}, and no blocker was recorded against it — nothing in this run gates ` +
+      `adopting it.`;
+  }
+  const close = !runnerUp || winner.total - runnerUp.total <= 2
+    ? `a margin narrow enough that the call turns on its biggest blocker`
+    : `but adopting it still turns on its biggest blocker`;
+  return `${head} — ${close}: ${winner.biggestBlocker}`;
+}
+
+document.getElementById("verdict").textContent = verdictText(DATA);
+
+const AXES = [
+  { key: "feasibility", label: "Feasibility", color: "var(--status-good)" },
+  { key: "impact",      label: "Impact",      color: "var(--accent)" },
+  { key: "risk",        label: "Risk",        color: "var(--status-bad)" },
+];
+
+const BAR_H = 64;          // three axes, always exactly three -- see the CSS comment
+const LABEL_W = 78;        // left gutter the axis label is drawn into
+const VALUE_W = 30;        // right gutter the score numeral is drawn into
+const MIN_BAR_TRACK = 80;  // floor so a very narrow window still renders readable bars
+
+// d3-scale maps every axis's 1-10 score onto the same bar-length range, so
+// bars are directly comparable within a row and across rows -- the whole
+// reason a mark type with a real scale (not a radar's uncalibrated area)
+// was chosen for this data shape.
+const rowScale = d3.scaleBand().domain(AXES.map(a => a.key)).range([4, BAR_H - 4]).padding(0.35);
+
+function renderBars(svgEl, branch, width) {
+  // viewBox width tracks the measured container width, so preserveAspectRatio
+  // never letterboxes the chart: a fixed "0 0 320 64" viewBox in a 600px column
+  // draws 320px of bars and 280px of nothing.
+  const track = Math.max(MIN_BAR_TRACK, width - LABEL_W - VALUE_W);
+  const scoreScale = d3.scaleLinear().domain([0, 10]).range([0, track]);
+
+  const svg = d3.select(svgEl);
+  svg.attr("viewBox", `0 0 ${width} ${BAR_H}`);
+  svg.selectAll("g.axis").remove();
+
+  const groups = svg.selectAll("g.axis")
+    .data(AXES)
+    .join("g")
+    .attr("class", "axis")
+    .attr("transform", a => `translate(0,${rowScale(a.key)})`);
+
+  groups.append("text")
+    .attr("x", 0).attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em")
+    .attr("font-size", 9).attr("fill", "var(--muted)")
+    .text(a => a.label);
+
+  groups.append("rect")
+    .attr("x", LABEL_W).attr("y", 0)
+    .attr("width", a => scoreScale(branch[a.key]))
+    .attr("height", rowScale.bandwidth())
+    .attr("rx", 2)
+    .attr("fill", a => a.color);
+
+  groups.append("text")
+    .attr("x", a => LABEL_W + scoreScale(branch[a.key]) + 6)
+    .attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em")
+    .attr("font-size", 10).attr("fill", "var(--text)")
+    .text(a => branch[a.key]);
+}
+
+function renderRow(branch) {
+  const row = document.createElement("div");
+  row.className = "row" + (branch.isWinner ? " winner" : "");
+
+  const left = document.createElement("div");
+  const nameEl = document.createElement("span");
+  nameEl.className = "name";
+  nameEl.textContent = branch.name;
+  left.appendChild(nameEl);
+  if (branch.isWinner) {
+    const badge = document.createElement("span");
+    badge.className = "badge";
+    badge.textContent = "WINNER";
+    left.appendChild(badge);
+  }
+  const desc = document.createElement("div");
+  desc.className = "desc";
+  desc.textContent = branch.description || "(no description recorded for this run)";
+  left.appendChild(desc);
+  if (branch.biggestBlocker) {
+    const blocker = document.createElement("div");
+    blocker.className = "blocker";
+    blocker.textContent = "Biggest blocker: " + branch.biggestBlocker;
+    left.appendChild(blocker);
+  }
+  row.appendChild(left);
+
+  const bars = document.createElement("div");
+  bars.className = "bars";
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svgEl = document.createElementNS(svgNS, "svg");
+  bars.appendChild(svgEl);
+  row.appendChild(bars);
+
+  const total = document.createElement("div");
+  total.className = "total";
+  const n = document.createElement("div");
+  n.className = "n";
+  n.textContent = branch.total;
+  const k = document.createElement("div");
+  k.className = "k";
+  k.textContent = "Total";
+  total.appendChild(n);
+  total.appendChild(k);
+  row.appendChild(total);
+
+  return { row, svgEl, branch };
+}
+
+const rowsEl = document.getElementById("rows");
+// Winner-first ordering would hide the tie-break signal (lower risk wins
+// ties) the council flagged as the one thing this chart must keep legible --
+// render in the original propose order instead; the WINNER badge and
+// --accent-2 row highlight do the "who won" job on their own.
+const rendered = DATA.branches.map(renderRow);
+for (const r of rendered) {
+  rowsEl.appendChild(r.row);
+}
+
+// Bars are drawn only after the rows are in the document, because their width
+// is measured from the laid-out column rather than assumed. A container that
+// has not been laid out yet (clientWidth 0 -- a hidden pane, a print pass, a
+// headless capture that measures before first layout) falls back to the old
+// 320 constant so something legible still renders, and is redrawn the moment a
+// real width exists. Measuring once and trusting it is exactly the failure this
+// guards against: the fallback looks like a correctly-rendered chart.
+// -1, never 0: a hidden pane genuinely measures 0, and seeding this at 0 would
+// make the very first call a no-op and leave every chart empty.
+let lastWidth = -1;
+function layoutBars() {
+  const width = rendered[0].svgEl.parentNode.clientWidth;
+  if (width === lastWidth) return;
+  lastWidth = width;
+  for (const r of rendered) {
+    renderBars(r.svgEl, r.branch, r.svgEl.parentNode.clientWidth || 320);
+  }
+}
+layoutBars();
+window.addEventListener("resize", layoutBars);
+window.addEventListener("load", layoutBars);
+if (window.ResizeObserver) {
+  new ResizeObserver(layoutBars).observe(rendered[0].svgEl.parentNode);
+}
+</script>
+</body>
+</html>

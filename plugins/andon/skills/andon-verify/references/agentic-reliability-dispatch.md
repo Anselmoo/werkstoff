@@ -6,12 +6,12 @@ than the correctness of the fix's output.
 
 ## Exact dispatch target
 
-Dispatch the skill **`confab:confab-agentic-reliability`** by exact name.
+Dispatch the skill **`zeugnis:zeugnis-agentic-reliability`** by exact name.
 Do **not** dispatch a similarly-named but wrong target such as
-`confab:confab-agentic-reliability-auditor` -- that name does not exist in
-the `confab` plugin and is a common typo-shaped mistake to avoid.
+`zeugnis:zeugnis-agentic-reliability-auditor` -- that name does not exist in
+the `zeugnis` plugin and is a common typo-shaped mistake to avoid.
 
-If only the agent `confab:agentic-reliability-auditor` resolves (the skill
+If only the agent `zeugnis:agentic-reliability-auditor` resolves (the skill
 itself unavailable), you **may** fall back to dispatching that agent
 directly, but you must still have attempted the skill dispatch first and
 note in the evidence doc that this run used the agent fallback, not the
@@ -26,12 +26,12 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py check-strategy-d-target "<di
 
 This raises on anything other than the exact preferred name (or, with
 `--used-fallback`, anything other than the exact fallback agent name) --
-including the specific typo `confab:confab-agentic-reliability-auditor`.
+including the specific typo `zeugnis:zeugnis-agentic-reliability-auditor`.
 
 ## Prerequisite and degradation
 
-Prerequisite: the `confab` plugin installed with the
-`confab-agentic-reliability` skill (or, as fallback, the
+Prerequisite: the `zeugnis` plugin installed with the
+`zeugnis-agentic-reliability` skill (or, as fallback, the
 `agentic-reliability-auditor` agent) present. If neither resolves, this
 strategy is unavailable for this wire -- report that plainly and let
 `andon-verify`'s classifier route to the next applicable strategy per

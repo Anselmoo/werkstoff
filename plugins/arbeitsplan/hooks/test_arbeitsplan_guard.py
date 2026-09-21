@@ -227,24 +227,24 @@ def main() -> int:
         check("own-plugin agent writes NO delegation record",
               ALLOW if not wrote else DENY, ALLOW)
 
-        rc, _ = run(tmp, "Agent", {"subagent_type": "compass:compass-explore-branches",
+        rc, _ = run(tmp, "Agent", {"subagent_type": "zirkel:zirkel-explore-branches",
                                    "prompt": "delegate out"})
         check("cross-plugin delegation at depth 0 -> ALLOW", rc, ALLOW)
         recs = [json.loads(x) for x in led.read_text().splitlines() if x.strip()] if led.exists() else []
         check("cross-plugin delegation IS recorded",
-              ALLOW if len(recs) == 1 and recs[0]["target"] == "compass:compass-explore-branches" else DENY,
+              ALLOW if len(recs) == 1 and recs[0]["target"] == "zirkel:zirkel-explore-branches" else DENY,
               ALLOW)
 
         print("DEPTH (cap at 3)")
         # Build a chain by hand, then point the lock at its tip.
         chain = [
             {"id": "d1", "runId": "ap-test-1", "parent": None, "depth": 0,
-             "source": "arbeitsplan", "target": "compass", "pattern": "serial",
-             "chain": ["arbeitsplan", "compass"], "merge": None,
+             "source": "arbeitsplan", "target": "zirkel", "pattern": "serial",
+             "chain": ["arbeitsplan", "zirkel"], "merge": None,
              "status": "completed", "timestamp": "2026-09-12T09:00:00Z"},
             {"id": "d2", "runId": "ap-test-1", "parent": "d1", "depth": 1,
-             "source": "compass", "target": "andon", "pattern": "serial",
-             "chain": ["compass", "andon"], "merge": None,
+             "source": "zirkel", "target": "andon", "pattern": "serial",
+             "chain": ["zirkel", "andon"], "merge": None,
              "status": "completed", "timestamp": "2026-09-12T09:01:00Z"},
             {"id": "d3", "runId": "ap-test-1", "parent": "d2", "depth": 2,
              "source": "andon", "target": "lehre", "pattern": "serial",
@@ -266,12 +266,12 @@ def main() -> int:
             print("  FAIL depth denial names the cap")
 
         print("CYCLE (caught below the cap, not by it)")
-        lock(tmp, budget={"totalDispatches": 40}, delegationParent="d1", delegationSource="compass")
+        lock(tmp, budget={"totalDispatches": 40}, delegationParent="d1", delegationSource="zirkel")
         rc, out = run(tmp, "Agent", {"subagent_type": "arbeitsplan:x", "prompt": "back to start"})
         check("A->B->A cycle back to the run owner -> DENY", rc, DENY, out)
 
         lock(tmp, budget={"totalDispatches": 40}, delegationParent="d2", delegationSource="andon")
-        rc, out = run(tmp, "Agent", {"subagent_type": "compass:anything", "prompt": "cycle"})
+        rc, out = run(tmp, "Agent", {"subagent_type": "zirkel:anything", "prompt": "cycle"})
         check("A->B->C->B cycle -> DENY", rc, DENY, out)
         if rc == DENY and "cycle" not in out.lower():
             FAILURES.append("cycle denial says cycle")
