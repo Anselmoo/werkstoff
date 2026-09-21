@@ -4,6 +4,10 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-21
+
+_No notable changes recorded._
+
 ## [0.5.0] - 2026-09-20
 ### Added
 - `M-DESC-POINTER` (minor): a `description` must not refer the reader to the file's own
