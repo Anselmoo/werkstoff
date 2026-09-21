@@ -5,6 +5,8 @@ Releases before the rename were published as `compass`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `compass` to `zirkel`** -- a *Zirkel* is a pair of dividers -- the tool that scribes the layout onto a
   workpiece before any cut, which is what clarify/explore/decompose do.
