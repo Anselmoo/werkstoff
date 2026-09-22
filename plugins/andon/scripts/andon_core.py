@@ -18,7 +18,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 # ---------------------------------------------------------------------------
 # Named constants (spec numeric bounds -- never re-derive these ad hoc)
@@ -42,6 +42,13 @@ GAP_STATUSES = ["open", "closed"]
 WIRE_VERDICTS = ["green", "red", "unknown"]
 STRATEGY_LETTERS = ["a", "b", "c", "d", "e", "f", "g"]
 TIERS = [1, 2, 3]
+# #72: optional evidence-only lifecycle fields. superseded_by names an
+# existing evidence slug that replaces this record (a dangling or
+# self-referencing value is a schema error); measured_against is purely
+# informational (named verbatim in any deny reason it causes);
+# valid_until is an ISO date (YYYY-MM-DD) past which the record gates as
+# verdict unknown regardless of what it actually recorded.
+LIFECYCLE_FIELDS = ("superseded_by", "measured_against", "valid_until")
 # route_wire's tier_ceiling for strategy e: 1 with a real index, 2 without.
 # Never 3 -- Tier 2 (AST/grep) needs nothing but the repo itself.
 STRUCTURAL_TIER_CEILINGS = [1, 2]
@@ -124,10 +131,157 @@ class AndonError(Exception):
         self.message = message
 
 
+# ---------------------------------------------------------------------------
+# Worktree resolution (#71): the ledger and .claude/andon.local.md are
+# resolved from the MAIN checkout root, never from whatever repo_root a
+# caller happens to hand in -- there is ONE shared ledger.
+# ---------------------------------------------------------------------------
+
+def resolve_main_root(start):
+    """Pure filesystem walk (no subprocess) from `start` up to the nearest
+    `.git`, returning the MAIN checkout root: the directory `.git` itself
+    lives in when it is an ordinary directory, or -- for a linked worktree,
+    where `.git` is a FILE containing `gitdir: <path>` -- the parent of the
+    common git dir named by that gitdir's own `commondir` file.
+
+    A `git worktree add` checkout has neither `analysis/andon/ledger` nor
+    `.claude/andon.local.md` of its own; both live only in the main
+    checkout. Before this function existed, every `repo_root` this module
+    was handed (a CLI arg, or the hook's cwd) was trusted as-is, so a
+    worktree's ledger read came back empty and every edit made from inside
+    one went silently unguarded, while a write issued from a worktree would
+    have created a second, orphaned copy of the ledger instead of landing in
+    the one place `andon-status` and the hook actually look. This walk
+    reaches that one ledger regardless of which linked worktree
+    `andon_core.py` (or the hook, which duplicates this function -- see
+    hooks/andon_enforce.py's module docstring) is invoked from.
+
+    Every caller is idempotent under this: called again with the MAIN root
+    itself, the first directory checked already has `.git` as a directory,
+    so it returns immediately unchanged.
+
+    Falls back to `start` (unchanged from every caller's behaviour before
+    this function existed) on anything unreadable or malformed: a `.git`
+    file with no `gitdir:` line, a missing or empty `commondir`, a
+    `commondir` naming a path that is not a directory, a permission error --
+    or simply no `.git` found at all walking all the way to the filesystem
+    root, i.e. `start` is not inside a git repository.
+    """
+    start_abs = os.path.abspath(start)
+    current = start_abs
+    while True:
+        candidate = os.path.join(current, ".git")
+        try:
+            is_dir = os.path.isdir(candidate)
+            is_file = (not is_dir) and os.path.isfile(candidate)
+        except OSError:
+            return start_abs
+        if is_dir:
+            return current
+        if is_file:
+            try:
+                with io.open(candidate, "r", encoding="utf-8", errors="replace") as fh:
+                    text = fh.read()
+            except OSError:
+                return start_abs
+            m = re.search(r"^\s*gitdir:\s*(.+?)\s*$", text, re.MULTILINE)
+            if not m:
+                return start_abs
+            gitdir_raw = m.group(1)
+            # os.path.normpath, not a Path equivalent (see CLAUDE.md's Python
+            # conventions note): this collapses a `gitdir:` line's `../..`
+            # LEXICALLY, with no filesystem access and no symlink-following --
+            # exactly what's needed here, and exactly the gap Path has no
+            # drop-in for.
+            gitdir = (gitdir_raw if os.path.isabs(gitdir_raw)
+                      else os.path.normpath(os.path.join(current, gitdir_raw)))
+            commondir_path = os.path.join(gitdir, "commondir")
+            try:
+                with io.open(commondir_path, "r", encoding="utf-8", errors="replace") as fh:
+                    common_raw = fh.read().strip()
+            except OSError:
+                return start_abs
+            if not common_raw:
+                return start_abs
+            common_dir = (common_raw if os.path.isabs(common_raw)
+                          else os.path.normpath(os.path.join(gitdir, common_raw)))
+            try:
+                if not os.path.isdir(common_dir):
+                    return start_abs
+            except OSError:
+                return start_abs
+            return os.path.dirname(common_dir)
+        parent = os.path.dirname(current)
+        if parent == current:
+            return start_abs  # walked to the filesystem root -- not a git repo at all
+        current = parent
+
+
 def now_iso():
     # Deterministic wall-clock read is fine here (this runs as a real CLI
     # process, not inside a Workflow script), unlike the Workflow sandbox.
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def today_utc():
+    return datetime.now(timezone.utc).date()
+
+
+def parse_iso_date(value):
+    """Returns a `date`, or None if malformed. Manual digit parsing rather
+    than `datetime.strptime` -- DTZ007 flags a naive datetime built via
+    `strptime`, and every use of `date()` here represents a fixed calendar
+    value a record already carries, never a read of the current time (that's
+    `today_utc()` above, the only place `datetime.now()` appears in this
+    file's lifecycle-field handling).
+    """
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return None
+    year, month, day = (int(part) for part in value.split("-"))
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+class ChainResolutionError(Exception):
+    """A superseded_by chain is broken: a dangling link or a cycle.
+
+    DUPLICATED in hooks/andon_enforce.py's resolve_chain_head -- the hook is
+    stdlib-only and imports nothing from this module, so a broken/half
+    installed andon can never stop it loading (see that file's module
+    docstring). test_andon_core.py's TestChainHeadResolutionAgreement feeds
+    the same input to both and asserts they agree.
+    """
+
+
+def resolve_chain_head(start_slug, superseded_by_of):
+    """Follow `superseded_by` from `start_slug` to the head of its
+    supersession chain -- a record nobody supersedes further (#72:
+    chain-head-resolution). `superseded_by_of` maps every known slug to its
+    `superseded_by` value (falsy if none). Raises ChainResolutionError on a
+    dangling link (points to a slug not in `superseded_by_of`) or a cycle,
+    wherever in the chain it occurs -- never silently falls back to the
+    unresolved leaf's own verdict.
+    """
+    seen = {start_slug}
+    cursor = start_slug
+    while True:
+        nxt = superseded_by_of.get(cursor)
+        if not nxt:
+            return cursor
+        if nxt not in superseded_by_of:
+            raise ChainResolutionError(
+                f"'{cursor}' is superseded_by {nxt!r}, which does not exist "
+                f"(dangling link)."
+            )
+        if nxt in seen:
+            raise ChainResolutionError(
+                f"supersession cycle detected starting at {start_slug!r}: "
+                f"reaches {nxt!r} again."
+            )
+        seen.add(nxt)
+        cursor = nxt
 
 
 # ---------------------------------------------------------------------------
@@ -258,6 +412,7 @@ def load_settings(repo_root):
     """Reads .claude/andon.local.md if present; else documented defaults.
     Returns dict with an extra '_settings_file_present' bool key.
     """
+    repo_root = resolve_main_root(repo_root)  # 71: settings live only in the MAIN checkout
     settings = default_settings()
     path = os.path.join(repo_root, SETTINGS_PATH)
     if not os.path.isfile(path):
@@ -292,6 +447,10 @@ def validate_write_path(raw_path, repo_root, allowed_dir):
     """Rejects path traversal, absolute paths, and targets outside allowed_dir.
     Returns the safe absolute path on success; raises AndonError otherwise.
     """
+    # 71: every write funnels through here (write_doc, retire_doc,
+    # append_log_entry) -- resolving once, here, means there is ONE shared
+    # ledger no matter which linked worktree the write was issued from.
+    repo_root = resolve_main_root(repo_root)
     if os.path.isabs(raw_path):
         raise AndonError(
             "WRITE_SCOPE_ABSOLUTE",
@@ -342,6 +501,15 @@ def validate_doc(fields):
             "SCHEMA_MISSING_FIELD",
             f"OKF {doc_type} doc is missing required gating field(s): {missing}. "
             f"Refusing to write -- a value nobody supplied must never enter the ledger.",
+        )
+
+    # #72: the three lifecycle fields are accepted on evidence only.
+    lifecycle_present = [f for f in LIFECYCLE_FIELDS if f in fields]
+    if lifecycle_present and doc_type != "evidence":
+        raise AndonError(
+            "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE",
+            f"lifecycle field(s) {lifecycle_present} are only valid on evidence "
+            f"docs, got type {doc_type!r}.",
         )
 
     if doc_type == "stage":
@@ -401,6 +569,33 @@ def validate_doc(fields):
             if tier_ceiling is not None:
                 raise AndonError("SCHEMA_TIER_CEILING_ONLY_FOR_E", "tier_ceiling is only valid when strategy is 'e'.")
 
+        # #72: superseded_by / measured_against / valid_until. Optional --
+        # absence behaves exactly as today. Self-reference is a schema error
+        # (write_doc, the only caller that knows this doc's own slug, checks
+        # it; validate_doc alone has no filename to compare against).
+        superseded_by = fields.get("superseded_by")
+        if superseded_by is not None:
+            if not isinstance(superseded_by, str) or not superseded_by.strip():
+                raise AndonError(
+                    "SCHEMA_BAD_SUPERSEDED_BY",
+                    f"superseded_by must be a non-empty evidence slug, got {superseded_by!r}.",
+                )
+
+        measured_against = fields.get("measured_against")
+        if measured_against is not None:
+            if not isinstance(measured_against, str) or not measured_against.strip():
+                raise AndonError(
+                    "SCHEMA_BAD_MEASURED_AGAINST",
+                    f"measured_against must be a non-empty string, got {measured_against!r}.",
+                )
+
+        valid_until = fields.get("valid_until")
+        if valid_until is not None and parse_iso_date(valid_until) is None:
+            raise AndonError(
+                "SCHEMA_BAD_VALID_UNTIL",
+                f"valid_until must be a real ISO date (YYYY-MM-DD), got {valid_until!r}.",
+            )
+
     # kebab-case tag conformance (rule: okf-ledger-schema-conformance)
     for tag in fields.get("tags", []) or []:
         if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9+.\-]+)?", str(tag)):
@@ -448,6 +643,15 @@ def write_doc(repo_root, ledger_dir, relative_path, fields, body=""):
     the on-disk layout ledger_dir/{stages,gaps,evidence}/*.md.
     """
     validate_doc(fields)
+    # #72: self-reference is a schema error. validate_doc alone has no
+    # filename to compare superseded_by against -- this is the only writer
+    # that knows the doc's own slug before it lands on disk.
+    slug = os.path.splitext(os.path.basename(relative_path))[0]
+    if fields.get("type") == "evidence" and fields.get("superseded_by") == slug:
+        raise AndonError(
+            "SCHEMA_SUPERSEDED_BY_SELF",
+            f"evidence doc {slug!r} cannot name itself in superseded_by.",
+        )
     fields = dict(fields)
     fields.setdefault("timestamp", now_iso())
     fields["tags"] = build_tags_for_doc(fields)
@@ -526,6 +730,7 @@ def read_all_docs(ledger_dir, subdir):
 
 
 def init_or_resume_ledger(repo_root, ledger_dir):
+    repo_root = resolve_main_root(repo_root)  # 71: resume/initialize the MAIN checkout's ledger
     log_path = os.path.join(repo_root, ledger_dir, "log.md")
     abs_ledger = os.path.join(repo_root, ledger_dir)
     if os.path.isfile(log_path):
@@ -597,6 +802,7 @@ def append_log_entry(repo_root, ledger_dir, entry_kind, fields):
 
 
 def parse_log_counters(repo_root, ledger_dir):
+    repo_root = resolve_main_root(repo_root)  # 71: read the MAIN checkout's log.md
     log_path = os.path.join(repo_root, ledger_dir, "log.md")
     if not os.path.isfile(log_path):
         return None
@@ -842,6 +1048,7 @@ def check_strategy_d_target(dispatch_name, used_fallback=False):
 # ---------------------------------------------------------------------------
 
 def check_ingest_prereqs(repo_root, gap_source, befund_output_dir):
+    repo_root = resolve_main_root(repo_root)  # 71: befund output lives under the MAIN checkout too
     if gap_source != "befund-brief":
         return {"ingest_mode": False, "ok": True}
     brief_path = os.path.join(repo_root, befund_output_dir, "MODERNIZATION_BRIEF.md")
@@ -932,6 +1139,9 @@ def scan_and_mask_credentials(text, file_line="unknown:0"):
 def run_preflight(repo_root, settings, befund_stage_mapper_present, zeugnis_skill_present,
                    lsp_tool_present, structural_index_present, property_lib_python,
                    property_lib_js, property_lib_other):
+    # 71: ledger writability (Check 2 below) must test the same root
+    # write_doc actually writes to -- the MAIN checkout.
+    repo_root = resolve_main_root(repo_root)
     # Check 1: stage legibility
     manifest_hits = 0
     if befund_stage_mapper_present:
@@ -1014,11 +1224,35 @@ def _verify_verdict(cross_plugin):
 # ---------------------------------------------------------------------------
 
 def compute_wire_status(evidence_docs_for_wire):
-    """Wire status MUST be derived from linked evidence tags, never inferred."""
+    """Wire status MUST be derived from linked evidence tags, never inferred.
+
+    #72 (chain-head-resolution): the filename-latest record's `superseded_by`
+    is resolved transitively to the head of its chain -- a record nobody
+    supersedes -- and it is the HEAD's verdict and `valid_until` that get
+    judged, never the unresolved leaf's. A dangling link or a cycle anywhere
+    in the chain reports `unknown` (fail closed) rather than falling back to
+    the leaf's own verdict. resolve_chain_head() is duplicated in
+    hooks/andon_enforce.py; see that function's docstring and
+    TestChainHeadResolutionAgreement in test_andon_enforce.py.
+    """
     if not evidence_docs_for_wire:
         return "unknown"
     latest = evidence_docs_for_wire[-1]
-    verdict = latest["fields"].get("verdict")
+    docs_by_slug = {d["slug"]: d for d in evidence_docs_for_wire}
+    superseded_by_of = {slug: d["fields"].get("superseded_by") for slug, d in docs_by_slug.items()}
+    try:
+        head_slug = resolve_chain_head(latest["slug"], superseded_by_of)
+    except ChainResolutionError:
+        return "unknown"
+    head_fields = docs_by_slug[head_slug]["fields"]
+
+    valid_until = head_fields.get("valid_until")
+    if valid_until is not None:
+        parsed = parse_iso_date(valid_until)
+        if parsed is None or today_utc() > parsed:
+            return "unknown"  # malformed or expired -- both fail closed
+
+    verdict = head_fields.get("verdict")
     if verdict == "green":
         return "green"
     if verdict == "red":
@@ -1027,6 +1261,7 @@ def compute_wire_status(evidence_docs_for_wire):
 
 
 def render_board(repo_root, ledger_dir):
+    repo_root = resolve_main_root(repo_root)  # 71: render the MAIN checkout's ledger
     log_path = os.path.join(repo_root, ledger_dir, "log.md")
     if not os.path.isfile(log_path):
         return None  # caller must report "never run" and suggest preflight -> loop

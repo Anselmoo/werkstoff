@@ -182,5 +182,317 @@ class ValidateDocTierCeiling(unittest.TestCase):
             self.assertFalse((Path(root) / "ledger").exists())
 
 
+def simple_evidence(**overrides):
+    return {
+        "type": "evidence", "title": "wire proven", "wire": "a->b",
+        "strategy": "a", "verdict": "green",
+        **overrides,
+    }
+
+
+class ValidateDocLifecycleFields(unittest.TestCase):
+    """#72: superseded_by, measured_against, valid_until -- evidence-only,
+    optional, rejected with SCHEMA_* codes when malformed."""
+
+    def assertRefused(self, fields, code):
+        with self.assertRaises(andon_core.AndonError) as ctx:
+            andon_core.validate_doc(fields)
+        self.assertEqual(ctx.exception.code, code)
+
+    def test_absent_fields_behave_exactly_as_today(self):
+        self.assertTrue(andon_core.validate_doc(simple_evidence()))
+
+    def test_all_three_accepted_on_evidence(self):
+        self.assertTrue(andon_core.validate_doc(simple_evidence(
+            superseded_by="other-slug", measured_against="decision-1",
+            valid_until="2099-01-01",
+        )))
+
+    def test_superseded_by_on_gap_is_refused(self):
+        gap = {
+            "type": "gap", "title": "gap with a supersede field",
+            "stage": "ingest", "kind": "bug", "status": "open",
+            "superseded_by": "something",
+        }
+        self.assertRefused(gap, "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE")
+
+    def test_measured_against_on_stage_is_refused(self):
+        stage = {
+            "type": "stage", "title": "ingest", "order": 1,
+            "confidence": "heuristic", "measured_against": "decision-1",
+        }
+        self.assertRefused(stage, "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE")
+
+    def test_empty_superseded_by_is_refused(self):
+        self.assertRefused(simple_evidence(superseded_by=""), "SCHEMA_BAD_SUPERSEDED_BY")
+
+    def test_non_string_superseded_by_is_refused(self):
+        self.assertRefused(simple_evidence(superseded_by=3), "SCHEMA_BAD_SUPERSEDED_BY")
+
+    def test_empty_measured_against_is_refused(self):
+        self.assertRefused(simple_evidence(measured_against=""), "SCHEMA_BAD_MEASURED_AGAINST")
+
+    def test_non_iso_valid_until_is_refused(self):
+        self.assertRefused(simple_evidence(valid_until="not-a-date"), "SCHEMA_BAD_VALID_UNTIL")
+
+    def test_impossible_calendar_date_is_refused(self):
+        self.assertRefused(simple_evidence(valid_until="2024-02-30"), "SCHEMA_BAD_VALID_UNTIL")
+
+    def test_write_doc_refuses_self_reference(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(andon_core.AndonError) as ctx:
+                andon_core.write_doc(
+                    root, "ledger", "evidence/ev1.md",
+                    simple_evidence(superseded_by="ev1"),
+                )
+            self.assertEqual(ctx.exception.code, "SCHEMA_SUPERSEDED_BY_SELF")
+            self.assertFalse((Path(root) / "ledger").exists())
+
+    def test_write_doc_accepts_reference_to_a_different_slug(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = andon_core.write_doc(
+                root, "ledger", "evidence/ev2.md",
+                simple_evidence(superseded_by="ev1"),
+            )
+            self.assertTrue(Path(path).is_file())
+
+
+def evidence_doc(slug, **fields):
+    return {"path": f"evidence/{slug}.md", "slug": slug, "fields": fields, "body": ""}
+
+
+class ComputeWireStatusChainHeadResolution(unittest.TestCase):
+    """#72: compute_wire_status resolves superseded_by to the chain head
+    before judging verdict/expiry -- mirrors hooks/andon_enforce.py's
+    stop_reason() evidence loop (probe_lifecycle.py's L1-L4 exercise the
+    hook side of the same behaviour end to end)."""
+
+    def test_no_chain_behaves_as_before(self):
+        docs = [evidence_doc("e0", wire="a->b", verdict="red"),
+                evidence_doc("e1", wire="a->b", verdict="green")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_superseded_leaf_defers_to_head(self):
+        docs = [evidence_doc("a-green", wire="a->b", verdict="green"),
+                evidence_doc("b-red", wire="a->b", verdict="red", superseded_by="a-green")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_dangling_superseded_by_is_unknown(self):
+        docs = [evidence_doc("c-red", wire="a->b", verdict="green", superseded_by="nonexistent")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_cycle_is_unknown(self):
+        docs = [evidence_doc("x", wire="a->b", verdict="green", superseded_by="y"),
+                evidence_doc("y", wire="a->b", verdict="green", superseded_by="x")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_multi_hop_chain_resolves_to_true_head(self):
+        """v1 (green, the true head) <- v2 (red, superseded_by v1) <- v3 (red,
+        superseded_by v2, the filename-latest record). Stopping after one
+        hop would read v2's own red verdict and get this wrong; only walking
+        the whole chain to v1 gets 'green'."""
+        docs = [evidence_doc("v1", wire="a->b", verdict="green"),
+                evidence_doc("v2", wire="a->b", verdict="red", superseded_by="v1"),
+                evidence_doc("v3", wire="a->b", verdict="red", superseded_by="v2")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_dangling_deep_in_chain_is_unknown_not_leaf_verdict(self):
+        """A dangling link ANYWHERE in the chain denies -- even when the
+        leaf itself would otherwise resolve to a perfectly fine record one
+        hop closer."""
+        docs = [evidence_doc("v1", wire="a->b", verdict="green", superseded_by="ghost"),
+                evidence_doc("v2", wire="a->b", verdict="green", superseded_by="v1")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_expiry_judged_on_head_only(self):
+        """The superseded (non-head) record's own valid_until must not
+        matter -- only the head's."""
+        docs = [
+            evidence_doc("head", wire="a->b", verdict="green"),
+            evidence_doc("leaf", wire="a->b", verdict="green",
+                         superseded_by="head", valid_until="2020-01-01"),
+        ]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_expired_head_is_unknown_even_if_green(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="2020-01-01")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_future_valid_until_on_head_is_unaffected(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="2099-01-01")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_malformed_valid_until_on_head_fails_closed(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="not-a-date")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_two_red_records_superseding_each_other_is_never_green(self):
+        """Library-level twin of
+        hooks/test_andon_enforce.py's TestSupersessionCycleTwoRedRecords: a
+        ledger whose only two evidence docs for one wire (x->y) supersede
+        EACH OTHER -- a-red points to b-red, b-red points back to a-red --
+        has no resolvable chain head. compute_wire_status's contract is
+        `evidence_docs_for_wire: list[{"slug":..., "fields": {...}}] ->
+        "green"|"red"|"unknown"` (see evidence_doc() above and this
+        function's own docstring); a cycle must never resolve to "green",
+        the one status that would let andon-loop advance past this wire."""
+        docs = [
+            evidence_doc("a-red", wire="x->y", strategy="a", verdict="red", superseded_by="b-red"),
+            evidence_doc("b-red", wire="x->y", strategy="a", verdict="red", superseded_by="a-red"),
+        ]
+        status = andon_core.compute_wire_status(docs)
+        self.assertNotEqual(status, "green")
+        self.assertEqual(status, "unknown")
+
+
+def _git(args, cwd):
+    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed in {cwd}: {r.stderr}")
+    return r
+
+
+class GitRepoWithWorktree:
+    """A throwaway main checkout plus one linked worktree, built with real
+    git (git init + commit + git worktree add) inside a tempdir -- this
+    worktree (per CLAUDE.md) must never depend on the layout of the
+    checkout its own tests run in."""
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # Resolved once, up front: tempfile.TemporaryDirectory() can hand
+        # back a path through a symlink (e.g. macOS /tmp -> /private/tmp),
+        # which would make a direct string comparison against
+        # resolve_main_root()'s (also-resolved) output fail for a reason
+        # that has nothing to do with the behaviour under test.
+        base = Path(self.tmp.name).resolve()
+        self.main = base / "main"
+        self.main.mkdir()
+        _git(["init", "-q"], self.main)
+        _git(["config", "user.email", "test@test.local"], self.main)
+        _git(["config", "user.name", "Test"], self.main)
+        (self.main / "README.md").write_text("init\n", encoding="utf-8")
+        _git(["add", "README.md"], self.main)
+        _git(["commit", "-q", "-m", "init"], self.main)
+        self.worktree = base / "wt"
+        _git(["worktree", "add", "-q", "-b", "wt-branch", str(self.worktree)], self.main)
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
+class ResolveMainRoot(unittest.TestCase):
+    """#71: resolve_main_root() is a pure filesystem walk (no subprocess)
+    from a start directory up to the nearest `.git`, landing on the MAIN
+    checkout root whether `.git` is an ordinary directory or a linked
+    worktree's `gitdir:` file."""
+
+    def test_ordinary_repo_resolves_to_itself(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(andon_core.resolve_main_root(str(fx.main)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_worktree_resolves_to_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(andon_core.resolve_main_root(str(fx.worktree)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_subdirectory_of_worktree_still_resolves_to_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            sub = fx.worktree / "src" / "pkg"
+            sub.mkdir(parents=True)
+            self.assertEqual(andon_core.resolve_main_root(str(sub)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_non_git_dir_falls_back_to_itself(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = str(Path(tmp).resolve())
+            self.assertEqual(andon_core.resolve_main_root(root), root)
+
+    def test_malformed_gitdir_file_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / ".git").write_text("not a gitdir line\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_gitdir_with_missing_commondir_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gitdir = root / ".git-real"
+            gitdir.mkdir()
+            (root / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_gitdir_with_dangling_commondir_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gitdir = root / ".git-real"
+            gitdir.mkdir()
+            (root / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            (gitdir / "commondir").write_text("../does-not-exist\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_idempotent_on_an_already_resolved_root(self):
+        fx = GitRepoWithWorktree()
+        try:
+            once = andon_core.resolve_main_root(str(fx.worktree))
+            twice = andon_core.resolve_main_root(once)
+            self.assertEqual(once, twice)
+        finally:
+            fx.cleanup()
+
+
+class LibraryFunctionsResolveFromWorktree(unittest.TestCase):
+    """#71: andon_core's library functions -- not just its CLI's own
+    repo_root arg -- resolve to the MAIN checkout for reads AND writes,
+    since there is one shared ledger. Mirrors probe_worktree.py's W9/W10
+    at the library level rather than through a subprocess."""
+
+    def test_write_doc_given_worktree_root_lands_under_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            for sub in ("gaps", "evidence"):
+                (fx.main / "analysis/andon/ledger" / sub).mkdir(parents=True)
+            (fx.main / "analysis/andon/ledger/log.md").write_text("", encoding="utf-8")
+            fields = {"type": "evidence", "title": "wt write", "wire": "a->b",
+                      "strategy": "a", "verdict": "green"}
+            andon_core.write_doc(str(fx.worktree), "analysis/andon/ledger", "evidence/wt.md", fields)
+            self.assertTrue((fx.main / "analysis/andon/ledger/evidence/wt.md").is_file())
+            self.assertFalse((fx.worktree / "analysis/andon/ledger/evidence/wt.md").is_file(),
+                              "write-doc must not create a second copy under the worktree")
+        finally:
+            fx.cleanup()
+
+    def test_load_settings_given_worktree_root_reads_main_settings(self):
+        fx = GitRepoWithWorktree()
+        try:
+            (fx.main / ".claude").mkdir()
+            (fx.main / ".claude/andon.local.md").write_text(
+                "---\nauthorization_level: hard-to-reverse\n---\n", encoding="utf-8")
+            settings = andon_core.load_settings(str(fx.worktree))
+            self.assertEqual(settings["authorization_level"], "hard-to-reverse")
+            self.assertTrue(settings["_settings_file_present"])
+        finally:
+            fx.cleanup()
+
+    def test_parse_log_counters_given_worktree_root_reads_main_log(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger"
+            ledger.mkdir(parents=True)
+            (ledger / "log.md").write_text(
+                "### Pass 1 (cycle 1) -- 2026-01-01T00:00:00Z\n", encoding="utf-8")
+            counters = andon_core.parse_log_counters(str(fx.worktree), "analysis/andon/ledger")
+            self.assertEqual(counters["total_passes"], 1)
+        finally:
+            fx.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

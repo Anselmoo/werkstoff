@@ -207,6 +207,21 @@ call it:
    see [Retiring a stale record](#retiring-a-stale-record) below for the
    other way to stop a record from gating.
 
+   An evidence doc's optional `superseded_by` chains transitively to the
+   record nobody supersedes -- its *head* -- and it is the head's `verdict`
+   and `valid_until` that actually get judged, matching
+   `compute_wire_status()`. A dangling `superseded_by` (names a slug with no
+   evidence doc) or a cycle, wherever it occurs in the chain, denies outright
+   -- fail closed, even when the record that started the resolution reads
+   `green`. `valid_until` (an ISO `YYYY-MM-DD` date) on the chain head makes
+   the record gate as verdict `unknown` once that date has passed, whatever
+   it actually recorded; an unparseable `valid_until` denies the same way. A
+   third optional field, `measured_against`, is purely informational and is
+   named verbatim in any deny reason it causes. See
+   `references/okf-ledger-schema.md`'s evidence section and
+   `references/andon-rule.md`'s supersession-and-expiry section for the full
+   semantics.
+
 Gating values are read tolerantly: a frontmatter key first (`status`,
 `blast_radius`, ...), then the legacy `tags: ["kind:wire", "status:open"]`
 array, then treated as genuinely absent -- a missing value is never inferred,
@@ -222,6 +237,58 @@ failure, unexpected exception), always naming the escape hatch -- see
 for the full field table and defaults. Every andon skill reads this file
 first and halts immediately if `enabled: false` is set -- before running any
 phase, before touching the repo.
+
+## Git worktrees
+
+A `git worktree add` checkout has neither `analysis/andon/ledger` nor
+`.claude/andon.local.md` of its own -- both live only in the main checkout.
+There is **one shared ledger**: both the PreToolUse hook and
+`scripts/andon_core.py` (its CLI and its library functions alike, so a
+direct caller like `scripts/build_board_html.py` gets this for free too)
+resolve the ledger and the settings file from the **main checkout root**,
+never from `cwd` or a caller-supplied `repo_root` directly, so:
+
+- Editing source **inside a linked worktree** is gated by the same ledger
+  that gates the main checkout -- a gap or a red/unknown verdict in the main
+  ledger halts edits in the worktree exactly as it would in the main
+  checkout, and `.claude/andon.local.md` at the worktree's own root (if one
+  somehow existed) is never consulted.
+- A write issued from inside a worktree -- `write-doc`, `retire`,
+  `append-log`, or the hook's own always-allowed write-to-the-ledger
+  exception -- lands under the **main** checkout's `analysis/andon/ledger`,
+  never a second, orphaned copy under the worktree.
+- The `git worktree add` -> `PreToolUse hook denies an edit in the
+  worktree using the main ledger's content` round trip is a permanent
+  regression, covered by `hooks/test_andon_enforce.py`'s
+  `TestWorktreeLedgerResolution` and `TestMainRootResolutionAgreement`,
+  `scripts/test_andon_core.py`'s `ResolveMainRoot` and
+  `LibraryFunctionsResolveFromWorktree`, and (end to end, across real
+  `git init` + `git worktree add` fixtures) `checks/probe_worktree.py`'s
+  cases W1-W10 in the run that shipped this.
+
+Resolution is a **pure filesystem walk, no subprocess**: walk up from the
+start directory to the nearest `.git`. An ordinary `.git` directory means
+its own parent is the main root (the non-worktree case, unchanged from
+before). A `.git` **file** (`gitdir: <path>`, what `git worktree add`
+writes) is read, and that gitdir's own `commondir` file is read in turn to
+find the common git directory shared with the main checkout -- that common
+directory's parent is the main root. Anything unreadable or malformed along
+the way (a `.git` file with no `gitdir:` line, a missing or empty
+`commondir`, a `commondir` naming something that isn't a directory) falls
+back to the start directory, exactly like running outside git entirely --
+never a raise, never a hard failure. `andon_core.py`'s `resolve_main_root()`
+is the implementation; the hook duplicates it verbatim in shape (it is
+stdlib-only and imports nothing from the plugin -- see
+[What is enforced, and what is not](#what-is-enforced-and-what-is-not)
+above), with an agreement test pinning the two copies to the same behaviour.
+
+The hook's pre-existing "a target outside `cwd` is none of this hook's
+business" containment check (#69) is **unchanged** -- it still compares
+against `cwd`, not the resolved main root. A write to the main checkout's
+own ledger path, issued from a worktree's `cwd`, still gets through: that
+path lies entirely outside the worktree's own `cwd`, so the existing
+outside-the-repo bypass already lets it through, for the same reason it
+always let any other out-of-repo write through.
 
 ## The report
 

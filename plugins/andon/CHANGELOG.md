@@ -4,6 +4,43 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- **andon**: optional evidence lifecycle fields `superseded_by`,
+  `measured_against`, `valid_until` (#72). `superseded_by` chains
+  transitively to the head of its supersession chain -- a record nobody
+  supersedes -- in both `andon_core.compute_wire_status()` and the
+  PreToolUse hook's `stop_reason()`; a dangling link or a cycle anywhere in
+  the chain denies outright rather than falling back to the unresolved
+  record's own verdict. Expiry (`valid_until`) is judged on the chain head
+  only. `validate_doc()` accepts all three on evidence docs only and rejects
+  malformed values with `SCHEMA_*` codes; a record with none of them behaves
+  exactly as before.
+
+### Fixed
+- **andon**: resolve the ledger and `.claude/andon.local.md` from the MAIN
+  checkout root, not from a hook's `cwd` or a caller-supplied `repo_root`
+  (#71). A `git worktree add` checkout has neither of its own; every edit
+  made from inside one was silently unguarded, and a write issued from one
+  would have created a second, orphaned copy of the ledger. The PreToolUse
+  hook (`hooks/andon_enforce.py`) and `scripts/andon_core.py` (its CLI and
+  its library functions -- reads and writes both) now resolve to the same
+  one shared ledger via a pure filesystem walk to the nearest `.git`
+  (`resolve_main_root()`, duplicated stdlib-only in the hook per its own
+  no-import rule, pinned to `andon_core`'s copy by an agreement test),
+  falling back to `cwd`/`repo_root` unchanged outside git. The hook's
+  pre-existing "target outside cwd" containment check is unchanged; a write
+  to the main checkout's own ledger path from a worktree's `cwd` still gets
+  through it. See [Git worktrees](README.md#git-worktrees).
+
+### Tests
+- **andon**: permanent regression tests for four behaviors previously
+  checked only by ad-hoc scratch runs -- a mutual `superseded_by` cycle
+  between two red evidence records, a submodule with its own ledger
+  (resolved to its own root rather than the superproject's
+  `.git/modules`), a linked worktree with `git` absent from `PATH`, and a
+  linked worktree whose `.git` file names its gitdir by a relative path --
+  in `hooks/test_andon_enforce.py` and `scripts/test_andon_core.py`.
+
 ## [1.0.3] - 2026-09-22
 
 ### Fixed

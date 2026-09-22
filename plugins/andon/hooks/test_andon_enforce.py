@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,14 @@ import unittest
 from pathlib import Path
 
 HOOK = Path(__file__).parent / "andon_enforce.py"
+
+# Three of the classes below (submodule resolution, git-absent-from-PATH,
+# relative-gitdir) build their fixtures with real `git` subprocess calls --
+# git itself is not this hook's dependency (see resolve_main_root's own
+# docstring: "pure filesystem walk (no subprocess)"), but building a real
+# worktree/submodule to test that claim against needs a real git binary.
+# Skip those, and only those, when this machine has none.
+GIT_AVAILABLE = shutil.which("git") is not None
 
 GAP_NO_BLAST = """---
 type: gap
@@ -502,6 +511,658 @@ class TestSupersedeAndRetire(unittest.TestCase):
             )
             self.assertEqual(retire.returncode, 0, retire.stderr)
             self.assertEqual(decision(run(f.root)), "allow")
+
+
+EVIDENCE_GREEN_HEAD = """---
+type: evidence
+title: "later green re-verify"
+wire: "stage-x->stage-y"
+strategy: a
+verdict: green
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_RED_SUPERSEDED_BY_HEAD = """---
+type: evidence
+title: "earlier red, now superseded"
+wire: "stage-x->stage-y"
+strategy: a
+verdict: red
+superseded_by: a-green-head
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_RED_DANGLING = """---
+type: evidence
+title: "red, dangling supersede"
+wire: "stage-p->stage-q"
+strategy: a
+verdict: red
+superseded_by: nonexistent-slug-zzz
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_GREEN_DANGLING = """---
+type: evidence
+title: "green, but dangling supersede -- must still deny"
+wire: "stage-p->stage-q"
+strategy: a
+verdict: green
+superseded_by: nonexistent-slug-zzz
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_EXPIRED = """---
+type: evidence
+title: "green but expired"
+wire: "stage-m->stage-n"
+strategy: a
+verdict: green
+valid_until: 2020-01-01
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_NOT_YET_DUE = """---
+type: evidence
+title: "green, not yet due"
+wire: "stage-r->stage-s"
+strategy: a
+verdict: green
+valid_until: 2099-01-01
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_BAD_VALID_UNTIL = """---
+type: evidence
+title: "green, but unparseable valid_until"
+wire: "stage-t->stage-u"
+strategy: a
+verdict: green
+valid_until: not-a-date
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+
+class TestLifecycleFields(unittest.TestCase):
+    """#72: superseded_by (chain-head-resolution), measured_against,
+    valid_until. See analysis/arbeitsplan/.../checks/probe_lifecycle.py's
+    L1-L7 for the sealed, cross-candidate version of these same cases; the
+    tests below are this candidate's own, including the multi-hop and
+    fail-closed-on-green cases the sealed probe does not cover.
+    """
+
+    def test_superseding_evidence_defers_to_the_chain_head(self):
+        """Built with explicit filenames so superseded_by can name a real
+        slug (Fixture's e0/e1 auto-naming can't be referenced in advance)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-green-head.md").write_text(EVIDENCE_GREEN_HEAD)
+            (ledger / "evidence/b-red-superseded.md").write_text(EVIDENCE_RED_SUPERSEDED_BY_HEAD)
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_dangling_superseded_by_denies_even_when_green(self):
+        """Fail closed: a broken chain denies regardless of the leaf's own
+        verdict -- the sealed probe only exercises the red case (L2)."""
+        with Fixture(evidence=[EVIDENCE_GREEN_DANGLING]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("dangling", deny_reason(r).lower())
+
+    def test_multi_hop_chain_resolves_past_an_intermediate_red(self):
+        """v1 (green, the true head) <- v2 (red, superseded_by v1) <- v3
+        (red, superseded_by v2, the filename-latest record). A resolver that
+        stopped after one hop would read v2's own red verdict and deny;
+        walking the WHOLE chain to v1 must allow instead."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/v1.md").write_text(
+                '---\ntype: evidence\ntitle: "head"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\n---\n')
+            (ledger / "evidence/v2.md").write_text(
+                '---\ntype: evidence\ntitle: "mid"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: red\nsuperseded_by: v1\n---\n')
+            (ledger / "evidence/v3.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: red\nsuperseded_by: v2\n---\n')
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_dangling_deep_in_chain_denies(self):
+        """A dangling link two hops out from the leaf must still be caught."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/v1.md").write_text(
+                '---\ntype: evidence\ntitle: "mid"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: ghost\n---\n')
+            (ledger / "evidence/v2.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: v1\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("dangling", deny_reason(r).lower())
+
+    def test_supersession_cycle_denies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/x.md").write_text(
+                '---\ntype: evidence\ntitle: "x"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: y\n---\n')
+            (ledger / "evidence/y.md").write_text(
+                '---\ntype: evidence\ntitle: "y"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: x\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("cycle", deny_reason(r).lower())
+
+    def test_expired_valid_until_denies_even_when_green(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_EXPIRED]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("expir", deny_reason(r).lower())
+
+    def test_future_valid_until_allows(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_NOT_YET_DUE]) as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_unparseable_valid_until_denies(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_BAD_VALID_UNTIL]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+
+    def test_expiry_judged_on_chain_head_not_the_superseded_leaf(self):
+        """The superseded record carries an expired valid_until; the head
+        does not carry one at all. The wire must still allow -- expiry is
+        never read off anything but the head."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-head.md").write_text(
+                '---\ntype: evidence\ntitle: "head"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\n---\n')
+            (ledger / "evidence/b-leaf.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: a-head\nvalid_until: 2020-01-01\n---\n')
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_measured_against_named_in_deny_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/f0.md").write_text(
+                '---\ntype: evidence\ntitle: "tied to a decision"\nwire: "a->b"\n'
+                'strategy: a\nverdict: red\nmeasured_against: decision-017\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("decision-017", deny_reason(r))
+
+
+EVIDENCE_A_RED_SUPERSEDED_BY_B = """---
+type: evidence
+title: "a, red -- superseded by b"
+wire: "x->y"
+strategy: a
+verdict: red
+superseded_by: b-red
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_B_RED_SUPERSEDED_BY_A = """---
+type: evidence
+title: "b, red -- superseded by a, closing the cycle"
+wire: "x->y"
+strategy: a
+verdict: red
+superseded_by: a-red
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+
+class TestSupersessionCycleTwoRedRecords(unittest.TestCase):
+    """A ledger whose only two evidence docs for one wire supersede EACH
+    OTHER -- a-red.md names b-red as its successor, b-red.md names a-red as
+    its own -- has no resolvable chain head at all. Same shape as
+    TestLifecycleFields.test_supersession_cycle_denies above (which uses two
+    GREEN docs on wire a->b); this pins the RED-verdict, named-file variant
+    the task called out explicitly. The library-level half of the same
+    scenario (andon_core.compute_wire_status must never report this wire
+    green) lives in scripts/test_andon_core.py's
+    ComputeWireStatusChainHeadResolution class, not here -- this hook is
+    stdlib-only and does not import andon_core as a library (see this file's
+    and andon_enforce.py's module docstrings for why).
+    """
+
+    def test_hook_denies_editing_a_source_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-red.md").write_text(EVIDENCE_A_RED_SUPERSEDED_BY_B, encoding="utf-8")
+            (ledger / "evidence/b-red.md").write_text(EVIDENCE_B_RED_SUPERSEDED_BY_A, encoding="utf-8")
+            r = run(root, "src/api.py")
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("cycle", deny_reason(r).lower())
+
+
+class TestChainHeadResolutionAgreement(unittest.TestCase):
+    """The hook duplicates andon_core.resolve_chain_head verbatim (the hook
+    is stdlib-only and imports nothing from the plugin -- see this file's and
+    andon_enforce.py's module docstrings). Both are fed the SAME
+    superseded_by map here, in the style of TestReopenParserAgreement above,
+    and must agree on every case: the same resolved head, or both raising
+    their own ChainResolutionError.
+    """
+
+    def _load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_agree", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_agree", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+        return core, hook
+
+    def test_both_resolve_a_clean_chain_to_the_same_head(self):
+        core, hook = self._load()
+        mapping = {"leaf": "mid", "mid": "head", "head": None}
+        self.assertEqual(
+            hook.resolve_chain_head("leaf", mapping),
+            core.resolve_chain_head("leaf", mapping),
+        )
+        self.assertEqual(hook.resolve_chain_head("leaf", mapping), "head")
+
+    def test_both_agree_a_trivial_chain_is_its_own_head(self):
+        core, hook = self._load()
+        mapping = {"solo": None}
+        self.assertEqual(
+            hook.resolve_chain_head("solo", mapping),
+            core.resolve_chain_head("solo", mapping),
+        )
+
+    def test_both_raise_on_a_dangling_link(self):
+        core, hook = self._load()
+        mapping = {"leaf": "ghost"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("leaf", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("leaf", mapping)
+
+    def test_both_raise_on_a_cycle(self):
+        core, hook = self._load()
+        mapping = {"x": "y", "y": "x"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("x", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("x", mapping)
+
+    def test_both_raise_on_a_dangling_link_deep_in_the_chain(self):
+        core, hook = self._load()
+        mapping = {"leaf": "mid", "mid": "ghost"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("leaf", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("leaf", mapping)
+
+
+def _git(args, cwd):
+    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed in {cwd}: {r.stderr}")
+    return r
+
+
+class GitRepoWithWorktree:
+    """A throwaway main checkout plus one linked worktree, built with real
+    git (git init + commit + git worktree add) inside a tempdir -- per
+    CLAUDE.md, this worktree's own tests must never depend on the layout of
+    the checkout they run in. Duplicated from
+    scripts/test_andon_core.py's identically-shaped fixture: each test file
+    builds its own throwaway repos rather than sharing one across files."""
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # Resolved once, up front: tempfile.TemporaryDirectory() can hand
+        # back a path through a symlink (e.g. macOS /tmp -> /private/tmp),
+        # which would make a direct comparison against resolve_main_root()'s
+        # (also-resolved) output fail for a reason unrelated to the
+        # behaviour under test.
+        base = Path(self.tmp.name).resolve()
+        self.main = base / "main"
+        self.main.mkdir()
+        _git(["init", "-q"], self.main)
+        _git(["config", "user.email", "test@test.local"], self.main)
+        _git(["config", "user.name", "Test"], self.main)
+        (self.main / "README.md").write_text("init\n", encoding="utf-8")
+        _git(["add", "README.md"], self.main)
+        _git(["commit", "-q", "-m", "init"], self.main)
+        self.worktree = base / "wt"
+        _git(["worktree", "add", "-q", "-b", "wt-branch", str(self.worktree)], self.main)
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
+class GitRepoWithSubmodule:
+    """A throwaway `sub` repo added as a real git SUBMODULE of a throwaway
+    `sup` superproject -- built with real git (git init + commit +
+    `git submodule add`) inside a tempdir, same discipline as
+    GitRepoWithWorktree above.
+
+    Pins #71's resolver against the one concretely wrong implementation the
+    task names: a resolver built from the PARENT of `git rev-parse
+    --git-common-dir` would land in `<sup>/.git/modules` -- no ledger lives
+    there, so that resolver would silently ALLOW. The actual resolver never
+    does this: a submodule's own gitdir (`<sup>/.git/modules/sub`) carries
+    no `commondir` file -- that file exists only inside a linked WORKTREE's
+    admin dir, never a submodule's -- so resolve_main_root's read of it
+    fails and it falls back to `start`, landing on the submodule's own
+    checkout root, exactly where `<sup>/sub/analysis/andon/ledger` lives.
+    Confirmed against real git before writing this fixture: `sup/.git/modules/sub/commondir`
+    does not exist after `git submodule add`, only after `git worktree add`.
+    """
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        base = Path(self.tmp.name).resolve()
+        sub_origin = base / "sub-origin"
+        sub_origin.mkdir()
+        _git(["init", "-q"], sub_origin)
+        _git(["config", "user.email", "test@test.local"], sub_origin)
+        _git(["config", "user.name", "Test"], sub_origin)
+        _git(["commit", "-q", "--allow-empty", "-m", "init"], sub_origin)
+
+        self.sup = base / "sup"
+        self.sup.mkdir()
+        _git(["init", "-q"], self.sup)
+        _git(["config", "user.email", "test@test.local"], self.sup)
+        _git(["config", "user.name", "Test"], self.sup)
+        _git(["commit", "-q", "--allow-empty", "-m", "init"], self.sup)
+        # protocol.file.allow=always: modern git refuses a local-path
+        # submodule remote by default (CVE-2022-39253); this fixture is a
+        # throwaway tempdir under our own control, not untrusted input.
+        _git(["-c", "protocol.file.allow=always", "submodule", "add", "-q",
+              str(sub_origin), "sub"], self.sup)
+        self.sub = self.sup / "sub"
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
+class TestMainRootResolutionAgreement(unittest.TestCase):
+    """The hook duplicates andon_core.resolve_main_root (#71) -- the hook is
+    stdlib-only and imports nothing from the plugin (see this file's and
+    andon_enforce.py's module docstrings). Both are fed the SAME real git
+    fixtures here, in the style of TestChainHeadResolutionAgreement and
+    TestReopenParserAgreement above, and must agree on every case.
+    """
+
+    def _load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_mainroot", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_mainroot", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+        return core, hook
+
+    def test_both_resolve_a_worktree_to_the_same_main_root(self):
+        core, hook = self._load()
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.worktree)),
+                core.resolve_main_root(str(fx.worktree)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(fx.worktree)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_both_resolve_the_main_checkout_to_itself(self):
+        core, hook = self._load()
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.main)),
+                core.resolve_main_root(str(fx.main)),
+            )
+        finally:
+            fx.cleanup()
+
+    def test_both_fall_back_to_start_outside_git(self):
+        core, hook = self._load()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            self.assertEqual(
+                str(hook.resolve_main_root(root)),
+                core.resolve_main_root(str(root)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(root)), str(root))
+
+    def test_both_fall_back_on_a_malformed_gitdir_file(self):
+        core, hook = self._load()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / ".git").write_text("nonsense, no gitdir: line\n", encoding="utf-8")
+            self.assertEqual(
+                str(hook.resolve_main_root(root)),
+                core.resolve_main_root(str(root)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(root)), str(root))
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_both_resolve_a_submodule_to_its_own_root(self):
+        """Not the superproject, and not `<sup>/.git/modules` -- the
+        submodule's own checkout root, where ITS ledger lives. See
+        GitRepoWithSubmodule's docstring for why a naive
+        parent-of-git-common-dir resolver would get this wrong."""
+        core, hook = self._load()
+        fx = GitRepoWithSubmodule()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.sub)),
+                core.resolve_main_root(str(fx.sub)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(fx.sub)), str(fx.sub))
+        finally:
+            fx.cleanup()
+
+
+class TestWorktreeLedgerResolution(unittest.TestCase):
+    """#71: the hook resolves the ledger and settings from the MAIN
+    checkout root, never from `cwd` directly -- a linked worktree has
+    neither of its own. Exercises the same behaviour probe_worktree.py's
+    W1-W10 exercise (run via `python3
+    analysis/arbeitsplan/<runId>/checks/probe_worktree.py <tree>`), at the
+    unittest layer rather than a standalone script.
+    """
+
+    def test_worktree_cwd_denies_on_the_main_ledgers_red_evidence(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            self.assertEqual(decision(run(fx.worktree)), "deny")
+        finally:
+            fx.cleanup()
+
+    def test_worktree_cwd_allows_when_no_ledger_exists_anywhere(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(decision(run(fx.worktree)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_worktree_cwd_honors_main_checkouts_enforcement_off(self):
+        """Settings resolve from main too -- a worktree-local
+        `.claude/andon.local.md` (there isn't one here) is never consulted."""
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            (fx.main / ".claude").mkdir()
+            (fx.main / ".claude/andon.local.md").write_text(
+                "---\nenforcement: off\n---\n", encoding="utf-8")
+            self.assertEqual(decision(run(fx.worktree)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_write_to_main_ledger_path_from_worktree_cwd_still_allowed(self):
+        """#69's containment check on `cwd` is unchanged -- a write to the
+        MAIN checkout's own ledger path from a worktree cwd stays allowed;
+        the loop must always be able to record its halt."""
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            target = str(fx.main / "analysis/andon/ledger/log.md")
+            self.assertEqual(decision(run(fx.worktree, target)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_non_git_cwd_fallback_is_unchanged(self):
+        """No `.git` anywhere above cwd -> resolve_main_root falls back to
+        cwd itself, exactly like every caller's behaviour before #71."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / "analysis/andon/ledger/evidence").mkdir(parents=True)
+            (root / "analysis/andon/ledger/evidence/e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            self.assertEqual(decision(run(root)), "deny")
+
+
+class TestSubmoduleLedgerResolution(unittest.TestCase):
+    """A submodule with its OWN ledger must gate edits made inside it, and
+    must do so by resolving `cwd` to the submodule's own root -- never by
+    wandering up into the superproject's `.git/modules`, which has no
+    ledger and would silently allow. See GitRepoWithSubmodule's docstring
+    for the concrete wrong implementation this pins against.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_hook_denies_source_edit_inside_submodule_with_red_evidence(self):
+        fx = GitRepoWithSubmodule()
+        try:
+            ledger = fx.sub / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            r = run(fx.sub, "src/x.py")
+            self.assertEqual(decision(r), "deny")
+        finally:
+            fx.cleanup()
+
+
+class TestHookWorksWithoutGitBinaryInPath(unittest.TestCase):
+    """resolve_main_root's own docstring says it is a "pure filesystem walk
+    (no subprocess)" -- so resolution from inside a linked worktree must not
+    actually depend on a `git` binary being reachable on PATH at all. This
+    builds a real worktree with real git (setup only, guarded by
+    GIT_AVAILABLE), then runs the HOOK ITSELF with PATH pointed at an empty,
+    git-free directory. Python is still found because run()'s subprocess
+    call already invokes `sys.executable` -- an absolute path -- as argv[0],
+    never relying on PATH lookup for the interpreter.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_worktree_hook_denies_with_git_absent_from_path(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+
+            with tempfile.TemporaryDirectory() as no_git_dir:
+                self.assertIsNone(
+                    shutil.which("git", path=no_git_dir),
+                    "sanity: this PATH must contain no git binary at all",
+                )
+                r = run(fx.worktree, env={"PATH": no_git_dir})
+                self.assertEqual(decision(r), "deny")
+        finally:
+            fx.cleanup()
+
+
+class TestRelativeGitdirWorktree(unittest.TestCase):
+    """A linked worktree's `.git` file conventionally holds an ABSOLUTE
+    gitdir path -- that's `git worktree add`'s own default, and what every
+    other worktree fixture in this file relies on unmodified. Nothing in
+    the format, or in resolve_main_root's contract, requires that: a
+    relative gitdir line is equally legal git syntax (git itself accepts
+    it -- asserted below), and this repo's own resolvers must handle it
+    exactly as readily as the absolute form.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_relative_gitdir_still_resolves_to_main_and_denies(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+
+            admin_dir = fx.main / ".git" / "worktrees" / fx.worktree.name
+            self.assertTrue(admin_dir.is_dir(),
+                             "sanity: git's own worktree admin dir must exist first")
+            rel_gitdir = os.path.relpath(str(admin_dir), str(fx.worktree))
+            (fx.worktree / ".git").write_text(f"gitdir: {rel_gitdir}\n", encoding="utf-8")
+
+            # Sanity: git itself still accepts the rewritten, now-relative line.
+            rp = subprocess.run(
+                ["git", "-C", str(fx.worktree), "rev-parse", "--git-common-dir"],
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(rp.returncode, 0, rp.stderr)
+
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "andon_core_relgitdir", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+            core = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(core)
+            spec2 = importlib.util.spec_from_file_location(
+                "andon_enforce_relgitdir", Path(__file__).resolve().parent / "andon_enforce.py")
+            hook = importlib.util.module_from_spec(spec2)
+            spec2.loader.exec_module(hook)
+
+            self.assertEqual(str(hook.resolve_main_root(fx.worktree)), str(fx.main))
+            self.assertEqual(core.resolve_main_root(str(fx.worktree)), str(fx.main))
+
+            self.assertEqual(decision(run(fx.worktree)), "deny")
+        finally:
+            fx.cleanup()
 
 
 class TestEscapeHatchEnvVar(unittest.TestCase):

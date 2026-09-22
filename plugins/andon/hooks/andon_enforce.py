@@ -19,9 +19,25 @@ decide, which puts us straight back where we started.
 
 SAFETY: INERT UNLESS THIS REPO USES ANDON
 -----------------------------------------
-First action is to look for a ledger in the cwd. No ledger -> exit 0, allow,
-print nothing. Without that gate this hook would police every edit in every
+First action is to look for a ledger. No ledger -> exit 0, allow, print
+nothing. Without that gate this hook would police every edit in every
 repository on the machine. Same state-file gate ralph-loop's stop hook uses.
+
+WORKTREES (#71): THE LEDGER LIVES IN THE MAIN CHECKOUT, NOT `cwd`
+------------------------------------------------------------------
+A `git worktree add` checkout has neither `analysis/andon/ledger` nor
+`.claude/andon.local.md` of its own -- both live only in the main checkout.
+Looking for a ledger in `cwd` directly meant every edit made from inside a
+worktree was silently unguarded, while the same ledger content still denied
+correctly from the main checkout. `resolve_main_root()` walks from `cwd` up
+to the nearest `.git` -- an ordinary directory for the main checkout, or a
+`gitdir:` FILE for a linked worktree, in which case its `commondir` file
+names the common git dir whose parent is the main root -- and both the
+settings file and the ledger are read from THAT root. The pre-existing "a
+target outside cwd is none of this hook's business" containment check (#69,
+below) still compares against `cwd`, unchanged; it happens to also let a
+worktree-issued write to the main checkout's own ledger path through, since
+that path lies outside the worktree's own `cwd` entirely.
 
 READ GATING VALUES TOLERANTLY
 -----------------------------
@@ -55,6 +71,7 @@ import json
 import os
 import re
 import sys
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
@@ -266,6 +283,142 @@ def reopen_counts(ledger: Path) -> dict[str, int]:
     return counts
 
 
+def parse_iso_date(value: str) -> date | None:
+    """Returns a `date`, or None if malformed. Manual digit parsing, not
+    `datetime.strptime` -- DTZ007 flags a naive datetime built via
+    `strptime`; `date()` here always represents a fixed value the record
+    already carries, never a read of the current time (that's
+    `datetime.now(timezone.utc).date()` in `is_expired()` below).
+
+    DUPLICATED from andon_core.parse_iso_date for the same reason every
+    other duplication in this file exists: the hook is stdlib-only and
+    imports nothing from the plugin.
+    """
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return None
+    year, month, day = (int(part) for part in value.split("-"))
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def is_expired(valid_until: str) -> tuple[bool, str | None]:
+    """(expired, error). `error` is set when valid_until is unparseable --
+    the contract is 'an unparseable valid_until read by the hook denies',
+    i.e. fail closed rather than silently treating it as not-yet-due."""
+    parsed = parse_iso_date(valid_until)
+    if parsed is None:
+        return False, f"{valid_until!r} is not a valid ISO date (YYYY-MM-DD)"
+    today = datetime.now(timezone.utc).date()
+    return today > parsed, None
+
+
+class ChainResolutionError(Exception):
+    """A superseded_by chain is broken: a dangling link or a cycle.
+
+    DUPLICATED in andon_core.resolve_chain_head -- this hook is stdlib-only
+    and imports nothing from the plugin (see the module docstring), so a
+    broken/half-installed andon can never stop it loading. Both functions
+    are fed the same input by TestChainHeadResolutionAgreement in
+    test_andon_enforce.py, which asserts they agree.
+    """
+
+
+def resolve_chain_head(start_slug: str, superseded_by_of: dict[str, str | None]) -> str:
+    """Follow `superseded_by` from `start_slug` to the head of its
+    supersession chain -- a record nobody supersedes further (#72:
+    chain-head-resolution). `superseded_by_of` maps every known evidence
+    slug to its `superseded_by` value (falsy if none). Raises
+    ChainResolutionError on a dangling link (points to a slug not in
+    `superseded_by_of`) or a cycle, wherever in the chain it occurs -- never
+    silently falls back to the unresolved leaf's own verdict.
+    """
+    seen = {start_slug}
+    cursor = start_slug
+    while True:
+        nxt = superseded_by_of.get(cursor)
+        if not nxt:
+            return cursor
+        if nxt not in superseded_by_of:
+            raise ChainResolutionError(
+                f"'{cursor}' is superseded_by {nxt!r}, which does not exist "
+                f"(dangling link)."
+            )
+        if nxt in seen:
+            raise ChainResolutionError(
+                f"supersession cycle detected starting at {start_slug!r}: "
+                f"reaches {nxt!r} again."
+            )
+        seen.add(nxt)
+        cursor = nxt
+
+
+def resolve_main_root(start: Path) -> Path:
+    """Pure filesystem walk (no subprocess) from `start` up to the nearest
+    `.git`, returning the MAIN checkout root -- see andon_core.resolve_main_root
+    for the full rationale (#71). DUPLICATED verbatim in shape here: this hook
+    is stdlib-only and imports nothing from the plugin (see the module
+    docstring), so a broken/half-installed andon can never stop it loading.
+    Both are fed the same fixtures by TestMainRootResolutionAgreement in
+    test_andon_enforce.py, which asserts they agree.
+
+    `.git` a directory -> its own parent is the MAIN root. `.git` a FILE
+    (`gitdir: <path>`, a linked worktree) -> read that gitdir's own
+    `commondir` file to find the common git dir, and return ITS parent.
+    Falls back to `start` on anything unreadable, malformed, or outside git
+    entirely -- never raises.
+    """
+    try:
+        start_abs = start.resolve()
+    except OSError:
+        return start
+    current = start_abs
+    while True:
+        candidate = current / ".git"
+        try:
+            is_dir = candidate.is_dir()
+            is_file = (not is_dir) and candidate.is_file()
+        except OSError:
+            return start_abs
+        if is_dir:
+            return current
+        if is_file:
+            try:
+                text = candidate.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return start_abs
+            m = re.search(r"^\s*gitdir:\s*(.+?)\s*$", text, re.MULTILINE)
+            if not m:
+                return start_abs
+            gitdir_raw = m.group(1)
+            # os.path.normpath, not a Path equivalent -- see andon_core's
+            # copy of this same comment and CLAUDE.md's Python-conventions
+            # note: this collapses a `gitdir:` line's `../..` LEXICALLY, with
+            # no filesystem access and no symlink-following.
+            gitdir = (Path(gitdir_raw) if os.path.isabs(gitdir_raw)
+                      else Path(os.path.normpath(str(current / gitdir_raw))))
+            commondir_file = gitdir / "commondir"
+            try:
+                common_raw = commondir_file.read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                return start_abs
+            if not common_raw:
+                return start_abs
+            common_dir = (Path(common_raw) if os.path.isabs(common_raw)
+                          else Path(os.path.normpath(str(gitdir / common_raw))))
+            try:
+                if not common_dir.is_dir():
+                    return start_abs
+            except OSError:
+                return start_abs
+            return common_dir.parent
+        parent = current.parent
+        if parent == current:
+            return start_abs  # walked to the filesystem root -- not a git repo at all
+        current = parent
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
@@ -335,28 +488,71 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     ev = _list_md(ledger / "evidence")
     latest_by_wire: dict[str, Path] = {}
     unwired: list[Path] = []
+    evidence_fm: dict[str, dict] = {}
+    evidence_text: dict[str, str] = {}
     for p in ev:
-        fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        text = p.read_text(encoding="utf-8", errors="replace")
+        fm = frontmatter(text)
+        evidence_fm[p.stem] = fm
+        evidence_text[p.stem] = text
         wire = tag_value(fm, "wire")
         if wire:
             latest_by_wire[wire] = p  # ev is filename-sorted; last assignment wins
         else:
             unwired.append(p)
 
+    # #72: superseded_by is resolved across ALL evidence in the ledger, not
+    # just the docs for one wire -- the pointer is a bare slug, not scoped
+    # to a wire, and a dangling/cyclic chain must fail closed regardless of
+    # what wire either end happens to claim.
+    superseded_by_of = {slug: tag_value(fm, "superseded_by") for slug, fm in evidence_fm.items()}
+
     for p in list(latest_by_wire.values()) + unwired:
         if p.stem in closed_evidence_slugs:
             continue  # #68a: the gap this evidence resolved is already closed
-        text = p.read_text(encoding="utf-8", errors="replace")
-        fm = frontmatter(text)
-        verdict = tag_value(fm, "verdict")
+
+        # #72 (chain-head-resolution): judge the HEAD of this record's
+        # supersession chain, never the unresolved leaf -- a record naming
+        # an existing successor stops gating on its own verdict. A dangling
+        # link or a cycle anywhere along the way denies outright, fail
+        # closed, rather than falling back to the leaf's own verdict.
+        try:
+            head_slug = resolve_chain_head(p.stem, superseded_by_of)
+        except ChainResolutionError as exc:
+            return (f"STOP (andon rule / lifecycle, #72): evidence '{p.name}' "
+                    f"has a broken supersession chain: {exc}. A wire must "
+                    f"never be un-gated by a superseded_by reference that "
+                    f"cannot be resolved.")
+        head_fm = evidence_fm[head_slug]
+        head_text = evidence_text[head_slug]
+        measured_against = tag_value(head_fm, "measured_against")
+        suffix = f" (measured_against {measured_against!r})" if measured_against else ""
+
+        # Expiry (valid_until) is judged on the chain HEAD only.
+        valid_until = tag_value(head_fm, "valid_until")
+        if valid_until:
+            expired, err = is_expired(valid_until)
+            if err:
+                return (f"STOP (andon rule / lifecycle, #72): evidence "
+                        f"'{head_slug}.md' (chain head for '{p.name}') has an "
+                        f"unparseable valid_until {valid_until!r}: {err}. Fail "
+                        f"closed -- the record gates as verdict unknown.")
+            if expired:
+                return (f"STOP (andon rule / lifecycle, #72): evidence "
+                        f"'{head_slug}.md' (chain head for '{p.name}') expired "
+                        f"on {valid_until} -- it now gates as verdict unknown, "
+                        f"even though it may still read green{suffix}. The "
+                        f"wire is not proven; the loop may not advance past it.")
+
+        verdict = tag_value(head_fm, "verdict")
         if not verdict:
-            m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", text, re.MULTILINE)
+            m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", head_text, re.MULTILINE)
             verdict = m.group(1).strip("`*.,") if m else None
         if verdict and verdict.lower() not in ADVANCING_VERDICTS:
-            return (f"STOP (andon rule / condition 1): evidence '{p.name}' "
-                    f"records verdict {verdict!r}, which is not "
-                    f"{' or '.join(ADVANCING_VERDICTS)}. The wire is not proven; "
-                    f"the loop may not advance past it.")
+            return (f"STOP (andon rule / condition 1): evidence '{head_slug}.md' "
+                    f"(chain head for '{p.name}') records verdict {verdict!r}, "
+                    f"which is not {' or '.join(ADVANCING_VERDICTS)}{suffix}. The "
+                    f"wire is not proven; the loop may not advance past it.")
     return None
 
 
@@ -378,13 +574,31 @@ def main() -> int:
 
     try:
         cwd = Path(event.get("cwd") or ".").resolve()
-        cfg = settings(cwd)
+        # #71: the ledger and .claude/andon.local.md are resolved from the
+        # MAIN checkout root, never from `cwd` directly -- a `git worktree
+        # add` checkout has neither of its own, both live only in the main
+        # checkout, and there is ONE shared ledger. `root` falls back to
+        # `cwd` itself outside git (or on malformed/unreadable git
+        # metadata), which is exactly today's behaviour for a non-worktree
+        # repo or a plain, non-git directory. The containment check below
+        # deliberately keeps using `cwd`, unchanged -- see its own comment.
+        root = resolve_main_root(cwd)
+        cfg = settings(root)
         if (cfg.get("enforcement") or "").lower() in ("off", "false", "disabled"):
             return allow()
 
-        ledger = cwd / (cfg.get("ledger_dir") or DEFAULT_LEDGER_DIR)
+        ledger = root / (cfg.get("ledger_dir") or DEFAULT_LEDGER_DIR)
         if not ledger.is_dir():
-            return allow()          # not an andon repo — say nothing at all
+            # Two distinct reasons land here, and both allow, deliberately:
+            # (1) this repository does not use andon at all -- no ledger
+            # anywhere, the common case, and the reason this hook must stay
+            # inert -- or (2) `root` resolved to a plausible git root (or
+            # fell back to `cwd`) but no ledger exists there either, e.g. a
+            # freshly `git worktree add`-ed checkout of a repo that has
+            # never run andon-loop. A hook cannot tell "not adopted" from
+            # "adopted but not initialized yet", and must not guess: both
+            # are "nothing to enforce here", never a reason to deny.
+            return allow()
 
         target = (event.get("tool_input") or {}).get("file_path") or ""
         if target:
