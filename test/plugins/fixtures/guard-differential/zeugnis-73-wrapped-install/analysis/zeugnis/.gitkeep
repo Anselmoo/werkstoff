@@ -1,0 +1,5 @@
+This directory is guard_bash_scope.py's activation gate: the hook is inert
+unless analysis/zeugnis/ exists. Git does not track empty directories, so
+without this file the gate vanishes in every fresh checkout and all three
+cases silently pass by allowing everything. Confirmed against a --depth=1
+clone before this file existed.

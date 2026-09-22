@@ -1,0 +1,4 @@
+Keeps the evidence/ directory in git. The hook reads it via _list_md, which
+treats an absent directory and an empty one alike -- so these cases would still
+pass without this file, but the tree CI sees would differ from the tree the case
+was written against, which is the difference that made the zeugnis cases lie.

@@ -35,7 +35,8 @@ CASE LAYOUT
     test/plugins/fixtures/guard-differential/<case-id>/
         _PAIR           required. key=value lines:
                             guard=plugins/<p>/.../<guard>.py   repo-relative
-                            base=<sha>                          pinned, not a ref
+                            base=<sha>                          FULL 40-char sha,
+                                                                pinned, never a ref
                             old=deny|allow
                             new=deny|allow
                             issue=<n>                           optional, for the report
@@ -67,6 +68,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -109,6 +111,18 @@ def load_case(case_dir: Path) -> dict:
     for key in ("guard", "base", "old", "new"):
         if key not in pair:
             raise CaseError(f"{case_dir.name}: _PAIR is missing {key}=")
+    # The base must be the FULL 40-char sha, not an abbreviation. CI checks out
+    # shallow, so the base is usually absent and has to be fetched -- and
+    # `git fetch origin <short-sha>` fails with "couldn't find remote ref",
+    # while the full sha fetches fine. Caught by running the suite against a
+    # real --depth=1 clone; every case errored, which is the right failure but
+    # an obscure one to debug from. Rejecting it here names the cause instead.
+    if not re.fullmatch(r"[0-9a-f]{40}", pair["base"]):
+        raise CaseError(
+            f"{case_dir.name}: base={pair['base']!r} is not a full 40-character sha. "
+            "An abbreviated sha cannot be fetched into a shallow clone, so this case "
+            "would ERROR in CI while passing locally. Use `git rev-parse <ref>`."
+        )
     for key in ("old", "new"):
         if pair[key] not in CODE:
             raise CaseError(f"{case_dir.name}: {key}={pair[key]!r}, expected allow or deny")
@@ -191,6 +205,40 @@ def materialise_old(repo: Path, guard: str, base: str, dest: Path) -> Path:
     if not old_guard.is_file():
         raise CaseError(f"{guard} does not exist at base {base!r}")
     return old_guard
+
+
+def untracked_dirs(case_dir: Path) -> list[str]:
+    """Directories in the case that git will not carry into a fresh checkout.
+
+    Git does not store empty directories. A guard whose activation gate is
+    `isdir(cwd/analysis/<plugin>)` therefore goes INERT in CI while passing
+    locally, and every case for it allows both revisions and proves nothing.
+    That is not hypothetical: all three zeugnis cases shipped this way and were
+    caught only by running the suite against a real --depth=1 clone.
+
+    So the case's own layout is checked before it is trusted. A directory with
+    no tracked file anywhere beneath it is reported, and the case ERRORs.
+    """
+    try:
+        tracked = subprocess.run(
+            ["git", "-C", str(case_dir), "ls-files"],
+            capture_output=True, text=True, check=True,
+        ).stdout.split()
+    except subprocess.CalledProcessError:
+        return []  # not a git checkout (the selftest's planted cases); nothing to check
+    if not tracked:
+        # The whole case is untracked -- it is being authored right now, and
+        # every directory in it would be reported. Say nothing; the case cannot
+        # reach CI in this state anyway.
+        return []
+    carried = {str(Path(f).parent) for f in tracked}
+    carried |= {str(parent) for f in tracked for parent in Path(f).parents}
+    on_disk = {
+        str(d.relative_to(case_dir))
+        for d in case_dir.rglob("*")
+        if d.is_dir() and not d.is_symlink()
+    }
+    return sorted(on_disk - carried)
 
 
 def probe_repo(case: dict, workdir: Path) -> Path:
@@ -296,6 +344,14 @@ def execute(case: dict, repo: Path, force_base: str | None) -> tuple[str, str]:
         new_guard = repo / case["guard"]
         if not new_guard.is_file():
             return "ERROR", f"{case['guard']} does not exist in the working tree"
+
+        empty = untracked_dirs(case["dir"])
+        if empty:
+            return "ERROR", (
+                f"git will not carry {', '.join(empty)} into a fresh checkout (empty "
+                "directories are not tracked), so this case tests something CI never "
+                "sees. Put a tracked file in it."
+            )
 
         got_old = run_guard(old_guard, probe_repo(case, work / "a"), case["event"], case["env"])
         got_new = run_guard(new_guard, probe_repo(case, work / "b"), case["event"], case["env"])
