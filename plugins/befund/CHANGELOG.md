@@ -6,6 +6,12 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-22
+
+### Fixed
+- stop three guards denying beyond their own rule (#95)
+- **andon**: keep wire degradation on a strategy whose trigger fired (#94)
+
 ## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `self-assess` to `befund`** -- a *Befund* is the written finding of an inspection: it records a condition and
