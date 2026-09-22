@@ -16,6 +16,22 @@ All notable changes to the `andon` plugin are documented here.
   malformed values with `SCHEMA_*` codes; a record with none of them behaves
   exactly as before.
 
+### Fixed
+- **andon**: resolve the ledger and `.claude/andon.local.md` from the MAIN
+  checkout root, not from a hook's `cwd` or a caller-supplied `repo_root`
+  (#71). A `git worktree add` checkout has neither of its own; every edit
+  made from inside one was silently unguarded, and a write issued from one
+  would have created a second, orphaned copy of the ledger. The PreToolUse
+  hook (`hooks/andon_enforce.py`) and `scripts/andon_core.py` (its CLI and
+  its library functions -- reads and writes both) now resolve to the same
+  one shared ledger via a pure filesystem walk to the nearest `.git`
+  (`resolve_main_root()`, duplicated stdlib-only in the hook per its own
+  no-import rule, pinned to `andon_core`'s copy by an agreement test),
+  falling back to `cwd`/`repo_root` unchanged outside git. The hook's
+  pre-existing "target outside cwd" containment check is unchanged; a write
+  to the main checkout's own ledger path from a worktree's `cwd` still gets
+  through it. See [Git worktrees](README.md#git-worktrees).
+
 ## [1.0.3] - 2026-09-22
 
 ### Fixed

@@ -30,6 +30,18 @@ default). Read by every andon skill via `andon_core.py load-settings`.
 | `befund_output_dir` | `analysis/befund` | Where ingest mode reads `MODERNIZATION_BRIEF.md` from. |
 | `house_rules_path` | `.claude/house-rules.md` | Where `andon-propose` looks for repo conventions. |
 
+**Location resolution (#71):** both this settings file and `ledger_dir`
+below it are read from the **main checkout root**, never from a hook's
+`cwd` or a caller-supplied `repo_root` directly. A `git worktree add`
+checkout has neither of its own -- both live only in the main checkout, and
+there is one shared ledger. Resolution is a pure filesystem walk up to the
+nearest `.git` (an ordinary directory for the main checkout; for a linked
+worktree, a `gitdir: <path>` FILE whose own `commondir` file names the
+common git dir shared with the main checkout), falling back to `cwd`/
+`repo_root` unchanged outside git or on anything unreadable/malformed. See
+the plugin README's "Git worktrees" section for the full behaviour and its
+test coverage.
+
 ## Doc types
 
 Every OKF doc's frontmatter has a required `type` field: `stage`, `gap`, or

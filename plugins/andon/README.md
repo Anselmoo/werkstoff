@@ -238,6 +238,58 @@ for the full field table and defaults. Every andon skill reads this file
 first and halts immediately if `enabled: false` is set -- before running any
 phase, before touching the repo.
 
+## Git worktrees
+
+A `git worktree add` checkout has neither `analysis/andon/ledger` nor
+`.claude/andon.local.md` of its own -- both live only in the main checkout.
+There is **one shared ledger**: both the PreToolUse hook and
+`scripts/andon_core.py` (its CLI and its library functions alike, so a
+direct caller like `scripts/build_board_html.py` gets this for free too)
+resolve the ledger and the settings file from the **main checkout root**,
+never from `cwd` or a caller-supplied `repo_root` directly, so:
+
+- Editing source **inside a linked worktree** is gated by the same ledger
+  that gates the main checkout -- a gap or a red/unknown verdict in the main
+  ledger halts edits in the worktree exactly as it would in the main
+  checkout, and `.claude/andon.local.md` at the worktree's own root (if one
+  somehow existed) is never consulted.
+- A write issued from inside a worktree -- `write-doc`, `retire`,
+  `append-log`, or the hook's own always-allowed write-to-the-ledger
+  exception -- lands under the **main** checkout's `analysis/andon/ledger`,
+  never a second, orphaned copy under the worktree.
+- The `git worktree add` -> `PreToolUse hook denies an edit in the
+  worktree using the main ledger's content` round trip is a permanent
+  regression, covered by `hooks/test_andon_enforce.py`'s
+  `TestWorktreeLedgerResolution` and `TestMainRootResolutionAgreement`,
+  `scripts/test_andon_core.py`'s `ResolveMainRoot` and
+  `LibraryFunctionsResolveFromWorktree`, and (end to end, across real
+  `git init` + `git worktree add` fixtures) `checks/probe_worktree.py`'s
+  cases W1-W10 in the run that shipped this.
+
+Resolution is a **pure filesystem walk, no subprocess**: walk up from the
+start directory to the nearest `.git`. An ordinary `.git` directory means
+its own parent is the main root (the non-worktree case, unchanged from
+before). A `.git` **file** (`gitdir: <path>`, what `git worktree add`
+writes) is read, and that gitdir's own `commondir` file is read in turn to
+find the common git directory shared with the main checkout -- that common
+directory's parent is the main root. Anything unreadable or malformed along
+the way (a `.git` file with no `gitdir:` line, a missing or empty
+`commondir`, a `commondir` naming something that isn't a directory) falls
+back to the start directory, exactly like running outside git entirely --
+never a raise, never a hard failure. `andon_core.py`'s `resolve_main_root()`
+is the implementation; the hook duplicates it verbatim in shape (it is
+stdlib-only and imports nothing from the plugin -- see
+[What is enforced, and what is not](#what-is-enforced-and-what-is-not)
+above), with an agreement test pinning the two copies to the same behaviour.
+
+The hook's pre-existing "a target outside `cwd` is none of this hook's
+business" containment check (#69) is **unchanged** -- it still compares
+against `cwd`, not the resolved main root. A write to the main checkout's
+own ledger path, issued from a worktree's `cwd`, still gets through: that
+path lies entirely outside the worktree's own `cwd`, so the existing
+outside-the-repo bypass already lets it through, for the same reason it
+always let any other out-of-repo write through.
+
 ## The report
 
 ### The board, as an HTML report

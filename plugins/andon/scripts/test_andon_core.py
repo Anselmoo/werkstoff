@@ -327,5 +327,154 @@ class ComputeWireStatusChainHeadResolution(unittest.TestCase):
         self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
 
 
+def _git(args, cwd):
+    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed in {cwd}: {r.stderr}")
+    return r
+
+
+class GitRepoWithWorktree:
+    """A throwaway main checkout plus one linked worktree, built with real
+    git (git init + commit + git worktree add) inside a tempdir -- this
+    worktree (per CLAUDE.md) must never depend on the layout of the
+    checkout its own tests run in."""
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # Resolved once, up front: tempfile.TemporaryDirectory() can hand
+        # back a path through a symlink (e.g. macOS /tmp -> /private/tmp),
+        # which would make a direct string comparison against
+        # resolve_main_root()'s (also-resolved) output fail for a reason
+        # that has nothing to do with the behaviour under test.
+        base = Path(self.tmp.name).resolve()
+        self.main = base / "main"
+        self.main.mkdir()
+        _git(["init", "-q"], self.main)
+        _git(["config", "user.email", "test@test.local"], self.main)
+        _git(["config", "user.name", "Test"], self.main)
+        (self.main / "README.md").write_text("init\n", encoding="utf-8")
+        _git(["add", "README.md"], self.main)
+        _git(["commit", "-q", "-m", "init"], self.main)
+        self.worktree = base / "wt"
+        _git(["worktree", "add", "-q", "-b", "wt-branch", str(self.worktree)], self.main)
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
+class ResolveMainRoot(unittest.TestCase):
+    """#71: resolve_main_root() is a pure filesystem walk (no subprocess)
+    from a start directory up to the nearest `.git`, landing on the MAIN
+    checkout root whether `.git` is an ordinary directory or a linked
+    worktree's `gitdir:` file."""
+
+    def test_ordinary_repo_resolves_to_itself(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(andon_core.resolve_main_root(str(fx.main)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_worktree_resolves_to_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(andon_core.resolve_main_root(str(fx.worktree)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_subdirectory_of_worktree_still_resolves_to_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            sub = fx.worktree / "src" / "pkg"
+            sub.mkdir(parents=True)
+            self.assertEqual(andon_core.resolve_main_root(str(sub)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_non_git_dir_falls_back_to_itself(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = str(Path(tmp).resolve())
+            self.assertEqual(andon_core.resolve_main_root(root), root)
+
+    def test_malformed_gitdir_file_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / ".git").write_text("not a gitdir line\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_gitdir_with_missing_commondir_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gitdir = root / ".git-real"
+            gitdir.mkdir()
+            (root / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_gitdir_with_dangling_commondir_falls_back_to_start(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            gitdir = root / ".git-real"
+            gitdir.mkdir()
+            (root / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+            (gitdir / "commondir").write_text("../does-not-exist\n", encoding="utf-8")
+            self.assertEqual(andon_core.resolve_main_root(str(root)), str(root))
+
+    def test_idempotent_on_an_already_resolved_root(self):
+        fx = GitRepoWithWorktree()
+        try:
+            once = andon_core.resolve_main_root(str(fx.worktree))
+            twice = andon_core.resolve_main_root(once)
+            self.assertEqual(once, twice)
+        finally:
+            fx.cleanup()
+
+
+class LibraryFunctionsResolveFromWorktree(unittest.TestCase):
+    """#71: andon_core's library functions -- not just its CLI's own
+    repo_root arg -- resolve to the MAIN checkout for reads AND writes,
+    since there is one shared ledger. Mirrors probe_worktree.py's W9/W10
+    at the library level rather than through a subprocess."""
+
+    def test_write_doc_given_worktree_root_lands_under_main(self):
+        fx = GitRepoWithWorktree()
+        try:
+            for sub in ("gaps", "evidence"):
+                (fx.main / "analysis/andon/ledger" / sub).mkdir(parents=True)
+            (fx.main / "analysis/andon/ledger/log.md").write_text("", encoding="utf-8")
+            fields = {"type": "evidence", "title": "wt write", "wire": "a->b",
+                      "strategy": "a", "verdict": "green"}
+            andon_core.write_doc(str(fx.worktree), "analysis/andon/ledger", "evidence/wt.md", fields)
+            self.assertTrue((fx.main / "analysis/andon/ledger/evidence/wt.md").is_file())
+            self.assertFalse((fx.worktree / "analysis/andon/ledger/evidence/wt.md").is_file(),
+                              "write-doc must not create a second copy under the worktree")
+        finally:
+            fx.cleanup()
+
+    def test_load_settings_given_worktree_root_reads_main_settings(self):
+        fx = GitRepoWithWorktree()
+        try:
+            (fx.main / ".claude").mkdir()
+            (fx.main / ".claude/andon.local.md").write_text(
+                "---\nauthorization_level: hard-to-reverse\n---\n", encoding="utf-8")
+            settings = andon_core.load_settings(str(fx.worktree))
+            self.assertEqual(settings["authorization_level"], "hard-to-reverse")
+            self.assertTrue(settings["_settings_file_present"])
+        finally:
+            fx.cleanup()
+
+    def test_parse_log_counters_given_worktree_root_reads_main_log(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger"
+            ledger.mkdir(parents=True)
+            (ledger / "log.md").write_text(
+                "### Pass 1 (cycle 1) -- 2026-01-01T00:00:00Z\n", encoding="utf-8")
+            counters = andon_core.parse_log_counters(str(fx.worktree), "analysis/andon/ledger")
+            self.assertEqual(counters["total_passes"], 1)
+        finally:
+            fx.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

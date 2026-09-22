@@ -773,6 +773,175 @@ class TestChainHeadResolutionAgreement(unittest.TestCase):
             core.resolve_chain_head("leaf", mapping)
 
 
+def _git(args, cwd):
+    r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
+    if r.returncode != 0:
+        raise AssertionError(f"git {' '.join(args)} failed in {cwd}: {r.stderr}")
+    return r
+
+
+class GitRepoWithWorktree:
+    """A throwaway main checkout plus one linked worktree, built with real
+    git (git init + commit + git worktree add) inside a tempdir -- per
+    CLAUDE.md, this worktree's own tests must never depend on the layout of
+    the checkout they run in. Duplicated from
+    scripts/test_andon_core.py's identically-shaped fixture: each test file
+    builds its own throwaway repos rather than sharing one across files."""
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        # Resolved once, up front: tempfile.TemporaryDirectory() can hand
+        # back a path through a symlink (e.g. macOS /tmp -> /private/tmp),
+        # which would make a direct comparison against resolve_main_root()'s
+        # (also-resolved) output fail for a reason unrelated to the
+        # behaviour under test.
+        base = Path(self.tmp.name).resolve()
+        self.main = base / "main"
+        self.main.mkdir()
+        _git(["init", "-q"], self.main)
+        _git(["config", "user.email", "test@test.local"], self.main)
+        _git(["config", "user.name", "Test"], self.main)
+        (self.main / "README.md").write_text("init\n", encoding="utf-8")
+        _git(["add", "README.md"], self.main)
+        _git(["commit", "-q", "-m", "init"], self.main)
+        self.worktree = base / "wt"
+        _git(["worktree", "add", "-q", "-b", "wt-branch", str(self.worktree)], self.main)
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
+class TestMainRootResolutionAgreement(unittest.TestCase):
+    """The hook duplicates andon_core.resolve_main_root (#71) -- the hook is
+    stdlib-only and imports nothing from the plugin (see this file's and
+    andon_enforce.py's module docstrings). Both are fed the SAME real git
+    fixtures here, in the style of TestChainHeadResolutionAgreement and
+    TestReopenParserAgreement above, and must agree on every case.
+    """
+
+    def _load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_mainroot", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_mainroot", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+        return core, hook
+
+    def test_both_resolve_a_worktree_to_the_same_main_root(self):
+        core, hook = self._load()
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.worktree)),
+                core.resolve_main_root(str(fx.worktree)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(fx.worktree)), str(fx.main))
+        finally:
+            fx.cleanup()
+
+    def test_both_resolve_the_main_checkout_to_itself(self):
+        core, hook = self._load()
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.main)),
+                core.resolve_main_root(str(fx.main)),
+            )
+        finally:
+            fx.cleanup()
+
+    def test_both_fall_back_to_start_outside_git(self):
+        core, hook = self._load()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            self.assertEqual(
+                str(hook.resolve_main_root(root)),
+                core.resolve_main_root(str(root)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(root)), str(root))
+
+    def test_both_fall_back_on_a_malformed_gitdir_file(self):
+        core, hook = self._load()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / ".git").write_text("nonsense, no gitdir: line\n", encoding="utf-8")
+            self.assertEqual(
+                str(hook.resolve_main_root(root)),
+                core.resolve_main_root(str(root)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(root)), str(root))
+
+
+class TestWorktreeLedgerResolution(unittest.TestCase):
+    """#71: the hook resolves the ledger and settings from the MAIN
+    checkout root, never from `cwd` directly -- a linked worktree has
+    neither of its own. Exercises the same behaviour probe_worktree.py's
+    W1-W10 exercise (run via `python3
+    analysis/arbeitsplan/<runId>/checks/probe_worktree.py <tree>`), at the
+    unittest layer rather than a standalone script.
+    """
+
+    def test_worktree_cwd_denies_on_the_main_ledgers_red_evidence(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            self.assertEqual(decision(run(fx.worktree)), "deny")
+        finally:
+            fx.cleanup()
+
+    def test_worktree_cwd_allows_when_no_ledger_exists_anywhere(self):
+        fx = GitRepoWithWorktree()
+        try:
+            self.assertEqual(decision(run(fx.worktree)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_worktree_cwd_honors_main_checkouts_enforcement_off(self):
+        """Settings resolve from main too -- a worktree-local
+        `.claude/andon.local.md` (there isn't one here) is never consulted."""
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            (fx.main / ".claude").mkdir()
+            (fx.main / ".claude/andon.local.md").write_text(
+                "---\nenforcement: off\n---\n", encoding="utf-8")
+            self.assertEqual(decision(run(fx.worktree)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_write_to_main_ledger_path_from_worktree_cwd_still_allowed(self):
+        """#69's containment check on `cwd` is unchanged -- a write to the
+        MAIN checkout's own ledger path from a worktree cwd stays allowed;
+        the loop must always be able to record its halt."""
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            target = str(fx.main / "analysis/andon/ledger/log.md")
+            self.assertEqual(decision(run(fx.worktree, target)), "allow")
+        finally:
+            fx.cleanup()
+
+    def test_non_git_cwd_fallback_is_unchanged(self):
+        """No `.git` anywhere above cwd -> resolve_main_root falls back to
+        cwd itself, exactly like every caller's behaviour before #71."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            (root / "analysis/andon/ledger/evidence").mkdir(parents=True)
+            (root / "analysis/andon/ledger/evidence/e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            self.assertEqual(decision(run(root)), "deny")
+
+
 class TestEscapeHatchEnvVar(unittest.TestCase):
     """#70: the narrowest of the three named remedies -- a single env var for
     one call, distinct from the wholesale `enforcement: off` setting.

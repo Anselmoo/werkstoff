@@ -19,9 +19,25 @@ decide, which puts us straight back where we started.
 
 SAFETY: INERT UNLESS THIS REPO USES ANDON
 -----------------------------------------
-First action is to look for a ledger in the cwd. No ledger -> exit 0, allow,
-print nothing. Without that gate this hook would police every edit in every
+First action is to look for a ledger. No ledger -> exit 0, allow, print
+nothing. Without that gate this hook would police every edit in every
 repository on the machine. Same state-file gate ralph-loop's stop hook uses.
+
+WORKTREES (#71): THE LEDGER LIVES IN THE MAIN CHECKOUT, NOT `cwd`
+------------------------------------------------------------------
+A `git worktree add` checkout has neither `analysis/andon/ledger` nor
+`.claude/andon.local.md` of its own -- both live only in the main checkout.
+Looking for a ledger in `cwd` directly meant every edit made from inside a
+worktree was silently unguarded, while the same ledger content still denied
+correctly from the main checkout. `resolve_main_root()` walks from `cwd` up
+to the nearest `.git` -- an ordinary directory for the main checkout, or a
+`gitdir:` FILE for a linked worktree, in which case its `commondir` file
+names the common git dir whose parent is the main root -- and both the
+settings file and the ledger are read from THAT root. The pre-existing "a
+target outside cwd is none of this hook's business" containment check (#69,
+below) still compares against `cwd`, unchanged; it happens to also let a
+worktree-issued write to the main checkout's own ledger path through, since
+that path lies outside the worktree's own `cwd` entirely.
 
 READ GATING VALUES TOLERANTLY
 -----------------------------
@@ -338,6 +354,71 @@ def resolve_chain_head(start_slug: str, superseded_by_of: dict[str, str | None])
         cursor = nxt
 
 
+def resolve_main_root(start: Path) -> Path:
+    """Pure filesystem walk (no subprocess) from `start` up to the nearest
+    `.git`, returning the MAIN checkout root -- see andon_core.resolve_main_root
+    for the full rationale (#71). DUPLICATED verbatim in shape here: this hook
+    is stdlib-only and imports nothing from the plugin (see the module
+    docstring), so a broken/half-installed andon can never stop it loading.
+    Both are fed the same fixtures by TestMainRootResolutionAgreement in
+    test_andon_enforce.py, which asserts they agree.
+
+    `.git` a directory -> its own parent is the MAIN root. `.git` a FILE
+    (`gitdir: <path>`, a linked worktree) -> read that gitdir's own
+    `commondir` file to find the common git dir, and return ITS parent.
+    Falls back to `start` on anything unreadable, malformed, or outside git
+    entirely -- never raises.
+    """
+    try:
+        start_abs = start.resolve()
+    except OSError:
+        return start
+    current = start_abs
+    while True:
+        candidate = current / ".git"
+        try:
+            is_dir = candidate.is_dir()
+            is_file = (not is_dir) and candidate.is_file()
+        except OSError:
+            return start_abs
+        if is_dir:
+            return current
+        if is_file:
+            try:
+                text = candidate.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                return start_abs
+            m = re.search(r"^\s*gitdir:\s*(.+?)\s*$", text, re.MULTILINE)
+            if not m:
+                return start_abs
+            gitdir_raw = m.group(1)
+            # os.path.normpath, not a Path equivalent -- see andon_core's
+            # copy of this same comment and CLAUDE.md's Python-conventions
+            # note: this collapses a `gitdir:` line's `../..` LEXICALLY, with
+            # no filesystem access and no symlink-following.
+            gitdir = (Path(gitdir_raw) if os.path.isabs(gitdir_raw)
+                      else Path(os.path.normpath(str(current / gitdir_raw))))
+            commondir_file = gitdir / "commondir"
+            try:
+                common_raw = commondir_file.read_text(encoding="utf-8", errors="replace").strip()
+            except OSError:
+                return start_abs
+            if not common_raw:
+                return start_abs
+            common_dir = (Path(common_raw) if os.path.isabs(common_raw)
+                          else Path(os.path.normpath(str(gitdir / common_raw))))
+            try:
+                if not common_dir.is_dir():
+                    return start_abs
+            except OSError:
+                return start_abs
+            return common_dir.parent
+        parent = current.parent
+        if parent == current:
+            return start_abs  # walked to the filesystem root -- not a git repo at all
+        current = parent
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
@@ -493,13 +574,31 @@ def main() -> int:
 
     try:
         cwd = Path(event.get("cwd") or ".").resolve()
-        cfg = settings(cwd)
+        # #71: the ledger and .claude/andon.local.md are resolved from the
+        # MAIN checkout root, never from `cwd` directly -- a `git worktree
+        # add` checkout has neither of its own, both live only in the main
+        # checkout, and there is ONE shared ledger. `root` falls back to
+        # `cwd` itself outside git (or on malformed/unreadable git
+        # metadata), which is exactly today's behaviour for a non-worktree
+        # repo or a plain, non-git directory. The containment check below
+        # deliberately keeps using `cwd`, unchanged -- see its own comment.
+        root = resolve_main_root(cwd)
+        cfg = settings(root)
         if (cfg.get("enforcement") or "").lower() in ("off", "false", "disabled"):
             return allow()
 
-        ledger = cwd / (cfg.get("ledger_dir") or DEFAULT_LEDGER_DIR)
+        ledger = root / (cfg.get("ledger_dir") or DEFAULT_LEDGER_DIR)
         if not ledger.is_dir():
-            return allow()          # not an andon repo — say nothing at all
+            # Two distinct reasons land here, and both allow, deliberately:
+            # (1) this repository does not use andon at all -- no ledger
+            # anywhere, the common case, and the reason this hook must stay
+            # inert -- or (2) `root` resolved to a plausible git root (or
+            # fell back to `cwd`) but no ledger exists there either, e.g. a
+            # freshly `git worktree add`-ed checkout of a repo that has
+            # never run andon-loop. A hook cannot tell "not adopted" from
+            # "adopted but not initialized yet", and must not guess: both
+            # are "nothing to enforce here", never a reason to deny.
+            return allow()
 
         target = (event.get("tool_input") or {}).get("file_path") or ""
         if target:
