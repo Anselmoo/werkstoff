@@ -205,6 +205,89 @@ class TestInertness(unittest.TestCase):
             self.assertEqual(decision(run(f.root)), "allow")
 
 
+LOG_WITH_SUBCYCLES = """# andon OKF log
+
+Append-only. Never rewritten. See okf-ledger-schema.md.
+
+### Pass 1 (cycle 1) -- 2026-01-01T00:00:00Z
+### Sub-cycle: ingest->normalize reopened (count 1) -- 2026-01-01T00:01:00Z
+### Sub-cycle: ingest->normalize reopened (count 2) -- 2026-01-01T00:02:00Z
+### Sub-cycle: enrich->score reopened (count 1) -- 2026-01-01T00:03:00Z
+"""
+
+LOG_AT_THRESHOLD = LOG_WITH_SUBCYCLES + (
+    "### Sub-cycle: ingest->normalize reopened (count 3) -- 2026-01-01T00:04:00Z\n"
+)
+
+
+class TestReopenParserAgreement(unittest.TestCase):
+    """The hook copies one regex from andon_core.parse_log_counters.
+
+    It has to: the hook is stdlib-only and imports nothing from the plugin, so a
+    broken install can never stop it loading. A copied regex is the drift this
+    repo keeps getting bitten by, so both parsers are run over the same text and
+    required to agree. Change one and this goes red.
+    """
+
+    def _core_counts(self, log_text):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "analysis" / "andon" / "ledger"
+            ledger.mkdir(parents=True)
+            (ledger / "log.md").write_text(log_text, encoding="utf-8")
+            return core.parse_log_counters(tmp, "analysis/andon/ledger")["reopen_counts"]
+
+    def _hook_counts(self, log_text):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_enforce_mod", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(hook)
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp)
+            (ledger / "log.md").write_text(log_text, encoding="utf-8")
+            return hook.reopen_counts(ledger)
+
+    def test_both_parsers_agree(self):
+        for log in (LOG_WITH_SUBCYCLES, LOG_AT_THRESHOLD, "# empty log\n"):
+            self.assertEqual(self._hook_counts(log), self._core_counts(log))
+
+    def test_counts_are_per_wire_and_take_the_maximum(self):
+        self.assertEqual(
+            self._hook_counts(LOG_WITH_SUBCYCLES),
+            {"ingest->normalize": 2, "enrich->score": 1},
+        )
+
+
+class TestSubCycleEscalation(unittest.TestCase):
+    """The stop that could never fire.
+
+    It read `reopen_count` off a GAP doc. No writer puts it there -- the value is
+    keyed by wire and lives only in log.md -- so on any real ledger this branch
+    was unreachable. It passed its test because the fixture hand-wrote an inline
+    tag nothing emits.
+    """
+
+    def test_wire_at_threshold_halts(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS]) as f:
+            (f.root / "analysis" / "andon" / "ledger" / "log.md").write_text(
+                LOG_AT_THRESHOLD, encoding="utf-8")
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("sub-cycle escalation", deny_reason(r).lower())
+            self.assertIn("ingest->normalize", deny_reason(r))
+
+    def test_wire_under_threshold_advances(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS]) as f:
+            (f.root / "analysis" / "andon" / "ledger" / "log.md").write_text(
+                LOG_WITH_SUBCYCLES, encoding="utf-8")
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
 class TestVerdictPolarity(unittest.TestCase):
     """A verdict is judged against an ALLOWLIST of good, not a denylist of bad.
 

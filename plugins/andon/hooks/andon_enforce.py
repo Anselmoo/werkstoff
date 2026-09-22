@@ -183,6 +183,40 @@ def _list_md(d: Path) -> list[Path]:
 _RESOLVED_BY_RE = re.compile(r"\[\[(?:evidence/)?([^\]]+)\]\]")
 
 
+# DUPLICATED FROM andon_core.parse_log_counters (the `sub_cycles` regex). The
+# hook is stdlib-only by design -- it imports nothing from the plugin, so that a
+# broken or half-installed andon can never make it fail to load, and a hook that
+# cannot import denies every call. That rules out reusing the function, so the
+# one line is copied instead.
+#
+# A copied regex is exactly the drift this repo keeps getting bitten by, so it is
+# not left to good intentions: test_andon_enforce.py's TestReopenParserAgreement
+# feeds the same log text to BOTH parsers and asserts they return the same
+# counts. Change one and that test goes red.
+REOPEN_LINE_RE = re.compile(r"^### Sub-cycle: (.+?) reopened \(count (\d+)\)", re.MULTILINE)
+
+
+def reopen_counts(ledger: Path) -> dict[str, int]:
+    """Highest recorded reopen count per wire, read from the append-only log.
+
+    The count lives ONLY here. It is written by andon_core.track_subcycle as a
+    log line and re-derived by parse_log_counters; no writer ever puts a
+    reopen_count field on a gap doc, and the concept is keyed by WIRE, not by
+    gap. The hook used to look for `tag_value(fm, "reopen_count")` on each gap
+    -- a value nothing produces -- so the sub-cycle escalation stop could not
+    fire on any real ledger. It was green only because the test fixture
+    hand-wrote an inline tag no writer emits.
+    """
+    log = ledger / "log.md"
+    if not log.is_file():
+        return {}
+    text = log.read_text(encoding="utf-8", errors="replace")
+    counts: dict[str, int] = {}
+    for wire, count in REOPEN_LINE_RE.findall(text):
+        counts[wire] = max(counts.get(wire, 0), int(count))
+    return counts
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
@@ -233,6 +267,16 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     # hook and the CLI disagreeing about the same data. A doc with no `wire`
     # field (malformed or pre-schema) can't be grouped, so it is judged on its
     # own, same as before.
+    # Sub-cycle escalation, per WIRE, from the log -- see reopen_counts(). The
+    # per-gap branch above is kept for a legacy record that carries the value
+    # inline, but production ledgers record it here and only here.
+    for wire, count in sorted(reopen_counts(ledger).items()):
+        if count >= MAX_CONSECUTIVE_REOPENS:
+            return (f"STOP (sub-cycle escalation): wire {wire!r} has reopened "
+                    f"{count} times, reaching the threshold of "
+                    f"{MAX_CONSECUTIVE_REOPENS}. It is the stream's constraint "
+                    f"now, not a sub-cycle -- escalate rather than retry.")
+
     ev = _list_md(ledger / "evidence")
     latest_by_wire: dict[str, Path] = {}
     unwired: list[Path] = []
