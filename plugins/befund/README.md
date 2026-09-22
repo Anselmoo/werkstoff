@@ -310,11 +310,19 @@ whether the dispatching skill cooperates with its own instructions:
 - the locked file list — a write outside the files the open scope named is refused
 
 befund writing its own reports (inside `output_dir`, default `analysis/befund`) is
-never gated, scope lock or not. It fails **closed** once a scope is open — any unexpected
-exception denies rather than allows — with one exception: a missing or broken `scripts/lib/`
-package (`ModuleNotFoundError` at import time) degrades to a stderr warning and an allow,
-since a packaging defect is not evidence the edit violates a rule, and blocking every future
-edit in every repo would be strictly worse than one missed check.
+never gated, scope lock or not. Once a scope is open, a resolved edit target is also checked
+for containment inside `cwd` before it is compared against `own_output_dir` or the lock's
+`allowedFiles` — this hook only ever gates writes into the target repository's own source, so
+a target outside the target repository entirely (`/tmp`, `$HOME`, an unrelated sibling repo)
+is allowed rather than swept into `remediator-scope-enforcement` as though it were in-repo
+source (issue #39); a target inside the repository but not named in the open lock is still
+denied. It fails
+**closed** once a scope is open — any unexpected exception denies rather than allows — with
+one exception: a missing or broken `scripts/lib/` package (`ModuleNotFoundError` at import
+time) degrades to a stderr warning and an allow, since a packaging defect is not evidence the
+edit violates a rule, and blocking every future edit in every repo would be strictly worse
+than one missed check. Set `BEFUND_DISABLE_GUARD=1` to bypass the hook for one call — see
+"Escape hatch" below.
 
 ### How enforcement actually works (mapping rules to code)
 
@@ -479,6 +487,10 @@ tree is dirty, `require_clean_tree: false`, in `.claude/befund.local.md`. That i
 exact text `hooks/guard_target_edit.py` gives in every denial it emits: "If this edit is not
 one befund should be gating, set `idiom_fix.mode: 'fix'` or `transform.mode: 'execute'`
 (whichever applies) and, if the tree is dirty, `require_clean_tree: false`, in
-`.claude/befund.local.md`." There is no separate kill switch — both write-capable skills
-already default to a plan/propose-only mode that refuses to touch source, and this only widens
-that mode explicitly.
+`.claude/befund.local.md`." Both write-capable skills already default to a plan/propose-only
+mode that refuses to touch source, and this only widens that mode explicitly.
+
+There is also a hard kill switch: set `BEFUND_DISABLE_GUARD=1` to bypass `guard_target_edit.py`
+for one call. Prefer the settings toggle above when the denial is about mode or a dirty tree —
+reach for `BEFUND_DISABLE_GUARD=1` only when the denial itself is wrong, e.g. a genuinely
+correct edit tripping the hook's own-repository containment check (issue #39).

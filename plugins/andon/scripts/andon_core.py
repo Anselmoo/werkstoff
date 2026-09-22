@@ -459,6 +459,53 @@ def write_doc(repo_root, ledger_dir, relative_path, fields, body=""):
     return target_abs
 
 
+RETIRABLE_KINDS = ("gaps", "evidence")
+
+
+def retire_doc(repo_root, ledger_dir, kind, slug, reason=""):
+    """Moves an OKF gap or evidence doc into `<ledger_dir>/retired/<kind>/`.
+
+    This is the #68 fix's second part: a gap whose closure or an evidence doc
+    whose non-advancing verdict is stale (superseded, mis-filed, no longer
+    load-bearing) needs a way to stop gating other than editing its status in
+    place, which would rewrite history the ledger is supposed to keep
+    append-only. `_list_md()` in the PreToolUse enforcement hook
+    (hooks/andon_enforce.py) only ever walks `ledger_dir/gaps` and
+    `ledger_dir/evidence` -- never `ledger_dir/retired` -- so a retired record
+    stops gating by construction, the same way a nonexistent one would,
+    without teaching the hook a third status to special-case.
+
+    Modeled end to end on write_doc() above: same write-scope validation
+    before touching disk, same append to log.md afterward (via
+    append_log_entry, which is what actually persists the fact that the
+    record was retired and why).
+    """
+    if kind not in RETIRABLE_KINDS:
+        raise AndonError(
+            "RETIRE_BAD_KIND",
+            f"retire kind must be one of {RETIRABLE_KINDS}, got {kind!r}.",
+        )
+    # validate_write_path takes a path relative to repo_root, not to
+    # ledger_dir -- same join write_doc() does above before calling it.
+    src_relative = os.path.join(ledger_dir, kind, f"{slug}.md")
+    src_abs = validate_write_path(src_relative, repo_root, ledger_dir)
+    if not os.path.isfile(src_abs):
+        raise AndonError(
+            "RETIRE_NOT_FOUND",
+            f"no {kind} record named {slug!r} at {src_relative!r} to retire.",
+        )
+    dest_relative = os.path.join(ledger_dir, "retired", kind, f"{slug}.md")
+    dest_abs = validate_write_path(dest_relative, repo_root, ledger_dir)
+    os.makedirs(os.path.dirname(dest_abs), exist_ok=True)
+    os.replace(src_abs, dest_abs)
+    append_log_entry(repo_root, ledger_dir, "retire", {
+        "kind": kind,
+        "slug": slug,
+        "reason": reason or "unspecified",
+    })
+    return dest_abs
+
+
 # ---------------------------------------------------------------------------
 # Ledger init / resume (rule: ledger-init-or-resume, ledger-cursor-reconstruction)
 # ---------------------------------------------------------------------------
@@ -514,6 +561,7 @@ REQUIRED_LOG_FIELDS = {
     "pass": ["stage", "wire", "gap", "strategy", "verdict", "next_cursor", "cycle", "pass_number"],
     "cycle-converged": ["passes", "cycle"],
     "sub-cycle": ["wire", "depth", "reopen_count", "escalated"],
+    "retire": ["kind", "slug", "reason"],
 }
 
 
@@ -538,6 +586,9 @@ def append_log_entry(repo_root, ledger_dir, entry_kind, fields):
         lines.append(f"### Sub-cycle: {fields['wire']} reopened (count {fields['reopen_count']}) -- {ts}")
         lines.append(f"- depth: {fields['depth']}")
         lines.append(f"- escalated: {str(fields['escalated']).lower()}")
+    elif entry_kind == "retire":
+        lines.append(f"### Retired {fields['kind']}/{fields['slug']} -- {ts}")
+        lines.append(f"- reason: {fields['reason']}")
     lines.append("")
     # append-only: open in 'a' mode, never truncate/rewrite.
     with io.open(log_path, "a", encoding="utf-8") as fh:
@@ -554,6 +605,7 @@ def parse_log_counters(repo_root, ledger_dir):
     passes = re.findall(r"^### Pass (\d+) \(cycle (\d+)\)", text, re.MULTILINE)
     cycles = re.findall(r"^### Cycle (\d+) converged after (\d+) passes", text, re.MULTILINE)
     sub_cycles = re.findall(r"^### Sub-cycle: (.+?) reopened \(count (\d+)\)", text, re.MULTILINE)
+    retirements = re.findall(r"^### Retired (\S+)/(\S+)", text, re.MULTILINE)
     total_passes = len(passes)
     current_cycle = int(passes[-1][1]) if passes else (int(cycles[-1][0]) + 1 if cycles else 1)
     pass_in_cycle = sum(1 for p in passes if int(p[1]) == current_cycle)
@@ -566,6 +618,7 @@ def parse_log_counters(repo_root, ledger_dir):
         "pass_in_cycle": pass_in_cycle,
         "cycles_converged": len(cycles),
         "reopen_counts": reopen_counts,
+        "retired_count": len(retirements),
     }
 
 
@@ -1087,6 +1140,13 @@ def main(argv=None):
     p.add_argument("fields_json", help="JSON object of frontmatter fields")
     p.add_argument("--body", default="")
 
+    p = sub.add_parser("retire")
+    p.add_argument("repo_root")
+    p.add_argument("ledger_dir")
+    p.add_argument("kind", choices=list(RETIRABLE_KINDS))
+    p.add_argument("slug")
+    p.add_argument("--reason", default="")
+
     p = sub.add_parser("validate-doc")
     p.add_argument("fields_json")
 
@@ -1184,6 +1244,10 @@ def main(argv=None):
             fields = json.loads(args.fields_json)
             path = write_doc(args.repo_root, args.ledger_dir, args.relative_path, fields, args.body)
             _print_json({"written": path})
+
+        elif args.command == "retire":
+            path = retire_doc(args.repo_root, args.ledger_dir, args.kind, args.slug, args.reason)
+            _print_json({"retired": path})
 
         elif args.command == "validate-doc":
             validate_doc(json.loads(args.fields_json))

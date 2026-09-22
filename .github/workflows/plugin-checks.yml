@@ -29,6 +29,9 @@ jobs:
       docs_ux_audit: ${{ steps.docs_ux_audit.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       andon_tests: ${{ steps.andon_tests.outcome }}
+      guard_hook_tests: ${{ steps.guard_hook_tests.outcome }}
+      differential_guards: ${{ steps.differential_guards.outcome }}
+      hooks_deny: ${{ steps.hooks_deny.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
       release_wiring: ${{ steps.release_wiring.outcome }}
@@ -212,6 +215,51 @@ jobs:
           python3 scripts/test_andon_core.py
           python3 hooks/test_andon_enforce.py
 
+      - name: Run befund + zeugnis hook test suites
+        id: guard_hook_tests
+        continue-on-error: true
+        # These existed and ran NOWHERE -- only andon's were wired, so two of
+        # the three PreToolUse guards this repo relies on had their suites
+        # invoked by hand or not at all. guard_bash_scope.py had no suite until
+        # #73; it was the one hook in the family failing H-TEST-EXISTS.
+        run: |
+          python3 plugins/befund/hooks/test_guard_target_edit.py
+          python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py
+          python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py
+
+      - name: Verify guard fixes changed one decision and kept another
+        id: differential_guards
+        continue-on-error: true
+        # A hook fix that only loosens and a hook fix that works are the same
+        # diff: both delete a deny. What separates them is whether some other
+        # input is STILL refused. Each case declares an (old, new) pair and the
+        # runner replays it against the guard at a pinned base commit and at
+        # the working tree.
+        #
+        # The calibration runs first, for the reason release_wiring and
+        # tag_releases both state: an instrument that cannot fail reports
+        # success every run and nobody looks again. It earned that during its
+        # own construction -- it caught a path bug in itself, and then caught
+        # that its vacuity check was passing against a fixture that never
+        # committed the fixed guard.
+        run: |
+          python3 test/plugins/differential-guard-cases.py --selftest
+          python3 test/plugins/differential-guard-cases.py
+
+      - name: Verify every declared hook actually denies
+        id: hooks_deny
+        continue-on-error: true
+        # Gate 2b, never wired into CI until now -- it lived in plugin READMEs
+        # as a by-hand step, which is how it came to be silently broken: the
+        # #91 rename moved plugins/{confab,self-assess} to {zeugnis,befund} but
+        # left test/plugins/fixtures/hook-violation-{confab,self-assess}/ under
+        # their old names, with their locks still at analysis/confab/ and
+        # analysis/self-assess/. Fixtures are discovered as
+        # hook-violation-<plugin>, so both fell back to the generic fixture and
+        # reported "FAIL: allows a violating edit" for three scope-conditional
+        # hooks -- a false negative nothing was watching.
+        run: python3 test/plugins/verify-hooks-deny.py plugins/*/
+
       - name: Verify every plugin is wired into the release workflows
         id: release_wiring
         continue-on-error: true
@@ -290,6 +338,9 @@ jobs:
           steps.docs_ux_audit.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.andon_tests.outcome == 'failure' ||
+          steps.guard_hook_tests.outcome == 'failure' ||
+          steps.differential_guards.outcome == 'failure' ||
+          steps.hooks_deny.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.release_wiring.outcome == 'failure' ||
           steps.tag_releases.outcome == 'failure' ||
@@ -346,6 +397,9 @@ jobs:
             row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "andon core + hook test suites" "${{ needs.checks.outputs.andon_tests }}"
+            row "befund + zeugnis hook test suites" "${{ needs.checks.outputs.guard_hook_tests }}"
+            row "guard differential cases (old denies / new allows, and one both deny)" "${{ needs.checks.outputs.differential_guards }}"
+            row "declared hooks actually deny (verify-hooks-deny)" "${{ needs.checks.outputs.hooks_deny }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"

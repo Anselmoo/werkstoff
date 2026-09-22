@@ -52,6 +52,7 @@ braces (see deny()).
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -62,6 +63,18 @@ BLAST_RANK = {"local+reversible": 1, "hard-to-reverse": 2, "shared-state-visible
 MAX_CONSECUTIVE_REOPENS = 3
 NON_ADVANCING_VERDICTS = ("red", "unknown")
 SETTINGS = ".claude/andon.local.md"
+# #70: named literally (not via a variable) in both this constant and the
+# os.environ.get() check below -- nacharbeit's H-ESCAPE-HATCH rubric rule
+# greps the raw source text for the literal `<NAME>_DISABLE_GUARD` token and
+# only clears once it appears at least twice, so an indirection through a
+# single named constant would read as "read but never named in a deny
+# reason" even though it's the same value at runtime.
+REMEDIES = (
+    "Remedies, narrowest first: `retire` the stale gap/evidence record (see "
+    "`python3 plugins/andon/scripts/andon_core.py retire --help`); set "
+    "ANDON_DISABLE_GUARD=1 to bypass this guard for one call; or set "
+    "`enforcement: off` in .claude/andon.local.md to disable it wholesale."
+)
 
 
 def allow(message: str | None = None) -> int:
@@ -148,20 +161,32 @@ def _list_md(d: Path) -> list[Path]:
     failure this whole design is built to avoid. os.listdir raises, so the
     fail-closed handler in main() can actually fire.
     """
-    import os
-
     if not d.is_dir():
         return []
     return sorted(d / n for n in os.listdir(d) if n.endswith(".md"))
 
 
+_RESOLVED_BY_RE = re.compile(r"\[\[(?:evidence/)?([^\]]+)\]\]")
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
+    # #68a: an evidence doc carries no back-link to the gap it resolved -- the
+    # only join is the *gap's* `resolved_by: "[[evidence/<slug>]]"`. Collect
+    # the evidence slugs that a CLOSED gap already points at here, in the same
+    # pass that already walks every gap, so the evidence loop below can skip
+    # them instead of gating forever after the gap that raised them closed.
+    closed_evidence_slugs: set[str] = set()
     for p in gaps:
         fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
         status = tag_value(fm, "status")
         if status and status.lower() not in ("open", "reopened"):
+            resolved_by = fm.get("resolved_by")
+            if resolved_by:
+                m = _RESOLVED_BY_RE.search(str(resolved_by))
+                if m:
+                    closed_evidence_slugs.add(m.group(1).strip())
             continue  # closed gaps do not gate anything
 
         blast = tag_value(fm, "blast_radius") or tag_value(fm, "blast-radius")
@@ -186,8 +211,28 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
                     f"{MAX_CONSECUTIVE_REOPENS}. It is the stream's constraint "
                     f"now, not a sub-cycle — escalate rather than retry.")
 
+    # #68c: supersede -- group evidence by wire and judge only the latest doc
+    # per wire, matching compute_wire_status() in andon_core.py (same
+    # filename-sorted ordering, `[-1]` wins). Without this, an old red/unknown
+    # verdict superseded by a later green re-verify still gated here even
+    # though andon-status's own board already reports the wire green -- the
+    # hook and the CLI disagreeing about the same data. A doc with no `wire`
+    # field (malformed or pre-schema) can't be grouped, so it is judged on its
+    # own, same as before.
     ev = _list_md(ledger / "evidence")
+    latest_by_wire: dict[str, Path] = {}
+    unwired: list[Path] = []
     for p in ev:
+        fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        wire = tag_value(fm, "wire")
+        if wire:
+            latest_by_wire[wire] = p  # ev is filename-sorted; last assignment wins
+        else:
+            unwired.append(p)
+
+    for p in list(latest_by_wire.values()) + unwired:
+        if p.stem in closed_evidence_slugs:
+            continue  # #68a: the gap this evidence resolved is already closed
         text = p.read_text(encoding="utf-8", errors="replace")
         fm = frontmatter(text)
         verdict = tag_value(fm, "verdict")
@@ -202,6 +247,15 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
 
 
 def main() -> int:
+    # #70: checked first, before stdin is even read, matching
+    # plugins/nacharbeit/hooks/nacharbeit_guard.py's ESCAPE_HATCH pattern --
+    # the narrowest of the three remedies named in the deny messages below.
+    # andon's allow() prints the hookSpecificOutput JSON and returns an int
+    # rather than exiting directly (unlike nacharbeit's), so this must be a
+    # `return`, not a bare call.
+    if os.environ.get("ANDON_DISABLE_GUARD") == "1":
+        return allow()
+
     try:
         raw = sys.stdin.read()
         event = json.loads(raw) if raw.strip() else {}
@@ -221,8 +275,33 @@ def main() -> int:
         target = (event.get("tool_input") or {}).get("file_path") or ""
         if target:
             try:
-                resolved = Path(target) if Path(target).is_absolute() else (cwd / target)
-                resolved = resolved.resolve()
+                target_path = Path(target) if Path(target).is_absolute() else (cwd / target)
+
+                # #69: containment, before anything else. This hook's rules
+                # are about the andon ledger under `cwd` -- a write outside
+                # the repository is none of its business, whatever the
+                # ledger's stop conditions say. Lexical containment (normpath,
+                # no filesystem access) is necessary but NOT sufficient: a
+                # symlink inside the tree can point outside it, so a target
+                # that lexically looks contained can still resolve elsewhere.
+                # Reasoning and the double test copied from
+                # plugins/arbeitsplan/hooks/arbeitsplan_guard.py's containment
+                # check -- same shape, opposite direction: that guard DENIES
+                # an escape lexically-inside-but-resolves-outside a worktree;
+                # this one only ALLOWS the "outside cwd" bypass when BOTH the
+                # lexical and the resolved test agree the target is outside,
+                # so a symlink that merely *looks* like an escape still stays
+                # gated (fail closed) rather than silently skipping the rule.
+                lexical = os.path.normpath(str(target_path))
+                cwd_str = str(cwd)
+                lexically_outside = not (
+                    lexical == cwd_str or lexical.startswith(cwd_str + os.sep)
+                )
+                resolved = target_path.resolve()
+                really_outside = not (resolved == cwd or cwd in resolved.parents)
+                if lexically_outside and really_outside:
+                    return allow()  # nothing outside this repo is this hook's business
+
                 if resolved == ledger or ledger in resolved.parents:
                     return allow()  # the loop must always be able to record its halt
             except OSError:
@@ -230,14 +309,12 @@ def main() -> int:
 
         reason = stop_reason(ledger, cfg.get("authorization_level") or DEFAULT_AUTHORIZATION)
         if reason:
-            return deny(reason + "\n\n(andon enforcement hook. Override by setting "
-                                 "`enforcement: off` in .claude/andon.local.md.)")
+            return deny(reason + "\n\n(andon enforcement hook. " + REMEDIES + ")")
         return allow()
     except Exception as exc:                                    # fail CLOSED
         return deny(
             f"andon enforcement hook failed: {type(exc).__name__}: {exc}. "
-            f"Denying rather than silently dropping enforcement. Set "
-            f"`enforcement: off` in .claude/andon.local.md to override.")
+            f"Denying rather than silently dropping enforcement. " + REMEDIES)
 
 
 if __name__ == "__main__":

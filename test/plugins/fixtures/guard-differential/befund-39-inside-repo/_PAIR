@@ -1,0 +1,5 @@
+guard=plugins/befund/hooks/guard_target_edit.py
+base=b029676eb8429d5830473cdd94b4ce16f34c6dfb
+old=deny
+new=deny
+issue=39

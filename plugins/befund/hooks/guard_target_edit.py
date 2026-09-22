@@ -54,6 +54,22 @@ see the try/except around the `from lib...` imports below. A packaging
 defect is not evidence the edit violates a rule, and every future edit in
 every repo being blocked is a strictly worse failure than one missed
 enforcement check (issue #24).
+
+Containment (issue #39): a resolved edit target is checked against cwd
+BEFORE it is ever compared to own_output_dir or the lock's allowedFiles.
+Without that check, a target outside the target repository entirely (an
+absolute path into /tmp, $HOME, or an unrelated sibling repo) fell through
+"not own_output_dir, not in allowedFiles" and was silently treated as
+target-repository source -- denied by remediator-scope-enforcement, a rule
+that was never about it, for the whole window a remediator dispatch holds
+the lock open. This hook exists to gate writes into the TARGET repository's
+own source, so a target that does not resolve inside cwd at all is outside
+every rule this hook enforces and is allowed, not denied -- the fix is an
+allow for that case, never a new deny.
+
+Escape hatch: set BEFUND_DISABLE_GUARD=1 to bypass this guard for one call,
+checked first in run() before anything else -- see ESCAPE_HATCH below,
+which every deny interpolates.
 """
 
 import json
@@ -72,8 +88,29 @@ sys.path.insert(0, os.path.join(_PLUGIN_ROOT, "scripts"))
 ESCAPE_HATCH = (
     "If this edit is not one befund should be gating, set idiom_fix.mode: "
     "'fix' or transform.mode: 'execute' (whichever applies) and, if the tree is "
-    "dirty, require_clean_tree: false, in .claude/befund.local.md."
+    "dirty, require_clean_tree: false, in .claude/befund.local.md. To bypass "
+    "this guard for one call instead, set BEFUND_DISABLE_GUARD=1."
 )
+
+
+def _is_contained(path: str, root: str) -> bool:
+    """True if `path` (already normalised the same way as `root`) is `root`
+    itself or lives under it. Shared by the lexical and realpath halves of
+    the containment check below, which is a permissive branch (it decides
+    when to STOP gating, not when to start) -- so EITHER test reporting
+    "inside" must be enough to keep the target gated, and only agreement on
+    "outside" may allow it. A symlink parked outside the tree can point
+    into it: the lexical path still reads as outside while realpath
+    resolves inside and the write lands on real, in-repo source. Treating
+    that as "outside" because the lexical half said so would open exactly
+    the scope-lock bypass this check exists to close. (Contrast
+    arbeitsplan_guard.py:420-434, which uses the same pair of tests to
+    decide a target IS inside -- a restrictive decision, so it requires
+    both to agree on "inside". Here the decision is the other polarity, so
+    requiring both to agree on "outside" is the corresponding restrictive
+    form -- "realpath only ever narrows what is allowed here, never widens
+    it" per that file's own comment.)"""
+    return path == root or path.startswith(root + os.sep)
 
 
 def deny(reason: str) -> int:
@@ -94,6 +131,9 @@ def allow() -> int:
 
 
 def run() -> int:
+    if os.environ.get("BEFUND_DISABLE_GUARD") == "1":
+        return allow()
+
     raw = sys.stdin.read()
     try:
         event = json.loads(raw) if raw.strip() else {}
@@ -136,6 +176,62 @@ def run() -> int:
             "packaging defect, not evidence the edit violates a rule.",
             file=sys.stderr,
         )
+        return allow()
+
+    # Containment (issue #39): this hook exists to gate writes into the
+    # TARGET REPOSITORY's own source -- idiom-fix-mode-fix-gate,
+    # transform-execute-gate-transform-mode, dirty-tree-gate, and
+    # remediator-scope-enforcement are all rules about what a befund
+    # remediator does to the repo it was dispatched against. A target that
+    # does not even resolve inside cwd (a write to /tmp, $HOME, or an
+    # unrelated sibling repository) is therefore never target-repository
+    # source and this hook has no rule to apply to it, so it is allowed
+    # rather than run through the own_output_dir / allowedFiles logic below.
+    #
+    # Before this check, "outside own_output_dir and not in allowedFiles"
+    # was silently read as "in-repo source, not named in the lock" and
+    # denied under remediator-scope-enforcement -- a rule that was never
+    # about it -- for the whole window a remediator dispatch held the
+    # edit-scope lock open. This runs ahead of both the absolute-path
+    # branch just below (an absolute file_path skips straight past the
+    # os.path.join(cwd, target) there and never otherwise touches cwd at
+    # all) and the own_output_dir early-allow that follows it, so neither
+    # can be reached before containment is decided.
+    #
+    # Lexical containment (os.path.normpath) is necessary but not
+    # sufficient -- a symlink can point across the boundary in either
+    # direction -- so this is a PERMISSIVE branch (it decides when to STOP
+    # gating) and must require both tests to agree on "outside" before it
+    # allows. Either test alone reporting "inside" is enough to keep the
+    # target gated and fall through to the normal own_output_dir /
+    # allowedFiles logic below:
+    #   - lexically outside, but the path is a symlink whose realpath
+    #     resolves back inside cwd (e.g. an absolute path outside the repo
+    #     that happens to point at src/secret.py) -- the write lands on
+    #     real in-repo source, so this must stay gated, not read as
+    #     "outside" because the lexical half said so;
+    #   - lexically inside, but a symlink resolves outside cwd -- falls
+    #     through to allowedFiles below, which denies it there (safe
+    #     direction) rather than this check inventing a new allow.
+    # Only lexically outside AND realpath outside is the case issue #39 is
+    # actually about: a target that was never in the repository to begin
+    # with. Mirrors arbeitsplan_guard.py:420-434, which runs the same pair
+    # of tests for the opposite (restrictive) decision -- deciding a target
+    # IS inside a worktree, so it requires both to agree on "inside". Here
+    # the polarity is inverted, so the corresponding restrictive form
+    # requires both to agree on "outside": "realpath only ever narrows what
+    # is allowed here, never widens it" (that file's own comment, still
+    # true under either polarity). os.path.normpath has no Path equivalent
+    # (Path.resolve() would touch the filesystem and follow symlinks,
+    # changing what THIS check itself decides), and Path.relative_to raises
+    # instead of returning "../elsewhere" unless walk_up=True, which needs
+    # 3.12+ -- the same asymmetry CLAUDE.md documents for takt_guard.py and
+    # arbeitsplan_guard.py, kept here too.
+    cwd_norm = os.path.normpath(cwd)
+    cwd_real = os.path.realpath(cwd)
+    target_lexical = os.path.normpath(target if os.path.isabs(target) else os.path.join(cwd, target))
+    target_real = os.path.realpath(target_lexical)
+    if not _is_contained(target_lexical, cwd_norm) and not _is_contained(target_real, cwd_real):
         return allow()
 
     settings = load_settings(cwd)

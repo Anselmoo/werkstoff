@@ -177,21 +177,35 @@ HTML report -- see [The report](#the-report) below.
 `Write`/`Edit` that holds regardless of model cooperation. On every matched
 call it:
 
-1. **Checks the escape hatch first** -- if `.claude/andon.local.md` sets
+1. **Checks the per-call escape hatch first** -- if the `ANDON_DISABLE_GUARD`
+   environment variable is set to `1`, the hook allows unconditionally, before
+   stdin is even read. See [Escape hatch](#escape-hatch) below.
+2. **Checks the wholesale escape hatch** -- if `.claude/andon.local.md` sets
    `enforcement: off` (or `false`/`disabled`), the hook allows unconditionally.
-2. **Is inert until a ledger exists** -- if the configured ledger directory
+3. **Is inert until a ledger exists** -- if the configured ledger directory
    (`analysis/andon/ledger` by default; `ledger_dir` in the same settings
    file) is not a directory, the hook allows -- so it never polices a repo
    that hasn't started using andon.
-3. **Always allows a write targeting the ledger itself** -- the loop must
+4. **Allows any write outside the repository** -- the target is resolved
+   both lexically (`normpath`) and via the filesystem (`realpath`); when both
+   agree the target is outside `cwd`, the hook allows unconditionally. A
+   target that lexically looks like an escape but actually resolves back
+   inside the repo (or vice versa) stays gated -- the two tests must agree
+   before enforcement is skipped.
+5. **Always allows a write targeting the ledger itself** -- the loop must
    always be able to record its own halt.
-4. **Otherwise evaluates the andon rule's stop conditions** (`stop_reason()`
+6. **Otherwise evaluates the andon rule's stop conditions** (`stop_reason()`
    in `hooks/andon_enforce.py`): an open or reopened gap with no
    `blast_radius` value, a `blast_radius` that exceeds the configured
    `authorization_level`, a gap that has reopened `MAX_CONSECUTIVE_REOPENS`
-   (3) times, or an evidence doc recording a `red` or `unknown` verdict --
-   any of these denies the `Write`/`Edit` outright, regardless of which file
-   was targeted.
+   (3) times, or an evidence doc recording a `red` or `unknown` verdict for
+   its wire's *latest* evidence doc (an earlier verdict superseded by a later
+   one for the same wire does not gate, matching `andon_core.py`'s
+   `compute_wire_status`) -- any of these denies the `Write`/`Edit` outright,
+   regardless of which file was targeted. Evidence whose gap has already
+   closed (the gap's `resolved_by` names that evidence doc) is skipped too --
+   see [Retiring a stale record](#retiring-a-stale-record) below for the
+   other way to stop a record from gating.
 
 Gating values are read tolerantly: a frontmatter key first (`status`,
 `blast_radius`, ...), then the legacy `tags: ["kind:wire", "status:open"]`
@@ -311,17 +325,46 @@ python3 scripts/andon_core.py preflight .
 
 ## Escape hatch
 
-Set `enforcement: off` (also accepts `false` or `disabled`) in
-`.claude/andon.local.md` to disable the `PreToolUse` hook outright --
-`hooks/andon_enforce.py` reads it in `settings()` and allows every
-`Write`/`Edit` once set.
+Three remedies for a denial, narrowest first -- the deny message itself names
+all three:
 
-This is a separate switch from `enabled: false` in the same file: that one is
-read by `scripts/andon_core.py`'s `enforce_enabled_or_halt()`, and it is the
-**skills** (`andon-loop`, `andon-status`, ...) that read it and halt before
-running any phase -- it does nothing to the hook. The hook and the skills
-each have their own kill switch, and both live in `.claude/andon.local.md`.
+1. **Retire the stale record.** If the denial is a gap or evidence doc that
+   should no longer gate (see [Retiring a stale
+   record](#retiring-a-stale-record) below), retire it rather than reaching
+   for an environment variable or a settings flag -- this fixes the ledger
+   instead of bypassing the hook.
+2. **`ANDON_DISABLE_GUARD=1`** bypasses the `PreToolUse` hook for one call --
+   set it in the environment of the single command that needs to get past a
+   wrong or unwanted denial, then unset it again. `hooks/andon_enforce.py`
+   checks this first thing in `main()`, before stdin is even read.
+3. **`enforcement: off`** (also accepts `false` or `disabled`) in
+   `.claude/andon.local.md` disables the `PreToolUse` hook outright, for
+   every future call in the whole repo, until the setting is reverted --
+   `hooks/andon_enforce.py` reads it in `settings()`. This is the wholesale
+   option; reach for it only when the first two don't fit.
+
+`enforcement: off` is a separate switch from `enabled: false` in the same
+file: that one is read by `scripts/andon_core.py`'s
+`enforce_enabled_or_halt()`, and it is the **skills** (`andon-loop`,
+`andon-status`, ...) that read it and halt before running any phase -- it
+does nothing to the hook. The hook and the skills each have their own kill
+switch, and both live in `.claude/andon.local.md`.
 
 Deleting the ledger directory (`analysis/andon/ledger` by default, or
 whatever `ledger_dir` names in that file) also makes the hook inert, since it
 allows immediately once the configured ledger directory does not exist.
+
+## Retiring a stale record
+
+`python3 plugins/andon/scripts/andon_core.py retire <repo_root> <ledger_dir> {gaps|evidence} <slug> --reason "<why>"`
+moves a gap or evidence doc from `gaps/`/`evidence/` into the matching
+subdirectory under `retired/`, and appends a `retire` entry to `log.md`
+recording the kind, slug, and reason. This is how a gap closed by a later
+re-verify (whose old evidence doc is still sitting there recording a stale
+`red`/`unknown` verdict) or a mis-filed record stops gating -- without
+rewriting the append-only ledger's history by editing `status` or `verdict`
+in place. See `references/okf-ledger-schema.md`'s `retired/` section for why
+this is enough on its own: the enforcement hook's `_list_md()` and
+`andon_core.py`'s `read_all_docs()`/`render_board()` never walk `retired/`,
+so a retired record disappears from both the gate and the board by
+construction, the same way a nonexistent one would.
