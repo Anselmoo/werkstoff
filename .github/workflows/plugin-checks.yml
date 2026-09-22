@@ -39,6 +39,7 @@ jobs:
       tag_releases: ${{ steps.tag_releases.outcome }}
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
+      arbeitsplan_selftests: ${{ steps.arbeitsplan_selftests.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -334,6 +335,19 @@ jobs:
           python3 test/plugins/test-lint-tag-releases.py
           python3 test/plugins/lint-tag-releases.py
 
+      - name: Run arbeitsplan compiler/landing/pool selftests
+        id: arbeitsplan_selftests
+        continue-on-error: true
+        # compile_spec.py --selftest also invokes test_red_fixtures.py itself
+        # (no --baseline here: this checkout is shallow, so there is no history
+        # to `git archive` a baseline commit from). land_candidate.py and
+        # worktree_pool.py each carry their own planted-defect selftest.
+        run: |
+          python3 plugins/arbeitsplan/scripts/compile_spec.py --selftest
+          python3 plugins/arbeitsplan/scripts/land_candidate.py --selftest
+          python3 plugins/arbeitsplan/scripts/worktree_pool.py selftest
+          python3 plugins/arbeitsplan/scripts/test_red_fixtures.py
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
@@ -358,7 +372,8 @@ jobs:
           steps.tag_releases.outcome == 'failure' ||
           steps.docs_inject_check.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
-          steps.pre_commit.outcome == 'failure'
+          steps.pre_commit.outcome == 'failure' ||
+          steps.arbeitsplan_selftests.outcome == 'failure'
         run: exit 1
 
   board:
@@ -417,6 +432,7 @@ jobs:
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
+            row "arbeitsplan compiler/landing/pool selftests" "${{ needs.checks.outputs.arbeitsplan_selftests }}"
             echo "</tbody></table>"
             echo
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"

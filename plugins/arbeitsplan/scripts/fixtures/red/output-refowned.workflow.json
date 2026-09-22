@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "2",
+  "runId": "ap-2026-09-22-fxb2",
+  "problem": {
+    "statement": "Recorded-red fixture for AP-OUTPUT-REFOWNED (#74): a fan-out phase declares an 'outputs' path that is also refereeOwned. HEAD (3f62503) has no notion of 'outputs' or 'refereeOwned' and ignores both unknown keys, so this fixture compiles clean there. It also trips AP-REFOWNED-NO-PRODUCER (#77) -- no referee-fixture phase produces the path, deliberately, so this fixture never uses the referee-fixture kind HEAD's KINDS set does not know either. Every REJECTED line still carries a recognized RED_RULES id.",
+    "shape": "change",
+    "acceptance": [
+      { "id": "a1", "criterion": "c", "check": "true" }
+    ]
+  },
+  "writeScope": ["src/**"],
+  "refereeOwned": ["src/protected.py"],
+  "budget": { "totalDispatches": 7, "wallClockMinutes": 25 },
+  "phases": [
+    {
+      "id": "build",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 3,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": ["a", "b", "c"],
+      "outputs": ["src/protected.py"],
+      "requires": [],
+      "marker": "built"
+    },
+    {
+      "id": "referee",
+      "kind": "fanout-blind",
+      "pattern": "blind-referee",
+      "fanOut": 3,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:candidate-referee",
+      "requires": ["built"],
+      "marker": "refereed"
+    },
+    {
+      "id": "land",
+      "kind": "single-writer",
+      "pattern": "select-then-synthesize",
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "shared",
+      "agentType": "arbeitsplan:synthesizer",
+      "requires": ["refereed"],
+      "marker": "landed"
+    }
+  ],
+  "backend": { "kind": "in-session", "why": ["writes-shared-tree"], "acknowledgedGaps": [] }
+}

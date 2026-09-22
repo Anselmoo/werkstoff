@@ -5,7 +5,7 @@ contents from prose.
 
 ## Why this file is a schema and not a description
 
-**Contents** — [why a schema](#why-this-file-is-a-schema-and-not-a-description) · [location](#location) · [schema](#schema) · [worked instance](#worked-instance) · [the six-phase shape](#the-six-phase-shape-on-the-workflow-backend) · [rejections](#rejections-at-compile-time) · [migrating from 1](#migrating-from-schemaversion-1)
+**Contents** — [why a schema](#why-this-file-is-a-schema-and-not-a-description) · [location](#location) · [schema](#schema) · [outputs and its checks](#outputs-and-its-checks) · [breaker and its checks](#breaker-and-its-checks) · [base and stacked fan-outs](#base-and-stacked-fan-outs-79) · [worked instance](#worked-instance) · [the six-phase shape](#the-six-phase-shape-on-the-workflow-backend) · [rejections](#rejections-at-compile-time) · [recorded-red validators](#recorded-red-validators-issues-77-74-75-79) · [migrating from 1](#migrating-from-schemaversion-1)
 
 `docs/plugin-benchmark-phase2-results.md` measured **9 of 11** skill-to-skill chains in this
 repository failing their handoff *despite a real schema existing upstream*. The single chain that
@@ -31,8 +31,126 @@ describes the spec in prose instead of loading it is the defect this schema exis
 | `writeScope` | string[] | yes | fnmatch globs. **Never empty** — an empty scope is rejected at compile, not treated as "anything" |
 | `budget` | object | yes | `totalDispatches` (int > 0), `wallClockMinutes` (int > 0) |
 | `phases` | object[] | yes | 1..12 phases, see below |
+| `refereeOwned` | string[] | no | path globs written by a `referee-fixture` phase before any candidate exists, and subtracted from every fan-out phase's effective write scope (#77) — see below |
 | `delegates` | object[] | no | optional cross-plugin beats (zirkel et al.) |
 | `backend` | object | yes | `{kind, why[], acknowledgedGaps[]}` — see below |
+
+### `refereeOwned`
+
+An oracle, a fixture, or an acceptance artifact that the builders must be judged against but
+must not author. Declared once, at spec level, as a list of path globs — **never** inferred
+from what a phase happened to touch. Absent is legal; most specs need no such fixture.
+
+Every `refereeOwned` path must be reachable through `writeScope` (else declaring it protects
+nothing — `AP-REFOWNED-OUTSIDE-SCOPE`) and must be produced by a `referee-fixture` phase (else
+it is declared but nothing ever writes it — `AP-REFOWNED-NO-PRODUCER`). Both are **recorded-red**
+rejections; see [Recorded-red validators](#recorded-red-validators-issue-77) below.
+
+The subtraction is computed in exactly one place, `land_candidate.subtract_referee_owned`, and
+called from both ends: `compile_spec.py`'s `AP-REFOWNED-OUTSIDE-SCOPE` check (per path, against
+`writeScope`) and `worktree_pool.py`'s `open` (against the whole scope, for every fan-out
+phase's lock). A `writeScope` glob that overlaps a `refereeOwned` path or glob is dropped
+**whole** — `fnmatch` has no negation, so there is no narrower pattern to hand back in its
+place without inventing one, which this plugin refuses everywhere else. `land_candidate.py`
+also refuses (citing `refereeOwned` by name) any candidate diff that touches one of these
+paths directly, by `in_scope()` — independent of whether the lock's narrowed scope should
+already have stopped it. `scripts/referee_owned.py` hashes each path once, at creation
+(`record`, refused a second time for the same run), and re-checks it by content
+(`verify`) — "delivering such an artifact immutably, so its identity is checkable rather than
+asserted," in the issue's own words.
+
+### `outputs` and its checks
+
+`outputs` (#74) is a phase-level list of the paths that phase is expected to produce. It is
+always checked at compile time — **no flag needed** — against the phase's **effective write
+scope**: `land_candidate.in_scope(path, writeScope)` and, for a fan-out phase, `NOT
+land_candidate.in_scope(path, refereeOwned)`. Those are exactly the two tests
+`land_candidate.py` applies when it actually lands a diff, imported here rather than
+re-derived, so compile time and landing time can never disagree about the same path:
+
+- outside `writeScope` (any phase) → `AP-OUTPUT-OUTSIDE-SCOPE`, recorded-red
+- inside `refereeOwned` (a fan-out phase only — `fanout-redundant`, `fanout-blind`,
+  `fanout-readonly`) → `AP-OUTPUT-REFOWNED`, recorded-red
+- on `referee-fixture` specifically, `outputs` must equal `refereeOwned` exactly (wave 1's
+  shape rule, unchanged)
+
+Two CLI flags read `outputs`, neither on by default:
+
+- **`--dry-land`** prints one line per declared output, `DRYLAND <phaseId> <path>
+  IN|OUTSIDE|REFOWNED`, computed with the same effective-scope logic above, then compiles as
+  normal (same exit code a plain compile would give).
+- **`--probe-checks`** is unrelated to `outputs` — it runs every `problem.acceptance[].check`
+  once via `/bin/sh`, cwd = the process's own cwd, under a `--probe-timeout` (default 60s).
+  It prints `PROBE <acceptanceId> <CLASS> exit=<n>` per check, `CLASS` one of `RAN`,
+  `ABSENT-TARGET` (exit 127), `SYNTAX` (exit 2), `PERMISSION` (exit 126) or `TIMEOUT` (exit
+  -1) — a check that ran and failed is still `RAN`. Any non-`RAN` check is rejected,
+  `AP-CHECK-NOT-RAN`, recorded-red: a criterion nothing could execute cannot referee anything.
+  **A plain compile — without `--probe-checks` — executes nothing**; probing is opt-in.
+
+### `breaker` and its checks
+
+`workflows/run.js` reads a fan-out phase's `breaker` unconditionally at dispatch time —
+`ph.breaker || DEFAULT_BREAKER` (`{acceptNumerator: 2, acceptDenominator: 3}`) — and compares
+it against the batch: `scoped.length * acceptDenominator < measured.length * acceptNumerator`
+(`fanout-redundant`, line 401) or the equivalent for `fanout-readonly`'s acquisition check (line
+339). Before #75, `compile_spec.py` never looked at `breaker` at all, so a permanently disabled
+gate compiled clean. It is now validated wherever it appears on a phase, five checks, each a
+recorded-red rejection (see below):
+
+- **`AP-BREAKER-INCOMPLETE`** — `breaker` is present but not an object, or
+  `acceptNumerator`/`acceptDenominator` is missing or not a plain `int` (a `bool` is **not** an
+  int here — `true`/`false` are rejected by this rule, not silently coerced)
+- **`AP-BREAKER-DISABLED`** — `acceptNumerator == 0`. The comparison becomes `x < 0`, which
+  never trips: that is a disabled gate, not a threshold of zero
+- **`AP-BREAKER-RATIO`** — the bound is `1 <= acceptNumerator <= acceptDenominator`
+  (`acceptDenominator < 1`, `acceptNumerator < 0`, or `acceptNumerator > acceptDenominator` are
+  each a violation; `acceptNumerator == 0` is caught by `AP-BREAKER-DISABLED` first)
+- **`AP-BREAKER-SCOPE`** — `scope`, when present, must be exactly `"per-batch"`. Absent is legal
+- **`AP-BREAKER-KIND`** — `breaker` is declared on a phase whose `kind` is not one of the three
+  fan-out kinds (`fanout-redundant`, `fanout-blind`, `fanout-readonly`) — including
+  `single-writer` and `referee-fixture` — because nothing in `workflows/run.js` ever compares a
+  non-fan-out phase's result against a breaker
+
+`workflows/run.js`'s own `DEFAULT_BREAKER` (`{acceptNumerator: 2, acceptDenominator: 3}`)
+already satisfies `1 <= acceptNumerator <= acceptDenominator`, so the fallback a phase gets when
+it declares no `breaker` at all is never itself a violation of the bound this section enforces.
+
+### `base` and stacked fan-outs (#79)
+
+A wave whose builders should start from a *prior* wave's refereed winner declares `base:
+"<phaseId>"` on a `fanout-redundant` phase — only there; on any other `kind` it is
+`AP-BASE-INVALID`. `base` must name an **earlier** `fanout-redundant` phase Q that some earlier
+`fanout-blind` phase actually reviewed (required Q's marker), and this phase's own transitive
+`requires` must reach that reviewer's marker in turn — a `base` is a **refereed winner**, never
+an unjudged or unrelated one. Any of that failing is `AP-BASE-INVALID`, naming the phase and its
+declared `base`. Under `backend.kind: "workflow"`, **any** `base` is rejected outright as
+`AP-BASE-BACKEND`: `run.js`'s `isolation: "worktree"` creates every candidate worktree fresh
+from HEAD, with no way to seed it from a promoted branch.
+
+`worktree_pool.py create --spec S --phase P --count N` is what actually honours it: if `P`
+declares `base: Q`, every worktree this call creates starts from branch
+`arbeitsplan/<runId>/base/Q` instead of HEAD — and if that branch has never been promoted, the
+command **refuses**, naming the branch, and creates nothing. `create --spec S --count N` with no
+`--phase` (or a `--phase` whose phase carries no `base`) behaves exactly as before: from HEAD.
+`worktree_pool.py promote --run R --phase Q --candidate cW` commits everything sitting in
+`.arbeitsplan/R/cW` — untracked files included — and points `arbeitsplan/R/base/Q` at that
+commit; this is the one seam a later `create --phase` reads. `worktree_pool.py destroy --run R`
+leaves every `arbeitsplan/R/base/*` branch alone (a later wave may still stack on it); only
+`destroy --run R --bases` also deletes them.
+
+**`AP-SIBLING-INVISIBLE` (a `WARNING`, not a rejection)** catches the case `base` exists to
+prevent: for every `fanout-redundant` phase P, walk its `requires` transitively over the marker
+→ producing-phase map, stopping at (but still crediting) any `writes: "shared"` phase on the
+way — a landed phase already carries everything before it into the shared tree, so nothing
+beyond a landing is missing from a fresh worktree checked out after it. If that walk reaches
+another `fanout-redundant` phase Q and P's own `base` chain (`base`, its `base`'s `base`, ...)
+does not reach Q, then Q's candidates were never landed and P was never stacked on Q either — Q's
+fan-out is invisible in P's fresh worktree, a builder made from HEAD, not from Q's winner. The
+warning names **both** phase ids. A plain compile still prints it and still writes (exit 0);
+`--strict` turns any `WARNING` into a rejection (exit 1). Warnings print whether or not the spec
+was also rejected for something else. Only `fanout-redundant` phases are checked — a
+`fanout-blind` referee or a `single-writer` synthesizer receives diffs as data, never a worktree
+of its own, so there is nothing for either to be missing.
 
 ### `backend`
 
@@ -59,7 +177,7 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | key | type | meaning |
 |---|---|---|
 | `id` | string | unique within the run |
-| `kind` | `"fanout-redundant"` \| `"fanout-blind"` \| `"fanout-readonly"` \| `"single-writer"` | determines who may hold Write |
+| `kind` | `"fanout-redundant"` \| `"fanout-blind"` \| `"fanout-readonly"` \| `"single-writer"` \| `"referee-fixture"` | determines who may hold Write. `referee-fixture` (#77) is a single writer that runs before every fan-out phase and produces the spec's `refereeOwned` paths — never fanned out, always `writes: "shared"`, always `pattern: "calibrate-then-measure"` |
 | `pattern` | string | an id from `references/patterns.md`. Unknown id ⇒ **reject**, never improvise |
 | `fanOut` | int | 1..16. Required for every `fanout-*` kind |
 | `modelTier` | `"haiku"` \| `"sonnet"` \| `"opus"` | **always explicit** — an omitted tier inherits the session's model and silently defeats tiering (`docs/orchestration/references/delegation.md`) |
@@ -71,7 +189,9 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | `reDerive` | object | **required** on `map-reduce-disjoint`: `{samplePct: 1..100, seed: int}`. Under-extraction is that pattern's named failure; the sample is picked in code by `scripts/sample_rederive.py`, never by a subagent |
 | `borrowGate` | object | `select-then-synthesize` only: `{mustBeatWinnerOn: [acceptance ids]}`. Without it the synthesizer lands the plain winner; with it, a borrowed hunk must beat the winner on a named criterion |
 | `cannotCheck` | string[] | what this phase declares it cannot verify, **before** any candidate exists — declared later, it would be written by the party whose work it excuses |
-| `breaker` | object | `{acceptNumerator, acceptDenominator, scope: "per-batch"}`. `scope` is **only** `"per-batch"` |
+| `outputs` | string[] | optional, on **any** phase (#74): the paths this phase is expected to produce. Always statically checked, no flag needed — see [outputs and its checks](#outputs-and-its-checks) below. On `referee-fixture` specifically it is additionally a **shape check**, not a second declaration: when present it must equal the spec's `refereeOwned` exactly, so a fixture's declared output and what candidates are protected from touching can never disagree |
+| `breaker` | object | `{acceptNumerator, acceptDenominator, scope: "per-batch"}`. **Validated (#75)** — see [`breaker` and its checks](#breaker-and-its-checks) below |
+| `base` | string | optional, **only on `fanout-redundant`** (#79): an earlier `fanout-redundant` phase this one's worktrees are stacked on. **Validated** — see [`base` and stacked fan-outs](#base-and-stacked-fan-outs-79) below |
 | `requires` | string[] | marker names that must exist under `.takt/<runId>/` first |
 | `marker` | string | the marker this phase creates on genuine completion |
 
@@ -182,9 +302,85 @@ a default silently supplied:
 - `backend.kind == "workflow"` with a `writes: "shared"` phase, or without `"workflow-tool-unhooked"` acknowledged
 - `map-reduce-disjoint` without `reDerive`, or with `sources` that are not `fanOut` distinct partitions
 - `borrowGate` on any pattern but `select-then-synthesize`, or naming an unknown acceptance id
+- a `referee-fixture` phase with `fanOut`, a `pattern` other than `calibrate-then-measure`, an
+  `outputs` that does not equal `refereeOwned`, or that comes after any fan-out phase
+- `refereeOwned` present but empty, not a list of strings, declared with no `referee-fixture`
+  phase to produce it (`AP-REFOWNED-NO-PRODUCER`, recorded-red), or naming a path `writeScope`
+  never reaches (`AP-REFOWNED-OUTSIDE-SCOPE`, recorded-red)
+- a phase's `outputs` naming a path outside `writeScope` (`AP-OUTPUT-OUTSIDE-SCOPE`,
+  recorded-red), or a fan-out phase's `outputs` naming a path inside `refereeOwned`
+  (`AP-OUTPUT-REFOWNED`, recorded-red)
+- with `--probe-checks`: any `problem.acceptance[].check` that does not classify `RAN`
+  (`AP-CHECK-NOT-RAN`, recorded-red) — never checked on a plain compile
+- a phase's `breaker` that is not an object, or whose `acceptNumerator`/`acceptDenominator` is
+  missing or not a plain `int` (`AP-BREAKER-INCOMPLETE`, recorded-red); has
+  `acceptNumerator == 0` (`AP-BREAKER-DISABLED`, recorded-red); violates
+  `1 <= acceptNumerator <= acceptDenominator` (`AP-BREAKER-RATIO`, recorded-red); declares a
+  `scope` other than `"per-batch"` (`AP-BREAKER-SCOPE`, recorded-red); or sits on a phase whose
+  `kind` is not one of the three fan-out kinds (`AP-BREAKER-KIND`, recorded-red)
+- `base` on any phase but `fanout-redundant`, naming an unknown or non-earlier phase, naming a
+  phase that is not `fanout-redundant`, or naming one no earlier `fanout-blind` phase reviewed
+  and this phase's own `requires` never reach (`AP-BASE-INVALID`, recorded-red); `base` at all
+  under `backend.kind: "workflow"` (`AP-BASE-BACKEND`, recorded-red)
+- with `--strict`: any `AP-SIBLING-INVISIBLE` `WARNING` (see below) — never checked on a plain
+  compile, which still prints the warning and still writes
 
 **Never infer a missing gating value.** Reject and surface it: a halt that depends on a value the
 compiler invented is not a halt.
+
+## Recorded-red validators (issues #77, #74, #75, #79)
+
+A **recorded-red** rule is a validator this plugin added that rejects a spec the compiler at
+HEAD `3f62503` would have compiled clean — the whole point of the convention is that the claim
+"this used to be silently accepted" is checked, not asserted. `compile_spec.py`'s module-level
+`RED_RULES` dict maps each such rule's id to the GitHub issue that motivated it:
+
+```python
+RED_RULES = {
+    "AP-REFOWNED-NO-PRODUCER": 77,
+    "AP-REFOWNED-OUTSIDE-SCOPE": 77,
+    "AP-OUTPUT-OUTSIDE-SCOPE": 74,
+    "AP-OUTPUT-REFOWNED": 74,
+    "AP-CHECK-NOT-RAN": 74,
+    "AP-BREAKER-INCOMPLETE": 75,
+    "AP-BREAKER-DISABLED": 75,
+    "AP-BREAKER-RATIO": 75,
+    "AP-BREAKER-SCOPE": 75,
+    "AP-BREAKER-KIND": 75,
+    "AP-SIBLING-INVISIBLE": 79,
+    "AP-BASE-INVALID": 79,
+    "AP-BASE-BACKEND": 79,
+}
+```
+
+`AP-SIBLING-INVISIBLE` is a `WARNING`, not a `REJECTED` line — `test_red_fixtures.py` and
+`compile_spec.py --selftest` both treat a `WARNING` exactly like a `REJECTED` line for tagging
+and coverage purposes, since both are how this plugin surfaces "something this compiler used to
+accept silently no longer passes without comment."
+
+Every `REJECTED`/`WARNING` line a recorded-red validator prints carries its id in brackets, e.g.:
+
+```
+REJECTED refereeOwned: [AP-REFOWNED-NO-PRODUCER] declared but no phase of kind
+'referee-fixture' produces it; an artifact nothing writes is not protected, it is simply absent
+```
+
+Each id in `RED_RULES` has a committed fixture under `scripts/fixtures/red/` that:
+
+1. **compiles clean at HEAD** (`git archive 3f62503 -- plugins/arbeitsplan`, `compile_spec.py
+   --spec <fixture>`, exit 0) — it carries the new key (`refereeOwned`) but never the new
+   `kind` (`"referee-fixture"`), because HEAD's `KINDS` set already refuses any spec that uses a
+   kind it does not know, which would make "HEAD accepted this" false for reasons this feature
+   never touched;
+2. **is rejected by the current compiler**, citing its rule's id and no unkeyed
+   `REJECTED`/`WARNING` line.
+
+`scripts/fixtures/red/MANIFEST.json` lists, per rule, which fixture proves it and the args to
+run the compiler with. `scripts/test_red_fixtures.py` is the calibration: it asserts every
+`RED_RULES` id has a manifest entry, every entry's rule maps to its declared issue, and (its
+optional `--baseline SHA`) that the fixture really did compile clean at that commit rather than
+by assumption. `compile_spec.py --selftest` calls it directly, so a red fixture that stopped
+going red cannot hide behind a green selftest reported on its own.
 
 ## Migrating from `schemaVersion` 1
 

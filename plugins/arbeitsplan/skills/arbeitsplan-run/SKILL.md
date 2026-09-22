@@ -85,6 +85,68 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    `close` **refuses** a phase that recorded no terminal event. On a halt, close with
    `--halt "<the specific reason>"`: a halt is an event in `run.jsonl`, never an absence.
 
+## Referee-owned artifacts (#77)
+
+If `workflow.json` declares `refereeOwned`, its `referee-fixture` phase runs first, exactly
+like any other phase (open the lock, dispatch its `agentType`, record the output, close). Once
+it has written those paths, baseline them **once**:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" record --run <runId>
+```
+
+A second `record` for the same run is refused: the baseline is taken at creation, never
+re-taken to accommodate a later change. `worktree_pool.py open` already narrows a fan-out
+phase's lock to exclude every `refereeOwned` path, so the guard denies a candidate's Edit/Write
+before it lands — but that covers only the tool calls the guard's matcher sees. Re-verify
+before landing (step 8), as the belt to that guard's suspenders:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" verify --run <runId>
+```
+
+`land_candidate.py` independently refuses (citing `refereeOwned` by name) any candidate diff
+that touches one of these paths, so the same rule is checked three ways: at the lock, at
+landing, and by content.
+
+## Stacked fan-outs across waves (#79)
+
+A later wave's builders should sometimes start from an **earlier wave's refereed winner**,
+not from HEAD — that is what a `fanout-redundant` phase's `base: "<phaseId>"` declares. Once a
+phase's candidate is selected (step 7 above) and would normally just land (step 8), promote it
+instead if a later phase names it as `base`:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" promote --run <runId> --phase build-w1 --candidate c2
+```
+
+This commits everything sitting in that candidate's worktree — untracked files included — and
+points `arbeitsplan/<runId>/base/build-w1` at the new commit. The next wave's `create` then
+reads it automatically:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" create --spec analysis/arbeitsplan/<runId>/workflow.json --phase build-w2 --count 2
+```
+
+If `build-w2` declares `base: "build-w1"`, every worktree this creates starts from the promoted
+branch instead of HEAD; if `build-w1` was never promoted, `create` **refuses**, naming the
+missing branch, and creates nothing. A `--phase` whose phase carries no `base` (or `create` with
+no `--phase` at all) behaves exactly as before: from HEAD.
+
+Base branches deliberately **survive** an ordinary `worktree_pool.py destroy --run <runId>` — a
+still-pending later wave may need to stack on one. Only pass `--bases` once the whole run is
+actually done with them:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" destroy --run <runId> --bases
+```
+
+`compile_spec.py --strict` is the check that a stacked run actually declared every `base` it
+needed: a `fanout-redundant` phase whose transitive `requires` reach another `fanout-redundant`
+phase with no `base` chain reaching it back prints `WARNING ... [AP-SIBLING-INVISIBLE] ...`
+naming both phases. A plain compile still writes past a warning (exit 0); `--strict` treats one
+as a rejection (exit 1) — run compilation with `--strict` before dispatching a stacked run.
+
 ## The workflow backend
 
 When `backend.kind` is `"workflow"`, the whole phase graph runs inside `workflows/run.js`,

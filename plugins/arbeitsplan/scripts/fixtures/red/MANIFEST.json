@@ -1,0 +1,95 @@
+{
+  "entries": [
+    {
+      "issue": 77,
+      "rule": "AP-REFOWNED-NO-PRODUCER",
+      "fixture": "refowned-no-producer.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 77,
+      "rule": "AP-REFOWNED-OUTSIDE-SCOPE",
+      "fixture": "refowned-outside-scope.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 74,
+      "rule": "AP-OUTPUT-OUTSIDE-SCOPE",
+      "fixture": "output-outside-scope.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 74,
+      "rule": "AP-OUTPUT-REFOWNED",
+      "fixture": "output-refowned.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 74,
+      "rule": "AP-CHECK-NOT-RAN",
+      "fixture": "check-not-ran.workflow.json",
+      "args": ["--probe-checks"],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 75,
+      "rule": "AP-BREAKER-INCOMPLETE",
+      "fixture": "breaker-incomplete.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 75,
+      "rule": "AP-BREAKER-DISABLED",
+      "fixture": "breaker-disabled.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 75,
+      "rule": "AP-BREAKER-RATIO",
+      "fixture": "breaker-ratio.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 75,
+      "rule": "AP-BREAKER-SCOPE",
+      "fixture": "breaker-scope.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 75,
+      "rule": "AP-BREAKER-KIND",
+      "fixture": "breaker-kind.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 79,
+      "rule": "AP-SIBLING-INVISIBLE",
+      "fixture": "sibling-invisible.workflow.json",
+      "args": ["--strict"],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 79,
+      "rule": "AP-BASE-INVALID",
+      "fixture": "base-invalid.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 79,
+      "rule": "AP-BASE-BACKEND",
+      "fixture": "base-backend.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    }
+  ]
+}

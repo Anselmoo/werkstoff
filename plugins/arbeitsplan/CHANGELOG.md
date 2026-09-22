@@ -4,6 +4,68 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- **stacked fan-outs: `base`, `AP-SIBLING-INVISIBLE`, and `--strict` (#79)**: a `fanout-redundant`
+  phase may now declare `base: "<phaseId>"`, naming an earlier `fanout-redundant` phase whose
+  refereed winner its own worktrees should start from — a fan-out is redundancy over ONE scope
+  in isolated worktrees made from HEAD, so a later wave's builders otherwise never see an earlier
+  wave's landed work unless it was promoted. `base` is valid only when it names an earlier
+  `fanout-redundant` phase that some earlier `fanout-blind` phase actually reviewed and this
+  phase's own `requires` transitively reach — anything else is `AP-BASE-INVALID`; any `base` at
+  all under `backend.kind: "workflow"` is `AP-BASE-BACKEND` (`run.js`'s `isolation: "worktree"`
+  cannot honour it). A new `WARNING`, `AP-SIBLING-INVISIBLE`, fires when a `fanout-redundant`
+  phase's transitive `requires` reach another `fanout-redundant` phase (walked over the marker →
+  producing-phase map, stopping at any `writes: "shared"` phase on the way) that its `base` chain
+  does not also reach — naming both phases, printed whether or not the spec is also rejected for
+  something else. A plain compile still writes on a warning (exit 0); the new `--strict` flag
+  turns any warning into a rejection (exit 1). `worktree_pool.py` gained `create --phase P` (seeds
+  every worktree from `arbeitsplan/<runId>/base/<Q>` when `P` declares `base: Q`, refusing by
+  name if that branch was never promoted), `promote --run R --phase Q --candidate cW` (commits a
+  candidate worktree, untracked files included, and points `arbeitsplan/R/base/Q` at it), and
+  `destroy --run R --bases` (also deletes every `arbeitsplan/R/base/*` branch — without it they
+  survive for a later wave). All three rule ids join `RED_RULES` as recorded-red, each with a
+  committed fixture under `scripts/fixtures/red/` proven by `scripts/test_red_fixtures.py`.
+- **`breaker` is now validated (#75)**: `compile_spec.py` never checked a phase's `breaker`
+  object, so a permanently disabled gate (`workflows/run.js`'s comparisons compare `scoped *
+  acceptDenominator < measured * acceptNumerator`) compiled clean. A new `validate_breaker`
+  helper rejects: `acceptNumerator`/`acceptDenominator` missing, not an object, or not a plain
+  int (a `bool` is not an int here) — `AP-BREAKER-INCOMPLETE`; `acceptNumerator == 0`, which
+  makes the comparison `x < 0` and never trips — `AP-BREAKER-DISABLED`; a ratio outside
+  `1 <= acceptNumerator <= acceptDenominator` — `AP-BREAKER-RATIO`; a `scope` present and not
+  exactly `"per-batch"` — `AP-BREAKER-SCOPE`; and a `breaker` declared on a phase whose kind is
+  not one of the three fan-out kinds, including `single-writer` and `referee-fixture` (nothing
+  reads it there) — `AP-BREAKER-KIND`. All five join `RED_RULES` as recorded-red, each with a
+  committed fixture under `scripts/fixtures/red/` proven by `scripts/test_red_fixtures.py`.
+  `workflows/run.js`'s `DEFAULT_BREAKER` ({2, 3}) already satisfies the same bound.
+- **phase `outputs`, `--dry-land` and `--probe-checks` (#74)**: any phase may now declare
+  `outputs`, the paths it is expected to produce, checked at compile time with no flag needed
+  against the same two tests `land_candidate.py` applies at landing (imported, never
+  re-derived): outside `writeScope` is `AP-OUTPUT-OUTSIDE-SCOPE`; inside `refereeOwned` on a
+  fan-out phase is `AP-OUTPUT-REFOWNED`; a `referee-fixture` phase's `outputs` must still equal
+  `refereeOwned` exactly (wave 1's rule, unchanged). `--dry-land` prints `DRYLAND <phaseId>
+  <path> IN|OUTSIDE|REFOWNED` per declared output and compiles as normal. `--probe-checks`
+  (opt-in — a plain compile executes nothing) runs every `problem.acceptance[].check` once via
+  the shell, cwd the process's own, under `--probe-timeout` (default 60s), printing `PROBE
+  <acceptanceId> <CLASS> exit=<n>`; any check that does not classify `RAN` is rejected,
+  `AP-CHECK-NOT-RAN`. All three ids join `RED_RULES` as recorded-red, each with a committed
+  fixture under `scripts/fixtures/red/` proven by `scripts/test_red_fixtures.py`.
+- **`referee-fixture` phase kind and `refereeOwned` (#77)**: a spec can now declare paths a
+  single-writer fixture phase produces before any candidate exists, and that are subtracted
+  from every fan-out phase's effective write scope. `land_candidate.py` refuses (citing
+  `refereeOwned` by name) any candidate diff that touches one; `worktree_pool.py open` narrows
+  a fan-out phase's lock scope by the same subtraction, computed once in
+  `land_candidate.subtract_referee_owned` and shared by both call sites. New
+  `scripts/referee_owned.py` hashes each path at creation (`record`, refused a second time for
+  the same run or against a path that does not exist yet) and re-checks it by content
+  (`verify`), so a candidate that reached one anyway is detected rather than assumed impossible.
+- **Recorded-red validators**: `compile_spec.py`'s new `RED_RULES` dict names, per rule id, the
+  issue that motivated a validator rejecting a spec HEAD `3f62503` compiled clean.
+  `AP-REFOWNED-NO-PRODUCER` and `AP-REFOWNED-OUTSIDE-SCOPE` are the first two. Every fixture
+  under `scripts/fixtures/red/` is proven both halves of that claim by new
+  `scripts/test_red_fixtures.py`, which `compile_spec.py --selftest` now calls directly, and
+  which CI now runs alongside `compile_spec.py --selftest`, `land_candidate.py --selftest` and
+  `worktree_pool.py selftest`.
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._

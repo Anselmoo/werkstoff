@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "2",
+  "runId": "ap-2026-09-22-bad1",
+  "problem": {
+    "statement": "s",
+    "shape": "change",
+    "acceptance": [
+      { "id": "a1", "criterion": "c", "check": "true" }
+    ]
+  },
+  "writeScope": ["src/**"],
+  "budget": { "totalDispatches": 10, "wallClockMinutes": 25 },
+  "phases": [
+    {
+      "id": "build0",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": ["a", "b"],
+      "requires": [],
+      "marker": "built0"
+    },
+    {
+      "id": "build1",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": ["c", "d"],
+      "base": "build0",
+      "requires": ["built0"],
+      "marker": "built1"
+    },
+    {
+      "id": "referee",
+      "kind": "fanout-blind",
+      "pattern": "blind-referee",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:candidate-referee",
+      "requires": ["built1"],
+      "marker": "refereed"
+    },
+    {
+      "id": "land",
+      "kind": "single-writer",
+      "pattern": "select-then-synthesize",
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "shared",
+      "agentType": "arbeitsplan:synthesizer",
+      "requires": ["refereed"],
+      "marker": "landed"
+    }
+  ],
+  "backend": { "kind": "in-session", "why": ["writes-shared-tree"], "acknowledgedGaps": [] }
+}

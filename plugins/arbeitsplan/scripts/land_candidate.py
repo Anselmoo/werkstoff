@@ -62,6 +62,34 @@ def in_scope(path: str, scope: list) -> bool:
     return False
 
 
+def subtract_referee_owned(scope: list, referee_owned: list) -> list:
+    """`writeScope` minus `refereeOwned` -- the ONE place this subtraction is
+    computed. compile_spec.py's AP-REFOWNED-OUTSIDE-SCOPE rejection calls this
+    (per referee-owned path, against the full scope) to decide whether that path
+    is reachable through `writeScope` at all; worktree_pool.py calls it to open a
+    fan-out phase's lock with a NARROWED scope, so a candidate's writable tree
+    never lexically contains a referee-owned path in the first place. Landing
+    itself does not call this: `main()` refuses a referee-owned touch directly,
+    by `in_scope()`, so its refusal names the path rather than an already-edited
+    scope list.
+
+    `fnmatch` has no negation, so there is no narrower glob to hand back in place
+    of a dropped entry -- inventing one would be exactly the "never infer a
+    missing gating value" mistake this plugin refuses everywhere else. A scope
+    entry is dropped outright whenever it overlaps a referee-owned path or glob,
+    in either direction (the referee-owned entry falls inside the scope glob, or
+    the scope glob is itself named by a referee-owned glob).
+    """
+    if not referee_owned:
+        return list(scope)
+    keep = []
+    for s in scope:
+        overlaps = any(in_scope(ro, [s]) or in_scope(s, [ro]) for ro in referee_owned)
+        if not overlaps:
+            keep.append(s)
+    return keep
+
+
 def hunk_body(diff: str) -> list:
     """The +/- lines of a diff, headers and context dropped: what a comparison
     of two diffs of the same paths should agree on regardless of index lines,
@@ -136,6 +164,22 @@ def main(argv: list) -> int:
             print(f"  {'ok  ' if ok else 'FAIL'} scope {name}: {got}")
             if not ok:
                 fails.append(name)
+        subtract_cases = [
+            ("no refereeOwned leaves scope untouched",
+                ["src/**", "oracle/**"], [], ["src/**", "oracle/**"]),
+            ("a glob containing the owned path is dropped whole",
+                ["src/**", "oracle/**"], ["oracle/spec.txt"], ["src/**"]),
+            ("an owned path with no overlapping scope entry drops nothing",
+                ["src/**"], ["oracle/spec.txt"], ["src/**"]),
+            ("a literal scope entry equal to the owned path is dropped",
+                ["oracle/spec.txt", "src/**"], ["oracle/spec.txt"], ["src/**"]),
+        ]
+        for name, scope, owned, want in subtract_cases:
+            got = subtract_referee_owned(scope, owned)
+            ok = got == want
+            print(f"  {'ok  ' if ok else 'FAIL'} subtract {name}: {got}")
+            if not ok:
+                fails.append(name)
         print()
         if fails:
             print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
@@ -196,7 +240,24 @@ def main(argv: list) -> int:
         return 1
 
     scope = spec["writeScope"]
-    out_of_scope = [p for p in paths_in_diff(diff) if not in_scope(p, scope)]
+    diff_paths = paths_in_diff(diff)
+
+    # refereeOwned (#77): paths a referee-fixture phase wrote before any candidate
+    # existed. Checked BEFORE the ordinary scope refusal below, and separately from
+    # it, so the message always names 'refereeOwned' rather than folding into the
+    # generic "outside writeScope" wording -- these paths are typically INSIDE
+    # writeScope (that is what makes them reachable at all without this check).
+    referee_owned = spec.get("refereeOwned") or []
+    owned_touch = [p for p in diff_paths if in_scope(p, referee_owned)]
+    if owned_touch:
+        print(f"REFUSED: {args.candidate} touches refereeOwned path(s) {owned_touch}. "
+              "These are written once, before any candidate exists, by a referee-fixture "
+              "phase, and are subtracted from every fan-out phase's effective write scope. "
+              "A diff that reaches one anyway is refused rather than landed, whether or not "
+              "the guard should have stopped it earlier.", file=sys.stderr)
+        return 1
+
+    out_of_scope = [p for p in diff_paths if not in_scope(p, scope)]
     if out_of_scope:
         print(f"REFUSED: {args.candidate} touches {out_of_scope} outside the declared "
               f"writeScope {scope}. The scope is the contract this candidate was "
@@ -215,7 +276,7 @@ def main(argv: list) -> int:
         return 1
 
     if not args.apply:
-        print(f"{args.candidate} would apply cleanly, {len(paths_in_diff(diff))} path(s), "
+        print(f"{args.candidate} would apply cleanly, {len(diff_paths)} path(s), "
               "all in scope (not applied; pass --apply)")
         return 0
 
