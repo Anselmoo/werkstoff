@@ -4,6 +4,12 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-22
+
+### Fixed
+- stop three guards denying beyond their own rule (#95)
+- **andon**: keep wire degradation on a strategy whose trigger fired (#94)
+
 ## [1.0.1] - 2026-09-22
 
 ### Fixed
