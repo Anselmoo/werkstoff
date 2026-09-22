@@ -8,6 +8,7 @@ that is the entire point of it being a hook. Run: python3 test_andon_enforce.py
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -62,8 +63,56 @@ tags: ["strategy:a"]
 - Verdict: red
 """
 
+# #68: evidence with a non-advancing verdict, used both standalone (still
+# gates) and superseded/retired (stops gating).
+EVIDENCE_UNKNOWN_WIRE_AB = """---
+type: evidence
+title: "wire not conclusively proven"
+wire: "stage-a->stage-b"
+strategy: a
+verdict: unknown
+tags: ["strategy:a", "verdict:unknown"]
+---
+"""
 
-def run(cwd: Path, file_path: str = "src/api.py") -> subprocess.CompletedProcess:
+EVIDENCE_GREEN_WIRE_AB = """---
+type: evidence
+title: "wire re-verified green"
+wire: "stage-a->stage-b"
+strategy: a
+verdict: green
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+# A gap whose resolved_by names EVIDENCE_UNKNOWN_WIRE_AB's slug -- used to
+# prove #68a's join skips exactly that evidence once its gap is closed.
+# Fixture below names the first (and, in these tests, only) evidence doc it
+# writes "e0.md", so resolved_by must target that exact slug.
+GAP_CLOSED_RESOLVED_BY_WIRE_AB = """---
+type: gap
+title: "stage-a->stage-b wire already re-verified"
+stage: stage-a
+kind: wire
+status: closed
+resolved_by: "[[evidence/e0]]"
+tags: ["kind:wire", "status:closed"]
+---
+"""
+
+GAP_OPEN_WIRE_AB = """---
+type: gap
+title: "stage-a->stage-b wire not yet resolved"
+stage: stage-a
+kind: wire
+status: open
+blast_radius: local+reversible
+tags: ["kind:wire", "status:open", "blast-radius:local+reversible"]
+---
+"""
+
+
+def run(cwd: Path, file_path: str = "src/api.py", env: dict | None = None) -> subprocess.CompletedProcess:
     """Run the hook and return the raw CompletedProcess.
 
     The runtime distinguishes allow from deny by EXIT CODE (0 vs 2), not by
@@ -73,8 +122,9 @@ def run(cwd: Path, file_path: str = "src/api.py") -> subprocess.CompletedProcess
     """
     payload = json.dumps({"cwd": str(cwd), "tool_name": "Edit",
                           "tool_input": {"file_path": file_path}})
+    full_env = {**os.environ, **env} if env else None
     r = subprocess.run([sys.executable, str(HOOK)], input=payload,
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30, env=full_env)
     assert r.returncode in (0, 2), f"hook must exit 0 (allow) or 2 (deny), got {r.returncode}: {r.stderr}"
     return r
 
@@ -199,6 +249,93 @@ class TestDenialScope(unittest.TestCase):
         with Fixture(gaps=[GAP_NO_BLAST]) as f:
             p = str(f.root / "analysis/andon/ledger/log.md")
             self.assertEqual(decision(run(f.root, p)), "allow")
+
+
+class TestContainment(unittest.TestCase):
+    """#69: a target outside the repo is none of this hook's business,
+    whatever the ledger's own stop conditions say. Permanent regressions for
+    test/plugins/fixtures/guard-differential/andon-69-*."""
+
+    def test_target_outside_repo_allowed_even_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            outside = str(Path(f.tmp.name).parent / "definitely-not-in-the-probe-repo" / "notes.md")
+            r = run(f.root, outside)
+            self.assertEqual(decision(r), "allow")
+
+    def test_target_inside_repo_still_denied_while_stopped(self):
+        """The anti-loosening half: an ordinary in-repo write must still gate."""
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            self.assertEqual(decision(run(f.root, "src/api.py")), "deny")
+
+    def test_relative_traversal_outside_repo_allowed(self):
+        """A relative '../../elsewhere' target normalizes outside cwd too --
+        the containment check must not be fooled by a merely-relative path."""
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run(f.root, "../../elsewhere/notes.md")
+            self.assertEqual(decision(r), "allow")
+
+
+class TestSupersedeAndRetire(unittest.TestCase):
+    """#68: evidence whose gap already closed, or whose wire was later
+    re-verified, must not gate forever. Permanent regressions for
+    test/plugins/fixtures/guard-differential/andon-68-*."""
+
+    def test_evidence_for_a_closed_gap_does_not_gate(self):
+        with Fixture(gaps=[GAP_CLOSED_RESOLVED_BY_WIRE_AB],
+                     evidence=[EVIDENCE_UNKNOWN_WIRE_AB]) as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_same_evidence_still_gates_while_gap_open(self):
+        """The anti-loosening half: the same non-advancing evidence still
+        gates when nothing has closed the gap it would resolve."""
+        with Fixture(gaps=[GAP_OPEN_WIRE_AB], evidence=[EVIDENCE_UNKNOWN_WIRE_AB]) as f:
+            self.assertEqual(decision(run(f.root)), "deny")
+
+    def test_superseding_green_evidence_for_same_wire_allows(self):
+        """#68c: a later green re-verify for the same wire supersedes the
+        earlier red/unknown one, matching andon_core.py's compute_wire_status
+        (last evidence, by filename order, wins)."""
+        with Fixture(evidence=[EVIDENCE_UNKNOWN_WIRE_AB, EVIDENCE_GREEN_WIRE_AB]) as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_retired_gap_stops_gating(self):
+        """andon_core.py retire moves a gap into ledger/retired/, which
+        _list_md never walks -- so a retired stale record stops gating by
+        construction."""
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            self.assertEqual(decision(run(f.root)), "deny")
+            retire = subprocess.run(
+                [sys.executable, str(HOOK.parent.parent / "scripts" / "andon_core.py"),
+                 "retire", str(f.root), "analysis/andon/ledger", "gaps", "g0",
+                 "--reason", "superseded"],
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(retire.returncode, 0, retire.stderr)
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
+class TestEscapeHatchEnvVar(unittest.TestCase):
+    """#70: the narrowest of the three named remedies -- a single env var for
+    one call, distinct from the wholesale `enforcement: off` setting.
+    Permanent regressions for
+    test/plugins/fixtures/guard-differential/andon-70-*."""
+
+    def test_env_var_set_allows(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run(f.root, env={"ANDON_DISABLE_GUARD": "1"})
+            self.assertEqual(decision(r), "allow")
+
+    def test_env_var_unset_still_denies(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            self.assertEqual(decision(run(f.root)), "deny")
+
+    def test_both_remedies_named_in_deny_reason(self):
+        """Narrowest-first: the per-call env var and the wholesale setting
+        must both be named, not just the most destructive one."""
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            reason = deny_reason(run(f.root))
+            self.assertIn("ANDON_DISABLE_GUARD", reason)
+            self.assertIn("enforcement: off", reason)
 
 
 class TestFailureMode(unittest.TestCase):

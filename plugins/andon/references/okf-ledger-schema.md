@@ -83,6 +83,17 @@ not.
 - `verdict` -- exactly one of `green`, `red`, `unknown`.
 - `tier` -- required (1, 2, or 3) **only** when `strategy == e`; forbidden
   otherwise.
+- `tier_ceiling` -- required (1 or 2) **only** when `strategy == e`; forbidden
+  otherwise. This is `route_wire()`'s own output (`scripts/andon_core.py`),
+  copied onto the doc rather than defaulted: it records whether the run that
+  produced this evidence actually had a real structural index
+  (`available_lsp_or_index`) available. Ceiling 1 means Tier 1 (a real
+  Kythe/SCIP/LSIF query) was reachable; ceiling 2 means it was not, so `tier`
+  is capped at 2 (AST/grep) regardless of what the evidence itself claims.
+  `validate_doc()` refuses a `tier` stronger than its own run's `tier_ceiling`
+  (`SCHEMA_TIER_ABOVE_CEILING`) -- without an index there was no Tier 1 query
+  to have performed, so an index-less run cannot claim the one non-overridable
+  stop condition (see `references/andon-rule.md`, condition 3).
 - `non_overridable` -- required `true` when `tier == 1` and the index query
   contradicts the claimed edge; this is the andon rule's one non-overridable
   stop condition.
@@ -102,10 +113,33 @@ hand-authored separately, to avoid the tag and the field drifting apart):
 Use `[[relative/path/without/extension]]` wiki-link syntax, e.g.
 `resolved_by: "[[evidence/stage-a-stage-b-2024-01-01]]"`.
 
+## `retired/` directory (`retired/gaps/<slug>.md`, `retired/evidence/<slug>.md`)
+
+Not a doc type of its own -- a retired doc is a gap or evidence record moved
+out of `gaps/` or `evidence/` into the matching subdirectory under
+`retired/`, unchanged otherwise. `andon_core.py retire` is the only writer:
+it validates write-scope, moves the file with `os.replace`, and appends a
+`retire` entry to `log.md` recording `kind`, `slug`, and `reason`.
+
+This exists because a gap or evidence doc can go stale without anything in
+the schema saying so -- a gap closed by a later re-verify whose evidence doc
+still sits in `evidence/` recording its old `red`/`unknown` verdict, or a
+duplicate/mis-filed record nobody wants gating anything. Editing `status` or
+`verdict` in place would rewrite ledger history the append-only design is
+built to avoid, so `retire` moves the doc instead.
+
+**Why this stops the PreToolUse hook from gating on it, without teaching the
+hook a fourth status:** `_list_md()` in `hooks/andon_enforce.py`'s
+`stop_reason()` only ever walks `ledger_dir/gaps` and `ledger_dir/evidence` --
+never `ledger_dir/retired` -- so a retired record is excluded from every stop
+condition the same way a nonexistent one would be. `read_all_docs()` and
+`render_board()` in `andon_core.py` are the same: neither walks `retired/`,
+so a retired doc also disappears from `andon-status`'s board.
+
 ## `log.md`
 
 Append-only. Never rewritten -- `andon_core.py append_log_entry()` opens it
 in append mode only, and the PreToolUse hook independently refuses any
-`Write`/`Edit` that would overwrite or edit it in place. Three entry kinds:
-`pass`, `cycle-converged`, `sub-cycle`, each with its own required fields
-(see `append_log_entry`'s `REQUIRED_LOG_FIELDS`).
+`Write`/`Edit` that would overwrite or edit it in place. Four entry kinds:
+`pass`, `cycle-converged`, `sub-cycle`, `retire`, each with its own required
+fields (see `append_log_entry`'s `REQUIRED_LOG_FIELDS`).

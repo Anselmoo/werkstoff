@@ -1,0 +1,5 @@
+guard=plugins/zeugnis/scripts/hooks/guard_bash_scope.py
+base=b029676
+old=deny
+new=allow
+issue=73

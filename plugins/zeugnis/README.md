@@ -304,18 +304,30 @@ it didn't specify something, these are the choices made and why:
 
 ```bash
 python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py   # the edit-scope hook denies AND allows (8 cases)
+python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py   # the bash-scope hook denies AND allows (26 cases)
 python3 plugins/zeugnis/scripts/test_build_burndown_html.py      # burndown HTML renderer, known fixtures
 python3 plugins/zeugnis/scripts/test_cycle_engine.py             # pass cap / reopen thrash-guard raise correctly
 python3 test/plugins/lint-frontmatter.py plugins/zeugnis         # YAML that would load with EMPTY metadata
 python3 test/plugins/verify-hooks-deny.py plugins/zeugnis        # both hooks deny the violation AND stay inert elsewhere
+python3 test/plugins/differential-guard-cases.py zeugnis-73-grep-mentions-install zeugnis-73-real-install zeugnis-73-wrapped-install   # #73's fix pair, plus the wrapper anti-loosening case
 claude plugin validate plugins/zeugnis --strict                  # manifest + structure
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/zeugnis --docs-root docs   # mechanical M/H/S/A/P/D rules
 ```
 
-There is no `guard_bash_scope.py`-specific unit test file — its behavior
-is covered by `test/plugins/verify-hooks-deny.py` (declared-command
-resolution against a crafted violating Bash event) rather than a
-dedicated `unittest` module.
+`guard_bash_scope.py` matches mutating commands by tokenising with `shlex.split`
+and checking `argv[0]`/`argv[1]` of each shell segment (split on `&&`, `||`, `;`,
+`|`), not by searching the raw command string — a read-only command that merely
+*mentions* an install phrase (a `grep` pattern, a filename, quoted text) is no
+longer refused (issue #73). Before that check, a short named list of wrapper
+commands (`sudo`, `env`, `command`, `nohup`, `nice`, `time`, `xargs`, plus bare
+`VAR=VALUE` prefixes) is stripped from the front of each segment, so `sudo npm
+install x` and `env FOO=1 npm install x` — ordinary, non-adversarial prefixes,
+not evasions — are still caught; anchoring argv[0] without that step would have
+silently regressed coverage the old raw-string search had for free.
+`test_guard_bash_scope.py` covers inertness, the read-only-mention regression
+class, real mutating invocations (including a qualified-path binary, wrapped
+and stacked-wrapper forms, and a later pipeline segment), the wrapper skip not
+becoming a bypass itself, unbalanced-quote handling, and the escape hatch.
 
 ### Behavioural cases
 
@@ -334,9 +346,11 @@ message:
   (or the whole `analysis/zeugnis/` directory) to clear stuck state, or
   run `zeugnis-cycle` without `--fix`."
 - **`guard_bash_scope.py`** (Bash): "If this command is genuinely needed
-  and unrelated to a zeugnis audit, run it outside a zeugnis-managed
-  session, or remove `analysis/zeugnis/` from this repository to disable
-  this guard."
+  and unrelated to a zeugnis audit, set `ZEUGNIS_DISABLE_GUARD=1` for this
+  one call, run it outside a zeugnis-managed session, or remove
+  `analysis/zeugnis/` from this repository to disable this guard." Setting
+  `ZEUGNIS_DISABLE_GUARD=1` in the environment for a single Bash call
+  bypasses this hook without touching any repository state.
 
 Both hooks are also inert by construction — see "What is enforced, and
 what is not" — until the target repository already has an

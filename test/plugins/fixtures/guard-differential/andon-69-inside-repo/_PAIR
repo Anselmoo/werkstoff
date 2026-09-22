@@ -1,0 +1,5 @@
+guard=plugins/andon/hooks/andon_enforce.py
+base=b029676
+old=deny
+new=deny
+issue=69
