@@ -61,7 +61,21 @@ DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
 DEFAULT_AUTHORIZATION = "local+reversible"
 BLAST_RANK = {"local+reversible": 1, "hard-to-reverse": 2, "shared-state-visible": 3}
 MAX_CONSECUTIVE_REOPENS = 3
-NON_ADVANCING_VERDICTS = ("red", "unknown")
+# An ALLOWLIST OF GOOD, deliberately, not a denylist of bad.
+#
+# This was `NON_ADVANCING_VERDICTS = ("red", "unknown")` -- a list of the
+# verdicts that halt. Every verdict outside it therefore ADVANCED, so an
+# unrecognised value failed OPEN. That was reachable: tools/andon-ledger-
+# validator/validate_ledger.py accepted `amber` as a valid verdict, and
+# andon_core.compute_wire_status collapses anything non-green/non-red to
+# `unknown`, so the board drew such a wire amber and labelled it UNPROVEN
+# while this hook waved every edit through. Looks gated, isn't.
+#
+# Inverted: a wire advances only on an explicit `green`. A typo, a verdict
+# from a newer schema, a hand-edited value -- all halt. Consistent with the
+# rest of the file, where a missing blast radius is a stop and never an
+# inferred value.
+ADVANCING_VERDICTS = ("green",)
 SETTINGS = ".claude/andon.local.md"
 # #70: named literally (not via a variable) in both this constant and the
 # os.environ.get() check below -- nacharbeit's H-ESCAPE-HATCH rubric rule
@@ -239,10 +253,11 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
         if not verdict:
             m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", text, re.MULTILINE)
             verdict = m.group(1).strip("`*.,") if m else None
-        if verdict and verdict.lower() in NON_ADVANCING_VERDICTS:
+        if verdict and verdict.lower() not in ADVANCING_VERDICTS:
             return (f"STOP (andon rule / condition 1): evidence '{p.name}' "
-                    f"records verdict {verdict!r}. The wire is not proven; the "
-                    f"loop may not advance past it.")
+                    f"records verdict {verdict!r}, which is not "
+                    f"{' or '.join(ADVANCING_VERDICTS)}. The wire is not proven; "
+                    f"the loop may not advance past it.")
     return None
 
 

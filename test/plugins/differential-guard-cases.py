@@ -126,14 +126,16 @@ def load_case(case_dir: Path) -> dict:
     for key in ("old", "new"):
         if pair[key] not in CODE:
             raise CaseError(f"{case_dir.name}: {key}={pair[key]!r}, expected allow or deny")
-    if pair["old"] == pair["new"]:
-        # Not a pair. A case where nothing changed proves nothing about the fix,
-        # and a table of them would pass against an empty diff.
-        if pair["old"] != "deny":
-            raise CaseError(
-                f"{case_dir.name}: old={pair['old']} new={pair['new']} -- an allow/allow "
-                "case asserts nothing. The anti-loosening half must be deny/deny."
-            )
+    # An old == new case is the ANTI-OVER-REACH half of a pair, and it is valid
+    # in BOTH polarities. This originally refused allow/allow, on the assumption
+    # that every guard fix loosens -- true of the over-denial bugs in PR #95,
+    # where the half that must not move is a deny. It is exactly wrong for a
+    # fail-OPEN fix, which adds denials: there the half that must not move is an
+    # allow, proving the fix did not start gating everything. Rejecting it forced
+    # the first such case to be written as its own opposite.
+    #
+    # What makes a pair a pair is that one case CHANGES and one does not; which
+    # way round depends on the defect, not on this file's assumptions.
 
     if not (case_dir / "_EVENT.json").is_file():
         raise CaseError(f"{case_dir.name}: no _EVENT.json")
@@ -384,9 +386,10 @@ def report(rows: list[tuple[str, str, str, str]]) -> int:
     fails = sum(1 for r in rows if r[2] != "ok")
     print()
     print(
-        f"{len(rows)} case(s), {fails} not ok. A fix ships a PAIR: one case the old "
-        "guard denied and the new one allows, one both still deny. Only the second "
-        "separates a fix from a loosening."
+        f"{len(rows)} case(s), {fails} not ok. A fix ships a PAIR: one case whose "
+        "decision CHANGES, and one that must not move. Which way round depends on the "
+        "defect -- an over-denial fix keeps a deny, a fail-open fix keeps an allow. "
+        "Only the second half separates a fix from a blanket loosening or a blanket gate."
     )
     return 1 if fails else 0
 

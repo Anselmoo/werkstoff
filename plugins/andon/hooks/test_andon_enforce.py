@@ -75,6 +75,16 @@ tags: ["strategy:a", "verdict:unknown"]
 ---
 """
 
+EVIDENCE_UNRECOGNISED_VERDICT = """---
+type: evidence
+title: "verdict outside the schema's three values"
+wire: "stage-a->stage-b"
+strategy: a
+verdict: amber
+tags: ["strategy:a", "verdict:amber"]
+---
+"""
+
 EVIDENCE_GREEN_WIRE_AB = """---
 type: evidence
 title: "wire re-verified green"
@@ -192,6 +202,33 @@ class TestInertness(unittest.TestCase):
 
     def test_empty_ledger_allows(self):
         with Fixture() as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
+class TestVerdictPolarity(unittest.TestCase):
+    """A verdict is judged against an ALLOWLIST of good, not a denylist of bad.
+
+    The hook used to hold NON_ADVANCING_VERDICTS = ("red", "unknown") and halt
+    only on a member of it, so every OTHER verdict advanced -- it failed open.
+    `amber` reached that branch for real: validate_ledger.py accepted it as a
+    valid gating value, while compute_wire_status collapsed it to `unknown` and
+    the board drew the wire amber, labelled unproven. The operator saw a gated
+    wire; the hook was not gating.
+
+    These two run together on purpose. The first alone cannot tell "unknown
+    verdicts now halt" from "everything now halts", and the second is the far
+    worse regression.
+    """
+
+    def test_unrecognised_verdict_halts(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS], evidence=[EVIDENCE_UNRECOGNISED_VERDICT]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("condition 1", deny_reason(r))
+            self.assertIn("amber", deny_reason(r))
+
+    def test_green_still_advances(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS], evidence=[EVIDENCE_GREEN_WIRE_AB]) as f:
             self.assertEqual(decision(run(f.root)), "allow")
 
 

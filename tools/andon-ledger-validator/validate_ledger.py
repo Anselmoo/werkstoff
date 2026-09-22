@@ -48,7 +48,12 @@ SCHEMA_VERSION = "1.0"
 
 # Ordered enum for the authorization ceiling (behavior contract §3 cond. 2).
 BLAST_RADIUS = ("local+reversible", "hard-to-reverse", "shared-state-visible")
-VERDICTS = ("green", "red", "amber", "unknown")
+# Must match andon_core.WIRE_VERDICTS and references/okf-ledger-schema.md:83,
+# which is the stated authority: "exactly one of green, red, unknown". `amber`
+# was admitted here and nowhere else -- no writer emits it, validate_doc
+# rejects it, and the board has no branch for it. It leaked in from the
+# viewer legend, which calls the `unknown` colour amber.
+VERDICTS = ("green", "red", "unknown")
 
 # Fields that gate a downstream decision, per record type. `body_label` is the
 # markdown bullet the legacy writer actually emits, which is how a record ends
