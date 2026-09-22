@@ -95,7 +95,7 @@ def run() -> int:
 
     try:
         from lib.paths import UnsafeWritePathError, safe_repo_path  # noqa: E402
-        from lib.remediation_scope import read_scope, mark_consumed  # noqa: E402
+        from lib.remediation_scope import read_scope, mark_consumed, is_fixable  # noqa: E402
     except (ImportError, ModuleNotFoundError) as exc:
         print(
             f"guard_edit_scope: internal error ({type(exc).__name__}: {exc}); "
@@ -139,17 +139,25 @@ def run() -> int:
     # it, but a hand-edited or corrupted lock file should not be trusted
     # blindly) — defense in depth for fixable-domains-in-cycle /
     # draft-domains-in-cycle.
-    from lib.constants import DRAFT_ONLY_DOMAINS, FIXABLE_DOMAINS  # noqa: E402
-
+    # Calls the shared check rather than repeating it. lib.remediation_scope's
+    # own docstring has always CLAIMED this ("...so cycle_engine.py's
+    # record-pass-result gate and guard_edit_scope.py's defense-in-depth re-check
+    # never drift apart"), while this file kept its own copy of the logic. They
+    # happened to agree on every input, so nothing had drifted yet -- but the
+    # docstring actively misled a future editor into believing one edit sufficed.
+    # lib/ledger.py:63-67 already delegates honestly; this was the only liar.
+    #
+    # It also closes a fail-open inconsistency. `from lib.constants import ...`
+    # sat HERE, outside the ModuleNotFoundError try/except above, so a broken lib
+    # package produced a DENY from this line -- the opposite of the degrade-to-
+    # allow policy this file documents and issue #24 established. Importing the
+    # symbol up there instead brings it under that umbrella, at zero cost:
+    # lib.remediation_scope imports lib.constants at module level, so it is
+    # already in sys.modules by the time that import succeeds.
     domain = scope.get("domain")
     category = scope.get("category")
-    fixable = False
-    if domain not in DRAFT_ONLY_DOMAINS:
-        policy = FIXABLE_DOMAINS.get(domain)
-        if policy and (policy["mode"] == "all" or (policy["mode"] == "category" and category in policy["categories"])):
-            fixable = True
 
-    if not fixable:
+    if not is_fixable(domain, category):
         return deny(
             f"Remediation scope for finding {scope.get('findingId')!r} has domain={domain!r} "
             f"category={category!r}, which is not in zeugnis's auto-fixable set "
