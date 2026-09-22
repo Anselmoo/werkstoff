@@ -54,11 +54,15 @@ class Repo:
         self.tmp.cleanup()
 
 
-def run(repo: Repo, target: str, tool: str = "Edit") -> subprocess.CompletedProcess:
+def run(repo: Repo, target: str, tool: str = "Edit",
+        env_extra: dict | None = None) -> subprocess.CompletedProcess:
+    import os
+
     payload = json.dumps({"cwd": str(repo.root), "tool_name": tool,
                           "tool_input": {"file_path": target, "content": "x"}})
+    env = {**os.environ, **(env_extra or {})}
     r = subprocess.run([sys.executable, str(HOOK)], input=payload,
-                       capture_output=True, text=True, timeout=30)
+                       capture_output=True, text=True, timeout=30, env=env)
     assert r.returncode in (0, 2), f"hook must exit 0 (allow) or 2 (deny), got {r.returncode}: {r.stderr}"
     return r
 
@@ -117,6 +121,51 @@ class TestScopeEnforcement(unittest.TestCase):
         with Repo(scope=scope) as repo:
             r = run(repo, "src/correct_file.py")
             self.assertEqual(decision(r), "deny")
+
+
+class TestEscapeHatch(unittest.TestCase):
+    """ZEUGNIS_DISABLE_GUARD=1, and what it deliberately does NOT do.
+
+    H-ESCAPE-HATCH: before this, a wrong denial here could only be cleared by
+    deleting the remediation lock -- i.e. destroying audit state to make one
+    edit. The sibling Bash guard gained the var in PR #95; this one had none.
+    """
+
+    def _scope(self, repo):
+        return json.loads(
+            (repo.root / "analysis" / "zeugnis" / "remediation_scope.json").read_text())
+
+    def test_env_var_bypasses_a_would_be_deny(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            # src/api.py is NOT the locked allowedFile, so this denies without it
+            self.assertEqual(decision(run(repo, "src/api.py")), "deny")
+            r = run(repo, "src/api.py", env_extra={"ZEUGNIS_DISABLE_GUARD": "1"})
+            self.assertEqual(decision(r), "allow")
+
+    def test_bypass_does_not_spend_the_one_shot_budget(self):
+        """The difference from guard_bash_scope, which writes nothing.
+
+        This hook is the only writer of `consumed: true`. An early return skips
+        mark_consumed, so an edit the guard never judged does not count against
+        the finding's single authorized fix. Asserted rather than assumed,
+        because it is the non-obvious half of the change.
+        """
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            self.assertFalse(self._scope(repo)["consumed"])
+            run(repo, "src/correct_file.py", env_extra={"ZEUGNIS_DISABLE_GUARD": "1"})
+            self.assertFalse(
+                self._scope(repo)["consumed"],
+                "a bypassed edit must not consume the remediation budget")
+
+    def test_unset_is_the_default(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            self.assertEqual(decision(run(repo, "src/api.py")), "deny")
+
+    def test_other_values_do_not_bypass(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            for v in ("0", "true", "yes", ""):
+                r = run(repo, "src/api.py", env_extra={"ZEUGNIS_DISABLE_GUARD": v})
+                self.assertEqual(decision(r), "deny", f"value {v!r} must not bypass")
 
 
 class TestFailureMode(unittest.TestCase):

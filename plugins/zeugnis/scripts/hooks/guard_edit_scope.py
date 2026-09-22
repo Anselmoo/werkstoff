@@ -47,7 +47,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 ESCAPE_HATCH = (
-    "If this edit is unrelated to a zeugnis remediation, remove "
+    "If this edit is unrelated to a zeugnis remediation, set "
+    "ZEUGNIS_DISABLE_GUARD=1 for this one call, remove "
     "analysis/zeugnis/remediation_scope.json (or the whole analysis/zeugnis/ "
     "directory) to clear stuck state, or run zeugnis-cycle without --fix."
 )
@@ -71,6 +72,22 @@ def allow() -> int:
 
 
 def run() -> int:
+    # Checked first, before stdin is read and before anything touches the
+    # filesystem, so a stuck or wrong denial always has an escape that costs
+    # nothing -- same placement and exact `== "1"` test as guard_bash_scope.py.
+    #
+    # ONE REAL DIFFERENCE FROM THAT GUARD, and it is stateful. This hook is the
+    # only writer of `consumed: true` in the repo (mark_consumed at the end of
+    # the success path). Returning here skips it, so a bypassed edit does not
+    # spend the one-shot remediation budget and the NEXT edit gets a fresh one.
+    # That is the right semantics for a switch whose whole job is "this call is
+    # not a zeugnis remediation" -- an edit the guard never judged should not
+    # count against a finding's single authorized fix. But it does mean the var
+    # is not free the way it is for the Bash guard, which writes nothing:
+    # leaving it set through a real remediation would silently uncap it.
+    if os.environ.get("ZEUGNIS_DISABLE_GUARD") == "1":
+        return allow()
+
     raw = sys.stdin.read()
     try:
         event = json.loads(raw) if raw.strip() else {}

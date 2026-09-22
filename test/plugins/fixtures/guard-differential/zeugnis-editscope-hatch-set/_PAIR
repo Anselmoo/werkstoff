@@ -1,0 +1,5 @@
+guard=plugins/zeugnis/scripts/hooks/guard_edit_scope.py
+base=430805c11168b147b1aba8363bff60a7cb38d76f
+issue=L4
+old=deny
+new=allow

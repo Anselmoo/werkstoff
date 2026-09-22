@@ -342,9 +342,16 @@ Both hooks fail closed and always name their own bypass in the deny
 message:
 
 - **`guard_edit_scope.py`** (Edit/Write): "If this edit is unrelated to a
-  zeugnis remediation, remove `analysis/zeugnis/remediation_scope.json`
-  (or the whole `analysis/zeugnis/` directory) to clear stuck state, or
-  run `zeugnis-cycle` without `--fix`."
+  zeugnis remediation, set `ZEUGNIS_DISABLE_GUARD=1` for this one call,
+  remove `analysis/zeugnis/remediation_scope.json` (or the whole
+  `analysis/zeugnis/` directory) to clear stuck state, or run
+  `zeugnis-cycle` without `--fix`." Note the env var behaves slightly
+  differently here than for the Bash guard below: this hook is the only
+  writer of `consumed: true`, so a bypassed edit does **not** spend the
+  finding's one-shot remediation budget. That is deliberate — an edit the
+  guard never judged should not count as a finding's single authorized fix
+  — but it means leaving the variable set through a real remediation pass
+  silently uncaps it.
 - **`guard_bash_scope.py`** (Bash): "If this command is genuinely needed
   and unrelated to a zeugnis audit, set `ZEUGNIS_DISABLE_GUARD=1` for this
   one call, run it outside a zeugnis-managed session, or remove
