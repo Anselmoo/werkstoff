@@ -220,6 +220,76 @@ LOG_AT_THRESHOLD = LOG_WITH_SUBCYCLES + (
 )
 
 
+GAP_BLOCK_LIST_TAGS_ONLY = """---
+type: gap
+title: "state only in a block-list tags array"
+tags:
+  - kind:wire
+  - status:open
+  - blast-radius:local+reversible
+---
+"""
+
+
+class TestFrontmatterListForms(unittest.TestCase):
+    """Both YAML list syntaxes, because both are in the wild.
+
+    The block form is what andon_core.dump_frontmatter writes, what
+    okf-ledger-schema.md documents and what every sample_ledger record uses. The
+    hook could not read it: `tags` came back as the empty string, so tag_value's
+    fallback found nothing. Every fixture constant in this file was inline-JSON,
+    which is why 34 passing tests never noticed.
+
+    The inline form stays supported -- CLAUDE.md records 101 production records
+    in spectrafit-core whose state is only there.
+    """
+
+    def test_block_list_tags_are_read(self):
+        with Fixture(gaps=[GAP_BLOCK_LIST_TAGS_ONLY]) as f:
+            # blast-radius resolves from the block list, so no required-field stop
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_block_list_missing_blast_radius_still_halts(self):
+        gap = GAP_BLOCK_LIST_TAGS_ONLY.replace(
+            "  - blast-radius:local+reversible\n", "")
+        with Fixture(gaps=[gap]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("blast-radius", deny_reason(r))
+
+    def test_writer_output_is_readable_by_this_hook(self):
+        """Round-trip: andon_core writes a record, the hook reads it back.
+
+        Nothing tested this, which is exactly how the two disagreed from 0c10fa0
+        until now -- the writer emitting a shape its own hook could not parse.
+        """
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_rt", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_rt", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+
+        fields = {
+            "type": "gap", "title": "round trip", "stage": "ingest",
+            "kind": "wire", "status": "open", "blast_radius": "hard-to-reverse",
+        }
+        fields["tags"] = core.build_tags_for_doc(fields)
+        text = core.dump_frontmatter(fields)
+
+        fm = hook.frontmatter(text)
+        self.assertIsInstance(fm.get("tags"), list, "writer emits a block list")
+        self.assertIn("kind:wire", fm["tags"])
+        # and every tag the writer derived is retrievable through the fallback
+        stripped = {k: v for k, v in fm.items() if k in ("tags",)}
+        self.assertEqual(hook.tag_value(stripped, "status"), "open")
+        self.assertEqual(hook.tag_value(stripped, "blast_radius"), "hard-to-reverse")
+
+
 class TestReopenParserAgreement(unittest.TestCase):
     """The hook copies one regex from andon_core.parse_log_counters.
 

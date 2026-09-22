@@ -129,17 +129,58 @@ def deny(reason: str) -> int:
     return 2
 
 
-def frontmatter(text: str) -> dict[str, str]:
+def frontmatter(text: str) -> dict[str, str | list[str]]:
+    """Parse fenced frontmatter, including BLOCK-LIST values.
+
+    This used to be a single line-regex matching `key: value` only. A YAML block
+    list --
+
+        tags:
+          - kind:bug
+          - status:open
+
+    -- gave `tags` an EMPTY string: the `tags:` line matched with an empty
+    capture, and the `  - ` lines matched nothing and were dropped. That is the
+    form andon_core.dump_frontmatter WRITES, the form okf-ledger-schema.md
+    documents, and the form every record in scripts/fixtures/sample_ledger uses,
+    so tag_value's documented legacy fallback was dead for everything andon
+    produces. It went unnoticed because validate_doc also requires the
+    first-class keys and tag_value reads those first -- the fallback was
+    redundant rather than load-bearing, right up until a value had no
+    first-class key to fall back to.
+
+    Modelled on andon_core.parse_frontmatter:169-203, which has handled both
+    forms since the start. This is the third parser of the same format in this
+    repo and the last one to learn.
+    """
     if not text.startswith("---"):
         return {}
-    parts = text.split("---", 2)
-    if len(parts) < 3:
+    lines = text.split("\n")
+    if lines[0].strip() != "---":
         return {}
-    fm: dict[str, str] = {}
-    for line in parts[1].splitlines():
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if end is None:
+        return {}
+
+    fm: dict[str, str | list[str]] = {}
+    current_list_key: str | None = None
+    for line in lines[1:end]:
+        if not line.strip():
+            continue
+        if line.startswith("  - ") and current_list_key:
+            fm[current_list_key].append(line[4:].strip().strip("\"'"))  # type: ignore[union-attr]
+            continue
         m = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$", line)
-        if m:
-            fm[m.group(1).replace("-", "_").lower()] = m.group(2).strip().strip("\"'")
+        if not m:
+            continue
+        key = m.group(1).replace("-", "_").lower()
+        raw = m.group(2).strip()
+        if raw == "":
+            fm[key] = []
+            current_list_key = key
+        else:
+            fm[key] = raw.strip("\"'")
+            current_list_key = None
     return fm
 
 
@@ -151,9 +192,17 @@ def tag_value(fm: dict[str, str], key: str) -> str | None:
     every existing ledger as malformed.
     """
     direct = fm.get(key.replace("-", "_"))
-    if direct:
+    if isinstance(direct, str) and direct:
         return direct
-    for tag in re.findall(r'"([^"]+)"', fm.get("tags", "")):
+
+    # Both list syntaxes are live. A block list arrives as a real list from
+    # frontmatter() -- that is what the CLI writes. The inline flow form
+    # `tags: ["kind:wire", ...]` arrives as one string and is mined for quoted
+    # items; CLAUDE.md records 101 production records in spectrafit-core whose
+    # state is ONLY in that form, so it cannot be dropped.
+    raw_tags = fm.get("tags", "")
+    items = raw_tags if isinstance(raw_tags, list) else re.findall(r'"([^"]+)"', raw_tags)
+    for tag in items:
         if ":" in tag:
             k, v = tag.split(":", 1)
             if k.replace("-", "_").lower() == key.replace("-", "_").lower():
@@ -228,8 +277,14 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     closed_evidence_slugs: set[str] = set()
     for p in gaps:
         fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        # Skip on an explicit `closed` ONLY. This read `not in ("open",
+        # "reopened")`, which also skipped every other status -- a typo, a value
+        # from a newer schema -- so an unrecognised status silently stopped
+        # gating. Same fail-open shape as the verdict denylist two commits back.
+        # `reopened` is not a legal status either: andon_core.GAP_STATUSES and
+        # okf-ledger-schema.md:51 both say open or closed.
         status = tag_value(fm, "status")
-        if status and status.lower() not in ("open", "reopened"):
+        if status and status.lower() == "closed":
             resolved_by = fm.get("resolved_by")
             if resolved_by:
                 m = _RESOLVED_BY_RE.search(str(resolved_by))
