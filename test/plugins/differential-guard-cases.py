@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """Gate: a guard fix must CHANGE one decision and PRESERVE another.
 
-A hook fix that only loosens is not a fix, and the two are textually identical
-in a diff: both delete a deny. The only thing that separates them is whether
-some other input is *still* refused afterwards. So every guard fix in this repo
-ships a PAIR of cases:
+A fix and a blanket rewrite of the rule are textually similar in a diff. What
+separates them is whether some OTHER input still gets the answer it had before.
+So every guard fix in this repo ships a PAIR of cases: one whose decision
+changes, and one that must not move.
 
-    old=deny  new=allow    the defect, gone
-    old=deny  new=deny     the rule the guard is actually for, intact
+Which way round depends on the defect, and both directions are real here:
 
-Shipping only the first is a loosening wearing a fix's clothing. This script is
-what makes that a check rather than a sentence -- the same move
-`test/plugins/lint-oracles.sh` makes for silent-failure regex forms.
+    an OVER-DENIAL fix (the guard refused too much -- PR #95)
+        old=deny   new=allow   the defect, gone
+        old=deny   new=deny    the rule the guard is actually for, intact
+
+    a FAIL-OPEN fix (the guard allowed too much -- PR #97)
+        old=allow  new=deny    the hole, closed
+        old=allow  new=allow   and not everything gated instead
+
+Shipping only the first half is a loosening, or a blanket gate, wearing a fix's
+clothing. This script is what makes that a check rather than a sentence -- the
+same move `test/plugins/lint-oracles.sh` makes for silent-failure regex forms.
+
+This docstring originally described only the first shape, because the first five
+fixes it graded were all over-denial. load_case then REFUSED the first
+allow/allow case written against it. The lesson is recorded there too: what makes
+a pair a pair is that one case changes and one does not; the polarity is a
+property of the defect, not of this file.
 
 HOW "OLD" IS OBTAINED, AND WHY THE BASE IS PINNED PER CASE
 ----------------------------------------------------------
@@ -126,14 +139,16 @@ def load_case(case_dir: Path) -> dict:
     for key in ("old", "new"):
         if pair[key] not in CODE:
             raise CaseError(f"{case_dir.name}: {key}={pair[key]!r}, expected allow or deny")
-    if pair["old"] == pair["new"]:
-        # Not a pair. A case where nothing changed proves nothing about the fix,
-        # and a table of them would pass against an empty diff.
-        if pair["old"] != "deny":
-            raise CaseError(
-                f"{case_dir.name}: old={pair['old']} new={pair['new']} -- an allow/allow "
-                "case asserts nothing. The anti-loosening half must be deny/deny."
-            )
+    # An old == new case is the ANTI-OVER-REACH half of a pair, and it is valid
+    # in BOTH polarities. This originally refused allow/allow, on the assumption
+    # that every guard fix loosens -- true of the over-denial bugs in PR #95,
+    # where the half that must not move is a deny. It is exactly wrong for a
+    # fail-OPEN fix, which adds denials: there the half that must not move is an
+    # allow, proving the fix did not start gating everything. Rejecting it forced
+    # the first such case to be written as its own opposite.
+    #
+    # What makes a pair a pair is that one case CHANGES and one does not; which
+    # way round depends on the defect, not on this file's assumptions.
 
     if not (case_dir / "_EVENT.json").is_file():
         raise CaseError(f"{case_dir.name}: no _EVENT.json")
@@ -384,9 +399,10 @@ def report(rows: list[tuple[str, str, str, str]]) -> int:
     fails = sum(1 for r in rows if r[2] != "ok")
     print()
     print(
-        f"{len(rows)} case(s), {fails} not ok. A fix ships a PAIR: one case the old "
-        "guard denied and the new one allows, one both still deny. Only the second "
-        "separates a fix from a loosening."
+        f"{len(rows)} case(s), {fails} not ok. A fix ships a PAIR: one case whose "
+        "decision CHANGES, and one that must not move. Which way round depends on the "
+        "defect -- an over-denial fix keeps a deny, a fail-open fix keeps an allow. "
+        "Only the second half separates a fix from a blanket loosening or a blanket gate."
     )
     return 1 if fails else 0
 

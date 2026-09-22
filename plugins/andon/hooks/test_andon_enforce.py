@@ -75,6 +75,16 @@ tags: ["strategy:a", "verdict:unknown"]
 ---
 """
 
+EVIDENCE_UNRECOGNISED_VERDICT = """---
+type: evidence
+title: "verdict outside the schema's three values"
+wire: "stage-a->stage-b"
+strategy: a
+verdict: amber
+tags: ["strategy:a", "verdict:amber"]
+---
+"""
+
 EVIDENCE_GREEN_WIRE_AB = """---
 type: evidence
 title: "wire re-verified green"
@@ -192,6 +202,186 @@ class TestInertness(unittest.TestCase):
 
     def test_empty_ledger_allows(self):
         with Fixture() as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
+LOG_WITH_SUBCYCLES = """# andon OKF log
+
+Append-only. Never rewritten. See okf-ledger-schema.md.
+
+### Pass 1 (cycle 1) -- 2026-01-01T00:00:00Z
+### Sub-cycle: ingest->normalize reopened (count 1) -- 2026-01-01T00:01:00Z
+### Sub-cycle: ingest->normalize reopened (count 2) -- 2026-01-01T00:02:00Z
+### Sub-cycle: enrich->score reopened (count 1) -- 2026-01-01T00:03:00Z
+"""
+
+LOG_AT_THRESHOLD = LOG_WITH_SUBCYCLES + (
+    "### Sub-cycle: ingest->normalize reopened (count 3) -- 2026-01-01T00:04:00Z\n"
+)
+
+
+GAP_BLOCK_LIST_TAGS_ONLY = """---
+type: gap
+title: "state only in a block-list tags array"
+tags:
+  - kind:wire
+  - status:open
+  - blast-radius:local+reversible
+---
+"""
+
+
+class TestFrontmatterListForms(unittest.TestCase):
+    """Both YAML list syntaxes, because both are in the wild.
+
+    The block form is what andon_core.dump_frontmatter writes, what
+    okf-ledger-schema.md documents and what every sample_ledger record uses. The
+    hook could not read it: `tags` came back as the empty string, so tag_value's
+    fallback found nothing. Every fixture constant in this file was inline-JSON,
+    which is why 34 passing tests never noticed.
+
+    The inline form stays supported -- CLAUDE.md records 101 production records
+    in spectrafit-core whose state is only there.
+    """
+
+    def test_block_list_tags_are_read(self):
+        with Fixture(gaps=[GAP_BLOCK_LIST_TAGS_ONLY]) as f:
+            # blast-radius resolves from the block list, so no required-field stop
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_block_list_missing_blast_radius_still_halts(self):
+        gap = GAP_BLOCK_LIST_TAGS_ONLY.replace(
+            "  - blast-radius:local+reversible\n", "")
+        with Fixture(gaps=[gap]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("blast-radius", deny_reason(r))
+
+    def test_writer_output_is_readable_by_this_hook(self):
+        """Round-trip: andon_core writes a record, the hook reads it back.
+
+        Nothing tested this, which is exactly how the two disagreed from 0c10fa0
+        until now -- the writer emitting a shape its own hook could not parse.
+        """
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_rt", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_rt", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+
+        fields = {
+            "type": "gap", "title": "round trip", "stage": "ingest",
+            "kind": "wire", "status": "open", "blast_radius": "hard-to-reverse",
+        }
+        fields["tags"] = core.build_tags_for_doc(fields)
+        text = core.dump_frontmatter(fields)
+
+        fm = hook.frontmatter(text)
+        self.assertIsInstance(fm.get("tags"), list, "writer emits a block list")
+        self.assertIn("kind:wire", fm["tags"])
+        # and every tag the writer derived is retrievable through the fallback
+        stripped = {k: v for k, v in fm.items() if k in ("tags",)}
+        self.assertEqual(hook.tag_value(stripped, "status"), "open")
+        self.assertEqual(hook.tag_value(stripped, "blast_radius"), "hard-to-reverse")
+
+
+class TestReopenParserAgreement(unittest.TestCase):
+    """The hook copies one regex from andon_core.parse_log_counters.
+
+    It has to: the hook is stdlib-only and imports nothing from the plugin, so a
+    broken install can never stop it loading. A copied regex is the drift this
+    repo keeps getting bitten by, so both parsers are run over the same text and
+    required to agree. Change one and this goes red.
+    """
+
+    def _core_counts(self, log_text):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp) / "analysis" / "andon" / "ledger"
+            ledger.mkdir(parents=True)
+            (ledger / "log.md").write_text(log_text, encoding="utf-8")
+            return core.parse_log_counters(tmp, "analysis/andon/ledger")["reopen_counts"]
+
+    def _hook_counts(self, log_text):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_enforce_mod", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(hook)
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = Path(tmp)
+            (ledger / "log.md").write_text(log_text, encoding="utf-8")
+            return hook.reopen_counts(ledger)
+
+    def test_both_parsers_agree(self):
+        for log in (LOG_WITH_SUBCYCLES, LOG_AT_THRESHOLD, "# empty log\n"):
+            self.assertEqual(self._hook_counts(log), self._core_counts(log))
+
+    def test_counts_are_per_wire_and_take_the_maximum(self):
+        self.assertEqual(
+            self._hook_counts(LOG_WITH_SUBCYCLES),
+            {"ingest->normalize": 2, "enrich->score": 1},
+        )
+
+
+class TestSubCycleEscalation(unittest.TestCase):
+    """The stop that could never fire.
+
+    It read `reopen_count` off a GAP doc. No writer puts it there -- the value is
+    keyed by wire and lives only in log.md -- so on any real ledger this branch
+    was unreachable. It passed its test because the fixture hand-wrote an inline
+    tag nothing emits.
+    """
+
+    def test_wire_at_threshold_halts(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS]) as f:
+            (f.root / "analysis" / "andon" / "ledger" / "log.md").write_text(
+                LOG_AT_THRESHOLD, encoding="utf-8")
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("sub-cycle escalation", deny_reason(r).lower())
+            self.assertIn("ingest->normalize", deny_reason(r))
+
+    def test_wire_under_threshold_advances(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS]) as f:
+            (f.root / "analysis" / "andon" / "ledger" / "log.md").write_text(
+                LOG_WITH_SUBCYCLES, encoding="utf-8")
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
+class TestVerdictPolarity(unittest.TestCase):
+    """A verdict is judged against an ALLOWLIST of good, not a denylist of bad.
+
+    The hook used to hold NON_ADVANCING_VERDICTS = ("red", "unknown") and halt
+    only on a member of it, so every OTHER verdict advanced -- it failed open.
+    `amber` reached that branch for real: validate_ledger.py accepted it as a
+    valid gating value, while compute_wire_status collapsed it to `unknown` and
+    the board drew the wire amber, labelled unproven. The operator saw a gated
+    wire; the hook was not gating.
+
+    These two run together on purpose. The first alone cannot tell "unknown
+    verdicts now halt" from "everything now halts", and the second is the far
+    worse regression.
+    """
+
+    def test_unrecognised_verdict_halts(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS], evidence=[EVIDENCE_UNRECOGNISED_VERDICT]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("condition 1", deny_reason(r))
+            self.assertIn("amber", deny_reason(r))
+
+    def test_green_still_advances(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS], evidence=[EVIDENCE_GREEN_WIRE_AB]) as f:
             self.assertEqual(decision(run(f.root)), "allow")
 
 

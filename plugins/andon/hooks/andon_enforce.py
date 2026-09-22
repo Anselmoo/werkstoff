@@ -61,7 +61,21 @@ DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
 DEFAULT_AUTHORIZATION = "local+reversible"
 BLAST_RANK = {"local+reversible": 1, "hard-to-reverse": 2, "shared-state-visible": 3}
 MAX_CONSECUTIVE_REOPENS = 3
-NON_ADVANCING_VERDICTS = ("red", "unknown")
+# An ALLOWLIST OF GOOD, deliberately, not a denylist of bad.
+#
+# This was `NON_ADVANCING_VERDICTS = ("red", "unknown")` -- a list of the
+# verdicts that halt. Every verdict outside it therefore ADVANCED, so an
+# unrecognised value failed OPEN. That was reachable: tools/andon-ledger-
+# validator/validate_ledger.py accepted `amber` as a valid verdict, and
+# andon_core.compute_wire_status collapses anything non-green/non-red to
+# `unknown`, so the board drew such a wire amber and labelled it UNPROVEN
+# while this hook waved every edit through. Looks gated, isn't.
+#
+# Inverted: a wire advances only on an explicit `green`. A typo, a verdict
+# from a newer schema, a hand-edited value -- all halt. Consistent with the
+# rest of the file, where a missing blast radius is a stop and never an
+# inferred value.
+ADVANCING_VERDICTS = ("green",)
 SETTINGS = ".claude/andon.local.md"
 # #70: named literally (not via a variable) in both this constant and the
 # os.environ.get() check below -- nacharbeit's H-ESCAPE-HATCH rubric rule
@@ -115,17 +129,58 @@ def deny(reason: str) -> int:
     return 2
 
 
-def frontmatter(text: str) -> dict[str, str]:
+def frontmatter(text: str) -> dict[str, str | list[str]]:
+    """Parse fenced frontmatter, including BLOCK-LIST values.
+
+    This used to be a single line-regex matching `key: value` only. A YAML block
+    list --
+
+        tags:
+          - kind:bug
+          - status:open
+
+    -- gave `tags` an EMPTY string: the `tags:` line matched with an empty
+    capture, and the `  - ` lines matched nothing and were dropped. That is the
+    form andon_core.dump_frontmatter WRITES, the form okf-ledger-schema.md
+    documents, and the form every record in scripts/fixtures/sample_ledger uses,
+    so tag_value's documented legacy fallback was dead for everything andon
+    produces. It went unnoticed because validate_doc also requires the
+    first-class keys and tag_value reads those first -- the fallback was
+    redundant rather than load-bearing, right up until a value had no
+    first-class key to fall back to.
+
+    Modelled on andon_core.parse_frontmatter:169-203, which has handled both
+    forms since the start. This is the third parser of the same format in this
+    repo and the last one to learn.
+    """
     if not text.startswith("---"):
         return {}
-    parts = text.split("---", 2)
-    if len(parts) < 3:
+    lines = text.split("\n")
+    if lines[0].strip() != "---":
         return {}
-    fm: dict[str, str] = {}
-    for line in parts[1].splitlines():
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if end is None:
+        return {}
+
+    fm: dict[str, str | list[str]] = {}
+    current_list_key: str | None = None
+    for line in lines[1:end]:
+        if not line.strip():
+            continue
+        if line.startswith("  - ") and current_list_key:
+            fm[current_list_key].append(line[4:].strip().strip("\"'"))  # type: ignore[union-attr]
+            continue
         m = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$", line)
-        if m:
-            fm[m.group(1).replace("-", "_").lower()] = m.group(2).strip().strip("\"'")
+        if not m:
+            continue
+        key = m.group(1).replace("-", "_").lower()
+        raw = m.group(2).strip()
+        if raw == "":
+            fm[key] = []
+            current_list_key = key
+        else:
+            fm[key] = raw.strip("\"'")
+            current_list_key = None
     return fm
 
 
@@ -137,9 +192,17 @@ def tag_value(fm: dict[str, str], key: str) -> str | None:
     every existing ledger as malformed.
     """
     direct = fm.get(key.replace("-", "_"))
-    if direct:
+    if isinstance(direct, str) and direct:
         return direct
-    for tag in re.findall(r'"([^"]+)"', fm.get("tags", "")):
+
+    # Both list syntaxes are live. A block list arrives as a real list from
+    # frontmatter() -- that is what the CLI writes. The inline flow form
+    # `tags: ["kind:wire", ...]` arrives as one string and is mined for quoted
+    # items; CLAUDE.md records 101 production records in spectrafit-core whose
+    # state is ONLY in that form, so it cannot be dropped.
+    raw_tags = fm.get("tags", "")
+    items = raw_tags if isinstance(raw_tags, list) else re.findall(r'"([^"]+)"', raw_tags)
+    for tag in items:
         if ":" in tag:
             k, v = tag.split(":", 1)
             if k.replace("-", "_").lower() == key.replace("-", "_").lower():
@@ -169,6 +232,40 @@ def _list_md(d: Path) -> list[Path]:
 _RESOLVED_BY_RE = re.compile(r"\[\[(?:evidence/)?([^\]]+)\]\]")
 
 
+# DUPLICATED FROM andon_core.parse_log_counters (the `sub_cycles` regex). The
+# hook is stdlib-only by design -- it imports nothing from the plugin, so that a
+# broken or half-installed andon can never make it fail to load, and a hook that
+# cannot import denies every call. That rules out reusing the function, so the
+# one line is copied instead.
+#
+# A copied regex is exactly the drift this repo keeps getting bitten by, so it is
+# not left to good intentions: test_andon_enforce.py's TestReopenParserAgreement
+# feeds the same log text to BOTH parsers and asserts they return the same
+# counts. Change one and that test goes red.
+REOPEN_LINE_RE = re.compile(r"^### Sub-cycle: (.+?) reopened \(count (\d+)\)", re.MULTILINE)
+
+
+def reopen_counts(ledger: Path) -> dict[str, int]:
+    """Highest recorded reopen count per wire, read from the append-only log.
+
+    The count lives ONLY here. It is written by andon_core.track_subcycle as a
+    log line and re-derived by parse_log_counters; no writer ever puts a
+    reopen_count field on a gap doc, and the concept is keyed by WIRE, not by
+    gap. The hook used to look for `tag_value(fm, "reopen_count")` on each gap
+    -- a value nothing produces -- so the sub-cycle escalation stop could not
+    fire on any real ledger. It was green only because the test fixture
+    hand-wrote an inline tag no writer emits.
+    """
+    log = ledger / "log.md"
+    if not log.is_file():
+        return {}
+    text = log.read_text(encoding="utf-8", errors="replace")
+    counts: dict[str, int] = {}
+    for wire, count in REOPEN_LINE_RE.findall(text):
+        counts[wire] = max(counts.get(wire, 0), int(count))
+    return counts
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
@@ -180,8 +277,14 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     closed_evidence_slugs: set[str] = set()
     for p in gaps:
         fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        # Skip on an explicit `closed` ONLY. This read `not in ("open",
+        # "reopened")`, which also skipped every other status -- a typo, a value
+        # from a newer schema -- so an unrecognised status silently stopped
+        # gating. Same fail-open shape as the verdict denylist two commits back.
+        # `reopened` is not a legal status either: andon_core.GAP_STATUSES and
+        # okf-ledger-schema.md:51 both say open or closed.
         status = tag_value(fm, "status")
-        if status and status.lower() not in ("open", "reopened"):
+        if status and status.lower() == "closed":
             resolved_by = fm.get("resolved_by")
             if resolved_by:
                 m = _RESOLVED_BY_RE.search(str(resolved_by))
@@ -219,6 +322,16 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     # hook and the CLI disagreeing about the same data. A doc with no `wire`
     # field (malformed or pre-schema) can't be grouped, so it is judged on its
     # own, same as before.
+    # Sub-cycle escalation, per WIRE, from the log -- see reopen_counts(). The
+    # per-gap branch above is kept for a legacy record that carries the value
+    # inline, but production ledgers record it here and only here.
+    for wire, count in sorted(reopen_counts(ledger).items()):
+        if count >= MAX_CONSECUTIVE_REOPENS:
+            return (f"STOP (sub-cycle escalation): wire {wire!r} has reopened "
+                    f"{count} times, reaching the threshold of "
+                    f"{MAX_CONSECUTIVE_REOPENS}. It is the stream's constraint "
+                    f"now, not a sub-cycle -- escalate rather than retry.")
+
     ev = _list_md(ledger / "evidence")
     latest_by_wire: dict[str, Path] = {}
     unwired: list[Path] = []
@@ -239,10 +352,11 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
         if not verdict:
             m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", text, re.MULTILINE)
             verdict = m.group(1).strip("`*.,") if m else None
-        if verdict and verdict.lower() in NON_ADVANCING_VERDICTS:
+        if verdict and verdict.lower() not in ADVANCING_VERDICTS:
             return (f"STOP (andon rule / condition 1): evidence '{p.name}' "
-                    f"records verdict {verdict!r}. The wire is not proven; the "
-                    f"loop may not advance past it.")
+                    f"records verdict {verdict!r}, which is not "
+                    f"{' or '.join(ADVANCING_VERDICTS)}. The wire is not proven; "
+                    f"the loop may not advance past it.")
     return None
 
 

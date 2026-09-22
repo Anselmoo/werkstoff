@@ -48,7 +48,12 @@ SCHEMA_VERSION = "1.0"
 
 # Ordered enum for the authorization ceiling (behavior contract §3 cond. 2).
 BLAST_RADIUS = ("local+reversible", "hard-to-reverse", "shared-state-visible")
-VERDICTS = ("green", "red", "amber", "unknown")
+# Must match andon_core.WIRE_VERDICTS and references/okf-ledger-schema.md:83,
+# which is the stated authority: "exactly one of green, red, unknown". `amber`
+# was admitted here and nowhere else -- no writer emits it, validate_doc
+# rejects it, and the board has no branch for it. It leaked in from the
+# viewer legend, which calls the `unknown` colour amber.
+VERDICTS = ("green", "red", "unknown")
 
 # Fields that gate a downstream decision, per record type. `body_label` is the
 # markdown bullet the legacy writer actually emits, which is how a record ends
@@ -86,9 +91,20 @@ class Finding:
 def parse_record(text: str) -> tuple[dict[str, str], str]:
     """Split a record into (frontmatter mapping, body).
 
-    A deliberately small parser: these records are machine-written with a
-    fixed `key: value` shape, and depending on PyYAML would cost the
+    A deliberately small parser: depending on PyYAML would cost the
     self-contained-bundle property for no gain.
+
+    The docstring used to say these records are "machine-written with a fixed
+    `key: value` shape". That was the bug. andon_core.dump_frontmatter writes
+    list-valued fields as a YAML BLOCK LIST --
+
+        tags:
+          - kind:bug
+
+    -- and this parser dropped the `  - ` lines while giving `tags` an empty
+    string, so a list field read as absent. The same defect lived in
+    plugins/andon/hooks/andon_enforce.py; andon_core.parse_frontmatter:169-203
+    has always handled both and is the shape both now follow.
     """
     if not text.startswith("---"):
         return {}, text
@@ -96,9 +112,17 @@ def parse_record(text: str) -> tuple[dict[str, str], str]:
     if len(parts) < 3:
         return {}, text
     front: dict[str, str] = {}
+    current_list_key = None
     for line in parts[1].splitlines():
+        if line.startswith("  - ") and current_list_key:
+            item = line[4:].strip().strip('"')
+            front[current_list_key] = (
+                f"{front[current_list_key]} {item}".strip() if front[current_list_key] else item
+            )
+            continue
         m = re.match(r'^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*)$', line)
         if m:
+            current_list_key = m.group(1).replace("-", "_").lower() if m.group(2).strip() == "" else None
             front[m.group(1).replace("-", "_").lower()] = m.group(2).strip().strip('"')
     return front, parts[2]
 

@@ -30,6 +30,7 @@ jobs:
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
       andon_tests: ${{ steps.andon_tests.outcome }}
       guard_hook_tests: ${{ steps.guard_hook_tests.outcome }}
+      ledger_validator_tests: ${{ steps.ledger_validator_tests.outcome }}
       differential_guards: ${{ steps.differential_guards.outcome }}
       hooks_deny: ${{ steps.hooks_deny.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
@@ -227,6 +228,16 @@ jobs:
           python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py
           python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py
 
+      - name: Run andon-ledger-validator test suite
+        id: ledger_validator_tests
+        continue-on-error: true
+        working-directory: tools/andon-ledger-validator
+        # 17 tests that ran nowhere -- flagged at .cupertino/HANDBOOK_CHECK-code.md:25
+        # ("Test file not invoked by any CI workflow step") and never acted on. The
+        # tool itself stays deliberately unwired from andon-loop per its own README;
+        # that is a different question from whether its tests run.
+        run: python3 -m unittest test_validate_ledger -v
+
       - name: Verify guard fixes changed one decision and kept another
         id: differential_guards
         continue-on-error: true
@@ -339,6 +350,7 @@ jobs:
           steps.takt_payload_shapes.outcome == 'failure' ||
           steps.andon_tests.outcome == 'failure' ||
           steps.guard_hook_tests.outcome == 'failure' ||
+          steps.ledger_validator_tests.outcome == 'failure' ||
           steps.differential_guards.outcome == 'failure' ||
           steps.hooks_deny.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
@@ -398,6 +410,7 @@ jobs:
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
             row "andon core + hook test suites" "${{ needs.checks.outputs.andon_tests }}"
             row "befund + zeugnis hook test suites" "${{ needs.checks.outputs.guard_hook_tests }}"
+            row "andon-ledger-validator test suite" "${{ needs.checks.outputs.ledger_validator_tests }}"
             row "guard differential cases (old denies / new allows, and one both deny)" "${{ needs.checks.outputs.differential_guards }}"
             row "declared hooks actually deny (verify-hooks-deny)" "${{ needs.checks.outputs.hooks_deny }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
