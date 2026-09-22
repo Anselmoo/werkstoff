@@ -172,7 +172,9 @@ proposed strategy. Record both strategies verbatim in the evidence doc (e.g.
 "proposed strategy: X, actual routed strategy: Y") so a mismatch is visible
 in the ledger. It returns a verdict (`green`/`red`/`unknown`) plus evidence
 content -- **you** persist it via `write-doc` into `evidence/`, never
-`andon-verify` itself.
+`andon-verify` itself. Pass its `tier_ceiling` through unchanged: for
+strategy `e`, `write-doc` refuses a doc without one or with a `tier`
+stronger than it.
 
 Run the full stop-condition check now that you have a real verdict and tier:
 

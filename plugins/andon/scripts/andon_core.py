@@ -42,6 +42,9 @@ GAP_STATUSES = ["open", "closed"]
 WIRE_VERDICTS = ["green", "red", "unknown"]
 STRATEGY_LETTERS = ["a", "b", "c", "d", "e", "f", "g"]
 TIERS = [1, 2, 3]
+# route_wire's tier_ceiling for strategy e: 1 with a real index, 2 without.
+# Never 3 -- Tier 2 (AST/grep) needs nothing but the repo itself.
+STRUCTURAL_TIER_CEILINGS = [1, 2]
 LANES = ["fast", "slow"]
 
 SUB_CYCLE_REOPEN_LIMIT = 3          # "3 or more times" -> escalate, stop sub-cycling
@@ -78,7 +81,10 @@ TRIGGER_FLAG_BY_STRATEGY = {
 }
 
 PREREQ_FLAG_BY_STRATEGY = {
-    "e": "available_lsp_or_index",
+    # Not a prerequisite for e as a whole: a real index is only required for
+    # Tier 1. Without one, e still runs at Tier 2 (AST/grep), which is why
+    # route_wire caps e's tier instead of degrading to another strategy.
+    "e": None,
     "b": None,  # no external prerequisite
     "f": "available_property_lib",
     "g": None,
@@ -364,9 +370,26 @@ def validate_doc(fields):
         if fields["strategy"] not in STRATEGY_LETTERS:
             raise AndonError("SCHEMA_BAD_STRATEGY", f"evidence strategy must be one of {STRATEGY_LETTERS}, got {fields['strategy']!r}.")
         tier = fields.get("tier")
+        tier_ceiling = fields.get("tier_ceiling")
         if fields["strategy"] == "e":
             if tier not in TIERS:
                 raise AndonError("SCHEMA_MISSING_TIER", "evidence for strategy e must record tier (1|2|3).")
+            # The ceiling is route-wire's output, copied onto the doc. It is
+            # required rather than defaulted: a missing ceiling read as 1 would
+            # let an index-less run claim the non-overridable Tier 1 halt.
+            if tier_ceiling not in STRUCTURAL_TIER_CEILINGS:
+                raise AndonError(
+                    "SCHEMA_MISSING_TIER_CEILING",
+                    f"evidence for strategy e must record route-wire's tier_ceiling "
+                    f"{STRUCTURAL_TIER_CEILINGS}, got {tier_ceiling!r}.",
+                )
+            # Tier 1 is the strongest, so "above the ceiling" is numerically below it.
+            if tier < tier_ceiling:
+                raise AndonError(
+                    "SCHEMA_TIER_ABOVE_CEILING",
+                    f"tier {tier} is stronger than this run's tier_ceiling {tier_ceiling}: "
+                    f"without an index (available_lsp_or_index) there was no Tier 1 query.",
+                )
             if tier == 1 and fields.get("non_overridable") is not True:
                 raise AndonError(
                     "SCHEMA_TIER1_MUST_BE_NON_OVERRIDABLE",
@@ -375,6 +398,8 @@ def validate_doc(fields):
         else:
             if tier is not None:
                 raise AndonError("SCHEMA_TIER_ONLY_FOR_E", "tier tag is only valid when strategy is 'e'.")
+            if tier_ceiling is not None:
+                raise AndonError("SCHEMA_TIER_CEILING_ONLY_FOR_E", "tier_ceiling is only valid when strategy is 'e'.")
 
     # kebab-case tag conformance (rule: okf-ledger-schema-conformance)
     for tag in fields.get("tags", []) or []:
@@ -663,38 +688,63 @@ def select_next_gap(open_gaps):
 # strategy-prerequisite-graceful-degrade)
 # ---------------------------------------------------------------------------
 
+STRUCTURAL_TIER1_PREREQ_FLAG = "available_lsp_or_index"
+
+
+def _triggers(letter, signals):
+    trigger_flag = TRIGGER_FLAG_BY_STRATEGY[letter]
+    return trigger_flag is None or bool(signals.get(trigger_flag))
+
+
+def _prereq_met(letter, availability):
+    prereq_flag = PREREQ_FLAG_BY_STRATEGY[letter]
+    return prereq_flag is None or bool(availability.get(prereq_flag, False))
+
+
 def route_wire(signals, availability):
     """signals: dict of is_* booleans. availability: dict of available_* booleans.
-    Returns {"strategy": letter, "checked_order": [...], "degraded_from": letter|None}.
+    Returns {"strategy": letter, "checked_order": [...], "degraded_from": letter|None,
+    "tier_ceiling": 1|2|None}.
     Strategy 'a' is only reached when nothing else matches -- never a default.
+
+    Degradation only ever lands on a strategy whose OWN trigger also fired, or
+    on 'a' (the no-trigger floor). Walking prerequisites alone would route e.g.
+    a property wire with no property library to 'b', whose reference demands a
+    numeric quantity the wire does not have.
+
+    Strategy 'e' never degrades to another strategy: without a real index it
+    runs at Tier 2 (see structural-graph-tiers.md), reported as tier_ceiling 2.
     """
     checked = []
-    chosen = None
+    chosen = "a"
     for letter in CLASSIFIER_ORDER:
         checked.append(letter)
-        trigger_flag = TRIGGER_FLAG_BY_STRATEGY[letter]
-        triggers = True if trigger_flag is None else bool(signals.get(trigger_flag))
-        if triggers:
+        if _triggers(letter, signals):
             chosen = letter
             break
-    if chosen is None:
-        chosen = "a"
 
     degraded_from = None
-    prereq_flag = PREREQ_FLAG_BY_STRATEGY[chosen]
-    if prereq_flag is not None and not availability.get(prereq_flag, False):
+    if not _prereq_met(chosen, availability):
         degraded_from = chosen
-        fallback_order = [letter for letter in CLASSIFIER_ORDER if letter != chosen]
-        chosen = None
-        for letter in fallback_order:
-            p = PREREQ_FLAG_BY_STRATEGY[letter]
-            if p is None or availability.get(p, False):
-                chosen = letter
-                break
-        if chosen is None:
-            chosen = "a"  # tribunal never hard-fails the run
+        later = CLASSIFIER_ORDER[CLASSIFIER_ORDER.index(chosen) + 1:]
+        # 'a' is last in CLASSIFIER_ORDER and always triggers with no
+        # prerequisite, so this always finds something -- tribunal never
+        # hard-fails the run.
+        chosen = next(
+            letter for letter in later
+            if _triggers(letter, signals) and _prereq_met(letter, availability)
+        )
 
-    return {"strategy": chosen, "checked_order": checked, "degraded_from": degraded_from}
+    tier_ceiling = None
+    if chosen == "e":
+        tier_ceiling = 1 if availability.get(STRUCTURAL_TIER1_PREREQ_FLAG, False) else 2
+
+    return {
+        "strategy": chosen,
+        "checked_order": checked,
+        "degraded_from": degraded_from,
+        "tier_ceiling": tier_ceiling,
+    }
 
 
 # ---------------------------------------------------------------------------

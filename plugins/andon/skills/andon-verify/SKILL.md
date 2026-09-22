@@ -27,7 +27,9 @@ The script checks triggers in a fixed order (e -> b -> f -> g -> d -> c -> a)
 and only reaches `a` when nothing else matches -- this *is*
 `references/wire-classifier.md`'s decision procedure, already executed, not
 merely described. If it reports `degraded_from`, that strategy's prerequisite
-was missing; it already re-routed to the next applicable one. **Never
+was missing; it already re-routed to the next strategy whose own trigger also
+fired, or to `a`. For strategy `e` it reports `tier_ceiling` instead (2 without
+an index, 1 with one) -- record no tier above it. **Never
 hard-fail this run because a strategy is unavailable** -- tribunal (`a`) has
 no external prerequisite and is the guaranteed floor.
 
@@ -96,7 +98,9 @@ just soften the wording around the same name.
 ## Step 6: coordinate with andon-loop's stop conditions
 
 You determine `verdict`, `strategy`, and (for strategy e) `tier` and
-`non_overridable`. You do **not** decide whether the loop advances --
+`non_overridable`; `tier_ceiling` is copied verbatim from Step 1's
+`route-wire` output, never chosen. `write-doc` rejects strategy-e evidence
+without it, or with a `tier` stronger than it. You do **not** decide whether the loop advances --
 `andon-loop` runs `check-stop-conditions` itself with these values. Your job
 is to report them accurately, especially a Tier 1 contradiction: label it
 `non_overridable: true` in the evidence content exactly when
@@ -113,6 +117,7 @@ Return (never persist yourself):
   "strategy": "a",
   "verdict": "green",
   "tier": null,
+  "tier_ceiling": null,
   "non_overridable": false,
   "evidence_body": "..."
 }
