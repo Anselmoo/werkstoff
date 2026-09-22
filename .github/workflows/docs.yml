@@ -70,7 +70,7 @@ jobs:
           enable-cache: true
 
       - name: Install rrt
-        run: uv tool install "repo-release-tools>=1.13.1"
+        run: uv tool install "repo-release-tools>=1.18.0"
 
       - name: Verify tracked artifacts
         run: rrt artifacts --check --strict

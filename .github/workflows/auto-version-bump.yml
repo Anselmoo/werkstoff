@@ -106,7 +106,7 @@ jobs:
           enable-cache: true
 
       - name: Install rrt
-        run: uv tool install "repo-release-tools>=1.13.1"
+        run: uv tool install "repo-release-tools>=1.18.0"
 
       - name: Determine bump level from the head commit's conventional-commit type
         id: level

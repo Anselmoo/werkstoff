@@ -58,7 +58,7 @@ jobs:
           enable-cache: true
 
       - name: Install rrt
-        run: uv tool install "repo-release-tools>=1.13.1"
+        run: uv tool install "repo-release-tools>=1.18.0"
 
       - name: Install pre-commit
         run: uv tool install pre-commit
