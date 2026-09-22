@@ -4,6 +4,7 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-22
 ### Added
 - **andon**: optional evidence lifecycle fields `superseded_by`,
   `measured_against`, `valid_until` (#72). `superseded_by` chains
