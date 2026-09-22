@@ -1,17 +1,30 @@
 #!/usr/bin/env python3
 """Gate: a guard fix must CHANGE one decision and PRESERVE another.
 
-A hook fix that only loosens is not a fix, and the two are textually identical
-in a diff: both delete a deny. The only thing that separates them is whether
-some other input is *still* refused afterwards. So every guard fix in this repo
-ships a PAIR of cases:
+A fix and a blanket rewrite of the rule are textually similar in a diff. What
+separates them is whether some OTHER input still gets the answer it had before.
+So every guard fix in this repo ships a PAIR of cases: one whose decision
+changes, and one that must not move.
 
-    old=deny  new=allow    the defect, gone
-    old=deny  new=deny     the rule the guard is actually for, intact
+Which way round depends on the defect, and both directions are real here:
 
-Shipping only the first is a loosening wearing a fix's clothing. This script is
-what makes that a check rather than a sentence -- the same move
-`test/plugins/lint-oracles.sh` makes for silent-failure regex forms.
+    an OVER-DENIAL fix (the guard refused too much -- PR #95)
+        old=deny   new=allow   the defect, gone
+        old=deny   new=deny    the rule the guard is actually for, intact
+
+    a FAIL-OPEN fix (the guard allowed too much -- PR #97)
+        old=allow  new=deny    the hole, closed
+        old=allow  new=allow   and not everything gated instead
+
+Shipping only the first half is a loosening, or a blanket gate, wearing a fix's
+clothing. This script is what makes that a check rather than a sentence -- the
+same move `test/plugins/lint-oracles.sh` makes for silent-failure regex forms.
+
+This docstring originally described only the first shape, because the first five
+fixes it graded were all over-denial. load_case then REFUSED the first
+allow/allow case written against it. The lesson is recorded there too: what makes
+a pair a pair is that one case changes and one does not; the polarity is a
+property of the defect, not of this file.
 
 HOW "OLD" IS OBTAINED, AND WHY THE BASE IS PINNED PER CASE
 ----------------------------------------------------------
