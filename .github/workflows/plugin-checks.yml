@@ -28,6 +28,7 @@ jobs:
       docs_audit_tests: ${{ steps.docs_audit_tests.outcome }}
       docs_ux_audit: ${{ steps.docs_ux_audit.outcome }}
       takt_payload_shapes: ${{ steps.takt_payload_shapes.outcome }}
+      andon_tests: ${{ steps.andon_tests.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
       release_wiring: ${{ steps.release_wiring.outcome }}
@@ -57,7 +58,7 @@ jobs:
           enable-cache: true
 
       - name: Install rrt
-        run: uv tool install "repo-release-tools>=1.13.1"
+        run: uv tool install "repo-release-tools>=1.18.0"
 
       - name: Install pre-commit
         run: uv tool install pre-commit
@@ -198,6 +199,19 @@ jobs:
         # the shapes that harness cannot express.
         run: python3 test/plugins/verify-takt-payload-shapes.py
 
+      - name: Run andon core + hook test suites
+        id: andon_tests
+        continue-on-error: true
+        # Both suites existed and nothing ran them. test_andon_core.py pins
+        # route_wire's degradation (a structural wire without an index was
+        # routed to numerical V&V, which then demanded a number the wire did
+        # not have) and validate_doc's tier_ceiling check, which keeps an
+        # index-less run from claiming the non-overridable Tier 1 halt.
+        working-directory: plugins/andon
+        run: |
+          python3 scripts/test_andon_core.py
+          python3 hooks/test_andon_enforce.py
+
       - name: Verify every plugin is wired into the release workflows
         id: release_wiring
         continue-on-error: true
@@ -275,6 +289,7 @@ jobs:
           steps.docs_audit_tests.outcome == 'failure' ||
           steps.docs_ux_audit.outcome == 'failure' ||
           steps.takt_payload_shapes.outcome == 'failure' ||
+          steps.andon_tests.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.release_wiring.outcome == 'failure' ||
           steps.tag_releases.outcome == 'failure' ||
@@ -330,6 +345,7 @@ jobs:
             row "docs-audit srcExclude tests" "${{ needs.checks.outputs.docs_audit_tests }}"
             row "docs artifacts up to date" "${{ needs.checks.outputs.docs_ux_audit }}"
             row "takt payload shapes" "${{ needs.checks.outputs.takt_payload_shapes }}"
+            row "andon core + hook test suites" "${{ needs.checks.outputs.andon_tests }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"

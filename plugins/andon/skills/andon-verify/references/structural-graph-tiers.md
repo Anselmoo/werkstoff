@@ -26,10 +26,15 @@ For wires whose contract is itself a claim about structure or connectivity:
   when Tiers 1 and 2 are both unavailable, and always label it Tier 3
   explicitly -- never present a Tier 3 inference with Tier 1 confidence.
 
+`route-wire` reports which tiers this run can reach as `tier_ceiling`: 1 when
+`available_lsp_or_index` is true, 2 otherwise. A missing index never re-routes
+a structural wire to another strategy -- it only removes Tier 1.
+
 ## Labeling requirement
 
-Every strategy-e evidence doc must record `tier` (1, 2, or 3) as a
-first-class field, and when `tier == 1` **and** the index query contradicts
+Every strategy-e evidence doc must record `tier` (1, 2, or 3) and
+`route-wire`'s `tier_ceiling` as first-class fields; `validate-doc` rejects a
+`tier` of 1 under a `tier_ceiling` of 2. And when `tier == 1` **and** the index query contradicts
 the claimed edge, `non_overridable: true` is mandatory. The
 `andon_core.py validate-doc` schema check rejects a Tier-1 evidence doc that
 omits `non_overridable`, and `andon-loop`'s stop-condition check treats

@@ -348,7 +348,7 @@ Thirteen independent version groups in `.rrt.toml` (12 plugins + `tools/werkstof
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash
-rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.13.1; pinned at 1.17.1 here
+rrt bump <major|minor|patch> --group <name>          # requires rrt >= 1.18.0; pinned at 1.18.0 here
 rrt tag create --group <name> --prefix '<name>-v' --push   # plugins
 rrt tag create --group werkstoff-cli --push                # ONLY this one uses bare v<version>
 ```

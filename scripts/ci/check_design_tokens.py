@@ -619,10 +619,9 @@ def read_git_baseline(root: Path, ref: str) -> dict[tuple[str, str], int] | None
 #: old path carried at the base ref. An entry is STALE once the base ref carries
 #: the new path -- compare_against_ref reports that, and the line must be deleted.
 BASELINE_RENAMES: dict[str, str] = {
-    "plugins/befund/assets/stage-map-viewer.html": "plugins/self-assess/assets/stage-map-viewer.html",
+    # Only entries whose OLD path the base ref still carries belong here: once
+    # main carries the current path, the mapping is stale and the check says so.
     "plugins/passung/assets/matrix-viewer.html": "plugins/codebase-consistency/assets/matrix-viewer.html",
-    "plugins/zeugnis/assets/burndown-viewer.html": "plugins/confab/assets/burndown-viewer.html",
-    "plugins/zirkel/assets/branch-comparison-viewer.html": "plugins/compass/assets/branch-comparison-viewer.html",
 }
 
 

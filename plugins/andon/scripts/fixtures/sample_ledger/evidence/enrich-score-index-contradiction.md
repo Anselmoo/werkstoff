@@ -5,6 +5,7 @@ wire: enrich->score
 strategy: e
 verdict: red
 tier: 1
+tier_ceiling: 1
 non_overridable: true
 tags:
   - strategy:e

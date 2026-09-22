@@ -2,7 +2,7 @@
 
 A real OKF ledger directory (`log.md` + `stages/` + `gaps/` + `evidence/`), written in the
 schema `andon_core.py` actually **reads**: `status`, `stage`, `kind`, `blast_radius`,
-`wire`, `verdict`, `tier` and `non_overridable` are first-class frontmatter keys here, not
+`wire`, `verdict`, `tier`, `tier_ceiling` and `non_overridable` are first-class frontmatter keys here, not
 values buried in a `tags:` array. A ledger that encodes them only as tags renders an empty
 board — `render_board()` looks at `fields`, never at `tags`.
 
