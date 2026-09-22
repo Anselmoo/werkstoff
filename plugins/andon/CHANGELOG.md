@@ -4,6 +4,11 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-22
+
+### Fixed
+- **andon**: keep wire degradation on a strategy whose trigger fired (#94)
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._
