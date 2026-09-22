@@ -32,6 +32,15 @@ All notable changes to the `andon` plugin are documented here.
   to the main checkout's own ledger path from a worktree's `cwd` still gets
   through it. See [Git worktrees](README.md#git-worktrees).
 
+### Tests
+- **andon**: permanent regression tests for four behaviors previously
+  checked only by ad-hoc scratch runs -- a mutual `superseded_by` cycle
+  between two red evidence records, a submodule with its own ledger
+  (resolved to its own root rather than the superproject's
+  `.git/modules`), a linked worktree with `git` absent from `PATH`, and a
+  linked worktree whose `.git` file names its gitdir by a relative path --
+  in `hooks/test_andon_enforce.py` and `scripts/test_andon_core.py`.
+
 ## [1.0.3] - 2026-09-22
 
 ### Fixed

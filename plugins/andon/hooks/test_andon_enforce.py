@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,14 @@ import unittest
 from pathlib import Path
 
 HOOK = Path(__file__).parent / "andon_enforce.py"
+
+# Three of the classes below (submodule resolution, git-absent-from-PATH,
+# relative-gitdir) build their fixtures with real `git` subprocess calls --
+# git itself is not this hook's dependency (see resolve_main_root's own
+# docstring: "pure filesystem walk (no subprocess)"), but building a real
+# worktree/submodule to test that claim against needs a real git binary.
+# Skip those, and only those, when this machine has none.
+GIT_AVAILABLE = shutil.which("git") is not None
 
 GAP_NO_BLAST = """---
 type: gap
@@ -709,6 +718,56 @@ class TestLifecycleFields(unittest.TestCase):
             self.assertIn("decision-017", deny_reason(r))
 
 
+EVIDENCE_A_RED_SUPERSEDED_BY_B = """---
+type: evidence
+title: "a, red -- superseded by b"
+wire: "x->y"
+strategy: a
+verdict: red
+superseded_by: b-red
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_B_RED_SUPERSEDED_BY_A = """---
+type: evidence
+title: "b, red -- superseded by a, closing the cycle"
+wire: "x->y"
+strategy: a
+verdict: red
+superseded_by: a-red
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+
+class TestSupersessionCycleTwoRedRecords(unittest.TestCase):
+    """A ledger whose only two evidence docs for one wire supersede EACH
+    OTHER -- a-red.md names b-red as its successor, b-red.md names a-red as
+    its own -- has no resolvable chain head at all. Same shape as
+    TestLifecycleFields.test_supersession_cycle_denies above (which uses two
+    GREEN docs on wire a->b); this pins the RED-verdict, named-file variant
+    the task called out explicitly. The library-level half of the same
+    scenario (andon_core.compute_wire_status must never report this wire
+    green) lives in scripts/test_andon_core.py's
+    ComputeWireStatusChainHeadResolution class, not here -- this hook is
+    stdlib-only and does not import andon_core as a library (see this file's
+    and andon_enforce.py's module docstrings for why).
+    """
+
+    def test_hook_denies_editing_a_source_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-red.md").write_text(EVIDENCE_A_RED_SUPERSEDED_BY_B, encoding="utf-8")
+            (ledger / "evidence/b-red.md").write_text(EVIDENCE_B_RED_SUPERSEDED_BY_A, encoding="utf-8")
+            r = run(root, "src/api.py")
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("cycle", deny_reason(r).lower())
+
+
 class TestChainHeadResolutionAgreement(unittest.TestCase):
     """The hook duplicates andon_core.resolve_chain_head verbatim (the hook
     is stdlib-only and imports nothing from the plugin -- see this file's and
@@ -811,6 +870,52 @@ class GitRepoWithWorktree:
         self.tmp.cleanup()
 
 
+class GitRepoWithSubmodule:
+    """A throwaway `sub` repo added as a real git SUBMODULE of a throwaway
+    `sup` superproject -- built with real git (git init + commit +
+    `git submodule add`) inside a tempdir, same discipline as
+    GitRepoWithWorktree above.
+
+    Pins #71's resolver against the one concretely wrong implementation the
+    task names: a resolver built from the PARENT of `git rev-parse
+    --git-common-dir` would land in `<sup>/.git/modules` -- no ledger lives
+    there, so that resolver would silently ALLOW. The actual resolver never
+    does this: a submodule's own gitdir (`<sup>/.git/modules/sub`) carries
+    no `commondir` file -- that file exists only inside a linked WORKTREE's
+    admin dir, never a submodule's -- so resolve_main_root's read of it
+    fails and it falls back to `start`, landing on the submodule's own
+    checkout root, exactly where `<sup>/sub/analysis/andon/ledger` lives.
+    Confirmed against real git before writing this fixture: `sup/.git/modules/sub/commondir`
+    does not exist after `git submodule add`, only after `git worktree add`.
+    """
+
+    def __init__(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        base = Path(self.tmp.name).resolve()
+        sub_origin = base / "sub-origin"
+        sub_origin.mkdir()
+        _git(["init", "-q"], sub_origin)
+        _git(["config", "user.email", "test@test.local"], sub_origin)
+        _git(["config", "user.name", "Test"], sub_origin)
+        _git(["commit", "-q", "--allow-empty", "-m", "init"], sub_origin)
+
+        self.sup = base / "sup"
+        self.sup.mkdir()
+        _git(["init", "-q"], self.sup)
+        _git(["config", "user.email", "test@test.local"], self.sup)
+        _git(["config", "user.name", "Test"], self.sup)
+        _git(["commit", "-q", "--allow-empty", "-m", "init"], self.sup)
+        # protocol.file.allow=always: modern git refuses a local-path
+        # submodule remote by default (CVE-2022-39253); this fixture is a
+        # throwaway tempdir under our own control, not untrusted input.
+        _git(["-c", "protocol.file.allow=always", "submodule", "add", "-q",
+              str(sub_origin), "sub"], self.sup)
+        self.sub = self.sup / "sub"
+
+    def cleanup(self):
+        self.tmp.cleanup()
+
+
 class TestMainRootResolutionAgreement(unittest.TestCase):
     """The hook duplicates andon_core.resolve_main_root (#71) -- the hook is
     stdlib-only and imports nothing from the plugin (see this file's and
@@ -876,6 +981,23 @@ class TestMainRootResolutionAgreement(unittest.TestCase):
             )
             self.assertEqual(str(hook.resolve_main_root(root)), str(root))
 
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_both_resolve_a_submodule_to_its_own_root(self):
+        """Not the superproject, and not `<sup>/.git/modules` -- the
+        submodule's own checkout root, where ITS ledger lives. See
+        GitRepoWithSubmodule's docstring for why a naive
+        parent-of-git-common-dir resolver would get this wrong."""
+        core, hook = self._load()
+        fx = GitRepoWithSubmodule()
+        try:
+            self.assertEqual(
+                str(hook.resolve_main_root(fx.sub)),
+                core.resolve_main_root(str(fx.sub)),
+            )
+            self.assertEqual(str(hook.resolve_main_root(fx.sub)), str(fx.sub))
+        finally:
+            fx.cleanup()
+
 
 class TestWorktreeLedgerResolution(unittest.TestCase):
     """#71: the hook resolves the ledger and settings from the MAIN
@@ -940,6 +1062,107 @@ class TestWorktreeLedgerResolution(unittest.TestCase):
             (root / "analysis/andon/ledger/evidence").mkdir(parents=True)
             (root / "analysis/andon/ledger/evidence/e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
             self.assertEqual(decision(run(root)), "deny")
+
+
+class TestSubmoduleLedgerResolution(unittest.TestCase):
+    """A submodule with its OWN ledger must gate edits made inside it, and
+    must do so by resolving `cwd` to the submodule's own root -- never by
+    wandering up into the superproject's `.git/modules`, which has no
+    ledger and would silently allow. See GitRepoWithSubmodule's docstring
+    for the concrete wrong implementation this pins against.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_hook_denies_source_edit_inside_submodule_with_red_evidence(self):
+        fx = GitRepoWithSubmodule()
+        try:
+            ledger = fx.sub / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+            r = run(fx.sub, "src/x.py")
+            self.assertEqual(decision(r), "deny")
+        finally:
+            fx.cleanup()
+
+
+class TestHookWorksWithoutGitBinaryInPath(unittest.TestCase):
+    """resolve_main_root's own docstring says it is a "pure filesystem walk
+    (no subprocess)" -- so resolution from inside a linked worktree must not
+    actually depend on a `git` binary being reachable on PATH at all. This
+    builds a real worktree with real git (setup only, guarded by
+    GIT_AVAILABLE), then runs the HOOK ITSELF with PATH pointed at an empty,
+    git-free directory. Python is still found because run()'s subprocess
+    call already invokes `sys.executable` -- an absolute path -- as argv[0],
+    never relying on PATH lookup for the interpreter.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_worktree_hook_denies_with_git_absent_from_path(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+
+            with tempfile.TemporaryDirectory() as no_git_dir:
+                self.assertIsNone(
+                    shutil.which("git", path=no_git_dir),
+                    "sanity: this PATH must contain no git binary at all",
+                )
+                r = run(fx.worktree, env={"PATH": no_git_dir})
+                self.assertEqual(decision(r), "deny")
+        finally:
+            fx.cleanup()
+
+
+class TestRelativeGitdirWorktree(unittest.TestCase):
+    """A linked worktree's `.git` file conventionally holds an ABSOLUTE
+    gitdir path -- that's `git worktree add`'s own default, and what every
+    other worktree fixture in this file relies on unmodified. Nothing in
+    the format, or in resolve_main_root's contract, requires that: a
+    relative gitdir line is equally legal git syntax (git itself accepts
+    it -- asserted below), and this repo's own resolvers must handle it
+    exactly as readily as the absolute form.
+    """
+
+    @unittest.skipUnless(GIT_AVAILABLE, "git is not installed")
+    def test_relative_gitdir_still_resolves_to_main_and_denies(self):
+        fx = GitRepoWithWorktree()
+        try:
+            ledger = fx.main / "analysis/andon/ledger/evidence"
+            ledger.mkdir(parents=True)
+            (ledger / "e0.md").write_text(EVIDENCE_RED, encoding="utf-8")
+
+            admin_dir = fx.main / ".git" / "worktrees" / fx.worktree.name
+            self.assertTrue(admin_dir.is_dir(),
+                             "sanity: git's own worktree admin dir must exist first")
+            rel_gitdir = os.path.relpath(str(admin_dir), str(fx.worktree))
+            (fx.worktree / ".git").write_text(f"gitdir: {rel_gitdir}\n", encoding="utf-8")
+
+            # Sanity: git itself still accepts the rewritten, now-relative line.
+            rp = subprocess.run(
+                ["git", "-C", str(fx.worktree), "rev-parse", "--git-common-dir"],
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(rp.returncode, 0, rp.stderr)
+
+            import importlib.util
+            spec = importlib.util.spec_from_file_location(
+                "andon_core_relgitdir", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+            core = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(core)
+            spec2 = importlib.util.spec_from_file_location(
+                "andon_enforce_relgitdir", Path(__file__).resolve().parent / "andon_enforce.py")
+            hook = importlib.util.module_from_spec(spec2)
+            spec2.loader.exec_module(hook)
+
+            self.assertEqual(str(hook.resolve_main_root(fx.worktree)), str(fx.main))
+            self.assertEqual(core.resolve_main_root(str(fx.worktree)), str(fx.main))
+
+            self.assertEqual(decision(run(fx.worktree)), "deny")
+        finally:
+            fx.cleanup()
 
 
 class TestEscapeHatchEnvVar(unittest.TestCase):

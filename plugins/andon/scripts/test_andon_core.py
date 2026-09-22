@@ -326,6 +326,24 @@ class ComputeWireStatusChainHeadResolution(unittest.TestCase):
         docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="not-a-date")]
         self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
 
+    def test_two_red_records_superseding_each_other_is_never_green(self):
+        """Library-level twin of
+        hooks/test_andon_enforce.py's TestSupersessionCycleTwoRedRecords: a
+        ledger whose only two evidence docs for one wire (x->y) supersede
+        EACH OTHER -- a-red points to b-red, b-red points back to a-red --
+        has no resolvable chain head. compute_wire_status's contract is
+        `evidence_docs_for_wire: list[{"slug":..., "fields": {...}}] ->
+        "green"|"red"|"unknown"` (see evidence_doc() above and this
+        function's own docstring); a cycle must never resolve to "green",
+        the one status that would let andon-loop advance past this wire."""
+        docs = [
+            evidence_doc("a-red", wire="x->y", strategy="a", verdict="red", superseded_by="b-red"),
+            evidence_doc("b-red", wire="x->y", strategy="a", verdict="red", superseded_by="a-red"),
+        ]
+        status = andon_core.compute_wire_status(docs)
+        self.assertNotEqual(status, "green")
+        self.assertEqual(status, "unknown")
+
 
 def _git(args, cwd):
     r = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, text=True, timeout=30)
