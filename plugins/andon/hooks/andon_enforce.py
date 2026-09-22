@@ -55,6 +55,7 @@ import json
 import os
 import re
 import sys
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
@@ -266,6 +267,77 @@ def reopen_counts(ledger: Path) -> dict[str, int]:
     return counts
 
 
+def parse_iso_date(value: str) -> date | None:
+    """Returns a `date`, or None if malformed. Manual digit parsing, not
+    `datetime.strptime` -- DTZ007 flags a naive datetime built via
+    `strptime`; `date()` here always represents a fixed value the record
+    already carries, never a read of the current time (that's
+    `datetime.now(timezone.utc).date()` in `is_expired()` below).
+
+    DUPLICATED from andon_core.parse_iso_date for the same reason every
+    other duplication in this file exists: the hook is stdlib-only and
+    imports nothing from the plugin.
+    """
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return None
+    year, month, day = (int(part) for part in value.split("-"))
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+def is_expired(valid_until: str) -> tuple[bool, str | None]:
+    """(expired, error). `error` is set when valid_until is unparseable --
+    the contract is 'an unparseable valid_until read by the hook denies',
+    i.e. fail closed rather than silently treating it as not-yet-due."""
+    parsed = parse_iso_date(valid_until)
+    if parsed is None:
+        return False, f"{valid_until!r} is not a valid ISO date (YYYY-MM-DD)"
+    today = datetime.now(timezone.utc).date()
+    return today > parsed, None
+
+
+class ChainResolutionError(Exception):
+    """A superseded_by chain is broken: a dangling link or a cycle.
+
+    DUPLICATED in andon_core.resolve_chain_head -- this hook is stdlib-only
+    and imports nothing from the plugin (see the module docstring), so a
+    broken/half-installed andon can never stop it loading. Both functions
+    are fed the same input by TestChainHeadResolutionAgreement in
+    test_andon_enforce.py, which asserts they agree.
+    """
+
+
+def resolve_chain_head(start_slug: str, superseded_by_of: dict[str, str | None]) -> str:
+    """Follow `superseded_by` from `start_slug` to the head of its
+    supersession chain -- a record nobody supersedes further (#72:
+    chain-head-resolution). `superseded_by_of` maps every known evidence
+    slug to its `superseded_by` value (falsy if none). Raises
+    ChainResolutionError on a dangling link (points to a slug not in
+    `superseded_by_of`) or a cycle, wherever in the chain it occurs -- never
+    silently falls back to the unresolved leaf's own verdict.
+    """
+    seen = {start_slug}
+    cursor = start_slug
+    while True:
+        nxt = superseded_by_of.get(cursor)
+        if not nxt:
+            return cursor
+        if nxt not in superseded_by_of:
+            raise ChainResolutionError(
+                f"'{cursor}' is superseded_by {nxt!r}, which does not exist "
+                f"(dangling link)."
+            )
+        if nxt in seen:
+            raise ChainResolutionError(
+                f"supersession cycle detected starting at {start_slug!r}: "
+                f"reaches {nxt!r} again."
+            )
+        seen.add(nxt)
+        cursor = nxt
+
+
 def stop_reason(ledger: Path, authorization: str) -> str | None:
     """The first stop condition that holds, or None. Contract §3 + §9.2."""
     gaps = _list_md(ledger / "gaps")
@@ -335,28 +407,71 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     ev = _list_md(ledger / "evidence")
     latest_by_wire: dict[str, Path] = {}
     unwired: list[Path] = []
+    evidence_fm: dict[str, dict] = {}
+    evidence_text: dict[str, str] = {}
     for p in ev:
-        fm = frontmatter(p.read_text(encoding="utf-8", errors="replace"))
+        text = p.read_text(encoding="utf-8", errors="replace")
+        fm = frontmatter(text)
+        evidence_fm[p.stem] = fm
+        evidence_text[p.stem] = text
         wire = tag_value(fm, "wire")
         if wire:
             latest_by_wire[wire] = p  # ev is filename-sorted; last assignment wins
         else:
             unwired.append(p)
 
+    # #72: superseded_by is resolved across ALL evidence in the ledger, not
+    # just the docs for one wire -- the pointer is a bare slug, not scoped
+    # to a wire, and a dangling/cyclic chain must fail closed regardless of
+    # what wire either end happens to claim.
+    superseded_by_of = {slug: tag_value(fm, "superseded_by") for slug, fm in evidence_fm.items()}
+
     for p in list(latest_by_wire.values()) + unwired:
         if p.stem in closed_evidence_slugs:
             continue  # #68a: the gap this evidence resolved is already closed
-        text = p.read_text(encoding="utf-8", errors="replace")
-        fm = frontmatter(text)
-        verdict = tag_value(fm, "verdict")
+
+        # #72 (chain-head-resolution): judge the HEAD of this record's
+        # supersession chain, never the unresolved leaf -- a record naming
+        # an existing successor stops gating on its own verdict. A dangling
+        # link or a cycle anywhere along the way denies outright, fail
+        # closed, rather than falling back to the leaf's own verdict.
+        try:
+            head_slug = resolve_chain_head(p.stem, superseded_by_of)
+        except ChainResolutionError as exc:
+            return (f"STOP (andon rule / lifecycle, #72): evidence '{p.name}' "
+                    f"has a broken supersession chain: {exc}. A wire must "
+                    f"never be un-gated by a superseded_by reference that "
+                    f"cannot be resolved.")
+        head_fm = evidence_fm[head_slug]
+        head_text = evidence_text[head_slug]
+        measured_against = tag_value(head_fm, "measured_against")
+        suffix = f" (measured_against {measured_against!r})" if measured_against else ""
+
+        # Expiry (valid_until) is judged on the chain HEAD only.
+        valid_until = tag_value(head_fm, "valid_until")
+        if valid_until:
+            expired, err = is_expired(valid_until)
+            if err:
+                return (f"STOP (andon rule / lifecycle, #72): evidence "
+                        f"'{head_slug}.md' (chain head for '{p.name}') has an "
+                        f"unparseable valid_until {valid_until!r}: {err}. Fail "
+                        f"closed -- the record gates as verdict unknown.")
+            if expired:
+                return (f"STOP (andon rule / lifecycle, #72): evidence "
+                        f"'{head_slug}.md' (chain head for '{p.name}') expired "
+                        f"on {valid_until} -- it now gates as verdict unknown, "
+                        f"even though it may still read green{suffix}. The "
+                        f"wire is not proven; the loop may not advance past it.")
+
+        verdict = tag_value(head_fm, "verdict")
         if not verdict:
-            m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", text, re.MULTILINE)
+            m = re.search(r"^\s*[-*]\s*Verdict:\s*(\S+)", head_text, re.MULTILINE)
             verdict = m.group(1).strip("`*.,") if m else None
         if verdict and verdict.lower() not in ADVANCING_VERDICTS:
-            return (f"STOP (andon rule / condition 1): evidence '{p.name}' "
-                    f"records verdict {verdict!r}, which is not "
-                    f"{' or '.join(ADVANCING_VERDICTS)}. The wire is not proven; "
-                    f"the loop may not advance past it.")
+            return (f"STOP (andon rule / condition 1): evidence '{head_slug}.md' "
+                    f"(chain head for '{p.name}') records verdict {verdict!r}, "
+                    f"which is not {' or '.join(ADVANCING_VERDICTS)}{suffix}. The "
+                    f"wire is not proven; the loop may not advance past it.")
     return None
 
 

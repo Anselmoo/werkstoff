@@ -182,5 +182,150 @@ class ValidateDocTierCeiling(unittest.TestCase):
             self.assertFalse((Path(root) / "ledger").exists())
 
 
+def simple_evidence(**overrides):
+    return {
+        "type": "evidence", "title": "wire proven", "wire": "a->b",
+        "strategy": "a", "verdict": "green",
+        **overrides,
+    }
+
+
+class ValidateDocLifecycleFields(unittest.TestCase):
+    """#72: superseded_by, measured_against, valid_until -- evidence-only,
+    optional, rejected with SCHEMA_* codes when malformed."""
+
+    def assertRefused(self, fields, code):
+        with self.assertRaises(andon_core.AndonError) as ctx:
+            andon_core.validate_doc(fields)
+        self.assertEqual(ctx.exception.code, code)
+
+    def test_absent_fields_behave_exactly_as_today(self):
+        self.assertTrue(andon_core.validate_doc(simple_evidence()))
+
+    def test_all_three_accepted_on_evidence(self):
+        self.assertTrue(andon_core.validate_doc(simple_evidence(
+            superseded_by="other-slug", measured_against="decision-1",
+            valid_until="2099-01-01",
+        )))
+
+    def test_superseded_by_on_gap_is_refused(self):
+        gap = {
+            "type": "gap", "title": "gap with a supersede field",
+            "stage": "ingest", "kind": "bug", "status": "open",
+            "superseded_by": "something",
+        }
+        self.assertRefused(gap, "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE")
+
+    def test_measured_against_on_stage_is_refused(self):
+        stage = {
+            "type": "stage", "title": "ingest", "order": 1,
+            "confidence": "heuristic", "measured_against": "decision-1",
+        }
+        self.assertRefused(stage, "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE")
+
+    def test_empty_superseded_by_is_refused(self):
+        self.assertRefused(simple_evidence(superseded_by=""), "SCHEMA_BAD_SUPERSEDED_BY")
+
+    def test_non_string_superseded_by_is_refused(self):
+        self.assertRefused(simple_evidence(superseded_by=3), "SCHEMA_BAD_SUPERSEDED_BY")
+
+    def test_empty_measured_against_is_refused(self):
+        self.assertRefused(simple_evidence(measured_against=""), "SCHEMA_BAD_MEASURED_AGAINST")
+
+    def test_non_iso_valid_until_is_refused(self):
+        self.assertRefused(simple_evidence(valid_until="not-a-date"), "SCHEMA_BAD_VALID_UNTIL")
+
+    def test_impossible_calendar_date_is_refused(self):
+        self.assertRefused(simple_evidence(valid_until="2024-02-30"), "SCHEMA_BAD_VALID_UNTIL")
+
+    def test_write_doc_refuses_self_reference(self):
+        with tempfile.TemporaryDirectory() as root:
+            with self.assertRaises(andon_core.AndonError) as ctx:
+                andon_core.write_doc(
+                    root, "ledger", "evidence/ev1.md",
+                    simple_evidence(superseded_by="ev1"),
+                )
+            self.assertEqual(ctx.exception.code, "SCHEMA_SUPERSEDED_BY_SELF")
+            self.assertFalse((Path(root) / "ledger").exists())
+
+    def test_write_doc_accepts_reference_to_a_different_slug(self):
+        with tempfile.TemporaryDirectory() as root:
+            path = andon_core.write_doc(
+                root, "ledger", "evidence/ev2.md",
+                simple_evidence(superseded_by="ev1"),
+            )
+            self.assertTrue(Path(path).is_file())
+
+
+def evidence_doc(slug, **fields):
+    return {"path": f"evidence/{slug}.md", "slug": slug, "fields": fields, "body": ""}
+
+
+class ComputeWireStatusChainHeadResolution(unittest.TestCase):
+    """#72: compute_wire_status resolves superseded_by to the chain head
+    before judging verdict/expiry -- mirrors hooks/andon_enforce.py's
+    stop_reason() evidence loop (probe_lifecycle.py's L1-L4 exercise the
+    hook side of the same behaviour end to end)."""
+
+    def test_no_chain_behaves_as_before(self):
+        docs = [evidence_doc("e0", wire="a->b", verdict="red"),
+                evidence_doc("e1", wire="a->b", verdict="green")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_superseded_leaf_defers_to_head(self):
+        docs = [evidence_doc("a-green", wire="a->b", verdict="green"),
+                evidence_doc("b-red", wire="a->b", verdict="red", superseded_by="a-green")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_dangling_superseded_by_is_unknown(self):
+        docs = [evidence_doc("c-red", wire="a->b", verdict="green", superseded_by="nonexistent")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_cycle_is_unknown(self):
+        docs = [evidence_doc("x", wire="a->b", verdict="green", superseded_by="y"),
+                evidence_doc("y", wire="a->b", verdict="green", superseded_by="x")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_multi_hop_chain_resolves_to_true_head(self):
+        """v1 (green, the true head) <- v2 (red, superseded_by v1) <- v3 (red,
+        superseded_by v2, the filename-latest record). Stopping after one
+        hop would read v2's own red verdict and get this wrong; only walking
+        the whole chain to v1 gets 'green'."""
+        docs = [evidence_doc("v1", wire="a->b", verdict="green"),
+                evidence_doc("v2", wire="a->b", verdict="red", superseded_by="v1"),
+                evidence_doc("v3", wire="a->b", verdict="red", superseded_by="v2")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_dangling_deep_in_chain_is_unknown_not_leaf_verdict(self):
+        """A dangling link ANYWHERE in the chain denies -- even when the
+        leaf itself would otherwise resolve to a perfectly fine record one
+        hop closer."""
+        docs = [evidence_doc("v1", wire="a->b", verdict="green", superseded_by="ghost"),
+                evidence_doc("v2", wire="a->b", verdict="green", superseded_by="v1")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_expiry_judged_on_head_only(self):
+        """The superseded (non-head) record's own valid_until must not
+        matter -- only the head's."""
+        docs = [
+            evidence_doc("head", wire="a->b", verdict="green"),
+            evidence_doc("leaf", wire="a->b", verdict="green",
+                         superseded_by="head", valid_until="2020-01-01"),
+        ]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_expired_head_is_unknown_even_if_green(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="2020-01-01")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+    def test_future_valid_until_on_head_is_unaffected(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="2099-01-01")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "green")
+
+    def test_malformed_valid_until_on_head_fails_closed(self):
+        docs = [evidence_doc("only", wire="a->b", verdict="green", valid_until="not-a-date")]
+        self.assertEqual(andon_core.compute_wire_status(docs), "unknown")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

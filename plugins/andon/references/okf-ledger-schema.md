@@ -99,6 +99,48 @@ not.
   stop condition.
 - Optional: `lane` -- one of `fast`, `slow`. Not currently validated; used
   only to emit the `lane:` tag.
+- Optional lifecycle fields (#72), evidence-only -- `validate_doc()` refuses
+  any of the three on a `stage` or `gap` doc (`SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE`).
+  A record carrying none of them behaves exactly as before.
+  - `superseded_by` -- the slug of another evidence doc that replaces this
+    one (e.g. `superseded_by: a-later-reverify`, no `evidence/` prefix, no
+    `.md`). Must be a non-empty string (`SCHEMA_BAD_SUPERSEDED_BY`); naming
+    the doc's own slug is refused at write time
+    (`SCHEMA_SUPERSEDED_BY_SELF` -- `validate_doc()` alone has no filename to
+    compare against, so `write_doc()` is what catches this one). See
+    "Supersession chains" below for how a chain of these is resolved.
+  - `measured_against` -- a free-text, informational pointer (e.g. a
+    decision record's slug) with no gating effect of its own. Must be a
+    non-empty string when present (`SCHEMA_BAD_MEASURED_AGAINST`). Named
+    verbatim in any deny reason its evidence doc causes, so the value should
+    be something a human recognizes on sight.
+  - `valid_until` -- an ISO date, `YYYY-MM-DD`. Once today's date (UTC) is
+    past it, the record gates as verdict `unknown` regardless of what
+    `verdict` it actually recorded -- a `green` evidence doc past its
+    `valid_until` still halts. A value that isn't a real calendar date in
+    that exact form is refused at write time (`SCHEMA_BAD_VALID_UNTIL`) and
+    denies every edit if it somehow reaches `hooks/andon_enforce.py` anyway
+    (fail closed, never read as "not yet due").
+
+### Supersession chains: chain-head resolution (#72)
+
+`superseded_by` can chain: record C is superseded by B, which is itself
+superseded by A. Both `andon_core.compute_wire_status()` and
+`hooks/andon_enforce.py`'s `stop_reason()` resolve this transitively to the
+**head** of the chain -- the record nobody supersedes -- via a small
+`resolve_chain_head()` function duplicated in both files (the hook is
+stdlib-only and imports nothing from the plugin; see
+`hooks/andon_enforce.py`'s module docstring). It is the **head's** `verdict`
+and `valid_until` that get judged, never an unresolved intermediate or leaf
+record's.
+
+A **dangling link** (a `superseded_by` naming a slug with no matching
+evidence doc) or a **cycle**, wherever either occurs along the chain, denies
+outright -- reported as `unknown` by `compute_wire_status()`, and as a STOP
+by the hook -- rather than silently falling back to the unresolved record's
+own verdict. This holds even when the record that started the walk reads
+`green`: a broken pointer is a data-integrity problem in its own right, not
+something a plausible-looking verdict should paper over.
 
 ## Tags
 

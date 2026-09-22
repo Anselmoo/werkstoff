@@ -504,6 +504,275 @@ class TestSupersedeAndRetire(unittest.TestCase):
             self.assertEqual(decision(run(f.root)), "allow")
 
 
+EVIDENCE_GREEN_HEAD = """---
+type: evidence
+title: "later green re-verify"
+wire: "stage-x->stage-y"
+strategy: a
+verdict: green
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_RED_SUPERSEDED_BY_HEAD = """---
+type: evidence
+title: "earlier red, now superseded"
+wire: "stage-x->stage-y"
+strategy: a
+verdict: red
+superseded_by: a-green-head
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_RED_DANGLING = """---
+type: evidence
+title: "red, dangling supersede"
+wire: "stage-p->stage-q"
+strategy: a
+verdict: red
+superseded_by: nonexistent-slug-zzz
+tags: ["strategy:a", "verdict:red"]
+---
+"""
+
+EVIDENCE_GREEN_DANGLING = """---
+type: evidence
+title: "green, but dangling supersede -- must still deny"
+wire: "stage-p->stage-q"
+strategy: a
+verdict: green
+superseded_by: nonexistent-slug-zzz
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_EXPIRED = """---
+type: evidence
+title: "green but expired"
+wire: "stage-m->stage-n"
+strategy: a
+verdict: green
+valid_until: 2020-01-01
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_NOT_YET_DUE = """---
+type: evidence
+title: "green, not yet due"
+wire: "stage-r->stage-s"
+strategy: a
+verdict: green
+valid_until: 2099-01-01
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+EVIDENCE_GREEN_BAD_VALID_UNTIL = """---
+type: evidence
+title: "green, but unparseable valid_until"
+wire: "stage-t->stage-u"
+strategy: a
+verdict: green
+valid_until: not-a-date
+tags: ["strategy:a", "verdict:green"]
+---
+"""
+
+
+class TestLifecycleFields(unittest.TestCase):
+    """#72: superseded_by (chain-head-resolution), measured_against,
+    valid_until. See analysis/arbeitsplan/.../checks/probe_lifecycle.py's
+    L1-L7 for the sealed, cross-candidate version of these same cases; the
+    tests below are this candidate's own, including the multi-hop and
+    fail-closed-on-green cases the sealed probe does not cover.
+    """
+
+    def test_superseding_evidence_defers_to_the_chain_head(self):
+        """Built with explicit filenames so superseded_by can name a real
+        slug (Fixture's e0/e1 auto-naming can't be referenced in advance)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-green-head.md").write_text(EVIDENCE_GREEN_HEAD)
+            (ledger / "evidence/b-red-superseded.md").write_text(EVIDENCE_RED_SUPERSEDED_BY_HEAD)
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_dangling_superseded_by_denies_even_when_green(self):
+        """Fail closed: a broken chain denies regardless of the leaf's own
+        verdict -- the sealed probe only exercises the red case (L2)."""
+        with Fixture(evidence=[EVIDENCE_GREEN_DANGLING]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("dangling", deny_reason(r).lower())
+
+    def test_multi_hop_chain_resolves_past_an_intermediate_red(self):
+        """v1 (green, the true head) <- v2 (red, superseded_by v1) <- v3
+        (red, superseded_by v2, the filename-latest record). A resolver that
+        stopped after one hop would read v2's own red verdict and deny;
+        walking the WHOLE chain to v1 must allow instead."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/v1.md").write_text(
+                '---\ntype: evidence\ntitle: "head"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\n---\n')
+            (ledger / "evidence/v2.md").write_text(
+                '---\ntype: evidence\ntitle: "mid"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: red\nsuperseded_by: v1\n---\n')
+            (ledger / "evidence/v3.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: red\nsuperseded_by: v2\n---\n')
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_dangling_deep_in_chain_denies(self):
+        """A dangling link two hops out from the leaf must still be caught."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/v1.md").write_text(
+                '---\ntype: evidence\ntitle: "mid"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: ghost\n---\n')
+            (ledger / "evidence/v2.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: v1\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("dangling", deny_reason(r).lower())
+
+    def test_supersession_cycle_denies(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/x.md").write_text(
+                '---\ntype: evidence\ntitle: "x"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: y\n---\n')
+            (ledger / "evidence/y.md").write_text(
+                '---\ntype: evidence\ntitle: "y"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: x\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("cycle", deny_reason(r).lower())
+
+    def test_expired_valid_until_denies_even_when_green(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_EXPIRED]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("expir", deny_reason(r).lower())
+
+    def test_future_valid_until_allows(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_NOT_YET_DUE]) as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+    def test_unparseable_valid_until_denies(self):
+        with Fixture(evidence=[EVIDENCE_GREEN_BAD_VALID_UNTIL]) as f:
+            r = run(f.root)
+            self.assertEqual(decision(r), "deny")
+
+    def test_expiry_judged_on_chain_head_not_the_superseded_leaf(self):
+        """The superseded record carries an expired valid_until; the head
+        does not carry one at all. The wire must still allow -- expiry is
+        never read off anything but the head."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/a-head.md").write_text(
+                '---\ntype: evidence\ntitle: "head"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\n---\n')
+            (ledger / "evidence/b-leaf.md").write_text(
+                '---\ntype: evidence\ntitle: "leaf"\nwire: "a->b"\nstrategy: a\n'
+                'verdict: green\nsuperseded_by: a-head\nvalid_until: 2020-01-01\n---\n')
+            self.assertEqual(decision(run(root)), "allow")
+
+    def test_measured_against_named_in_deny_reason(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ledger = root / "analysis/andon/ledger"
+            for sub in ("gaps", "evidence", "stages"):
+                (ledger / sub).mkdir(parents=True)
+            (ledger / "evidence/f0.md").write_text(
+                '---\ntype: evidence\ntitle: "tied to a decision"\nwire: "a->b"\n'
+                'strategy: a\nverdict: red\nmeasured_against: decision-017\n---\n')
+            r = run(root)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("decision-017", deny_reason(r))
+
+
+class TestChainHeadResolutionAgreement(unittest.TestCase):
+    """The hook duplicates andon_core.resolve_chain_head verbatim (the hook
+    is stdlib-only and imports nothing from the plugin -- see this file's and
+    andon_enforce.py's module docstrings). Both are fed the SAME
+    superseded_by map here, in the style of TestReopenParserAgreement above,
+    and must agree on every case: the same resolved head, or both raising
+    their own ChainResolutionError.
+    """
+
+    def _load(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "andon_core_agree", Path(__file__).resolve().parents[1] / "scripts" / "andon_core.py")
+        core = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(core)
+
+        spec2 = importlib.util.spec_from_file_location(
+            "andon_enforce_agree", Path(__file__).resolve().parent / "andon_enforce.py")
+        hook = importlib.util.module_from_spec(spec2)
+        spec2.loader.exec_module(hook)
+        return core, hook
+
+    def test_both_resolve_a_clean_chain_to_the_same_head(self):
+        core, hook = self._load()
+        mapping = {"leaf": "mid", "mid": "head", "head": None}
+        self.assertEqual(
+            hook.resolve_chain_head("leaf", mapping),
+            core.resolve_chain_head("leaf", mapping),
+        )
+        self.assertEqual(hook.resolve_chain_head("leaf", mapping), "head")
+
+    def test_both_agree_a_trivial_chain_is_its_own_head(self):
+        core, hook = self._load()
+        mapping = {"solo": None}
+        self.assertEqual(
+            hook.resolve_chain_head("solo", mapping),
+            core.resolve_chain_head("solo", mapping),
+        )
+
+    def test_both_raise_on_a_dangling_link(self):
+        core, hook = self._load()
+        mapping = {"leaf": "ghost"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("leaf", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("leaf", mapping)
+
+    def test_both_raise_on_a_cycle(self):
+        core, hook = self._load()
+        mapping = {"x": "y", "y": "x"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("x", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("x", mapping)
+
+    def test_both_raise_on_a_dangling_link_deep_in_the_chain(self):
+        core, hook = self._load()
+        mapping = {"leaf": "mid", "mid": "ghost"}
+        with self.assertRaises(hook.ChainResolutionError):
+            hook.resolve_chain_head("leaf", mapping)
+        with self.assertRaises(core.ChainResolutionError):
+            core.resolve_chain_head("leaf", mapping)
+
+
 class TestEscapeHatchEnvVar(unittest.TestCase):
     """#70: the narrowest of the three named remedies -- a single env var for
     one call, distinct from the wholesale `enforcement: off` setting.

@@ -18,7 +18,7 @@ import json
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 # ---------------------------------------------------------------------------
 # Named constants (spec numeric bounds -- never re-derive these ad hoc)
@@ -42,6 +42,13 @@ GAP_STATUSES = ["open", "closed"]
 WIRE_VERDICTS = ["green", "red", "unknown"]
 STRATEGY_LETTERS = ["a", "b", "c", "d", "e", "f", "g"]
 TIERS = [1, 2, 3]
+# #72: optional evidence-only lifecycle fields. superseded_by names an
+# existing evidence slug that replaces this record (a dangling or
+# self-referencing value is a schema error); measured_against is purely
+# informational (named verbatim in any deny reason it causes);
+# valid_until is an ISO date (YYYY-MM-DD) past which the record gates as
+# verdict unknown regardless of what it actually recorded.
+LIFECYCLE_FIELDS = ("superseded_by", "measured_against", "valid_until")
 # route_wire's tier_ceiling for strategy e: 1 with a real index, 2 without.
 # Never 3 -- Tier 2 (AST/grep) needs nothing but the repo itself.
 STRUCTURAL_TIER_CEILINGS = [1, 2]
@@ -128,6 +135,67 @@ def now_iso():
     # Deterministic wall-clock read is fine here (this runs as a real CLI
     # process, not inside a Workflow script), unlike the Workflow sandbox.
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def today_utc():
+    return datetime.now(timezone.utc).date()
+
+
+def parse_iso_date(value):
+    """Returns a `date`, or None if malformed. Manual digit parsing rather
+    than `datetime.strptime` -- DTZ007 flags a naive datetime built via
+    `strptime`, and every use of `date()` here represents a fixed calendar
+    value a record already carries, never a read of the current time (that's
+    `today_utc()` above, the only place `datetime.now()` appears in this
+    file's lifecycle-field handling).
+    """
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return None
+    year, month, day = (int(part) for part in value.split("-"))
+    try:
+        return date(year, month, day)
+    except ValueError:
+        return None
+
+
+class ChainResolutionError(Exception):
+    """A superseded_by chain is broken: a dangling link or a cycle.
+
+    DUPLICATED in hooks/andon_enforce.py's resolve_chain_head -- the hook is
+    stdlib-only and imports nothing from this module, so a broken/half
+    installed andon can never stop it loading (see that file's module
+    docstring). test_andon_core.py's TestChainHeadResolutionAgreement feeds
+    the same input to both and asserts they agree.
+    """
+
+
+def resolve_chain_head(start_slug, superseded_by_of):
+    """Follow `superseded_by` from `start_slug` to the head of its
+    supersession chain -- a record nobody supersedes further (#72:
+    chain-head-resolution). `superseded_by_of` maps every known slug to its
+    `superseded_by` value (falsy if none). Raises ChainResolutionError on a
+    dangling link (points to a slug not in `superseded_by_of`) or a cycle,
+    wherever in the chain it occurs -- never silently falls back to the
+    unresolved leaf's own verdict.
+    """
+    seen = {start_slug}
+    cursor = start_slug
+    while True:
+        nxt = superseded_by_of.get(cursor)
+        if not nxt:
+            return cursor
+        if nxt not in superseded_by_of:
+            raise ChainResolutionError(
+                f"'{cursor}' is superseded_by {nxt!r}, which does not exist "
+                f"(dangling link)."
+            )
+        if nxt in seen:
+            raise ChainResolutionError(
+                f"supersession cycle detected starting at {start_slug!r}: "
+                f"reaches {nxt!r} again."
+            )
+        seen.add(nxt)
+        cursor = nxt
 
 
 # ---------------------------------------------------------------------------
@@ -344,6 +412,15 @@ def validate_doc(fields):
             f"Refusing to write -- a value nobody supplied must never enter the ledger.",
         )
 
+    # #72: the three lifecycle fields are accepted on evidence only.
+    lifecycle_present = [f for f in LIFECYCLE_FIELDS if f in fields]
+    if lifecycle_present and doc_type != "evidence":
+        raise AndonError(
+            "SCHEMA_LIFECYCLE_FIELD_NOT_EVIDENCE",
+            f"lifecycle field(s) {lifecycle_present} are only valid on evidence "
+            f"docs, got type {doc_type!r}.",
+        )
+
     if doc_type == "stage":
         if fields["confidence"] not in STAGE_CONFIDENCE_LEVELS:
             raise AndonError(
@@ -401,6 +478,33 @@ def validate_doc(fields):
             if tier_ceiling is not None:
                 raise AndonError("SCHEMA_TIER_CEILING_ONLY_FOR_E", "tier_ceiling is only valid when strategy is 'e'.")
 
+        # #72: superseded_by / measured_against / valid_until. Optional --
+        # absence behaves exactly as today. Self-reference is a schema error
+        # (write_doc, the only caller that knows this doc's own slug, checks
+        # it; validate_doc alone has no filename to compare against).
+        superseded_by = fields.get("superseded_by")
+        if superseded_by is not None:
+            if not isinstance(superseded_by, str) or not superseded_by.strip():
+                raise AndonError(
+                    "SCHEMA_BAD_SUPERSEDED_BY",
+                    f"superseded_by must be a non-empty evidence slug, got {superseded_by!r}.",
+                )
+
+        measured_against = fields.get("measured_against")
+        if measured_against is not None:
+            if not isinstance(measured_against, str) or not measured_against.strip():
+                raise AndonError(
+                    "SCHEMA_BAD_MEASURED_AGAINST",
+                    f"measured_against must be a non-empty string, got {measured_against!r}.",
+                )
+
+        valid_until = fields.get("valid_until")
+        if valid_until is not None and parse_iso_date(valid_until) is None:
+            raise AndonError(
+                "SCHEMA_BAD_VALID_UNTIL",
+                f"valid_until must be a real ISO date (YYYY-MM-DD), got {valid_until!r}.",
+            )
+
     # kebab-case tag conformance (rule: okf-ledger-schema-conformance)
     for tag in fields.get("tags", []) or []:
         if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*(:[a-z0-9+.\-]+)?", str(tag)):
@@ -448,6 +552,15 @@ def write_doc(repo_root, ledger_dir, relative_path, fields, body=""):
     the on-disk layout ledger_dir/{stages,gaps,evidence}/*.md.
     """
     validate_doc(fields)
+    # #72: self-reference is a schema error. validate_doc alone has no
+    # filename to compare superseded_by against -- this is the only writer
+    # that knows the doc's own slug before it lands on disk.
+    slug = os.path.splitext(os.path.basename(relative_path))[0]
+    if fields.get("type") == "evidence" and fields.get("superseded_by") == slug:
+        raise AndonError(
+            "SCHEMA_SUPERSEDED_BY_SELF",
+            f"evidence doc {slug!r} cannot name itself in superseded_by.",
+        )
     fields = dict(fields)
     fields.setdefault("timestamp", now_iso())
     fields["tags"] = build_tags_for_doc(fields)
@@ -1014,11 +1127,35 @@ def _verify_verdict(cross_plugin):
 # ---------------------------------------------------------------------------
 
 def compute_wire_status(evidence_docs_for_wire):
-    """Wire status MUST be derived from linked evidence tags, never inferred."""
+    """Wire status MUST be derived from linked evidence tags, never inferred.
+
+    #72 (chain-head-resolution): the filename-latest record's `superseded_by`
+    is resolved transitively to the head of its chain -- a record nobody
+    supersedes -- and it is the HEAD's verdict and `valid_until` that get
+    judged, never the unresolved leaf's. A dangling link or a cycle anywhere
+    in the chain reports `unknown` (fail closed) rather than falling back to
+    the leaf's own verdict. resolve_chain_head() is duplicated in
+    hooks/andon_enforce.py; see that function's docstring and
+    TestChainHeadResolutionAgreement in test_andon_enforce.py.
+    """
     if not evidence_docs_for_wire:
         return "unknown"
     latest = evidence_docs_for_wire[-1]
-    verdict = latest["fields"].get("verdict")
+    docs_by_slug = {d["slug"]: d for d in evidence_docs_for_wire}
+    superseded_by_of = {slug: d["fields"].get("superseded_by") for slug, d in docs_by_slug.items()}
+    try:
+        head_slug = resolve_chain_head(latest["slug"], superseded_by_of)
+    except ChainResolutionError:
+        return "unknown"
+    head_fields = docs_by_slug[head_slug]["fields"]
+
+    valid_until = head_fields.get("valid_until")
+    if valid_until is not None:
+        parsed = parse_iso_date(valid_until)
+        if parsed is None or today_utc() > parsed:
+            return "unknown"  # malformed or expired -- both fail closed
+
+    verdict = head_fields.get("verdict")
     if verdict == "green":
         return "green"
     if verdict == "red":

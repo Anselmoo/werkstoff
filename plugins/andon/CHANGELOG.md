@@ -4,6 +4,18 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- **andon**: optional evidence lifecycle fields `superseded_by`,
+  `measured_against`, `valid_until` (#72). `superseded_by` chains
+  transitively to the head of its supersession chain -- a record nobody
+  supersedes -- in both `andon_core.compute_wire_status()` and the
+  PreToolUse hook's `stop_reason()`; a dangling link or a cycle anywhere in
+  the chain denies outright rather than falling back to the unresolved
+  record's own verdict. Expiry (`valid_until`) is judged on the chain head
+  only. `validate_doc()` accepts all three on evidence docs only and rejects
+  malformed values with `SCHEMA_*` codes; a record with none of them behaves
+  exactly as before.
+
 ## [1.0.3] - 2026-09-22
 
 ### Fixed

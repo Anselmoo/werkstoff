@@ -207,6 +207,21 @@ call it:
    see [Retiring a stale record](#retiring-a-stale-record) below for the
    other way to stop a record from gating.
 
+   An evidence doc's optional `superseded_by` chains transitively to the
+   record nobody supersedes -- its *head* -- and it is the head's `verdict`
+   and `valid_until` that actually get judged, matching
+   `compute_wire_status()`. A dangling `superseded_by` (names a slug with no
+   evidence doc) or a cycle, wherever it occurs in the chain, denies outright
+   -- fail closed, even when the record that started the resolution reads
+   `green`. `valid_until` (an ISO `YYYY-MM-DD` date) on the chain head makes
+   the record gate as verdict `unknown` once that date has passed, whatever
+   it actually recorded; an unparseable `valid_until` denies the same way. A
+   third optional field, `measured_against`, is purely informational and is
+   named verbatim in any deny reason it causes. See
+   `references/okf-ledger-schema.md`'s evidence section and
+   `references/andon-rule.md`'s supersession-and-expiry section for the full
+   semantics.
+
 Gating values are read tolerantly: a frontmatter key first (`status`,
 `blast_radius`, ...), then the legacy `tags: ["kind:wire", "status:open"]`
 array, then treated as genuinely absent -- a missing value is never inferred,

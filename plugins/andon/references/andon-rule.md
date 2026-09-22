@@ -44,6 +44,35 @@ signature that can satisfy this branch. The only way past it is for a
 *different, non-contradicting* Tier 1 (or lower-tier) proof to supersede the
 original claim -- i.e. the claim itself needs to change, not the gate.
 
+## Supersession and expiry (#72)
+
+An evidence doc's `superseded_by` field names the slug of a *different*
+evidence doc that replaces it -- this is the mechanism condition 3's closing
+line above actually points at ("the claim itself needs to change, not the
+gate"): a fresh, non-contradicting proof supersedes the old claim by being
+recorded as its successor, not by editing the original doc in place (the
+ledger is append-only). `superseded_by` can chain across several records;
+both `andon_core.compute_wire_status()` and the PreToolUse hook's
+`stop_reason()` resolve the chain transitively to its **head** -- the record
+nobody supersedes -- and judge *that* record's verdict, never an
+intermediate or leaf record's. A `superseded_by` naming a slug that does not
+exist, or a chain that cycles back on itself, denies outright wherever in
+the chain it occurs -- fail closed, never a silent fall-back to the
+unresolved record's own verdict.
+
+`valid_until` (an ISO `YYYY-MM-DD` date) puts a shelf life on an evidence
+doc: once that date has passed, the record gates as verdict `unknown` no
+matter what it actually recorded, on the theory that a green verdict from
+before some known drift point is no longer trustworthy on its own. Expiry is
+judged on the chain **head** only -- an expired `valid_until` on a
+superseded, non-head record has no effect, and a non-expiring head is
+unaffected by an expired leaf pointing at it.
+
+`measured_against` carries no gating behavior of its own; it is a free-text
+pointer (typically to the decision record a strategy was checked against)
+that gets named verbatim in any deny reason the evidence doc causes, so a
+human reading the halt knows what standard was applied.
+
 ## Why condition 3 has no override, and conditions 1-2 do
 
 Conditions 1 and 2 are judgment calls about risk the loop cannot make for
