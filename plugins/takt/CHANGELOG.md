@@ -4,6 +4,7 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-23
 ### Added
 - **`when: {path, equals}`** on a beat: the beat applies only while the JSON object at `path`
   carries every `equals` key with that value. A beat matches a dispatch by name, and a name
