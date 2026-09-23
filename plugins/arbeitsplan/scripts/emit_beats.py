@@ -31,6 +31,8 @@ import sys
 from pathlib import Path
 
 PROVENANCE = "arbeitsplan"
+# Mirrors worktree_pool.LOCK: the per-phase lock a phase beat is scoped to.
+RUN_SCOPE_LOCK = "analysis/arbeitsplan/run_scope.json"
 
 
 def beats_for(spec: dict) -> list:
@@ -52,12 +54,22 @@ def beats_for(spec: dict) -> list:
         skills = ["arbeitsplan-run"]
         if isinstance(ph.get("agentType"), str) and ph["agentType"]:
             skills.append(ph["agentType"])
+        # Scoped to THIS phase being the one in flight. takt matches a dispatch
+        # by name, and a name is not a phase: stacked waves all dispatch
+        # candidate-builder, so an unscoped beat for build-w2 denied wave 1's
+        # builders, and `arbeitsplan-run` itself was denied until every phase's
+        # marker existed -- i.e. a live declaration could never start a run.
+        # run_scope.json is the lock worktree_pool.py opens per phase.
+        scope = {"phase": ph["id"]}
+        if spec.get("runId"):
+            scope = {"runId": spec["runId"], **scope}
         for marker in requires:
             beats.append({
                 "id": f"{ph['id']}-after-{marker}",
                 "tools": ["Skill", "Task", "Agent"],
                 "skills": skills,
                 "require": marker,
+                "when": {"path": RUN_SCOPE_LOCK, "equals": scope},
                 "reason": (
                     f"phase '{ph['id']}' consumes what phase marker '{marker}' records; "
                     f"running it first would judge candidates that do not exist yet."
@@ -287,6 +299,70 @@ def existing_is_ours(path: Path) -> bool:
         return False
 
 
+def _selftest_waves_through_takt() -> list:
+    """Two waves dispatching the SAME agent, emitted and then judged by the real
+    takt guard, per phase in flight. Asserting on the emitted JSON alone would
+    not show that takt reads `when` the way this file writes it."""
+    import subprocess
+    import tempfile
+    fails: list = []
+    here = Path(__file__).resolve().parent
+    sys.path.insert(0, str(here))
+    import worktree_pool
+    guard = here.parent.parent / "takt" / "hooks" / "takt_guard.py"
+    checks = [("RUN_SCOPE_LOCK is worktree_pool's lock path",
+               RUN_SCOPE_LOCK == worktree_pool.LOCK.as_posix())]
+    if not guard.is_file():
+        checks.append(("takt's guard is present to judge the waves", False))
+    else:
+        spec = {"runId": "ap-t-2", "phases": [
+            {"id": "build-w1", "requires": [], "marker": "built-w1",
+             "agentType": "arbeitsplan:candidate-builder"},
+            {"id": "referee-w1", "requires": ["built-w1"], "marker": "refereed-w1",
+             "agentType": "arbeitsplan:candidate-referee"},
+            {"id": "build-w2", "requires": ["refereed-w1"], "marker": "built-w2",
+             "agentType": "arbeitsplan:candidate-builder"},
+        ]}
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / ".claude").mkdir()
+            (root / ".claude" / "takt.local.md").write_text(render(spec, beats_for(spec)))
+            lock = root / RUN_SCOPE_LOCK
+            lock.parent.mkdir(parents=True)
+
+            def dispatch(phase: str | None, agent: str, tool: str = "Agent") -> int:
+                if phase is None:
+                    lock.unlink(missing_ok=True)
+                else:
+                    lock.write_text(json.dumps({"runId": "ap-t-2", "phase": phase}))
+                key = "skill" if tool == "Skill" else "subagent_type"
+                event = {"cwd": str(root), "tool_name": tool, "tool_input": {key: agent}}
+                return subprocess.run([sys.executable, str(guard)], input=json.dumps(event),
+                                      capture_output=True, text=True,
+                                      env={"PATH": "/usr/bin:/bin"}).returncode
+
+            b = "arbeitsplan:candidate-builder"
+            checks += [
+                ("wave 1's builder is allowed while build-w1 is in flight", dispatch("build-w1", b) == 0),
+                ("wave 2's builder is denied before wave 1 is refereed", dispatch("build-w2", b) == 2),
+                # The pair makes the next check non-vacuous: the beat DOES match
+                # the skill, so allowing it with no phase in flight is the scope.
+                ("arbeitsplan-run is gated while build-w2 waits on its marker",
+                 dispatch("build-w2", "arbeitsplan-run", "Skill") == 2),
+                ("the run itself can start with no phase in flight",
+                 dispatch(None, "arbeitsplan-run", "Skill") == 0),
+            ]
+            (root / ".takt" / "ap-t-2").mkdir(parents=True)
+            (root / ".takt" / "ap-t-2" / "refereed-w1").write_text("")
+            checks.append(("wave 2's builder is allowed once refereed-w1 exists",
+                           dispatch("build-w2", b) == 0))
+    for name, ok in checks:
+        print(f"  {'ok  ' if ok else 'FAIL'} waves through takt: {name}")
+        if not ok:
+            fails.append(name)
+    return fails
+
+
 def selftest() -> int:
     import tempfile
     spec = {
@@ -350,6 +426,8 @@ def selftest() -> int:
             if not ok:
                 fails.append("takt validation")
                 print("        " + rc.stderr.strip()[:300])
+
+    fails += _selftest_waves_through_takt()
 
     # ---- ACCEPTANCE, round 3 -----------------------------------------
     # Round 2's acceptance test asserted that the andon beat COMPILED. It did,

@@ -67,6 +67,17 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   `worktree_pool.py selftest`.
 
 ### Fixed
+- **`emit_beats.py` scopes every phase beat to the phase in flight**, using takt's new
+  `when`: the lock `worktree_pool.py open` writes must hold the beat's `runId` and `phase`.
+  Beats were matched by agent name alone, which caused two failures once
+  `.claude/takt.local.md` was live:
+  - Stacked waves sharing `candidate-builder` denied wave 1 on wave 2's marker, so run
+    `ap-2026-09-22-6cb2` had to leave takt off.
+  - Every phase beat also listed `arbeitsplan-run`, so the skill was denied until every
+    phase's marker existed. No run could start.
+
+  The selftest now runs a two-wave spec through the real takt guard, phase by phase.
+  Removing `when` turns it red.
 - **`land_candidate.py` no longer reports a false `divergedFrom` for created files**: the
   landing record compared the candidate's hunks with a post-apply `git diff`, which cannot see
   a file `git apply` just created (it is untracked), so every added line came back as

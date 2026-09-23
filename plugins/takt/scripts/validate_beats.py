@@ -142,6 +142,22 @@ def validate(decl: dict) -> list:
             err(where, f"'requireKind' {rk!r} must be 'file', 'dir' or 'any' -- the guard "
                        f"raises on anything else, and a raise after opt-in DENIES")
 
+        # Mirror takt_guard.beat_applies: anything it would raise on here is a
+        # beat that DENIES every call it matches once the declaration is live.
+        when = beat.get("when")
+        if when is not None:
+            path = when.get("path") if isinstance(when, dict) else None
+            equals = when.get("equals") if isinstance(when, dict) else None
+            if not isinstance(when, dict):
+                err(where, "'when' must be an object {path, equals}")
+            elif (not isinstance(path, str) or not path or Path(path).is_absolute()
+                    or ".." in Path(path).parts):
+                err(where, f"'when.path' {path!r} must be a relative path without '..' -- "
+                           "the guard raises on anything else, and a raise DENIES")
+            elif not isinstance(equals, dict) or not equals:
+                err(where, "'when.equals' must be a non-empty object -- an empty one would "
+                           "scope the beat to 'the file exists', which is not a state")
+
         if not beat.get("reason"):
             err(where, "no 'reason' -- the denial will not say why")
 
@@ -179,6 +195,19 @@ SELFTEST_CASES = [
     ("mixed per-run and repo-level in one declaration", {"runId": "ap-1", "beats": [
         {"id": "a", "tools": ["Skill"], "skills": ["s"], "require": "built", "reason": "r"},
         {"id": "b", "tools": ["Skill"], "skills": ["t"], "require": ".takt/council-done", "reason": "r"}]}, 0),
+    ("when scoping a beat to a phase is accepted", {"runId": "ap-1", "beats": [
+        {"id": "a", "tools": ["Agent"], "skills": ["s"], "require": "x", "reason": "r",
+         "when": {"path": "analysis/arbeitsplan/run_scope.json",
+                  "equals": {"runId": "ap-1", "phase": "build-w2"}}}]}, 0),
+    ("when that is not an object is rejected", {"beats": [
+        {"id": "a", "tools": ["Agent"], "skills": ["s"], "require": "x", "reason": "r",
+         "when": "build-w2"}]}, 1),
+    ("when with an absolute path is rejected", {"beats": [
+        {"id": "a", "tools": ["Agent"], "skills": ["s"], "require": "x", "reason": "r",
+         "when": {"path": "/etc/lock.json", "equals": {"phase": "p"}}}]}, 1),
+    ("when with an empty equals is rejected", {"beats": [
+        {"id": "a", "tools": ["Agent"], "skills": ["s"], "require": "x", "reason": "r",
+         "when": {"path": "lock.json", "equals": {}}}]}, 1),
     ("empty beats", {"beats": []}, 1),
     ("no reason", {"beats": [
         {"id": "a", "tools": ["Edit"], "paths": ["*"], "require": "x"}]}, 1),

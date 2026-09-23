@@ -4,6 +4,15 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- **`when: {path, equals}`** on a beat: the beat applies only while the JSON object at `path`
+  carries every `equals` key with that value. A beat matches a dispatch by name, and a name
+  is not a step. Stacked arbeitsplan waves all dispatch `candidate-builder`, so wave 2's beat
+  denied wave 1's builders. `path` absent means the beat does not apply. A malformed `when`,
+  or a `path` holding something other than a JSON object, denies (fail-closed). A beat
+  without `when` behaves byte-identically. `validate_beats.py` checks the shape, and
+  `test_takt_guard.py` gains a `WHEN` group whose control case reproduces the defect.
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._
