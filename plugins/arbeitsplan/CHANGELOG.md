@@ -4,6 +4,7 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-23
 ### Added
 - **stacked fan-outs: `base`, `AP-SIBLING-INVISIBLE`, and `--strict` (#79)**: a `fanout-redundant`
   phase may now declare `base: "<phaseId>"`, naming an earlier `fanout-redundant` phase whose
