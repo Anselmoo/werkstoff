@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "2",
+  "runId": "ap-2026-09-22-sib1",
+  "problem": {
+    "statement": "s",
+    "shape": "change",
+    "acceptance": [
+      { "id": "a1", "criterion": "c", "check": "true" }
+    ]
+  },
+  "writeScope": ["src/**"],
+  "budget": { "totalDispatches": 10, "wallClockMinutes": 25 },
+  "phases": [
+    {
+      "id": "build1",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": ["a", "b"],
+      "requires": [],
+      "marker": "built1"
+    },
+    {
+      "id": "referee1",
+      "kind": "fanout-blind",
+      "pattern": "blind-referee",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:candidate-referee",
+      "requires": ["built1"],
+      "marker": "refereed1"
+    },
+    {
+      "id": "build2",
+      "kind": "fanout-redundant",
+      "pattern": "best-of-n",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "worktree",
+      "agentType": "arbeitsplan:candidate-builder",
+      "angles": ["c", "d"],
+      "requires": ["refereed1"],
+      "marker": "built2"
+    },
+    {
+      "id": "referee2",
+      "kind": "fanout-blind",
+      "pattern": "blind-referee",
+      "fanOut": 2,
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "none",
+      "agentType": "arbeitsplan:candidate-referee",
+      "requires": ["built2"],
+      "marker": "refereed2"
+    },
+    {
+      "id": "land",
+      "kind": "single-writer",
+      "pattern": "select-then-synthesize",
+      "modelTier": "sonnet",
+      "mode": "auto",
+      "writes": "shared",
+      "agentType": "arbeitsplan:synthesizer",
+      "requires": ["refereed2"],
+      "marker": "landed"
+    }
+  ],
+  "backend": { "kind": "in-session", "why": ["writes-shared-tree"], "acknowledgedGaps": [] }
+}

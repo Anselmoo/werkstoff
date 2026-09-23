@@ -57,6 +57,9 @@ Declaring beats -- .claude/takt.local.md, one fenced json block:
 
 A beat matches on `paths` (for Write/Edit/MultiEdit) or on `skills` (for
 Skill/Task/Agent). It denies when its `require` marker does not yet exist.
+An optional `when` {path, equals} scopes a beat to a repository state -- e.g.
+one arbeitsplan phase in flight -- so two phases that dispatch the same agent
+are not gated by each other's beats; see beat_applies().
 Whatever performs the beat creates that marker; nothing here writes files.
 
 An edit payload may name more than one file -- a MultiEdit does not reliably
@@ -255,6 +258,45 @@ def edit_targets(cwd: str, tool_input: dict) -> list:
     return [relative(cwd, path) for path in found]
 
 
+def beat_applies(cwd: str, beat: dict) -> bool:
+    """`when`: an optional condition scoping a beat to one state of the repo.
+
+        "when": {"path": "analysis/arbeitsplan/run_scope.json",
+                 "equals": {"runId": "ap-...", "phase": "build-w2"}}
+
+    The beat applies only while the JSON object at `path` (relative to cwd)
+    carries every key of `equals` with exactly that value. It exists because a
+    beat matches a dispatch by NAME, and a name is not a phase: four stacked
+    waves all dispatch arbeitsplan:candidate-builder, so without a scope wave
+    1's builder matched waves 2-4's beats and was denied for markers that could
+    not exist yet.
+
+    `path` absent means the scoped-to state does not hold, so the beat does not
+    apply -- the same reading as takt's own missing declaration. Everything
+    else fails closed: a malformed `when`, or a `path` that exists but is not
+    a JSON object, raises, and a raise after opt-in DENIES. A beat without
+    `when` behaves exactly as before the field existed.
+    """
+    when = beat.get("when")
+    if when is None:
+        return True
+    if not isinstance(when, dict):
+        raise ValueError("'when' must be an object {path, equals}")
+    path, equals = when.get("path"), when.get("equals")
+    if (not isinstance(path, str) or not path or Path(path).is_absolute()
+            or ".." in Path(path).parts):
+        raise ValueError(f"'when.path' {path!r} must be a relative path without '..'")
+    if not isinstance(equals, dict) or not equals:
+        raise ValueError("'when.equals' must be a non-empty object")
+    target = Path(cwd) / path
+    if not target.exists():
+        return False
+    state = json.loads(target.read_text(encoding="utf-8"))
+    if not isinstance(state, dict):
+        raise ValueError(f"'when.path' {path} does not hold a JSON object")
+    return all(state.get(key) == value for key, value in equals.items())
+
+
 def dispatch_target(tool_input: dict) -> str:
     for key in ("skill", "subagent_type", "name", "agent", "command"):
         value = tool_input.get(key)
@@ -292,6 +334,8 @@ def main() -> NoReturn:
             if not isinstance(tools, list) or not tools:
                 tools = list(EDIT_TOOLS)
             if tool_name not in tools:
+                continue
+            if not beat_applies(cwd, beat):
                 continue
 
             beat_id = beat.get("id") or "unnamed beat"

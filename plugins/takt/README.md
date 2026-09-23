@@ -130,6 +130,34 @@ Generated declarations are the reason this exists: `arbeitsplan` compiles beats 
 workflow spec, and a generator that reused one run's markers in the next run would
 produce a file that looks enforced and enforces nothing.
 
+### `when` — a beat scoped to one state of the repository
+
+A beat matches a dispatch by **name**, and a name is not a step. When four stacked
+arbeitsplan waves all dispatch `arbeitsplan:candidate-builder`, the beat for wave 2 also
+matches wave 1's builders and denies them, waiting on a marker that cannot exist yet. An
+optional `when` limits a beat to the time a JSON file holds given values:
+
+```json
+"when": {"path": "analysis/arbeitsplan/run_scope.json",
+         "equals": {"runId": "ap-2026-09-22-6cb2", "phase": "build-w2"}}
+```
+
+- **Omit it and nothing changes.** A beat without `when` applies exactly as before.
+- **`path` absent** means the state does not hold, so the beat does not apply. This is the
+  same reading as a missing `.claude/takt.local.md`. For arbeitsplan it means no phase is in
+  flight, so there is nothing to order.
+- **Everything else fails closed**, and each of these denies:
+  - a `when` that is not `{path, equals}`
+  - an absolute path or one containing `..`
+  - an empty `equals`
+  - a `path` that exists but does not hold a JSON object
+
+  `scripts/validate_beats.py` flags the malformed shapes before the declaration goes live.
+
+`emit_beats.py` scopes every arbeitsplan phase beat this way, to the per-phase lock
+`worktree_pool.py open` writes. Delegate beats stay unscoped: their job is to gate the start
+of the run.
+
 A single call can touch several files: a `MultiEdit` may carry its paths in an `edits`
 array rather than one top-level `file_path`. Every path a payload exposes is collected,
 and a beat is violated if **any** of them is gated.

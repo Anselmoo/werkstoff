@@ -18,7 +18,8 @@ It refuses rather than forcing:
 
 After applying it RECORDS the landing: landed.json (written once) and a
 `landed` event in run.jsonl. landed.json compares the candidate's recorded hunks
-with what `git diff` shows for the same paths afterwards; when they differ it
+with what `git diff` shows for the same paths afterwards -- files the diff
+created included (applied_diff); when they differ it
 carries `divergedFrom`, so a correction made at landing is recorded rather than
 leaving candidates/<id>.json describing a diff that is not what landed.
 
@@ -62,12 +63,112 @@ def in_scope(path: str, scope: list) -> bool:
     return False
 
 
+def subtract_referee_owned(scope: list, referee_owned: list) -> list:
+    """`writeScope` minus `refereeOwned` -- the ONE place this subtraction is
+    computed. compile_spec.py's AP-REFOWNED-OUTSIDE-SCOPE rejection calls this
+    (per referee-owned path, against the full scope) to decide whether that path
+    is reachable through `writeScope` at all; worktree_pool.py calls it to open a
+    fan-out phase's lock with a NARROWED scope, so a candidate's writable tree
+    never lexically contains a referee-owned path in the first place. Landing
+    itself does not call this: `main()` refuses a referee-owned touch directly,
+    by `in_scope()`, so its refusal names the path rather than an already-edited
+    scope list.
+
+    `fnmatch` has no negation, so there is no narrower glob to hand back in place
+    of a dropped entry -- inventing one would be exactly the "never infer a
+    missing gating value" mistake this plugin refuses everywhere else. A scope
+    entry is dropped outright whenever it overlaps a referee-owned path or glob,
+    in either direction (the referee-owned entry falls inside the scope glob, or
+    the scope glob is itself named by a referee-owned glob).
+    """
+    if not referee_owned:
+        return list(scope)
+    keep = []
+    for s in scope:
+        overlaps = any(in_scope(ro, [s]) or in_scope(s, [ro]) for ro in referee_owned)
+        if not overlaps:
+            keep.append(s)
+    return keep
+
+
 def hunk_body(diff: str) -> list:
     """The +/- lines of a diff, headers and context dropped: what a comparison
     of two diffs of the same paths should agree on regardless of index lines,
     hunk offsets or context width."""
     return [ln for ln in diff.splitlines()
             if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
+
+
+def applied_diff(paths: list, cwd: str | None = None) -> str:
+    """What landed at `paths`, as a diff -- INCLUDING files the candidate created.
+
+    `git apply` leaves a new file untracked, so a plain `git diff -- paths` omits
+    it, and landing_record() then reported every added line as `onlyRecorded`: a
+    divergence that never happened (run ap-2026-09-22-6cb2: 16 new files, 40
+    lines, all 23 paths byte-identical to the winner). Untracked paths are diffed
+    against /dev/null with --no-index, which reads the working tree and never
+    touches the index -- `git add -N` would fix the comparison by staging, and
+    landing stages nothing.
+    """
+    tracked = subprocess.run(["git", "diff", "--", *paths], capture_output=True,
+                             text=True, cwd=cwd).stdout
+    untracked = subprocess.run(["git", "ls-files", "--others", "--", *paths],
+                               capture_output=True, text=True, cwd=cwd).stdout.splitlines()
+    # --no-index exits 1 whenever the two sides differ, which for a new file is
+    # always; the exit code carries nothing here, the output is the result.
+    created = [subprocess.run(["git", "diff", "--no-index", "--", "/dev/null", p],
+                              capture_output=True, text=True, cwd=cwd).stdout
+               for p in untracked]
+    return tracked + "".join(created)
+
+
+def _selftest_landing_in_a_repo() -> list:
+    """A real --apply, in a throwaway repo, of a diff that edits one file and
+    CREATES another. The recorded-vs-landed comparison only goes wrong once git
+    is involved, so it is tested through git rather than through literals."""
+    import tempfile
+    fails = []
+    diff = ("diff --git a/src/a.txt b/src/a.txt\n--- a/src/a.txt\n+++ b/src/a.txt\n"
+            "@@ -1 +1 @@\n-old\n+new\n"
+            "diff --git a/src/new.txt b/src/new.txt\nnew file mode 100644\n"
+            "--- /dev/null\n+++ b/src/new.txt\n@@ -0,0 +1,2 @@\n+created\n+by the candidate\n")
+    with tempfile.TemporaryDirectory() as tmp:
+        repo = Path(tmp)
+        (repo / "src").mkdir()
+        (repo / "src" / "a.txt").write_text("old\n")
+        (repo / ".gitignore").write_text("/analysis/\n")
+        for cmd in (["git", "init", "-q"], ["git", "add", "-A"],
+                    ["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "base"]):
+            subprocess.run(cmd, cwd=repo, capture_output=True, check=True)
+        run = repo / "analysis" / "arbeitsplan" / "r1"
+        for sub in ("candidates", "referee"):
+            (run / sub).mkdir(parents=True)
+        (run / "workflow.json").write_text(json.dumps({"runId": "r1", "writeScope": ["src/**"]}))
+        (run / "candidates" / "c1.json").write_text(json.dumps({"measured": True, "diff": diff}))
+        (run / "referee" / "c1.json").write_text(json.dumps({"verdict": "accepted"}))
+        r = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--run", "r1",
+                            "--candidate", "c1", "--apply"], cwd=repo, capture_output=True, text=True)
+        landed = run / "landed.json"
+        rec = json.loads(landed.read_text()) if landed.is_file() else None
+        for name, ok in [
+            ("a diff that creates a file lands", r.returncode == 0 and rec is not None),
+            ("...and is NOT recorded as divergedFrom", rec is not None and "divergedFrom" not in rec),
+        ]:
+            print(f"  {'ok  ' if ok else 'FAIL'} landing in a repo: {name}"
+                  + ("" if ok else f" -- exit {r.returncode}: {r.stderr.strip()[-200:]}"))
+            if not ok:
+                fails.append(name)
+        # A correction made AFTER apply, to the created file, is a genuine
+        # divergence and must still be recorded -- the fix must not blind it.
+        (repo / "src" / "new.txt").write_text("created\nand then edited at landing\n")
+        again = landing_record("r1", "c1", diff, applied_diff(["src/a.txt", "src/new.txt"], cwd=str(repo)),
+                               ["src/a.txt", "src/new.txt"])
+        ok = "divergedFrom" in again
+        print(f"  {'ok  ' if ok else 'FAIL'} landing in a repo: a new file edited after apply "
+              f"IS recorded as divergedFrom")
+        if not ok:
+            fails.append("new file edited after apply is recorded")
+    return fails
 
 
 def landing_record(run_id: str, candidate_id: str, recorded: str, applied: str, paths: list) -> dict:
@@ -136,6 +237,23 @@ def main(argv: list) -> int:
             print(f"  {'ok  ' if ok else 'FAIL'} scope {name}: {got}")
             if not ok:
                 fails.append(name)
+        subtract_cases = [
+            ("no refereeOwned leaves scope untouched",
+                ["src/**", "oracle/**"], [], ["src/**", "oracle/**"]),
+            ("a glob containing the owned path is dropped whole",
+                ["src/**", "oracle/**"], ["oracle/spec.txt"], ["src/**"]),
+            ("an owned path with no overlapping scope entry drops nothing",
+                ["src/**"], ["oracle/spec.txt"], ["src/**"]),
+            ("a literal scope entry equal to the owned path is dropped",
+                ["oracle/spec.txt", "src/**"], ["oracle/spec.txt"], ["src/**"]),
+        ]
+        for name, scope, owned, want in subtract_cases:
+            got = subtract_referee_owned(scope, owned)
+            ok = got == want
+            print(f"  {'ok  ' if ok else 'FAIL'} subtract {name}: {got}")
+            if not ok:
+                fails.append(name)
+        fails += _selftest_landing_in_a_repo()
         print()
         if fails:
             print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
@@ -196,7 +314,24 @@ def main(argv: list) -> int:
         return 1
 
     scope = spec["writeScope"]
-    out_of_scope = [p for p in paths_in_diff(diff) if not in_scope(p, scope)]
+    diff_paths = paths_in_diff(diff)
+
+    # refereeOwned (#77): paths a referee-fixture phase wrote before any candidate
+    # existed. Checked BEFORE the ordinary scope refusal below, and separately from
+    # it, so the message always names 'refereeOwned' rather than folding into the
+    # generic "outside writeScope" wording -- these paths are typically INSIDE
+    # writeScope (that is what makes them reachable at all without this check).
+    referee_owned = spec.get("refereeOwned") or []
+    owned_touch = [p for p in diff_paths if in_scope(p, referee_owned)]
+    if owned_touch:
+        print(f"REFUSED: {args.candidate} touches refereeOwned path(s) {owned_touch}. "
+              "These are written once, before any candidate exists, by a referee-fixture "
+              "phase, and are subtracted from every fan-out phase's effective write scope. "
+              "A diff that reaches one anyway is refused rather than landed, whether or not "
+              "the guard should have stopped it earlier.", file=sys.stderr)
+        return 1
+
+    out_of_scope = [p for p in diff_paths if not in_scope(p, scope)]
     if out_of_scope:
         print(f"REFUSED: {args.candidate} touches {out_of_scope} outside the declared "
               f"writeScope {scope}. The scope is the contract this candidate was "
@@ -215,7 +350,7 @@ def main(argv: list) -> int:
         return 1
 
     if not args.apply:
-        print(f"{args.candidate} would apply cleanly, {len(paths_in_diff(diff))} path(s), "
+        print(f"{args.candidate} would apply cleanly, {len(diff_paths)} path(s), "
               "all in scope (not applied; pass --apply)")
         return 0
 
@@ -226,8 +361,7 @@ def main(argv: list) -> int:
         return 1
 
     paths = paths_in_diff(diff)
-    after = subprocess.run(["git", "diff", "--", *paths], capture_output=True, text=True).stdout
-    rec = landing_record(args.run, args.candidate, diff, after, paths)
+    rec = landing_record(args.run, args.candidate, diff, applied_diff(paths), paths)
     landed = Path(args.root) / args.run / "landed.json"
     try:
         fd = os.open(landed, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)

@@ -239,6 +239,59 @@ def main() -> int:
         rc, out = run(tmp, "Skill", {"skill": "consumer"})
         check("an unknown requireKind -> DENY (fail-closed)", rc, DENY, out)
 
+        # --- WHEN: a beat scoped to one phase in flight ------------------
+        # Two stacked waves dispatch the SAME agent. Matched by name alone,
+        # wave 1's builder hit wave 2's beat and was denied for a marker that
+        # cannot exist yet -- the control below reproduces that first.
+        print("WHEN (phase-scoped beats)")
+        wt = tmp / "when"
+        wt.mkdir()
+        lock = wt / "analysis" / "arbeitsplan" / "run_scope.json"
+        lock.parent.mkdir(parents=True)
+        builder = {"subagent_type": "arbeitsplan:candidate-builder"}
+
+        def wave_beat(k: int, scoped: bool) -> dict:
+            beat = {"id": f"build-w{k}-after-refereed-w{k - 1}", "tools": ["Agent"],
+                    "skills": ["arbeitsplan:candidate-builder"], "require": f"refereed-w{k - 1}",
+                    "reason": f"wave {k} builds on wave {k - 1}'s refereed winner."}
+            if scoped:
+                beat["when"] = {"path": "analysis/arbeitsplan/run_scope.json",
+                                "equals": {"runId": "ap-w", "phase": f"build-w{k}"}}
+            return beat
+
+        lock.write_text(json.dumps({"runId": "ap-w", "phase": "build-w1"}))
+        declare(wt, [wave_beat(2, False), wave_beat(3, False)], run_id="ap-w")
+        rc, _ = run(wt, "Agent", builder)
+        check("control, UNSCOPED: wave 1's builder is denied by wave 2's beat (the defect)", rc, DENY)
+
+        declare(wt, [wave_beat(2, True), wave_beat(3, True)], run_id="ap-w")
+        rc, out = run(wt, "Agent", builder)
+        check("scoped, phase build-w1 in flight -> wave 1 ALLOWED", rc, ALLOW, out)
+        lock.write_text(json.dumps({"runId": "ap-w", "phase": "build-w2"}))
+        rc, out = run(wt, "Agent", builder)
+        check("scoped, phase build-w2 in flight, refereed-w1 absent -> DENY", rc, DENY, out)
+        (wt / ".takt" / "ap-w").mkdir(parents=True)
+        (wt / ".takt" / "ap-w" / "refereed-w1").write_text("")
+        rc, out = run(wt, "Agent", builder)
+        check("scoped, phase build-w2 in flight, refereed-w1 present -> ALLOW", rc, ALLOW, out)
+        lock.write_text(json.dumps({"runId": "ap-w", "phase": "build-w3"}))
+        rc, out = run(wt, "Agent", builder)
+        check("scoped, phase build-w3 in flight, refereed-w2 absent -> DENY", rc, DENY, out)
+        lock.write_text(json.dumps({"runId": "ap-other", "phase": "build-w3"}))
+        rc, out = run(wt, "Agent", builder)
+        check("another run's lock does not satisfy the scope -> beat inert, ALLOW", rc, ALLOW, out)
+        lock.unlink()
+        rc, out = run(wt, "Agent", builder)
+        check("no phase in flight (lock absent) -> beat inert, ALLOW", rc, ALLOW, out)
+        lock.write_text("[]")
+        rc, out = run(wt, "Agent", builder)
+        check("scope file present but not a JSON object -> DENY (fail-closed)", rc, DENY, out)
+        bad = wave_beat(2, False)
+        bad["when"] = "build-w2"
+        declare(wt, [bad], run_id="ap-w")
+        rc, out = run(wt, "Agent", builder)
+        check("malformed 'when' -> DENY (fail-closed)", rc, DENY, out)
+
         # --- runId charset is fail-closed -------------------------------
         print("runId charset")
         # "." and "..." are the subtle ones: they pass a naive charset check, and
