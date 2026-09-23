@@ -66,6 +66,15 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   which CI now runs alongside `compile_spec.py --selftest`, `land_candidate.py --selftest` and
   `worktree_pool.py selftest`.
 
+### Fixed
+- **`land_candidate.py` no longer reports a false `divergedFrom` for created files**: the
+  landing record compared the candidate's hunks with a post-apply `git diff`, which cannot see
+  a file `git apply` just created (it is untracked), so every added line came back as
+  `onlyRecorded`. Run `ap-2026-09-22-6cb2` landed 16 new files byte-identically and still
+  recorded a divergence. New `applied_diff()` diffs untracked paths against `/dev/null` with
+  `--no-index` (the index is never touched); a selftest lands a file-creating diff in a
+  throwaway repo and asserts no divergence, and asserts a real post-apply edit is still recorded.
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._
