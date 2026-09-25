@@ -59,11 +59,47 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    the criteria and that candidate's diff only — never the builder's rationale, never another
    candidate. Landing is an **allowlist**: only `accepted`.
 
+   Record the batch — every verdict the referees returned, as one JSON list — under the referee
+   phase you opened:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" referee --run <runId> --phase <refereePhase> --verdict verdicts.json
+   ```
+
+   This writes `referee/<id>.json` (what `land_candidate.py` reads) **and** the
+   `referee/<phase>/<id>.json` twin that `rounds.py` rebuilds rounds from. Without it an
+   in-session run has no rounds, and step 7's `rounds.py decide` can never route a shared hole
+   or stop a moving residual. It refuses a phase that was never opened, a malformed verdict,
+   and a (phase, candidate) already recorded — and writes nothing when it refuses.
+
 7. **Select by rule**, not by preference: most criteria met, then fewest files touched, then
    candidate id. If no candidate is `accepted`, **halt and surface**. All N failing the same
-   way is a statement about the contract.
+   way is a statement about the contract — do not just widen and re-dispatch. Run
+   `scripts/rounds.py record --run <runId>` (from the root holding `analysis/arbeitsplan/`) to
+   rebuild this run's rounds, then `scripts/rounds.py decide --rounds <file> --spec
+   workflow.json` (see [Rounds: a shared hole or a moving residual](#rounds-a-shared-hole-or-a-moving-residual-78-93)
+   below) to learn which of three things this halt is: `ROUTE CONTINUE` (nothing to say yet),
+   `ROUTE SYNTHESIZE criterion=<id>` (a **sharedHole**: relaunch at the single-writer phase with
+   `carry.sharedHole` set, rather than building N more candidates against the same hole), or
+   `ROUTE HALT moving-residual` (stop outright: the last several rounds each "advanced" on a
+   *different* blocker, which is not convergence).
 
-8. **Land exactly one diff.**
+8. **Measure the winner against its own tree, before landing** (#76). A builder's self-reported
+   exit codes are never trusted on their own:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate c2 --tree .arbeitsplan/<runId>/c2
+   ```
+
+   This RUNS every checked acceptance criterion now, with `cwd` set to `c2`'s OWN worktree, and
+   records each as an `execute_tool` event in `run.jsonl`, carrying `detail.candidate == c2`. Any
+   disagreement with what `c2` itself reported — in either direction — prints `CONTRADICTION` and
+   exits 1. `land_candidate.py --apply` (next step) **refuses** a candidate lacking this
+   measurement for any checked criterion, or whose latest measurement contradicts its report;
+   another candidate's measurement never unlocks it. An honestly-reported failure a referee
+   already accepted is not blocked here — the gate is "unmeasured or contradicted", nothing more.
+
+9. **Land exactly one diff.**
 
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" open --spec ... --phase land
@@ -74,16 +110,32 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    plus **explicitly named** elements to borrow. It must beat the plain winner on at least one
    declared criterion, or the plain winner lands unchanged.
 
-9. **Delete the losers** — worktrees and branches — then record the phase as closed and close
-   the lock:
+10. **Delete the losers** — worktrees and branches — then record the phase as closed and close
+    the lock:
 
-   ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" phase --run <runId> --phase land --status closed
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" close
-   ```
+    ```bash
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" phase --run <runId> --phase land --status closed
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" close
+    ```
 
-   `close` **refuses** a phase that recorded no terminal event. On a halt, close with
-   `--halt "<the specific reason>"`: a halt is an event in `run.jsonl`, never an absence.
+    `close` **refuses** a phase that recorded no terminal event. On a halt, close with
+    `--halt "<the specific reason>"`: a halt is an event in `run.jsonl`, never an absence.
+
+11. **End the run in the record** -- landed or halted, always last:
+
+    ```bash
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" finish --run <runId>
+    ```
+
+    A landed run gets `complete.json` (refused while any phase is still open); a halted one
+    gets `FAILED-<stamp>.json` carrying the halt's reason; anything else is refused, because
+    stopping is not an ending. This marker is what `sweep_artifacts.py` waits for -- a run
+    without it is kept forever, whatever state its worktrees are in.
+
+    Deletion itself goes through `worktree_pool.py destroy` (or `sweep_artifacts.py` for a whole
+    finished run), which never just discards a loser's uncommitted state (#80): a DIRTY worktree
+    is committed and preserved on `kept/<runId>-<cid>` before its worktree and throwaway
+    `arbeitsplan/<runId>/<cid>` branch are removed; a clean worktree gets no `kept/` branch.
 
 ## Referee-owned artifacts (#77)
 
@@ -99,7 +151,7 @@ A second `record` for the same run is refused: the baseline is taken at creation
 re-taken to accommodate a later change. `worktree_pool.py open` already narrows a fan-out
 phase's lock to exclude every `refereeOwned` path, so the guard denies a candidate's Edit/Write
 before it lands — but that covers only the tool calls the guard's matcher sees. Re-verify
-before landing (step 8), as the belt to that guard's suspenders:
+before landing (step 9), as the belt to that guard's suspenders:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" verify --run <runId>
@@ -109,11 +161,42 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" verify --run <runId>
 that touches one of these paths, so the same rule is checked three ways: at the lock, at
 landing, and by content.
 
+## Rounds: a shared hole or a moving residual (#78, #93)
+
+A no-accept halt is arithmetic (`accepted * den < measured * num`) and never looks at WHY.
+`scripts/rounds.py` is the one place that does, and both rules below read the SAME derived
+rounds — one round per referee phase, rebuilt from `referee/<phase>/<id>.json` and the
+adjudicator's recorded `round: {outcome, blocking}` — so a fix to one is a fix to both. Those
+files come from `record_event.py workflow` (the workflow backend) or `record_event.py referee`
+(in-session, step 6); a batch recorded any other way is invisible here:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" record --run <runId> > /tmp/rounds.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" decide --rounds /tmp/rounds.json --spec analysis/arbeitsplan/<runId>/workflow.json
+```
+
+- **`ROUTE SYNTHESIZE criterion=<id>` — a `sharedHole` (#78).** The LATEST round accepted no
+  one and >= 2 rejected candidates share one unmet criterion — a structural hole every
+  candidate hit, not noise. Relaunch `workflows/run.js` with `startAt` at the single-writer
+  phase and `carry.sharedHole = {criterion, candidates: [{candidateId, diff}]}` (the run.js
+  halt's own `rejectionsByCriterion`, paired with each candidate's diff, builds this). The
+  synthesizer then works from every rejected diff toward that one criterion, instead of N fresh
+  candidates re-discovering the same hole from scratch.
+- **`ROUTE HALT moving-residual` (#93).** A per-batch breaker and a `sharedHole` both look at
+  ONE round; a run that "advances, not closes" every round, each time naming a *different*
+  blocking condition, passes both forever. This fires when the last N **judged** rounds
+  (`judge.outcome != "none"`; an unjudged round neither breaks nor counts) are all `"advanced"`
+  with non-null, pairwise-**distinct** `judge.blocking` ids — N genuinely different obstacles in
+  a row, not real convergence. Stop outright: **do not** re-compile and **do not** widen again.
+  `N` is `--max-advancing-rounds`, else the spec's `roundBreaker.maxAdvancingRounds`, else 3.
+  When both rules would fire on the same rounds, the `moving-residual` HALT wins.
+- **`ROUTE CONTINUE`** — neither condition holds; proceed as normal.
+
 ## Stacked fan-outs across waves (#79)
 
 A later wave's builders should sometimes start from an **earlier wave's refereed winner**,
 not from HEAD — that is what a `fanout-redundant` phase's `base: "<phaseId>"` declares. Once a
-phase's candidate is selected (step 7 above) and would normally just land (step 8), promote it
+phase's candidate is selected (step 7 above) and would normally just land (step 9), promote it
 instead if a later phase names it as `base`:
 
 ```bash
@@ -150,8 +233,8 @@ as a rejection (exit 1) — run compilation with `--strict` before dispatching a
 ## The workflow backend
 
 When `backend.kind` is `"workflow"`, the whole phase graph runs inside `workflows/run.js`,
-and this session does only the three things the Workflow tool cannot: read files, run
-plan-mode phases, and land.
+and this session does only the things the Workflow tool cannot: read files, run plan-mode
+phases, measure the accepted candidate with `reconcile.py --run-checks` (#76), and land.
 
 1. **Launch it with the spec as data.** The Workflow tool has no filesystem, so pass the
    parsed `workflow.json` verbatim: `args: {spec}` (plus `startAt` and `carry` on a resume).
@@ -173,10 +256,25 @@ plan-mode phases, and land.
    `record_event.py phase-output --run <runId> --phase <id> --output <file>`. An adjudicator's
    `verdict: "land"` is what gives a borrowed synthesis its referee record; without it,
    `land_candidate.py` refuses the synthesis like any unjudged candidate.
-4. **On completion, land in-session.** `worktree_pool.py open --phase <last>` and
-   `land_candidate.py`, where the hook and the `writeScope` check both run. The workflow never
-   lands. `land_candidate.py` writes `landed.json`, with `divergedFrom` if what landed differs
-   from the recorded candidate.
+3c. **On a NO CANDIDATE ACCEPTED halt, `rounds.py` decides the next move, not this session.**
+   The halt's `rejectionsByCriterion` is already grouped by criterion; run `scripts/rounds.py
+   record --run <runId>` then `scripts/rounds.py decide --rounds <file> --spec workflow.json`
+   (see [Rounds: a shared hole or a moving residual](#rounds-a-shared-hole-or-a-moving-residual-78-93)
+   above — same rules, same `sharedHole` and `moving-residual` outcomes, whichever backend ran
+   the halted batch). A `SYNTHESIZE` route relaunches `run.js` with `startAt` at the
+   single-writer phase and `carry.sharedHole` set, from the same halt's `rejectionsByCriterion`
+   and `candidates`; a `moving-residual` HALT stops the run outright.
+4. **On completion, measure then land in-session.** `worktree_pool.py open --phase <last>`, then
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate <id> --tree .arbeitsplan/<runId>/<id>
+   ```
+
+   to measure every checked criterion against the accepted candidate's own tree (#76), then
+   `land_candidate.py`, where the hook, the `writeScope` check, and this measurement gate all
+   run. The workflow never lands. `land_candidate.py` writes `landed.json`, with `divergedFrom`
+   if what landed differs from the recorded candidate. Then end the run with
+   `record_event.py finish --run <runId>` -- after a halt too -- exactly as step 11 above.
 
 ## Rules
 

@@ -3,6 +3,152 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **`scripts/rounds.py`: a shared hole or a moving residual, from ONE derived record (#78,
+  #93)**: the NO CANDIDATE ACCEPTED halt is arithmetic and never looks at WHY a batch failed,
+  so a structural hole every candidate shares routed straight back into widening -- which cannot
+  fix a hole nothing candidate-shaped can close (#78); and a per-batch breaker only ever looks
+  at ONE round, so a run that "advances, not closes" every round, each time naming a NEW
+  blocking condition, passed it forever (#93). `rounds.py record --run <runId>` rebuilds one
+  "round" per referee phase -- even when two referee phases in one run reuse candidate ids
+  c1/c2, previously silently dropped because `record_event.py` wrote `referee/<id>.json`
+  write-once and never a second time; it now ALSO writes `referee/<phase>/<id>.json`,
+  write-once per (phase, id), so a second phase's verdicts are recorded rather than skipped --
+  across a run and everything it `supersedes` (a new optional top-level spec key), oldest run
+  first. `rounds.py decide --rounds FILE [--max-advancing-rounds N] [--spec workflow.json]`
+  reads those rounds and prints exactly one `ROUTE ` line: `ROUTE SYNTHESIZE criterion=<id>`
+  when the latest round accepted no one and >= 2 rejections share an unmet criterion;
+  `ROUTE HALT moving-residual` when the last N JUDGED rounds are all `"advanced"` with non-null,
+  pairwise-distinct `judge.blocking` ids (N from `--max-advancing-rounds`, else the spec's new
+  `roundBreaker.maxAdvancingRounds`, else 3) -- and wins any tie with `SYNTHESIZE`; otherwise
+  `ROUTE CONTINUE`. `workflows/run.js`'s no-accept halt now carries `rejectionsByCriterion`
+  and names `rounds.py decide` in its `abortReason`; its single-writer phase, given no refereed
+  winner and `carry.sharedHole = {criterion, candidates: [{candidateId, diff}]}`, renders every
+  rejected candidate's diff and the missing criterion -- so synthesis is reachable from a halt
+  by relaunching at that phase, not just from a refereed winner. `compile_spec.py` validates the
+  two new top-level keys: `supersedes` (a non-empty runId string, never this spec's own --
+  `AP-SUPERSEDES-INVALID`, recorded-red) and `roundBreaker.maxAdvancingRounds` (a plain `int >=
+  2` -- `AP-ROUNDBREAKER-INVALID`, recorded-red), both HEAD (e42621b) silently ignored as
+  unrecognised top-level keys. The adjudicator now returns `round: {outcome, blocking}` and is
+  told to REUSE an earlier round's `blocking` id when the same obstacle recurs, which is what
+  keeps a genuinely repeated blocker from looking like N different ones to `decide`.
+- **pre-land measurement gate (#76)**: `reconcile.py --run-checks` measured, but nothing in
+  the operator's path RAN it before landing -- a builder's self-reported exit codes were
+  trusted straight through to `land_candidate.py --apply`. `reconcile.py` gains
+  `--candidate CID --tree DIR`, run from the MAIN repository root: it executes every checked
+  criterion of the run's acceptance (`phases/contract.json` over `workflow.json`, same
+  precedence as always) with `cwd=DIR` -- the CANDIDATE's own worktree, never the main tree --
+  and appends one `execute_tool` event per check to the run's `run.jsonl`, each carrying
+  `detail.candidate == CID`. It then compares that measurement against the candidate's own
+  `candidates/CID.json` report, GROUPED BY CRITERION ID ONLY -- never by the builder's own
+  command spelling -- and prints `CONTRADICTION <id>: ...` (exit 1) for any disagreement in
+  EITHER direction; for an array check, an all-zero report where one element actually fails is
+  a contradiction, and a truthful per-element report is not. A criterion the builder never
+  reported at all carries no claim and is NEVER a contradiction -- it still needs its own
+  measurement, or it stays unmeasured. `land_candidate.contradicts()` is the one comparator
+  both this gate and `land_candidate.py`'s landing gate call, so they cannot diverge (amended
+  after the adjudicator found w3-c1's land gate keyed the report by exact `(id, command)` and
+  treated an unreported criterion as `None != exit`, i.e. contradicted forever; w2g is the
+  regression criterion). `land_candidate.py
+  --apply` now REFUSES a candidate lacking its OWN measurement (`detail.candidate` must equal
+  that candidate -- another candidate's measurement never unlocks it) for any checked
+  criterion, or whose latest measurement contradicts its report, naming `reconcile.py` and
+  `--run-checks` as the remedy; an honestly-reported failure a referee already accepted is
+  NOT blocked by this gate. Every refusal `land_candidate.py` makes -- not just this new one --
+  is now RECORDED in `run.jsonl` as an `execute_tool land_candidate` event, status `refuted`,
+  `node_id` the candidate (previously only an accepted landing was recorded).
+  `arbeitsplan-run`'s `## Steps` and `## The workflow backend` sections, and `workflows/run.js`'s
+  completion return, all name the measure step.
+- **`kept/<runId>-<cid>` preserves dirty losers before deletion (#80)**: `sweep_artifacts.py`
+  removed a finished run's worktrees with `git worktree remove --force` -- destroying a
+  rejected candidate's uncommitted work outright -- and never deleted the throwaway
+  `arbeitsplan/<runId>/<cid>` branches at all; `worktree_pool.py destroy` had the same
+  force-remove problem. Both now share ONE helper, `worktree_pool.preserve_then_remove` --
+  the only place under `scripts/` that calls `git worktree remove`. A DIRTY worktree (tracked
+  changes, or untracked non-ignored files) is committed in full and `kept/<runId>-<cid>` is
+  pointed at that commit BEFORE the worktree is removed; a clean worktree gets no `kept/`
+  branch. FAIL CLOSED: if preservation cannot write (e.g. a read-only object store), that
+  worktree and its `arbeitsplan/<runId>/<cid>` branch are left exactly in place and
+  `sweep_artifacts.py --apply` exits 1. `sweep_artifacts.py`'s existing properties are
+  unchanged -- dry run by default (and now names, per dirty worktree, the `kept/` branch it
+  would create and every candidate branch it would delete, without touching anything), a run
+  that has not ended keeps its worktrees and branches and gets no `kept/`, and a proposal only
+  narrows. `worktree_pool.py destroy` keeps its `--keep` and `--bases` semantics unchanged.
+  Documented in `skills/arbeitsplan-run/SKILL.md`'s "delete the losers" step and in the README.
+
+### Fixed
+- **a workflow result is recorded whole, and its events fit the log**: `run.jsonl` takes each
+  event as one atomic line of at most 4096 bytes, but `workflows/run.js` put payloads into event
+  details -- a referee's full `perCriterion` with evidence, a builder's check commands, a
+  synthesis's borrowed hunks -- so a verdict over enough criteria (34 in run
+  ap-2026-09-25-6f6f: 4120 bytes) was refused, and `record_event.py workflow`, appending event by
+  event, stopped halfway: earlier events written, no candidate or referee file at all. Event
+  details are now summaries (unmet criterion ids and a met count; check ids and exits; who a hunk
+  came from and what it beats; path lists capped with a count) -- the payloads still travel in
+  `carry` and land in `candidates/` and `referee/` unchanged. `record_event.py` pre-checks every
+  event against `run_record`'s own `REQUIRED`, `STATUSES` and `MAX_LINE` (calibrated at the
+  4096/4097-byte boundary against `append()` itself) and refuses a result whole before anything
+  is appended.
+- **the sweep and `destroy` find every worktree, whatever it is named (#80)**: both selected
+  candidate worktrees with `glob("c*")`, so a worktree under `.arbeitsplan/<runId>/` that
+  `create` did not name was never preserved -- `sweep_artifacts.py` `rmtree`'d it with its
+  parent, losing its dirty state and leaving its git metadata and branch dangling. Both now
+  enumerate `git worktree list --porcelain` (`worktree_pool.worktrees_under`, which refuses
+  rather than guesses when git cannot list), preserve each one through
+  `preserve_then_remove`, and delete its ACTUAL branch only when it is this run's candidate
+  branch -- a user's branch or a base branch is left alone. CI now runs every
+  arbeitsplan selftest (`test_run_workflow.js`, reconcile, sweep, record_event, rounds), not
+  only the compiler, landing and pool ones.
+- **the round rules fire on in-session runs too (#78, #93)**: `rounds.py` rebuilds rounds from
+  `referee/<phase>/<id>.json`, which only `record_event.py workflow` wrote -- so an in-session
+  run, whose verdicts were recorded as flat `referee/<id>.json`, had no rounds at all and neither
+  `ROUTE SYNTHESIZE` nor `ROUTE HALT moving-residual` could ever fire (run ap-2026-09-25-6f6f:
+  three referee phases, `rounds.py record` -> `[]`). `record_event.py referee --run <runId>
+  --phase <id> --verdict FILE` records an in-session batch exactly as `workflow` records a
+  returned one: the flat record `land_candidate.py` reads plus the phase twin. It validates the
+  whole batch before writing anything and refuses an unopened phase, a malformed verdict, a
+  (phase, candidate) already recorded, and a run that has ended. Its run.jsonl event carries a
+  summary (verdict, unmet ids, the record's path), not the full perCriterion, which on a
+  34-criterion verdict outgrew run_record's 4096-byte atomic line. `arbeitsplan-run` step 6
+  records every referee batch with it.
+- **a run can end, so the sweep can collect it**: nothing in arbeitsplan ever wrote an end
+  marker -- `run_record.finish()` and `refuse()` were called only by selftests -- so every
+  landed or halted run read as unfinished forever, and `sweep_artifacts.py`, which removes only
+  runs whose record says they ended, could never collect a real one. `record_event.py finish
+  --run <runId>` ends a run through `run_record`: `complete.json` when `landed.json` exists
+  (refused while a phase is open), `FAILED-<stamp>.json` carrying the halt's reason when a halt is
+  recorded, refused otherwise. `record_event.py status` names it as the next command, and
+  `arbeitsplan-run` makes it the last step (step 11) on both paths.
+- **`landed.json` no longer reports a divergence that did not happen**: `landing_record` hashed
+  the recorded and applied hunks as one ordered list, but `applied_diff()` appends the files a
+  candidate created after every tracked one while the recorded diff interleaves them
+  alphabetically. Any landing that created a file was flagged `divergedFrom` with empty
+  `onlyRecorded`/`onlyApplied` lists (run ap-2026-09-25-6f6f: 4 created files, 2032 identical
+  lines). Hunks are now compared per file -- order within a file still counts -- and
+  `divergedFrom` names the differing `paths`.
+- **acceptance checks render as a fenced block, and `check` accepts an array (#81)**:
+  `workflows/run.js` used to render every acceptance check inline, trailing the criterion
+  text inside a parenthesised clause on the same line as the id and prose -- e.g. a line
+  reading `- [a1] the suite passes (check: pytest -q tests/test_x.py)`, with the command
+  copied verbatim from inside that clause and told to run it. A model copying the line
+  copied the trailing close-paren too, which silently changed the exit code the breaker
+  acted on. Every render site -- the builder prompt, the referee prompt's acceptance
+  criteria AND its separate list of checks the builder reported, and the single-writer
+  prompt -- now puts each command on a line of its own, indented inside a fenced block,
+  never sharing a line with any other text. `check` on an acceptance criterion is now
+  `string | string[] | null`: a non-empty array runs every element independently via
+  `/bin/sh`, and the criterion is met only when every element exits 0; an array's elements
+  report under their criterion's own id, never a manufactured sub-id. The same normalizer
+  (`land_candidate.checks_of`, mirrored in `run.js` as `checksOf`) is now imported by
+  `compile_spec.py` (validation and `--probe-checks`) and `reconcile.py`'s `measure()`, so
+  every reader of `check` agrees on what it means. A shape none of the three legal forms --
+  a number, an object, an empty string, an empty list, or a list holding a non-string or
+  empty-string element -- is rejected at compile time as `AP-CHECK-SHAPE`, a new recorded-red
+  rule (`RED_RULES["AP-CHECK-SHAPE"] = 81`), proven against a committed fixture under
+  `scripts/fixtures/red/` that compiled clean at HEAD (`e42621b`, which never looked at
+  `check`'s type at all) and is rejected by name here. `test_run_workflow.js` gained a case
+  asserting the fenced-block shape at every render site and a sabotage that reverts the
+  rendering to sharing a line with the criterion text, turning the suite red.
 
 ## [1.0.1] - 2026-09-23
 ### Added

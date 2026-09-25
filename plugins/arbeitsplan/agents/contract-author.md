@@ -30,7 +30,9 @@ arrange.
 
 ## How to write a criterion
 
-- `check` is a shell command that exits 0 on pass. Run it now, against the current tree, and
+- `check` is a shell command that exits 0 on pass, or a non-empty **array** of shell commands
+  (each run independently, via `/bin/sh`) when a criterion genuinely needs more than one — the
+  criterion passes only when every element does. Run it now, against the current tree, and
   record the exit: a check that already passes before any change proves nothing about the change.
 - Write down what no check can decide in `cannotCheck` — *now*, before candidates exist. Declared
   afterwards, it would be written by whoever's work it excuses.

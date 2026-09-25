@@ -31,6 +31,19 @@ case back in charge of the verdict. Record the disagreement as a `doubt` with `r
 each with the evidence that exists and what would resolve it. This is the record's `doubt`
 entry, and it is the most useful thing you return.
 
+`round`: your own verdict on the ROUND, not on a candidate (#93). You are handed **earlier
+rounds' `judge.blocking` ids** as part of the round data, and you must decide, for THIS round:
+`outcome: "closed"` (the contract is satisfied, nothing more to try), `outcome: "advanced"`
+(real progress, but something specific still blocks landing -- name it in `blocking`), or
+`outcome: "none"` (you were not asked to judge a round shape at all, e.g. this ADJUDICATE ran
+outside a multi-round context). **When `outcome` is `"advanced"` and the obstacle blocking this
+round is the SAME obstacle an earlier round already named, REUSE that earlier `blocking` id
+rather than minting a new one.** `scripts/rounds.py decide`'s moving-residual rule (#93) reads a
+run of `"advanced"` rounds with pairwise-**distinct** `blocking` ids as a residual that keeps
+moving rather than closing -- and it can only tell a genuinely new obstacle from the same one
+recurring if you reuse the id when it recurs. Minting a fresh id for the same blocker every
+round would make every round look like progress when nothing is actually converging.
+
 ## Output
 
 ```json
@@ -42,6 +55,7 @@ entry, and it is the most useful thing you return.
   ],
   "refereeDisagreements": [],
   "verdict": "land",
+  "round": { "outcome": "advanced", "blocking": "a3-transitive-deps" },
   "note": "Round established 2 of 3 criteria; a3 is doubt, not failure."
 }
 ```

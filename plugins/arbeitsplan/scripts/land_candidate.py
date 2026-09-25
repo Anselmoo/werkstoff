@@ -23,6 +23,35 @@ created included (applied_diff); when they differ it
 carries `divergedFrom`, so a correction made at landing is recorded rather than
 leaving candidates/<id>.json describing a diff that is not what landed.
 
+`--apply` also gates on MEASUREMENT (#76): for every checked criterion of the run's
+acceptance (phases/contract.json over workflow.json, the same precedence
+reconcile.py's `acceptance()` reads), this candidate must own at least one
+`execute_tool` event -- `detail.candidate == this candidate` -- recorded by
+`reconcile.py --run-checks --candidate --tree`, and its LATEST measured exits for
+every element must agree with what `candidates/<id>.json` itself reported FOR THAT
+CRITERION ID. A criterion with no such event (unmeasured), or one whose reported
+exit(s) actually disagree with what was measured for its id (contradicted), refuses
+the landing -- naming `reconcile.py` and `--run-checks` as the remedy. Another
+candidate's measurement never counts: the field checked is `detail.candidate`, not
+"this criterion was measured by somebody". An honestly reported failure (reported
+non-zero, measured the same non-zero) is NOT refused here -- this gate is
+"unmeasured or contradicted", nothing more; a referee's `accepted` verdict already
+decided whether a failing criterion still lands.
+
+(#76 amendment) A contradiction is a REPORTED exit that disagrees with the measured
+one -- `contradicts()` below is the one comparator both this gate and reconcile.py's
+`measure_candidate()` call, so they cannot diverge again. Two things that are NOT
+contradictions: the builder's own spelling of the command (grouping is by criterion
+id only -- the measured side always uses the contract's own command, so a builder's
+relative path, placeholder or comment never becomes a lookup key), and a criterion
+the builder never reported at all (an empty reported list carries no claim, so there
+is nothing to disagree with; it still needs its own measurement or the criterion
+stays "missing", never "contradicted").
+
+Every refusal this script makes is also RECORDED: an `execute_tool land_candidate`
+event, status `refuted`, node_id the candidate -- so a rejected landing is as
+visible in run.jsonl as an accepted one always was.
+
 Exit: 0 applied, 1 refused, 2 bad input.
 
 STDLIB ONLY -- it must run under a bare system python3.
@@ -38,6 +67,8 @@ import os
 import re
 import subprocess
 import sys
+import time
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -97,6 +128,66 @@ def hunk_body(diff: str) -> list:
     hunk offsets or context width."""
     return [ln for ln in diff.splitlines()
             if ln[:1] in "+-" and not ln.startswith(("+++", "---"))]
+
+
+class CheckShapeError(ValueError):
+    """Raised by checks_of() when `check` is neither None, a non-empty string,
+    nor a non-empty list of non-empty strings."""
+
+
+def checks_of(check: object) -> list:
+    """Normalize an acceptance criterion's `check` field (#81) to an ordered list
+    of shell commands, each run independently via /bin/sh; a criterion passes
+    only when every element exits 0.
+
+    THE normalizer: compile_spec.py imports this for validation (AP-CHECK-SHAPE)
+    and --probe-checks, reconcile.py imports it for measure(), and workflows/run.js
+    carries its own copy (checksOf) for the same reason it cannot import Python --
+    but all readers agree on the same three legal shapes because they all trace
+    back to the rule written here.
+
+    * `None` (the key absent or explicitly null) -- no runnable check. Returns [].
+    * a non-empty string -- one command. Returns [check].
+    * a non-empty list whose every element is a non-empty string -- returns
+      list(check) unchanged, each element run independently.
+
+    Anything else (a number, an object, an empty string, an empty list, or a
+    list containing a non-string or empty-string element) raises CheckShapeError
+    with a message naming what was wrong; the caller decides what that means.
+    """
+    if check is None:
+        return []
+    if isinstance(check, str):
+        if not check.strip():
+            raise CheckShapeError("an empty string carries no command")
+        return [check]
+    if isinstance(check, list):
+        if not check:
+            raise CheckShapeError("an empty list carries no command")
+        if not all(isinstance(c, str) and c.strip() for c in check):
+            raise CheckShapeError("every element of a check list must be a non-empty string")
+        return list(check)
+    raise CheckShapeError(
+        f"must be a string, a non-empty list of strings, or null; got {type(check).__name__}")
+
+
+def contradicts(reported_exits: list, measured_exits: list) -> bool:
+    """THE ONE comparator for #76: a contradiction is a REPORTED exit that disagrees
+    with the measured one, nothing else. `measurement_refusal()` below and
+    reconcile.py's `measure_candidate()` both call this instead of comparing the
+    lists themselves, so the two gates cannot drift apart again.
+
+    `reported_exits == []` means the builder made no claim about this criterion at
+    all (an id it never listed in its own `checks[]`) -- unreported is not a lie,
+    so there is nothing to contradict; the criterion still needs its own
+    measurement, or it stays "missing" to whichever caller tracks that. Any other
+    `reported_exits` is compared to `measured_exits` ordered, element by element:
+    an all-zero array report with one measured failing element is still a
+    contradiction, and a genuinely different single exit still is too.
+    """
+    if reported_exits == []:
+        return False
+    return reported_exits != measured_exits
 
 
 def applied_diff(paths: list, cwd: str | None = None) -> str:
@@ -171,17 +262,240 @@ def _selftest_landing_in_a_repo() -> list:
     return fails
 
 
+def _read_json(path: Path) -> dict | None:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def acceptance_criteria(run_dir: Path) -> list:
+    """The run's acceptance, same precedence reconcile.py's `acceptance()` reads:
+    a CONTRACT phase's `phases/contract.json` when one ran, `workflow.json`
+    otherwise. Kept local rather than imported -- reconcile.py already imports
+    THIS module (for `checks_of`), so the reverse import would be circular at
+    module load time."""
+    contract = _read_json(run_dir / "phases" / "contract.json")
+    if contract and isinstance(contract.get("acceptance"), list):
+        return contract["acceptance"]
+    spec = _read_json(run_dir / "workflow.json") or {}
+    return (spec.get("problem") or {}).get("acceptance") or []
+
+
+def measured_elements(run: run_record.Run, candidate_id: str, criterion_id: str) -> dict:
+    """The LATEST measured exit per command, for `criterion_id`, recorded under
+    `detail.candidate == candidate_id` -- never another candidate's. Events are
+    read in file order, so a later re-measurement overwrites an earlier one."""
+    out: dict = {}
+    for e in run.events():
+        if not str(e.get("span", "")).startswith("execute_tool "):
+            continue
+        detail = e.get("detail") or {}
+        if e.get("node_id") != criterion_id or detail.get("candidate") != candidate_id:
+            continue
+        cmd = detail.get("command")
+        if cmd is not None:
+            out[cmd] = detail.get("exit")
+    return out
+
+
+def measurement_refusal(run: run_record.Run, candidate_id: str, candidate: dict) -> str | None:
+    """None when every checked criterion is both measured for THIS candidate and
+    agrees with what `candidate` (the parsed candidates/<id>.json) reported;
+    otherwise a refusal message naming reconcile.py --run-checks as the remedy.
+
+    (#76 amendment) Reported exits are grouped by CRITERION ID ONLY -- never keyed
+    by the builder's own command string, which the builder is free to spell however
+    it likes (a relative path, a placeholder, a comment). Measured exits are read
+    in `checks_of(crit["check"])` order, i.e. the contract's own command spelling,
+    since that is the only spelling `measured_elements()` was ever recorded under.
+    `contradicts()` is the one place the two lists are compared, so this gate and
+    reconcile.py's `measure_candidate()` cannot disagree about what counts.
+    """
+    reported_by_id: dict = {}
+    for r in candidate.get("checks") or []:
+        if isinstance(r, dict):
+            reported_by_id.setdefault(r.get("id"), []).append(r.get("exit"))
+    missing, contradicted = [], []
+    for crit in acceptance_criteria(run.dir):
+        cid = crit.get("id")
+        try:
+            cmds = checks_of(crit.get("check"))
+        except CheckShapeError:
+            continue  # a malformed check is compile_spec's AP-CHECK-SHAPE to catch, not this gate's
+        if not cmds:
+            continue
+        measured = measured_elements(run, candidate_id, cid)
+        if any(cmd not in measured for cmd in cmds):
+            missing.append(cid)
+            continue
+        measured_exits = [measured[cmd] for cmd in cmds]
+        reported_exits = reported_by_id.get(cid, [])
+        if contradicts(reported_exits, measured_exits):
+            contradicted.append(cid)
+    missing, contradicted = sorted(set(missing)), sorted(set(contradicted))
+    if not missing and not contradicted:
+        return None
+    parts = []
+    if missing:
+        parts.append(f"unmeasured criterion/a(s) {missing}")
+    if contradicted:
+        parts.append(f"contradicted criterion/a(s) {contradicted} (reported vs. measured disagree)")
+    return (
+        f"REFUSED: {candidate_id} has {' and '.join(parts)}. Measure this candidate's own tree "
+        f"first: reconcile.py --run <runId> --run-checks --candidate {candidate_id} --tree "
+        "<candidate's worktree>. Another candidate's measurement never unlocks this one, and an "
+        "honestly-reported failure is not refused here -- only unmeasured or contradicted is."
+    )
+
+
+def record_refusal(run_id: str, candidate_id: str, message: str) -> None:
+    """Every refusal is recorded, not just an accepted landing (previously the
+    only outcome run.jsonl ever carried). Best-effort: a run whose record cannot
+    be opened still refuses the landing on stderr; it just cannot also log it."""
+    try:
+        run = run_record.open_run("arbeitsplan", run_id)
+        run.append({"trace_id": run_id,
+                    "span_id": f"{run_id}.land_candidate.{candidate_id}.refused.{time.time_ns()}",
+                    "parent_span_id": f"{run_id}.root", "span": "execute_tool land_candidate",
+                    "node_id": candidate_id, "status": "refuted",
+                    "detail": {"reason": message[:500]}})
+    except run_record.RecordError:
+        pass
+
+
+def refuse(run_id: str, candidate_id: str, message: str) -> int:
+    print(message, file=sys.stderr)
+    record_refusal(run_id, candidate_id, message)
+    return 1
+
+
+def _selftest_measurement_gate() -> list:
+    """measurement_refusal() (#76), unit-level: unmeasured, contradicted, honestly
+    failing, and another candidate's measurement never counting -- in-process
+    against a throwaway run.jsonl, no subprocess needed for this part."""
+    import tempfile
+    fails = []
+    with tempfile.TemporaryDirectory() as raw:
+        cwd = Path.cwd()
+        try:
+            os.chdir(raw)
+            run = run_record.open_run("arbeitsplan", "r-gate")
+            (run.dir / "workflow.json").write_text(json.dumps({"problem": {"acceptance": [
+                {"id": "a1", "criterion": "c", "check": "true"},
+                {"id": "a2", "criterion": "c2", "check": "false"}]}}))
+
+            report = {"checks": [{"id": "a1", "command": "true", "exit": 0},
+                                  {"id": "a2", "command": "false", "exit": 1}]}
+            ok0 = measurement_refusal(run, "c1", report) is not None
+            print(f"  {'ok  ' if ok0 else 'FAIL'} measurement gate: no measurement at all -> refused")
+            if not ok0:
+                fails.append("no measurement at all")
+
+            def measure_evt(cid: str, crit: str, cmd: str, exit_code: int) -> None:
+                run.append({"trace_id": "r-gate", "span_id": f"r-gate.{cid}.{crit}.{cmd}.{exit_code}.{time.time_ns()}",
+                            "parent_span_id": "r-gate.root", "span": f"execute_tool {crit}",
+                            "node_id": crit, "status": "accepted" if exit_code == 0 else "refuted",
+                            "detail": {"id": crit, "candidate": cid, "command": cmd, "exit": exit_code}})
+
+            measure_evt("c1", "a1", "true", 0)
+            measure_evt("c1", "a2", "false", 1)  # matches report: honestly failing
+            ok1 = measurement_refusal(run, "c1", report) is None
+            print(f"  {'ok  ' if ok1 else 'FAIL'} measurement gate: fully measured, honest -> not refused")
+            if not ok1:
+                fails.append("fully measured honest")
+
+            report_lying = {"checks": [{"id": "a1", "command": "true", "exit": 0},
+                                        {"id": "a2", "command": "false", "exit": 0}]}  # lied: claims a2 passed
+            ok2 = measurement_refusal(run, "c1", report_lying) is not None
+            print(f"  {'ok  ' if ok2 else 'FAIL'} measurement gate: measured but contradicted -> refused")
+            if not ok2:
+                fails.append("contradicted")
+
+            ok3 = measurement_refusal(run, "c2", report) is not None
+            print(f"  {'ok  ' if ok3 else 'FAIL'} measurement gate: c1's measurement does not cover c2")
+            if not ok3:
+                fails.append("another candidate's measurement does not unlock")
+
+            measure_evt("c1", "a2", "false", 0)  # a LATER re-measurement, now agreeing with the lie
+            ok4 = measurement_refusal(run, "c1", report_lying) is None
+            print(f"  {'ok  ' if ok4 else 'FAIL'} measurement gate: the LATEST measurement wins over a stale one")
+            if not ok4:
+                fails.append("latest measurement wins")
+
+            # (#76 amendment) a different command spelling for the same id is not a
+            # contradiction -- comparison is by criterion id only.
+            report_diff_spelling = {"checks": [
+                {"id": "a1", "command": "cd /tmp && true  # the builder's own spelling", "exit": 0},
+                {"id": "a2", "command": "false", "exit": 0}]}  # both agree with the last measured exits
+            ok5 = measurement_refusal(run, "c1", report_diff_spelling) is None
+            print(f"  {'ok  ' if ok5 else 'FAIL'} measurement gate: a different command spelling "
+                  "for the same id is not a contradiction")
+            if not ok5:
+                fails.append("different command spelling is not a contradiction")
+
+            # an unreported criterion (measured, but absent from the builder's own
+            # checks[]) is not a contradiction either -- it is unreported, not a lie.
+            report_partial = {"checks": [{"id": "a1", "command": "true", "exit": 0}]}  # a2 never reported
+            ok6 = measurement_refusal(run, "c1", report_partial) is None
+            print(f"  {'ok  ' if ok6 else 'FAIL'} measurement gate: an unreported (but measured) "
+                  "criterion is not a contradiction")
+            if not ok6:
+                fails.append("unreported criterion is not a contradiction")
+        finally:
+            os.chdir(cwd)
+    return fails
+
+
+def hunks_by_path(diff: str) -> dict:
+    """hunk_body() per file: {path: [+/- lines in order]}.
+
+    The file ORDER of two diffs of the same paths is not something either side
+    decides: applied_diff() appends the files a candidate created after every
+    tracked one, while the recorded `git diff` interleaves them alphabetically.
+    Comparing one flat list therefore called identical landings divergent (run
+    ap-2026-09-25-6f6f: 4 created files, 2032 identical lines, divergedFrom with
+    nothing in it). Within a file, order is content, so it is kept.
+    """
+    out: dict = {}
+    current = None
+    old = None
+    for line in diff.splitlines():
+        if line.startswith("--- "):
+            old = re.sub(r"^(?:[ab]/)?", "", line[4:].strip())
+            continue
+        if line.startswith("+++ "):
+            new = re.sub(r"^(?:[ab]/)?", "", line[4:].strip())
+            current = old if new == "/dev/null" else new
+            out.setdefault(current, [])
+            continue
+        if current is not None and line[:1] in "+-":
+            out[current].append(line)
+    return out
+
+
 def landing_record(run_id: str, candidate_id: str, recorded: str, applied: str, paths: list) -> dict:
+    rec_by, app_by = hunks_by_path(recorded), hunks_by_path(applied)
+
+    def digest(by: dict) -> str:
+        return hashlib.sha256(json.dumps(sorted(by.items())).encode()).hexdigest()
+
     rec = {
         "runId": run_id, "candidate": candidate_id, "paths": paths,
-        "recordedSha256": hashlib.sha256("\n".join(hunk_body(recorded)).encode()).hexdigest(),
-        "appliedSha256": hashlib.sha256("\n".join(hunk_body(applied)).encode()).hexdigest(),
+        "recordedSha256": digest(rec_by), "appliedSha256": digest(app_by),
     }
     if rec["recordedSha256"] != rec["appliedSha256"]:
+        differing = sorted(p for p in set(rec_by) | set(app_by) if rec_by.get(p) != app_by.get(p))
+        only_rec, only_app = [], []
+        for p in differing:
+            a, b = Counter(rec_by.get(p, [])), Counter(app_by.get(p, []))
+            only_rec += list((a - b).elements())
+            only_app += list((b - a).elements())
         rec["divergedFrom"] = {
             "candidate": candidate_id,
-            "onlyRecorded": [ln for ln in hunk_body(recorded) if ln not in hunk_body(applied)][:40],
-            "onlyApplied": [ln for ln in hunk_body(applied) if ln not in hunk_body(recorded)][:40],
+            "paths": differing,
+            "onlyRecorded": only_rec[:40],
+            "onlyApplied": only_app[:40],
         }
     return rec
 
@@ -224,6 +538,20 @@ def main(argv: list) -> int:
         rec_diff = "--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-old\n+new\n"
         same = "diff --git a/x.py b/x.py\nindex 1..2\n--- a/x.py\n+++ b/x.py\n@@ -1,1 +1,1 @@\n-old\n+new\n"
         edited = same.replace("+new", "+newer")
+        two = ("--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-a\n+A\n"
+               "--- /dev/null\n+++ b/b.py\n@@ -0,0 +1 @@\n+B\n")
+        swapped = ("--- /dev/null\n+++ b/b.py\n@@ -0,0 +1 @@\n+B\n"
+                   "--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-a\n+A\n")
+        moved = swapped.replace("+++ b/b.py", "+++ b/c.py")
+        multi_cases = [("same files in a different order (a created file appended last)", two, swapped, False),
+                       ("the same line landing in a different file", two, moved, True)]
+        for name, recorded, applied, want_div in multi_cases:
+            r = landing_record("r", "c1", recorded, applied, ["a.py", "b.py"])
+            got = "divergedFrom" in r
+            ok = got == want_div and (not got or bool(r["divergedFrom"]["paths"]))
+            print(f"  {'ok  ' if ok else 'FAIL'} landing record: {name} -> diverged={got}")
+            if not ok:
+                fails.append(name)
         for name, applied, want_div in [("identical hunks, different headers", same, False),
                                          ("a correction at landing", edited, True)]:
             got = "divergedFrom" in landing_record("r", "c1", rec_diff, applied, ["x.py"])
@@ -237,6 +565,47 @@ def main(argv: list) -> int:
             print(f"  {'ok  ' if ok else 'FAIL'} scope {name}: {got}")
             if not ok:
                 fails.append(name)
+        contradicts_cases = [
+            ("an unreported criterion (empty reported list) is never a contradiction",
+                [], [1], False),
+            ("a matching scalar report is not a contradiction", [0], [0], False),
+            ("a disagreeing scalar report IS a contradiction", [1], [0], True),
+            ("a matching array report is not a contradiction", [0, 0], [0, 0], False),
+            ("an all-zero array report with one failing element IS a contradiction",
+                [0, 0], [0, 1], True),
+        ]
+        for name, reported, measured, want in contradicts_cases:
+            got = contradicts(reported, measured)
+            ok = got == want
+            print(f"  {'ok  ' if ok else 'FAIL'} contradicts {name}: {got}")
+            if not ok:
+                fails.append(name)
+        checks_of_cases = [
+            ("null -> no runnable check", None, []),
+            ("a non-empty string -> one command", "true", ["true"]),
+            ("a non-empty list -> every element, in order", ["true", "pytest -q x"],
+                ["true", "pytest -q x"]),
+        ]
+        for name, check, want in checks_of_cases:
+            got = checks_of(check)
+            ok = got == want
+            print(f"  {'ok  ' if ok else 'FAIL'} checks_of {name}: {got}")
+            if not ok:
+                fails.append(name)
+        checks_of_rejects = [
+            ("an int", 42), ("an object", {}), ("an empty string", ""),
+            ("an empty list", []), ("a list with an empty string", [""]),
+            ("a list with a non-string element", ["true", 3]),
+        ]
+        for name, check in checks_of_rejects:
+            try:
+                checks_of(check)
+                ok = False
+            except CheckShapeError:
+                ok = True
+            print(f"  {'ok  ' if ok else 'FAIL'} checks_of rejects {name}")
+            if not ok:
+                fails.append(f"checks_of rejects {name}")
         subtract_cases = [
             ("no refereeOwned leaves scope untouched",
                 ["src/**", "oracle/**"], [], ["src/**", "oracle/**"]),
@@ -254,6 +623,7 @@ def main(argv: list) -> int:
             if not ok:
                 fails.append(name)
         fails += _selftest_landing_in_a_repo()
+        fails += _selftest_measurement_gate()
         print()
         if fails:
             print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
@@ -279,9 +649,9 @@ def main(argv: list) -> int:
         return 2
 
     if not candidate.get("measured"):
-        print(f"REFUSED: {args.candidate} is unmeasured -- it was never fairly tried, so "
-              "there is nothing to land.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: {args.candidate} is unmeasured -- it was never fairly tried, so "
+                      "there is nothing to land.")
 
     # The workflow's landing allowlist lived only in run.js, so THIS entry point
     # would apply a rejected -- or never judged -- diff. The referee record is
@@ -292,26 +662,37 @@ def main(argv: list) -> int:
     try:
         referee = json.loads(verdict_path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        print(f"REFUSED: no referee record at {verdict_path}. A candidate nothing judged "
-              "is not an accepted candidate; run the referee pass before landing.",
-              file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: no referee record at {verdict_path}. A candidate nothing judged "
+                      "is not an accepted candidate; run the referee pass before landing.")
     except ValueError as exc:
-        print(f"REFUSED: the referee record at {verdict_path} is unreadable ({exc}). "
-              "Refusing rather than landing on an unverifiable verdict.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: the referee record at {verdict_path} is unreadable ({exc}). "
+                      "Refusing rather than landing on an unverifiable verdict.")
     seen = referee.get("verdict")
     if seen != "accepted":
-        print(f"REFUSED: {args.candidate}'s referee verdict is {seen!r}, and only "
-              "'accepted' lands. 'rejected' says the candidate is wrong; 'cannot_judge' "
-              "says nothing is known, which points at the criteria rather than the "
-              "candidate. Neither is consent.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: {args.candidate}'s referee verdict is {seen!r}, and only "
+                      "'accepted' lands. 'rejected' says the candidate is wrong; 'cannot_judge' "
+                      "says nothing is known, which points at the criteria rather than the "
+                      "candidate. Neither is consent.")
+
+    # #76: unmeasured-or-contradicted, gated on THIS candidate's own recorded
+    # execute_tool events -- never on another candidate's, and never blocking an
+    # honestly-reported failure a referee already accepted alongside.
+    try:
+        run = run_record.open_run("arbeitsplan", args.run)
+        refusal = measurement_refusal(run, args.candidate, candidate)
+    except run_record.RecordError as exc:
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: the run record cannot be read ({exc}); measurement cannot be "
+                      "verified, so this candidate is not landed.")
+    if refusal:
+        return refuse(args.run, args.candidate, refusal)
 
     diff = candidate.get("diff") or ""
     if not diff.strip():
-        print(f"REFUSED: {args.candidate} carries no diff.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate, f"REFUSED: {args.candidate} carries no diff.")
 
     scope = spec["writeScope"]
     diff_paths = paths_in_diff(diff)
@@ -324,30 +705,29 @@ def main(argv: list) -> int:
     referee_owned = spec.get("refereeOwned") or []
     owned_touch = [p for p in diff_paths if in_scope(p, referee_owned)]
     if owned_touch:
-        print(f"REFUSED: {args.candidate} touches refereeOwned path(s) {owned_touch}. "
-              "These are written once, before any candidate exists, by a referee-fixture "
-              "phase, and are subtracted from every fan-out phase's effective write scope. "
-              "A diff that reaches one anyway is refused rather than landed, whether or not "
-              "the guard should have stopped it earlier.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: {args.candidate} touches refereeOwned path(s) {owned_touch}. "
+                      "These are written once, before any candidate exists, by a referee-fixture "
+                      "phase, and are subtracted from every fan-out phase's effective write scope. "
+                      "A diff that reaches one anyway is refused rather than landed, whether or not "
+                      "the guard should have stopped it earlier.")
 
     out_of_scope = [p for p in diff_paths if not in_scope(p, scope)]
     if out_of_scope:
-        print(f"REFUSED: {args.candidate} touches {out_of_scope} outside the declared "
-              f"writeScope {scope}. The scope is the contract this candidate was "
-              "dispatched under.", file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: {args.candidate} touches {out_of_scope} outside the declared "
+                      f"writeScope {scope}. The scope is the contract this candidate was "
+                      "dispatched under.")
 
     check = subprocess.run(["git", "apply", "--check", "-"], input=diff,
                            capture_output=True, text=True)
     if check.returncode != 0:
-        print(f"REFUSED: {args.candidate}'s diff does not apply cleanly.\n"
-              f"{check.stderr.strip()}\n"
-              "Not retrying with --3way: the tree moved under this candidate, so it was "
-              "measured against a state that no longer exists and its referee verdict no "
-              "longer means what it said. Re-run the phase against the current tree.",
-              file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: {args.candidate}'s diff does not apply cleanly.\n"
+                      f"{check.stderr.strip()}\n"
+                      "Not retrying with --3way: the tree moved under this candidate, so it was "
+                      "measured against a state that no longer exists and its referee verdict no "
+                      "longer means what it said. Re-run the phase against the current tree.")
 
     if not args.apply:
         print(f"{args.candidate} would apply cleanly, {len(diff_paths)} path(s), "
@@ -356,9 +736,8 @@ def main(argv: list) -> int:
 
     applied = subprocess.run(["git", "apply", "-"], input=diff, capture_output=True, text=True)
     if applied.returncode != 0:
-        print(f"REFUSED: apply failed after a clean --check: {applied.stderr.strip()}",
-              file=sys.stderr)
-        return 1
+        return refuse(args.run, args.candidate,
+                      f"REFUSED: apply failed after a clean --check: {applied.stderr.strip()}")
 
     paths = paths_in_diff(diff)
     rec = landing_record(args.run, args.candidate, diff, applied_diff(paths), paths)

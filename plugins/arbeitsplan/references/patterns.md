@@ -253,3 +253,36 @@ from the denominator, and `quo-warranto/scripts/run_trigger_evals.py`'s `INDETER
 because the case was never fairly measured").
 
 **Instead:** the unmeasured class is excluded from the denominator, always, everywhere.
+
+## Rounds: neither `serial-fix-loop` nor `cumulative-breaker` (#78, #93)
+
+`scripts/rounds.py` names two failure shapes a per-batch breaker cannot see, because a
+per-batch breaker only ever looks at ONE round:
+
+- **#78 — a structural hole every candidate shares.** The referee halt is arithmetic
+  (`accepted * den < measured * num`); it never asks WHY a batch failed. When the LATEST round
+  accepted no one and >= 2 rejected candidates share one unmet criterion, `rounds.py decide`
+  prints `ROUTE SYNTHESIZE criterion=<id>` and the session relaunches the single-writer phase
+  with `carry.sharedHole` — every rejected diff, and the one criterion all of them missed.
+- **#93 — a moving residual.** A run that "advances, not closes" every round, each time naming a
+  *different* blocking condition, passes a per-batch breaker AND `sharedHole` forever — neither
+  rule looks across rounds. `rounds.py decide` prints `ROUTE HALT moving-residual` when the last
+  N judged rounds are all `"advanced"` with pairwise-distinct `blocking` ids.
+
+**#78 is not `serial-fix-loop`.** `serial-fix-loop` retries the SAME scope with the SAME agent
+until a reviewer passes it — nothing is computed, and nothing stops it at a cap on its own; the
+5-round cap `subagent-driven-development` concedes never converging on is a limit imposed from
+outside the loop, after the fact. `sharedHole` synthesis is the opposite shape: `rounds.py
+decide` computes the route from the recorded rounds, nothing is re-dispatched into the same
+scope with the same prompt, and the single writer it hands off to is explicitly given every
+rejected candidate's diff rather than starting from nothing (or from just its own prior attempt,
+which is what `serial-fix-loop` hands back to the same agent).
+
+**#93 is not `cumulative-breaker`.** `cumulative-breaker` tracks an ACCEPTANCE RATE across all
+batches and trips on the running total, which is exactly what `decode.js:158-161` measured as
+one full expensive batch too late — healthy early batches mask a batch that has started failing.
+`moving-residual` never accumulates a rate at all: it reads WHICH blocker an already-judged round
+named, and asks only whether that identity keeps changing. A run that stays stuck on the SAME
+blocker for ten rounds never trips `moving-residual` (the adjudicator reuses the id, so the
+sequence is not pairwise-distinct) — a `cumulative-breaker`-shaped rule would eventually trip on
+that low rate anyway, which is precisely the false alarm this rule is built not to raise.

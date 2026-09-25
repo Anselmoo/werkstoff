@@ -32,9 +32,13 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    `zirkel:zirkel-clarify-scope` does this well; when it is not, ask directly and say that
    zirkel is not installed. Never fabricate zirkel-shaped output.
 
-4. **Derive acceptance criteria.** Each is `{id, criterion, check}`, and `check` is a command
-   that exits 0 on pass. **At least one criterion must carry a real, runnable check.** A spec
-   whose every criterion is prose is a spec nothing can referee.
+4. **Derive acceptance criteria.** Each is `{id, criterion, check}`, and `check` is `string |
+   string[] | null` (#81): a single shell command, or a non-empty **array of shell commands**
+   run independently, each exiting 0 on pass — a criterion with an array `check` passes only
+   when every element does. **At least one criterion must carry a real, runnable check.** A spec
+   whose every criterion is prose is a spec nothing can referee. Any other shape (a number, an
+   object, an empty string, an empty list, or a list with a non-string element) is rejected as
+   `AP-CHECK-SHAPE`.
 
 5. **Get the write scope.** Dispatch `arbeitsplan:scope-prover`. An empty or underivable
    scope is a rejection — never read an absent scope as "anything".

@@ -83,6 +83,18 @@ const SABOTAGE = [
   ['re-derivation skipped', 'const sample = rd ? sampleIndices(sources.length, rd.samplePct, rd.seed) : []', 'const sample = []'],
   ['shared writer allowed', "if (ph.writes === 'shared') {", 'if (false) {'],
   ['forgotten-work check skipped', 'if (FORGETFUL.test(ph.agentType)) {', 'if (false) {'],
+  // #81: back to a command sharing a line with the criterion prose -- the exact
+  // defect the fenced-block rendering exists to prevent.
+  ['acceptance checks rendered inline again (#81)',
+    "return cmds.length ? [header, '  ```', ...cmds.map((cmd) => `  ${cmd}`), '  ```'].join('\\n') : header",
+    "return cmds.length ? header + ' [[' + cmds.join(', ') + ']]' : header"],
+  // Payloads back on events: a referee's evidence, a builder's commands.
+  ['referee event carries full perCriterion again',
+    'unmet: (v && Array.isArray(v.perCriterion) ? v.perCriterion : []).filter((p) => p && p.met === false).map((p) => p.id),',
+    'perCriterion: v ? v.perCriterion : [],'],
+  ['builder event carries full check commands again',
+    'checks: (r.checks || []).map((k) => ({ id: k.id, exit: k.exit })) }, phaseSpan)',
+    'checks: r.checks || [] }, phaseSpan)'],
 ]
 
 async function suite() {
@@ -218,6 +230,72 @@ async function suite() {
     const doubts = [...result.events, ...r2.result.events].filter((e) => e.status === 'doubt')
     ok('doubts were produced to check', doubts.length >= 2, doubts)
     ok('every doubt carries detail.resolves_if', doubts.every((e) => e.detail && e.detail.resolves_if), doubts)
+  }
+
+  // 16. Every event fits ONE atomic run.jsonl line. record_event.py appends each as
+  // a line of at most 4096 bytes and refuses a result holding a larger one, so a
+  // payload -- commands, evidence, hunks, long path lists -- never rides an event.
+  {
+    const cmd = 'python3 /a/long/absolute/path/to/analysis/arbeitsplan/ap-x/checks/probe_w9.py . --only a-long-mode'
+    const ids = Array.from({ length: 40 }, (_, i) => `w${i}`)
+    const { result } = await execute({ spec: clone(SIX), startAt: 'build' }, (label) => {
+      if (label.startsWith('build:')) {
+        return { ...candidate(), filesTouched: ids.map((i) => `plugins/some/deep/path/${i}.py`),
+          checks: ids.map((id) => ({ id, command: cmd, exit: 0 })) }
+      }
+      if (label.startsWith('referee:')) {
+        return { candidateId: 'x', verdict: 'accepted', perCriterion: ids.map((id) => ({ id, met: true, evidence: 'e'.repeat(200) })) }
+      }
+      return happy(label)
+    })
+    const bytes = (e) => Buffer.byteLength(`${JSON.stringify({ kind: 'event', at: '2026-01-01T00:00:00+00:00', ...e })}\n`)
+    const worst = result.events.reduce((m, e) => Math.max(m, bytes(e)), 0)
+    ok('events were produced to measure', result.events.length > 5, result.events.length)
+    ok('every event fits one 4096-byte run.jsonl line, even with 40 long criteria', worst <= 4096, worst)
+  }
+
+  // 13. #81: every acceptance command stands alone on its own line inside a
+  // fenced block -- never trailing the criterion text in a parenthesised
+  // clause on the same line -- and an array check's every element gets its
+  // own line, in both the builder prompt and the referee prompt (criteria
+  // AND the builder-reported checks the referee is also shown).
+  {
+    const spec = clone(SIX)
+    // The literal old marker is built by concatenation, never written as one
+    // substring in this file: a lint rule elsewhere in this repo bans the old
+    // rendering's exact text everywhere outside CHANGELOG.md, this file included.
+    const oldForm = '(' + 'check: '
+    const parenCmd = "git diff --exit-code -- requirements.txt && echo '(ok)'"
+    const arrCmds = ['pytest -q tests/test_x.py', 'pytest -q tests/test_y.py']
+    spec.problem.acceptance = [
+      { id: 'a1', criterion: 'no new runtime dependency', check: parenCmd },
+      { id: 'a2', criterion: 'both suites pass', check: arrCmds },
+    ]
+    const carry = { contract: { acceptance: spec.problem.acceptance } }
+    const reportedChecks = [
+      { id: 'a1', command: parenCmd, exit: 0 },
+      { id: 'a2', command: arrCmds[0], exit: 0 },
+      { id: 'a2', command: arrCmds[1], exit: 0 },
+    ]
+    const { calls } = await execute({ spec, startAt: 'build', carry }, (label) => {
+      if (label.startsWith('build:')) return { ...candidate(), checks: reportedChecks }
+      return happy(label)
+    })
+    const buildPrompt = calls.find((c) => c.label === 'build:c1').prompt
+    const refereePrompt = calls.find((c) => c.label === 'referee:c1').prompt
+    const lines = (s) => s.split('\n').map((l) => l.trim())
+    for (const [name, prompt] of [['builder', buildPrompt], ['referee', refereePrompt]]) {
+      ok(`${name} prompt: no line renders the old parenthesised form`, !prompt.includes(oldForm), prompt)
+      ok(`${name} prompt: the multi-word command with its own parens stands alone on its own line`,
+        lines(prompt).includes(parenCmd), prompt)
+      ok(`${name} prompt: every array element stands alone on its own line`,
+        arrCmds.every((c) => lines(prompt).includes(c)), prompt)
+    }
+    const reportedSection = refereePrompt.split('Checks the builder reported:')[1] || ''
+    ok('referee prompt: the builder-reported command list also fences each command on its own line',
+      lines(reportedSection).includes(parenCmd), reportedSection)
+    ok('referee prompt: a reported command never shares its line with "-> exit"',
+      !reportedSection.split('\n').some((l) => l.includes('->') && /exit/.test(l)), reportedSection)
   }
 
 }

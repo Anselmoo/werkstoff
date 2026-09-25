@@ -5,7 +5,7 @@ contents from prose.
 
 ## Why this file is a schema and not a description
 
-**Contents** — [why a schema](#why-this-file-is-a-schema-and-not-a-description) · [location](#location) · [schema](#schema) · [outputs and its checks](#outputs-and-its-checks) · [breaker and its checks](#breaker-and-its-checks) · [base and stacked fan-outs](#base-and-stacked-fan-outs-79) · [worked instance](#worked-instance) · [the six-phase shape](#the-six-phase-shape-on-the-workflow-backend) · [rejections](#rejections-at-compile-time) · [recorded-red validators](#recorded-red-validators-issues-77-74-75-79) · [migrating from 1](#migrating-from-schemaversion-1)
+**Contents** — [why a schema](#why-this-file-is-a-schema-and-not-a-description) · [location](#location) · [schema](#schema) · [supersedes and roundBreaker](#supersedes-and-roundbreaker-78-93) · [outputs and its checks](#outputs-and-its-checks) · [breaker and its checks](#breaker-and-its-checks) · [base and stacked fan-outs](#base-and-stacked-fan-outs-79) · [worked instance](#worked-instance) · [the six-phase shape](#the-six-phase-shape-on-the-workflow-backend) · [rejections](#rejections-at-compile-time) · [recorded-red validators](#recorded-red-validators-issues-77-74-75-79-81-93) · [migrating from 1](#migrating-from-schemaversion-1)
 
 `docs/plugin-benchmark-phase2-results.md` measured **9 of 11** skill-to-skill chains in this
 repository failing their handoff *despite a real schema existing upstream*. The single chain that
@@ -32,8 +32,27 @@ describes the spec in prose instead of loading it is the defect this schema exis
 | `budget` | object | yes | `totalDispatches` (int > 0), `wallClockMinutes` (int > 0) |
 | `phases` | object[] | yes | 1..12 phases, see below |
 | `refereeOwned` | string[] | no | path globs written by a `referee-fixture` phase before any candidate exists, and subtracted from every fan-out phase's effective write scope (#77) — see below |
+| `supersedes` | string | no | the `runId` of a prior run this one continues (#93) — see below |
+| `roundBreaker` | object | no | `{maxAdvancingRounds}` — the moving-residual threshold `scripts/rounds.py decide` uses (#93) — see below |
 | `delegates` | object[] | no | optional cross-plugin beats (zirkel et al.) |
 | `backend` | object | yes | `{kind, why[], acknowledgedGaps[]}` — see below |
+
+### `supersedes` and `roundBreaker` (#78, #93)
+
+`supersedes` names the `runId` of a prior run this one continues after a halt — never this
+spec's own `runId` (`AP-SUPERSEDES-INVALID`, recorded-red). `scripts/rounds.py record --run
+<runId>` follows this chain, **oldest first**, to rebuild one "round" per referee phase across
+every run in it: without `supersedes`, a widened re-run starts the round sequence over, and
+`scripts/rounds.py decide`'s `moving-residual` rule (#93) can only ever see the rounds of the
+run actually named.
+
+`roundBreaker.maxAdvancingRounds` is the `N` `scripts/rounds.py decide` uses for its
+`moving-residual` rule: the last `N` judged rounds all `"advanced"` with pairwise-distinct
+`judge.blocking` ids halts the run outright. It must be a plain `int >= 2` (a `bool` is not an
+int here, and `N < 2` cannot show a *sequence* of advancing rounds at all —
+`AP-ROUNDBREAKER-INVALID`, recorded-red). Absent, `decide --max-advancing-rounds` defaults to
+`3`. See `scripts/rounds.py` and `references/patterns.md`'s "Rounds" section for the full rule
+and why it is neither `serial-fix-loop` nor `cumulative-breaker`.
 
 ### `refereeOwned`
 
@@ -81,10 +100,12 @@ Two CLI flags read `outputs`, neither on by default:
   normal (same exit code a plain compile would give).
 - **`--probe-checks`** is unrelated to `outputs` — it runs every `problem.acceptance[].check`
   once via `/bin/sh`, cwd = the process's own cwd, under a `--probe-timeout` (default 60s).
-  It prints `PROBE <acceptanceId> <CLASS> exit=<n>` per check, `CLASS` one of `RAN`,
-  `ABSENT-TARGET` (exit 127), `SYNTAX` (exit 2), `PERMISSION` (exit 126) or `TIMEOUT` (exit
-  -1) — a check that ran and failed is still `RAN`. Any non-`RAN` check is rejected,
-  `AP-CHECK-NOT-RAN`, recorded-red: a criterion nothing could execute cannot referee anything.
+  When `check` is an array (#81), every element runs and prints its own line, sharing the
+  criterion's id — the line shape itself never changes. It prints `PROBE <acceptanceId>
+  <CLASS> exit=<n>` per command, `CLASS` one of `RAN`, `ABSENT-TARGET` (exit 127), `SYNTAX`
+  (exit 2), `PERMISSION` (exit 126) or `TIMEOUT` (exit -1) — a command that ran and failed is
+  still `RAN`. Any non-`RAN` command is rejected, `AP-CHECK-NOT-RAN`, recorded-red: a criterion
+  nothing could execute cannot referee anything.
   **A plain compile — without `--probe-checks` — executes nothing**; probing is opt-in.
 
 ### `breaker` and its checks
@@ -170,7 +191,7 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 |---|---|---|
 | `statement` | string | the scoped problem, one paragraph |
 | `shape` | `"change"` \| `"question"` | **`"question"` is a refusal**: compile emits an `out-of-scope-reasoning` record pointing at `zirkel:zirkel-solve` and writes no phases |
-| `acceptance` | object[] | `{id, criterion, check}`. `check` is a shell command that exits 0 on pass. At least one entry, and **at least one with a non-null `check`** — a spec whose every criterion is unverifiable is rejected |
+| `acceptance` | object[] | `{id, criterion, check}`. `check` is `string \| string[] \| null` (#81) — a single shell command, or a non-empty **array of shell commands**, each run independently; the criterion passes only when every element exits 0. `null` (or the key absent) means no runnable check. Any other shape (a number, an object, an empty string, an empty list, or a list holding a non-string or empty-string element) is rejected as `AP-CHECK-SHAPE`, recorded-red. At least one entry, and **at least one with a non-null `check`** — a spec whose every criterion is unverifiable is rejected |
 
 ### `phases[]`
 
@@ -310,7 +331,10 @@ a default silently supplied:
 - a phase's `outputs` naming a path outside `writeScope` (`AP-OUTPUT-OUTSIDE-SCOPE`,
   recorded-red), or a fan-out phase's `outputs` naming a path inside `refereeOwned`
   (`AP-OUTPUT-REFOWNED`, recorded-red)
-- with `--probe-checks`: any `problem.acceptance[].check` that does not classify `RAN`
+- a `problem.acceptance[].check` that is not a string, a non-empty list of strings, or `null`
+  — a number, an object, an empty string, an empty list, or a list holding a non-string or
+  empty-string element (`AP-CHECK-SHAPE`, recorded-red, #81) — checked on every compile
+- with `--probe-checks`: any `problem.acceptance[].check` command that does not classify `RAN`
   (`AP-CHECK-NOT-RAN`, recorded-red) — never checked on a plain compile
 - a phase's `breaker` that is not an object, or whose `acceptNumerator`/`acceptDenominator` is
   missing or not a plain `int` (`AP-BREAKER-INCOMPLETE`, recorded-red); has
@@ -322,13 +346,17 @@ a default silently supplied:
   phase that is not `fanout-redundant`, or naming one no earlier `fanout-blind` phase reviewed
   and this phase's own `requires` never reach (`AP-BASE-INVALID`, recorded-red); `base` at all
   under `backend.kind: "workflow"` (`AP-BASE-BACKEND`, recorded-red)
+- `supersedes` that is not a non-empty runId string, or that names this spec's own `runId`
+  (`AP-SUPERSEDES-INVALID`, recorded-red, #93)
+- `roundBreaker` that is not an object, or whose `maxAdvancingRounds` is missing, not a plain
+  `int`, or below `2` (`AP-ROUNDBREAKER-INVALID`, recorded-red, #93)
 - with `--strict`: any `AP-SIBLING-INVISIBLE` `WARNING` (see below) — never checked on a plain
   compile, which still prints the warning and still writes
 
 **Never infer a missing gating value.** Reject and surface it: a halt that depends on a value the
 compiler invented is not a halt.
 
-## Recorded-red validators (issues #77, #74, #75, #79)
+## Recorded-red validators (issues #77, #74, #75, #79, #81, #93)
 
 A **recorded-red** rule is a validator this plugin added that rejects a spec the compiler at
 HEAD `3f62503` would have compiled clean — the whole point of the convention is that the claim
@@ -350,6 +378,9 @@ RED_RULES = {
     "AP-SIBLING-INVISIBLE": 79,
     "AP-BASE-INVALID": 79,
     "AP-BASE-BACKEND": 79,
+    "AP-CHECK-SHAPE": 81,
+    "AP-SUPERSEDES-INVALID": 93,
+    "AP-ROUNDBREAKER-INVALID": 93,
 }
 ```
 

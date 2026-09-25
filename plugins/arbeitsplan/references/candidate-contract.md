@@ -25,7 +25,11 @@ Each builder gets its own worktree, its own branch, and exactly one angle.
 - its **angle** — one line, distinct from every other candidate's
 - its worktree path and branch name
 - the `writeScope` globs it may touch
-- the acceptance `check` commands, to run itself before reporting
+- the acceptance `check` commands, to run itself before reporting — `check` is `string |
+  string[] | null` (#81): a single command, or a non-empty array of commands run
+  independently, met only when every element exits 0. Every command, and every array
+  element, is shown on its own line inside a fenced block — never inline with the criterion
+  text, so nothing a builder copies drags along stray punctuation
 
 It does **not** get: the other angles, any other candidate's output, or the session's history.
 
@@ -48,6 +52,12 @@ It does **not** get: the other angles, any other candidate's output, or the sess
   "flaggedInstruction": null
 }
 ```
+
+`checks[]` is a flat list of `{id, command, exit}` rows. When an acceptance criterion's `check`
+is an array (#81), the builder reports one row **per element**, every row sharing that
+criterion's `id` — e.g. `a2` above could instead be two rows, `{"id": "a2", "command": "pytest
+-q tests/test_search.py", "exit": 0}` and `{"id": "a2", "command": "pytest -q
+tests/test_search_slow.py", "exit": 0}` — never a single row whose `command` concatenates both.
 
 ### `measured` is the field that keeps the breaker honest
 

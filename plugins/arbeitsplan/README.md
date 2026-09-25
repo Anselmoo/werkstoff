@@ -205,6 +205,49 @@ records one); a `Stop` hook refuses **one** completion while an armed phase is u
 `reconcile.py` joins every acceptance id to recorded evidence, running each check itself with
 `--run-checks` rather than trusting the referee's transcript.
 
+## Measurement gates landing (#76)
+
+`reconcile.py --run-checks` could always measure, but nothing in the operator's path *ran* it
+before a landing — a builder's self-reported `checks: [{id, command, exit}]` went straight to
+`land_candidate.py --apply` on trust. `reconcile.py --run <runId> --run-checks --candidate CID
+--tree DIR`, run from the **main repository root**, closes that gap: it re-runs every checked
+criterion of the run's acceptance with `cwd=DIR` — the candidate's own worktree, not the main
+tree — and appends one `execute_tool` event per check to the run's `run.jsonl`, each carrying
+`detail.candidate == CID`. Comparing that against `candidates/CID.json`, **by criterion id
+only** — never by the builder's own command spelling — prints `CONTRADICTION <id>: ...`
+(exit 1) for any disagreement, in either direction.
+
+`land_candidate.py --apply` reads exactly those events as its landing gate: it refuses a
+candidate lacking its **own** measurement (`detail.candidate` must equal that candidate — another
+candidate's measurement never unlocks it) for any checked criterion, or whose *latest*
+measurement contradicts its report, naming `reconcile.py` and `--run-checks` as the remedy. An
+honestly-reported failure a referee already accepted is **not** blocked — the gate is "unmeasured
+or contradicted", nothing more. Every refusal `land_candidate.py` makes is recorded in `run.jsonl`
+too: an `execute_tool land_candidate` event, status `refuted`, `node_id` the candidate.
+
+A contradiction is a **reported** exit that disagrees with the measured one, nothing else
+(`land_candidate.contradicts()` is the one comparator both this gate and `reconcile.py`'s
+`--candidate` mode call, so they cannot diverge). Two things are never a contradiction: the
+builder's own spelling of a command (grouping is by criterion id, and the measured side always
+uses the contract's own command), and a criterion the builder never reported at all (an empty
+report carries no claim — the criterion still needs its own measurement, or it stays
+**unmeasured**, never **contradicted**).
+
+## Cleanup preserves dirty losers (#80)
+
+Deleting a losing worktree used to be `git worktree remove --force`, unconditionally — a
+rejected candidate's uncommitted state was simply gone, and the throwaway
+`arbeitsplan/<runId>/<cid>` branch was never deleted at all. `worktree_pool.preserve_then_remove`
+is now the **one** place under `scripts/` that calls `git worktree remove` (`sweep_artifacts.py`
+imports it rather than shelling out a second copy): a DIRTY worktree (tracked changes, or
+untracked non-ignored files) is committed in full and `kept/<runId>-<cid>` is pointed at that
+commit **before** the worktree or its branch is removed; a clean worktree gets no `kept/` branch.
+FAIL CLOSED — if preservation cannot write (a read-only object store, for instance), that
+worktree and its branch are left exactly in place and `sweep_artifacts.py --apply` exits 1.
+`sweep_artifacts.py` stays dry-run-by-default (a dry run now also names, per dirty worktree, the
+`kept/` branch it would create and every candidate branch it would delete) and record-gated (a
+run that has not ended keeps its worktrees and branches and gets no `kept/` branch either).
+
 ## Backends, and the plan-node stop
 
 `backend` is an object — `{kind, why[], acknowledgedGaps[]}` — and `arbeitsplan-backend` picks

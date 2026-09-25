@@ -168,6 +168,130 @@ def git(*a) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *a], capture_output=True, text=True)
 
 
+class WorktreeListError(OSError):
+    """`git worktree list` failed: nothing under the directory may be removed, since
+    what is a worktree there -- and whose work it holds -- is unknown."""
+
+
+def worktrees_under(repo_root: Path, directory: Path) -> list:
+    """Every git worktree REGISTERED under `directory`, as [{path, branch}] sorted by
+    path; `branch` is None for a detached HEAD.
+
+    Enumerated from `git worktree list --porcelain`, never from a name glob. A
+    `glob("c*")` saw only the names worktree_pool.py create happens to use, so any
+    other worktree under .arbeitsplan/<run>/ was rmtree'd with its parent instead of
+    preserved -- dirty state lost, its branch and git metadata left dangling (#80's
+    own hazard, through a side door). Paths are compared resolved: git reports real
+    paths (/private/tmp on macOS), while callers may hold a symlinked one.
+    """
+    r = subprocess.run(["git", "-C", str(repo_root), "worktree", "list", "--porcelain"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        raise WorktreeListError(f"git worktree list failed: {r.stderr.strip()}")
+    base = directory.resolve()
+    found, cur = [], {}
+    for line in [*r.stdout.splitlines(), ""]:
+        if line.startswith("worktree "):
+            cur = {"path": Path(line[len("worktree "):]), "branch": None}
+        elif line.startswith("branch ") and cur:
+            cur["branch"] = line[len("branch "):].removeprefix("refs/heads/")
+        elif not line and cur:
+            p = cur["path"].resolve()
+            if base in p.parents:
+                found.append({"path": p, "branch": cur["branch"]})
+            cur = {}
+    return sorted(found, key=lambda w: str(w["path"]))
+
+
+def is_candidate_branch(run_id: str, branch: str | None) -> bool:
+    """A throwaway candidate branch of THIS run -- the only kind a removal deletes.
+    Base branches (#79) have their own lifecycle (destroy --bases); anything else
+    (a user's branch, a detached HEAD) is never ours to delete."""
+    return bool(branch) and branch.startswith(f"arbeitsplan/{run_id}/") \
+        and not branch.startswith(f"arbeitsplan/{run_id}/base/")
+
+
+def is_dirty(path: Path) -> bool:
+    """Tracked changes or untracked non-ignored files -- exactly what `git status
+    --porcelain` reports by default (ignored paths need --ignored to show at all)."""
+    r = subprocess.run(["git", "-C", str(path), "status", "--porcelain"],
+                       capture_output=True, text=True)
+    return bool(r.stdout.strip())
+
+
+_NAMED_BRANCH = object()  # the default: the branch worktree_pool.py create names it
+
+
+def preserve_then_remove(repo_root: Path, run_id: str, cid: str, path: Path,
+                         branch: object = _NAMED_BRANCH) -> dict:
+    """THE one place `git worktree remove` is called from (#80) -- sweep_artifacts.py
+    imports this rather than shelling out a second copy.
+
+    A DIRTY worktree (`is_dirty`: tracked changes or untracked non-ignored files) is
+    committed in full -- `git add -A` then a commit, right there in its own worktree --
+    and `kept/<run_id>-<cid>` is pointed at that commit BEFORE anything is removed. A
+    clean worktree gets no `kept/` branch. Either way, once preservation (if any) has
+    succeeded, the worktree is removed and its throwaway `arbeitsplan/<run_id>/<cid>`
+    branch is deleted.
+
+    FAIL CLOSED: if `add`/`commit`/branch-create cannot write (e.g. a read-only object
+    store), NOTHING is removed -- not the worktree, not its branch -- and the returned
+    dict carries `ok: False`. A caller must treat that as "leave it alone", never as
+    "remove anyway".
+
+    `branch` is the worktree's ACTUAL branch, as worktrees_under() reports it (None
+    for a detached HEAD); omitted, it is the name `create` gives, arbeitsplan/<run>/<cid>.
+    Only a candidate branch of this run (is_candidate_branch) is deleted -- anything
+    else is reported back as `branchKept` and left alone.
+    """
+    if branch is _NAMED_BRANCH:
+        branch = f"arbeitsplan/{run_id}/{cid}"
+    if not path.is_dir():
+        return {"cid": cid, "dirty": False, "kept_branch": None, "ok": True,
+                "removed": False, "error": None}
+
+    dirty = is_dirty(path)
+    kept_branch = None
+    if dirty:
+        add = subprocess.run(["git", "-C", str(path), "add", "-A"], capture_output=True, text=True)
+        if add.returncode != 0:
+            return {"cid": cid, "dirty": True, "kept_branch": None, "ok": False,
+                    "removed": False, "error": f"git add -A failed: {add.stderr.strip()}"}
+        commit = subprocess.run(
+            ["git", "-C", str(path), "-c", "user.email=arbeitsplan@local",
+             "-c", "user.name=arbeitsplan", "commit", "-m",
+             f"arbeitsplan {run_id}: preserve {cid}'s dirty state before removal"],
+            capture_output=True, text=True)
+        if commit.returncode != 0:
+            return {"cid": cid, "dirty": True, "kept_branch": None, "ok": False,
+                    "removed": False, "error": f"commit failed: {commit.stderr.strip()}"}
+        sha = subprocess.run(["git", "-C", str(path), "rev-parse", "HEAD"],
+                             capture_output=True, text=True).stdout.strip()
+        if not sha:
+            return {"cid": cid, "dirty": True, "kept_branch": None, "ok": False,
+                    "removed": False, "error": "could not resolve the preservation commit"}
+        kept_branch = f"kept/{run_id}-{cid}"
+        made = subprocess.run(["git", "-C", str(repo_root), "branch", kept_branch, sha],
+                              capture_output=True, text=True)
+        if made.returncode != 0:
+            return {"cid": cid, "dirty": True, "kept_branch": None, "ok": False,
+                    "removed": False, "error": f"could not create {kept_branch}: {made.stderr.strip()}"}
+
+    rm = subprocess.run(["git", "-C", str(repo_root), "worktree", "remove", "--force", str(path)],
+                        capture_output=True, text=True)
+    if rm.returncode != 0:
+        return {"cid": cid, "dirty": dirty, "kept_branch": kept_branch, "ok": False,
+                "removed": False, "error": f"worktree remove failed: {rm.stderr.strip()}"}
+    name = branch if isinstance(branch, str) else None
+    deleted = None
+    if name is not None and is_candidate_branch(run_id, name):
+        subprocess.run(["git", "-C", str(repo_root), "branch", "-D", name], capture_output=True, text=True)
+        deleted = name
+    return {"cid": cid, "dirty": dirty, "kept_branch": kept_branch, "ok": True,
+            "removed": True, "error": None, "branchDeleted": deleted,
+            "branchKept": None if deleted else name}
+
+
 def cmd_create(args) -> int:
     spec = load_spec(args.spec)
     run_id = spec["runId"]
@@ -256,16 +380,35 @@ def cmd_promote(args) -> int:
 
 def cmd_destroy(args) -> int:
     root = worktree_root(args.run)
-    removed = []
-    for path in sorted(root.glob("c*")):
+    repo_root = Path.cwd()
+    removed, failed = [], []
+    try:
+        worktrees = worktrees_under(repo_root, root) if root.is_dir() else []
+    except WorktreeListError as exc:
+        print(f"REFUSED: {exc}; nothing removed -- which directories are worktrees is unknown",
+              file=sys.stderr)
+        return 1
+    for wt in worktrees:
+        path = wt["path"]
         if args.keep and path.name in args.keep:
             print(f"  {path.name}: kept")
             continue
-        git("worktree", "remove", "--force", str(path))
-        git("branch", "-D", f"arbeitsplan/{args.run}/{path.name}")
+        result = preserve_then_remove(repo_root, args.run, path.name, path, wt["branch"])
+        if not result["ok"]:
+            failed.append(path.name)
+            print(f"  {path.name}: FAILED to preserve -- {result['error']}; worktree and "
+                  "branch left in place (fail closed)")
+            continue
+        note = f" (dirty state preserved on {result['kept_branch']})" if result["kept_branch"] else ""
+        what = "worktree and branch" if result["branchDeleted"] else (
+            f"worktree; branch {result['branchKept']} left -- not a candidate branch of this run"
+            if result["branchKept"] else "worktree; it had no branch (detached)")
         removed.append(path.name)
-        print(f"  {path.name}: removed (worktree and branch)")
+        print(f"  {path.name}: removed ({what}){note}")
     print(f"{len(removed)} loser(s) deleted. Nothing was merged.")
+    if failed:
+        print(f"{len(failed)} worktree(s) could NOT be preserved and were left in place: "
+              f"{', '.join(failed)}", file=sys.stderr)
     # --bases (#79): base branches survive an ordinary destroy on purpose -- a
     # later wave may still need arbeitsplan/<run>/base/<phase> to stack the next
     # fan-out on. Only an explicit --bases sweeps them, once the whole run (every
@@ -277,7 +420,7 @@ def cmd_destroy(args) -> int:
             git("branch", "-D", b)
             print(f"  {b}: base branch removed")
         print(f"{len(bases)} base branch(es) removed.")
-    return 0
+    return 1 if failed else 0
 
 
 def cmd_selftest(args) -> int:
@@ -430,6 +573,131 @@ def cmd_selftest(args) -> int:
                   f"arbeitsplan/{run_id}/* branch")
             if gone:
                 fails.append("destroy --bases")
+        finally:
+            os.chdir(cwd)
+
+    # preserve_then_remove (#80): a dirty worktree lands on kept/<run>-<cid> before
+    # removal; a clean one does not; a read-only object store fails closed and
+    # removes nothing.
+    with tempfile.TemporaryDirectory() as raw:
+        cwd = Path.cwd()
+        try:
+            os.chdir(raw)
+            Path("seed.txt").write_text("seed\n")
+            for c in (["git", "init", "-q"], ["git", "add", "-A"],
+                      ["git", "-c", "user.email=p@p", "-c", "user.name=p",
+                       "commit", "-qm", "seed"]):
+                subprocess.run(c, capture_output=True)
+            run_id = "ap-t-preserve"
+            repo_root = Path.cwd()
+            for cid in ("c1", "c2"):
+                subprocess.run(["git", "worktree", "add", "-q", "-b", f"arbeitsplan/{run_id}/{cid}",
+                               f".arbeitsplan/{run_id}/{cid}"], capture_output=True)
+            c1 = worktree_root(run_id) / "c1"
+            (c1 / "u.txt").write_text("untracked by c1\n")
+
+            r1 = preserve_then_remove(repo_root, run_id, "c1", c1)
+            ok = r1["ok"] and r1["dirty"] and r1["kept_branch"] == f"kept/{run_id}-c1" and not c1.exists()
+            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: a dirty worktree is "
+                  f"preserved on {r1.get('kept_branch')} and then removed")
+            if not ok:
+                fails.append("preserve_then_remove dirty")
+            show = subprocess.run(["git", "show", f"kept/{run_id}-c1:u.txt"],
+                                  capture_output=True, text=True)
+            ok = show.stdout == "untracked by c1\n"
+            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: the kept branch holds "
+                  "the untracked file's content")
+            if not ok:
+                fails.append("preserve_then_remove content")
+
+            c2 = worktree_root(run_id) / "c2"
+            r2 = preserve_then_remove(repo_root, run_id, "c2", c2)
+            ok = r2["ok"] and not r2["dirty"] and r2["kept_branch"] is None and not c2.exists()
+            kept2 = subprocess.run(["git", "branch", "--list", f"kept/{run_id}-c2"],
+                                   capture_output=True, text=True).stdout.strip()
+            ok = ok and not kept2
+            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: a clean worktree gets no "
+                  "kept/ branch")
+            if not ok:
+                fails.append("preserve_then_remove clean")
+        finally:
+            os.chdir(cwd)
+
+    with tempfile.TemporaryDirectory() as raw:
+        cwd = Path.cwd()
+        try:
+            os.chdir(raw)
+            Path("seed.txt").write_text("seed\n")
+            for c in (["git", "init", "-q"], ["git", "add", "-A"],
+                      ["git", "-c", "user.email=p@p", "-c", "user.name=p",
+                       "commit", "-qm", "seed"]):
+                subprocess.run(c, capture_output=True)
+            run_id = "ap-t-failclosed"
+            repo_root = Path.cwd()
+            subprocess.run(["git", "worktree", "add", "-q", "-b", f"arbeitsplan/{run_id}/c1",
+                           f".arbeitsplan/{run_id}/c1"], capture_output=True)
+            c1 = worktree_root(run_id) / "c1"
+            (c1 / "u.txt").write_text("untracked by c1\n")
+            objects = repo_root / ".git" / "objects"
+            import stat as _stat
+
+            def chmod_tree(root: Path, writable: bool) -> None:
+                for dirpath, dirnames, filenames in os.walk(root):
+                    for n in [*dirnames, *filenames, ""]:
+                        q = Path(dirpath) / n if n else Path(dirpath)
+                        mode = q.stat().st_mode
+                        q.chmod(mode | _stat.S_IWUSR if writable else mode & ~(_stat.S_IWUSR | _stat.S_IWGRP | _stat.S_IWOTH))
+
+            chmod_tree(objects, False)
+            try:
+                r = preserve_then_remove(repo_root, run_id, "c1", c1)
+            finally:
+                chmod_tree(objects, True)
+            ok = not r["ok"] and c1.exists() and (c1 / "u.txt").exists()
+            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- a read-only "
+                  "object store removes nothing")
+            if not ok:
+                fails.append("preserve_then_remove fail-closed")
+            survives = subprocess.run(["git", "branch", "--list", f"arbeitsplan/{run_id}/c1"],
+                                      capture_output=True, text=True).stdout.strip()
+            ok = bool(survives)
+            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- the "
+                  "candidate branch survives too")
+            if not ok:
+                fails.append("preserve_then_remove fail-closed branch")
+        finally:
+            os.chdir(cwd)
+
+    # destroy enumerates real worktrees (#80): a name `create` never uses is still
+    # preserved and removed, and a branch that is not the run's own is left alone.
+    with tempfile.TemporaryDirectory() as raw:
+        cwd = Path.cwd()
+        try:
+            os.chdir(raw)
+            Path("seed.txt").write_text("seed\n")
+            for c in (["git", "init", "-q"], ["git", "add", "-A"],
+                      ["git", "-c", "user.email=p@p", "-c", "user.name=p", "commit", "-qm", "seed"]):
+                subprocess.run(c, capture_output=True)
+            run_id = "ap-t-names"
+            subprocess.run(["git", "worktree", "add", "-q", "-b", f"arbeitsplan/{run_id}/fix",
+                            f".arbeitsplan/{run_id}/fix"], capture_output=True)
+            subprocess.run(["git", "worktree", "add", "-q", "-b", "feature/mine",
+                            f".arbeitsplan/{run_id}/scratch"], capture_output=True)
+            Path(f".arbeitsplan/{run_id}/fix/n.txt").write_text("fix untracked\n")
+            rc = cmd_destroy(argparse.Namespace(run=run_id, keep=[], bases=False))
+            kept = subprocess.run(["git", "show", f"kept/{run_id}-fix:n.txt"], capture_output=True, text=True)
+            left = subprocess.run(["git", "branch", "--list", f"arbeitsplan/{run_id}/*"],
+                                  capture_output=True, text=True).stdout.strip()
+            mine = subprocess.run(["git", "rev-parse", "--verify", "-q", "feature/mine"], capture_output=True)
+            for name, ok in [
+                ("destroy preserves a dirty worktree `create` would never name", rc == 0 and kept.stdout == "fix untracked\n"),
+                ("destroy deletes that worktree's candidate branch", not left),
+                ("destroy never deletes a branch that is not the run's own", mine.returncode == 0),
+                ("destroy leaves no worktree directory behind", not any(Path(f".arbeitsplan/{run_id}").glob("*"))),
+            ]:
+                print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+                if not ok:
+                    fails.append(name)
         finally:
             os.chdir(cwd)
 

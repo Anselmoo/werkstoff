@@ -162,8 +162,32 @@ function normalizeArgs(raw) {
   return { spec: a.spec, startAt: a.startAt || null, carry: a.carry || {} }
 }
 
+// #81: `check` is string | non-empty string[] | null (compile_spec.py's
+// land_candidate.checks_of is the Python twin of this same rule). This is the
+// one place run.js turns it into an ordered list of shell commands.
+const checksOf = (check) => (Array.isArray(check) ? check : check ? [check] : [])
+
+// #81: every acceptance command stands ALONE on its own line, inside a fenced
+// block, never sharing a line with the criterion text. The old rendering put
+// each command inside a parenthesised clause, trailing the criterion prose
+// on the same line: a model copying that line copied its closing punctuation
+// too, which changed the exit code the breaker acted on. An array's every
+// element gets its own line in the same block.
 const criteriaText = (acceptance) =>
-  acceptance.map((c) => `- [${c.id}] ${c.criterion}${c.check ? ` (check: ${c.check})` : ''}`).join('\n')
+  acceptance.map((c) => {
+    const cmds = checksOf(c.check)
+    const header = `- [${c.id}] ${c.criterion}`
+    return cmds.length ? [header, '  ```', ...cmds.map((cmd) => `  ${cmd}`), '  ```'].join('\n') : header
+  }).join('\n')
+
+// #81: the referee's "checks the builder reported" render, same rule as
+// criteriaText -- a reported command never shares a line with its own exit
+// code. An array check's rows (one per element, sharing their criterion id,
+// per the builder-output contract) render one block each.
+const checksReportedText = (checks) =>
+  (checks && checks.length
+    ? checks.map((k) => [`- ${k.id} (exit ${k.exit}):`, '  ```', `  ${k.command}`, '  ```'].join('\n')).join('\n')
+    : '- none reported')
 
 // A seeded PRNG, because Math.random is unavailable here and because the sample
 // a re-derivation checks must be reproducible from the spec alone -- a sample a
@@ -219,6 +243,16 @@ function emit(span, nodeId, status, detail, parent) {
   if (detail) ev.detail = detail
   events.push(ev)
   return ev.span_id
+}
+
+// An event detail is a SUMMARY. record_event.py appends each event as one
+// run.jsonl line, atomic only up to 4096 bytes, and it refuses a whole result
+// that holds a larger one -- so a detail never carries a payload (a diff, a
+// command, evidence text, an unbounded list). The payload travels in `carry`.
+const clip = (s, n = 160) => (typeof s === 'string' && s.length > n ? `${s.slice(0, n)}...` : s)
+const few = (key, xs, n = 10) => {
+  const list = Array.isArray(xs) ? xs : []
+  return list.length > n ? { [key]: list.slice(0, n), [`${key}Count`]: list.length } : { [key]: list }
 }
 
 // The budget the hook cannot enforce: no PreToolUse matcher sees a Workflow
@@ -387,9 +421,13 @@ for (let i = start; i < spec.phases.length; i++) {
     const scoped = measured.filter((r) => !(r.outOfScopeWrites || []).length && (r.diff || '').trim())
     const dropped = measured.filter((r) => !scoped.includes(r))
     results.forEach((r) => {
+      // A SUMMARY, never the payload: run.jsonl takes one atomic line of <= 4096
+      // bytes, and full command strings or long path lists outgrow it. The
+      // candidate itself travels in carry and lands in candidates/<id>.json.
       emit(`invoke_agent ${ph.agentType}`, `${nodeId}:${r.candidateId}`,
         r.measured === false ? 'unmeasured' : scoped.includes(r) ? 'proposed' : 'refuted',
-        { angle: r.angle, filesTouched: r.filesTouched || [], outOfScopeWrites: r.outOfScopeWrites || [], checks: r.checks || [] }, phaseSpan)
+        { angle: clip(r.angle), ...few('filesTouched', r.filesTouched), ...few('outOfScopeWrites', r.outOfScopeWrites),
+          checks: (r.checks || []).map((k) => ({ id: k.id, exit: k.exit })) }, phaseSpan)
     })
 
     // The breaker. Per batch, never cumulative; the unmeasured are excluded from
@@ -429,7 +467,7 @@ for (let i = start; i < spec.phases.length; i++) {
           criteriaText(acceptance()),
           ``,
           `Checks the builder reported:`,
-          (c.checks || []).map((k) => `- ${k.id}: ${k.command} -> exit ${k.exit}`).join('\n') || '- none reported',
+          checksReportedText(c.checks),
           ``,
           `Files touched: ${(c.filesTouched || []).join(', ') || 'none'}`,
           ``,
@@ -460,11 +498,36 @@ for (let i = start; i < spec.phases.length; i++) {
       const v = byId.get(c.candidateId)
       emit(`invoke_agent ${ph.agentType}`, `${lastBuild.phaseId}:${c.candidateId}`,
         !v ? 'unmeasured' : v.verdict === 'cannot_judge' ? 'doubt' : withEvidence(c) ? 'accepted' : 'refuted',
-        { verdict: v ? v.verdict : null, perCriterion: v ? v.perCriterion : [], rationaleLeaked: !!(v && v.rationaleLeaked), resolves_if: v && v.verdict === 'cannot_judge' ? 'a criterion with a runnable check that decides this diff' : null }, phaseSpan)
+        // unmet ids, not perCriterion: evidence strings outgrow one atomic line; the
+        // full verdict travels in carry and lands in referee/<id>.json.
+        { verdict: v ? v.verdict : null,
+          unmet: (v && Array.isArray(v.perCriterion) ? v.perCriterion : []).filter((p) => p && p.met === false).map((p) => p.id),
+          metCount: metCount(c), rationaleLeaked: !!(v && v.rationaleLeaked),
+          resolves_if: v && v.verdict === 'cannot_judge' ? 'a criterion with a runnable check that decides this diff' : null }, phaseSpan)
     })
     if (!ranked.length) {
-      return halt('NO CANDIDATE ACCEPTED. That is a statement about the contract, not the candidates; halting rather than re-dispatching.', nodeId,
-        { referee: verdicts, candidates: scoped })
+      // #78: WHY every candidate failed, not just that they did -- every rejected
+      // verdict's unmet criteria, grouped by criterion id. rounds.py decide reads
+      // this same shape (one round's `rejections`) to tell "a structural hole
+      // every candidate shares" (>= 2 candidates sharing one unmet criterion)
+      // apart from noise, and names the criterion a re-dispatch into a fresh
+      // batch cannot fix but a synthesis drawing on every rejected diff can.
+      const rejectionsByCriterion = {}
+      verdicts.forEach((v) => {
+        if (v.verdict === 'accepted') return
+        ;(v.perCriterion || []).forEach((p) => {
+          if (!p || p.met !== false || !p.id) return
+          if (!rejectionsByCriterion[p.id]) rejectionsByCriterion[p.id] = []
+          rejectionsByCriterion[p.id].push(v.candidateId)
+        })
+      })
+      return halt(
+        'NO CANDIDATE ACCEPTED. That is a statement about the contract, not the candidates; ' +
+        "run scripts/rounds.py decide over this run's rounds (scripts/rounds.py record) before " +
+        're-dispatching anything -- it names whether this is a shared hole to synthesize against ' +
+        'or a moving residual to stop on.',
+        nodeId, { referee: verdicts, candidates: scoped, rejectionsByCriterion },
+      )
     }
     lastVerdicts = { phaseId: nodeId, verdicts, ranked }
     opts.carry[nodeId] = { verdicts, winner: ranked[0].candidateId, runnersUp: ranked.slice(1).map((c) => c.candidateId) }
@@ -479,6 +542,12 @@ for (let i = start; i < spec.phases.length; i++) {
   const winner = lastVerdicts ? lastVerdicts.ranked[0] : null
   const runnersUp = lastVerdicts ? lastVerdicts.ranked.slice(1) : []
   const gate = ph.borrowGate && Array.isArray(ph.borrowGate.mustBeatWinnerOn) ? ph.borrowGate.mustBeatWinnerOn : []
+  // #78: synthesis is reachable from a NO CANDIDATE ACCEPTED halt, not just from
+  // a refereed winner. When the calling session relaunches at this phase with
+  // carry.sharedHole set (rounds.py decide said ROUTE SYNTHESIZE), and no
+  // refereed winner exists to write from instead, every rejected candidate's
+  // diff is rendered so the single writer can draw on all of them.
+  const sharedHole = !winner && opts.carry.sharedHole ? opts.carry.sharedHole : null
   const out = await agent(
     [
       `You are the single writer for phase ${nodeId} of run ${runId}.`,
@@ -488,7 +557,15 @@ for (let i = start; i < spec.phases.length; i++) {
       `Acceptance criteria:`,
       criteriaText(acceptance()),
       ``,
-      winner ? `The winning candidate (${winner.candidateId}), as its diff:\n${winner.diff}` : `There is no refereed winner; work from the earlier phases' data.`,
+      winner
+        ? `The winning candidate (${winner.candidateId}), as its diff:\n${winner.diff}`
+        : sharedHole
+          ? [
+              `There is no refereed winner. Every candidate was rejected on criterion ${sharedHole.criterion}.`,
+              `Synthesize a diff that establishes ${sharedHole.criterion}, drawing on every rejected candidate's diff below:`,
+              ...sharedHole.candidates.map((c) => `--- ${c.candidateId}\n${c.diff}`),
+            ].join('\n')
+          : `There is no refereed winner; work from the earlier phases' data.`,
       runnersUp.length ? `\nRunners-up, as diffs:\n${runnersUp.map((c) => `--- ${c.candidateId}\n${c.diff}`).join('\n')}` : ``,
       ``,
       gate.length
@@ -513,12 +590,15 @@ for (let i = start; i < spec.phases.length; i++) {
   // dropped from the record as refuted, whatever the agent says about it.
   const illegal = (out.borrowed || []).filter((b) => !gate.includes(b.beatsOn))
   emit(`invoke_agent ${ph.agentType}`, nodeId, illegal.length ? 'refuted' : 'proposed',
-    { baseCandidateId: out.baseCandidateId, borrowed: out.borrowed || [], illegalBorrows: illegal, filesTouched: out.filesTouched || [] }, phaseSpan)
+    // who each hunk came from and what it beats the winner on -- never the hunk text
+    { baseCandidateId: out.baseCandidateId,
+      borrowed: (out.borrowed || []).map((b) => ({ from: b.from, beatsOn: b.beatsOn })),
+      illegalBorrows: illegal.map((b) => ({ from: b.from, beatsOn: b.beatsOn })), ...few('filesTouched', out.filesTouched) }, phaseSpan)
   if (illegal.length) {
     return halt(`phase ${nodeId} borrowed ${illegal.length} hunk(s) outside the borrowGate; landing the plain winner is the safe fallback`, nodeId, { output: out })
   }
   for (const d of out.cannotEstablish || []) {
-    emit('evaluation', nodeId, 'doubt', { evidence: d, resolves_if: 'a runnable check for this criterion exists' }, phaseSpan)
+    emit('evaluation', nodeId, 'doubt', { evidence: clip(d), resolves_if: 'a runnable check for this criterion exists' }, phaseSpan)
   }
   opts.carry[nodeId] = { output: out }
   emit(`phase ${nodeId}`, nodeId, 'closed', null, rootSpan)
@@ -531,6 +611,9 @@ return {
   events,
   dispatched,
   note:
-    'Measurement and judgement only. The calling session lands exactly one diff with ' +
-    'land_candidate.py and persists `events` with record_event.py.',
+    'Judgement only, not measurement: this workflow never runs a check itself. Before landing, ' +
+    'the calling session measures the accepted candidate against its OWN tree -- ' +
+    'reconcile.py --run <runId> --run-checks --candidate <id> --tree <worktree> -- then lands ' +
+    'exactly one diff with land_candidate.py (which refuses an unmeasured or contradicted ' +
+    'candidate) and persists `events` with record_event.py.',
 }
