@@ -77,6 +77,21 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   Documented in `skills/arbeitsplan-run/SKILL.md`'s "delete the losers" step and in the README.
 
 ### Fixed
+- **a run can end, so the sweep can collect it**: nothing in arbeitsplan ever wrote an end
+  marker -- `run_record.finish()` and `refuse()` were called only by selftests -- so every
+  landed or halted run read as unfinished forever, and `sweep_artifacts.py`, which removes only
+  runs whose record says they ended, could never collect a real one. `record_event.py finish
+  --run <runId>` ends a run through `run_record`: `complete.json` when `landed.json` exists
+  (refused while a phase is open), `FAILED-<stamp>.json` carrying the halt's reason when a halt is
+  recorded, refused otherwise. `record_event.py status` names it as the next command, and
+  `arbeitsplan-run` makes it the last step (step 11) on both paths.
+- **`landed.json` no longer reports a divergence that did not happen**: `landing_record` hashed
+  the recorded and applied hunks as one ordered list, but `applied_diff()` appends the files a
+  candidate created after every tracked one while the recorded diff interleaves them
+  alphabetically. Any landing that created a file was flagged `divergedFrom` with empty
+  `onlyRecorded`/`onlyApplied` lists (run ap-2026-09-25-6f6f: 4 created files, 2032 identical
+  lines). Hunks are now compared per file -- order within a file still counts -- and
+  `divergedFrom` names the differing `paths`.
 - **acceptance checks render as a fenced block, and `check` accepts an array (#81)**:
   `workflows/run.js` used to render every acceptance check inline, trailing the criterion
   text inside a parenthesised clause on the same line as the id and prose -- e.g. a line

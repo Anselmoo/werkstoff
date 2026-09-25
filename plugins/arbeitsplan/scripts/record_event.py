@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Persist what an arbeitsplan run did, so the run directory -- not the chat -- is the record.
 
-usage: record_event.py {workflow,phase-output,phase,status,selftest} --run RUNID ...
+usage: record_event.py {workflow,phase-output,phase,status,finish,selftest} --run RUNID ...
 
   workflow      --result FILE   a Workflow tool return (workflows/run.js): appends its
                                 span-shaped `events` to run.jsonl, and writes one
@@ -15,6 +15,9 @@ usage: record_event.py {workflow,phase-output,phase,status,selftest} --run RUNID
   phase         --phase ID --status opened|closed [--reason TEXT]
                                 an in-session phase boundary; --status halted needs a reason
   status                        what the record says happened, and the single next command
+  finish                        end the run: complete.json when landed.json exists,
+                                FAILED-<stamp>.json when a halt is recorded, refused
+                                otherwise -- the marker sweep_artifacts.py waits for
 
 The plan (workflow.json) is never touched here. The Workflow tool has no
 filesystem, so a workflow's outcome arrives as a RETURN VALUE that something
@@ -152,16 +155,57 @@ def cmd_phase_output(run: run_record.Run, phase: str, output: dict) -> list:
     return notes
 
 
-def next_command(run_id: str, st: dict) -> str:
+def cmd_finish(run: run_record.Run) -> list:
+    """End the run in the record, so the run directory says it is over.
+
+    Nothing else in arbeitsplan ever wrote an end marker, so every run -- landed or
+    halted -- read as unfinished forever, and sweep_artifacts.py (which removes only
+    runs whose record says they ended) could never collect one. Two legal endings,
+    both through run_record, never a hand-written file:
+
+      landed.json exists  -> run.finish(): complete.json, refused while a phase is open
+      a halt is recorded  -> run.refuse(): FAILED-<stamp>.json carrying the halt reason;
+                             a halt means "re-compile", which is what a refused run says
+    Anything else is refused: stopping is not an ending, and a marker a run did not
+    earn would let the sweep delete a run that is still going.
+    """
+    st = run.status()
+    if st["finished"] or st["failed"]:
+        raise run_record.RecordError("the run has already ended; a run ends once")
+    landed = None
+    try:
+        landed = json.loads((run.dir / "landed.json").read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        pass
+    except ValueError as exc:
+        raise run_record.RecordError(f"landed.json is unreadable ({exc}); never read as landed") from exc
+    if isinstance(landed, dict) and landed.get("candidate"):
+        path = run.finish({"landed": landed["candidate"], "paths": len(landed.get("paths") or []),
+                           "diverged": "divergedFrom" in landed})
+        return [f"finished: {path.name} (landed {landed['candidate']})"]
+    if st["halted"]:
+        h = st["halted"]
+        path = run.refuse(f"halted at {h['node_id']}: {h['reason']}")
+        return [f"ended as halted: {path.name} ({h['node_id']}: {h['reason']})"]
+    raise run_record.RecordError(
+        "nothing ends this run yet: no landed.json and no recorded halt. Land with "
+        "land_candidate.py, or record the halt (worktree_pool.py close --halt \"<reason>\"), first")
+
+
+def next_command(run_id: str, st: dict, landed: bool = False) -> str:
     n = st["next"]
     kind = n["kind"]
+    finish = f"record_event.py finish --run {run_id}"
     if kind == "done":
         return "nothing: the run is finished (complete.json exists)"
     if kind == "inspect-refusal":
         return f"read analysis/arbeitsplan/{run_id}/{n['file']} -- the run was refused, re-compile"
     if kind == "inspect-halt":
         return (f"read the halt at {n['node_id']!r}: {st['halted']['reason']} -- a halt is a "
-                "statement about the contract or the environment; re-compile, never re-dispatch")
+                "statement about the contract or the environment; re-compile, never re-dispatch. "
+                f"End this run with {finish}")
+    if kind == "continue" and landed:
+        return f"the run has landed: {finish}"
     if kind == "run-plan-node":
         return (f"run plan-mode phase {n['node_id']!r} in this session, then "
                 f"record_event.py phase-output --run {run_id} --phase {n['node_id']} --output <file>")
@@ -242,6 +286,47 @@ def selftest() -> int:
                 ok("a result with no events is refused", False)
             except run_record.RecordError:
                 ok("a result with no events is refused", True)
+
+            # finish: the end marker sweep_artifacts.py waits for, earned or refused.
+            def refused(fn) -> bool:
+                try:
+                    fn()
+                except run_record.RecordError:
+                    return True
+                return False
+
+            landed = run_record.open_run(PLUGIN, "ap-t-10")
+            ok("finish refuses a run with no landing and no halt", refused(lambda: cmd_finish(landed)))
+            landed.append(_span("ap-t-10", "phase land", "land", "opened"))
+            (landed.dir / "landed.json").write_text(json.dumps({"candidate": "c2", "paths": ["src/x.py"]}))
+            ok("status does not offer finish while a phase is still open",
+               "finish --run" not in next_command("ap-t-10", landed.status(), True))
+            ok("finish refuses a landed run while a phase is still open", refused(lambda: cmd_finish(landed)))
+            landed.append(_span("ap-t-10", "phase land", "land", "closed"))
+            ok("status names finish once the landed run's phases are closed",
+               "finish --run ap-t-10" in next_command("ap-t-10", landed.status(), True))
+            cmd_finish(landed)
+            ok("a landed run finishes as complete.json", (landed.dir / "complete.json").is_file()
+               and json.loads((landed.dir / "complete.json").read_text()).get("landed") == "c2")
+            ok("a run ends once", refused(lambda: cmd_finish(landed)))
+
+            halted = run_record.open_run(PLUGIN, "ap-t-11")
+            halted.append(_span("ap-t-11", "phase build", "build", "opened"))
+            halted.halt("CONTRACT PROBLEM: 0/2 usable", "build")
+            ok("status names finish for a halted run", "finish --run ap-t-11" in next_command("ap-t-11", halted.status()))
+            cmd_finish(halted)
+            failed = sorted(halted.dir.glob("FAILED-*.json"))
+            ok("a halted run ends as FAILED-<stamp>.json carrying the halt",
+               len(failed) == 1 and "CONTRACT PROBLEM" in failed[0].read_text())
+            ok("no complete.json for a halted run", not (halted.dir / "complete.json").exists())
+
+            # Imported here, not at module level: the sweep is the consumer this
+            # marker exists for, and record_event.py itself never needs it.
+            import sweep_artifacts
+            eligible, _ = sweep_artifacts.survey(Path(raw))
+            names = {p.name for p, _ in eligible}
+            ok("the sweep now sees both ended runs", {"ap-t-10", "ap-t-11"} <= names)
+            ok("the sweep still keeps the unfinished one", rid not in names)
         finally:
             os.chdir(cwd)
     print()
@@ -269,6 +354,8 @@ def main(argv: list) -> int:
     ph.add_argument("--reason")
     st = sub.add_parser("status")
     st.add_argument("--run", required=True)
+    fin = sub.add_parser("finish")
+    fin.add_argument("--run", required=True)
     sub.add_parser("selftest")
     args = parser.parse_args(argv)
     if args.cmd == "selftest":
@@ -278,7 +365,11 @@ def main(argv: list) -> int:
         if args.cmd == "status":
             s = run.status()
             print(json.dumps(s, indent=2))
-            print(f"\nnext: {next_command(args.run, s)}")
+            print(f"\nnext: {next_command(args.run, s, (run.dir / 'landed.json').is_file())}")
+            return 0
+        if args.cmd == "finish":
+            for n in cmd_finish(run):
+                print(n)
             return 0
         if args.cmd == "phase":
             if args.status == "halted":

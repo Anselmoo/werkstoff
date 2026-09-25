@@ -108,6 +108,17 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
     `close` **refuses** a phase that recorded no terminal event. On a halt, close with
     `--halt "<the specific reason>"`: a halt is an event in `run.jsonl`, never an absence.
 
+11. **End the run in the record** -- landed or halted, always last:
+
+    ```bash
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" finish --run <runId>
+    ```
+
+    A landed run gets `complete.json` (refused while any phase is still open); a halted one
+    gets `FAILED-<stamp>.json` carrying the halt's reason; anything else is refused, because
+    stopping is not an ending. This marker is what `sweep_artifacts.py` waits for -- a run
+    without it is kept forever, whatever state its worktrees are in.
+
     Deletion itself goes through `worktree_pool.py destroy` (or `sweep_artifacts.py` for a whole
     finished run), which never just discards a loser's uncommitted state (#80): a DIRTY worktree
     is committed and preserved on `kept/<runId>-<cid>` before its worktree and throwaway
@@ -247,7 +258,8 @@ phases, measure the accepted candidate with `reconcile.py --run-checks` (#76), a
    to measure every checked criterion against the accepted candidate's own tree (#76), then
    `land_candidate.py`, where the hook, the `writeScope` check, and this measurement gate all
    run. The workflow never lands. `land_candidate.py` writes `landed.json`, with `divergedFrom`
-   if what landed differs from the recorded candidate.
+   if what landed differs from the recorded candidate. Then end the run with
+   `record_event.py finish --run <runId>` -- after a halt too -- exactly as step 11 above.
 
 ## Rules
 

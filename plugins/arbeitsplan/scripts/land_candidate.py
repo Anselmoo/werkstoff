@@ -68,6 +68,7 @@ import re
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -446,17 +447,55 @@ def _selftest_measurement_gate() -> list:
     return fails
 
 
+def hunks_by_path(diff: str) -> dict:
+    """hunk_body() per file: {path: [+/- lines in order]}.
+
+    The file ORDER of two diffs of the same paths is not something either side
+    decides: applied_diff() appends the files a candidate created after every
+    tracked one, while the recorded `git diff` interleaves them alphabetically.
+    Comparing one flat list therefore called identical landings divergent (run
+    ap-2026-09-25-6f6f: 4 created files, 2032 identical lines, divergedFrom with
+    nothing in it). Within a file, order is content, so it is kept.
+    """
+    out: dict = {}
+    current = None
+    old = None
+    for line in diff.splitlines():
+        if line.startswith("--- "):
+            old = re.sub(r"^(?:[ab]/)?", "", line[4:].strip())
+            continue
+        if line.startswith("+++ "):
+            new = re.sub(r"^(?:[ab]/)?", "", line[4:].strip())
+            current = old if new == "/dev/null" else new
+            out.setdefault(current, [])
+            continue
+        if current is not None and line[:1] in "+-":
+            out[current].append(line)
+    return out
+
+
 def landing_record(run_id: str, candidate_id: str, recorded: str, applied: str, paths: list) -> dict:
+    rec_by, app_by = hunks_by_path(recorded), hunks_by_path(applied)
+
+    def digest(by: dict) -> str:
+        return hashlib.sha256(json.dumps(sorted(by.items())).encode()).hexdigest()
+
     rec = {
         "runId": run_id, "candidate": candidate_id, "paths": paths,
-        "recordedSha256": hashlib.sha256("\n".join(hunk_body(recorded)).encode()).hexdigest(),
-        "appliedSha256": hashlib.sha256("\n".join(hunk_body(applied)).encode()).hexdigest(),
+        "recordedSha256": digest(rec_by), "appliedSha256": digest(app_by),
     }
     if rec["recordedSha256"] != rec["appliedSha256"]:
+        differing = sorted(p for p in set(rec_by) | set(app_by) if rec_by.get(p) != app_by.get(p))
+        only_rec, only_app = [], []
+        for p in differing:
+            a, b = Counter(rec_by.get(p, [])), Counter(app_by.get(p, []))
+            only_rec += list((a - b).elements())
+            only_app += list((b - a).elements())
         rec["divergedFrom"] = {
             "candidate": candidate_id,
-            "onlyRecorded": [ln for ln in hunk_body(recorded) if ln not in hunk_body(applied)][:40],
-            "onlyApplied": [ln for ln in hunk_body(applied) if ln not in hunk_body(recorded)][:40],
+            "paths": differing,
+            "onlyRecorded": only_rec[:40],
+            "onlyApplied": only_app[:40],
         }
     return rec
 
@@ -499,6 +538,20 @@ def main(argv: list) -> int:
         rec_diff = "--- a/x.py\n+++ b/x.py\n@@ -1 +1 @@\n-old\n+new\n"
         same = "diff --git a/x.py b/x.py\nindex 1..2\n--- a/x.py\n+++ b/x.py\n@@ -1,1 +1,1 @@\n-old\n+new\n"
         edited = same.replace("+new", "+newer")
+        two = ("--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-a\n+A\n"
+               "--- /dev/null\n+++ b/b.py\n@@ -0,0 +1 @@\n+B\n")
+        swapped = ("--- /dev/null\n+++ b/b.py\n@@ -0,0 +1 @@\n+B\n"
+                   "--- a/a.py\n+++ b/a.py\n@@ -1 +1 @@\n-a\n+A\n")
+        moved = swapped.replace("+++ b/b.py", "+++ b/c.py")
+        multi_cases = [("same files in a different order (a created file appended last)", two, swapped, False),
+                       ("the same line landing in a different file", two, moved, True)]
+        for name, recorded, applied, want_div in multi_cases:
+            r = landing_record("r", "c1", recorded, applied, ["a.py", "b.py"])
+            got = "divergedFrom" in r
+            ok = got == want_div and (not got or bool(r["divergedFrom"]["paths"]))
+            print(f"  {'ok  ' if ok else 'FAIL'} landing record: {name} -> diverged={got}")
+            if not ok:
+                fails.append(name)
         for name, applied, want_div in [("identical hunks, different headers", same, False),
                                          ("a correction at landing", edited, True)]:
             got = "divergedFrom" in landing_record("r", "c1", rec_diff, applied, ["x.py"])
