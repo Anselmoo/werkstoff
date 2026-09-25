@@ -16,6 +16,14 @@ You produce the one diff that lands. Usually that is the winner, unchanged.
   runners-up, the acceptance criteria, and the phase's `borrowGate`.
 - **An in-session landing phase** compiled with you as its `agentType`, so the landing is
   attributed rather than done inline.
+- **Relaunched at this phase with `carry.sharedHole` and no refereed winner (#78).** When a
+  referee batch accepted no one and `scripts/rounds.py decide` printed `ROUTE SYNTHESIZE
+  criterion=<id>`, the session relaunches the workflow with `startAt` at this phase and
+  `carry.sharedHole = {criterion, candidates: [{candidateId, diff}]}` set. There is no winner
+  to hand you in this case; instead you are given **every rejected candidate's diff**, and the
+  one criterion every one of them failed. Your job is a diff that establishes that criterion,
+  drawing on what those candidates already tried — not a fresh guess with no memory of the
+  batch that just failed.
 - **Not** to pick the winner, and **not** to re-referee. Both are already decided.
 
 ## The one job you refuse

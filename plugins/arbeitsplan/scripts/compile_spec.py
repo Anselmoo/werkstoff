@@ -80,6 +80,9 @@ RED_RULES = {
     "AP-SIBLING-INVISIBLE": 79,
     "AP-BASE-INVALID": 79,
     "AP-BASE-BACKEND": 79,
+    "AP-CHECK-SHAPE": 81,
+    "AP-SUPERSEDES-INVALID": 93,
+    "AP-ROUNDBREAKER-INVALID": 93,
 }
 
 # backend.why is a closed vocabulary, one id per row of
@@ -207,6 +210,33 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
     if not isinstance(run_id, str) or not RUN_ID_RE.match(run_id or ""):
         err("runId", "must be [A-Za-z0-9._-]{1,64} without '..' -- it is a path component")
 
+    # supersedes / roundBreaker (#93, recorded-red): HEAD (e42621b) never looked at
+    # either top-level key at all -- an unrecognised key was simply ignored, so a
+    # spec carrying `supersedes: 5` or `roundBreaker: {maxAdvancingRounds: "3"}`
+    # compiled clean there. Both are optional; only a MALFORMED value is rejected.
+    supersedes = spec.get("supersedes")
+    if supersedes is not None:
+        if not isinstance(supersedes, str) or not supersedes:
+            err("supersedes", "[AP-SUPERSEDES-INVALID] must be a non-empty runId string when "
+                              "present -- scripts/rounds.py record follows it to rebuild rounds "
+                              "across a superseded run's chain")
+        elif isinstance(run_id, str) and supersedes == run_id:
+            err("supersedes", f"[AP-SUPERSEDES-INVALID] must not name this spec's own runId "
+                              f"{run_id!r}; a run cannot supersede itself")
+
+    round_breaker = spec.get("roundBreaker")
+    if round_breaker is not None:
+        if not isinstance(round_breaker, dict):
+            err("roundBreaker", "[AP-ROUNDBREAKER-INVALID] must be an object "
+                                "{maxAdvancingRounds: int >= 2}")
+        else:
+            n = round_breaker.get("maxAdvancingRounds")
+            if isinstance(n, bool) or not isinstance(n, int) or n < 2:
+                err("roundBreaker.maxAdvancingRounds", "[AP-ROUNDBREAKER-INVALID] must be a "
+                                                        "plain int >= 2 -- a bool is not an int "
+                                                        "here, and N < 2 cannot show a SEQUENCE "
+                                                        "of advancing rounds (#93)")
+
     problem = spec.get("problem")
     if not isinstance(problem, dict):
         err("problem", "missing or not an object")
@@ -244,8 +274,21 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
                 seen.add(a["id"])
             if not a.get("criterion"):
                 err(f"problem.acceptance[{i}]", "no 'criterion'")
-            if a.get("check"):
-                runnable += 1
+            # AP-CHECK-SHAPE (#81, recorded-red): HEAD (e42621b) never looked at
+            # `check`'s TYPE at all -- only its truthiness, below -- so a check of
+            # 42, {}, [] or ['true', 3] compiled clean and only failed later,
+            # wherever something finally tried to run it as a shell command.
+            # land_candidate.checks_of() is the one normalizer every reader (this
+            # validator, --probe-checks, reconcile.py's measure(), run.js's
+            # checksOf) traces back to, so a shape none of them agree on is
+            # rejected here, once, rather than differently by each reader.
+            try:
+                cmds = land_candidate.checks_of(a.get("check"))
+            except land_candidate.CheckShapeError as exc:
+                err(f"problem.acceptance[{i}]", f"[AP-CHECK-SHAPE] 'check' {exc}")
+            else:
+                if cmds:
+                    runnable += 1
         if acceptance and runnable == 0:
             err("problem.acceptance", "no criterion carries a runnable 'check'; nothing "
                                       "could referee this spec")
@@ -769,6 +812,23 @@ def selftest(root: Path) -> int:
         ("empty writeScope", _mut(writeScope=[]), 1),
         ("no runnable check", _mut(problem=dict(GOOD["problem"],
             acceptance=[{"id": "a1", "criterion": "c"}])), 1),
+        # check shape / AP-CHECK-SHAPE (#81)
+        ("check: an int -> AP-CHECK-SHAPE", _mut(problem=dict(GOOD["problem"],
+            acceptance=[{"id": "a1", "criterion": "c", "check": 42}])), 1),
+        ("check: an object -> AP-CHECK-SHAPE", _mut(problem=dict(GOOD["problem"],
+            acceptance=[{"id": "a1", "criterion": "c", "check": {}}])), 1),
+        ("check: an empty list -> AP-CHECK-SHAPE", _mut(problem=dict(GOOD["problem"],
+            acceptance=[{"id": "a1", "criterion": "c", "check": []}])), 1),
+        ("check: a list with an empty string -> AP-CHECK-SHAPE", _mut(problem=dict(
+            GOOD["problem"], acceptance=[{"id": "a1", "criterion": "c", "check": [""]}])), 1),
+        ("check: a list with a non-string element -> AP-CHECK-SHAPE", _mut(problem=dict(
+            GOOD["problem"], acceptance=[{"id": "a1", "criterion": "c",
+                "check": ["true", 3]}])), 1),
+        ("check: a non-empty string array compiles clean", _mut(problem=dict(GOOD["problem"],
+            acceptance=[{"id": "a1", "criterion": "c", "check": ["true", "true"]}])), 0),
+        ("check: null alongside a runnable sibling compiles clean", _mut(problem=dict(
+            GOOD["problem"], acceptance=[{"id": "a1", "criterion": "c", "check": "true"},
+                {"id": "a2", "criterion": "d", "check": None}])), 0),
         ("budget below fanOut sum", _mut(budget={"totalDispatches": 2,
             "wallClockMinutes": 5}), 1),
         ("angles != fanOut", _mut(phases=[dict(GOOD["phases"][0], angles=["a", "b"])]), 1),
@@ -889,6 +949,22 @@ def selftest(root: Path) -> int:
         ("base: under the workflow backend -> AP-BASE-BACKEND", _mut(SIX,
             phases=SIX["phases"][:2] + [dict(SIX["phases"][2], base="contract")]
                 + SIX["phases"][3:]), 1),
+        # supersedes / roundBreaker (#93)
+        ("supersedes: a valid runId string -- clean", _mut(supersedes="ap-2026-09-20-abcd"), 0),
+        ("supersedes: not a string -> AP-SUPERSEDES-INVALID", _mut(supersedes=5), 1),
+        ("supersedes: names this spec's own runId -> AP-SUPERSEDES-INVALID",
+            _mut(supersedes=GOOD["runId"]), 1),
+        ("roundBreaker.maxAdvancingRounds 2 -- clean",
+            _mut(roundBreaker={"maxAdvancingRounds": 2}), 0),
+        ("roundBreaker.maxAdvancingRounds 3 -- clean",
+            _mut(roundBreaker={"maxAdvancingRounds": 3}), 0),
+        ("roundBreaker: not an object -> AP-ROUNDBREAKER-INVALID", _mut(roundBreaker="2"), 1),
+        ("roundBreaker.maxAdvancingRounds 1 -> AP-ROUNDBREAKER-INVALID",
+            _mut(roundBreaker={"maxAdvancingRounds": 1}), 1),
+        ("roundBreaker.maxAdvancingRounds a string -> AP-ROUNDBREAKER-INVALID",
+            _mut(roundBreaker={"maxAdvancingRounds": "3"}), 1),
+        ("roundBreaker.maxAdvancingRounds a bool -> AP-ROUNDBREAKER-INVALID",
+            _mut(roundBreaker={"maxAdvancingRounds": True}), 1),
     ]
     fails = []
     for name, spec, want in cases:
@@ -966,26 +1042,38 @@ def classify_check(check: str, timeout: float, cwd: Path) -> tuple:
 def probe_checks(spec: dict, timeout: float) -> int:
     """--probe-checks (#74): opt-in only -- a plain compile executes nothing.
 
-    Runs every problem.acceptance check once, cwd = the process's own cwd,
-    and prints one stdout line per check: `PROBE <id> <CLASS> exit=<n>`. Any
-    check that did not RAN -- ABSENT-TARGET, SYNTAX, PERMISSION or TIMEOUT --
-    is rejected by id with [AP-CHECK-NOT-RAN]: a criterion nothing could
-    execute cannot referee anything, and this is a static-shaped guarantee no
-    later 'it fails, but at least it ran' report could give.
+    Runs every problem.acceptance check once, cwd = the process's own cwd, and
+    prints one stdout line per COMMAND: `PROBE <id> <CLASS> exit=<n>`. `check`
+    may be a single string or a non-empty list of strings (#81) -- an array's
+    elements each print their own PROBE line, sharing their criterion's id, so
+    the line shape itself never changes. Any command that did not RAN --
+    ABSENT-TARGET, SYNTAX, PERMISSION or TIMEOUT -- is rejected by id with
+    [AP-CHECK-NOT-RAN]: a criterion nothing could execute cannot referee
+    anything, and this is a static-shaped guarantee no later 'it fails, but
+    at least it ran' report could give.
 
-    Exit: 0 every check ran, 1 some check did not.
+    validate() (AP-CHECK-SHAPE) already refused any spec whose `check` is not
+    one of the shapes land_candidate.checks_of() accepts, and main() never
+    reaches here when validate() rejected -- so a CheckShapeError here would
+    mean this spec was never actually validated first.
+
+    Exit: 0 every command ran, 1 some command did not.
     """
     acceptance = (spec.get("problem") or {}).get("acceptance") or []
     cwd = Path.cwd()
     rejected = []
     for i, a in enumerate(acceptance):
-        if not isinstance(a, dict) or not a.get("check"):
+        if not isinstance(a, dict):
+            continue
+        cmds = land_candidate.checks_of(a.get("check"))
+        if not cmds:
             continue
         aid = a.get("id")
-        cls, exit_code = classify_check(a["check"], timeout, cwd)
-        print(f"PROBE {aid} {cls} exit={exit_code}")
-        if cls != "RAN":
-            rejected.append((i, aid, cls))
+        for cmd in cmds:
+            cls, exit_code = classify_check(cmd, timeout, cwd)
+            print(f"PROBE {aid} {cls} exit={exit_code}")
+            if cls != "RAN":
+                rejected.append((i, aid, cls))
     if rejected:
         for i, aid, cls in rejected:
             print(f"REJECTED problem.acceptance[{i}] ({aid}): [AP-CHECK-NOT-RAN] check "

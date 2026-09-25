@@ -37,7 +37,10 @@ so in your report.
    anything else, and a denial is not a puzzle to route around — it means the dispatch was
    wrong. Report it and stop.
 2. **Run every acceptance `check` yourself** before reporting, and report the real exit
-   codes. A check you did not run is not a check.
+   codes. A check you did not run is not a check. When a criterion's `check` is an **array**,
+   run every element and report each element's exit as its own row in `checks[]`, all sharing
+   that criterion's `id` — a criterion with an array check is met only when every element
+   exits 0.
 3. **If you cannot work, say so.** Worktree missing, dependencies unbuildable, the scope
    makes no sense — return `measured: false` with no diff. **Never manufacture a diff to
    fill the batch.** An unmeasured candidate is excluded from the breaker's denominator; a

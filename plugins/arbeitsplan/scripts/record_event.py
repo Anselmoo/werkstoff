@@ -26,6 +26,15 @@ candidates/<phaseId>.json, and it only gets a referee record when a later
 adjudicator output says `verdict: "land"` -- so land_candidate.py refuses it until
 the round was judged, exactly as it refuses an unjudged candidate.
 
+referee/<id>.json (flat, write-once, never overwritten) stays the ONE authoritative
+record land_candidate.py reads -- whichever referee phase claims a candidateId first.
+But a run can carry MORE THAN ONE referee phase against the SAME candidate ids (a
+widened run whose second batch reuses c1/c2), and a flat write-once file would
+silently drop every verdict but the first. So EVERY verdict is also written to
+referee/<phase>/<id>.json -- write-once per (phase, id), never per id alone -- which
+is what scripts/rounds.py reads to rebuild one round per referee phase, in phase
+order, across a run and its `supersedes` chain (#78, #93).
+
 Exit: 0 ok, 1 refused, 2 usage or unreadable input. STDLIB ONLY.
 """
 
@@ -86,6 +95,11 @@ def cmd_workflow(run: run_record.Run, result: dict) -> list:
         for v in payload.get("verdicts") or []:
             ok = _write_once(run.dir / "referee" / f"{v['candidateId']}.json", {**v, "phase": node})
             written, skipped = written + ok, skipped + (not ok)
+            # Phase-namespaced twin (#78, #93): independent of whether the flat write
+            # above claimed the id first, so a SECOND referee phase reusing this
+            # candidateId is still recorded rather than silently skipped. Still
+            # write-once -- the same (phase, id) pair is never overwritten either.
+            _write_once(run.dir / "referee" / node / f"{v['candidateId']}.json", {**v, "phase": node})
         out = payload.get("output")
         if isinstance(out, dict) and "diff" in out:
             if out.get("borrowed"):
@@ -190,6 +204,23 @@ def selftest() -> int:
             ok("candidates written one file per id", sorted(p.name for p in (d / "candidates").glob("*.json")) == ["c1.json", "c2.json", "synthesize.json"])
             ok("referee written only for what was judged", sorted(p.name for p in (d / "referee").glob("*.json")) == ["c1.json"])
             ok("a borrowed synthesis gets no referee record", not (d / "referee" / "synthesize.json").exists())
+            ok("the phase-namespaced twin is written alongside the flat file",
+               (d / "referee" / "referee" / "c1.json").is_file())
+            # A SECOND referee phase reusing candidateId c1: the flat referee/c1.json
+            # is claimed already (write-once) and stays untouched, but the
+            # phase-namespaced twin under the new phase's own directory is not --
+            # this is the #78/#93 fix: a second phase's verdicts are recorded, not
+            # silently skipped.
+            second = {"events": [{"trace_id": rid, "span_id": f"{rid}.5", "parent_span_id": f"{rid}.wf",
+                                  "span": "phase referee2", "node_id": "referee2", "status": "closed"}],
+                     "carry": {"referee2": {"verdicts": [{"candidateId": "c1", "verdict": "accepted",
+                                                           "perCriterion": [{"id": "a1", "met": True}]}]}}}
+            cmd_workflow(run, second)
+            ok("flat referee/c1.json is untouched by the second phase (still write-once)",
+               json.loads((d / "referee" / "c1.json").read_text()).get("verdict") == "accepted")
+            ok("the second phase's verdict is recorded under its own phase-namespaced path",
+               (d / "referee" / "referee2" / "c1.json").is_file()
+               and json.loads((d / "referee" / "referee2" / "c1.json").read_text()).get("verdict") == "accepted")
             st = run.status()
             ok("the record reads as a plan-node pause", st["next"] == {"kind": "run-plan-node", "node_id": "adjudicate"})
             (d / "candidates" / "c1.json").write_text('{"candidateId": "c1", "diff": "HAND-EDITED"}')

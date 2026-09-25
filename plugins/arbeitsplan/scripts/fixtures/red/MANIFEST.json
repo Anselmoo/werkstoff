@@ -90,6 +90,27 @@
       "fixture": "base-backend.workflow.json",
       "args": [],
       "expect": { "exit": 1 }
+    },
+    {
+      "issue": 81,
+      "rule": "AP-CHECK-SHAPE",
+      "fixture": "check-shape.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 93,
+      "rule": "AP-SUPERSEDES-INVALID",
+      "fixture": "supersedes-invalid.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
+    },
+    {
+      "issue": 93,
+      "rule": "AP-ROUNDBREAKER-INVALID",
+      "fixture": "roundbreaker-invalid.workflow.json",
+      "args": [],
+      "expect": { "exit": 1 }
     }
   ]
 }

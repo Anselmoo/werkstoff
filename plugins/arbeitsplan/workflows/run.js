@@ -162,8 +162,32 @@ function normalizeArgs(raw) {
   return { spec: a.spec, startAt: a.startAt || null, carry: a.carry || {} }
 }
 
+// #81: `check` is string | non-empty string[] | null (compile_spec.py's
+// land_candidate.checks_of is the Python twin of this same rule). This is the
+// one place run.js turns it into an ordered list of shell commands.
+const checksOf = (check) => (Array.isArray(check) ? check : check ? [check] : [])
+
+// #81: every acceptance command stands ALONE on its own line, inside a fenced
+// block, never sharing a line with the criterion text. The old rendering put
+// each command inside a parenthesised clause, trailing the criterion prose
+// on the same line: a model copying that line copied its closing punctuation
+// too, which changed the exit code the breaker acted on. An array's every
+// element gets its own line in the same block.
 const criteriaText = (acceptance) =>
-  acceptance.map((c) => `- [${c.id}] ${c.criterion}${c.check ? ` (check: ${c.check})` : ''}`).join('\n')
+  acceptance.map((c) => {
+    const cmds = checksOf(c.check)
+    const header = `- [${c.id}] ${c.criterion}`
+    return cmds.length ? [header, '  ```', ...cmds.map((cmd) => `  ${cmd}`), '  ```'].join('\n') : header
+  }).join('\n')
+
+// #81: the referee's "checks the builder reported" render, same rule as
+// criteriaText -- a reported command never shares a line with its own exit
+// code. An array check's rows (one per element, sharing their criterion id,
+// per the builder-output contract) render one block each.
+const checksReportedText = (checks) =>
+  (checks && checks.length
+    ? checks.map((k) => [`- ${k.id} (exit ${k.exit}):`, '  ```', `  ${k.command}`, '  ```'].join('\n')).join('\n')
+    : '- none reported')
 
 // A seeded PRNG, because Math.random is unavailable here and because the sample
 // a re-derivation checks must be reproducible from the spec alone -- a sample a
@@ -429,7 +453,7 @@ for (let i = start; i < spec.phases.length; i++) {
           criteriaText(acceptance()),
           ``,
           `Checks the builder reported:`,
-          (c.checks || []).map((k) => `- ${k.id}: ${k.command} -> exit ${k.exit}`).join('\n') || '- none reported',
+          checksReportedText(c.checks),
           ``,
           `Files touched: ${(c.filesTouched || []).join(', ') || 'none'}`,
           ``,
@@ -463,8 +487,28 @@ for (let i = start; i < spec.phases.length; i++) {
         { verdict: v ? v.verdict : null, perCriterion: v ? v.perCriterion : [], rationaleLeaked: !!(v && v.rationaleLeaked), resolves_if: v && v.verdict === 'cannot_judge' ? 'a criterion with a runnable check that decides this diff' : null }, phaseSpan)
     })
     if (!ranked.length) {
-      return halt('NO CANDIDATE ACCEPTED. That is a statement about the contract, not the candidates; halting rather than re-dispatching.', nodeId,
-        { referee: verdicts, candidates: scoped })
+      // #78: WHY every candidate failed, not just that they did -- every rejected
+      // verdict's unmet criteria, grouped by criterion id. rounds.py decide reads
+      // this same shape (one round's `rejections`) to tell "a structural hole
+      // every candidate shares" (>= 2 candidates sharing one unmet criterion)
+      // apart from noise, and names the criterion a re-dispatch into a fresh
+      // batch cannot fix but a synthesis drawing on every rejected diff can.
+      const rejectionsByCriterion = {}
+      verdicts.forEach((v) => {
+        if (v.verdict === 'accepted') return
+        ;(v.perCriterion || []).forEach((p) => {
+          if (!p || p.met !== false || !p.id) return
+          if (!rejectionsByCriterion[p.id]) rejectionsByCriterion[p.id] = []
+          rejectionsByCriterion[p.id].push(v.candidateId)
+        })
+      })
+      return halt(
+        'NO CANDIDATE ACCEPTED. That is a statement about the contract, not the candidates; ' +
+        "run scripts/rounds.py decide over this run's rounds (scripts/rounds.py record) before " +
+        're-dispatching anything -- it names whether this is a shared hole to synthesize against ' +
+        'or a moving residual to stop on.',
+        nodeId, { referee: verdicts, candidates: scoped, rejectionsByCriterion },
+      )
     }
     lastVerdicts = { phaseId: nodeId, verdicts, ranked }
     opts.carry[nodeId] = { verdicts, winner: ranked[0].candidateId, runnersUp: ranked.slice(1).map((c) => c.candidateId) }
@@ -479,6 +523,12 @@ for (let i = start; i < spec.phases.length; i++) {
   const winner = lastVerdicts ? lastVerdicts.ranked[0] : null
   const runnersUp = lastVerdicts ? lastVerdicts.ranked.slice(1) : []
   const gate = ph.borrowGate && Array.isArray(ph.borrowGate.mustBeatWinnerOn) ? ph.borrowGate.mustBeatWinnerOn : []
+  // #78: synthesis is reachable from a NO CANDIDATE ACCEPTED halt, not just from
+  // a refereed winner. When the calling session relaunches at this phase with
+  // carry.sharedHole set (rounds.py decide said ROUTE SYNTHESIZE), and no
+  // refereed winner exists to write from instead, every rejected candidate's
+  // diff is rendered so the single writer can draw on all of them.
+  const sharedHole = !winner && opts.carry.sharedHole ? opts.carry.sharedHole : null
   const out = await agent(
     [
       `You are the single writer for phase ${nodeId} of run ${runId}.`,
@@ -488,7 +538,15 @@ for (let i = start; i < spec.phases.length; i++) {
       `Acceptance criteria:`,
       criteriaText(acceptance()),
       ``,
-      winner ? `The winning candidate (${winner.candidateId}), as its diff:\n${winner.diff}` : `There is no refereed winner; work from the earlier phases' data.`,
+      winner
+        ? `The winning candidate (${winner.candidateId}), as its diff:\n${winner.diff}`
+        : sharedHole
+          ? [
+              `There is no refereed winner. Every candidate was rejected on criterion ${sharedHole.criterion}.`,
+              `Synthesize a diff that establishes ${sharedHole.criterion}, drawing on every rejected candidate's diff below:`,
+              ...sharedHole.candidates.map((c) => `--- ${c.candidateId}\n${c.diff}`),
+            ].join('\n')
+          : `There is no refereed winner; work from the earlier phases' data.`,
       runnersUp.length ? `\nRunners-up, as diffs:\n${runnersUp.map((c) => `--- ${c.candidateId}\n${c.diff}`).join('\n')}` : ``,
       ``,
       gate.length
@@ -531,6 +589,9 @@ return {
   events,
   dispatched,
   note:
-    'Measurement and judgement only. The calling session lands exactly one diff with ' +
-    'land_candidate.py and persists `events` with record_event.py.',
+    'Judgement only, not measurement: this workflow never runs a check itself. Before landing, ' +
+    'the calling session measures the accepted candidate against its OWN tree -- ' +
+    'reconcile.py --run <runId> --run-checks --candidate <id> --tree <worktree> -- then lands ' +
+    'exactly one diff with land_candidate.py (which refuses an unmeasured or contradicted ' +
+    'candidate) and persists `events` with record_event.py.',
 }

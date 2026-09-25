@@ -18,7 +18,17 @@ under three rules:
     are removed, and every disagreement is printed. A model's proposal alone
     never removes anything.
 
-Exit: 0 ok (including "nothing to sweep"), 1 --apply failed partway, 2 bad input.
+A dirty candidate worktree (tracked changes, or untracked non-ignored files -- a
+rejected candidate's own uncommitted state) is never just discarded (#80):
+`worktree_pool.preserve_then_remove` -- the ONE place under scripts/ that calls
+`git worktree remove` -- commits it to `kept/<runId>-<cid>` first. A clean worktree
+gets no `kept/` branch. Every `arbeitsplan/<runId>/<cid>` candidate branch is deleted
+alongside its worktree (this script never did that before). FAIL CLOSED: if
+preservation cannot write, that worktree and its branch are left exactly in place
+and `--apply` exits 1.
+
+Exit: 0 ok (including "nothing to sweep"), 1 --apply failed partway (including a
+fail-closed preservation), 2 bad input.
 """
 
 from __future__ import annotations
@@ -26,13 +36,13 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_record  # vendored copy of tools/run-record/run_record.py
+import worktree_pool  # preserve_then_remove/is_dirty: the ONE `git worktree remove` seam (#80)
 
 
 def survey(root: Path) -> tuple:
@@ -60,13 +70,44 @@ def survey(root: Path) -> tuple:
     return eligible, kept
 
 
-def remove(path: Path, root: Path) -> None:
-    if path.parts[-2:-1] == (".arbeitsplan",) or ".arbeitsplan" in path.parts:
-        for wt in sorted(path.glob("c*")):
-            subprocess.run(["git", "-C", str(root), "worktree", "remove", "--force", str(wt)],
-                           capture_output=True, text=True)
+def candidate_worktrees(path: Path) -> list:
+    return sorted(p for p in path.glob("c*") if p.is_dir())
+
+
+def plan_candidate_removals(path: Path, run_id: str) -> list:
+    """Read-only: per candidate worktree under a `.arbeitsplan/<run_id>` path, what
+    a preservation would do -- for the dry-run listing. Calls only `git status`,
+    never `git add`/`commit`/`branch`, so a dry run truly touches nothing."""
+    out = []
+    for wt in candidate_worktrees(path):
+        cid = wt.name
+        dirty = worktree_pool.is_dirty(wt)
+        out.append({
+            "cid": cid, "dirty": dirty,
+            "kept_branch": f"kept/{run_id}-{cid}" if dirty else None,
+            "branch": f"arbeitsplan/{run_id}/{cid}",
+        })
+    return out
+
+
+def remove(path: Path, root: Path) -> bool:
+    """Remove `path`. Returns False (and leaves `path` untouched) when it is a
+    `.arbeitsplan/<runId>` worktree root and at least one candidate could not be
+    preserved -- fail closed (#80): a partially-preserved run is not rmtree'd out
+    from under its own kept/ branch or its still-dirty sibling worktrees."""
+    if ".arbeitsplan" in path.parts:
+        run_id = path.name
+        all_ok = True
+        for wt in candidate_worktrees(path):
+            result = worktree_pool.preserve_then_remove(root, run_id, wt.name, wt)
+            if not result["ok"]:
+                all_ok = False
+                print(f"  FAILED to preserve {wt.name}: {result['error']}", file=sys.stderr)
+        if not all_ok:
+            return False
     if path.exists():
         shutil.rmtree(path)
+    return True
 
 
 def selftest() -> int:
@@ -152,13 +193,19 @@ def main(argv: list) -> int:
         return 0
     for p, why in eligible:
         print(f"  {'remove' if args.apply else 'would remove'}  {p.relative_to(root).as_posix()}  -- {why}")
+        if not args.apply and ".arbeitsplan" in p.parts:
+            for info in plan_candidate_removals(p, p.name):
+                if info["dirty"]:
+                    print(f"    would preserve {info['cid']}'s dirty state on {info['kept_branch']}")
+                print(f"    would delete branch {info['branch']}")
     if not args.apply:
         print(f"{len(eligible)} path(s); dry run -- nothing touched. Pass --apply to remove them.")
         return 0
     failed = 0
     for p, _ in eligible:
         try:
-            remove(p, root)
+            if not remove(p, root):
+                failed += 1
         except OSError as exc:
             failed += 1
             print(f"  FAILED {p}: {exc}", file=sys.stderr)
