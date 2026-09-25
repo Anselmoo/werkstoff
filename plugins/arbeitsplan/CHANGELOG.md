@@ -77,6 +77,18 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   Documented in `skills/arbeitsplan-run/SKILL.md`'s "delete the losers" step and in the README.
 
 ### Fixed
+- **the round rules fire on in-session runs too (#78, #93)**: `rounds.py` rebuilds rounds from
+  `referee/<phase>/<id>.json`, which only `record_event.py workflow` wrote -- so an in-session
+  run, whose verdicts were recorded as flat `referee/<id>.json`, had no rounds at all and neither
+  `ROUTE SYNTHESIZE` nor `ROUTE HALT moving-residual` could ever fire (run ap-2026-09-25-6f6f:
+  three referee phases, `rounds.py record` -> `[]`). `record_event.py referee --run <runId>
+  --phase <id> --verdict FILE` records an in-session batch exactly as `workflow` records a
+  returned one: the flat record `land_candidate.py` reads plus the phase twin. It validates the
+  whole batch before writing anything and refuses an unopened phase, a malformed verdict, a
+  (phase, candidate) already recorded, and a run that has ended. Its run.jsonl event carries a
+  summary (verdict, unmet ids, the record's path), not the full perCriterion, which on a
+  34-criterion verdict outgrew run_record's 4096-byte atomic line. `arbeitsplan-run` step 6
+  records every referee batch with it.
 - **a run can end, so the sweep can collect it**: nothing in arbeitsplan ever wrote an end
   marker -- `run_record.finish()` and `refuse()` were called only by selftests -- so every
   landed or halted run read as unfinished forever, and `sweep_artifacts.py`, which removes only

@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 """Persist what an arbeitsplan run did, so the run directory -- not the chat -- is the record.
 
-usage: record_event.py {workflow,phase-output,phase,status,finish,selftest} --run RUNID ...
+usage: record_event.py {workflow,referee,phase-output,phase,status,finish,selftest} --run RUNID ...
 
   workflow      --result FILE   a Workflow tool return (workflows/run.js): appends its
                                 span-shaped `events` to run.jsonl, and writes one
                                 candidates/<id>.json and referee/<id>.json per candidate
                                 it carries, O_CREAT|O_EXCL -- which is what makes
                                 land_candidate.py reachable without hand-written files
+  referee       --phase ID --verdict FILE
+                                an IN-SESSION referee batch (one verdict or a list):
+                                writes referee/<id>.json (write-once) and the
+                                referee/<phase>/<id>.json twin rounds.py reads, exactly as
+                                `workflow` does for a returned batch; refused unless the
+                                phase is opened and every verdict is well-formed
   phase-output  --phase ID --output FILE
                                 a plan-mode phase this session ran itself (CONTRACT,
                                 ADJUDICATE): writes phases/<id>.json and records the
@@ -47,6 +53,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -152,6 +159,93 @@ def cmd_phase_output(run: run_record.Run, phase: str, output: dict) -> list:
                                      for i in output.get("established") or []]})
                 notes.append(f"referee/{synth.name} written from the {phase} verdict")
     run.append(_span(run.run_id, f"phase {phase}", phase, "closed"))
+    return notes
+
+
+VERDICTS = {"accepted", "accepted_different_approach", "rejected", "cannot_judge"}
+
+
+def cmd_referee(run: run_record.Run, phase: str, data: object) -> list:
+    """Record one IN-SESSION referee batch exactly as `workflow` records a returned one.
+
+    rounds.py rebuilds one round per referee phase from referee/<phase>/<id>.json,
+    and only `workflow --result` (the workflow backend) ever wrote that twin. An
+    in-session run's verdicts therefore produced no rounds at all, and the #78
+    SYNTHESIZE and #93 moving-residual rules could never fire on that backend
+    (run ap-2026-09-25-6f6f: three referee phases, `rounds.py record` -> []).
+
+    `data` is one verdict object or a list of them, in the referee's own shape
+    ({candidateId, verdict, perCriterion[, note, rationaleLeaked]}). The whole batch
+    is validated before anything is written, and it is refused rather than guessed
+    at: the phase must already be opened in run.jsonl (rounds.py orders rounds by
+    that event), every verdict must name its candidate, use the referee vocabulary
+    and carry perCriterion, and a (phase, candidateId) already recorded is never
+    overwritten. The flat referee/<id>.json stays write-once and first-come -- the
+    record land_candidate.py reads -- so a later phase reusing an id adds only its
+    twin, which is the point.
+    """
+    verdicts: list = data if isinstance(data, list) else [data]
+    if not verdicts:
+        raise run_record.RecordError("the verdict file holds no verdicts")
+    st = run.status()
+    if st["finished"] or st["failed"]:
+        raise run_record.RecordError("the run has ended; a verdict recorded afterwards was never part of it")
+    opened = {e["node_id"] for e in run.events()
+              if str(e.get("span", "")).startswith("phase ") and e.get("status") == "opened"}
+    if phase not in opened:
+        raise run_record.RecordError(
+            f"phase {phase!r} was never opened in run.jsonl; record it first with "
+            f"record_event.py phase --run {run.run_id} --phase {phase} --status opened "
+            "-- rounds.py orders rounds by that event")
+    problems, seen = [], set()
+    for i, v in enumerate(verdicts):
+        where = f"verdict[{i}]"
+        if not isinstance(v, dict):
+            problems.append(f"{where} is not an object")
+            continue
+        cid = v.get("candidateId")
+        if not isinstance(cid, str) or not cid:
+            problems.append(f"{where} names no candidateId")
+            continue
+        if cid in seen:
+            problems.append(f"{where} repeats candidateId {cid!r} within one batch")
+        seen.add(cid)
+        if v.get("verdict") not in VERDICTS:
+            problems.append(f"{cid}: verdict {v.get('verdict')!r} is not one of {sorted(VERDICTS)}")
+        per = v.get("perCriterion")
+        if not isinstance(per, list) or not all(isinstance(p, dict) and p.get("id") and isinstance(p.get("met"), bool)
+                                                 for p in per):
+            problems.append(f"{cid}: perCriterion must be a list of {{id, met: bool, evidence}}")
+        if (run.dir / "referee" / phase / f"{cid}.json").exists():
+            problems.append(f"{cid}: already recorded for phase {phase!r}; a verdict is written once")
+    if problems:
+        raise run_record.RecordError("nothing written -- " + "; ".join(problems))
+    # Every event is built -- and sized -- before any file is written. The event
+    # carries a SUMMARY and the path of the full record: a verdict's perCriterion
+    # with evidence outgrew run_record's 4096-byte atomic line on a real 34-criterion
+    # run, and failing after the files were written would leave half a batch.
+    events = []
+    for v in verdicts:
+        cid = v["candidateId"]
+        status = {"accepted": "accepted", "cannot_judge": "doubt"}.get(v["verdict"], "refuted")
+        detail = {"verdict": v["verdict"], "record": f"referee/{phase}/{cid}.json",
+                  "unmet": [p["id"] for p in v["perCriterion"] if p["met"] is False]}
+        if status == "doubt":
+            detail["resolves_if"] = "a criterion with a runnable check that decides this diff"
+        ev = _span(run.run_id, "invoke_agent arbeitsplan:candidate-referee", f"{phase}:{cid}", status, detail)
+        if len(json.dumps({"kind": "event", "at": "0000-00-00T00:00:00+00:00", **ev})) > 4000:
+            raise run_record.RecordError(f"nothing written -- {cid}'s summary event would exceed one atomic "
+                                         "run.jsonl line; its unmet list is too long to log")
+        events.append(ev)
+    notes = []
+    for v, ev in zip(verdicts, events, strict=True):
+        cid = v["candidateId"]
+        rec = {**v, "phase": phase}
+        flat = _write_once(run.dir / "referee" / f"{cid}.json", rec)
+        _write_once(run.dir / "referee" / phase / f"{cid}.json", rec)
+        run.append(ev)
+        notes.append(f"referee/{phase}/{cid}.json written ({v['verdict']})"
+                     + ("" if flat else f"; flat referee/{cid}.json kept from an earlier phase"))
     return notes
 
 
@@ -327,6 +421,65 @@ def selftest() -> int:
             names = {p.name for p, _ in eligible}
             ok("the sweep now sees both ended runs", {"ap-t-10", "ap-t-11"} <= names)
             ok("the sweep still keeps the unfinished one", rid not in names)
+
+            # referee: an IN-SESSION run's batches reach rounds.py, and the rules fire.
+            ins = run_record.open_run(PLUGIN, "ap-t-12")
+
+            def verdict(cid: str, word: str, unmet: list) -> dict:
+                return {"candidateId": cid, "verdict": word,
+                        "perCriterion": [{"id": k, "met": k not in unmet, "evidence": "e"} for k in ("a1", "a2")]}
+
+            ok("referee refuses a phase never opened in run.jsonl",
+               refused(lambda: cmd_referee(ins, "referee-w1", [verdict("c1", "rejected", ["a2"])])))
+            ins.append(_span("ap-t-12", "phase referee-w1", "referee-w1", "opened"))
+            ok("referee refuses a verdict outside the referee vocabulary, writing nothing",
+               refused(lambda: cmd_referee(ins, "referee-w1", [verdict("c1", "rejected", ["a2"]),
+                                                              verdict("c2", "meh", ["a2"])]))
+               and not (ins.dir / "referee").exists())
+            ok("referee refuses a verdict with no perCriterion",
+               refused(lambda: cmd_referee(ins, "referee-w1", {"candidateId": "c1", "verdict": "accepted"})))
+            cmd_referee(ins, "referee-w1", [verdict("c1", "rejected", ["a2"]), verdict("c2", "rejected", ["a2"])])
+            ok("an in-session batch writes the flat record and its phase twin",
+               (ins.dir / "referee" / "c1.json").is_file() and (ins.dir / "referee" / "referee-w1" / "c2.json").is_file())
+            ok("a (phase, candidate) verdict is written once",
+               refused(lambda: cmd_referee(ins, "referee-w1", [verdict("c1", "accepted", [])])))
+            ins.append(_span("ap-t-12", "phase referee-w1", "referee-w1", "closed"))
+            ins.append(_span("ap-t-12", "phase referee-w2", "referee-w2", "opened"))
+            cmd_referee(ins, "referee-w2", [verdict("c1", "accepted", []), verdict("c2", "rejected", ["a1"])])
+            twin = ins.dir / "referee" / "referee-w2" / "c1.json"
+            ok("a second phase reusing c1 keeps the flat record first-come",
+               json.loads((ins.dir / "referee" / "c1.json").read_text())["verdict"] == "rejected"
+               and twin.is_file() and json.loads(twin.read_text())["verdict"] == "accepted")
+            ins.append(_span("ap-t-12", "phase referee-w2", "referee-w2", "closed"))
+            cmd_phase_output(ins, "adjudicate", {"verdict": "hold", "round": {"outcome": "advanced", "blocking": "b1"}})
+
+            rounds_py = Path(__file__).resolve().parent / "rounds.py"
+            rec = subprocess.run([sys.executable, str(rounds_py), "record", "--run", "ap-t-12"],
+                                 capture_output=True, text=True, cwd=raw)
+            try:
+                rs = json.loads(rec.stdout)
+            except ValueError:
+                rs = []
+            ok("rounds.py record sees both in-session referee phases, in order",
+               [r.get("phase") for r in rs] == ["referee-w1", "referee-w2"])
+            ok("round 1 carries its two rejections on a2 and accepted nobody",
+               len(rs) == 2 and rs[0]["accepted"] == [] and sorted(x["criterion"] for x in rs[0]["rejections"]) == ["a2", "a2"])
+            ok("round 2 carries its own verdicts and the adjudicator's judge",
+               len(rs) == 2 and rs[1]["accepted"] == ["c1"] and rs[1]["judge"] == {"outcome": "advanced", "blocking": "b1"})
+            first = Path(raw) / "round1.json"
+            first.write_text(json.dumps(rs[:1]))
+            dec = subprocess.run([sys.executable, str(rounds_py), "decide", "--rounds", str(first)],
+                                 capture_output=True, text=True, cwd=raw)
+            ok("#78 now fires on an in-session run: ROUTE SYNTHESIZE criterion=a2",
+               dec.stdout.strip() == "ROUTE SYNTHESIZE criterion=a2")
+            ins.append(_span("ap-t-12", "phase referee-w3", "referee-w3", "opened"))
+            big = {"candidateId": "c3", "verdict": "accepted",
+                   "perCriterion": [{"id": f"w{i}", "met": True, "evidence": "x" * 120} for i in range(40)]}
+            cmd_referee(ins, "referee-w3", [big])
+            ok("a verdict with 40 long-evidence criteria is recorded (summary event, full record on disk)",
+               len(json.loads((ins.dir / "referee" / "referee-w3" / "c3.json").read_text())["perCriterion"]) == 40)
+            ok("referee refuses a run that has already ended",
+               refused(lambda: cmd_referee(landed, "land", [verdict("c9", "accepted", [])])))
         finally:
             os.chdir(cwd)
     print()
@@ -356,6 +509,10 @@ def main(argv: list) -> int:
     st.add_argument("--run", required=True)
     fin = sub.add_parser("finish")
     fin.add_argument("--run", required=True)
+    rf = sub.add_parser("referee")
+    rf.add_argument("--run", required=True)
+    rf.add_argument("--phase", required=True)
+    rf.add_argument("--verdict", required=True, help="one referee verdict, or a JSON list of them")
     sub.add_parser("selftest")
     args = parser.parse_args(argv)
     if args.cmd == "selftest":
@@ -378,13 +535,18 @@ def main(argv: list) -> int:
                 run.append(_span(args.run, f"phase {args.phase}", args.phase, args.status))
             print(f"recorded phase {args.phase} {args.status}")
             return 0
-        src = args.result if args.cmd == "workflow" else args.output
+        src = args.result if args.cmd == "workflow" else args.verdict if args.cmd == "referee" else args.output
         try:
             data = json.loads(Path(src).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             print(f"cannot read {src}: {exc}", file=sys.stderr)
             return 2
-        notes = cmd_workflow(run, data) if args.cmd == "workflow" else cmd_phase_output(run, args.phase, data)
+        if args.cmd == "workflow":
+            notes = cmd_workflow(run, data)
+        elif args.cmd == "referee":
+            notes = cmd_referee(run, args.phase, data)
+        else:
+            notes = cmd_phase_output(run, args.phase, data)
         for n in notes:
             print(n)
         return 0

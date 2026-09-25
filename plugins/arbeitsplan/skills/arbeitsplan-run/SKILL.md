@@ -59,6 +59,19 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    the criteria and that candidate's diff only — never the builder's rationale, never another
    candidate. Landing is an **allowlist**: only `accepted`.
 
+   Record the batch — every verdict the referees returned, as one JSON list — under the referee
+   phase you opened:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" referee --run <runId> --phase <refereePhase> --verdict verdicts.json
+   ```
+
+   This writes `referee/<id>.json` (what `land_candidate.py` reads) **and** the
+   `referee/<phase>/<id>.json` twin that `rounds.py` rebuilds rounds from. Without it an
+   in-session run has no rounds, and step 7's `rounds.py decide` can never route a shared hole
+   or stop a moving residual. It refuses a phase that was never opened, a malformed verdict,
+   and a (phase, candidate) already recorded — and writes nothing when it refuses.
+
 7. **Select by rule**, not by preference: most criteria met, then fewest files touched, then
    candidate id. If no candidate is `accepted`, **halt and surface**. All N failing the same
    way is a statement about the contract — do not just widen and re-dispatch. Run
@@ -153,7 +166,9 @@ landing, and by content.
 A no-accept halt is arithmetic (`accepted * den < measured * num`) and never looks at WHY.
 `scripts/rounds.py` is the one place that does, and both rules below read the SAME derived
 rounds — one round per referee phase, rebuilt from `referee/<phase>/<id>.json` and the
-adjudicator's recorded `round: {outcome, blocking}` — so a fix to one is a fix to both:
+adjudicator's recorded `round: {outcome, blocking}` — so a fix to one is a fix to both. Those
+files come from `record_event.py workflow` (the workflow backend) or `record_event.py referee`
+(in-session, step 6); a batch recorded any other way is invisible here:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" record --run <runId> > /tmp/rounds.json
