@@ -77,6 +77,18 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   Documented in `skills/arbeitsplan-run/SKILL.md`'s "delete the losers" step and in the README.
 
 ### Fixed
+- **a workflow result is recorded whole, and its events fit the log**: `run.jsonl` takes each
+  event as one atomic line of at most 4096 bytes, but `workflows/run.js` put payloads into event
+  details -- a referee's full `perCriterion` with evidence, a builder's check commands, a
+  synthesis's borrowed hunks -- so a verdict over enough criteria (34 in run
+  ap-2026-09-25-6f6f: 4120 bytes) was refused, and `record_event.py workflow`, appending event by
+  event, stopped halfway: earlier events written, no candidate or referee file at all. Event
+  details are now summaries (unmet criterion ids and a met count; check ids and exits; who a hunk
+  came from and what it beats; path lists capped with a count) -- the payloads still travel in
+  `carry` and land in `candidates/` and `referee/` unchanged. `record_event.py` pre-checks every
+  event against `run_record`'s own `REQUIRED`, `STATUSES` and `MAX_LINE` (calibrated at the
+  4096/4097-byte boundary against `append()` itself) and refuses a result whole before anything
+  is appended.
 - **the sweep and `destroy` find every worktree, whatever it is named (#80)**: both selected
   candidate worktrees with `glob("c*")`, so a worktree under `.arbeitsplan/<runId>/` that
   `create` did not name was never preserved -- `sweep_artifacts.py` `rmtree`'d it with its

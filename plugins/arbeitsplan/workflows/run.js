@@ -245,6 +245,16 @@ function emit(span, nodeId, status, detail, parent) {
   return ev.span_id
 }
 
+// An event detail is a SUMMARY. record_event.py appends each event as one
+// run.jsonl line, atomic only up to 4096 bytes, and it refuses a whole result
+// that holds a larger one -- so a detail never carries a payload (a diff, a
+// command, evidence text, an unbounded list). The payload travels in `carry`.
+const clip = (s, n = 160) => (typeof s === 'string' && s.length > n ? `${s.slice(0, n)}...` : s)
+const few = (key, xs, n = 10) => {
+  const list = Array.isArray(xs) ? xs : []
+  return list.length > n ? { [key]: list.slice(0, n), [`${key}Count`]: list.length } : { [key]: list }
+}
+
 // The budget the hook cannot enforce: no PreToolUse matcher sees a Workflow
 // dispatch, so the ceiling is counted here, in code, before each agent().
 let dispatched = 0
@@ -411,9 +421,13 @@ for (let i = start; i < spec.phases.length; i++) {
     const scoped = measured.filter((r) => !(r.outOfScopeWrites || []).length && (r.diff || '').trim())
     const dropped = measured.filter((r) => !scoped.includes(r))
     results.forEach((r) => {
+      // A SUMMARY, never the payload: run.jsonl takes one atomic line of <= 4096
+      // bytes, and full command strings or long path lists outgrow it. The
+      // candidate itself travels in carry and lands in candidates/<id>.json.
       emit(`invoke_agent ${ph.agentType}`, `${nodeId}:${r.candidateId}`,
         r.measured === false ? 'unmeasured' : scoped.includes(r) ? 'proposed' : 'refuted',
-        { angle: r.angle, filesTouched: r.filesTouched || [], outOfScopeWrites: r.outOfScopeWrites || [], checks: r.checks || [] }, phaseSpan)
+        { angle: clip(r.angle), ...few('filesTouched', r.filesTouched), ...few('outOfScopeWrites', r.outOfScopeWrites),
+          checks: (r.checks || []).map((k) => ({ id: k.id, exit: k.exit })) }, phaseSpan)
     })
 
     // The breaker. Per batch, never cumulative; the unmeasured are excluded from
@@ -484,7 +498,12 @@ for (let i = start; i < spec.phases.length; i++) {
       const v = byId.get(c.candidateId)
       emit(`invoke_agent ${ph.agentType}`, `${lastBuild.phaseId}:${c.candidateId}`,
         !v ? 'unmeasured' : v.verdict === 'cannot_judge' ? 'doubt' : withEvidence(c) ? 'accepted' : 'refuted',
-        { verdict: v ? v.verdict : null, perCriterion: v ? v.perCriterion : [], rationaleLeaked: !!(v && v.rationaleLeaked), resolves_if: v && v.verdict === 'cannot_judge' ? 'a criterion with a runnable check that decides this diff' : null }, phaseSpan)
+        // unmet ids, not perCriterion: evidence strings outgrow one atomic line; the
+        // full verdict travels in carry and lands in referee/<id>.json.
+        { verdict: v ? v.verdict : null,
+          unmet: (v && Array.isArray(v.perCriterion) ? v.perCriterion : []).filter((p) => p && p.met === false).map((p) => p.id),
+          metCount: metCount(c), rationaleLeaked: !!(v && v.rationaleLeaked),
+          resolves_if: v && v.verdict === 'cannot_judge' ? 'a criterion with a runnable check that decides this diff' : null }, phaseSpan)
     })
     if (!ranked.length) {
       // #78: WHY every candidate failed, not just that they did -- every rejected
@@ -571,12 +590,15 @@ for (let i = start; i < spec.phases.length; i++) {
   // dropped from the record as refuted, whatever the agent says about it.
   const illegal = (out.borrowed || []).filter((b) => !gate.includes(b.beatsOn))
   emit(`invoke_agent ${ph.agentType}`, nodeId, illegal.length ? 'refuted' : 'proposed',
-    { baseCandidateId: out.baseCandidateId, borrowed: out.borrowed || [], illegalBorrows: illegal, filesTouched: out.filesTouched || [] }, phaseSpan)
+    // who each hunk came from and what it beats the winner on -- never the hunk text
+    { baseCandidateId: out.baseCandidateId,
+      borrowed: (out.borrowed || []).map((b) => ({ from: b.from, beatsOn: b.beatsOn })),
+      illegalBorrows: illegal.map((b) => ({ from: b.from, beatsOn: b.beatsOn })), ...few('filesTouched', out.filesTouched) }, phaseSpan)
   if (illegal.length) {
     return halt(`phase ${nodeId} borrowed ${illegal.length} hunk(s) outside the borrowGate; landing the plain winner is the safe fallback`, nodeId, { output: out })
   }
   for (const d of out.cannotEstablish || []) {
-    emit('evaluation', nodeId, 'doubt', { evidence: d, resolves_if: 'a runnable check for this criterion exists' }, phaseSpan)
+    emit('evaluation', nodeId, 'doubt', { evidence: clip(d), resolves_if: 'a runnable check for this criterion exists' }, phaseSpan)
   }
   opts.carry[nodeId] = { output: out }
   emit(`phase ${nodeId}`, nodeId, 'closed', null, rootSpan)

@@ -85,11 +85,45 @@ def _span(run_id: str, span: str, node: str, status: str, detail: dict | None = 
     return ev
 
 
+def _event_problem(run: run_record.Run, ev: object) -> str | None:
+    """Why run.append() would refuse `ev`, decided BEFORE anything is appended.
+
+    Built on run_record's own REQUIRED, STATUSES and MAX_LINE, and on the exact
+    serialization its _write_line uses (compact, sorted keys, plus `kind` and an
+    `at` of the length _now() produces) -- a copy of those rules would drift. It
+    exists so a result is refused whole: appending event by event, a refusal at the
+    Nth event left N-1 appended and every candidate/referee file unwritten (#76's
+    record, half-persisted). The size limit is the one a real run hit: a referee
+    event carrying 34 criteria of evidence was 4120 bytes.
+    """
+    if not isinstance(ev, dict):
+        return "an event is not an object"
+    missing = [k for k in run_record.REQUIRED if not ev.get(k)]
+    if missing:
+        return f"an event lacks {missing}"
+    if ev["status"] not in run_record.STATUSES:
+        return f"{ev['span_id']}: status {ev['status']!r} is not in the closed set"
+    if ev["trace_id"] != run.run_id:
+        return f"{ev['span_id']}: trace_id {ev['trace_id']!r} is not this run"
+    if ev["status"] == "doubt" and not (ev.get("detail") or {}).get("resolves_if"):
+        return f"{ev['span_id']}: a doubt without detail.resolves_if"
+    line = json.dumps({"kind": "event", "at": ev.get("at") or "0000-00-00T00:00:00+00:00", **ev},
+                      separators=(",", ":"), sort_keys=True) + "\n"
+    if len(line.encode()) > run_record.MAX_LINE:
+        return (f"{ev['span_id']} ({ev['span']}) is {len(line.encode())} bytes, over the "
+                f"{run_record.MAX_LINE}-byte atomic line; its detail must be a summary, not a payload")
+    return None
+
+
 def cmd_workflow(run: run_record.Run, result: dict) -> list:
     notes = []
     events = result.get("events")
     if not isinstance(events, list):
         raise run_record.RecordError("the result carries no `events` list; is this a run.js return?")
+    problems = [p for p in (_event_problem(run, ev) for ev in events) if p]
+    if problems:
+        raise run_record.RecordError("nothing recorded -- " + "; ".join(problems[:5])
+                                     + (f"; and {len(problems) - 5} more" if len(problems) > 5 else ""))
     for ev in events:
         run.append(ev)
     notes.append(f"{len(events)} event(s) appended")
@@ -233,9 +267,9 @@ def cmd_referee(run: run_record.Run, phase: str, data: object) -> list:
         if status == "doubt":
             detail["resolves_if"] = "a criterion with a runnable check that decides this diff"
         ev = _span(run.run_id, "invoke_agent arbeitsplan:candidate-referee", f"{phase}:{cid}", status, detail)
-        if len(json.dumps({"kind": "event", "at": "0000-00-00T00:00:00+00:00", **ev})) > 4000:
-            raise run_record.RecordError(f"nothing written -- {cid}'s summary event would exceed one atomic "
-                                         "run.jsonl line; its unmet list is too long to log")
+        problem = _event_problem(run, ev)
+        if problem:
+            raise run_record.RecordError(f"nothing written -- {problem}")
         events.append(ev)
     notes = []
     for v, ev in zip(verdicts, events, strict=True):
@@ -316,6 +350,13 @@ def selftest() -> int:
         if not cond:
             fails.append(name)
 
+    def refused(fn) -> bool:
+        try:
+            fn()
+        except run_record.RecordError:
+            return True
+        return False
+
     rid = "ap-t-9"
     result = {
         "events": [
@@ -381,14 +422,36 @@ def selftest() -> int:
             except run_record.RecordError:
                 ok("a result with no events is refused", True)
 
-            # finish: the end marker sweep_artifacts.py waits for, earned or refused.
-            def refused(fn) -> bool:
-                try:
-                    fn()
-                except run_record.RecordError:
-                    return True
-                return False
+            # A result is recorded whole or not at all: an oversized SECOND event
+            # used to leave the first appended and no candidate/referee file written.
+            wide_rid = "ap-t-13"
+            wide = run_record.open_run(PLUGIN, wide_rid)
+            before = len(wide.events())
+            oversized = {"events": [
+                _span(wide_rid, "phase build", "build", "opened"),
+                _span(wide_rid, "invoke_agent arbeitsplan:candidate-referee", "build:c9", "accepted",
+                      {"perCriterion": [{"id": f"w{i}", "met": True, "evidence": "e" * 200} for i in range(40)]}),
+                _span(wide_rid, "phase build", "build", "closed")],
+                "carry": {"build": {"candidates": [{"candidateId": "c9", "measured": True, "diff": "d"}]}}}
+            ok("a result holding an oversized event is refused", refused(lambda: cmd_workflow(wide, oversized)))
+            ok("...and NOTHING of it is recorded: no event, no candidate file",
+               len(wide.events()) == before and not (wide.dir / "candidates" / "c9.json").exists())
 
+            # The pre-check is calibrated against run_record itself, at the boundary.
+            def padded(span_id: str, extra: int) -> dict:
+                ev = {**_span(wide_rid, "evaluation", "edge", "accepted"), "span_id": span_id, "detail": {"pad": ""}}
+                base = len((json.dumps({"kind": "event", "at": "0000-00-00T00:00:00+00:00", **ev},
+                                       separators=(",", ":"), sort_keys=True) + "\n").encode())
+                return {**ev, "detail": {"pad": "x" * (run_record.MAX_LINE - base + extra)}}
+
+            fits = padded(f"{wide_rid}.edge.fits", 0)
+            over = padded(f"{wide_rid}.edge.over", 1)
+            ok("pre-check and run_record agree: exactly MAX_LINE bytes is accepted by both",
+               _event_problem(wide, fits) is None and not refused(lambda: wide.append(fits)))
+            ok("pre-check and run_record agree: one byte more is refused by both",
+               _event_problem(wide, over) is not None and refused(lambda: wide.append(over)))
+
+            # finish: the end marker sweep_artifacts.py waits for, earned or refused.
             landed = run_record.open_run(PLUGIN, "ap-t-10")
             ok("finish refuses a run with no landing and no halt", refused(lambda: cmd_finish(landed)))
             landed.append(_span("ap-t-10", "phase land", "land", "opened"))

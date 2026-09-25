@@ -88,6 +88,13 @@ const SABOTAGE = [
   ['acceptance checks rendered inline again (#81)',
     "return cmds.length ? [header, '  ```', ...cmds.map((cmd) => `  ${cmd}`), '  ```'].join('\\n') : header",
     "return cmds.length ? header + ' [[' + cmds.join(', ') + ']]' : header"],
+  // Payloads back on events: a referee's evidence, a builder's commands.
+  ['referee event carries full perCriterion again',
+    'unmet: (v && Array.isArray(v.perCriterion) ? v.perCriterion : []).filter((p) => p && p.met === false).map((p) => p.id),',
+    'perCriterion: v ? v.perCriterion : [],'],
+  ['builder event carries full check commands again',
+    'checks: (r.checks || []).map((k) => ({ id: k.id, exit: k.exit })) }, phaseSpan)',
+    'checks: r.checks || [] }, phaseSpan)'],
 ]
 
 async function suite() {
@@ -223,6 +230,28 @@ async function suite() {
     const doubts = [...result.events, ...r2.result.events].filter((e) => e.status === 'doubt')
     ok('doubts were produced to check', doubts.length >= 2, doubts)
     ok('every doubt carries detail.resolves_if', doubts.every((e) => e.detail && e.detail.resolves_if), doubts)
+  }
+
+  // 16. Every event fits ONE atomic run.jsonl line. record_event.py appends each as
+  // a line of at most 4096 bytes and refuses a result holding a larger one, so a
+  // payload -- commands, evidence, hunks, long path lists -- never rides an event.
+  {
+    const cmd = 'python3 /a/long/absolute/path/to/analysis/arbeitsplan/ap-x/checks/probe_w9.py . --only a-long-mode'
+    const ids = Array.from({ length: 40 }, (_, i) => `w${i}`)
+    const { result } = await execute({ spec: clone(SIX), startAt: 'build' }, (label) => {
+      if (label.startsWith('build:')) {
+        return { ...candidate(), filesTouched: ids.map((i) => `plugins/some/deep/path/${i}.py`),
+          checks: ids.map((id) => ({ id, command: cmd, exit: 0 })) }
+      }
+      if (label.startsWith('referee:')) {
+        return { candidateId: 'x', verdict: 'accepted', perCriterion: ids.map((id) => ({ id, met: true, evidence: 'e'.repeat(200) })) }
+      }
+      return happy(label)
+    })
+    const bytes = (e) => Buffer.byteLength(`${JSON.stringify({ kind: 'event', at: '2026-01-01T00:00:00+00:00', ...e })}\n`)
+    const worst = result.events.reduce((m, e) => Math.max(m, bytes(e)), 0)
+    ok('events were produced to measure', result.events.length > 5, result.events.length)
+    ok('every event fits one 4096-byte run.jsonl line, even with 40 long criteria', worst <= 4096, worst)
   }
 
   // 13. #81: every acceptance command stands alone on its own line inside a
