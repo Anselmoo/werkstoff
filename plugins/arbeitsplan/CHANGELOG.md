@@ -77,6 +77,16 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   Documented in `skills/arbeitsplan-run/SKILL.md`'s "delete the losers" step and in the README.
 
 ### Fixed
+- **the sweep and `destroy` find every worktree, whatever it is named (#80)**: both selected
+  candidate worktrees with `glob("c*")`, so a worktree under `.arbeitsplan/<runId>/` that
+  `create` did not name was never preserved -- `sweep_artifacts.py` `rmtree`'d it with its
+  parent, losing its dirty state and leaving its git metadata and branch dangling. Both now
+  enumerate `git worktree list --porcelain` (`worktree_pool.worktrees_under`, which refuses
+  rather than guesses when git cannot list), preserve each one through
+  `preserve_then_remove`, and delete its ACTUAL branch only when it is this run's candidate
+  branch -- a user's branch or a base branch is left alone. CI now runs every
+  arbeitsplan selftest (`test_run_workflow.js`, reconcile, sweep, record_event, rounds), not
+  only the compiler, landing and pool ones.
 - **the round rules fire on in-session runs too (#78, #93)**: `rounds.py` rebuilds rounds from
   `referee/<phase>/<id>.json`, which only `record_event.py workflow` wrote -- so an in-session
   run, whose verdicts were recorded as flat `referee/<id>.json`, had no rounds at all and neither
