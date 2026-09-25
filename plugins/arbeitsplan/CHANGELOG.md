@@ -3,6 +3,8 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.2] - 2026-09-25
 ### Added
 - **`scripts/rounds.py`: a shared hole or a moving residual, from ONE derived record (#78,
   #93)**: the NO CANDIDATE ACCEPTED halt is arithmetic and never looks at WHY a batch failed,
