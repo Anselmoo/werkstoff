@@ -20,6 +20,7 @@ jobs:
       plugin_authors: ${{ steps.plugin_authors.outcome }}
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
+      workflow_models: ${{ steps.workflow_models.outcome }}
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
       design_tokens: ${{ steps.design_tokens.outcome }}
       readme_skeleton: ${{ steps.readme_skeleton.outcome }}
@@ -123,6 +124,18 @@ jobs:
         id: js_syntax
         continue-on-error: true
         run: ./scripts/ci/check-js-syntax.sh
+
+      - name: Check workflow agent() dispatches name a model
+        id: workflow_models
+        continue-on-error: true
+        # Issue #87: 27 of 43 agent() sites passed no model and so inherited the
+        # session's (most expensive) tier; delegation.md had forbidden that in
+        # prose for a year. Issue #90: every dispatching workflow carries the
+        # canonical relayed-request briefing verbatim. Selftest first -- a gate
+        # that cannot fail reports success every run and nobody looks again.
+        run: |
+          python3 scripts/ci/check_workflow_models.py --selftest
+          python3 scripts/ci/check_workflow_models.py
 
       - name: Check report-viewer conformance
         id: viewer_conformance
@@ -361,6 +374,7 @@ jobs:
           steps.plugin_authors.outcome == 'failure' ||
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
+          steps.workflow_models.outcome == 'failure' ||
           steps.viewer_conformance.outcome == 'failure' ||
           steps.design_tokens.outcome == 'failure' ||
           steps.readme_skeleton.outcome == 'failure' ||
@@ -422,6 +436,7 @@ jobs:
             row "Plugin author attribution vs. marketplace.json" "${{ needs.checks.outputs.plugin_authors }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
+            row "Workflow agent() sites name a model + relay briefing" "${{ needs.checks.outputs.workflow_models }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
@@ -445,7 +460,7 @@ jobs:
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
             table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-workflow-models, check-workflow-models-selftest, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
             echo "</tbody></table>"
           } > board.md
           cat board.md
