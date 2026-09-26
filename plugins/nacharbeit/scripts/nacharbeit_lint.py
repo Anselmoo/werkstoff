@@ -59,6 +59,7 @@ OPTIONS: dict = {
     "marketplace": None,        # Path to marketplace.json, or None
     "readme_markers": None,     # True/False: require the rrt example-prompts marker pair
     "viewer_checker": HERE / "check_viewer_conformance.py",
+    "workflow_checker": HERE / "check_workflow_models.py",
     "docs_root": None,          # Path to the docs site root, or None
     "node": shutil.which("node"),
 }
@@ -140,6 +141,8 @@ META: dict[str, tuple[str, str]] = {
     "S-PY-COMPILE": ("blocker", "other"),
     "S-JS-SYNTAX": ("blocker", "other"),
     "S-WF-SHAPE": ("blocker", "contract"),
+    "S-WF-MODEL": ("major", "contract"),
+    "S-WF-RELAY": ("minor", "contract"),
     "S-SHEBANG": ("nit", "procedure"),
     "S-DOCSTRING-USAGE": ("minor", "procedure"),
     "S-ARGPARSE": ("minor", "procedure"),
@@ -1198,6 +1201,116 @@ def r_s_wf_shape(u: Unit, ctx: list[Unit]) -> list[dict]:
     )]
 
 
+_WF_MOD = None
+
+
+def _workflow_checker():
+    """The vendored CI gate, scripts/ci/check_workflow_models.py, or None.
+
+    Imported rather than reimplemented: its tokenizer masks strings, comments,
+    template text and regex literals before matching brackets, and a second copy
+    of that logic here would drift from the one CI runs. `rrt artifacts --check`
+    holds the vendored copy byte-identical to the original.
+    """
+    global _WF_MOD
+    if _WF_MOD is not None:
+        return _WF_MOD if _WF_MOD is not False else None
+    p = OPTIONS.get("workflow_checker")
+    if not p or not Path(p).is_file():
+        _WF_MOD = False
+        return None
+    spec = importlib.util.spec_from_file_location("check_workflow_models", str(p))
+    if spec is None or spec.loader is None:
+        _WF_MOD = False
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules["check_workflow_models"] = mod
+    spec.loader.exec_module(mod)
+    _WF_MOD = mod
+    return mod
+
+
+def _workflow_sites(u: Unit, rule: str):
+    """(sites, file_problems) from the vendored gate, cached on the unit; None = skipped."""
+    if "_wf" in u.extra:
+        return u.extra["_wf"]
+    mod = _workflow_checker()
+    if mod is None:
+        _skip(rule, "workflow checker not available (check_workflow_models.py missing beside the linter)")
+        u.extra["_wf"] = None
+        return None
+    try:
+        u.extra["_wf"] = (mod, *mod.check_source(u.text, u.path.as_posix()))
+    except mod.ScanError as e:
+        # An unterminated literal means the gate could not read the file, which is
+        # not a verdict. S-JS-SYNTAX reports the parse failure on this same file.
+        _skip(rule, f"{u.path.as_posix()} could not be tokenized: {e}")
+        u.extra["_wf"] = None
+    return u.extra["_wf"]
+
+
+def r_s_wf_model(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """Every agent() dispatch names its model tier (issue #87).
+
+    An omitted model inherits the session's model, usually the most capable and
+    most expensive, so a fan-out designed for cheap candidates runs expensive
+    ones and nothing reports the substitution. 27 of 43 sites in this repo's own
+    workflows did exactly that while delegation.md forbade it in prose.
+    """
+    if u.kind != "workflow":
+        return []
+    got = _workflow_sites(u, "S-WF-MODEL")
+    if got is None:
+        return []
+    _mod, sites, file_problems = got
+    out = []
+    for site in sites:
+        for problem in site.problems:
+            out.append(_finding(
+                u, "S-WF-MODEL", f"agent() dispatch: {problem}",
+                "pass the options as an inline object ending in `model: 'haiku' | 'sonnet' | 'opus'` "
+                "(or a value a runtime guard validates); docs/orchestration/references/delegation.md has the tiering",
+                line=site.line,
+                quote=u.lines[site.line - 1] if site.line <= len(u.lines) else "",
+                tier="sonnet",
+            ))
+    # `agent` used as a value (aliased, handed to map) dispatches where no call
+    # site can show a tier. The gate reports those as `<file>:<line>: ...`.
+    for problem in file_problems:
+        m = re.match(r"^.+?:(\d+): (`agent` referenced without being called.*)$", problem)
+        if m:
+            line = int(m.group(1))
+            out.append(_finding(
+                u, "S-WF-MODEL", m.group(2),
+                "call agent(...) directly with an inline options object that names the model",
+                line=line, quote=u.lines[line - 1] if line <= len(u.lines) else "", tier="sonnet",
+            ))
+    return out
+
+
+def r_s_wf_relay(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """A dispatching workflow carries the canonical relayed-request briefing (issue #90).
+
+    Compared byte for byte against the gate's RELAY_TEXT: a paraphrase is how
+    fifteen copies drift into fifteen different instructions.
+    """
+    if u.kind != "workflow":
+        return []
+    got = _workflow_sites(u, "S-WF-RELAY")
+    if got is None:
+        return []
+    mod, sites, _fp = got
+    if not sites or mod.RELAY_TEXT in u.text:
+        return []
+    return [_finding(
+        u, "S-WF-RELAY",
+        f"dispatches {len(sites)} agent(s) without the canonical relayed-request briefing, so a user's "
+        "'merge it' / 'push when done' reaching a subagent leaves it unbriefed",
+        "define `const RELAYED = '<RELAY_TEXT from check_workflow_models.py>'` verbatim and interpolate it into every agent() prompt",
+        line=sites[0].line, quote=u.lines[sites[0].line - 1] if sites[0].line <= len(u.lines) else "",
+    )]
+
+
 def r_s_shebang(u: Unit, ctx: list[Unit]) -> list[dict]:
     if not _is_script(u) or not _is_entry_point(u):
         return []
@@ -2040,6 +2153,8 @@ RULES = {
     "S-PY-COMPILE": r_s_py_compile,
     "S-JS-SYNTAX": r_s_js_syntax,
     "S-WF-SHAPE": r_s_wf_shape,
+    "S-WF-MODEL": r_s_wf_model,
+    "S-WF-RELAY": r_s_wf_relay,
     "S-SHEBANG": r_s_shebang,
     "S-DOCSTRING-USAGE": r_s_docstring_usage,
     "S-ARGPARSE": r_s_argparse,

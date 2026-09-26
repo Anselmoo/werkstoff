@@ -31,6 +31,13 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+# The canonical #90 briefing, read from the vendored gate rather than retyped, so
+# the fixtures and S-WF-RELAY cannot disagree about what "verbatim" means.
+_WF = importlib.util.spec_from_file_location("check_workflow_models_fixture", HERE / "check_workflow_models.py")
+_wf_mod = importlib.util.module_from_spec(_WF)
+sys.modules[_WF.name] = _wf_mod  # a @dataclass module must be registered before it runs
+_WF.loader.exec_module(_wf_mod)
+RELAY = _wf_mod.RELAY_TEXT
 LINT = HERE / "nacharbeit_lint.py"
 RUBRIC = HERE.parent / "references" / "rubric.md"
 
@@ -259,6 +266,20 @@ if __name__ == "__main__":
       "  return { out, rawArgs }\n"
       "}\n")
     exp["S-WF-SHAPE"] = f"{P}/workflows/dead.js"
+    # Correct shape, carries the briefing -- and dispatches with no model, so it
+    # runs on whatever tier the session happens to be (#87).
+    w(root, f"{P}/workflows/nomodel.js",
+      "export const meta = { name: 'nomodel', description: 'Dispatches on an inherited tier.' }\n"
+      f"const RELAYED = '{RELAY}'\n"
+      "const out = await agent(`Scan.\\n\\n${RELAYED}`, { label: 'scan' })\n"
+      "return { out }\n")
+    exp["S-WF-MODEL"] = f"{P}/workflows/nomodel.js"
+    # Names its tier, but a relayed "merge it" reaching this agent is unbriefed (#90).
+    w(root, f"{P}/workflows/norelay.js",
+      "export const meta = { name: 'norelay', description: 'Dispatches without the briefing.' }\n"
+      "const out = await agent('Scan.', { label: 'scan', model: 'haiku' })\n"
+      "return { out }\n")
+    exp["S-WF-RELAY"] = f"{P}/workflows/norelay.js"
     w(root, f"{P}/scripts/noshebang.py", '''import re
 import subprocess
 import sys
@@ -481,7 +502,8 @@ if __name__ == "__main__":
       "export const meta = { name: 'scan', description: 'Scans one area.' }\n"
       "const area = (args && args.area) || '.'\n"
       "phase('Scan')\n"
-      "const found = await agent('Scan the area')\n"
+      f"const RELAYED = '{RELAY}'\n"
+      "const found = await agent(`Scan the area\\n\\n${RELAYED}`, { label: 'scan', model: 'haiku' })\n"
       "return { area, found }\n")
     w(root, f"{P}/.claude-plugin/plugin.json", json.dumps({"name": "clean", "version": "0.1.0", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "keywords": ["widgets"], "license": "MIT"}))
     w(root, ".claude-plugin/marketplace.json", json.dumps({"name": "test", "plugins": [{"name": "clean", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "source": "./plugins/clean"}]}))

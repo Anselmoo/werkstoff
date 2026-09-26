@@ -64,11 +64,11 @@ installing it changes nothing about an ordinary session.
 
 | surface | mechanical (script) | judgement (model) | what it delegates to |
 |---|---|---|---|
-| skills, agents, commands, workflow prompts, references | `M-*` (25) | `Q-*` (28) | — (PR #56's set, unchanged) |
+| skills, agents, commands, workflow prompts, references | `M-*` (26) | `Q-*` (28) | — (PR #56's set, unchanged) |
 | `hooks/hooks.json` and its guard scripts | `H-*` (14) | `HQ-*` (5) | `takt_guard.py`'s contract; `verify_hooks_deny.py` as a post-check |
-| `scripts/**`, `hooks/*.py` | `S-*` (9) | `SQ-*` (4) | `ast`, `node --check`, `test/plugins/lint-oracles.sh`'s forms |
-| `assets/*-viewer.html` | `A-*` (12) | `AQ-*` (4) | `scripts/ci/check_viewer_conformance.py` (vendored) for the six codes CI decides; the editorial rules it refuses go to the finder |
-| `plugin.json`, `README.md`, `CHANGELOG.md` | `P-*` (19) | `PQ-*` (5) | `lint-plugin-authors.py`, `build_prompt_index.py`'s scan, `rrt docs inject` |
+| `scripts/**`, `hooks/*.py`, `workflows/*.js` | `S-*` (12) | `SQ-*` (4) | `ast`, `node --check`, `test/plugins/lint-oracles.sh`'s forms; `scripts/ci/check_workflow_models.py` (vendored) for `S-WF-MODEL` and `S-WF-RELAY` |
+| `assets/*-viewer.html` | `A-*` (13) | `AQ-*` (4) | `scripts/ci/check_viewer_conformance.py` (vendored) for the six codes CI decides; the editorial rules it refuses go to the finder |
+| `plugin.json`, `README.md`, `CHANGELOG.md` | `P-*` (20) | `PQ-*` (5) | `lint-plugin-authors.py`, `build_prompt_index.py`'s scan, `rrt docs inject` |
 | repo docs wiring (`docs/`, root README, CLAUDE.md, orchestration references) | `D-*` (11) | `DQ-*` (2) | the docs generators; `validate_catalog.py` |
 
 Every rule, its severity and its source page is in [`references/rubric.md`](references/rubric.md).
@@ -82,7 +82,7 @@ sealed recall falls below its floor.
 | skill | role | what it does |
 |---|---|---|
 | `nacharbeit-preflight` | leaf, read-only | inventory by kind, available checkers, other live guards, open lock |
-| `nacharbeit-lint` | leaf, zero tokens | the calibration, then the 92 mechanical rules |
+| `nacharbeit-lint` | leaf, zero tokens | the calibration, then the 96 mechanical rules |
 | `nacharbeit-review` | orchestrator | build and bake args → calibrated workflow → persist → report |
 | `nacharbeit-fix` | orchestrator | open the lock and snapshot → remediate / verify / repair per file → post-checks and contract diff → release |
 | `nacharbeit-status` | status | what ran, what is held for a person, whether a lock is open |
@@ -114,7 +114,7 @@ by intent.
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 92 mechanical
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 96 mechanical
 > rules; findings by rule and file, nothing applied.
 
 ##### Run the calibrated review
@@ -206,7 +206,7 @@ evidence that nothing in the reviewed plugin exercised that family.
 ## Verifying a change to this plugin
 
 ```bash
-python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 92 rules planted, blanked, synced
+python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 96 rules planted, blanked, synced
 node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
 python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest  # the probe's parser, verdicts and refusals; no tokens
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases

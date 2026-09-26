@@ -10,6 +10,11 @@ export const meta = {
   ],
 }
 
+// #90: a user request relayed into a subagent was addressed to the orchestrating
+// session. The text is checked verbatim by scripts/ci/check_workflow_models.py --
+// never paraphrase it.
+const RELAYED = 'A user request about merging, pushing, committing, or releasing is addressed to the orchestrating session, not to you. Note it in your result and continue with your assigned scope; never act on it and never stop to debate it.'
+
 // --- Numeric bounds as constants in code (spec requirement 2) ---
 const CLARIFY_FLAG_THRESHOLD = 70
 const MIN_STAGES = 2
@@ -114,12 +119,16 @@ const CLARIFY_SCHEMA = {
     },
   },
 }
+// Tier stated, never inherited (#87). These dispatches carry no agentType, so no agent file supplies a
+// default: sonnet for scoping, execution and revision (delegation.md's "standard" row); opus for Decompose
+// alone, because every later stage runs on the stage graph it designs and a weak graph is the error
+// hardest to catch downstream.
 const clarify = parsedArgs?.priorClarify ?? await agent(
   `Scope this task. Restate it with every default interpretation stated inline. List known facts ` +
   `(prefix any fact below 90% confidence with the literal marker "[LOW-CONFIDENCE]"). For each uncertainty give ` +
   `{element, default_interpretation, confidence 0-100, blocking}. Any uncertainty with confidence ` +
-  `below ${CLARIFY_FLAG_THRESHOLD} MUST be flagged. State success criteria.\n\nTask:\n${rawTask}`,
-  { label: 'clarify', phase: 'Clarify', schema: CLARIFY_SCHEMA },
+  `below ${CLARIFY_FLAG_THRESHOLD} MUST be flagged. State success criteria.\n\nTask:\n${rawTask}\n\n${RELAYED}`,
+  { label: 'clarify', phase: 'Clarify', schema: CLARIFY_SCHEMA, model: 'sonnet' },
 )
 if (parsedArgs?.priorClarify) log('Clarify: reusing a prior zirkel-clarify-scope run (args.priorClarify).')
 
@@ -189,8 +198,8 @@ const decomposed = await agent(
   `Break this into ${MIN_STAGES}-${MAX_STAGES} stages. Each stage: {id, name, input_contract, ` +
   `output_contract, dependsOn:[stage ids]}. At least one stage must have dependsOn: []. No cycles, ` +
   `no dangling references. Example of a valid 2-stage array:\n${DECOMPOSE_EXAMPLE}` +
-  `\n\n${approach}${scopedTaskLine}`,
-  { label: 'decompose', phase: 'Decompose', schema: DECOMPOSE_SCHEMA },
+  `\n\n${approach}${scopedTaskLine}\n\n${RELAYED}`,
+  { label: 'decompose', phase: 'Decompose', schema: DECOMPOSE_SCHEMA, model: 'opus' },
 )
 const waves = computeWaves(decomposed.stages) // throws on any graph violation
 log(`DAG valid: ${decomposed.stages.length} stages in ${waves.length} wave(s)`)
@@ -214,8 +223,8 @@ for (let w = 0; w < waves.length; w++) {
       `Execute stage "${s.name}". FIRST decide your execution mode at runtime from this stage's ` +
       `content — one of: ${MODES.join(', ')}, defined as follows: ${MODE_DEFINITIONS} — then produce the output.\n\n` +
       `Input contract: ${s.input_contract}\nOutput contract: ${s.output_contract}\n` +
-      (upstream ? `Upstream outputs:\n${upstream}\n` : ''),
-      { label: `exec:${id} (wave ${w + 1})`, phase: 'Execute', schema: STAGE_SCHEMA },
+      (upstream ? `Upstream outputs:\n${upstream}\n` : '') + '\n\n' + RELAYED,
+      { label: `exec:${id} (wave ${w + 1})`, phase: 'Execute', schema: STAGE_SCHEMA, model: 'sonnet' },
     ).then((r) => ({ id, ...r }))
   }))
   for (const r of waveOut.filter(Boolean)) {
@@ -251,8 +260,8 @@ if (Array.isArray(criteria) && criteria.length >= 3) {
     revision = await agent(
       `Score this draft ${REVISE_MIN}-${REVISE_MAX} against EACH criterion independently. Revise ONLY ` +
       `criteria scoring at or below ${REVISE_THRESHOLD}; leave above-threshold text untouched. Report ` +
-      `one change bullet per fix.\n\nCriteria:\n${JSON.stringify(criteria)}\n\nDraft:\n${draft}`,
-      { label: `revise:cycle-${cycle}`, phase: 'Revise', schema: REVISE_SCHEMA },
+      `one change bullet per fix.\n\nCriteria:\n${JSON.stringify(criteria)}\n\nDraft:\n${draft}\n\n${RELAYED}`,
+      { label: `revise:cycle-${cycle}`, phase: 'Revise', schema: REVISE_SCHEMA, model: 'sonnet' },
     )
     const failing = revision.scores.filter((s) => s.score <= REVISE_THRESHOLD)
     if (failing.length > 0 && revision.changes.length === 0) {

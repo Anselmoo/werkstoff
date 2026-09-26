@@ -176,11 +176,13 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
-python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (92 rules planted + blanked) -- run before trusting it
+python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (96 rules planted + blanked) -- run before trusting it
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
 bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
 bash scripts/ci/check-js-syntax.sh --selftest              # 8 planted-defect cases -- run before trusting it
+python3 scripts/ci/check_workflow_models.py               # every agent() names a model + carries the relay briefing (#87, #90)
+python3 scripts/ci/check_workflow_models.py --selftest    # 26 planted-defect cases -- run before trusting it
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
