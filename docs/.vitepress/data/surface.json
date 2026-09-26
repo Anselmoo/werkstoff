@@ -484,7 +484,7 @@
     },
     {
       "name": "cli-scaffold",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
       "skills": [
         {
