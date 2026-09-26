@@ -11,6 +11,9 @@ All notable changes to the `nacharbeit` plugin are documented here.
 - `nacharbeit_lint.py --count` derives mechanical/judgement/per-family rule counts from
   the rubric; shipped prose now points readers at it instead of stating a number, and
   `test_nacharbeit_lint.py` fails if one creeps back in (#86)
+- README's "What it is not" section gains a fifth bullet: nacharbeit is not a planning or
+  spec-authoring entry point, redirecting to `arbeitsplan-compile` (and `zirkel-solve` for
+  a question rather than a change) (#84)
 
 ## [1.0.1] - 2026-09-26
 

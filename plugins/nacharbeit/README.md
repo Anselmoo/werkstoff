@@ -48,6 +48,11 @@ flag with a werkstoff default.
   fix skill hands off there.
 - Not a report viewer. The findings report is Markdown; a viewer would put nacharbeit
   under its own `A-*` rules on day one, and it can wait.
+- Not a planning or spec-authoring entry point — that is `arbeitsplan-compile` (the
+  arbeitsplan plugin), which compiles a stated problem into an executable workflow spec,
+  with a question rather than a change going to `zirkel-solve` instead; nacharbeit grades
+  and reworks what already exists against a fixed, externally sourced rubric, so it does
+  not plan, author a spec, or decide what should be built.
 
 ## Install
 
