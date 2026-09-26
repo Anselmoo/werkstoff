@@ -43,14 +43,28 @@ Interface under test (frozen before any implementation existed):
         remove     installed plugins only; never ANY live directory; keeps the N newest
                    non-live versions; an uninstalled plugin's cache is left alone
         --keep < 0 -> a usage error (exit 2), nothing removed
-    a missing or unparseable registry -> exit 1 with a one-line error naming
-        installed_plugins.json and no traceback, for doctor and prune alike; prune
-        removes nothing (the live set is a gating value; it is never inferred)
+    a missing, unparseable or undecodable (non-UTF-8) registry -> exit 1 with a one-line
+        error naming installed_plugins.json and no traceback, for doctor and prune alike;
+        prune removes nothing (the live set is a gating value; it is never inferred)
+
+    THE INVARIANT (what every case below is an instance of), after any `prune --apply`:
+        every directory the registry names as live still exists, and every path that
+        disappeared lies, after resolving symlinks, strictly inside
+        realpath(<claude-dir>/plugins/cache/<marketplace>)/<plugin>/<version>.
+    Identity is therefore decided on RESOLVED paths, on both sides: a relative
+    --claude-dir, or one reached through a symlink alias, is the same cache, whichever
+    spelling the registry recorded. A registry key's plugin name that is empty, "." or
+    "..", or contains a path separator, never names a directory. Nothing is pruned
+    through a symlink -- neither a symlinked version dir nor a symlinked plugin dir.
 
 The registry-shape cases (multi-scope installs, another marketplace's key, an
 installPath that is not the version string) were added after a first run: both of its
 candidates passed every case above and still scheduled LIVE installs for deletion in
-those shapes. A contract that never states them is a contract that permits them.
+those shapes. A contract that never states them is a contract that permits them. A
+second run then passed every stated shape and deleted live installs through path
+SPELLING instead (a relative or aliased claude dir, "..", a symlinked plugin dir) -- so
+the contract now states the invariant itself, and those tests check outcomes, not
+mechanisms.
 
 This file sits outside every candidate's write scope on purpose: an instrument the
 thing it grades can edit is not an instrument.
@@ -58,6 +72,7 @@ thing it grades can edit is not an instrument.
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -424,3 +439,148 @@ def test_doctor_without_a_readable_registry_fails_in_one_line(dirty, registry) -
     assert result.exception is None or isinstance(result.exception, SystemExit), repr(
         result.exception
     )
+
+
+# --- the invariant, not another shape: found by run ap-2026-09-26-889b's land phase ---
+#
+# Enumerating registry shapes twice produced two candidates that passed every shape and
+# still deleted live installs through the SPELLING of a path: a relative --claude-dir, a
+# symlink alias for the claude dir, a registry key naming "..", a symlinked plugin dir.
+# These tests state the invariant directly and check it after every --apply:
+#
+#   every directory the registry names as live (resolved) still exists, and every path
+#   that disappeared lies, after resolving symlinks, strictly inside
+#   realpath(<claude-dir>/plugins/cache/<marketplace>)/<plugin>/<version>.
+
+
+def _live_dirs(claude: Path) -> set[Path]:
+    data = json.loads((claude / "plugins" / "installed_plugins.json").read_text())
+    return {
+        Path(os.path.realpath(e["installPath"]))
+        for key, entries in data["plugins"].items()
+        if key.endswith("@werkstoff")
+        for e in entries
+    }
+
+
+def _all_paths(root: Path) -> set[Path]:
+    found = set()
+    for dirpath, dirs, files in os.walk(root):
+        for name in dirs + files:
+            found.add(Path(dirpath) / name)
+    return found
+
+
+def _assert_invariant(world: Path, before: set[Path], claude_real: Path) -> set[str]:
+    """Return the removed <plugin>/<version> set after checking the invariant."""
+    cache_real = Path(os.path.realpath(claude_real / "plugins" / "cache" / "werkstoff"))
+    for live in _live_dirs(claude_real):
+        assert live.is_dir(), f"a LIVE install was removed: {live}"
+    gone = before - _all_paths(world)
+    removed_versions = set()
+    for path in gone:
+        # Every vanished path must be inside some <cache>/<plugin>/<version> subtree, and
+        # its parent chain inside the cache must be real directories, never symlinks.
+        rel = Path(os.path.realpath(path.parent)).relative_to(cache_real) / path.name
+        assert len(rel.parts) >= 2, f"removed a path that is not inside a version dir: {path}"
+        removed_versions.add("/".join(rel.parts[:2]))
+    return removed_versions
+
+
+def _apply(args: list[str], cwd: Path | None = None) -> tuple[int, str]:
+    old = Path.cwd()
+    try:
+        if cwd is not None:
+            os.chdir(cwd)
+        result = runner.invoke(app, ["prune", *args, "--apply", "--keep", "0"])
+    finally:
+        os.chdir(old)
+    return result.exit_code, result.output
+
+
+EXPECTED_KEEP_0 = {
+    "andon/0.8.0",
+    "andon/0.10.2",
+    "andon/0.11.1",
+    "cupertino/0.6.0",
+    "cupertino/0.9.1",
+    "takt/0.2.0",
+}
+
+
+def test_a_relative_claude_dir_is_the_same_cache(dirty, tmp_path) -> None:
+    before = _all_paths(tmp_path)
+    rel = os.path.relpath(dirty["claude"], tmp_path)
+    code, out = _apply(["--claude-dir", rel, "--repo", str(dirty["repo"])], cwd=tmp_path)
+    assert code == 0, out
+    assert _assert_invariant(tmp_path, before, dirty["claude"]) == EXPECTED_KEEP_0
+
+
+@pytest.mark.parametrize("registry_spelling", ["real", "alias"])
+def test_a_symlinked_claude_dir_is_the_same_cache(dirty, tmp_path, registry_spelling) -> None:
+    alias = tmp_path / "dotfiles-alias"
+    alias.symlink_to(dirty["claude"], target_is_directory=True)
+    if registry_spelling == "alias":
+        # The registry recorded the alias spelling; the command is given the real path.
+        reg = dirty["claude"] / "plugins" / "installed_plugins.json"
+        data = json.loads(reg.read_text())
+        for entries in data["plugins"].values():
+            for e in entries:
+                e["installPath"] = e["installPath"].replace(str(dirty["claude"]), str(alias))
+        reg.write_text(json.dumps(data))
+        given = dirty["claude"]
+    else:
+        given = alias
+    before = _all_paths(tmp_path)
+    code, out = _apply(["--claude-dir", str(given), "--repo", str(dirty["repo"])])
+    assert code == 0, out
+    assert _assert_invariant(tmp_path, before, dirty["claude"]) == EXPECTED_KEEP_0
+
+
+@pytest.mark.parametrize(
+    "bad_key", ["../../..@werkstoff", "..@werkstoff", "a/b@werkstoff", "@werkstoff"]
+)
+def test_a_registry_key_never_steers_a_removal_out_of_the_cache(dirty, tmp_path, bad_key) -> None:
+    reg = dirty["claude"] / "plugins" / "installed_plugins.json"
+    data = json.loads(reg.read_text())
+    data["plugins"][bad_key] = [
+        {"scope": "user", "installPath": str(dirty["cache"] / "andon" / "0.12.0"), "version": "9"}
+    ]
+    reg.write_text(json.dumps(data))
+    (dirty["claude"] / "projects" / "keep").mkdir(parents=True)
+    before = _all_paths(tmp_path)
+    code, out = _apply(["--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"])])
+    # Refusing the whole registry (exit 1) is acceptable; acting outside the cache is not.
+    assert code in (0, 1), out
+    removed = _assert_invariant(tmp_path, before, dirty["claude"])
+    assert removed <= EXPECTED_KEEP_0, f"removed beyond the stale set: {removed - EXPECTED_KEEP_0}"
+    assert (dirty["claude"] / "projects" / "keep").is_dir()
+
+
+def test_a_symlinked_plugin_dir_is_never_pruned_through(dirty, tmp_path) -> None:
+    elsewhere = tmp_path / "elsewhere" / "cupertino-real"
+    shutil.move(str(dirty["cache"] / "cupertino"), elsewhere)
+    (dirty["cache"] / "cupertino").symlink_to(elsewhere, target_is_directory=True)
+    before = _all_paths(tmp_path)
+    code, out = _apply(["--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"])])
+    assert code in (0, 1), out
+    for v in ("0.6.0", "0.9.1", "0.10.0"):
+        assert (elsewhere / v).is_dir(), f"pruned through a symlinked plugin dir: {v}"
+    gone = before - _all_paths(tmp_path)
+    assert not any(elsewhere in p.parents for p in gone)
+
+
+@pytest.mark.parametrize("command", ["doctor", "prune"])
+def test_an_undecodable_registry_fails_in_one_line(dirty, command) -> None:
+    (dirty["claude"] / "plugins" / "installed_plugins.json").write_bytes(b"\xff\xfe{")
+    before = _snapshot(dirty["claude"])
+    extra = ["--apply"] if command == "prune" else []
+    result = runner.invoke(
+        app,
+        [command, "--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"]), *extra],
+    )
+    assert result.exit_code == 1, result.output
+    assert "installed_plugins.json" in result.output
+    assert "Traceback" not in result.output
+    assert result.exception is None or isinstance(result.exception, SystemExit)
+    assert _snapshot(dirty["claude"]) == before
