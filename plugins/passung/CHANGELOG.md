@@ -6,6 +6,17 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-26
+
+### Fixed
+- every workflow agent() names its tier; dispatches brief relayed requests (#87, #90) (#101)
+- **arbeitsplan**: measured checks, preserving sweep, reason-reading breaker (#81, #76, #80, #78, #93) (#100)
+- **arbeitsplan**: compile_spec validates what it used to count (#77, #74, #75, #79) (#99)
+- **andon**: evidence can go stale (#72); worktrees share the main ledger (#71) (#98)
+- close three fail-open paths in andon, and the two cleanups underneath (#97)
+- stop three guards denying beyond their own rule (#95)
+- **andon**: keep wire degradation on a strategy whose trigger fired (#94)
+
 ## [1.0.0] - 2026-09-21
 ### Changed
 - **BREAKING: renamed from `codebase-consistency` to `passung`** -- a *Passung* is the ISO fit class that decides whether two mating parts go
