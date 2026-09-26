@@ -9,7 +9,7 @@ beats:
     why: "Says what this environment can and cannot measure (no node, no viewer checker) and which other guards are live before a single token is spent — a finding on a rule that was silently skipped is worse than no finding."
     prompt: "what would nacharbeit check in this repo, and is anything blocking a run?"
   - skill: "nacharbeit:nacharbeit-lint"
-    why: "Ninety script-checkable rules with no model in the loop, after the linter proves it can fail; everything a script can decide is decided here so the finders never have to."
+    why: "The script-checkable rules, with no model in the loop, after the linter proves it can fail (`nacharbeit_lint.py --count` for the current number); everything a script can decide is decided here so the finders never have to."
     prompt: "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
   - skill: "nacharbeit:nacharbeit-review"
     why: "The finder grades a real file only after clearing a recall floor for every rule family on planted fixtures and a sealed hold-out; a reviewer with an unknown false-negative rate is an opinion, not a measurement."

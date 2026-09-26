@@ -2247,6 +2247,24 @@ def rubric_ids(rubric: Path | None = None) -> tuple[list[str], list[str]]:
     return mech, judge
 
 
+def rubric_family_counts(rubric: Path | None = None) -> dict[str, int]:
+    """Per-prefix rule counts, mechanical and judgement together.
+
+    #86: the rubric is the only place a rule count may be typed by hand; every
+    other surface (README, SKILL.md, docs) must derive its number from this
+    function via `--count` rather than restating one. Keyed by the id's own
+    prefix before its first `-` (`M`, `H`, `S`, `A`, `P`, `D` for the
+    mechanical families in FAMILIES; `Q`, `HQ`, `SQ`, `AQ`, `PQ`, `DQ` for
+    their judgement counterparts), so a new family needs no change here.
+    """
+    counts: dict[str, int] = {}
+    mech, judge = rubric_ids(rubric)
+    for rid in mech + judge:
+        prefix = rid.split("-", 1)[0]
+        counts[prefix] = counts.get(prefix, 0) + 1
+    return counts
+
+
 def write_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -2269,10 +2287,16 @@ def configure(*, marketplace: Path | None, readme_markers: bool | None, viewer_c
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Mechanical nacharbeit lint (rubric M/H/S/A/P/D rules).")
-    ap.add_argument("plugin_dirs", nargs="+", type=Path)
+    # nargs="*" (not "+"): --count derives its numbers from the rubric alone and
+    # needs no plugin dir. An ordinary scan still requires one -- checked by hand
+    # below, once we know --count was not the point of this invocation.
+    ap.add_argument("plugin_dirs", nargs="*", type=Path)
     ap.add_argument("--format", choices=["text", "json"], default="text")
     ap.add_argument("--out", type=Path, help="write JSON here atomically (tmp + rename)")
     ap.add_argument("--rubric", type=Path, default=RUBRIC)
+    ap.add_argument("--count", action="store_true",
+                     help="print mechanical/judgement/per-family rule counts derived from the rubric, and exit "
+                          "(#86: this is the only place a rule count may be read from -- never typed into prose)")
     ap.add_argument("--marketplace", type=Path, default=Path(".claude-plugin/marketplace.json"), help="marketplace.json to check membership against (skipped when absent)")
     ap.add_argument("--readme-markers", dest="readme_markers", action="store_true", default=None, help="require the rrt example-prompts marker pair")
     ap.add_argument("--no-readme-markers", dest="readme_markers", action="store_false")
@@ -2282,6 +2306,21 @@ def main(argv: list[str] | None = None) -> int:
                      help="repeatable: exit 1 if any finding's rule id starts with PREFIX (e.g. P-README-); "
                           "without this flag the scan always exits 0")
     a = ap.parse_args(argv)
+    if a.count:
+        mech, judge = rubric_ids(a.rubric)
+        families = rubric_family_counts(a.rubric)
+        if a.format == "json":
+            print(json.dumps({"mechanical": len(mech), "judgement": len(judge), "families": families}))
+        else:
+            print(f"mechanical {len(mech)}")
+            print(f"judgement {len(judge)}")
+            print("families:")
+            for prefix in sorted(families):
+                print(f"  {prefix:5s} {families[prefix]}")
+        return 0
+    if not a.plugin_dirs:
+        print("ERROR: plugin_dirs is required unless --count is given", file=sys.stderr)
+        return 2
     for d in a.plugin_dirs:
         if not d.is_dir():
             print(f"ERROR: not a directory: {d}", file=sys.stderr)

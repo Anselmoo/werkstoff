@@ -4,6 +4,11 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `nacharbeit_lint.py --count` derives mechanical/judgement/per-family rule counts from
+  the rubric; shipped prose now points readers at it instead of stating a number, and
+  `test_nacharbeit_lint.py` fails if one creeps back in (#86)
+
 ## [1.0.1] - 2026-09-26
 
 ### Fixed
