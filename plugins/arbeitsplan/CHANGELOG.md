@@ -4,6 +4,7 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-09-26
 ### Added
 - `record_event.py candidate --run --phase --result [--tree]`: an in-session builder batch
   now reaches `candidates/<id>.json` -- which `land_candidate.py` and `reconcile.py` read --
