@@ -15,6 +15,9 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 - `worktree_pool.py selftest` no longer reports two false reds when run as root: the
   fail-closed cases inject their fault with chmod, which root ignores, so they now probe
   the object store and SKIP loudly when it stays writable
+- **hooks**: run both PreToolUse/Stop commands with `python3 -B` so importing a sibling
+  script (`arbeitsplan_guard.py` -> `scripts/delegation.py`) no longer writes
+  `__pycache__` into the installed plugin cache copy (#88)
 
 ## [1.0.3] - 2026-09-26
 

@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `werkstoff doctor` (read-only) and `werkstoff prune [--apply] [--keep N]` (dry-run by
+  default) for stale cached plugin versions under
+  `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/`. Every input is
+  canonicalised once at the boundary in the new `werkstoff.cache` module — the claude
+  dir, each registry entry's `installPath`, and the cache scan itself all resolve
+  symlinks before anything is compared — so identity is decided on resolved paths, never
+  path spelling: a relative `--claude-dir`, a symlinked alias for it, or a registry key
+  naming `..` all resolve to the same cache or are rejected outright. `prune` never
+  removes a live directory (every scope's registry entry under
+  `<plugin>@<this marketplace>` counts), an uninstalled plugin's cache, or anything
+  reached through a symlinked plugin or version directory (#89)
+
+### Security
+- **prune**: fail closed per plugin, and never delete what any registry entry names. A
+  land-phase review reproduced six ways the first version still removed a live install;
+  each is now a calibrated test and refused: an entry with no `installPath` over a
+  symlinked version directory, a relative or `~` `installPath` (resolved against the cwd),
+  a live directory named under another key or marketplace, a bind-mount alias (identity is
+  now `(st_dev, st_ino)`), a marketplace name of `..`, and an install that lands between
+  plan and apply (`apply_prune` now re-reads the registry and re-proves each path). A
+  duplicate-keyed or non-regular-file registry (a FIFO blocked forever) is refused in one
+  line; `--apply --json` reports what was actually `removed`/`failed`/`skipped`; and
+  pre-release tags compare numerically (`rc.10` after `rc.2`) (#89)
+- **prune**: a second adversarial review reproduced more, now tested and refused: an
+  installed plugin with an empty or malformed entry list, or an `installPath` naming a
+  file, had its whole cache removed (it must now prove a live directory); a live
+  directory nested inside a stale version, or a bind mount inside one, was removed with
+  it; a plugin dir renamed or symlinked in after the check was followed (removal now goes
+  through `O_NOFOLLOW` directory fds verified against the checked identities); the cache
+  root is bound to its planned identity; a registry that breaks mid-apply still reports
+  what was already removed; hostile registries (deep nesting, huge integers, NUL bytes,
+  lone surrogates) and Rich markup in paths no longer traceback; and `--apply` re-derives
+  the protected set only when the registry changed (65 s -> 0.6 s for 400 x 5,000) (#89)
+- **prune**: a third review reproduced, now tested and refused: a bind mount under a
+  non-UTF-8 path went undetected (mountinfo is now read as bytes and `fsdecode`d); an
+  entry spelled THROUGH a stale version (`0.8.0/../0.12.0`, a symlink inside it) stopped
+  resolving once that version was pruned; a `$HOME`-relative installPath was not
+  protected; the dry run announced removals apply then refused; the nesting check was
+  rows x entries (163 s; now a precomputed ancestor set); and a lone surrogate or
+  undecodable byte in a name, a 1,200-level tree (`rmtree` recursion), an unreadable
+  cache dir, or a malformed `marketplace.json` no longer traceback. One race stays open
+  and is documented: a concurrent rename inside the cache between the last check and the
+  removal (#89)
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._

@@ -18,6 +18,10 @@
   │          plugins.                                                            │
   │ update   Refresh the werkstoff marketplace cache so local plugin edits are   │
   │          picked up.                                                          │
+  │ doctor   Report every cached plugin version against the installed-plugins    │
+  │          registry.                                                           │
+  │ prune    List, and with --apply remove, stale non-live cached plugin         │
+  │          versions.                                                           │
   ╰──────────────────────────────────────────────────────────────────────────────╯
   
   

@@ -4,6 +4,11 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **hooks**: run the PreToolUse command with `python3 -B` so importing a sibling script
+  (e.g. `andon_enforce.py`) no longer writes `__pycache__` into the installed plugin
+  cache copy (#88)
+
 ## [1.0.4] - 2026-09-22
 ### Added
 - **andon**: optional evidence lifecycle fields `superseded_by`,

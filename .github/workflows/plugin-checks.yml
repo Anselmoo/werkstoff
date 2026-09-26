@@ -34,6 +34,7 @@ jobs:
       ledger_validator_tests: ${{ steps.ledger_validator_tests.outcome }}
       differential_guards: ${{ steps.differential_guards.outcome }}
       hooks_deny: ${{ steps.hooks_deny.outcome }}
+      hook_bytecode: ${{ steps.hook_bytecode.outcome }}
       rrt_artifacts: ${{ steps.rrt_artifacts.outcome }}
       docs_inject_check: ${{ steps.docs_inject_check.outcome }}
       release_wiring: ${{ steps.release_wiring.outcome }}
@@ -285,6 +286,18 @@ jobs:
         # hooks -- a false negative nothing was watching.
         run: python3 test/plugins/verify-hooks-deny.py plugins/*/
 
+      - name: Verify no hook writes bytecode into its installed copy
+        id: hook_bytecode
+        continue-on-error: true
+        # #88: a hook that imports a sibling module wrote __pycache__ into
+        # ~/.claude/plugins/cache/<mkt>/<plugin>/<version>/, so the installed
+        # copy drifted from the tree it was installed from. This runs every
+        # hooks.json command against an INSTALLED COPY and searches it for
+        # bytecode -- and fails as INSTRUMENT-DEAD if its audit hook never saw
+        # arbeitsplan's guard open scripts/delegation.py, because a clean cache
+        # the probe never reached proves nothing.
+        run: python3 test/plugins/check-hook-bytecode.py
+
       - name: Verify every plugin is wired into the release workflows
         id: release_wiring
         continue-on-error: true
@@ -388,6 +401,7 @@ jobs:
           steps.ledger_validator_tests.outcome == 'failure' ||
           steps.differential_guards.outcome == 'failure' ||
           steps.hooks_deny.outcome == 'failure' ||
+          steps.hook_bytecode.outcome == 'failure' ||
           steps.rrt_artifacts.outcome == 'failure' ||
           steps.release_wiring.outcome == 'failure' ||
           steps.tag_releases.outcome == 'failure' ||
@@ -450,6 +464,7 @@ jobs:
             row "andon-ledger-validator test suite" "${{ needs.checks.outputs.ledger_validator_tests }}"
             row "guard differential cases (old denies / new allows, and one both deny)" "${{ needs.checks.outputs.differential_guards }}"
             row "declared hooks actually deny (verify-hooks-deny)" "${{ needs.checks.outputs.hooks_deny }}"
+            row "hooks write no bytecode into the installed copy (#88)" "${{ needs.checks.outputs.hook_bytecode }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"
