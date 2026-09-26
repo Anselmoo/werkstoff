@@ -6,6 +6,11 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+### Fixed
+- **hooks**: run the PreToolUse command with `python3 -B` so importing a sibling script
+  (e.g. `guard_target_edit.py`) no longer writes `__pycache__` into the installed plugin
+  cache copy (#88)
+
 ## [1.0.1] - 2026-09-22
 
 ### Fixed

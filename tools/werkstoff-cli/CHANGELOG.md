@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `werkstoff doctor` (read-only) and `werkstoff prune [--apply] [--keep N]` (dry-run by
+  default) for stale cached plugin versions under
+  `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/`. Every input is
+  canonicalised once at the boundary in the new `werkstoff.cache` module — the claude
+  dir, each registry entry's `installPath`, and the cache scan itself all resolve
+  symlinks before anything is compared — so identity is decided on resolved paths, never
+  path spelling: a relative `--claude-dir`, a symlinked alias for it, or a registry key
+  naming `..` all resolve to the same cache or are rejected outright. `prune` never
+  removes a live directory (every scope's registry entry under
+  `<plugin>@<this marketplace>` counts), an uninstalled plugin's cache, or anything
+  reached through a symlinked plugin or version directory (#89)
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._

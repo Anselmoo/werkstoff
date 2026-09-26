@@ -10,6 +10,9 @@ All notable changes to the `nacharbeit` plugin are documented here.
 - README's review-report commands run: `nacharbeit_lint.py` takes `--format json` (there is
   no `--json`, which exited 2), and raw lint output goes to `build_review_html.py --lint`,
   not `--report`, which rendered it with every fix tier and message lost
+- **hooks**: run the PreToolUse command with `python3 -B` so importing a sibling script
+  (e.g. `nacharbeit_guard.py`) no longer writes `__pycache__` into the installed plugin
+  cache copy (#88)
 
 ### Added
 - `Q-FIXTURE-AGREES` (major, meaning): a claim in shipped prose that names a committed

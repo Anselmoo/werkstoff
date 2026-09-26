@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_edit_scope.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_edit_scope.py\""
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_bash_scope.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_bash_scope.py\""
           }
         ]
       }

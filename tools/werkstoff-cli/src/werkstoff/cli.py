@@ -14,7 +14,7 @@ import typer
 from rich.console import Console
 from rich.padding import Padding
 
-from werkstoff import core
+from werkstoff import cache, core
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -135,6 +135,150 @@ def update(repo: Path | None = REPO_OPTION) -> None:
         err_console.print(f"error: {exc}")
         raise typer.Exit(code=1) from exc
     console.print(f"[green]updated[/green] {marketplace.name}")
+
+
+CLAUDE_DIR_OPTION = typer.Option(
+    None,
+    "--claude-dir",
+    help="Path to the Claude config dir (default: $CLAUDE_CONFIG_DIR, else ~/.claude).",
+)
+KEEP_OPTION = typer.Option(
+    1, "--keep", min=0, help="Newest non-live cached versions to keep per plugin."
+)
+
+
+def _human_size(num_bytes: int) -> str:
+    """Bytes as a short human-readable size (KB/MB/GB)."""
+    size = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if size < 1024 or unit == "GB":
+            return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
+
+
+def _plugin_payload(report: cache.PluginReport) -> dict:
+    return {
+        "name": report.name,
+        "live": report.live,
+        "liveVersions": list(report.live_versions),
+        "cached": list(report.cached),
+        "sizeBytes": report.size_bytes,
+        "notInMarketplace": report.not_in_marketplace,
+        "liveNotNewest": report.live_not_newest,
+    }
+
+
+def _print_doctor_report(reports: list[cache.PluginReport], total: int) -> None:
+    if not reports:
+        console.print("[dim]no plugins found in the marketplace or the cache[/dim]")
+        return
+    for report in reports:
+        bits = [f"live {report.live}" if report.live else "not installed"]
+        if report.not_in_marketplace:
+            bits.append("[yellow]not in marketplace[/yellow]")
+        bits.append(f"cached {len(report.cached)}")
+        if report.live_not_newest:
+            bits.append(f"[yellow]newer cached: {report.cached[-1]}[/yellow]")
+        bits.append(_human_size(report.size_bytes))
+        console.print(f"[bold]{report.name}[/bold]  " + "  ".join(bits))
+    console.print(f"\n{len(reports)} plugin(s), {_human_size(total)} total")
+
+
+def _print_prune_dry_run(plan: list[cache.RemovalPlan]) -> None:
+    if not plan:
+        console.print("nothing to prune")
+        return
+    for item in plan:
+        console.print(f"  would remove {item.path}  -- stale, kept beyond --keep")
+    console.print(f"{len(plan)} path(s); dry run -- nothing touched. Pass --apply to remove them.")
+
+
+def _print_prune_apply(
+    plan: list[cache.RemovalPlan],
+    removed: list[cache.RemovalPlan],
+    failures: list[tuple[cache.RemovalPlan, OSError]],
+) -> None:
+    for item in plan:
+        console.print(f"  remove {item.path}")
+    for item, exc in failures:
+        err_console.print(f"error: could not remove {item.path}: {exc}")
+    console.print(f"removed {len(removed)} of {len(plan)}")
+
+
+@app.command()
+def doctor(
+    claude_dir: Path | None = CLAUDE_DIR_OPTION,
+    repo: Path | None = REPO_OPTION,
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """Report every cached plugin version against the installed-plugins registry.
+
+    Read-only: never writes to the registry or the cache."""
+    marketplace = _resolve_marketplace(repo)
+    resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
+    marketplace_names = frozenset(p.name for p in marketplace.plugins)
+    try:
+        reports, total = cache.build_doctor_report(
+            resolved_claude_dir, marketplace.name, marketplace_names
+        )
+    except cache.CacheError as exc:
+        err_console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        payload = {
+            "marketplace": marketplace.name,
+            "totalSizeBytes": total,
+            "plugins": [_plugin_payload(r) for r in reports],
+        }
+        typer.echo(json.dumps(payload))
+        return
+    _print_doctor_report(reports, total)
+
+
+@app.command()
+def prune(
+    claude_dir: Path | None = CLAUDE_DIR_OPTION,
+    repo: Path | None = REPO_OPTION,
+    keep: int = KEEP_OPTION,
+    apply: bool = typer.Option(False, "--apply", help="Actually remove; default is a dry run."),
+    json_output: bool = typer.Option(False, "--json", help="Emit machine-readable JSON."),
+) -> None:
+    """List, and with --apply remove, stale non-live cached plugin versions.
+
+    Dry run by default. Never removes a live directory, an uninstalled
+    plugin's cache, or anything reached through a symlink."""
+    marketplace = _resolve_marketplace(repo)
+    resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
+    try:
+        plan = cache.build_prune_plan(resolved_claude_dir, marketplace.name, keep)
+    except cache.CacheError as exc:
+        err_console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+
+    removed: list[cache.RemovalPlan] = []
+    failures: list[tuple[cache.RemovalPlan, OSError]] = []
+    if apply:
+        removed, failures = cache.apply_prune(plan)
+
+    if json_output:
+        payload = {
+            "apply": apply,
+            "keep": keep,
+            "remove": [
+                {"plugin": item.plugin, "version": item.version, "path": str(item.path)}
+                for item in plan
+            ],
+        }
+        typer.echo(json.dumps(payload))
+    elif apply:
+        _print_prune_apply(plan, removed, failures)
+    else:
+        _print_prune_dry_run(plan)
+
+    if failures:
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
