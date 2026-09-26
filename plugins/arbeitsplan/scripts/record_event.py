@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """Persist what an arbeitsplan run did, so the run directory -- not the chat -- is the record.
 
-usage: record_event.py {workflow,referee,phase-output,phase,status,finish,selftest} --run RUNID ...
+usage: record_event.py {workflow,candidate,referee,phase-output,phase,status,finish,selftest} --run RUNID ...
 
   workflow      --result FILE   a Workflow tool return (workflows/run.js): appends its
                                 span-shaped `events` to run.jsonl, and writes one
                                 candidates/<id>.json and referee/<id>.json per candidate
                                 it carries, O_CREAT|O_EXCL -- which is what makes
                                 land_candidate.py reachable without hand-written files
+  candidate     --phase ID --result FILE [--tree DIR]
+                                an IN-SESSION builder batch (one result or a list):
+                                writes candidates/<id>.json (write-once), the file
+                                land_candidate.py and reconcile.py read; refused unless
+                                the phase is opened and every result has the
+                                candidate-builder shape. --tree (one result only) takes
+                                diff and filesTouched from the worktree itself and notes
+                                whether the builder's self-report differed
   referee       --phase ID --verdict FILE
                                 an IN-SESSION referee batch (one verdict or a list):
                                 writes referee/<id>.json (write-once) and the
@@ -283,6 +291,129 @@ def cmd_referee(run: run_record.Run, phase: str, data: object) -> list:
     return notes
 
 
+CANDIDATE_LISTS = ("filesTouched", "checks", "outOfScopeWrites")
+
+
+def _tree_diff(tree: Path) -> tuple[str, list]:
+    """(diff, paths) of a candidate worktree as it actually stands, untracked files included.
+
+    `git add -N` records only the intent to add, so a created file shows up in
+    `git diff` as a new-file hunk -- which is what land_candidate.py's `git apply`
+    needs -- without staging any content.
+    """
+    def git(*argv: str) -> str:
+        done = subprocess.run(["git", "-C", str(tree), *argv], capture_output=True, text=True)
+        if done.returncode != 0:
+            raise run_record.RecordError(f"git {' '.join(argv)} failed in {tree}: {done.stderr.strip()}")
+        return done.stdout
+
+    if not tree.is_dir():
+        raise run_record.RecordError(f"--tree {tree} is not a directory")
+    git("add", "-N", ".")
+    return git("diff"), git("diff", "--name-only").split()
+
+
+def cmd_candidate(run: run_record.Run, phase: str, data: object, tree: Path | None = None) -> list:
+    """Record one IN-SESSION builder batch, as `workflow` records a returned one.
+
+    land_candidate.py refuses without candidates/<id>.json and reconcile.py
+    compares a candidate's reported checks[] against it, but only `workflow
+    --result` (the workflow backend) ever wrote that file. An in-session run
+    dispatches arbeitsplan:candidate-builder itself, so its session wrote the
+    file by hand, through Bash, which the guard's matcher never sees.
+
+    `data` is one builder result or a list of them, in candidate-builder.md's
+    shape. The batch is validated whole before anything is written, and refused
+    rather than guessed at: the phase must be opened, the shape must hold, and a
+    candidate already recorded is never overwritten.
+
+    `--tree` replaces the self-reported `diff` and `filesTouched` with what the
+    worktree actually holds. Builders paraphrase long diffs -- in run
+    ap-2026-09-26-0086 both elided the lock-file hunks as "[...]", a diff that
+    would not apply -- so the record notes whether the report differed. It takes
+    exactly one result: which worktree belongs to which candidate of a list is
+    not something to infer.
+    """
+    results: list = data if isinstance(data, list) else [data]
+    if not results:
+        raise run_record.RecordError("the result file holds no builder results")
+    if tree is not None and len(results) != 1:
+        raise run_record.RecordError(f"--tree names one worktree but the file holds {len(results)} results; "
+                                     "record each candidate with its own --tree")
+    st = run.status()
+    if st["finished"] or st["failed"]:
+        raise run_record.RecordError("the run has ended; a candidate recorded afterwards was never part of it")
+    opened = {e["node_id"] for e in run.events()
+              if str(e.get("span", "")).startswith("phase ") and e.get("status") == "opened"}
+    if phase not in opened:
+        raise run_record.RecordError(
+            f"phase {phase!r} was never opened in run.jsonl; record it first with "
+            f"record_event.py phase --run {run.run_id} --phase {phase} --status opened")
+    problems, seen = [], set()
+    for i, r in enumerate(results):
+        where = f"result[{i}]"
+        if not isinstance(r, dict):
+            problems.append(f"{where} is not an object")
+            continue
+        cid = r.get("candidateId")
+        if not isinstance(cid, str) or not cid:
+            problems.append(f"{where} names no candidateId")
+            continue
+        if cid in seen:
+            problems.append(f"{where} repeats candidateId {cid!r} within one batch")
+        seen.add(cid)
+        if not isinstance(r.get("angle"), str) or not r["angle"]:
+            problems.append(f"{cid}: angle must be a non-empty string")
+        if not isinstance(r.get("measured"), bool):
+            problems.append(f"{cid}: measured must be true or false, never absent")
+        elif r["measured"] and tree is None and not (isinstance(r.get("diff"), str) and r["diff"].strip()):
+            problems.append(f"{cid}: a measured candidate carries no diff")
+        for key in CANDIDATE_LISTS:
+            if not isinstance(r.get(key), list):
+                problems.append(f"{cid}: {key} must be a list")
+        checks = r.get("checks")
+        if isinstance(checks, list) and not all(
+                isinstance(c, dict) and c.get("id") and isinstance(c.get("command"), str)
+                and isinstance(c.get("exit"), int) and not isinstance(c.get("exit"), bool) for c in checks):
+            problems.append(f"{cid}: checks must be a list of {{id, command, exit: int}}")
+        if (run.dir / "candidates" / f"{cid}.json").exists():
+            problems.append(f"{cid}: candidates/{cid}.json already exists; a candidate is written once")
+    if problems:
+        raise run_record.RecordError("nothing written -- " + "; ".join(problems))
+    records, events = [], []
+    for r in results:
+        cid = r["candidateId"]
+        rec = {**r, "phase": phase}
+        detail: dict = {"record": f"candidates/{cid}.json"}
+        if tree is not None and r["measured"]:
+            diff, paths = _tree_diff(tree)
+            if not diff.strip():
+                raise run_record.RecordError(f"nothing written -- {cid} reports measured, but {tree} holds no diff")
+            rec.update(diff=diff, filesTouched=paths, diffSource="tree",
+                       selfReportDiffered=(r.get("diff") or "") != diff,
+                       selfReportedDiffSha256=hashlib.sha256((r.get("diff") or "").encode()).hexdigest())
+            detail["selfReportDiffered"] = rec["selfReportDiffered"]
+        status = ("unmeasured" if not r["measured"]
+                  else "refuted" if r["outOfScopeWrites"] else "proposed")
+        detail["files"] = len(rec["filesTouched"])
+        ev = _span(run.run_id, "invoke_agent arbeitsplan:candidate-builder", f"{phase}:{cid}", status, detail)
+        problem = _event_problem(run, ev)
+        if problem:
+            raise run_record.RecordError(f"nothing written -- {problem}")
+        records.append(rec)
+        events.append(ev)
+    notes = []
+    for rec, ev in zip(records, events, strict=True):
+        _write_once(run.dir / "candidates" / f"{rec['candidateId']}.json", rec)
+        run.append(ev)
+        note = f"candidates/{rec['candidateId']}.json written ({ev['status']})"
+        if rec.get("diffSource") == "tree":
+            note += ("; diff taken from the worktree -- the self-reported diff DIFFERED"
+                     if rec["selfReportDiffered"] else "; diff taken from the worktree, matching the report")
+        notes.append(note)
+    return notes
+
+
 def cmd_finish(run: run_record.Run) -> list:
     """End the run in the record, so the run directory says it is over.
 
@@ -543,6 +674,70 @@ def selftest() -> int:
                len(json.loads((ins.dir / "referee" / "referee-w3" / "c3.json").read_text())["perCriterion"]) == 40)
             ok("referee refuses a run that has already ended",
                refused(lambda: cmd_referee(landed, "land", [verdict("c9", "accepted", [])])))
+
+            # candidate: an IN-SESSION builder batch reaches candidates/<id>.json.
+            cs = run_record.open_run(PLUGIN, "ap-t-14")
+
+            def built(cid: str, diff: str | None = "diff --git a/x b/x\n", measured: bool = True) -> dict:
+                return {"candidateId": cid, "angle": f"angle-{cid}", "measured": measured, "diff": diff,
+                        "filesTouched": ["x"] if measured else [], "outOfScopeWrites": [],
+                        "checks": [{"id": "a1", "command": "true", "exit": 0}] if measured else [],
+                        "rationale": "r", "flaggedInstruction": None}
+
+            ok("candidate refuses a phase never opened in run.jsonl",
+               refused(lambda: cmd_candidate(cs, "build", [built("c1")])))
+            cs.append(_span("ap-t-14", "phase build", "build", "opened"))
+            ok("candidate refuses a result with no angle, writing nothing from its batch",
+               refused(lambda: cmd_candidate(cs, "build", [built("c1"), {**built("c2"), "angle": ""}]))
+               and not (cs.dir / "candidates").exists())
+            ok("candidate refuses a measured result with no diff",
+               refused(lambda: cmd_candidate(cs, "build", built("c1", diff=None))))
+            ok("candidate refuses checks whose exit is not an int",
+               refused(lambda: cmd_candidate(cs, "build", {**built("c1"), "checks": [{"id": "a1", "command": "t", "exit": "0"}]})))
+            ok("candidate refuses a result missing outOfScopeWrites",
+               refused(lambda: cmd_candidate(cs, "build", {k: v for k, v in built("c1").items() if k != "outOfScopeWrites"})))
+            cmd_candidate(cs, "build", [built("c1"), built("c3", diff=None, measured=False)])
+            c1 = json.loads((cs.dir / "candidates" / "c1.json").read_text())
+            ok("a batch writes one record per candidate, tagged with its phase",
+               c1["phase"] == "build" and c1["diff"] == "diff --git a/x b/x\n"
+               and (cs.dir / "candidates" / "c3.json").is_file())
+            ok("an unmeasured result is recorded as unmeasured, not as a failure",
+               [e["status"] for e in cs.events() if e["node_id"] == "build:c3"] == ["unmeasured"])
+            ok("a candidate is written once",
+               refused(lambda: cmd_candidate(cs, "build", {**built("c1"), "diff": "OVERWRITE"}))
+               and "OVERWRITE" not in (cs.dir / "candidates" / "c1.json").read_text())
+
+            tree = Path(raw) / "wt"
+            tree.mkdir()
+
+            def git(*argv: str) -> None:
+                subprocess.run(["git", "-C", str(tree), *argv], check=True, capture_output=True)
+
+            git("init", "-q")
+            (tree / "kept.txt").write_text("one\n")
+            git("add", "kept.txt")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "base")
+            (tree / "kept.txt").write_text("two\n")
+            (tree / "new.txt").write_text("created\n")
+            ok("--tree refuses a list, whose worktrees it cannot tell apart",
+               refused(lambda: cmd_candidate(cs, "build", [built("c4"), built("c5")], tree)))
+            cmd_candidate(cs, "build", {**built("c4"), "diff": "diff --git a/kept.txt\n[... elided ...]\n"}, tree)
+            c4 = json.loads((cs.dir / "candidates" / "c4.json").read_text())
+            ok("--tree replaces the self-reported diff with the worktree's, untracked files included",
+               c4["diffSource"] == "tree" and "+two" in c4["diff"] and "+created" in c4["diff"]
+               and "elided" not in c4["diff"] and sorted(c4["filesTouched"]) == ["kept.txt", "new.txt"])
+            ok("--tree notes that the paraphrased self-report differed", c4["selfReportDiffered"] is True)
+            cmd_candidate(cs, "build", {**built("c6"), "diff": c4["diff"]}, tree)
+            ok("--tree notes a self-report that matched",
+               json.loads((cs.dir / "candidates" / "c6.json").read_text())["selfReportDiffered"] is False)
+            git("checkout", "-q", "--", "kept.txt")
+            git("rm", "-q", "--cached", "new.txt")
+            (tree / "new.txt").unlink()
+            ok("--tree refuses a measured report over a worktree with no diff",
+               refused(lambda: cmd_candidate(cs, "build", built("c7"), tree))
+               and not (cs.dir / "candidates" / "c7.json").exists())
+            ok("candidate refuses a run that has already ended",
+               refused(lambda: cmd_candidate(landed, "land", built("c9"))))
         finally:
             os.chdir(cwd)
     print()
@@ -572,6 +767,11 @@ def main(argv: list) -> int:
     st.add_argument("--run", required=True)
     fin = sub.add_parser("finish")
     fin.add_argument("--run", required=True)
+    ca = sub.add_parser("candidate")
+    ca.add_argument("--run", required=True)
+    ca.add_argument("--phase", required=True)
+    ca.add_argument("--result", required=True, help="one candidate-builder result, or a JSON list of them")
+    ca.add_argument("--tree", type=Path, help="the candidate's worktree: its real diff replaces the self-reported one")
     rf = sub.add_parser("referee")
     rf.add_argument("--run", required=True)
     rf.add_argument("--phase", required=True)
@@ -598,7 +798,8 @@ def main(argv: list) -> int:
                 run.append(_span(args.run, f"phase {args.phase}", args.phase, args.status))
             print(f"recorded phase {args.phase} {args.status}")
             return 0
-        src = args.result if args.cmd == "workflow" else args.verdict if args.cmd == "referee" else args.output
+        src = (args.result if args.cmd in ("workflow", "candidate")
+               else args.verdict if args.cmd == "referee" else args.output)
         try:
             data = json.loads(Path(src).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
@@ -606,6 +807,8 @@ def main(argv: list) -> int:
             return 2
         if args.cmd == "workflow":
             notes = cmd_workflow(run, data)
+        elif args.cmd == "candidate":
+            notes = cmd_candidate(run, args.phase, data, args.tree)
         elif args.cmd == "referee":
             notes = cmd_referee(run, args.phase, data)
         else:

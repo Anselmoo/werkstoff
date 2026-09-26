@@ -46,6 +46,20 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    These are in-session dispatches, so the guard sees each one. The workflow backend is a
    different run, compiled for it — never switch to it mid-run.
 
+   **Record each builder's result** as it returns — the JSON it printed, saved to a file —
+   with its own worktree:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" candidate --run <runId> --phase build --result c2.json --tree .arbeitsplan/<runId>/c2
+   ```
+
+   This writes `candidates/c2.json`, the file `reconcile.py` (step 8) and `land_candidate.py`
+   (step 9) read; nothing else writes it on this backend. `--tree` replaces the builder's
+   self-reported `diff` and `filesTouched` with what its worktree actually holds, and notes
+   whether they differed — builders paraphrase long diffs, and a paraphrased diff does not
+   apply. It refuses a phase that was never opened, a result missing any field of
+   `candidate-builder`'s output shape, and a candidate already recorded, writing nothing.
+
 5. **Apply the breaker, per batch, never cumulatively.**
 
    - Exclude every `measured: false` candidate from the denominator. It is not a rejection;

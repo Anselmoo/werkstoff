@@ -4,6 +4,18 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+### Added
+- `record_event.py candidate --run --phase --result [--tree]`: an in-session builder batch
+  now reaches `candidates/<id>.json` -- which `land_candidate.py` and `reconcile.py` read --
+  through a validated, write-once command instead of a hand-written file. `--tree` takes the
+  diff from the candidate's worktree and records whether the builder's self-report differed;
+  in run ap-2026-09-26-0086 both builders had elided lock-file hunks as "[...]"
+
+### Fixed
+- `worktree_pool.py selftest` no longer reports two false reds when run as root: the
+  fail-closed cases inject their fault with chmod, which root ignores, so they now probe
+  the object store and SKIP loudly when it stays writable
+
 ## [1.0.3] - 2026-09-26
 
 ### Fixed

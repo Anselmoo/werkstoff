@@ -649,22 +649,40 @@ def cmd_selftest(args) -> int:
                         q.chmod(mode | _stat.S_IWUSR if writable else mode & ~(_stat.S_IWUSR | _stat.S_IWGRP | _stat.S_IWOTH))
 
             chmod_tree(objects, False)
+            # The fault is injected by permission bits, which root (or any process
+            # holding CAP_DAC_OVERRIDE) ignores: git would then commit happily and
+            # both cases below would report a false red. Probe whether the store
+            # really refuses a write, and skip loudly -- never pass -- when it does not.
+            probe = objects / ".selftest-write-probe"
             try:
-                r = preserve_then_remove(repo_root, run_id, "c1", c1)
+                probe.write_text("")
+            except OSError:
+                injected = True
+            else:
+                probe.unlink()
+                injected = False
+            try:
+                r = preserve_then_remove(repo_root, run_id, "c1", c1) if injected else None
             finally:
                 chmod_tree(objects, True)
-            ok = not r["ok"] and c1.exists() and (c1 / "u.txt").exists()
-            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- a read-only "
-                  "object store removes nothing")
-            if not ok:
-                fails.append("preserve_then_remove fail-closed")
-            survives = subprocess.run(["git", "branch", "--list", f"arbeitsplan/{run_id}/c1"],
-                                      capture_output=True, text=True).stdout.strip()
-            ok = bool(survives)
-            print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- the "
-                  "candidate branch survives too")
-            if not ok:
-                fails.append("preserve_then_remove fail-closed branch")
+            if r is None:
+                print("  SKIP preserve_then_remove: FAIL CLOSED (x2) -- chmod did not make the "
+                      "object store read-only for this process (running as root?), so the "
+                      "failure these two cases need cannot be injected; run the selftest as an "
+                      "unprivileged user to exercise them")
+            else:
+                ok = not r["ok"] and c1.exists() and (c1 / "u.txt").exists()
+                print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- a read-only "
+                      "object store removes nothing")
+                if not ok:
+                    fails.append("preserve_then_remove fail-closed")
+                survives = subprocess.run(["git", "branch", "--list", f"arbeitsplan/{run_id}/c1"],
+                                          capture_output=True, text=True).stdout.strip()
+                ok = bool(survives)
+                print(f"  {'ok  ' if ok else 'FAIL'} preserve_then_remove: FAIL CLOSED -- the "
+                      "candidate branch survives too")
+                if not ok:
+                    fails.append("preserve_then_remove fail-closed branch")
         finally:
             os.chdir(cwd)
 
