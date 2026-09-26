@@ -117,6 +117,7 @@ Angles map to the user's review axes: `meaning`, `contract`, `clarity`, `step-lo
 | `Q-MEANING-PROMISE` | meaning | The body delivers what the description promises, and promises nothing the body does not do. | major | platform best-practices "description … the rest of SKILL.md provides the implementation details" |
 | `Q-MEANING-CONTRACT` | contract | A component that produces an artifact states its output contract (where it writes, what shape) in one place the reader can find. | major | craft-standards; output-shape-findings |
 | `Q-MEANING-ASSUMED` | meaning | No hidden precondition: every input the body relies on (a file, a prior skill's artifact, a setting) is named as required, with what happens when it is absent. | major | CLAUDE.md "never infer a missing gating value" |
+| `Q-FIXTURE-AGREES` | meaning | A claim in shipped prose (SKILL.md, agent, reference page) that names a committed fixture or example-data path, about that fixture's state, contents or shape, matches the fixture. Judgement, not mechanical: deciding whether a sentence and a JSON record disagree needs reading both; scoped to prose that names a committed path so the finder has an anchor. | major | issue #85 |
 
 ### Clarity
 
@@ -212,7 +213,10 @@ instead of `permissionDecisionReason`, makes the runtime silently ignore the den
 ## S — scripts
 
 Applies to `scripts/**/*.{py,sh,js}` and `hooks/*.py` (kinds `script` and `hookscript`),
-skipping `fixtures/` and `testdata/`. `S-JS-SYNTAX`, `S-WF-SHAPE`, `S-WF-MODEL` and `S-WF-RELAY` also cover
+skipping `fixtures/` and `testdata/` for these mechanical script-style rules only — that
+skip is not a skip of `Q-FIXTURE-AGREES`, which reads a fixture's own contents on
+purpose and applies wherever shipped prose names a committed fixture path, `fixtures/`
+and `testdata/` included. `S-JS-SYNTAX`, `S-WF-SHAPE`, `S-WF-MODEL` and `S-WF-RELAY` also cover
 `workflows/*.js`.
 
 ### Mechanical

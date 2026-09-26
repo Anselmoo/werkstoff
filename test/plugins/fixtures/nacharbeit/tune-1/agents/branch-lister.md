@@ -14,3 +14,8 @@ You are branch-lister. Open the manifest file named in the dispatch prompt and r
 ```
 
 Return `[]` when the manifest declares nothing.
+
+## Worked example
+
+A recorded scan of a three-line manifest is committed at `fixtures/manifest-scan.json`
+in this plugin, showing four detected dependencies.

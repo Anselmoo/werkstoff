@@ -1,0 +1,8 @@
+{
+  "manifest": "requirements.txt",
+  "entries": [
+    {"package": "requests", "line": 12},
+    {"package": "rich", "line": 13},
+    {"package": "typer", "line": 14}
+  ]
+}

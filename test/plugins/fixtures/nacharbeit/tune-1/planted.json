@@ -52,6 +52,12 @@
       "rule_id": "Q-PROC-TOOLS-ROLE",
       "angle": "procedure",
       "quoteKey": "tools: Read, Grep, Glob, Bash, WebFetch, Write"
+    },
+    {
+      "file": "test/plugins/fixtures/nacharbeit/tune-1/agents/branch-lister.md",
+      "rule_id": "Q-FIXTURE-AGREES",
+      "angle": "meaning",
+      "quoteKey": "showing four detected dependencies"
     }
   ]
 }

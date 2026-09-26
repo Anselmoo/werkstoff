@@ -5,6 +5,9 @@ All notable changes to the `nacharbeit` plugin are documented here.
 ## [Unreleased]
 
 ### Added
+- `Q-FIXTURE-AGREES` (major, meaning): a claim in shipped prose that names a committed
+  fixture or example-data path, about that fixture's state, contents or shape, must
+  match the fixture. Calibrated in `test/plugins/fixtures/nacharbeit/tune-1` (#85)
 - `nacharbeit_lint.py --count` derives mechanical/judgement/per-family rule counts from
   the rubric; shipped prose now points readers at it instead of stating a number, and
   `test_nacharbeit_lint.py` fails if one creeps back in (#86)
