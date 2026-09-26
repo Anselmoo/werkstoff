@@ -35,7 +35,7 @@ this run faster by skipping it; the capability does not exist.
    a second scratch JSON file.
 5. Run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/assertion_audit.py" <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/assertion_audit.py" <repo_root> \
        --find-json <path-from-step-3> \
        --verify-json <path-from-step-4> \
        [--requested-tool <name>]

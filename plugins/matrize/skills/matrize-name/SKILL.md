@@ -71,8 +71,8 @@ into a registry, `scripts/validate_tokens.py` checks every token against it, and
 Run the checks yourself rather than discovering them at write time:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validate_tokens.py" <root>/system/tokens.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validate_tokens.py" <root>/system/tokens.json
 ```
 
 Every entry names its concept as `term` + `dimension`. The dimension is not optional

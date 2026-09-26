@@ -11,7 +11,7 @@ into testable Given/When/Then rule specs.
 ## Step 0: Settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-extract-rules
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-extract-rules
 ```
 
 ## Step 1: Loop rounds to convergence, capped
@@ -21,7 +21,7 @@ eligibility / state-and-lifecycle) to cover different logic shapes each round. A
 round, check whether to continue -- do not decide this by feel:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py rules-loop-check --round-number <N> --consecutive-dry-rounds <M> --max-rounds <settings.extract_rules.maxRounds>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" rules-loop-check --round-number <N> --consecutive-dry-rounds <M> --max-rounds <settings.extract_rules.maxRounds>
 ```
 
 `should_continue: false` means stop -- either because two consecutive rounds found nothing new
@@ -43,7 +43,7 @@ Any rule rated `P0` MUST go through an independent two-judge panel before it ent
 confirmed set:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py p0-confirm --rule <json rule> --judges <json list of {"judge_id":..., "confirms":...}>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" p0-confirm --rule <json rule> --judges <json list of {"judge_id":..., "confirms":...}>
 ```
 
 Dispatch two independent judge agents (distinct `judge_id`s) for every P0 rule. Only
@@ -54,17 +54,17 @@ separately, never silently promoted.
 ## Step 4: Validate and write
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind business_rules_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind business_rules_summary --file <path-or-inline-json>
 ```
 
 The validator refuses any P0 rule missing `panel_confirmed` or carrying anything other than
 `panel_confirmed: true` -- there is no way for an unconfirmed P0 rule to pass validation.
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename BUSINESS_RULES.md
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename DATA_OBJECTS.md
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename business_rules_summary.json
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename business_rules.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename BUSINESS_RULES.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename DATA_OBJECTS.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename business_rules_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename business_rules.json
 ```
 
 Render `BUSINESS_RULES.md` as one Rule Card per confirmed rule, in the exact

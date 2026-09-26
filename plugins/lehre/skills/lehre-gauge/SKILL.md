@@ -15,7 +15,7 @@ which is the failure this plugin exists to remove reintroduced one level up.
 1. **Run the sweep.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --json
    ```
 
    Exit `0` clean · `1` the sweep did not come back clean · `2` ruleset

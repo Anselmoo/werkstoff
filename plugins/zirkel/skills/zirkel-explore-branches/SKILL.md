@@ -15,7 +15,7 @@ Generate branches **independently and in parallel**, score each **in isolation**
 then select by the fixed rule. Parallel independence is what prevents anchoring —
 it is structural, not a suggestion.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## 0. Build or reuse the shared research snapshot
 
@@ -24,7 +24,7 @@ snapshot once, so every parallel proposer can query the same cached index instea
 of each re-scanning the codebase independently:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name zirkel
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name zirkel
 ```
 
 This is a no-op if `analysis/zirkel/current.json`'s `source_fingerprint` already
@@ -50,7 +50,7 @@ Manual path would have if its own step 5 were skipped.
 ## Manual path
 
 ### 1. Decide the branch count (guarded)
-`echo '{"requested":<n or null>,"max_branch_count":<from config or null>}' | $GUARD branch-cap -`
+`echo '{"requested":<n or null>,"max_branch_count":<from config or null>}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" branch-cap -`
 - **Default is 3 branches.** The cap is **min(6, `max_branch_count`)** where
   `max_branch_count` comes from `.claude/zirkel.local.md` if present. The guard
   returns the effective `cap`; produce exactly that many.
@@ -70,7 +70,7 @@ and its biggest blocker.
 echo '{"branches":[
   {"name":"A","feasibility":7,"impact":8,"risk":4,"biggest_blocker":"…"},
   {"name":"B","feasibility":6,"impact":9,"risk":6,"biggest_blocker":"…"}
-]}' | $GUARD branch-scores -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" branch-scores -
 ```
 The guard computes **Total = Feasibility + Impact + Risk (Risk NOT inverted)**,
 selects the **highest total**, and **breaks ties by lower risk**. Use its
@@ -97,7 +97,7 @@ echo '{
     {"name":"A","description":"<A'\''s Propose description>","feasibility":7,"impact":8,"risk":4,"biggest_blocker":"…"},
     {"name":"B","description":"<B'\''s Propose description>","feasibility":6,"impact":9,"risk":6,"biggest_blocker":"…"}
   ]}
-}' | $GUARD state-write - --output-dir .zirkel --to runs/<run-id>/state.json
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" state-write - --output-dir .zirkel --to runs/<run-id>/state.json
 ```
 
 `raw_task` here is the `problem` text this invocation actually scored branches for.
@@ -111,7 +111,7 @@ Every run that reaches Persist also gets a report — not optional, not gated on
 being asked for one:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_branch_comparison_html.py" . \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_branch_comparison_html.py" . \
     --run-id <run-id> \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/branch-comparison-viewer.html" \
     --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \

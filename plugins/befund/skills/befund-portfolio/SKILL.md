@@ -10,7 +10,7 @@ Sweep a directory of repositories and grade each one's befund health.
 ## Step 1: Scope gate -- refuse to infer cwd's parent as the portfolio
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py portfolio-scope-gate --cwd <cwd> --explicit-dir <user-named directory, if any>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" portfolio-scope-gate --cwd <cwd> --explicit-dir <user-named directory, if any>
 ```
 
 Rule `portfolio-cwd-git-repo-check`: if `cwd` is itself a git repository and the user did not
@@ -28,7 +28,7 @@ directory.
 For each repo, resolve its configured `output_dir` first:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py get-settings --repo <repo>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" get-settings --repo <repo>
 ```
 
 This reads and returns the repo's settings (including `output_dir`) without gating on
@@ -38,7 +38,7 @@ to grade `Gray` rather than abort on. Then check whether `<repo>/analysis/befund
 `output_dir` this call returned) has any artifacts. Then:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py grade-repo --has-artifacts --has-high --has-medium-or-gaps
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" grade-repo --has-artifacts --has-high --has-medium-or-gaps
 ```
 
 (Pass `--has-artifacts` only if artifacts exist; pass `--has-high` only if any summary contains
@@ -52,7 +52,7 @@ synthesize a placeholder grade for an unassessed repo beyond `Gray`.
 ## Step 4: Write the portfolio report
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <portfolio_dir> --filename befund-portfolio.html
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <portfolio_dir> --filename befund-portfolio.html
 ```
 
 Note the output lands in the **portfolio directory**, not any single repo's `output_dir` --

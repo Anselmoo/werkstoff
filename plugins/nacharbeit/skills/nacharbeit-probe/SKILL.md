@@ -19,14 +19,14 @@ it can be, since definitions load once per session.
 2. **Dry-run first, always**, and quote the estimate to the user before spending anything:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/trigger_probe.py" --model haiku --only <skill-id> --dry-run
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/trigger_probe.py" --model haiku --only <skill-id> --dry-run
    ```
 
 3. **Run it on a yes**, with an output directory, and the review's routing file when one exists
    so the simulation is compared against reality:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/trigger_probe.py" --model haiku --only <skill-id> --out analysis/nacharbeit/probe --routing analysis/nacharbeit/routing.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/trigger_probe.py" --model haiku --only <skill-id> --out analysis/nacharbeit/probe --routing analysis/nacharbeit/routing.json
    ```
 
 4. **Read the verdicts back** from `summary.json`: `fired`, `captured` (the capturing skill is

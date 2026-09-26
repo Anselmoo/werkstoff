@@ -59,7 +59,7 @@ inspection commands (`cat`, `ls`, `grep`, `python3 .../verify_scaffold.py`).
 2. Run the engine:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<language>"
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<language>"
    ```
 
    It reads the scaffold's `cli-scaffold.manifest.json` (declared file roles),

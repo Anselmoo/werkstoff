@@ -11,7 +11,7 @@ smells.
 ## Step 0: Settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-code-idiom
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-code-idiom
 ```
 
 ## Step 1: Detect the actual version per language -- never assume one
@@ -20,7 +20,7 @@ Rule: judge idioms against the version the manifest actually declares, not a fix
 training-data assumption:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py detect-language-version --repo <repo_root> --language python
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" detect-language-version --repo <repo_root> --language python
 ```
 
 Run once per detected language (reuse `detect-languages` from preflight/stage-map for the
@@ -57,14 +57,14 @@ re-checking it against the detected version -- never trust the first pass.
 ## Step 4: Validate and write
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind code_idiom_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind code_idiom_summary --file <path-or-inline-json>
 ```
 
 The validator rejects any finding whose `category` is outside `{modernization, smell}`.
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename CODE_IDIOM.md
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename code_idiom_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename CODE_IDIOM.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename code_idiom_summary.json
 ```
 
 ## Read-only constraint

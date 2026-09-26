@@ -16,7 +16,7 @@ has already spent tokens on a result it cannot use.
 2. **Run the inventory** (read-only):
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" [plugins/<name> ...]
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" [plugins/<name> ...]
    ```
 
    It prints, per plugin, the unit count by kind; which checkers are available

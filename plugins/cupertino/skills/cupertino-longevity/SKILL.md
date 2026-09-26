@@ -18,7 +18,7 @@ Judge whether this architecture can evolve, or whether it is quietly building to
 
    Compute the total mechanically — do not eyeball whether the roadmap is needed:
    ```bash
-   echo '{"dimensionScores": [d1, d2, d3, d4, d5, d6]}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" evolution-score
+   echo '{"dimensionScores": [d1, d2, d3, d4, d5, d6]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" evolution-score
    ```
    The script rejects any call that doesn't supply exactly 6 integer scores from 1–5, and returns `rosettaRoadmapRequired` computed against the fixed threshold of 18 — total < 18 requires a Rosetta Roadmap, total ≥ 18 must NOT include one. Follow whatever the script returns; do not override it with judgment either direction.
 3. **Vista Countdown**: give a dated forecast of when the current decision is likely to force a rewrite if nothing changes, grounded in the specific dimensions that scored lowest.

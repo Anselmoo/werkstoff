@@ -17,7 +17,7 @@ everything downstream.
 2. **Run the deterministic gauge over the unit's paths.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
    ```
 
    Any blocking violation inside the unit is an immediate fail. Report it and
@@ -50,7 +50,7 @@ everything downstream.
 6. **Close the unit only on a clean result.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" close <unit-id>
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" close <unit-id>
    ```
 
    On any fail — blocking violation, unevaluated file, fidelity gap, broken seam

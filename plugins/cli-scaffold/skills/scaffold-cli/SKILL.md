@@ -23,7 +23,7 @@ Run the router. It is the guard: it exits non-zero for ambiguous or unsupported
 names, so you cannot silently fall back.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lang_router.py" "<language-as-given>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lang_router.py" "<language-as-given>"
 ```
 
 - **Exit 0** → the JSON on stdout has `language`, `paradigm`, and `skill`
@@ -48,7 +48,7 @@ Before any generation, confirm the app name resolves to a legal target inside th
 plugin's output scope:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
 ```
 
 If it exits non-zero (traversal, absolute path, illegal name), surface the

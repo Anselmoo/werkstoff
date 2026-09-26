@@ -10,7 +10,7 @@ Run befund's full check -> plan -> fix -> validate value stream.
 ## Step 0: Settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-autopilot
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-autopilot
 ```
 
 ## Step 1: CHECK phase -- stage-map first, then everything else in parallel
@@ -19,7 +19,7 @@ Rule `autopilot-stage-map-fresh-reuse`: **before** invoking `befund:befund-stage
 check whether its outputs can be reused instead of rebuilt:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py stage-map-fresh-check --repo <repo_root>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" stage-map-fresh-check --repo <repo_root>
 ```
 
 - If `fresh` is `true`, **skip invoking `befund:befund-stage-map`** — its
@@ -63,7 +63,7 @@ recorded in `.claude/befund.local.md` as `autopilot.fix_approved: true` (optiona
 rely on remembering the conversation said yes:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py autopilot-fix-gate --repo <repo_root>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" autopilot-fix-gate --repo <repo_root>
 ```
 
 A non-zero exit here means approval is not yet recorded -- stop at Step 3 and wait. Do not

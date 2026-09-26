@@ -63,7 +63,7 @@ Read `references/ruleset-schema.md` before writing anything.
    into the file per `references/ruleset-schema.md`, then run:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
    ```
 
    Show its output verbatim, including the gauge-tier note. If it fails, fix the

@@ -13,7 +13,7 @@ document's prose.
 ## Step 1: The mode gate -- refuse outright in 'plan' mode
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py transform-mode-gate --repo <repo_root> --phase <N>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" transform-mode-gate --repo <repo_root> --phase <N>
 ```
 
 A non-zero exit here means either `transform.mode` is not `"execute"` in
@@ -28,7 +28,7 @@ Read `MODERNIZATION_BRIEF.md` and `transform_brief_summary.json` for phase `<N>`
 `decision`:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py keep-phase-gate --decision "<phase N's decision>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" keep-phase-gate --decision "<phase N's decision>"
 ```
 
 A `Keep` or `Keep(1:1)` decision has nothing to execute -- refuse and tell the user this phase
@@ -37,7 +37,7 @@ requires no structural change.
 ## Step 3: Every Open Question for this phase must be resolved by a human
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py open-questions-gate --open-questions <json list from the brief's phase N> --resolutions <json map the user has provided>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" open-questions-gate --open-questions <json list from the brief's phase N> --resolutions <json map the user has provided>
 ```
 
 If any Open Question lacks a resolution, this call refuses -- ask the user directly for each
@@ -47,7 +47,7 @@ answers are in hand.
 ## Step 4: Dirty-tree gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py dirty-tree-gate --repo <repo_root>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" dirty-tree-gate --repo <repo_root>
 ```
 
 Add `--allow-dirty` only when the user has set `require_clean_tree: false` in
@@ -64,7 +64,7 @@ refuses to touch files outside that stage scope" a mechanical deny instead of pr
 might not honor:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py open-edit-scope --repo <repo_root> \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" open-edit-scope --repo <repo_root> \
     --mode transform --phase <N> --files <phase N's declared stage-scope files>
 ```
 
@@ -78,7 +78,7 @@ same dispatch -- one phase, one dispatch.
 Once the dispatch finishes, close the lock:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py close-edit-scope --repo <repo_root> --phase <N>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" close-edit-scope --repo <repo_root> --phase <N>
 ```
 
 Closing records which of the allowed files the phase **actually changed**, measured with

@@ -16,7 +16,7 @@ Synthesize a hybrid from the selected winner and 1-2 runners-up, then **let the
 guard decide whether it may be presented**. The precondition and the outperform
 gate are enforced in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Precondition
 
@@ -49,7 +49,7 @@ echo '{"explore_winner_selected":true,
   "sources":[
     {"name":"Winner","feasibility":9,"impact":5,"risk":6},
     {"name":"Runner","feasibility":5,"impact":9,"risk":6}],
-  "hybrid":{"feasibility":8,"impact":8,"risk":7}}' | $GUARD negotiate -
+  "hybrid":{"feasibility":8,"impact":8,"risk":7}}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" negotiate -
 ```
 
 **The guard refuses (non-zero exit) unless the hybrid outperforms EVERY source on

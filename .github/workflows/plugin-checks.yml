@@ -286,7 +286,7 @@ jobs:
         # hooks -- a false negative nothing was watching.
         run: python3 test/plugins/verify-hooks-deny.py plugins/*/
 
-      - name: Verify no hook writes bytecode into its installed copy
+      - name: Verify no hook or skill-invoked script writes bytecode into its installed copy
         id: hook_bytecode
         continue-on-error: true
         # #88: a hook that imports a sibling module wrote __pycache__ into
@@ -295,7 +295,11 @@ jobs:
         # hooks.json command against an INSTALLED COPY and searches it for
         # bytecode -- and fails as INSTRUMENT-DEAD if its audit hook never saw
         # arbeitsplan's guard open scripts/delegation.py, because a clean cache
-        # the probe never reached proves nothing.
+        # the probe never reached proves nothing. The same copies are then
+        # checked for every `python3 ${CLAUDE_PLUGIN_ROOT}/*.py` a skill,
+        # command or workflow tells the model to run: -B present, still
+        # permitted by the skill's own allowed-tools, and each script run
+        # with --help leaves no bytecode (live-proven by befund_cli.py's lib/).
         run: python3 test/plugins/check-hook-bytecode.py
 
       - name: Verify every plugin is wired into the release workflows
@@ -464,7 +468,7 @@ jobs:
             row "andon-ledger-validator test suite" "${{ needs.checks.outputs.ledger_validator_tests }}"
             row "guard differential cases (old denies / new allows, and one both deny)" "${{ needs.checks.outputs.differential_guards }}"
             row "declared hooks actually deny (verify-hooks-deny)" "${{ needs.checks.outputs.hooks_deny }}"
-            row "hooks write no bytecode into the installed copy (#88)" "${{ needs.checks.outputs.hook_bytecode }}"
+            row "hooks + skill-invoked scripts write no bytecode into the installed copy (#88)" "${{ needs.checks.outputs.hook_bytecode }}"
             row "rrt artifacts (vendored-file drift)" "${{ needs.checks.outputs.rrt_artifacts }}"
             row "plugin release wiring (.rrt.toml vs. workflows)" "${{ needs.checks.outputs.release_wiring }}"
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"

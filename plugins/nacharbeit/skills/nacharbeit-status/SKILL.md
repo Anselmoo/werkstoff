@@ -12,7 +12,7 @@ they get resolved is a person reading them here.
 1. **Read the state directory** (default `analysis/nacharbeit/`; `--state-dir` otherwise):
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/status.py"
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/status.py"
    ```
 
 2. **Lead with what blocks.** A `FAILED-*` marker newer than `run.json` means the JSON

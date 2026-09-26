@@ -21,7 +21,7 @@ Confirm the name before dispatching, in code, not by re-reading this
 paragraph:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py check-strategy-d-target "<dispatch_name>" [--used-fallback]
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py" check-strategy-d-target "<dispatch_name>" [--used-fallback]
 ```
 
 This raises on anything other than the exact preferred name (or, with

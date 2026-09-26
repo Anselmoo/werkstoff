@@ -8,7 +8,7 @@ a denial can never disagree about what a rule means.
 Validate any edit to it with:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
 ```
 
 ## Contents

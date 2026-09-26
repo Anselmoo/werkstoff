@@ -873,7 +873,7 @@ def r_h_cmd_plugin_root(u: Unit, ctx: list[Unit]) -> list[dict]:
             continue
         if "${CLAUDE_PLUGIN_ROOT}" not in cmd or re.search(r"(^|\s|\")/(home|Users|root|opt|tmp|var)/", cmd):
             out.append(_finding(u, "H-CMD-PLUGIN-ROOT", "hook command does not locate its script through ${CLAUDE_PLUGIN_ROOT} (or hard-codes an absolute path), so it breaks wherever the plugin is installed",
-                                "write `python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/<script>.py\"`", line=_line_of(u, '"command"'), quote=cmd[:120]))
+                                "write `python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/<script>.py\"`", line=_line_of(u, '"command"'), quote=cmd[:120]))
     return out
 
 

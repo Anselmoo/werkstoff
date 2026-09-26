@@ -1,7 +1,7 @@
 ---
 name: andon-status
 description: "Reports the current andon board -- stream table, wire statuses, cycle/pass counters, active constraint, open gap counts, evidence-strategy mix -- without running a new pass. Use when the user asks for the current andon board, wire statuses, cycle or pass counters, the active constraint, or what to do next, without wanting a new pass run (not `andon-loop`, which advances the ledger)."
-allowed-tools: "Read, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py:*), Bash(okf:*), Glob"
+allowed-tools: "Read, Bash(python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py\":*), Bash(python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py\":*), Bash(okf:*), Glob"
 argument-hint: ""
 ---
 
@@ -11,7 +11,7 @@ Strictly read-only: inspect the ledger, never modify it, never run a new
 pass. Read settings first so you look in the right place:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py load-settings <repo_root>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py" load-settings <repo_root>
 ```
 
 Use the returned `ledger_dir` / `output_dir` for everything below.
@@ -19,7 +19,7 @@ Use the returned `ledger_dir` / `output_dir` for everything below.
 ## If the ledger has never run
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py render-board <repo_root> <ledger_dir>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py" render-board <repo_root> <ledger_dir>
 ```
 
 If this returns `{"never_run": true}` (no `log.md` at `ledger_dir`), say so
@@ -67,7 +67,7 @@ After the markdown board above, also render it as a self-contained HTML
 dashboard -- same data `render-board` already returned, nothing re-derived:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py <repo_root> <ledger_dir> \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_board_html.py" <repo_root> <ledger_dir> \
     --template ${CLAUDE_PLUGIN_ROOT}/assets/board-viewer.html \
     --d3 ${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html \
     --tokens ${CLAUDE_PLUGIN_ROOT}/assets/tokens.css

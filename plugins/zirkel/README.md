@@ -304,7 +304,7 @@ Skills call the guard CLI at each decision point. For example, `zirkel-decompose
 does not merely *tell* the model to keep 2-5 acyclic stages — it runs:
 
 ```bash
-echo '{"stages":[...]}' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py decompose -
+echo '{"stages":[...]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" decompose -
 ```
 
 which validates stage count, entry point, dangling references, and cycles (via

@@ -29,7 +29,7 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
 2. **Open the run scope lock** before any dispatch:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" open --spec analysis/arbeitsplan/<runId>/workflow.json --phase build
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" open --spec analysis/arbeitsplan/<runId>/workflow.json --phase build
    ```
 
    This writes `analysis/arbeitsplan/run_scope.json`, which arms the guard. It is a
@@ -50,7 +50,7 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    with its own worktree:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" candidate --run <runId> --phase build --result c2.json --tree .arbeitsplan/<runId>/c2
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" candidate --run <runId> --phase build --result c2.json --tree .arbeitsplan/<runId>/c2
    ```
 
    This writes `candidates/c2.json`, the file `reconcile.py` (step 8) and `land_candidate.py`
@@ -77,7 +77,7 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    phase you opened:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" referee --run <runId> --phase <refereePhase> --verdict verdicts.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" referee --run <runId> --phase <refereePhase> --verdict verdicts.json
    ```
 
    This writes `referee/<id>.json` (what `land_candidate.py` reads) **and** the
@@ -102,7 +102,7 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
    exit codes are never trusted on their own:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate c2 --tree .arbeitsplan/<runId>/c2
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate c2 --tree .arbeitsplan/<runId>/c2
    ```
 
    This RUNS every checked acceptance criterion now, with `cwd` set to `c2`'s OWN worktree, and
@@ -116,8 +116,8 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
 9. **Land exactly one diff.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" open --spec ... --phase land
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/land_candidate.py" --run <runId> --candidate c2 --apply
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" open --spec ... --phase land
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/land_candidate.py" --run <runId> --candidate c2 --apply
    ```
 
    Optional gated synthesis, only if the spec opted in: one further writer, given the winner
@@ -128,8 +128,8 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
     the lock:
 
     ```bash
-    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" phase --run <runId> --phase land --status closed
-    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" close
+    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" phase --run <runId> --phase land --status closed
+    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" close
     ```
 
     `close` **refuses** a phase that recorded no terminal event. On a halt, close with
@@ -138,7 +138,7 @@ Here, N worktrees do *the same* work and N−1 are discarded. Nothing is ever me
 11. **End the run in the record** -- landed or halted, always last:
 
     ```bash
-    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" finish --run <runId>
+    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" finish --run <runId>
     ```
 
     A landed run gets `complete.json` (refused while any phase is still open); a halted one
@@ -158,7 +158,7 @@ like any other phase (open the lock, dispatch its `agentType`, record the output
 it has written those paths, baseline them **once**:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" record --run <runId>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" record --run <runId>
 ```
 
 A second `record` for the same run is refused: the baseline is taken at creation, never
@@ -168,7 +168,7 @@ before it lands — but that covers only the tool calls the guard's matcher sees
 before landing (step 9), as the belt to that guard's suspenders:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" verify --run <runId>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/referee_owned.py" verify --run <runId>
 ```
 
 `land_candidate.py` independently refuses (citing `refereeOwned` by name) any candidate diff
@@ -185,8 +185,8 @@ files come from `record_event.py workflow` (the workflow backend) or `record_eve
 (in-session, step 6); a batch recorded any other way is invisible here:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" record --run <runId> > /tmp/rounds.json
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" decide --rounds /tmp/rounds.json --spec analysis/arbeitsplan/<runId>/workflow.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" record --run <runId> > /tmp/rounds.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/rounds.py" decide --rounds /tmp/rounds.json --spec analysis/arbeitsplan/<runId>/workflow.json
 ```
 
 - **`ROUTE SYNTHESIZE criterion=<id>` — a `sharedHole` (#78).** The LATEST round accepted no
@@ -214,7 +214,7 @@ phase's candidate is selected (step 7 above) and would normally just land (step 
 instead if a later phase names it as `base`:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" promote --run <runId> --phase build-w1 --candidate c2
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" promote --run <runId> --phase build-w1 --candidate c2
 ```
 
 This commits everything sitting in that candidate's worktree — untracked files included — and
@@ -222,7 +222,7 @@ points `arbeitsplan/<runId>/base/build-w1` at the new commit. The next wave's `c
 reads it automatically:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" create --spec analysis/arbeitsplan/<runId>/workflow.json --phase build-w2 --count 2
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" create --spec analysis/arbeitsplan/<runId>/workflow.json --phase build-w2 --count 2
 ```
 
 If `build-w2` declares `base: "build-w1"`, every worktree this creates starts from the promoted
@@ -235,7 +235,7 @@ still-pending later wave may need to stack on one. Only pass `--bases` once the 
 actually done with them:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" destroy --run <runId> --bases
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/worktree_pool.py" destroy --run <runId> --bases
 ```
 
 `compile_spec.py --strict` is the check that a stacked run actually declared every `base` it
@@ -256,7 +256,7 @@ phases, measure the accepted candidate with `reconcile.py --run-checks` (#76), a
 2. **Persist what it returns, before reading it.** Every return carries `events`:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" workflow --run <runId> --result result.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" workflow --run <runId> --result result.json
    ```
 
    A halt is an event. Record it even — especially — when the run aborted.
@@ -281,7 +281,7 @@ phases, measure the accepted candidate with `reconcile.py --run-checks` (#76), a
 4. **On completion, measure then land in-session.** `worktree_pool.py open --phase <last>`, then
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate <id> --tree .arbeitsplan/<runId>/<id>
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.py" --run <runId> --run-checks --candidate <id> --tree .arbeitsplan/<runId>/<id>
    ```
 
    to measure every checked criterion against the accepted candidate's own tree (#76), then

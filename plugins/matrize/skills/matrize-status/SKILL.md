@@ -51,7 +51,7 @@ Run the vocabulary audit and report what it finds — it is cheap and it names a
 is otherwise invisible until a write is refused:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/vocabulary.py" --audit <root>/system/tokens.json
 ```
 
 Three things belong in status from it:

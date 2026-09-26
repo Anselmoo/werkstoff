@@ -11,7 +11,7 @@ Draft `.cupertino/<domain>-handbook.md` by analyzing this project one dimension 
 2. **Check for an existing handbook** at `.cupertino/<domain>-handbook.md`. If it exists, **ask the user explicitly** whether to overwrite before doing anything else — do not proceed silently. (A PreToolUse hook also enforces this: it refuses to overwrite an existing handbook file unless its first line is the literal marker `<!-- cupertino-overwrite-confirmed -->`. Only include that marker after the user has actually said yes.)
 3. **Run the dimension fan-out** via the Workflow tool. First resolve or build the shared symbol-index snapshot: read `analysis/cupertino/current.json`; if missing or its `source_fingerprint` no longer matches, run
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name cupertino
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name cupertino
    ```
    (single-flight lock makes concurrent callers safe -- see `references/parallel-safe-research-protocol.md`). For a repo well under ~50 tracked files the build overhead may not be worth it -- skip this and pass `symbolIndexPath: null`. The snapshot isn't code-only: for `design` and `documentation` dimensions it also surfaces CSS selectors/at-rules/custom properties, HTML headings/landmarks, and full Markdown/MDX structure (headings, YAML frontmatter, links, code-fence languages).
    ```

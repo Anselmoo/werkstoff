@@ -14,7 +14,7 @@ which is exactly the guarantee this skill promises (preflight-all-checks-run).
    the user named).
 2. Run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" <repo_root> [--timeout-seconds N]
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" <repo_root> [--timeout-seconds N]
    ```
    Pass `--timeout-seconds` only if the user (or a `dependency_audit.timeout_seconds`
    setting you already know about) specifies a value other than the

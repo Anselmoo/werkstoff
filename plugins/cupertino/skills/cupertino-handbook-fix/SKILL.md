@@ -21,13 +21,13 @@ Do not attempt any workaround.
 1. **Parse the domain**, locate `.cupertino/handbook_check_<domain>_summary.json` from the most recent `cupertino-handbook-check` run. If it doesn't exist, tell the user to run that check first.
 2. **Validate the summary on read, not just on trust** — a stale or hand-edited findings file could be missing the fields this whole process gates on:
    ```bash
-   cat ".cupertino/handbook_check_${domain}_summary.json" | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" handbook-check-summary
+   cat ".cupertino/handbook_check_${domain}_summary.json" | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" handbook-check-summary
    ```
    If this exits non-zero, stop — do not attempt to guess or repair the missing fields yourself. Report the validator's errors and ask the user to re-run `cupertino-handbook-check`.
 3. **Filter to `mechanical: true` findings only.** Everything else is explicitly out of scope for this skill — it requires design judgment `handbook-remediator` is built to refuse.
 4. **Mark the fix pass active**, which the PreToolUse hook uses to block any `git commit`/`git push`/destructive command for the duration:
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set handbook-fix-active
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set handbook-fix-active
    ```
 5. **Run the fix pipeline** via the Workflow tool:
    ```
@@ -38,7 +38,7 @@ Do not attempt any workaround.
    If this step errors, is interrupted, or any verifier rejects a fix, still run step 6 to clear `handbook-fix-active` before reporting the failure — do not leave the flag set on a failed or partial run. Only skip step 6 if the state file itself cannot be written, in which case tell the user to clear `handbook-fix-active` manually.
 6. **Clear the flag**:
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-fix-active
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-fix-active
    ```
 7. **Report one accept/fail line per finding fixed** — the remediation outcome and the independent verifier's verdict, side by side, so a "fixed" claim that the verifier actually rejected is visible, not hidden.
 8. **Never commit or push**, and never touch test files or CI configuration — this skill's job ends at the working tree.

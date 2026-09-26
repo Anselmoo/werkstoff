@@ -15,7 +15,7 @@ description: >-
 Pick the rung from **concrete signals**, then reason at that rung. The guard
 selects the rung deterministically and enforces the self-consistency count.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Select the rung (guarded)
 
@@ -33,7 +33,7 @@ echo '{
   "large_numbers":false,
   "rounding_risk":false,
   "conditional_logic":false
-}' | $GUARD rung -
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" rung -
 ```
 
 The guard returns `rung`, `multimodal_cot_first`, and `self_consistency_paths`.
@@ -66,7 +66,7 @@ and validate:
 echo '{"attempts":[
   {"strategy":"forward deduction"},
   {"strategy":"backward from options"},
-  {"strategy":"constraint mapping"}]}' | $GUARD self-consistency -
+  {"strategy":"constraint mapping"}]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" self-consistency -
 ```
 The guard requires **exactly 3** attempts covering all three strategies. A
 non-zero exit means a strategy is missing or duplicated — the guard's stderr

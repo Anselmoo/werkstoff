@@ -16,7 +16,7 @@ not is a reviewer with an unknown false-negative rate, and its output is an opin
    werkstoff default — `--help` lists them):
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py" [--plugin <name> ...] [--docs-root docs]
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py" [--plugin <name> ...] [--docs-root docs]
    ```
 
    It refuses when a batch kind has no tuning + sealed fixture pair under the fixtures
@@ -47,7 +47,7 @@ not is a reviewer with an unknown false-negative rate, and its output is an opin
    `analysis/nacharbeit/return.json`, then:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_results.py" analysis/nacharbeit/return.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/write_results.py" analysis/nacharbeit/return.json
    ```
 
    It writes `run.json` last, so its presence means the other three are complete. A
@@ -58,7 +58,7 @@ not is a reviewer with an unknown false-negative rate, and its output is an opin
 5. **Render the report** and present it:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_report.py"
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_report.py"
    ```
 
    Inside werkstoff this writes `docs/prompt-quality-findings.md`; elsewhere pass

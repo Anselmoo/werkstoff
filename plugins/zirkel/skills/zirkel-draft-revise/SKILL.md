@@ -14,7 +14,7 @@ description: >-
 Score, then revise **only** what fails, then report. The guard enforces the scale,
 the threshold, the selectivity, and the escalation in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Inputs
 - an already-drafted artifact
@@ -29,7 +29,7 @@ echo '{"threshold":3,"criteria":[
   {"criterion":"covers all cases","score":2},
   {"criterion":"correct tone","score":4},
   {"criterion":"no dead links","score":5}
-]}' | $GUARD revise-plan -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" revise-plan -
 ```
 
 - **Default threshold is 3** on the 1-5 scale (omit `threshold` to use it).
@@ -49,7 +49,7 @@ Never present a revision without a changes list — one bullet per required fix.
 ```
 echo '{"plan":{"revise":[{"criterion":"covers all cases"}],"keep_untouched":[{"criterion":"correct tone"},{"criterion":"no dead links"}]},
        "changes":["Added the empty-input case to section 2"],
-       "touched_criteria":["covers all cases"]}' | $GUARD revise-report -
+       "touched_criteria":["covers all cases"]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" revise-report -
 ```
 A non-zero exit means either the changes list was missing or an above-threshold
 criterion was modified — both are violations to fix.

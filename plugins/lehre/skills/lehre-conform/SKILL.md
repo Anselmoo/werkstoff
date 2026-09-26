@@ -13,7 +13,7 @@ this skill has to remember.
    - *Greenfield*: name the unit being built. Check it is buildable:
 
      ```bash
-     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
+     python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
      ```
 
      A unit shown as `blocked` cannot be built — its dependency has not been
@@ -51,7 +51,7 @@ this skill has to remember.
    then hand off:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
    ```
 
    **Never write a unit done-marker here.** Only `lehre-validate` does that.

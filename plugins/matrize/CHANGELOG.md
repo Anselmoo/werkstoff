@@ -5,6 +5,10 @@ All notable changes to the `matrize` plugin are documented here.
 ## [Unreleased]
 
 ### Fixed
+- **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or
+  workflow tells the model to run now carries `-B` (frontmatter `allowed-tools`
+  patterns updated to match), so a script importing a sibling no longer writes
+  `__pycache__` into the installed plugin cache copy (#88 follow-up)
 - **hooks**: run the PreToolUse command with `python3 -B` so importing a sibling script
   (e.g. `matrize_guard.py`) no longer writes `__pycache__` into the installed plugin
   cache copy (#88)

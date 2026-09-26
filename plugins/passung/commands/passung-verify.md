@@ -88,14 +88,14 @@ Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts —
 presenting, every time:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage verify --status closed
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage verify --status closed
 ```
 
 If it stopped instead — the verification could not run, or an input artifact is missing — record that, with the specific reason, and do not
 record `closed`:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage verify --status halted --reason "<the specific reason>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage verify --status halted --reason "<the specific reason>"
 ```
 
 A stop that exists only in the chat is indistinguishable, to the next stage, from a stage

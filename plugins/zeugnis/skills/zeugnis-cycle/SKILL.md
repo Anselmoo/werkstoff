@@ -26,7 +26,7 @@ source of truth, not your running tally.
    shared rather than rebuilt (rule: symbol-index-shared-per-invocation).
    Resolve it now:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/symbol_index_cli.py" resolve <repo_root> --invocation-id <invocation_id>
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/symbol_index_cli.py" resolve <repo_root> --invocation-id <invocation_id>
    ```
    This is the "CLI wrapper the cycle skill points you at" that
    `zeugnis-assertion-audit` and `zeugnis-contract-drift`'s "Shared symbol
@@ -40,7 +40,7 @@ Repeat the following until the engine tells you to stop:
 
 3. Ask the engine what to do next:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" plan-next-pass <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" plan-next-pass <repo_root> \
        --max-passes <max_passes> --mode <mode>
    ```
    If this exits 2 with a stderr JSON object naming `"maxPasses"`
@@ -79,7 +79,7 @@ Repeat the following until the engine tells you to stop:
      encodes, don't just guess): open a remediation scope, dispatch the
      remediator, then close the scope:
      ```
-     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" open <repo_root> \
+     python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" open <repo_root> \
          --finding-id <id> --domain <domain> --category <category> \
          --target-file <repo-relative file>
      ```
@@ -94,7 +94,7 @@ Repeat the following until the engine tells you to stop:
      scope — you do not need to police that yourself. After the
      remediator returns, run:
      ```
-     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" close <repo_root>
+     python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/remediation_scope_cli.py" close <repo_root>
      ```
    - **the finding is in `assertion_audit`, or `agentic_reliability`
      outside `excessive-tool-grant`**: this is draft-only or advisory —
@@ -120,7 +120,7 @@ Repeat the following until the engine tells you to stop:
    `"reopened"` for a finding that was closed in a prior pass/invocation
    but is open again this pass. Write this to a scratch JSON file and run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" record-pass-result <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/cycle_engine.py" record-pass-result <repo_root> \
        --pass-json <path> --max-reopens <max_reopens> --max-passes <max_passes>
    ```
    This is the ONLY place ledger state changes — do not hand-edit

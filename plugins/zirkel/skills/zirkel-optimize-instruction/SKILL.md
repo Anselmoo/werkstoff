@@ -15,7 +15,7 @@ Generate 5 framings, score on fixed test cases, select, critique the winner. The
 guard enforces the candidate count, the framing set, the tie-break, and the
 checklist size in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Preferred path: the workflow
 When the Workflow tool is available, run
@@ -45,7 +45,7 @@ echo '{"candidates":[
   {"framing":"definition-based","score":3},
   {"framing":"question-based","score":2},
   {"framing":"chain-of-thought-based","score":4}
-]}' | $GUARD candidates -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" candidates -
 ```
 The guard requires exactly 5 candidates covering all 5 framings and **breaks ties
 by framing precedence: rule → example → definition → question → CoT.** Use its
@@ -62,7 +62,7 @@ echo '{"checklist":[
   {"criterion":"handles out-of-scope","pass":false},
   {"criterion":"format rules compatible","pass":true},
   {"criterion":"no two-way readings","pass":true}
-]}' | $GUARD critique -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" critique -
 ```
 
 ## Output

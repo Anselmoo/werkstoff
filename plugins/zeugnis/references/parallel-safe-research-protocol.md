@@ -46,7 +46,7 @@ the repository, build (or safely wait for a concurrent build to finish, via
 the script's own single-flight lock):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name <plugin-name>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name <plugin-name>
 ```
 
 Skip the build if `current.json`'s `source_fingerprint` already matches — the

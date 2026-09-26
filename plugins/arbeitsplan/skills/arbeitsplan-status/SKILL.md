@@ -17,7 +17,7 @@ advances one.
    script, which derives everything from the log every time and stores no counter:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" status --run <runId>
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/record_event.py" status --run <runId>
    ```
 
    It reports closed and open phases, a halt with its reason, a pending plan-mode phase, a

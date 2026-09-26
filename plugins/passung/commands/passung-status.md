@@ -37,7 +37,7 @@ An artifact's presence says a stage wrote something; it does not say the stage f
 Read the record, which each stage writes when it closes or stops:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" status --area $1
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" status --area $1
 ```
 
 A `halted` stage outranks its artifacts: report the halt and its reason first — an
