@@ -509,6 +509,11 @@ description = "nacharbeit's synced copy of test/plugins/verify-hooks-deny.py"
 command = ["cp", "test/plugins/verify-hooks-deny.py", "plugins/nacharbeit/scripts/verify_hooks_deny.py"]
 
 [[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/scripts/check_workflow_models.py"
+description = "nacharbeit's synced copy of scripts/ci/check_workflow_models.py (S-WF-MODEL, S-WF-RELAY)"
+command = ["cp", "scripts/ci/check_workflow_models.py", "plugins/nacharbeit/scripts/check_workflow_models.py"]
+
+[[tool.rrt.artifact_targets]]
 path = "docs/.vitepress/data/surface.json"
 description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
 command = ["python3", "tools/surface-index/build_surface_index.py"]

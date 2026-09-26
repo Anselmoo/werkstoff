@@ -1,6 +1,6 @@
 ---
 name: nacharbeit-lint
-description: "Use to run the mechanical half of the nacharbeit rubric — 90 script-checkable rules over a plugin's skills, agents, commands, workflows, hooks, scripts, report viewers, manifest, README, CHANGELOG and docs wiring — with no model in the loop and no tokens spent. Trigger on 'lint this plugin', 'does this plugin meet the Anthropic standard mechanically', 'check the frontmatter and hooks.json', 'nacharbeit lint'. Reports findings by rule; never fixes anything (that is nacharbeit-fix) and never judges prose (that is nacharbeit-review)."
+description: "Use to run the mechanical half of the nacharbeit rubric — 96 script-checkable rules over a plugin's skills, agents, commands, workflows, hooks, scripts, report viewers, manifest, README, CHANGELOG and docs wiring — with no model in the loop and no tokens spent. Trigger on 'lint this plugin', 'does this plugin meet the Anthropic standard mechanically', 'check the frontmatter and hooks.json', 'nacharbeit lint'. Reports findings by rule; never fixes anything (that is nacharbeit-fix) and never judges prose (that is nacharbeit-review)."
 ---
 
 Everything a script can decide is decided here, so the model finders downstream never
@@ -67,6 +67,8 @@ Next: nacharbeit-review for the judgement rules, or nacharbeit-fix to apply thes
 
 - `scripts/test_nacharbeit_lint.py` — run first; the sabotage calibration.
 - `scripts/nacharbeit_lint.py` — run; the linter. `--help` lists every flag.
-- `scripts/check_viewer_conformance.py`, `scripts/verify_hooks_deny.py` — vendored
-  checkers the `A-*` and hook post-checks delegate to; the linter imports the first.
+- `scripts/check_viewer_conformance.py`, `scripts/verify_hooks_deny.py`,
+  `scripts/check_workflow_models.py` — vendored checkers the `A-*` rules, the hook
+  post-checks and `S-WF-MODEL`/`S-WF-RELAY` delegate to; the linter imports the first
+  and the third.
 - `references/rubric.md` — read to resolve any rule id in a finding.

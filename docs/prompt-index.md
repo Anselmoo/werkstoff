@@ -543,7 +543,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 92 mechanical rules; findings by rule and file, nothing applied.
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 96 mechanical rules; findings by rule and file, nothing applied.
 
 ### Run the calibrated review
 

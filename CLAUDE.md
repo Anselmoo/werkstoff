@@ -176,7 +176,7 @@ claude plugin validate plugins/<name> --strict            # manifest + structure
 python3 tools/enforcement-audit/audit_enforcement.py --rules tools/enforcement-audit/rules/andon.json plugins/andon
                                                             # committed rules cover andon only -- analysis/rebuild/<name>.behavior.json is gitignored and won't exist on a fresh checkout
 bash test/plugins/lint-oracles.sh                         # silent-failure regex forms in cases.tsv
-python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (92 rules planted + blanked) -- run before trusting it
+python3 test/plugins/test-lint-prompts.py                # shim: nacharbeit's linter asserts itself (96 rules planted + blanked) -- run before trusting it
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs   # mechanical M/H/S/A/P/D rules of plugins/nacharbeit/references/rubric.md
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
 bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
