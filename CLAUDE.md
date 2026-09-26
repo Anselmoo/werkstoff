@@ -181,6 +181,8 @@ python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py # the fix-scope guard denies AND allows
 bash scripts/ci/check-js-syntax.sh                         # parses + workflow SHAPE + biome under biome.jsonc (see below)
 bash scripts/ci/check-js-syntax.sh --selftest              # 8 planted-defect cases -- run before trusting it
+python3 scripts/ci/check_workflow_models.py               # every agent() names a model + carries the relay briefing (#87, #90)
+python3 scripts/ci/check_workflow_models.py --selftest    # 26 planted-defect cases -- run before trusting it
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
