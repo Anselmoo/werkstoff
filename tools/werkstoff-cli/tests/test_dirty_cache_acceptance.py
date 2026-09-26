@@ -22,16 +22,35 @@ Interface under test (frozen before any implementation existed):
     registry:   <dir>/plugins/installed_plugins.json
     cache:      <dir>/plugins/cache/<marketplace>/<plugin>/<version>/
 
+    live set:   for plugin P, EVERY entry (every scope) under the registry key
+                "P@<this marketplace>"; keys naming another marketplace are ignored.
+                A cached version directory is live iff its path equals one of those
+                entries' installPath; only an entry WITHOUT installPath falls back to
+                its "version" naming the directory. Version strings never override a
+                path: a git-sha directory registered as version "1.0.0" is still live.
+    version order: numeric dot components; a pre-release ("1.0.0-rc1") sorts after
+                every lower release and before its own release.
+
     doctor --json -> {"marketplace", "totalSizeBytes",
-                      "plugins": [{"name", "live", "cached", "sizeBytes",
+                      "plugins": [{"name", "live", "liveVersions", "cached", "sizeBytes",
                                    "notInMarketplace", "liveNotNewest"}]}
-        cached     every cached version, ascending by numeric version order
-        sizeBytes  sum of st_size of regular files; symlinks neither followed nor counted
+        cached        every cached version directory, ascending by version order
+        liveVersions  every live directory name, ascending; [] when not installed
+        live          the newest of liveVersions, or null
+        liveNotNewest a cached version newer than the newest live one exists
+        sizeBytes     sum of st_size of regular files; symlinks neither followed nor counted
     prune --json  -> {"apply", "keep", "remove": [{"plugin", "version", "path"}]}
-        remove     installed plugins only; never the live version; keeps the N newest
+        remove     installed plugins only; never ANY live directory; keeps the N newest
                    non-live versions; an uninstalled plugin's cache is left alone
-        a missing or unparseable registry -> exit 1 naming installed_plugins.json,
-        nothing removed (the live set is a gating value; it is never inferred)
+        --keep < 0 -> a usage error (exit 2), nothing removed
+    a missing or unparseable registry -> exit 1 with a one-line error naming
+        installed_plugins.json and no traceback, for doctor and prune alike; prune
+        removes nothing (the live set is a gating value; it is never inferred)
+
+The registry-shape cases (multi-scope installs, another marketplace's key, an
+installPath that is not the version string) were added after a first run: both of its
+candidates passed every case above and still scheduled LIVE installs for deletion in
+those shapes. A contract that never states them is a contract that permits them.
 
 This file sits outside every candidate's write scope on purpose: an instrument the
 thing it grades can edit is not an instrument.
@@ -286,3 +305,122 @@ def test_claude_config_dir_env_is_honoured(dirty) -> None:
     ).invoke(app, ["doctor", "--repo", str(dirty["repo"]), "--json"])
     assert result.exit_code == 0, result.output
     assert _plugin(json.loads(result.output), "andon")["live"] == "0.12.0"
+
+
+# --- registry shapes: each one scheduled a live install for deletion in a first run ---
+
+
+def _shape(tmp_path: Path, cached: list[tuple[str, str, str]], registry: dict) -> dict:
+    """A minimal cache of `(marketplace, plugin, dir)` plus a registry whose entries are
+    `{key: [(scope, dir, version)]}`, installPath pointing at `<mkt>/<plugin>/<dir>`."""
+    claude = tmp_path / "claude-home"
+    root = claude / "plugins" / "cache"
+    for mkt, name, vdir in cached:
+        _plant_version(root / mkt / name / vdir, name, vdir)
+    plugins = {}
+    for key, entries in registry.items():
+        name, _, mkt = key.partition("@")
+        plugins[key] = [
+            {"scope": scope, "installPath": str(root / mkt / name / vdir), "version": version}
+            for scope, vdir, version in entries
+        ]
+    (claude / "plugins" / "installed_plugins.json").write_text(
+        json.dumps({"version": 2, "plugins": plugins})
+    )
+    repo = _write_marketplace(tmp_path / "repo")
+    return {"claude": claude, "cache": root / "werkstoff", "root": root, "repo": repo}
+
+
+def _plan(d: dict, keep: str) -> set[str]:
+    return {f"{r['plugin']}/{r['version']}" for r in _json(d, "prune", "--keep", keep)["remove"]}
+
+
+def test_every_scope_is_live(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.9.0", "1.0.0")],
+        {"andon@werkstoff": [("user", "1.0.0", "1.0.0"), ("project", "0.9.0", "0.9.0")]},
+    )
+    assert _plan(d, "0") == {"andon/0.8.0"}, "a project-scope install is live too"
+    andon = _plugin(_json(d, "doctor"), "andon")
+    assert andon["liveVersions"] == ["0.9.0", "1.0.0"]
+    assert andon["live"] == "1.0.0"
+    code, out = _invoke(d, "prune", "--apply", "--keep", "0")
+    assert code == 0, out
+    assert (d["cache"] / "andon" / "0.9.0").is_dir()
+    assert not (d["cache"] / "andon" / "0.8.0").exists()
+
+
+def test_another_marketplaces_key_never_defines_this_live_set(tmp_path) -> None:
+    cached = [
+        ("werkstoff", "andon", "0.5.0"),
+        ("werkstoff", "andon", "1.0.0"),
+        ("other", "andon", "2.0.0"),
+    ]
+    # The other marketplace's key is listed FIRST, where a first-entry-wins read takes it.
+    both = {
+        "andon@other": [("user", "2.0.0", "2.0.0")],
+        "andon@werkstoff": [("user", "1.0.0", "1.0.0")],
+    }
+    d = _shape(tmp_path / "both", cached, both)
+    assert _plan(d, "0") == {"andon/0.5.0"}
+    assert _plugin(_json(d, "doctor"), "andon")["live"] == "1.0.0"
+
+    only_other = {"andon@other": [("user", "2.0.0", "2.0.0")]}
+    d = _shape(tmp_path / "other-only", cached, only_other)
+    assert _plan(d, "0") == set(), "andon is not installed from THIS marketplace: leave it"
+    assert _plugin(_json(d, "doctor"), "andon")["live"] is None
+    code, out = _invoke(d, "prune", "--apply", "--keep", "0")
+    assert code == 0, out
+    assert (d["root"] / "other" / "andon" / "2.0.0").is_dir(), "another marketplace's cache"
+
+
+def test_live_is_the_install_path_not_the_version_string(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", "abc1234"), ("werkstoff", "andon", "0.5.0")],
+        {"andon@werkstoff": [("user", "abc1234", "1.0.0")]},
+    )
+    assert _plan(d, "0") == {"andon/0.5.0"}, "the registered installPath IS the live copy"
+    assert _plugin(_json(d, "doctor"), "andon")["live"] == "abc1234"
+
+
+def test_a_prerelease_sorts_before_its_release(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("1.0.0", "2.0.0", "1.0.0-rc1", "0.9.0")],
+        {"andon@werkstoff": [("user", "2.0.0", "2.0.0")]},
+    )
+    andon = _plugin(_json(d, "doctor"), "andon")
+    assert andon["cached"] == ["0.9.0", "1.0.0-rc1", "1.0.0", "2.0.0"]
+    assert andon["liveNotNewest"] is False, "an rc of an OLDER release is not newer"
+    assert _plan(d, "1") == {"andon/0.9.0", "andon/1.0.0-rc1"}
+
+
+def test_negative_keep_is_a_usage_error(dirty) -> None:
+    # Exit 2 is also what an unknown COMMAND returns, so first prove prune exists and
+    # accepts --keep at all -- otherwise this passes against a CLI with no prune.
+    assert _json(dirty, "prune", "--keep", "0")["keep"] == 0
+    before = _snapshot(dirty["claude"])
+    code, out = _invoke(dirty, "prune", "--apply", "--keep", "-1")
+    assert code == 2, f"exit {code}; --keep -1 must be refused as usage, not run:\n{out}"
+    assert _snapshot(dirty["claude"]) == before
+
+
+@pytest.mark.parametrize("registry", ["missing", "garbled"])
+def test_doctor_without_a_readable_registry_fails_in_one_line(dirty, registry) -> None:
+    reg = dirty["claude"] / "plugins" / "installed_plugins.json"
+    if registry == "missing":
+        reg.unlink()
+    else:
+        reg.write_text("{not json")
+    result = runner.invoke(
+        app, ["doctor", "--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"])]
+    )
+    assert result.exit_code == 1, f"exit {result.exit_code}:\n{result.output}"
+    assert "installed_plugins.json" in result.output
+    assert "Traceback" not in result.output, f"doctor crashed:\n{result.output}"
+    # A clean refusal is typer.Exit (SystemExit); anything else escaped the handler.
+    assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+        result.exception
+    )
