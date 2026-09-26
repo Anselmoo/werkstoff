@@ -52,7 +52,9 @@ Interface under test (frozen before any implementation existed):
         spelling. An installed plugin must PROVE a live directory: an empty or
         malformed entry list, or an installPath naming a file, leaves liveness unknown.
         A version dir is never removed if anything a registry entry names lies inside
-        it, or if a mount point lies inside it -- rmtree would take either with it.
+        it, if an entry's own SPELLING passes through it (`0.8.0/../0.12.0`, a symlink
+        inside it), or if a mount point lies inside it -- rmtree would take any of them
+        with it. The dry run plans only what apply would remove.
         The marketplace name must itself be a safe path component. `prune --apply
         --json` adds "removed" and "failed" (what actually happened, not the plan).
     a missing, unparseable, undecodable (non-UTF-8), duplicate-keyed or non-regular-file
@@ -932,3 +934,180 @@ def test_a_relative_installpath_under_another_key_is_protected_from_the_registry
     code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])], cwd=Path("/"))
     assert code in (0, 1), out
     assert (d["cache"] / "andon" / "0.8.0").is_dir()
+
+
+# --- third review (after c7fc4b0): spelling-through, byte paths, scale, output ---
+
+
+@pytest.mark.parametrize("how", ["dotdot", "symlink-inside", "other-key-symlink"])
+def test_an_installpath_spelled_through_a_stale_version_keeps_resolving(tmp_path, how) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    stale = d["cache"] / "andon" / "0.8.0"
+    if how == "dotdot":
+        named = f"{stale}/../0.12.0"
+        _registry_with(d, {"andon@werkstoff": [{"scope": "user", "installPath": named}]})
+    elif how == "symlink-inside":
+        (stale / "cur").symlink_to("../0.12.0", target_is_directory=True)
+        named = str(stale / "cur")
+        _registry_with(d, {"andon@werkstoff": [{"scope": "user", "installPath": named}]})
+    else:
+        outside = tmp_path / "outside"
+        outside.mkdir()
+        (stale / "lnk").symlink_to(outside, target_is_directory=True)
+        named = str(stale / "lnk")
+        _registry_with(d, {"x@other": [{"scope": "user", "installPath": named}]})
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    assert Path(named).exists(), f"the path the registry names ({how}) no longer resolves"
+
+
+def test_a_home_relative_installpath_is_protected(tmp_path) -> None:
+    home = tmp_path / "home"
+    d = _shape(
+        home / "x",
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    rel = os.path.relpath(d["cache"] / "andon" / "0.8.0", home)
+    _registry_with(d, {"x@other": [{"scope": "user", "installPath": rel}]})
+    old = Path.cwd()
+    os.chdir("/")
+    try:
+        result = CliRunner(env={"HOME": str(home), "NO_COLOR": "1"}).invoke(
+            app,
+            ["prune", "--claude-dir", str(d["claude"]), "--repo", str(d["repo"])]
+            + ["--apply", "--keep", "0"],
+        )
+    finally:
+        os.chdir(old)
+    assert result.exit_code in (0, 1), result.output
+    assert (d["cache"] / "andon" / "0.8.0").is_dir()
+
+
+def test_a_bind_mount_under_a_non_utf8_path_is_never_crossed(tmp_path) -> None:
+    import subprocess
+
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    odd = Path(os.fsdecode(bytes(d["cache"] / "andon") + b"/0.1.0\xff"))
+    (odd / "m").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "keep.txt").write_text("x")
+    if subprocess.run(["mount", "--bind", str(outside), str(odd / "m")]).returncode:
+        pytest.skip("bind mounts need privileges this runner does not have")
+    try:
+        code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+        assert (outside / "keep.txt").is_file(), "prune deleted through a non-UTF-8 mount"
+    finally:
+        subprocess.run(["umount", str(odd / "m")], check=False)
+
+
+def test_unprintable_names_never_traceback(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    _registry_with(d, {"\ud800@werkstoff": [{"scope": "user", "installPath": "/x"}]})
+    for args in (["doctor"], ["prune"], ["prune", "--apply", "--keep", "0"]):
+        result = runner.invoke(
+            app, [args[0], "--claude-dir", str(d["claude"]), "--repo", str(d["repo"]), *args[1:]]
+        )
+        assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+            result.exception
+        )
+        assert "Traceback" not in result.output
+    assert result.exit_code == 0
+    assert "removed 1 of 1" in result.output
+
+
+def test_a_pathologically_deep_stale_dir_never_tracebacks(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.7.0", "0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    fd = os.open(d["cache"] / "andon" / "0.7.0", os.O_RDONLY)
+    try:
+        for _ in range(1200):
+            os.mkdir("d", dir_fd=fd)
+            nxt = os.open("d", os.O_RDONLY, dir_fd=fd)
+            os.close(fd)
+            fd = nxt
+    finally:
+        os.close(fd)
+    try:
+        code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+        assert "Traceback" not in out
+        assert code in (0, 1), out
+        assert not (d["cache"] / "andon" / "0.8.0").exists(), "a deep tree abandoned the rest"
+        assert (d["cache"] / "andon" / "0.12.0").is_dir()
+    finally:
+        # pytest's own tmp-dir cleanup recurses and would crash on what is left
+        # of this tree; os.walk is iterative, so remove it bottom-up here.
+        for dirpath, dirnames, _files in os.walk(d["cache"] / "andon" / "0.7.0", topdown=False):
+            for name in dirnames:
+                os.rmdir(Path(dirpath) / name)
+
+
+def test_a_malformed_marketplace_manifest_fails_in_one_line(dirty) -> None:
+    (dirty["repo"] / ".claude-plugin" / "marketplace.json").write_text("[]")
+    for command in ("doctor", "prune"):
+        result = runner.invoke(
+            app, [command, "--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"])]
+        )
+        assert result.exit_code == 1, result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+            result.exception
+        )
+
+
+def test_the_dry_run_plans_only_what_apply_would_remove(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    (d["cache"] / "andon" / "0.8.0" / "sub").mkdir()
+    sub = str(d["cache"] / "andon" / "0.8.0" / "sub")
+    _registry_with(d, {"inner@other": [{"scope": "user", "installPath": sub}]})
+    assert _plan(d, "0") == set(), "the plan announces a removal apply must refuse"
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code == 0, out
+
+
+def test_a_newline_in_the_claude_dir_keeps_the_error_on_one_line(tmp_path, dirty) -> None:
+    odd = tmp_path / "a\nb"
+    odd.mkdir()
+    result = runner.invoke(app, ["doctor", "--claude-dir", str(odd), "--repo", str(dirty["repo"])])
+    assert result.exit_code == 1
+    assert len([ln for ln in result.output.splitlines() if ln.strip()]) == 1, result.output
+
+
+def test_apply_scales_with_many_existing_registry_paths(tmp_path) -> None:
+    import time
+
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", f"0.{i}.0") for i in range(301)],
+        {"andon@werkstoff": [("user", "0.300.0", "0.300.0")]},
+    )
+    elsewhere = tmp_path / "elsewhere"
+    extra = {}
+    for i in range(3000):
+        (elsewhere / str(i)).mkdir(parents=True)
+        extra[f"p{i}@other"] = [{"scope": "user", "installPath": str(elsewhere / str(i))}]
+    _registry_with(d, extra)
+    start = time.monotonic()
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    elapsed = time.monotonic() - start
+    assert code == 0, out
+    assert elapsed < 30, f"--apply took {elapsed:.1f}s for 300 rows x 3000 entries"

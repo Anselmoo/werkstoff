@@ -41,6 +41,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   what was already removed; hostile registries (deep nesting, huge integers, NUL bytes,
   lone surrogates) and Rich markup in paths no longer traceback; and `--apply` re-derives
   the protected set only when the registry changed (65 s -> 0.6 s for 400 x 5,000) (#89)
+- **prune**: a third review reproduced, now tested and refused: a bind mount under a
+  non-UTF-8 path went undetected (mountinfo is now read as bytes and `fsdecode`d); an
+  entry spelled THROUGH a stale version (`0.8.0/../0.12.0`, a symlink inside it) stopped
+  resolving once that version was pruned; a `$HOME`-relative installPath was not
+  protected; the dry run announced removals apply then refused; the nesting check was
+  rows x entries (163 s; now a precomputed ancestor set); and a lone surrogate or
+  undecodable byte in a name, a 1,200-level tree (`rmtree` recursion), an unreadable
+  cache dir, or a malformed `marketplace.json` no longer traceback. One race stays open
+  and is documented: a concurrent rename inside the cache between the last check and the
+  removal (#89)
 
 ## [1.0.0] - 2026-09-21
 

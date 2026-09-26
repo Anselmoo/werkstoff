@@ -63,7 +63,8 @@ under any scope. `prune` is a dry run unless `--apply` is given, and it:
 - never removes anything **any** registry entry names, under any key or
   marketplace, compared by device and inode rather than by spelling;
 - never removes a version directory that contains something a registry
-  entry names, or a mount point — `rmtree` would take either with it;
+  entry names, that an entry's path is spelled through (`0.8.0/../0.12.0`),
+  or that holds a mount point — `rmtree` would take any of them with it;
 - never removes an uninstalled plugin's cache, a symlinked plugin or
   version directory, or anything outside
   `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/` after
@@ -72,6 +73,12 @@ under any scope. `prune` is a dry run unless `--apply` is given, and it:
   it, then removes it through directory handles verified against what was
   checked, so an install that lands mid-prune, or a directory swapped in
   under the same name, is refused rather than deleted.
+
+One residual race is not closed: another process renaming directories
+*inside* the cache in the instant between the final identity check and the
+removal. Closing it needs `renameat2`-style exchange semantics Python does
+not expose portably; do not run `prune --apply` while Claude Code is
+installing or updating plugins.
 
 A missing, unparseable, non-UTF-8, duplicate-keyed or non-regular-file
 registry makes both commands exit `1` with a one-line error. `prune --apply

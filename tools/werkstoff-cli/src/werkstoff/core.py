@@ -91,6 +91,8 @@ def load_marketplace(repo_root: Path) -> Marketplace:
         )
     except KeyError as exc:
         raise WerkstoffError(f"marketplace manifest missing required field: {exc}") from exc
+    except (TypeError, AttributeError) as exc:
+        raise WerkstoffError(f"marketplace manifest is malformed: {manifest_path} ({exc})") from exc
 
     return Marketplace(name=name, root=repo_root, plugins=plugins)
 

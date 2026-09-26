@@ -97,6 +97,7 @@ class Protected:
 
     paths: frozenset[Path]
     ids: frozenset[Identity]
+    ancestors: frozenset[Path] = frozenset()
 
 
 _RESOLVE_ERRORS = (OSError, RuntimeError, ValueError)
@@ -263,10 +264,11 @@ def protected_for(registry: dict, claude_dir: Path, cache_root: Path) -> Protect
     live one. Relative installPaths are tried against the claude dir, the
     registry's own directory, and the current directory."""
     bases = [claude_dir, claude_dir / REGISTRY_REL_PATH.parent]
-    try:
-        bases.append(Path.cwd())
-    except OSError:
-        pass  # a deleted cwd is simply one base fewer
+    for base in (Path.cwd, Path.home):
+        try:
+            bases.append(base())
+        except (OSError, RuntimeError, KeyError):
+            pass  # a deleted cwd or an unknown home is simply one base fewer
     paths: set[Path] = set()
     ids: set[Identity] = set()
     for key, entry in _all_entries(registry):
@@ -278,7 +280,38 @@ def protected_for(registry: dict, claude_dir: Path, cache_root: Path) -> Protect
                 continue
             paths.add(resolved)
             ids.add((st.st_dev, st.st_ino))
-    return Protected(paths=frozenset(paths), ids=frozenset(ids))
+            paths.update(_version_dirs_on_the_way(candidate, resolved, cache_root))
+    ancestors = {parent for path in paths for parent in path.parents}
+    return Protected(paths=frozenset(paths), ids=frozenset(ids), ancestors=frozenset(ancestors))
+
+
+def _version_dirs_on_the_way(candidate: Path, resolved: Path, cache_root: Path) -> set[Path]:
+    """Every cached version dir the entry's own SPELLING passes through.
+
+    `<cache>/andon/0.8.0/../0.12.0`, or `<cache>/andon/0.8.0/cur` where `cur`
+    links elsewhere, resolves to a live directory -- but it stops resolving
+    the moment 0.8.0 is removed, and the registry names the spelling, not the
+    resolution. So each prefix of the spelling is resolved, and every
+    `<cache>/<plugin>/<version>` it lands in is protected too. The common
+    case -- a spelling that is already its own resolution -- is skipped."""
+    absolute = Path(os.path.abspath(candidate))
+    # os.path.abspath collapses ".." lexically, which is exactly what must
+    # NOT be trusted here; the check below compares against the raw parts.
+    if ".." not in candidate.parts and absolute == resolved:
+        return set()
+    found: set[Path] = set()
+    prefix = Path(candidate.anchor) if candidate.is_absolute() else Path()
+    for part in candidate.parts[1 if candidate.is_absolute() else 0 :]:
+        prefix = prefix / part
+        try:
+            step = prefix.resolve(strict=True)
+        except _RESOLVE_ERRORS:
+            break
+        if cache_root in step.parents:
+            rel = step.relative_to(cache_root).parts
+            if len(rel) >= 2:
+                found.add(cache_root / rel[0] / rel[1])
+    return found
 
 
 def protected_identities(registry: dict, claude_dir: Path, cache_root: Path) -> set[Identity]:
@@ -350,6 +383,16 @@ def _live_dir(entry: object, cache_root: Path, plugin: str) -> tuple[Path | None
 
 
 def scan_cache(cache_root: Path) -> dict[str, list[Path]]:
+    """Every real (non-symlink) version directory under every real
+    (non-symlink) plugin directory of `cache_root`. Raises CacheError if a
+    directory cannot be listed -- an unreadable cache is not an empty one."""
+    try:
+        return _scan_cache(cache_root)
+    except OSError as exc:
+        raise CacheError(f"cannot read the plugin cache: {exc}") from exc
+
+
+def _scan_cache(cache_root: Path) -> dict[str, list[Path]]:
     """Every real (non-symlink) version directory under every real
     (non-symlink) plugin directory of `cache_root`. A symlinked plugin dir or
     a symlinked version dir is skipped outright -- never yielded as a
@@ -503,14 +546,16 @@ def build_prune_plan(
         if plugin in world.unusable:
             skipped.append((plugin, world.unusable[plugin]))
             continue
-        non_live = sorted(
-            (
-                p
-                for p in world.cached_map.get(plugin, [])
-                if _identity(p) not in world.protected.ids
-            ),
-            key=lambda p: version_key(p.name),
-        )
+        non_live = []
+        for p in world.cached_map.get(plugin, []):
+            if _identity(p) in world.protected.ids:
+                continue
+            why = _contents_refusal(p, world.protected)
+            if why is not None:
+                skipped.append((plugin, f"keeping {p.name}: {why}"))
+                continue
+            non_live.append(p)
+        non_live.sort(key=lambda p: version_key(p.name))
         stale = non_live[:-keep] if keep > 0 else list(non_live)
         plan.extend(
             RemovalPlan(plugin=plugin, version=p.name, path=p, root_id=root_id) for p in stale
@@ -523,25 +568,28 @@ def _mount_points() -> list[Path]:
     a same-filesystem bind mount shares st_dev with its parent, so comparing
     devices alone cannot find it. Empty where /proc is unavailable."""
     try:
-        text = Path("/proc/self/mountinfo").read_text(encoding="utf-8", errors="replace")
+        raw = Path("/proc/self/mountinfo").read_bytes()
     except OSError:
         return []
     points = []
-    for line in text.splitlines():
-        fields = line.split(" ")
+    for line in raw.splitlines():
+        fields = line.split(b" ")
         if len(fields) > 4:
-            points.append(Path(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), fields[4])))
+            unescaped = re.sub(rb"\\([0-7]{3})", lambda m: bytes([int(m[1], 8)]), fields[4])
+            # fsdecode, not a lossy decode: a non-UTF-8 mount point must compare
+            # equal to the same bytes held in a Path (surrogateescape).
+            points.append(Path(os.fsdecode(unescaped)))
     return points
 
 
 def _nesting_refusal(target: Path, protected: Protected) -> str | None:
     """A registry entry naming the target, something inside it, or a directory
     above it (other than its own plugin dir) makes it off-limits."""
-    for live in protected.paths:
-        if live == target or target in live.parents:
-            return f"a registry entry names {live} inside it"
-        if live in target.parents and live != target.parent:
-            return f"a registry entry names {live}, which contains it"
+    if target in protected.paths or target in protected.ancestors:
+        return "a registry entry names it, or something inside it"
+    for parent in target.parents:
+        if parent in protected.paths and parent != target.parent:
+            return f"a registry entry names {parent}, which contains it"
     for mount in _mount_points():
         if mount == target or target in mount.parents:
             return f"{mount} is a mount point inside it"
@@ -559,7 +607,10 @@ def _contents_refusal(target: Path, protected: Protected) -> str | None:
         root_dev = target.lstat().st_dev
     except OSError as exc:
         return f"cannot stat {target}: {exc}"
-    for dirpath, dirnames, filenames in target.walk():
+    unreadable: list[OSError] = []
+    for dirpath, dirnames, filenames in target.walk(on_error=unreadable.append):
+        if unreadable:
+            return f"cannot read inside {target}: {unreadable[0]}"
         for name in dirnames + filenames:
             try:
                 st = (dirpath / name).lstat()
@@ -569,6 +620,8 @@ def _contents_refusal(target: Path, protected: Protected) -> str | None:
                 return f"{dirpath / name} is on another device"
             if (st.st_dev, st.st_ino) in protected.ids:
                 return f"{dirpath / name} is live"
+    if unreadable:
+        return f"cannot read inside {target}: {unreadable[0]}"
     return None
 
 
@@ -649,7 +702,11 @@ def apply_prune(
     seen: bytes | None = None
     protected = Protected(paths=frozenset(), ids=frozenset())
     for index, item in enumerate(plan):
-        if not item.path.exists() and not item.path.is_symlink():
+        try:
+            if not item.path.exists() and not item.path.is_symlink():
+                continue
+        except OSError as exc:
+            failures.append((item, f"refused: cannot stat {item.path}: {exc}"))
             continue
         try:
             raw = _read_registry_bytes(claude_dir)
@@ -665,8 +722,10 @@ def apply_prune(
             continue
         try:
             _remove_verified(cache_root, item, ids)
-        except OSError as exc:
-            failures.append((item, str(exc)))
+        except (OSError, RecursionError) as exc:
+            # shutil.rmtree recurses; a pathologically deep tree raises
+            # RecursionError after a partial removal. Report it, keep going.
+            failures.append((item, f"{type(exc).__name__}: {str(exc)[:200]}"))
         else:
             removed.append(item)
     return removed, failures

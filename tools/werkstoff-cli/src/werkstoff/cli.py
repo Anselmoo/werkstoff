@@ -46,8 +46,9 @@ def _resolve_marketplace(repo: Path | None) -> core.Marketplace:
     try:
         repo_root = repo.resolve() if repo else core.find_repo_root()
         return core.load_marketplace(repo_root)
-    except core.WerkstoffError as exc:
-        err_console.print(f"error: {exc}")
+    except (core.WerkstoffError, OSError, RuntimeError, ValueError) as exc:
+        # OSError: a deleted cwd; RuntimeError: a symlink-loop --repo.
+        _say(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
 
@@ -171,31 +172,46 @@ def _plugin_payload(report: cache.PluginReport) -> dict:
     }
 
 
+def _esc(text: str) -> str:
+    return escape(_printable(text))
+
+
 def _print_doctor_report(reports: list[cache.PluginReport], total: int) -> None:
     if not reports:
         console.print("[dim]no plugins found in the marketplace or the cache[/dim]")
         return
     for report in reports:
-        bits = [f"live {escape(report.live)}" if report.live else "not installed"]
+        bits = [f"live {_esc(report.live)}" if report.live else "not installed"]
         if report.not_in_marketplace:
             bits.append("[yellow]not in marketplace[/yellow]")
         bits.append(f"cached {len(report.cached)}")
         if report.live_unknown:
-            bits.append(f"[red]live unknown, prune skips it: {escape(report.live_unknown)}[/red]")
+            bits.append(f"[red]live unknown, prune skips it: {_esc(report.live_unknown)}[/red]")
         if report.live_not_newest:
-            bits.append(f"[yellow]newer cached: {escape(report.cached[-1])}[/yellow]")
+            bits.append(f"[yellow]newer cached: {_esc(report.cached[-1])}[/yellow]")
         bits.append(_human_size(report.size_bytes))
-        console.print(f"[bold]{escape(report.name)}[/bold]  " + "  ".join(bits))
+        console.print(f"[bold]{_esc(report.name)}[/bold]  " + "  ".join(bits), soft_wrap=True)
     console.print(f"\n{len(reports)} plugin(s), {_human_size(total)} total")
+
+
+def _printable(text: str) -> str:
+    """`text` made safe to print as ONE line on any terminal: characters UTF-8
+    cannot encode (lone surrogates, undecodable filename bytes) and control
+    characters (a newline in a directory name) become backslash escapes."""
+    text = text.encode("utf-8", "backslashreplace").decode("utf-8")
+    return "".join(
+        ch if ch.isprintable() or ch == " " else ch.encode("unicode_escape").decode("ascii")
+        for ch in text
+    )
 
 
 def _say(text: str, err: bool = False) -> None:
     """Print a line that carries a filesystem path or a registry-supplied
     reason: literally, never as Rich markup (a directory named `[bold]` or
-    `[/x]` would otherwise be restyled or crash the print), and never soft-
-    wrapped, so each record stays on one line."""
+    `[/x]` would otherwise be restyled or crash the print), never soft-
+    wrapped, and escaped by `_printable`, so each record stays on one line."""
     (err_console if err else console).print(
-        text, markup=False, highlight=False, soft_wrap=True, emoji=False
+        _printable(text), markup=False, highlight=False, soft_wrap=True, emoji=False
     )
 
 
