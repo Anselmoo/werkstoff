@@ -1,6 +1,6 @@
 ---
 name: nacharbeit-lint
-description: "Use to run the mechanical half of the nacharbeit rubric — 96 script-checkable rules over a plugin's skills, agents, commands, workflows, hooks, scripts, report viewers, manifest, README, CHANGELOG and docs wiring — with no model in the loop and no tokens spent. Trigger on 'lint this plugin', 'does this plugin meet the Anthropic standard mechanically', 'check the frontmatter and hooks.json', 'nacharbeit lint'. Reports findings by rule; never fixes anything (that is nacharbeit-fix) and never judges prose (that is nacharbeit-review)."
+description: "Use to run the mechanical half of the nacharbeit rubric — the script-checkable rules (run `nacharbeit_lint.py --count` for the current total) over a plugin's skills, agents, commands, workflows, hooks, scripts, report viewers, manifest, README, CHANGELOG and docs wiring — with no model in the loop and no tokens spent. Trigger on 'lint this plugin', 'does this plugin meet the Anthropic standard mechanically', 'check the frontmatter and hooks.json', 'nacharbeit lint'. Reports findings by rule; never fixes anything (that is nacharbeit-fix) and never judges prose (that is nacharbeit-review)."
 ---
 
 Everything a script can decide is decided here, so the model finders downstream never

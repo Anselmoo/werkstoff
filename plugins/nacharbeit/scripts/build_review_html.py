@@ -8,7 +8,7 @@ separates what a model can close from what is a judgement call, so a reader can
 see the size of the remaining work rather than only its count. A family sitting
 at 0/n is not evidence of health -- only that nothing exercised it.
 
-  --lint    raw `nacharbeit_lint.py --json` output; normalised here by collect()
+  --lint    raw `nacharbeit_lint.py --format json` output; normalised here by collect()
   --report  a report already in the viewer's shape
 
 Exit: 0 written, 2 could not read an input.
@@ -42,7 +42,7 @@ def render(report: dict) -> str:
 
 
 def collect(report_path: Path) -> dict:
-    """Read nacharbeit_lint.py --json output into the viewer's shape."""
+    """Read nacharbeit_lint.py --format json output into the viewer's shape."""
     raw = json.loads(report_path.read_text(encoding="utf-8"))
     findings = raw if isinstance(raw, list) else raw.get("findings", [])
     out = []
@@ -134,7 +134,7 @@ def main(argv: list) -> int:
         prog="build_review_html.py",
         description="Render a nacharbeit review: findings by severity, rule family and fix tier.",
         epilog="exit 0 written, 2 could not read an input")
-    parser.add_argument("--lint", help="raw nacharbeit_lint.py --json output, normalised by collect()")
+    parser.add_argument("--lint", help="raw nacharbeit_lint.py --format json output, normalised by collect()")
     parser.add_argument("--report", help="a report already in the viewer's shape")
     parser.add_argument("--out")
     parser.add_argument("--selftest", action="store_true")

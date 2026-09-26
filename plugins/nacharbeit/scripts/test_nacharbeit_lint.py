@@ -47,6 +47,56 @@ lp = importlib.util.module_from_spec(spec)
 sys.modules["nacharbeit_lint"] = lp  # dataclasses need the module registered before exec (py3.14)
 spec.loader.exec_module(lp)
 
+# #86: the repo root, so the prose-count guard below can find the five shipped
+# files by the same repo-relative paths #86 named them by, regardless of the
+# caller's own cwd.
+REPO_ROOT = HERE.parent.parent.parent
+
+# The five files #86 named as shipped prose that must never restate a rule
+# count by hand -- the number belongs to `nacharbeit_lint.py --count` alone.
+COUNT_PROSE_FILES = (
+    "plugins/nacharbeit/README.md",
+    "plugins/nacharbeit/skills/nacharbeit-lint/SKILL.md",
+    "docs/plugin-authoring/README.md",
+    "docs/catalog/plugin-authoring/rework-a-plugin-to-the-anthropic-standard.md",
+    "CLAUDE.md",
+)
+
+# A rule-count claim: a number (digits, "ninety", or "forty-<word>") right
+# before a rules-noun, or a rule-id-prefix cardinality like "`M-*` (26)".
+# Mirrors workflow.json's a3 acceptance check exactly, so the guard and the
+# grader can never disagree about what counts as "a count". Every `\b` here
+# sits next to a word character (digits or letters) on both sides it borders,
+# and no bracket expression is used, per CLAUDE.md's banned silent-failure
+# regex forms.
+COUNT_PROSE_RE = re.compile(
+    r"(\b[0-9]+|ninety|forty[- ]?[a-z]*)\s+(rules|script-check(ed|able)|mechanical|judge?ment|model-judged)"
+    r"|`[A-Z]+-\*` \([0-9]+\)",
+    re.IGNORECASE,
+)
+
+
+def prose_count_violations(root: Path) -> list[tuple[str, str]]:
+    """(relative path, matched text) for each guarded file that still states a
+    literal rule count.
+
+    Each file's lines are joined with spaces before matching, so a count split
+    across a line wrap is still caught. A file missing under `root` is
+    skipped rather than counted either way -- this is what lets the sabotage
+    test below point at a one-file fixture tree instead of a full checkout.
+    """
+    hits: list[tuple[str, str]] = []
+    for rel in COUNT_PROSE_FILES:
+        p = root / rel
+        if not p.is_file():
+            continue
+        joined = " ".join(p.read_text(encoding="utf-8").splitlines())
+        m = COUNT_PROSE_RE.search(joined)
+        if m:
+            hits.append((rel, m.group(0)))
+    return hits
+
+
 FM = "---\nname: {name}\ndescription: {desc}\n{extra}---\n"
 GOOD_DESC = "Audits one thing precisely and reports it. Use when the user asks to audit that thing."
 GOOD_BODY = "\n# Title\n\nTo run the audit, read the target and report findings.\n\nSee [ref](references/guide.md) for the schema.\n"
@@ -695,6 +745,27 @@ def main() -> int:
         if m and m.group(1) != sev:
             print(f"RED  sync: {rid} severity is {sev} in lint but {m.group(1)} in rubric")
             red += 1
+
+    # 6. prose-count guard (#86) -- the guarded files, as actually shipped, must
+    # state no rule count; then prove the guard can fail at all by planting one
+    # back and checking it is caught. A guard that cannot fail is not a guard.
+    violations = prose_count_violations(REPO_ROOT)
+    if violations:
+        for rel, matched in violations:
+            print(f"RED  count-prose: {rel} states a rule count ({matched!r}) -- move it to `nacharbeit_lint.py --count`")
+        red += len(violations)
+    else:
+        print(f"     count-prose: none of {len(COUNT_PROSE_FILES)} guarded files states a rule count")
+    with tempfile.TemporaryDirectory() as td:
+        sabotage_root = Path(td)
+        target = COUNT_PROSE_FILES[0]
+        w(sabotage_root, target, "Some prose.\n\n96 mechanical rules, all planted.\n")
+        sabotage_hits = prose_count_violations(sabotage_root)
+        if not sabotage_hits:
+            print(f"RED  count-prose: planting '96 mechanical rules' into {target} was not caught -- the guard cannot fail")
+            red += 1
+        else:
+            print(f"     count-prose sabotage: planting '96 mechanical rules' into {target} was caught ({sabotage_hits[0][1]!r})")
 
     print("GREEN" if not red else f"RED ({red})")
     return 1 if red else 0

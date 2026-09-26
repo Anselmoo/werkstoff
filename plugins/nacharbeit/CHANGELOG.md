@@ -4,6 +4,24 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- README's "What it is not" no longer says nacharbeit is not a report viewer: it ships
+  `assets/review-viewer.html`, and the bullet now says what that viewer is and is not
+- README's review-report commands run: `nacharbeit_lint.py` takes `--format json` (there is
+  no `--json`, which exited 2), and raw lint output goes to `build_review_html.py --lint`,
+  not `--report`, which rendered it with every fix tier and message lost
+
+### Added
+- `Q-FIXTURE-AGREES` (major, meaning): a claim in shipped prose that names a committed
+  fixture or example-data path, about that fixture's state, contents or shape, must
+  match the fixture. Calibrated in `test/plugins/fixtures/nacharbeit/tune-1` (#85)
+- `nacharbeit_lint.py --count` derives mechanical/judgement/per-family rule counts from
+  the rubric; shipped prose now points readers at it instead of stating a number, and
+  `test_nacharbeit_lint.py` fails if one creeps back in (#86)
+- README's "What it is not" section gains a fifth bullet: nacharbeit is not a planning or
+  spec-authoring entry point, redirecting to `arbeitsplan-compile` (and `zirkel-solve` for
+  a question rather than a change) (#84)
+
 ## [1.0.1] - 2026-09-26
 
 ### Fixed

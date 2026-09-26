@@ -46,8 +46,16 @@ flag with a werkstoff default.
 - Not a proof that a fix is correct. Its verifier checks that an entry was applied and
   nothing regressed; whether the reworked skill *works* is `andon-verify`'s job, and the
   fix skill hands off there.
-- Not a report viewer. The findings report is Markdown; a viewer would put nacharbeit
-  under its own `A-*` rules on day one, and it can wait.
+- Not a Markdown-only reporter, and not a dashboard of its own making. The review's
+  primary output is the Markdown findings report; `assets/review-viewer.html` (built by
+  `scripts/build_review_html.py`, see [The review report](#the-review-report)) renders
+  findings by rule family, severity and fix tier, adds none of its own, and is graded by
+  nacharbeit's own `A-*` rules like every other plugin's viewer.
+- Not a planning or spec-authoring entry point — that is `arbeitsplan-compile` (the
+  arbeitsplan plugin), which compiles a stated problem into an executable workflow spec,
+  with a question rather than a change going to `zirkel-solve` instead; nacharbeit grades
+  and reworks what already exists against a fixed, externally sourced rubric, so it does
+  not plan, author a spec, or decide what should be built.
 
 ## Install
 
@@ -64,25 +72,28 @@ installing it changes nothing about an ordinary session.
 
 | surface | mechanical (script) | judgement (model) | what it delegates to |
 |---|---|---|---|
-| skills, agents, commands, workflow prompts, references | `M-*` (26) | `Q-*` (28) | — (PR #56's set, unchanged) |
-| `hooks/hooks.json` and its guard scripts | `H-*` (14) | `HQ-*` (5) | `takt_guard.py`'s contract; `verify_hooks_deny.py` as a post-check |
-| `scripts/**`, `hooks/*.py`, `workflows/*.js` | `S-*` (12) | `SQ-*` (4) | `ast`, `node --check`, `test/plugins/lint-oracles.sh`'s forms; `scripts/ci/check_workflow_models.py` (vendored) for `S-WF-MODEL` and `S-WF-RELAY` |
-| `assets/*-viewer.html` | `A-*` (13) | `AQ-*` (4) | `scripts/ci/check_viewer_conformance.py` (vendored) for the six codes CI decides; the editorial rules it refuses go to the finder |
-| `plugin.json`, `README.md`, `CHANGELOG.md` | `P-*` (20) | `PQ-*` (5) | `lint-plugin-authors.py`, `build_prompt_index.py`'s scan, `rrt docs inject` |
-| repo docs wiring (`docs/`, root README, CLAUDE.md, orchestration references) | `D-*` (11) | `DQ-*` (2) | the docs generators; `validate_catalog.py` |
+| skills, agents, commands, workflow prompts, references | `M-*` | `Q-*` | — (PR #56's set, unchanged) |
+| `hooks/hooks.json` and its guard scripts | `H-*` | `HQ-*` | `takt_guard.py`'s contract; `verify_hooks_deny.py` as a post-check |
+| `scripts/**`, `hooks/*.py`, `workflows/*.js` | `S-*` | `SQ-*` | `ast`, `node --check`, `test/plugins/lint-oracles.sh`'s forms; `scripts/ci/check_workflow_models.py` (vendored) for `S-WF-MODEL` and `S-WF-RELAY` |
+| `assets/*-viewer.html` | `A-*` | `AQ-*` | `scripts/ci/check_viewer_conformance.py` (vendored) for the six codes CI decides; the editorial rules it refuses go to the finder |
+| `plugin.json`, `README.md`, `CHANGELOG.md` | `P-*` | `PQ-*` | `lint-plugin-authors.py`, `build_prompt_index.py`'s scan, `rrt docs inject` |
+| repo docs wiring (`docs/`, root README, CLAUDE.md, orchestration references) | `D-*` | `DQ-*` | the docs generators; `validate_catalog.py` |
 
 Every rule, its severity and its source page is in [`references/rubric.md`](references/rubric.md).
-The linter plants one defect per mechanical rule and blanks each rule in turn to prove
-it load-bearing (`scripts/test_nacharbeit_lint.py`); the finder is calibrated per
-family against `test/plugins/fixtures/nacharbeit/` and refuses to grade a family whose
-sealed recall falls below its floor.
+Per-family and total counts are derived from the rubric, not typed by hand anywhere —
+run `python3 plugins/nacharbeit/scripts/nacharbeit_lint.py --count` (add `--format json`
+for a machine-readable breakdown) rather than trusting a number in prose. The linter
+plants one defect per mechanical rule and blanks each rule in turn to prove it
+load-bearing (`scripts/test_nacharbeit_lint.py`); the finder is calibrated per family
+against `test/plugins/fixtures/nacharbeit/` and refuses to grade a family whose sealed
+recall falls below its floor.
 
 ## Skills
 
 | skill | role | what it does |
 |---|---|---|
 | `nacharbeit-preflight` | leaf, read-only | inventory by kind, available checkers, other live guards, open lock |
-| `nacharbeit-lint` | leaf, zero tokens | the calibration, then the 96 mechanical rules |
+| `nacharbeit-lint` | leaf, zero tokens | the calibration, then every mechanical rule (`--count` for the number) |
 | `nacharbeit-review` | orchestrator | build and bake args → calibrated workflow → persist → report |
 | `nacharbeit-fix` | orchestrator | open the lock and snapshot → remediate / verify / repair per file → post-checks and contract diff → release |
 | `nacharbeit-status` | status | what ran, what is held for a person, whether a lock is open |
@@ -114,8 +125,9 @@ by intent.
 "lint plugins/lehre against the Anthropic plugin standard — frontmatter, hooks.json, scripts, the README"
 ````
 
-> Triggers `nacharbeit-lint`: the sabotage calibration first, then the 96 mechanical
-> rules; findings by rule and file, nothing applied.
+> Triggers `nacharbeit-lint`: the sabotage calibration first, then every mechanical
+> rule (`nacharbeit_lint.py --count` prints how many); findings by rule and file,
+> nothing applied.
 
 ##### Run the calibrated review
 
@@ -189,11 +201,11 @@ tuning + sealed pair for.
 
 ## The review report
 
-![Six findings across three plugins, each with its severity, rule family and the cheapest tier that can fix it, over a calibration block showing 91 rules planted and blanked](assets/review-viewer-screenshot.jpg)
+![Six findings across three plugins, each with its severity, rule family and the cheapest tier that can fix it, over a calibration block showing every rule planted and blanked](assets/review-viewer-screenshot.jpg)
 
 ```bash
-python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --json > /tmp/review.json
-python3 plugins/nacharbeit/scripts/build_review_html.py --report /tmp/review.json --out /tmp/review.html
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --format json > /tmp/review.json
+python3 plugins/nacharbeit/scripts/build_review_html.py --lint /tmp/review.json --out /tmp/review.html
 ```
 
 Rendered from committed demo data at `scripts/fixtures/review-demo.json`. The fixture carries a
@@ -206,7 +218,7 @@ evidence that nothing in the reviewed plugin exercised that family.
 ## Verifying a change to this plugin
 
 ```bash
-python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: 96 rules planted, blanked, synced
+python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: every rule planted, blanked, synced
 node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
 python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest  # the probe's parser, verdicts and refusals; no tokens
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases
