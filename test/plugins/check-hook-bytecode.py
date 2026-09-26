@@ -40,7 +40,9 @@ file of the plugin:
 
 - statically, the invocation carries `-B`, and its `${CLAUDE_PLUGIN_ROOT}` path is
   double-quoted (it is substituted as a literal absolute path, which may contain
-  a space -- the same rule applies to hooks.json commands);
+  a space -- the same rule applies to hooks.json commands), and typed as a
+  command rather than stored in a shell variable (`GUARD="python3 ..."` then
+  `$GUARD args` word-splits on expansion however the value was quoted);
 - it is still PERMITTED by its skill's `allowed-tools`: a frontmatter
   `Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)` is a prefix match on the
   command the model types, so a body that says `python3 -B ...` against a
@@ -96,6 +98,12 @@ SCANNED_SUFFIXES = {".md", ".js"}
 QUOTED_ROOT = '"${CLAUDE_PLUGIN_ROOT}'
 
 BASH_PATTERN = re.compile(r"Bash\(([^)]*)\)")
+
+# `GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/x.py"` then `$GUARD args`: no quoting
+# inside the value survives, because the shell does not re-parse quotes in an
+# expanded variable -- `$GUARD` word-splits the literal path however it was
+# written. The quoting rule above would pass a quoted value, so this is its own rule.
+STORED_IN_VARIABLE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*=[\"']?$")
 
 SITECUSTOMIZE = """
 import os, sys
@@ -177,6 +185,24 @@ def script_invocations(plugin: Path) -> list[tuple[Path, int, str, str, str]]:
             command = m.group(0).replace('\\"', '"')
             found.append((path, line, command, m.group("flags"), m.group("script")))
     return found
+
+
+def stored_in_variable(plugin: Path) -> list[str]:
+    """Invocations assigned to a shell variable instead of typed as a command."""
+    problems = []
+    for path in sorted(plugin.rglob("*")):
+        if path.suffix not in SCANNED_SUFFIXES or not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for m in INVOCATION.finditer(text):
+            prefix = text[text.rfind("\n", 0, m.start()) + 1 : m.start()]
+            if STORED_IN_VARIABLE.search(prefix):
+                line = text.count("\n", 0, m.start()) + 1
+                problems.append(
+                    f"{path.relative_to(plugin.parent)}:{line}: plugin-root command stored "
+                    f"in a shell variable (word-splits on expansion): {prefix.strip()}"
+                )
+    return problems
 
 
 def unpermitted(plugin: Path) -> list[str]:
@@ -363,6 +389,7 @@ def main(argv: list[str] | None = None) -> int:
                         f"{path.relative_to(plugin.parent)}:{line}: plugin-root path unquoted: "
                         f"{command}"
                     )
+            failures.extend(stored_in_variable(plugin))
             failures.extend(unpermitted(plugin))
             if not invocations:
                 continue
@@ -429,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
         f"no bytecode (probe proven live: {name} opened {sibling})"
     )
     print(
-        f"ok  {invocation_count} skill/command/workflow script invocation(s) carry -B and "
+        f"ok  {invocation_count} skill/command/workflow script invocation(s) carry -B, quote the plugin root and "
         f"are permitted by their allowed-tools; {script_runs} script run(s) wrote no bytecode "
         f"(probe proven live: {s_name} opened {s_prefix}...)"
     )

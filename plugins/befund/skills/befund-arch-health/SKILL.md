@@ -10,7 +10,7 @@ Judge the real stage/wire dependency graph for structural deficiencies.
 ## Step 0: Settings gate, then the stage_graph prerequisite
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-arch-health
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-arch-health
 ```
 
 Check whether `<output_dir>/stage_graph.json` exists. If it does not, this skill degrades to
@@ -34,8 +34,8 @@ fan-out numbers must come from the complete graph.
 Use the graph helpers for the two structural checks that have precise definitions:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py find-cycles --stage-graph <path to stage_graph.json>
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py find-god-modules --stage-graph <path to stage_graph.json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" find-cycles --stage-graph <path to stage_graph.json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" find-god-modules --stage-graph <path to stage_graph.json>
 ```
 
 `find-cycles` only returns strongly-connected components of size >= 2 (rule
@@ -50,7 +50,7 @@ Before dispatching `arch-health-auditor`, resolve the shared symbol-index snapsh
 `source_fingerprint` no longer matches, run
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py --repo-path . --plugin-name befund
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name befund
 ```
 
 (single-flight lock makes concurrent callers safe -- see
@@ -71,7 +71,7 @@ Unless `skip_verification` is set, every finding must carry `verified: true/fals
 before reaching here.
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind arch_health_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind arch_health_summary --file <path-or-inline-json>
 ```
 
 The validator rejects any `type` outside `{god-module, cycle, layering-violation}` and any
@@ -80,8 +80,8 @@ shape `arch-health-auditor` already returns (see that agent's "Output format" se
 top-level `findings` array: `{"findings": [<agent findings>]}`.
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename ARCH_HEALTH.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename arch_health_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename ARCH_HEALTH.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename arch_health_summary.json
 ```
 
 ## Read-only constraint

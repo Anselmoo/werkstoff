@@ -14,7 +14,7 @@ description: >-
 Design the stages, then **validate the graph with the guard**. The guard enforces
 every structural rule in code and returns the topological waves.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Design
 
@@ -39,7 +39,7 @@ echo '{"stages":[
   {"id":"gather","name":"Gather","input_contract":"raw task","output_contract":"sources","dependsOn":[]},
   {"id":"draft","name":"Draft","input_contract":"sources","output_contract":"draft","dependsOn":["gather"]},
   {"id":"check","name":"Check","input_contract":"sources","output_contract":"issues","dependsOn":["gather"]}
-]}' | $GUARD decompose -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" decompose -
 ```
 
 On success the guard returns `entry_points` and `waves` (the parallel-safe

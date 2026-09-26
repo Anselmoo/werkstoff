@@ -11,13 +11,13 @@ anything for a skill that has never run.
 ## Step 0: Settings gate
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-status
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-status
 ```
 
 ## Step 1: Find only artifacts that actually exist
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py status-present-artifacts --repo <repo_root>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" status-present-artifacts --repo <repo_root>
 ```
 
 The `present` map contains a key ONLY for a finding-producing skill whose artifact
@@ -38,7 +38,7 @@ not in `structural`, never fabricate a placeholder for one that hasn't run).
 ## Step 2: Staleness
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py staleness-check --repo <repo_root> --artifact <path1> --artifact <path2> ...
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" staleness-check --repo <repo_root> --artifact <path1> --artifact <path2> ...
 ```
 
 Pass every path from **both** `present` and `structural`. `stale: true` means that artifact's
@@ -56,8 +56,8 @@ recommendation prominently when true.
 ## Step 4: Write outputs
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename findings-dashboard.html
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename findings_dashboard_data.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename findings-dashboard.html
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename findings_dashboard_data.json
 ```
 
 Write `findings-dashboard.html` (a static HTML summary) and `findings_dashboard_data.json`

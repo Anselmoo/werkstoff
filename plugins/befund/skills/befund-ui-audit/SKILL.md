@@ -10,7 +10,7 @@ Statically audit UI source for accessibility, semantic markup, and hardcoded des
 ## Step 0: Settings gate
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-ui-audit
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-ui-audit
 ```
 
 Stop on non-zero exit. Carry the returned `skip_verification` through to Step 3.
@@ -44,14 +44,14 @@ is reported.
 ## Step 4: Validate and write
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind ui_audit_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind ui_audit_summary --file <path-or-inline-json>
 ```
 
 The validator rejects any `contrast`-kind finding that does not carry `heuristic: true`.
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename UI_AUDIT.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename ui_audit_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename UI_AUDIT.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename ui_audit_summary.json
 ```
 
 Write `UI_AUDIT.md` with the Write tool at its resolved path, with one section per finding

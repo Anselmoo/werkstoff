@@ -10,8 +10,8 @@ Audit this repository's git remotes and CI/CD configuration.
 ## Step 0: Settings gate, then the git-repo gate
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-ci-topology
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py require-git-repo --repo <repo_root> --caller befund-ci-topology
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-ci-topology
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" require-git-repo --repo <repo_root> --caller befund-ci-topology
 ```
 
 The second call enforces "MUST NOT run if repo is not under git" -- a non-zero exit here means
@@ -35,7 +35,7 @@ Rule `credential-masking-in-output` applies to every remote URL and any embedded
 it appears in a finding, a printed message, or a written file:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py mask-text --text "<raw git remote -v output>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" mask-text --text "<raw git remote -v output>"
 ```
 
 Never pass the raw `git remote -v` output (or any raw credential substring) into a finding,
@@ -51,15 +51,15 @@ CI files cited -- never assert redundancy or drift from a doc claim alone.
 ## Step 4: Validate and write
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind ci_topology_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind ci_topology_summary --file <path-or-inline-json>
 ```
 
 The validator rejects the artifact outright if any finding still carries a `raw_remote_url`
 field -- masking must happen before this call, not be deferred to it.
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename CI_TOPOLOGY.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename ci_topology_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename CI_TOPOLOGY.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename ci_topology_summary.json
 ```
 
 Write `CI_TOPOLOGY.md` and `ci_topology_summary.json` to the resolved paths, using only masked

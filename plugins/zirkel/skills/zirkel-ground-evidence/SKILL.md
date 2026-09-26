@@ -16,7 +16,7 @@ description: >-
 List claims first, cite each inline, refuse the unsupported ones with the exact
 template — then **validate with the guard**.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Process
 
@@ -40,7 +40,7 @@ echo '{"claims":[
   {"status":"verified","text":"retries default to 3","citation":"(config.py:88)"},
   {"status":"warned","text":"exponential backoff is common","citation":"(Prior knowledge ⚠️)"},
   {"status":"refused","text":"The available logs do not contain sufficient information to identify the failing host."}
-]}' | $GUARD ground -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" ground -
 ```
 
 The guard rejects any non-refused claim without an inline citation, and any

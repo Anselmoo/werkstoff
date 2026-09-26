@@ -21,7 +21,7 @@ Extract the relevant triples, pick a start node, traverse, and **validate with t
 guard**. The guard enforces the triple ceiling and that every hop cites a real
 triple.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Process
 
@@ -45,7 +45,7 @@ echo '{"triples":[
 ],"traversal":[
   {"hop":1,"triple_index":1,"predicate":"depends_on","to":"B"},
   {"hop":2,"triple_index":2,"predicate":"calls","to":"C"}
-]}' | $GUARD map -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" map -
 ```
 A non-zero exit means either the triple count exceeded the ceiling or a hop cited
 a triple index not in the table — fix it before answering.

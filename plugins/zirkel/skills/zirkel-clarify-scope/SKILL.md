@@ -17,7 +17,7 @@ with the guard (`scoped_task` and `success_criteria` have no code-level check â€
 them right by inspection). The guard enforces the confidence gates in code â€” a
 missing `confidence` or `blocking` field is rejected, never defaulted.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Outputs
 
@@ -50,7 +50,7 @@ missing `confidence` or `blocking` field is rejected, never defaulted.
 echo '{
   "flagged_uncertainties":[{"element":"target env","default_interpretation":"prod","confidence":55,"blocking":true,"other_readings":["staging"]}],
   "known_facts":[{"fact":"repo uses pnpm","confidence":95},{"fact":"CI is GH Actions","confidence":70}]
-}' | $GUARD clarify -
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" clarify -
 ```
 
 The result gives `flagged_count`, `blocking_uncertainties`, and `must_pause`. **If
@@ -73,7 +73,7 @@ echo '{
     "flagged_uncertainties": [...],
     "success_criteria": [...]
   }
-}' | $GUARD state-write - --output-dir .zirkel --to runs/<run-id>/state.json
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" state-write - --output-dir .zirkel --to runs/<run-id>/state.json
 ```
 
 This is what lets a later `zirkel-solve` run on the same task skip re-running Clarify

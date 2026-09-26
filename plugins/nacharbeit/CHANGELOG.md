@@ -9,6 +9,11 @@ All notable changes to the `nacharbeit` plugin are documented here.
   workflow tells the model to run now carries `-B` (frontmatter `allowed-tools`
   patterns updated to match), so a script importing a sibling no longer writes
   `__pycache__` into the installed plugin cache copy (#88 follow-up)
+- **skills**: every plugin-root path a skill, command or workflow tells the model to
+  run is double-quoted (`python3 -B "${CLAUDE_PLUGIN_ROOT}/…"`, frontmatter patterns
+  as `\"…\":*`). The root is substituted as a literal absolute path, so a home
+  directory or relocated plugin cache with a space in it split the command into two
+  words (#88 follow-up)
 - README's "What it is not" no longer says nacharbeit is not a report viewer: it ships
   `assets/review-viewer.html`, and the bullet now says what that viewer is and is not
 - README's review-report commands run: `nacharbeit_lint.py` takes `--format json` (there is

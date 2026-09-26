@@ -10,7 +10,7 @@ Compute a relative complexity/attention-priority index per stage or module.
 ## Step 0: Settings gate
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-complexity-score
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-complexity-score
 ```
 
 This skill has no Verify phase -- do not gate anything here on `skip_verification`; that
@@ -36,7 +36,7 @@ computing an index for it.
 Rule `complexity-score-formula`: the index MUST be `2.94 x (KSLOC)^1.10` and nothing else.
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py complexity-index --ksloc <stage_sloc / 1000>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" complexity-index --ksloc <stage_sloc / 1000>
 ```
 
 Use this for every measured stage rather than restating the constants inline -- the formula
@@ -45,7 +45,7 @@ lives in one place (`scripts/lib/formulas.py`) so no per-skill copy can drift fr
 ## Step 4: Validate and write
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind complexity_score_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind complexity_score_summary --file <path-or-inline-json>
 ```
 
 The validator recomputes `2.94 x (KSLOC)^1.10` for every non-`unmeasured` stage and rejects the
@@ -64,8 +64,8 @@ A `complexity_score_summary.json` stage entry looks like this -- one measured, o
 ```
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename COMPLEXITY_SCORE.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename complexity_score_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename COMPLEXITY_SCORE.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename complexity_score_summary.json
 ```
 
 ## Read-only constraint

@@ -1,7 +1,7 @@
 ---
 name: andon-loop
 description: "Runs or resumes an evidence-grounded hardening loop over a repository's value stream (its stages and the wires between them), closing one gap per stage and refusing to advance past a broken or unproven wire. Use when the user wants to harden a repo, run the andon loop, resume the ledger, scan for gaps and fix them in order, or iterate a multi-stage codebase closing gaps while proving each handoff before moving on. Not for applying a single authorized phase from MODERNIZATION_BRIEF.md -- use befund-transform-execute for that, then return here (or to andon-verify) for the proof."
-allowed-tools: "Read, Write, Edit, Bash(python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*), Bash(python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py\":*), Glob, Grep, Agent"
+allowed-tools: "Read, Write, Edit, Bash(python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py\":*), Bash(python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py\":*), Glob, Grep, Agent"
 argument-hint: "[stage-or-gap-filter]"
 ---
 

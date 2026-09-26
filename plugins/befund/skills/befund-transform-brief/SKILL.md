@@ -12,7 +12,7 @@ the plan.
 ## Step 0: Settings gate, then the stage_graph prerequisite
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-transform-brief
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-transform-brief
 ```
 
 Rule `transform-brief-gate-on-stage-graph`: if `<output_dir>/stage_graph.json` does not exist,
@@ -41,7 +41,7 @@ other domain summaries, look up its phase via `file_stage_index.json`, never by 
 package-boundary heuristic:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py attribute-citation --citation "<path:line>" --file-stage-index <path to file_stage_index.json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" attribute-citation --citation "<path:line>" --file-stage-index <path to file_stage_index.json>
 ```
 
 If `file_stage_index.json` is absent, every attribution call returns `"Unattributed"` -- note
@@ -53,7 +53,7 @@ in the brief that attribution is unavailable this run, and file every finding un
 Rule `transform-brief-work-item-ranking`:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py work-item-rank --severity High --complexity-weight <complexityByStage[stage] or omit for default 1>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" work-item-rank --severity High --complexity-weight <complexityByStage[stage] or omit for default 1>
 ```
 
 `severity_weight` is fixed at High=3/Medium=2/Low=1; `complexity_weight` is that stage's index
@@ -66,7 +66,7 @@ If zeugnis-plugin findings are present in any domain summary, route each by its 
 field, not by re-reading its prose:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py route-zeugnis-finding --finding <json finding>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" route-zeugnis-finding --finding <json finding>
 ```
 
 `"advisory"` (only `fixability: "advisory"`) goes to the phase's Advisory notes; `"work_item"`
@@ -75,7 +75,7 @@ python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py route-zeugnis-finding --f
 ## Step 6: Flag P0 blockers
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py flag-p0-blockers --rules <json list from business_rules_summary.json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" flag-p0-blockers --rules <json list from business_rules_summary.json>
 ```
 
 Any P0 rule with `confidence` other than `"High"` becomes a phase blocker -- record it in the
@@ -87,7 +87,7 @@ this run (befund-extract-rules has not run).
 ## Step 7: Write outputs
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind transform_brief_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind transform_brief_summary --file <path-or-inline-json>
 ```
 
 Every phase requires `phase_number`, a `decision` from the fixed set, `open_questions`
@@ -113,11 +113,11 @@ and no open blockers:
 Then resolve and write:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename MODERNIZATION_BRIEF.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename TRANSFORM_SEQUENCE.mmd
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename TRANSFORM_MAPPING.mmd
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename transform_brief_summary.json
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename stage_map.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename MODERNIZATION_BRIEF.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename TRANSFORM_SEQUENCE.mmd
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename TRANSFORM_MAPPING.mmd
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename transform_brief_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename stage_map.json
 ```
 
 `TRANSFORM_SEQUENCE.mmd` is a Mermaid graph of phase order; `TRANSFORM_MAPPING.mmd` maps old

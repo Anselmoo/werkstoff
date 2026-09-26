@@ -13,7 +13,7 @@ downstream skills can run at full strength versus degraded.
 Run, from the plugin root:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-preflight
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-preflight
 ```
 
 A non-zero exit means the skill is disabled in `.claude/befund.local.md` -- stop and tell
@@ -73,7 +73,7 @@ Build `preflight_summary.json` with top-level `checks` (list of the 6 results ab
 `verdicts` (map of skill id to verdict), then validate it before writing:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind preflight_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind preflight_summary --file <path-or-inline-json>
 ```
 
 This rejects the artifact if any of the 6 required checks is missing or any verdict is outside
@@ -127,8 +127,8 @@ With a gap -- no `.git` directory found, so `git_remotes_ci` is `fail` and
 Resolve both output paths first:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename PREFLIGHT.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename preflight_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename PREFLIGHT.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename preflight_summary.json
 ```
 
 A non-zero exit here means the configured `output_dir` or filename escapes the plugin's write

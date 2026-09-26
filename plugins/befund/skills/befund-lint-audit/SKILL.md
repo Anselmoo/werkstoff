@@ -10,7 +10,7 @@ Verify the codebase actually follows its own documented conventions.
 ## Step 0: Settings gate
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-lint-audit
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" check-enabled --repo <repo_root> --skill befund-lint-audit
 ```
 
 A non-zero exit means the skill is disabled -- stop and tell the user plainly, quoting the
@@ -30,7 +30,7 @@ capping finder dispatch at `lint_max_rules` (default 12) even though extraction 
 unbounded:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py cap-lint-rules --rules <json list of extracted rules> --max-rules <settings.lint_max_rules>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" cap-lint-rules --rules <json list of extracted rules> --max-rules <settings.lint_max_rules>
 ```
 
 The `dispatched` list is what `convention-auditor` actually checks; the `skipped` list MUST be
@@ -50,7 +50,7 @@ Before dispatching, resolve the shared symbol-index snapshot. Read
 no longer matches the repository, run
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py --repo-path . --plugin-name befund
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name befund
 ```
 
 (single-flight lock makes concurrent callers safe -- see
@@ -71,7 +71,7 @@ Build `lint_audit_summary.json` with the dispatched rules, their verdicts, and t
 `rules_skipped` list, then validate it before writing:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind lint_audit_summary --file <path-or-inline-json>
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" validate-artifact --kind lint_audit_summary --file <path-or-inline-json>
 ```
 
 The validator rejects the artifact if rules were extracted beyond the cap but `rules_skipped`
@@ -82,8 +82,8 @@ validate-artifact rejects for this reason, populate `rules_skipped` from the cap
 Resolve both output paths:
 
 ```
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename LINT_AUDIT.md
-python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename lint_audit_summary.json
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename LINT_AUDIT.md
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py" resolve-output-path --repo <repo_root> --filename lint_audit_summary.json
 ```
 
 A non-zero exit here means the configured `output_dir` or filename escapes the plugin's write

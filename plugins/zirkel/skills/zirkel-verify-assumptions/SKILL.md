@@ -15,7 +15,7 @@ Resolve **one** assumption in a bounded loop, then **validate with the guard**. 
 step cap, the one-per-invocation rule, and the confidence gate are enforced in
 code.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Input
 One uncertainty entry: `{element, default_interpretation, confidence,
@@ -45,7 +45,7 @@ echo '{
     {"reasoning":"need to know which env the config targets","action":"read config","observation":"env=production"}
   ],
   "outcome":{"kind":"confidence_raised","confidence":95,"citations":["(config.yaml:3)"]}
-}' | $GUARD verify -
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" verify -
 ```
 
 The guard refuses: more than 3 steps, a list of assumptions, a `confidence_raised`
@@ -61,7 +61,7 @@ echo '{
     {"reasoning":"need to know which env the config targets","action":"read config","observation":"config.yaml has no env key"}
   ],
   "outcome":{"kind":"still_unresolved"}
-}' | $GUARD verify -
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" verify -
 ```
 
 ## Output

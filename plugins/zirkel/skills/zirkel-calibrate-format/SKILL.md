@@ -13,7 +13,7 @@ description: >-
 When words keep missing the target shape, switch to examples. The guard enforces
 the example-count band and the diversity rule.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Assemble the example set
 
@@ -31,14 +31,14 @@ the example-count band and the diversity rule.
 
 Real examples:
 ```
-echo '{"constructed":false,"examples":[{"in":"x","out":"y"},{"in":"a","out":"b"}]}' | $GUARD calibrate -
+echo '{"constructed":false,"examples":[{"in":"x","out":"y"},{"in":"a","out":"b"}]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" calibrate -
 ```
 Constructed examples (diversity enforced):
 ```
 echo '{"constructed":true,"examples":[
   {"kind":"happy-path","in":"normal","out":"…","near_boundary":false},
   {"kind":"edge-case","in":"empty","out":"…","near_boundary":true}
-]}' | $GUARD calibrate -
+]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" calibrate -
 ```
 A non-zero exit means too few/many examples, or a constructed set missing a happy
 path, an edge case, or a boundary example — fix before producing the artifact.

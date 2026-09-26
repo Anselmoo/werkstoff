@@ -14,7 +14,7 @@ description: >-
 Turn a completed `zirkel-solve` run into a fixed 7-section record, then
 **validate structure with the guard**.
 
-`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+The guard is `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`, typed in full in each command below.
 
 ## Input
 
@@ -68,7 +68,7 @@ echo '{
     {"title":"What was revised","body":"Nothing was revised: all criteria scored above threshold."},
     {"title":"What was NOT done","body":"…"}
   ]
-}' | $GUARD trace -
+}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py" trace -
 ```
 
 The guard enforces: exactly the right sections in order, "Approaches weighed"
