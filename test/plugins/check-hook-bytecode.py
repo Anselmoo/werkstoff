@@ -38,7 +38,9 @@ writes bytecode into the installed copy exactly as a hook does. So the same
 installed copies are also checked for every such invocation in a `.md` or `.js`
 file of the plugin:
 
-- statically, the invocation carries `-B`;
+- statically, the invocation carries `-B`, and its `${CLAUDE_PLUGIN_ROOT}` path is
+  double-quoted (it is substituted as a literal absolute path, which may contain
+  a space -- the same rule applies to hooks.json commands);
 - it is still PERMITTED by its skill's `allowed-tools`: a frontmatter
   `Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/x.py:*)` is a prefix match on the
   command the model types, so a body that says `python3 -B ...` against a
@@ -86,6 +88,13 @@ INVOCATION = re.compile(
     r"\$\{CLAUDE_PLUGIN_ROOT\}/(?P<script>[A-Za-z0-9_./-]+?\.py)"
 )
 SCANNED_SUFFIXES = {".md", ".js"}
+
+# Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} textually before the model (or
+# the hook shell) sees it, so the model types a literal absolute path. Under a
+# home directory or relocated plugin cache with a space in it, an unquoted path
+# splits into two shell words; the plugin docs say to wrap it in double quotes.
+QUOTED_ROOT = '"${CLAUDE_PLUGIN_ROOT}'
+
 BASH_PATTERN = re.compile(r"Bash\(([^)]*)\)")
 
 SITECUSTOMIZE = """
@@ -317,6 +326,10 @@ def main(argv: list[str] | None = None) -> int:
             for event, raw in commands:
                 if missing_dash_b(raw):
                     failures.append(f"{plugin.name}: hook command lacks -B: {raw}")
+                if QUOTED_ROOT not in raw:
+                    failures.append(
+                        f"{plugin.name}: hook plugin-root path unquoted: {raw}"
+                    )
                 workdir = tmp_path / "work" / f"{plugin.name}-{probes}"
                 workdir.mkdir(parents=True)
                 result = probe(raw, event, copy, workdir, site_dir, log)
@@ -343,6 +356,11 @@ def main(argv: list[str] | None = None) -> int:
                 if not flags_carry_b(flags):
                     failures.append(
                         f"{path.relative_to(plugin.parent)}:{line}: invocation lacks -B: "
+                        f"{command}"
+                    )
+                if QUOTED_ROOT not in command:
+                    failures.append(
+                        f"{path.relative_to(plugin.parent)}:{line}: plugin-root path unquoted: "
                         f"{command}"
                     )
             failures.extend(unpermitted(plugin))
