@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -176,20 +177,88 @@ def test_build_prune_plan_leaves_an_uninstalled_plugins_cache_alone(tmp_path) ->
     _install(root, "orphan", "0.4.0")
     _write_registry(claude, {"andon": "0.2.0"})
 
-    plan = cache.build_prune_plan(claude, "werkstoff", keep=0)
+    plan, skipped = cache.build_prune_plan(claude, "werkstoff", keep=0)
 
     assert {(p.plugin, p.version) for p in plan} == {("andon", "0.1.0")}
+    assert skipped == []
 
 
 def test_apply_prune_removes_planned_paths_and_skips_already_gone(tmp_path) -> None:
     claude = tmp_path / "claude"
     root = claude / "plugins" / "cache" / "werkstoff"
     stale = _install(root, "andon", "0.1.0")
+    _install(root, "andon", "0.2.0")
+    _write_registry(claude, {"andon": "0.2.0"})
     already_gone = cache.RemovalPlan(plugin="andon", version="ghost", path=root / "andon" / "ghost")
     plan = [cache.RemovalPlan(plugin="andon", version="0.1.0", path=stale), already_gone]
 
-    removed, failures = cache.apply_prune(plan)
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
 
     assert not stale.exists()
     assert removed == [plan[0]]
     assert failures == []
+
+
+# --- apply-time re-proof: the plan is computed first, the filesystem may change after ---
+
+
+def _planned(tmp_path: Path) -> tuple[Path, Path, list[cache.RemovalPlan]]:
+    claude = tmp_path / "claude"
+    root = claude / "plugins" / "cache" / "werkstoff"
+    _install(root, "andon", "0.9.0")
+    _install(root, "andon", "1.0.0")
+    _write_registry(claude, {"andon": "1.0.0"})
+    plan, skipped = cache.build_prune_plan(claude, "werkstoff", keep=0)
+    assert [(i.plugin, i.version) for i in plan] == [("andon", "0.9.0")]
+    assert skipped == []
+    return claude, root, plan
+
+
+def test_apply_refuses_a_version_that_became_live_after_planning(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    # A concurrent `claude plugin install --scope project` lands between plan and apply.
+    reg_path = claude / cache.REGISTRY_REL_PATH
+    registry = json.loads(reg_path.read_text())
+    registry["plugins"]["andon@werkstoff"].append(
+        {"scope": "project", "installPath": str(root / "andon" / "0.9.0"), "version": "0.9.0"}
+    )
+    reg_path.write_text(json.dumps(registry))
+
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
+
+    assert removed == []
+    assert [why for _, why in failures] == ["refused: a registry entry names it live"]
+    assert (root / "andon" / "0.9.0").is_dir()
+
+
+def test_apply_refuses_a_plugin_dir_swapped_for_a_symlink_after_planning(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    outside = tmp_path / "outside" / "andon"
+    shutil.move(str(root / "andon"), outside)
+    (root / "andon").symlink_to(outside, target_is_directory=True)
+
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
+
+    assert removed == []
+    assert len(failures) == 1 and failures[0][1].startswith("refused:")
+    assert (outside / "0.9.0").is_dir(), "removed through a symlinked plugin dir"
+
+
+def test_apply_refuses_when_the_registry_became_unreadable(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    (claude / cache.REGISTRY_REL_PATH).write_text("{not json")
+
+    with pytest.raises(cache.CacheError):
+        cache.apply_prune(plan, claude, "werkstoff")
+    assert (root / "andon" / "0.9.0").is_dir()
+
+
+def test_prerelease_tags_compare_numerically() -> None:
+    tags = ["1.0.0-rc.10", "1.0.0-rc9", "1.0.0-rc.2", "1.0.0", "1.0.0-rc10"]
+    assert sorted(tags, key=cache.version_key) == [
+        "1.0.0-rc.2",
+        "1.0.0-rc.10",
+        "1.0.0-rc9",
+        "1.0.0-rc10",
+        "1.0.0",
+    ]

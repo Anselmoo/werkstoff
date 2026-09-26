@@ -46,12 +46,32 @@ werkstoff prune --apply --json       # machine-readable
 `doctor` and `prune` look under
 `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/`, where
 `<claude-dir>` is `--claude-dir`, else `$CLAUDE_CONFIG_DIR`, else
-`~/.claude`, and `<marketplace>` is this repo's own marketplace name. A
-version counts as "live" when the registry
-(`<claude-dir>/plugins/installed_plugins.json`) names it — by install
-path, not by version string — under any scope. `prune` never removes a
-live version, an uninstalled plugin's cache, or anything reached through
-a symlink, and is a dry run unless `--apply` is given.
+`~/.claude`, and `<marketplace>` is this repo's own marketplace name. Both
+resolve symlinks first, so a relative `--claude-dir`, or a `~/.claude` that
+is itself a symlink, names the same cache.
+
+A version counts as "live" when the registry
+(`<claude-dir>/plugins/installed_plugins.json`) names it by install path,
+under any scope. `prune` is a dry run unless `--apply` is given, and it:
+
+- **fails closed per plugin** — it prunes a plugin only when every one of
+  its registry entries has an absolute `installPath` that exists and lies
+  inside that plugin's cache directory. Otherwise (no `installPath`, a
+  relative or `~` one, one that no longer exists) the plugin's liveness is
+  unknown, so it is reported as skipped and nothing of it is touched;
+- never removes anything **any** registry entry names, under any key or
+  marketplace, compared by device and inode rather than by spelling;
+- never removes an uninstalled plugin's cache, a symlinked plugin or
+  version directory, or anything outside
+  `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/` after
+  symlinks are resolved;
+- re-reads the registry and re-checks each path immediately before removing
+  it, so an install that lands mid-prune is refused rather than deleted.
+
+A missing, unparseable, non-UTF-8, duplicate-keyed or non-regular-file
+registry makes both commands exit `1` with a one-line error. `prune --apply
+--json` reports what was actually `removed`, what `failed`, and which
+plugins were `skipped`, beside the planned `remove` list.
 
 By default, `werkstoff` searches upward from the current directory for a
 `.claude-plugin/marketplace.json`. Override with `--repo <path>` or the

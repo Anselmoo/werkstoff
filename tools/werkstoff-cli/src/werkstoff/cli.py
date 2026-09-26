@@ -166,6 +166,7 @@ def _plugin_payload(report: cache.PluginReport) -> dict:
         "sizeBytes": report.size_bytes,
         "notInMarketplace": report.not_in_marketplace,
         "liveNotNewest": report.live_not_newest,
+        "liveUnknown": report.live_unknown,
     }
 
 
@@ -178,6 +179,8 @@ def _print_doctor_report(reports: list[cache.PluginReport], total: int) -> None:
         if report.not_in_marketplace:
             bits.append("[yellow]not in marketplace[/yellow]")
         bits.append(f"cached {len(report.cached)}")
+        if report.live_unknown:
+            bits.append(f"[red]live unknown, prune skips it: {report.live_unknown}[/red]")
         if report.live_not_newest:
             bits.append(f"[yellow]newer cached: {report.cached[-1]}[/yellow]")
         bits.append(_human_size(report.size_bytes))
@@ -185,7 +188,13 @@ def _print_doctor_report(reports: list[cache.PluginReport], total: int) -> None:
     console.print(f"\n{len(reports)} plugin(s), {_human_size(total)} total")
 
 
-def _print_prune_dry_run(plan: list[cache.RemovalPlan]) -> None:
+def _print_skipped(skipped: list[tuple[str, str]]) -> None:
+    for plugin, why in skipped:
+        console.print(f"  skip {plugin}  -- liveness unknown, nothing pruned: {why}")
+
+
+def _print_prune_dry_run(plan: list[cache.RemovalPlan], skipped: list[tuple[str, str]]) -> None:
+    _print_skipped(skipped)
     if not plan:
         console.print("nothing to prune")
         return
@@ -196,14 +205,39 @@ def _print_prune_dry_run(plan: list[cache.RemovalPlan]) -> None:
 
 def _print_prune_apply(
     plan: list[cache.RemovalPlan],
+    skipped: list[tuple[str, str]],
     removed: list[cache.RemovalPlan],
-    failures: list[tuple[cache.RemovalPlan, OSError]],
+    failures: list[tuple[cache.RemovalPlan, str]],
 ) -> None:
-    for item in plan:
+    _print_skipped(skipped)
+    for item in removed:
         console.print(f"  remove {item.path}")
-    for item, exc in failures:
-        err_console.print(f"error: could not remove {item.path}: {exc}")
+    for item, why in failures:
+        err_console.print(f"  FAILED {item.path}: {why}")
     console.print(f"removed {len(removed)} of {len(plan)}")
+
+
+def _item_payload(item: cache.RemovalPlan) -> dict:
+    return {"plugin": item.plugin, "version": item.version, "path": str(item.path)}
+
+
+def _prune_payload(
+    apply: bool,
+    keep: int,
+    planned: tuple[list[cache.RemovalPlan], list[tuple[str, str]]],
+    outcome: tuple[list[cache.RemovalPlan], list[tuple[cache.RemovalPlan, str]]],
+) -> dict:
+    """`remove` is the plan; `removed` and `failed` are what --apply actually did."""
+    plan, skipped = planned
+    removed, failures = outcome
+    return {
+        "apply": apply,
+        "keep": keep,
+        "remove": [_item_payload(i) for i in plan],
+        "skipped": [{"plugin": p, "reason": why} for p, why in skipped],
+        "removed": [_item_payload(i) for i in removed],
+        "failed": [dict(_item_payload(i), reason=why) for i, why in failures],
+    }
 
 
 @app.command()
@@ -251,31 +285,22 @@ def prune(
     plugin's cache, or anything reached through a symlink."""
     marketplace = _resolve_marketplace(repo)
     resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
+    removed: list[cache.RemovalPlan] = []
+    failures: list[tuple[cache.RemovalPlan, str]] = []
     try:
-        plan = cache.build_prune_plan(resolved_claude_dir, marketplace.name, keep)
+        plan, skipped = cache.build_prune_plan(resolved_claude_dir, marketplace.name, keep)
+        if apply:
+            removed, failures = cache.apply_prune(plan, resolved_claude_dir, marketplace.name)
     except cache.CacheError as exc:
         err_console.print(f"error: {exc}")
         raise typer.Exit(code=1) from exc
 
-    removed: list[cache.RemovalPlan] = []
-    failures: list[tuple[cache.RemovalPlan, OSError]] = []
-    if apply:
-        removed, failures = cache.apply_prune(plan)
-
     if json_output:
-        payload = {
-            "apply": apply,
-            "keep": keep,
-            "remove": [
-                {"plugin": item.plugin, "version": item.version, "path": str(item.path)}
-                for item in plan
-            ],
-        }
-        typer.echo(json.dumps(payload))
+        typer.echo(json.dumps(_prune_payload(apply, keep, (plan, skipped), (removed, failures))))
     elif apply:
-        _print_prune_apply(plan, removed, failures)
+        _print_prune_apply(plan, skipped, removed, failures)
     else:
-        _print_prune_dry_run(plan)
+        _print_prune_dry_run(plan, skipped)
 
     if failures:
         raise typer.Exit(code=1)

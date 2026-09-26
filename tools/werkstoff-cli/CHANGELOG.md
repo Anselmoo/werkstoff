@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `<plugin>@<this marketplace>` counts), an uninstalled plugin's cache, or anything
   reached through a symlinked plugin or version directory (#89)
 
+### Security
+- **prune**: fail closed per plugin, and never delete what any registry entry names. A
+  land-phase review reproduced six ways the first version still removed a live install;
+  each is now a calibrated test and refused: an entry with no `installPath` over a
+  symlinked version directory, a relative or `~` `installPath` (resolved against the cwd),
+  a live directory named under another key or marketplace, a bind-mount alias (identity is
+  now `(st_dev, st_ino)`), a marketplace name of `..`, and an install that lands between
+  plan and apply (`apply_prune` now re-reads the registry and re-proves each path). A
+  duplicate-keyed or non-regular-file registry (a FIFO blocked forever) is refused in one
+  line; `--apply --json` reports what was actually `removed`/`failed`/`skipped`; and
+  pre-release tags compare numerically (`rc.10` after `rc.2`) (#89)
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._

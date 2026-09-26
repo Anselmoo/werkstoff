@@ -43,7 +43,16 @@ Interface under test (frozen before any implementation existed):
         remove     installed plugins only; never ANY live directory; keeps the N newest
                    non-live versions; an uninstalled plugin's cache is left alone
         --keep < 0 -> a usage error (exit 2), nothing removed
-    a missing, unparseable or undecodable (non-UTF-8) registry -> exit 1 with a one-line
+    prune FAILS CLOSED PER PLUGIN: a plugin is prunable only when EVERY one of its entries
+        names an absolute, existing installPath resolving inside
+        realpath(cache/<marketplace>)/<plugin>/ -- otherwise its liveness is unknown and it
+        is skipped, never guessed at (an entry with no installPath, a relative or "~"
+        installPath, one that no longer exists). Nothing that ANY registry entry names,
+        under any key or marketplace, is ever removed; identity is (st_dev, st_ino), not
+        spelling. The marketplace name must itself be a safe path component. `prune --apply
+        --json` adds "removed" and "failed" (what actually happened, not the plan).
+    a missing, unparseable, undecodable (non-UTF-8), duplicate-keyed or non-regular-file
+        registry -> exit 1 with a one-line
         error naming installed_plugins.json and no traceback, for doctor and prune alike;
         prune removes nothing (the live set is a gating value; it is never inferred)
 
@@ -584,3 +593,178 @@ def test_an_undecodable_registry_fails_in_one_line(dirty, command) -> None:
     assert "Traceback" not in result.output
     assert result.exception is None or isinstance(result.exception, SystemExit)
     assert _snapshot(dirty["claude"]) == before
+
+
+# --- hardening: what run ap-2026-09-26-889c's land phase reproduced against its winner ---
+#
+# Each case below broke THE INVARIANT (or the one-line error contract) in a candidate that
+# passed everything above. The rule they add: prune FAILS CLOSED PER PLUGIN. A plugin is
+# prunable only when every one of its entries names an absolute, existing installPath that
+# resolves inside realpath(cache/<marketplace>)/<plugin>/; otherwise its liveness is
+# unknown and the plugin is skipped, never guessed at. And nothing any registry entry
+# names -- under any key, in any marketplace -- is ever removed, compared by (st_dev,
+# st_ino), not by spelling.
+
+
+def _registry_with(d: dict, extra: dict) -> None:
+    reg = d["claude"] / "plugins" / "installed_plugins.json"
+    data = json.loads(reg.read_text())
+    data["plugins"].update(extra)
+    reg.write_text(json.dumps(data))
+
+
+def test_an_entry_without_installpath_over_a_symlinked_version_dir(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("1.0.0-real", "2.0.0", "3.0.0")],
+        {"andon@werkstoff": []},
+    )
+    andon = d["cache"] / "andon"
+    (andon / "1.0.0").symlink_to(andon / "1.0.0-real", target_is_directory=True)
+    _registry_with(d, {"andon@werkstoff": [{"scope": "user", "version": "1.0.0"}]})
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    assert (andon / "1.0.0-real").is_dir(), "the live install's real directory was removed"
+
+
+@pytest.mark.parametrize("spelling", ["relative", "tilde", "missing-on-disk"])
+def test_an_unusable_installpath_skips_the_plugin(tmp_path, spelling) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.9.0", "1.0.0")],
+        {"andon@werkstoff": []},
+    )
+    install = {
+        "relative": "plugins/cache/werkstoff/andon/0.9.0",
+        "tilde": "~/.claude/plugins/cache/werkstoff/andon/0.9.0",
+        "missing-on-disk": "/nonexistent/olduser/.claude/plugins/cache/werkstoff/andon/0.9.0",
+    }[spelling]
+    _registry_with(
+        d, {"andon@werkstoff": [{"scope": "user", "installPath": install, "version": "0.9.0"}]}
+    )
+    # Run from the claude dir too: a cwd-relative resolution would then "match".
+    for cwd in (tmp_path, d["claude"]):
+        code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])], cwd)
+        assert code in (0, 1), out
+        assert (d["cache"] / "andon" / "0.9.0").is_dir(), f"{spelling}: live 0.9.0 removed"
+        assert (d["cache"] / "andon" / "1.0.0").is_dir(), f"{spelling}: liveness is unknown"
+
+
+@pytest.mark.parametrize("other_key", ["andon@werkstoff-dev", "zeugnis@werkstoff", "andon"])
+def test_nothing_any_registry_entry_names_is_removed(tmp_path, other_key) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.9.0", "1.0.0")],
+        {"andon@werkstoff": [("user", "1.0.0", "1.0.0")]},
+    )
+    live_elsewhere = str(d["cache"] / "andon" / "0.9.0")
+    _registry_with(
+        d, {other_key: [{"scope": "project", "installPath": live_elsewhere, "version": "0.9.0"}]}
+    )
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    assert (d["cache"] / "andon" / "0.9.0").is_dir(), f"{other_key!r} names 0.9.0 live"
+
+
+def test_an_unsafe_marketplace_name_is_refused(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("othermkt", "foo", "1.0.0"), ("werkstoff", "andon", "1.0.0")],
+        {"foo@othermkt": [("user", "1.0.0", "1.0.0")]},
+    )
+    (d["repo"] / ".claude-plugin" / "marketplace.json").write_text(
+        json.dumps({"name": "..", "plugins": []})
+    )
+    _registry_with(d, {"cache@..": [{"scope": "user", "installPath": "/nowhere", "version": "1"}]})
+    before = _all_paths(tmp_path)
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code != 0, f"prune ran under marketplace name '..':\n{out}"
+    assert _all_paths(tmp_path) == before
+
+
+def test_duplicate_registry_keys_are_refused(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.9.0", "1.0.0")],
+        {"andon@werkstoff": [("user", "1.0.0", "1.0.0")]},
+    )
+    first = json.dumps([{"scope": "project", "installPath": str(d["cache"] / "andon" / "0.9.0")}])
+    second = json.dumps([{"scope": "user", "installPath": str(d["cache"] / "andon" / "1.0.0")}])
+    reg = d["claude"] / "plugins" / "installed_plugins.json"
+    reg.write_text(
+        f'{{"version": 2, "plugins": {{"andon@werkstoff": {first}, "andon@werkstoff": {second}}}}}'
+    )
+    before = _all_paths(tmp_path)
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code == 1, f"exit {code}: a registry naming a key twice is ambiguous:\n{out}"
+    assert "installed_plugins.json" in out
+    assert _all_paths(tmp_path) == before
+
+
+@pytest.mark.parametrize("bad", ["object", "loop"])
+def test_a_malformed_installpath_never_tracebacks(tmp_path, bad) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.9.0", "1.0.0")],
+        {"andon@werkstoff": []},
+    )
+    if bad == "object":
+        install = {"not": "a string"}
+    else:
+        loop = tmp_path / "loop"
+        loop.symlink_to(loop)
+        install = str(loop / "x")
+    _registry_with(d, {"andon@werkstoff": [{"scope": "user", "installPath": install}]})
+    for command in ("doctor", "prune"):
+        result = runner.invoke(
+            app, [command, "--claude-dir", str(d["claude"]), "--repo", str(d["repo"]), "--json"]
+        )
+        assert "Traceback" not in result.output, result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+            result.exception
+        )
+    assert (d["cache"] / "andon" / "0.9.0").is_dir()
+
+
+def test_a_registry_that_is_not_a_regular_file_is_refused(dirty) -> None:
+    import threading
+
+    reg = dirty["claude"] / "plugins" / "installed_plugins.json"
+    reg.unlink()
+    os.mkfifo(reg)
+    outcome = {}
+
+    def run() -> None:
+        r = runner.invoke(
+            app, ["doctor", "--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"])]
+        )
+        outcome["code"], outcome["out"] = r.exit_code, r.output
+
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(timeout=10)
+    if t.is_alive():
+        # Unblock the reader so the test process can exit, then fail.
+        with reg.open("w") as fh:
+            fh.write("{}")
+        pytest.fail("doctor blocked reading a FIFO registry")
+    assert outcome["code"] == 1, outcome
+    assert "installed_plugins.json" in outcome["out"]
+
+
+def test_apply_json_reports_what_was_removed(dirty) -> None:
+    payload = _json(dirty, "prune", "--apply", "--keep", "1")
+    removed = {f"{r['plugin']}/{r['version']}" for r in payload["removed"]}
+    assert removed == _removed(dirty["cache"]) == {"andon/0.8.0", "andon/0.10.2", "cupertino/0.6.0"}
+    assert payload["failed"] == []
+
+
+def test_prerelease_tags_compare_numerically(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("1.0.0-rc.10", "1.0.0-rc.2", "1.0.0-rc.9", "1.0.0")],
+        {"andon@werkstoff": [("user", "1.0.0", "1.0.0")]},
+    )
+    andon = _plugin(_json(d, "doctor"), "andon")
+    assert andon["cached"] == ["1.0.0-rc.2", "1.0.0-rc.9", "1.0.0-rc.10", "1.0.0"]
+    assert _plan(d, "1") == {"andon/1.0.0-rc.2", "andon/1.0.0-rc.9"}
