@@ -46,8 +46,11 @@ flag with a werkstoff default.
 - Not a proof that a fix is correct. Its verifier checks that an entry was applied and
   nothing regressed; whether the reworked skill *works* is `andon-verify`'s job, and the
   fix skill hands off there.
-- Not a report viewer. The findings report is Markdown; a viewer would put nacharbeit
-  under its own `A-*` rules on day one, and it can wait.
+- Not a Markdown-only reporter, and not a dashboard of its own making. The review's
+  primary output is the Markdown findings report; `assets/review-viewer.html` (built by
+  `scripts/build_review_html.py`, see [The review report](#the-review-report)) renders
+  findings by rule family, severity and fix tier, adds none of its own, and is graded by
+  nacharbeit's own `A-*` rules like every other plugin's viewer.
 - Not a planning or spec-authoring entry point — that is `arbeitsplan-compile` (the
   arbeitsplan plugin), which compiles a stated problem into an executable workflow spec,
   with a question rather than a change going to `zirkel-solve` instead; nacharbeit grades
@@ -201,8 +204,8 @@ tuning + sealed pair for.
 ![Six findings across three plugins, each with its severity, rule family and the cheapest tier that can fix it, over a calibration block showing every rule planted and blanked](assets/review-viewer-screenshot.jpg)
 
 ```bash
-python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --json > /tmp/review.json
-python3 plugins/nacharbeit/scripts/build_review_html.py --report /tmp/review.json --out /tmp/review.html
+python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --format json > /tmp/review.json
+python3 plugins/nacharbeit/scripts/build_review_html.py --lint /tmp/review.json --out /tmp/review.html
 ```
 
 Rendered from committed demo data at `scripts/fixtures/review-demo.json`. The fixture carries a
