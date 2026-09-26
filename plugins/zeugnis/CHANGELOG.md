@@ -6,6 +6,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-26
 ### Fixed
 - **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or
   workflow tells the model to run now carries `-B` (frontmatter `allowed-tools`
