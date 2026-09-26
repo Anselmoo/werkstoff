@@ -536,7 +536,7 @@
     },
     {
       "name": "cupertino",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, applied through a fixed, sequenced lifecycle pipeline rather than a menu of individually-selectable design techniques.",
       "skills": [
         {
