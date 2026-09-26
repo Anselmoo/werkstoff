@@ -10,8 +10,8 @@ Report the current state. Writes nothing, decides nothing.
 1. **Read the real state, never remember it.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status --json
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status --json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
    ```
 
    If either exits non-zero, report that verbatim and stop — a status built on
@@ -34,7 +34,7 @@ Report the current state. Writes nothing, decides nothing.
    in a text summary:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_doctrine_html.py" . \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_doctrine_html.py" . \
        --template "${CLAUDE_PLUGIN_ROOT}/assets/doctrine-viewer.html" \
        --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
    ```

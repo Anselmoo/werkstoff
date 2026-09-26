@@ -13,10 +13,10 @@ cupertino-backwards -> cupertino-focus -> [cupertino-longevity & cupertino-integ
 ## Before you start
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" init
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set review-pipeline-active
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" init
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set review-pipeline-active
 for f in backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
-  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
+  python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
 done
 ```
 
@@ -41,15 +41,15 @@ into `backwards-done` per its own SKILL.md), persist that stage's full reported 
 field its own Output format / Steps section produced, as JSON — before moving on:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set <stage>-output '<json of that stage's full result>'
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set <stage>-output '<json of that stage's full result>'
 ```
 
 Before dispatching a stage, read back every prior stage's content and include it in the dispatch
 prompt:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" check backwards-done   # -> {"set": true, "value": "<json>"}
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" check focus-output     # once focus has run
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" check backwards-done   # -> {"set": true, "value": "<json>"}
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" check focus-output     # once focus has run
 ```
 
 If a `check` reports `"set": false` for a stage that should already have run, that stage did not
@@ -106,7 +106,7 @@ run's pipeline as a self-contained HTML flow diagram — every stage's persisted
 to be deleted, so this is the only point this data can be captured:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_review_flow_html.py" "$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" path | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")" \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_review_flow_html.py" "$(python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" path | python3 -c "import json,sys; print(json.load(sys.stdin)['path'])")" \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/review-flow-viewer.html" \
     --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
     --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
@@ -127,7 +127,7 @@ would let a future run wrongly treat this one's stages as already done:
 
 ```bash
 for f in review-pipeline-active backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
-  python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
+  python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
 done
 ```
 

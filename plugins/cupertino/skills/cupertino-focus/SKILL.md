@@ -31,7 +31,7 @@ This skill is gated: a PreToolUse hook blocks it until `cupertino-backwards` has
 Do not eyeball the one-sentence rule. For each survivor, run:
 
 ```bash
-echo '{"survivors": [{"name": "...", "description": "..."}, ...]}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" one-sentence-per-survivor
+echo '{"survivors": [{"name": "...", "description": "..."}, ...]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" one-sentence-per-survivor
 ```
 
 Any survivor the checker flags needs a deeper cut, not a longer sentence — if a survivor still needs a paragraph of caveats to describe, it is actually two things wearing one name, or it has not been reduced enough. Go back to the cut list, not the prose.

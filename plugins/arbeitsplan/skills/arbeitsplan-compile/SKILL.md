@@ -64,7 +64,7 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
 9. **Write the spec.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --out analysis/arbeitsplan --write
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --out analysis/arbeitsplan --write
    ```
 
    It validates before writing and names the offending key on refusal.
@@ -77,7 +77,7 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    write only on a yes.
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/emit_beats.py" analysis/arbeitsplan/<runId>/workflow.json --write
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/emit_beats.py" analysis/arbeitsplan/<runId>/workflow.json --write
    python3 plugins/takt/scripts/validate_beats.py .claude/takt.local.md
    ```
 

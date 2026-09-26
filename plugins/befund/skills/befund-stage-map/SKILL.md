@@ -12,7 +12,7 @@ directory names.
 ## Step 0: Settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-stage-map
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-stage-map
 ```
 
 Stop on non-zero exit. Carry the returned `output_dir` and `skip_verification` through every
@@ -23,7 +23,7 @@ later step.
 Reuse the same detection as preflight -- do not hand-roll a different threshold:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py detect-languages --manifests <json> --extension-counts <json>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py detect-languages --manifests <json> --extension-counts <json>
 ```
 
 ## Step 2: Extract the import graph, one inline command per language
@@ -55,7 +55,7 @@ with top-level `stages`, `wires` (every edge), `edgeCount` (== `len(wires)`), an
 (stages with no outgoing wires), then validate before writing:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind stage_graph --file <path-or-inline-json>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind stage_graph --file <path-or-inline-json>
 ```
 
 The validator rejects the artifact outright if `edgeCount != len(wires)` -- a sampled edge list
@@ -71,15 +71,15 @@ neither is absent by design -- do not backfill it with a guessed stage. Downstre
 `attribute-citation` in the CLI for that exact lookup behavior.
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind file_stage_index --file <path-or-inline-json>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind file_stage_index --file <path-or-inline-json>
 ```
 
 ## Step 6: Resolve output paths and write
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename stage_graph.json
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename file_stage_index.json
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename stage_map_summary.json
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename stage_graph.json
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename file_stage_index.json
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename stage_map_summary.json
 ```
 
 Write `STAGE_MAP.md`, `stage_graph.json`, `file_stage_index.json`, and `stage_map_summary.json`
@@ -100,7 +100,7 @@ Then render `STAGE_MAP.html` -- a real canvas-based D3 viewer (force-directed gr
 pan/zoom, search, drag-to-reposition), not the old "simple static graph render":
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py \
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py \
     --stage-graph <resolved stage_graph.json path> \
     --file-stage-index <resolved file_stage_index.json path> \
     --template ${CLAUDE_PLUGIN_ROOT}/assets/stage-map-viewer.html \

@@ -15,7 +15,7 @@ Resolve **one** assumption in a bounded loop, then **validate with the guard**. 
 step cap, the one-per-invocation rule, and the confidence gate are enforced in
 code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Input
 One uncertainty entry: `{element, default_interpretation, confidence,

@@ -27,7 +27,7 @@ from a frozen table and records which row made it, so the compiler can check it.
 5. **Emit the object** and validate it through the compiler, never by eye:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --spec analysis/arbeitsplan/<runId>/workflow.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --spec analysis/arbeitsplan/<runId>/workflow.json
    ```
 
 ## Rules

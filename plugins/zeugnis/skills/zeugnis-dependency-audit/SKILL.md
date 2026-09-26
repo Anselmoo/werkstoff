@@ -29,7 +29,7 @@ that deterministic core and present the result.
    scratch path — it is only ever read once, by the next step).
 4. Run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/dependency_audit.py" <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/dependency_audit.py" <repo_root> \
        --timeout-seconds <N> \
        [--skip-verification] \
        [--agent-findings <path-from-step-3>]

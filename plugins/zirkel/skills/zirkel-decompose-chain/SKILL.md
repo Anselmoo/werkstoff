@@ -14,7 +14,7 @@ description: >-
 Design the stages, then **validate the graph with the guard**. The guard enforces
 every structural rule in code and returns the topological waves.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Design
 

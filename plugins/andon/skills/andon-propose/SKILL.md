@@ -1,7 +1,7 @@
 ---
 name: andon-propose
 description: "Proposes a fix for one gap by reading the ledger and codebase first, then grilling the user one question at a time only on genuinely load-bearing forks. Use when andon-loop dispatches it to propose a fix, or when the user directly asks what to fix for a named gap, or asks to be grilled on a decision."
-allowed-tools: "Read, Grep, Glob, Bash(python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*)"
+allowed-tools: "Read, Grep, Glob, Bash(python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py:*)"
 argument-hint: "<gap-description-or-slug>"
 ---
 
@@ -42,7 +42,7 @@ into busywork for the user instead of a real proposal to react to.
    Sanity-check your own tag choice before moving on:
 
    ```
-   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-doc \
+   python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-doc \
      '{"type":"gap","title":"...","stage":"...","kind":"...","status":"open","blast_radius":"<tag>","proposal":{}}'
    ```
 

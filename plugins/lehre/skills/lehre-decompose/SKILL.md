@@ -46,7 +46,7 @@ to remove.
    of what the user asked for is not evidence. Then:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
    ```
 
    If validation fails, fix the units; never leave an invalid ruleset on disk,

@@ -23,7 +23,7 @@ writes nothing.
 3. **Report lehre state.** Whether `.lehre/ruleset.json` exists; if it does, run:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" validate
    ```
 
    and show its output verbatim. If it fails, say so and stop — a broken ruleset

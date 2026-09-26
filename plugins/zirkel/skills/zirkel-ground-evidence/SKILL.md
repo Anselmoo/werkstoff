@@ -16,7 +16,7 @@ description: >-
 List claims first, cite each inline, refuse the unsupported ones with the exact
 template — then **validate with the guard**.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Process
 

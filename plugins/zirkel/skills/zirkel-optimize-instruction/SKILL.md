@@ -15,7 +15,7 @@ Generate 5 framings, score on fixed test cases, select, critique the winner. The
 guard enforces the candidate count, the framing set, the tie-break, and the
 checklist size in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Preferred path: the workflow
 When the Workflow tool is available, run

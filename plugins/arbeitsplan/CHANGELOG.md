@@ -12,6 +12,10 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   in run ap-2026-09-26-0086 both builders had elided lock-file hunks as "[...]"
 
 ### Fixed
+- **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or
+  workflow tells the model to run now carries `-B` (frontmatter `allowed-tools`
+  patterns updated to match), so a script importing a sibling no longer writes
+  `__pycache__` into the installed plugin cache copy (#88 follow-up)
 - `worktree_pool.py selftest` no longer reports two false reds when run as root: the
   fail-closed cases inject their fault with chmod, which root ignores, so they now probe
   the object store and SKIP loudly when it stays writable

@@ -14,7 +14,7 @@ is not a rule.
    and checks the rubric's tables and the linter's rule set agree:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/test_nacharbeit_lint.py"
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/test_nacharbeit_lint.py"
    ```
 
    Only proceed on `GREEN`. A `RED` line names the rule that is broken; report it and stop
@@ -23,7 +23,7 @@ is not a rule.
 2. **Lint the targets**, writing the JSON the review consumes:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/nacharbeit_lint.py" plugins/<name> [plugins/<other> ...] \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/nacharbeit_lint.py" plugins/<name> [plugins/<other> ...] \
      --docs-root docs --out analysis/nacharbeit/lint.json
    ```
 

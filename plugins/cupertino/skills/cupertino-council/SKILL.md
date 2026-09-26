@@ -20,12 +20,12 @@ This skill is gated: a PreToolUse hook blocks it until `cupertino-backwards` has
 1. **Council Brief**: an audit table with one row per lens — what that lens observes about this specific interface, not generic platitudes.
 2. **Validate lens count mechanically**:
    ```bash
-   echo '{"lenses": ["Reduction", "Craft", "Hierarchy", "Usability", "Metaphor"]}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" council-lenses
+   echo '{"lenses": ["Reduction", "Craft", "Hierarchy", "Usability", "Metaphor"]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" council-lenses
    ```
 3. **Tension Log**: wherever two lenses pull in different directions, resolve using the **fixed precedence order — Usability > Reduction > Craft > Hierarchy > Metaphor** — and no other ordering. State each resolution as: `"[Lens A] wanted [X], [Lens B] required [Y] — resolved as [Z]"`.
 4. **Validate the resolution order mechanically** — list the lenses in the order their tensions were actually resolved (higher-precedence lens's requirement winning first) and check it never violates the fixed order:
    ```bash
-   echo '{"resolvedOrder": ["Usability", "Reduction", ...]}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" tension-order
+   echo '{"resolvedOrder": ["Usability", "Reduction", ...]}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" tension-order
    ```
    If it exits non-zero, the resolved order violated the fixed precedence — return to step 3 and re-resolve the offending tension using the fixed precedence order, then re-run this check. Do not proceed to step 5 until it passes.
 5. **Design Identity**: one sentence naming what each lens contributed, and one sentence naming the resulting design identity as a whole.

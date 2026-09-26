@@ -58,7 +58,7 @@ vendored D3 bundle with every other report-viewer plugin. Build it with the
 plugin's own script — never hand-build this HTML inline:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_matrix_html.py" <repo_root> $1 \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_matrix_html.py" <repo_root> $1 \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/matrix-viewer.html" \
     --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
     --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"
@@ -93,14 +93,14 @@ Record how this stage ended, in `analysis/$1/run.jsonl` beside the artifacts —
 presenting, every time:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage map --status closed
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage map --status closed
 ```
 
 If it stopped instead — `consistency.json` is missing or the render failed — record that, with the specific reason, and do not
 record `closed`:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage map --status halted --reason "<the specific reason>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/passung_record.py" event --area $1 --stage map --status halted --reason "<the specific reason>"
 ```
 
 A stop that exists only in the chat is indistinguishable, to the next stage, from a stage

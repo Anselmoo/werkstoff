@@ -16,7 +16,7 @@ Synthesize a hybrid from the selected winner and 1-2 runners-up, then **let the
 guard decide whether it may be presented**. The precondition and the outperform
 gate are enforced in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Precondition
 

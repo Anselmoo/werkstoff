@@ -22,7 +22,7 @@ the specific `zeugnis-*-audit` skill instead.
    JSON file as a plain array of repo-relative paths.
 2. Run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
        --changed-files-json <path-from-step-1>
    ```
    with NO `--domain-findings` yet, just to see which domains matched. If
@@ -46,7 +46,7 @@ the specific `zeugnis-*-audit` skill instead.
    Write each domain's findings to its own scratch JSON file.
 4. Re-run the script, now passing every matched domain's findings:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/code_change_review.py" <repo_root> \
        --changed-files-json <path-from-step-1> \
        --domain-findings dependency_audit=<path> \
        --domain-findings assertion_audit=<path> \

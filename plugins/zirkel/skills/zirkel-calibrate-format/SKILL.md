@@ -13,7 +13,7 @@ description: >-
 When words keep missing the target shape, switch to examples. The guard enforces
 the example-count band and the diversity rule.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Assemble the example set
 

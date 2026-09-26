@@ -52,7 +52,7 @@ Impact: retrying a failed run no longer re-parses and re-validates config on
 Do not eyeball the "exactly one, and it's built" requirements:
 
 ```bash
-echo '{"text": "<your full reveal writeup, including the code block>"}' | python3 "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" reveal-shape
+echo '{"text": "<your full reveal writeup, including the code block>"}' | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" reveal-shape
 ```
 
 This rejects the reveal if it contains a numbered or bulleted list of suggestions (more than one idea presented), or if it has no fenced code block at all (meaning nothing was actually built). If it fails, cut to one idea and build it before presenting again. If it fails validation twice in a row, stop retrying — report the blocker (what failed and why) to the user instead of attempting a third pass.

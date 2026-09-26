@@ -4,6 +4,12 @@ All notable changes to the `cli-scaffold` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or
+  workflow tells the model to run now carries `-B` (frontmatter `allowed-tools`
+  patterns updated to match), so a script importing a sibling no longer writes
+  `__pycache__` into the installed plugin cache copy (#88 follow-up)
+
 ## [1.0.0] - 2026-09-21
 
 _No notable changes recorded._

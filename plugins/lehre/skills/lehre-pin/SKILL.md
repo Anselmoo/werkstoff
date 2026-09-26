@@ -14,7 +14,7 @@ Two phases, both run:
    `.lehre/units/<unit-id>.done` exists, or run:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
    ```
 
    and confirm the unit's state is `validated`. If the marker is absent, stop —
@@ -24,7 +24,7 @@ Two phases, both run:
 1. **Emit a CI invocation of the real gauge**, not a reimplementation:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" gauge --severity blocking
    ```
 
    Exit `1` fails the job. A hand-written CI script that re-encodes the rules is

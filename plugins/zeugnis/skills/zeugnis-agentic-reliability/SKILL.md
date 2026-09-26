@@ -28,7 +28,7 @@ fixed — never report a fifth category, and never rename one.
    file. Write `{"findings": [{"evidence": "...", "confirmed": true|false}, ...]}`.
 4. Run:
    ```
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/agentic_reliability.py" <repo_root> \
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/agentic_reliability.py" <repo_root> \
        --find-json <path-from-step-2> \
        [--verify-json <path-from-step-3>] \
        [--skip-verification] \

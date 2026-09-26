@@ -11,7 +11,7 @@ the code actually does.
 ## Step 0: Settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-docs-drift
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py check-enabled --repo <repo_root> --skill befund-docs-drift
 ```
 
 ## Step 1: Extract falsifiable claims
@@ -28,7 +28,7 @@ Rule `docs-drift-not-ci-specific`: run every extracted claim through the CI-scop
 verifying anything:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py exclude-ci-claims --claims <json list>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py exclude-ci-claims --claims <json list>
 ```
 
 Claims returned under `excluded_to_ci_topology` (anything citing `.github/workflows/`,
@@ -58,15 +58,15 @@ showing exactly where the code diverges. A contradicted claim looks like:
 `skip_verification` is true, label every claim `verification_label: "unverified"` via:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py label-findings --repo <repo_root> --findings <json>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py label-findings --repo <repo_root> --findings <json>
 ```
 
 ## Step 4: Validate and write
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind docs_drift_summary --file <path-or-inline-json>
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename DOCS_DRIFT.md
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename docs_drift_summary.json
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py validate-artifact --kind docs_drift_summary --file <path-or-inline-json>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename DOCS_DRIFT.md
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py resolve-output-path --repo <repo_root> --filename docs_drift_summary.json
 ```
 
 Write `DOCS_DRIFT.md` (contradictions with file:line evidence on both the doc side and the

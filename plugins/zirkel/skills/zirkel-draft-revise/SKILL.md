@@ -14,7 +14,7 @@ description: >-
 Score, then revise **only** what fails, then report. The guard enforces the scale,
 the threshold, the selectivity, and the escalation in code.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Inputs
 - an already-drafted artifact

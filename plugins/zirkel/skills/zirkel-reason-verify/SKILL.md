@@ -15,7 +15,7 @@ description: >-
 Pick the rung from **concrete signals**, then reason at that rung. The guard
 selects the rung deterministically and enforces the self-consistency count.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Select the rung (guarded)
 

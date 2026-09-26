@@ -21,7 +21,7 @@ Extract the relevant triples, pick a start node, traverse, and **validate with t
 guard**. The guard enforces the triple ceiling and that every hop cites a real
 triple.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Process
 

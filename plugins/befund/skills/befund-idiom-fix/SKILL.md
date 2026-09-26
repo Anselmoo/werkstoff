@@ -12,7 +12,7 @@ skill explicitly refuses to attempt on its own.
 ## Step 1: The mode gate -- refuse outright in 'propose' mode
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py idiom-fix-mode-gate --repo <repo_root>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py idiom-fix-mode-gate --repo <repo_root>
 ```
 
 A non-zero exit means `idiom_fix.mode` is not `"fix"` in `.claude/befund.local.md` --
@@ -21,7 +21,7 @@ stop and tell the user plainly that applying findings requires setting `idiom_fi
 ## Step 2: Filter to eligible findings only
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py filter-idiom-findings --findings <code_idiom_summary.json's findings list>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py filter-idiom-findings --findings <code_idiom_summary.json's findings list>
 ```
 
 `eligible` contains only `category: "modernization"` findings with no `severityNote`.
@@ -31,7 +31,7 @@ present`) -- report this list to the user rather than silently ignoring it.
 ## Step 3: Dirty-tree gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py dirty-tree-gate --repo <repo_root>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py dirty-tree-gate --repo <repo_root>
 ```
 
 Same behavior as `befund-transform-execute`'s Step 4: a dirty tree without an explicit
@@ -44,7 +44,7 @@ edit-scope lock naming every cluster's file up front -- `guard_target_edit.py`'s
 hook is inert until this lock exists, and only authorizes edits to the files it names:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py open-edit-scope --repo <repo_root> \
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py open-edit-scope --repo <repo_root> \
     --mode idiom_fix --files <cluster 1's file> <cluster 2's file> ...
 ```
 
@@ -56,7 +56,7 @@ dispatch, and never a location not cited in the findings it was given.
 Once every remediator has finished, close the lock:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py close-edit-scope --repo <repo_root>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/befund_cli.py close-edit-scope --repo <repo_root>
 ```
 
 ## Step 5: Hand off to verification -- never self-verify

@@ -12,7 +12,7 @@ Read-only readiness report. Never creates the ledger, never modifies files.
 ## Step 1: settings gate
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py load-settings <repo_root>
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py load-settings <repo_root>
 ```
 
 If the returned `enabled` field is `false`, **stop immediately** and report
@@ -37,7 +37,7 @@ takes them as booleans since it has no way to query your installed agents):
 Then:
 
 ```
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py preflight <repo_root> \
+python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py preflight <repo_root> \
   [--befund-stage-mapper] [--zeugnis-skill] [--lsp-tool] [--structural-index] \
   [--property-lib-python] [--property-lib-js] [--property-lib-other]
 ```
@@ -59,7 +59,7 @@ schema: `stageLegibility`, `stageCountEstimate`, `ledgerDirWritable`,
    argument must resolve inside of:
 
    ```
-   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-write-path \
+   python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-write-path \
      <output_dir>/PREFLIGHT.md <repo_root> <output_dir>
    ```
 
@@ -78,7 +78,7 @@ schema: `stageLegibility`, `stageCountEstimate`, `ledgerDirWritable`,
    this write the same way as item 1 -- confirm the path first:
 
    ```
-   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-write-path \
+   python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/andon_core.py validate-write-path \
      <output_dir>/preflight_summary.json <repo_root> <output_dir>
    ```
 

@@ -11,7 +11,7 @@ Check files against an existing handbook, one rule at a time, verifying every fi
 2. **Determine target files**: use the files the user named, or if they asked for a check but didn't say what changed, **ask whether to run a full-project scan** rather than silently picking a scope for them.
 3. **Mark the check as active** so the write/no-mutation guarantees below are enforced at the tool-call layer, not just by convention:
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set handbook-check-active
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set handbook-check-active
    ```
 4. **Read the handbook** and extract its rule list (one `{dimension, rule}` per handbook entry).
 5. **Run the check** via the Workflow tool:
@@ -21,7 +21,7 @@ Check files against an existing handbook, one rule at a time, verifying every fi
    This dispatches `handbook-drift-auditor` once per rule (never bundling rules), then independently re-verifies every individual finding at its exact `file:line` before it counts — a PreToolUse hook backstops both the one-rule-per-dispatch and one-location-per-verify constraints regardless of what the workflow script does. Findings that don't survive re-verification are dropped, not reported.
 6. **Clear the active flag** when done — and immediately, before stopping, if step 4 or step 5 fails or is interrupted, rather than leaving it set:
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-check-active
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-check-active
    ```
 7. **Write the report** at `.cupertino/HANDBOOK_CHECK-<domain>.md` — a findings table with severity (High/Medium/Low), evidence (`file:line`), and whether each finding is mechanical (fixable without design judgment) or not — plus the sidecar `.cupertino/handbook_check_<domain>_summary.json`, whose schema is validated on write by the same PreToolUse hook (a finding missing `severity`, `mechanical`, or `line` is rejected outright, never defaulted). Both files live under `.cupertino/`, the plugin's one declared output directory — a PreToolUse hook denies either write if it targets anywhere else.
 

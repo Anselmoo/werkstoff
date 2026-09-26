@@ -14,7 +14,7 @@ description: >-
 Turn a completed `zirkel-solve` run into a fixed 7-section record, then
 **validate structure with the guard**.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Input
 

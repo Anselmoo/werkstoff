@@ -28,7 +28,7 @@ verifier sweeps for. Avoid all of them while generating.
 ## Step 3 — Resolve the write target (in code)
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/write_scope.py" "<app-name>"
 ```
 
 Write the scaffold **only** under the path it prints. If it exits non-zero, stop
@@ -59,7 +59,7 @@ Hand the scaffold to the **cli-scaffold-verifier** agent for a read-only check
 against the doctrine and reference. The verifier runs:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<dialect>"
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/verify_scaffold.py" "<scaffold-dir>" "<dialect>"
 ```
 
 (pass `posix-sh` as the dialect for POSIX sh — it triggers the bashism sweep.)
@@ -80,7 +80,7 @@ tagged with which five-pillar role it plays — derived from the same
 `cli-scaffold.manifest.json` keys the verifier just read, not re-invented:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_architecture_tree.py" "<scaffold-dir>" \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_architecture_tree.py" "<scaffold-dir>" \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/architecture-tree-viewer.html" \
     --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \
     --tokens "${CLAUDE_PLUGIN_ROOT}/assets/tokens.css"

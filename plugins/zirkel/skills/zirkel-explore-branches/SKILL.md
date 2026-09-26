@@ -15,7 +15,7 @@ Generate branches **independently and in parallel**, score each **in isolation**
 then select by the fixed rule. Parallel independence is what prevents anchoring —
 it is structural, not a suggestion.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## 0. Build or reuse the shared research snapshot
 
@@ -24,7 +24,7 @@ snapshot once, so every parallel proposer can query the same cached index instea
 of each re-scanning the codebase independently:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name zirkel
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_symbol_index.py" --repo-path . --plugin-name zirkel
 ```
 
 This is a no-op if `analysis/zirkel/current.json`'s `source_fingerprint` already
@@ -111,7 +111,7 @@ Every run that reaches Persist also gets a report — not optional, not gated on
 being asked for one:
 
 ```
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_branch_comparison_html.py" . \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_branch_comparison_html.py" . \
     --run-id <run-id> \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/branch-comparison-viewer.html" \
     --d3 "${CLAUDE_PLUGIN_ROOT}/assets/inline-d3.html" \

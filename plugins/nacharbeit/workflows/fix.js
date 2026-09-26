@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Apply the haiku- and sonnet-tier fixes from a completed nacharbeit review, one file per remediator, each verified blind with the post-checks its kind needs, with one repair round when the verifier rejects',
   whenToUse:
-    'Launched by the nacharbeit-fix skill through the baked copy `<state-dir>/fix-run.js` that `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/build_fix_args.py` writes after the review has been persisted; never with hand-built args. The PreToolUse guard holds the fix lock throughout. Opus- and human-tier entries are never applied here.',
+    'Launched by the nacharbeit-fix skill through the baked copy `<state-dir>/fix-run.js` that `python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/build_fix_args.py` writes after the review has been persisted; never with hand-built args. The PreToolUse guard holds the fix lock throughout. Opus- and human-tier entries are never applied here.',
   phases: [
     { title: 'Remediate', detail: 'one remediator per file, model = the file\'s highest entry tier (haiku or sonnet)' },
     { title: 'Verify', detail: 'blind sonnet verifier re-reads the file against the pre-fix entries and checks for regressions', model: 'sonnet' },

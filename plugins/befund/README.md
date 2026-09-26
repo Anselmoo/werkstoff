@@ -105,7 +105,7 @@ imports nothing outward (`utils`), and one stage wired to nothing at all
 stage_graph` unmodified.
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py" \
+python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_stage_map_html.py" \
     --stage-graph "${CLAUDE_PLUGIN_ROOT}/scripts/fixtures/sample_stage_graph.json" \
     --file-stage-index "${CLAUDE_PLUGIN_ROOT}/scripts/fixtures/sample_file_stage_index.json" \
     --template "${CLAUDE_PLUGIN_ROOT}/assets/stage-map-viewer.html" \

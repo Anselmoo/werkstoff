@@ -13,7 +13,7 @@ be confused with something else.
 ## How to look packages up
 
 Always invoke registry lookups through the plugin's own script:
-`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lib/registry.py"` is a library,
+`python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lib/registry.py"` is a library,
 not a CLI — instead call `dependency_audit.py` for a full manifest sweep,
 or ask the calling skill for the specific lookup helper it wants you to
 use for a single-package re-check. Every lookup goes through that

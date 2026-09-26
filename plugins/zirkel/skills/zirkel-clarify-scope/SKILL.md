@@ -17,7 +17,7 @@ with the guard (`scoped_task` and `success_criteria` have no code-level check â€
 them right by inspection). The guard enforces the confidence gates in code â€” a
 missing `confidence` or `blocking` field is rejected, never defaulted.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Outputs
 

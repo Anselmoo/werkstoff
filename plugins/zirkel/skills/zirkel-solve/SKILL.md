@@ -17,7 +17,7 @@ Compose the five phases in order. Each phase is a distinct zirkel skill; this
 skill orchestrates them and **enforces the pipeline invariants in code** via the
 guard CLI. Never skip a guard call — its non-zero exit is the enforcement.
 
-`GUARD="python3 ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
+`GUARD="python3 -B ${CLAUDE_PLUGIN_ROOT}/scripts/zirkel.py"`
 
 ## Preferred path: the workflow
 

@@ -17,7 +17,7 @@ did not make it, and checked by a script that does not care who did.
 2. **Build the work items and open the lock:**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/build_fix_args.py" [--write-roots plugins/ tools/]
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_fix_args.py" [--write-roots plugins/ tools/]
    ```
 
    It refuses a review that is not completed and calibrated, and a lock that is already
@@ -46,7 +46,7 @@ did not make it, and checked by a script that does not care who did.
 4. **Check the whole pass and release the lock:**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/post_fix_check.py" --release-lock
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/post_fix_check.py" --release-lock
    ```
 
    It re-runs every post-check, diffs each touched plugin's contracts (output paths,
