@@ -1,6 +1,6 @@
 {
   "name": "zirkel",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
   "author": {
     "name": "Anselm Hahn",
