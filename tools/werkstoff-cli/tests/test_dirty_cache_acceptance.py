@@ -49,7 +49,11 @@ Interface under test (frozen before any implementation existed):
         is skipped, never guessed at (an entry with no installPath, a relative or "~"
         installPath, one that no longer exists). Nothing that ANY registry entry names,
         under any key or marketplace, is ever removed; identity is (st_dev, st_ino), not
-        spelling. The marketplace name must itself be a safe path component. `prune --apply
+        spelling. An installed plugin must PROVE a live directory: an empty or
+        malformed entry list, or an installPath naming a file, leaves liveness unknown.
+        A version dir is never removed if anything a registry entry names lies inside
+        it, or if a mount point lies inside it -- rmtree would take either with it.
+        The marketplace name must itself be a safe path component. `prune --apply
         --json` adds "removed" and "failed" (what actually happened, not the plan).
     a missing, unparseable, undecodable (non-UTF-8), duplicate-keyed or non-regular-file
         registry -> exit 1 with a one-line
@@ -768,3 +772,163 @@ def test_prerelease_tags_compare_numerically(tmp_path) -> None:
     andon = _plugin(_json(d, "doctor"), "andon")
     assert andon["cached"] == ["1.0.0-rc.2", "1.0.0-rc.9", "1.0.0-rc.10", "1.0.0"]
     assert _plan(d, "1") == {"andon/1.0.0-rc.2", "andon/1.0.0-rc.9"}
+
+
+# --- second hardening review (after 33c80ae): nested, mounted, empty, malformed ---
+
+
+@pytest.mark.parametrize("entries", [[], [None], ["junk"]])
+def test_an_installed_plugin_with_no_usable_entry_is_skipped(tmp_path, entries) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": []},
+    )
+    _registry_with(d, {"andon@werkstoff": entries})
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    for v in ("0.8.0", "0.12.0"):
+        assert (d["cache"] / "andon" / v).is_dir(), f"{entries!r}: removed {v}"
+
+
+def test_an_installpath_naming_a_file_proves_nothing_live(tmp_path) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": []},
+    )
+    (d["cache"] / "andon" / "f").write_text("x")
+    _registry_with(
+        d, {"andon@werkstoff": [{"scope": "user", "installPath": str(d["cache"] / "andon" / "f")}]}
+    )
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    assert (d["cache"] / "andon" / "0.12.0").is_dir()
+    assert (d["cache"] / "andon" / "0.8.0").is_dir()
+
+
+@pytest.mark.parametrize("via", ["direct", "outside-symlink"])
+def test_a_live_dir_nested_inside_a_stale_version_survives(tmp_path, via) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    inner = d["cache"] / "andon" / "0.8.0" / "sub"
+    inner.mkdir()
+    named = inner
+    if via == "outside-symlink":
+        named = tmp_path / "elsewhere-link"
+        named.symlink_to(inner, target_is_directory=True)
+    _registry_with(d, {"inner@other": [{"scope": "user", "installPath": str(named)}]})
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+    assert code in (0, 1), out
+    assert inner.is_dir(), "a registry entry names 0.8.0/sub live"
+
+
+def test_a_mount_inside_a_stale_version_is_never_crossed(tmp_path) -> None:
+    import subprocess
+
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    live = d["cache"] / "andon" / "0.12.0"
+    mnt = d["cache"] / "andon" / "0.8.0" / "mnt"
+    mnt.mkdir()
+    if subprocess.run(["mount", "--bind", str(live), str(mnt)], capture_output=True).returncode:
+        pytest.skip("bind mounts need privileges this runner does not have")
+    try:
+        code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])])
+        assert code in (0, 1), out
+        assert any(live.iterdir()), "prune emptied the live install through a bind mount"
+    finally:
+        subprocess.run(["umount", str(mnt)], check=False)
+
+
+def test_rich_markup_in_a_path_is_printed_not_interpreted(tmp_path) -> None:
+    d = _shape(
+        tmp_path / "u[/x]" / "[bold]",
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    result = runner.invoke(
+        app,
+        ["prune", "--claude-dir", str(d["claude"]), "--repo", str(d["repo"]), "--keep", "0"],
+    )
+    assert result.exit_code == 0, result.output
+    assert str(d["cache"] / "andon" / "0.8.0") in result.output.replace("\n", "")
+    result = runner.invoke(
+        app,
+        [
+            "prune",
+            "--claude-dir",
+            str(d["claude"]),
+            "--repo",
+            str(d["repo"]),
+            "--keep",
+            "0",
+            "--apply",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert result.exception is None, repr(result.exception)
+    assert "removed 1 of 1" in result.output
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "[" * 100_000,
+        '{"plugins": {"a@werkstoff": [{"version": ' + "9" * 6000 + "}]}}",
+        '{"plugins": {"andon@werkstoff": [{"installPath": "/x\\u0000y"}]}}',
+        '{"plugins": {"an\\u0000don@werkstoff": [{"version": "1"}]}}',
+        '{"plugins": {"x@other": [{"installPath": "~a\\u0000b"}]}}',
+        '{"plugins": {"andon@werkstoff": [{"installPath": "/x\\udc80"}]}}',
+    ],
+    ids=["deep-nesting", "huge-int", "nul-installpath", "nul-key", "nul-tilde", "surrogate"],
+)
+def test_a_hostile_registry_never_tracebacks(dirty, raw) -> None:
+    (dirty["claude"] / "plugins" / "installed_plugins.json").write_text(raw)
+    before = _snapshot(dirty["claude"])
+    for command in ("doctor", "prune"):
+        extra = ["--apply"] if command == "prune" else []
+        result = runner.invoke(
+            app,
+            [command, "--claude-dir", str(dirty["claude"]), "--repo", str(dirty["repo"]), *extra],
+        )
+        assert "Traceback" not in result.output, result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+            result.exception
+        )
+    assert _snapshot(dirty["claude"]) == before
+
+
+def test_a_symlink_loop_claude_dir_fails_in_one_line(tmp_path, dirty) -> None:
+    loop = tmp_path / "loop"
+    loop.symlink_to(loop)
+    for command in ("doctor", "prune"):
+        result = runner.invoke(
+            app, [command, "--claude-dir", str(loop), "--repo", str(dirty["repo"])]
+        )
+        assert result.exit_code == 1, result.output
+        assert result.exception is None or isinstance(result.exception, SystemExit), repr(
+            result.exception
+        )
+
+
+def test_a_relative_installpath_under_another_key_is_protected_from_the_registry_dir(
+    tmp_path,
+) -> None:
+    d = _shape(
+        tmp_path,
+        [("werkstoff", "andon", v) for v in ("0.8.0", "0.12.0")],
+        {"andon@werkstoff": [("user", "0.12.0", "0.12.0")]},
+    )
+    _registry_with(
+        d, {"x@other": [{"scope": "user", "installPath": "cache/werkstoff/andon/0.8.0"}]}
+    )
+    code, out = _apply(["--claude-dir", str(d["claude"]), "--repo", str(d["repo"])], cwd=Path("/"))
+    assert code in (0, 1), out
+    assert (d["cache"] / "andon" / "0.8.0").is_dir()

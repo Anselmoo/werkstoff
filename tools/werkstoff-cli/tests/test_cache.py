@@ -83,7 +83,7 @@ def test_load_registry_parses_a_valid_file(tmp_path) -> None:
     assert cache.load_registry(tmp_path) == {"version": 2, "plugins": {}}
 
 
-def test_live_entries_by_plugin_drops_unsafe_names_and_other_marketplaces() -> None:
+def test_own_entries_drops_unsafe_names_and_other_marketplaces() -> None:
     registry = {
         "plugins": {
             "andon@werkstoff": [{"scope": "user", "installPath": "/x", "version": "1"}],
@@ -92,9 +92,10 @@ def test_live_entries_by_plugin_drops_unsafe_names_and_other_marketplaces() -> N
             "a/b@werkstoff": [{"scope": "user", "installPath": "/w", "version": "9"}],
             "@werkstoff": [{"scope": "user", "installPath": "/v", "version": "9"}],
             "noatsign": [{"scope": "user", "installPath": "/u", "version": "9"}],
+            "an\x00don@werkstoff": [{"scope": "user", "installPath": "/t", "version": "9"}],
         }
     }
-    by_plugin = cache._live_entries_by_plugin(registry, "werkstoff")
+    by_plugin = cache._own_entries(registry, "werkstoff")
     assert set(by_plugin) == {"andon"}
     assert len(by_plugin["andon"]) == 1
 
@@ -248,9 +249,64 @@ def test_apply_refuses_when_the_registry_became_unreadable(tmp_path) -> None:
     claude, root, plan = _planned(tmp_path)
     (claude / cache.REGISTRY_REL_PATH).write_text("{not json")
 
-    with pytest.raises(cache.CacheError):
-        cache.apply_prune(plan, claude, "werkstoff")
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
+
+    assert removed == []
+    assert [i for i, _ in failures] == plan
+    assert all("installed_plugins.json" in why for _, why in failures)
     assert (root / "andon" / "0.9.0").is_dir()
+
+
+def test_apply_reports_what_it_removed_before_the_registry_broke(tmp_path, monkeypatch) -> None:
+    claude = tmp_path / "claude"
+    root = claude / "plugins" / "cache" / "werkstoff"
+    for v in ("0.7.0", "0.8.0", "1.0.0"):
+        _install(root, "andon", v)
+    _write_registry(claude, {"andon": "1.0.0"})
+    plan, _ = cache.build_prune_plan(claude, "werkstoff", keep=0)
+    assert [i.version for i in plan] == ["0.7.0", "0.8.0"]
+    real = cache._remove_verified
+
+    def remove_then_break(cache_root, item, ids):
+        real(cache_root, item, ids)
+        (claude / cache.REGISTRY_REL_PATH).write_text("{not json")
+
+    monkeypatch.setattr(cache, "_remove_verified", remove_then_break)
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
+
+    assert [i.version for i in removed] == ["0.7.0"]
+    assert [i.version for i, _ in failures] == ["0.8.0"]
+    assert (root / "andon" / "0.8.0").is_dir()
+
+
+def test_apply_refuses_when_the_cache_root_changed_since_planning(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    moved = tmp_path / "old-werkstoff"
+    shutil.move(str(root), moved)
+    shutil.copytree(moved, root, symlinks=True)
+
+    removed, failures = cache.apply_prune(plan, claude, "werkstoff")
+
+    assert removed == []
+    assert failures and "cache root changed" in failures[0][1]
+
+
+def test_remove_verified_refuses_a_plugin_dir_swapped_after_the_check(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    cache_root = cache.cache_root_for(claude, "werkstoff")
+    protected = cache.protected_for(cache.load_registry(claude), claude, cache_root)
+    why, ids = cache._refusal(plan[0], cache_root, protected)
+    assert why is None and ids is not None
+    # The swap lands in the window between the check and the removal.
+    victim = tmp_path / "victim" / "andon"
+    shutil.move(str(root / "andon"), tmp_path / "real-andon")
+    victim.mkdir(parents=True)
+    (victim / "0.9.0").mkdir()
+    (root / "andon").symlink_to(victim, target_is_directory=True)
+
+    with pytest.raises(OSError):
+        cache._remove_verified(cache_root, plan[0], ids)
+    assert (victim / "0.9.0").is_dir(), "followed a plugin dir swapped for a symlink"
 
 
 def test_prerelease_tags_compare_numerically() -> None:
@@ -262,3 +318,21 @@ def test_prerelease_tags_compare_numerically() -> None:
         "1.0.0-rc10",
         "1.0.0",
     ]
+
+
+def test_remove_verified_refuses_a_plugin_dir_renamed_away_after_the_check(tmp_path) -> None:
+    claude, root, plan = _planned(tmp_path)
+    cache_root = cache.cache_root_for(claude, "werkstoff")
+    protected = cache.protected_for(cache.load_registry(claude), claude, cache_root)
+    why, ids = cache._refusal(plan[0], cache_root, protected)
+    assert why is None and ids is not None
+    # A REAL directory (not a symlink, so O_NOFOLLOW alone passes it) takes the
+    # checked plugin dir's name between the check and the removal.
+    (root / "andon").rename(tmp_path / "checked-andon")
+    impostor = root / "andon"
+    (impostor / "0.9.0").mkdir(parents=True)
+    (impostor / "0.9.0" / "precious").write_text("x")
+
+    with pytest.raises(OSError, match="changed after it was checked"):
+        cache._remove_verified(cache_root, plan[0], ids)
+    assert (impostor / "0.9.0" / "precious").is_file()

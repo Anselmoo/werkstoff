@@ -56,17 +56,22 @@ under any scope. `prune` is a dry run unless `--apply` is given, and it:
 
 - **fails closed per plugin** — it prunes a plugin only when every one of
   its registry entries has an absolute `installPath` that exists and lies
-  inside that plugin's cache directory. Otherwise (no `installPath`, a
-  relative or `~` one, one that no longer exists) the plugin's liveness is
+  inside that plugin's cache directory, and at least one of them is proven.
+  Otherwise (an empty entry list, no `installPath`, a relative or `~` one,
+  one that no longer exists or names a file) the plugin's liveness is
   unknown, so it is reported as skipped and nothing of it is touched;
 - never removes anything **any** registry entry names, under any key or
   marketplace, compared by device and inode rather than by spelling;
+- never removes a version directory that contains something a registry
+  entry names, or a mount point — `rmtree` would take either with it;
 - never removes an uninstalled plugin's cache, a symlinked plugin or
   version directory, or anything outside
   `<claude-dir>/plugins/cache/<marketplace>/<plugin>/<version>/` after
   symlinks are resolved;
 - re-reads the registry and re-checks each path immediately before removing
-  it, so an install that lands mid-prune is refused rather than deleted.
+  it, then removes it through directory handles verified against what was
+  checked, so an install that lands mid-prune, or a directory swapped in
+  under the same name, is refused rather than deleted.
 
 A missing, unparseable, non-UTF-8, duplicate-keyed or non-regular-file
 registry makes both commands exit `1` with a one-line error. `prune --apply

@@ -31,6 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   duplicate-keyed or non-regular-file registry (a FIFO blocked forever) is refused in one
   line; `--apply --json` reports what was actually `removed`/`failed`/`skipped`; and
   pre-release tags compare numerically (`rc.10` after `rc.2`) (#89)
+- **prune**: a second adversarial review reproduced more, now tested and refused: an
+  installed plugin with an empty or malformed entry list, or an `installPath` naming a
+  file, had its whole cache removed (it must now prove a live directory); a live
+  directory nested inside a stale version, or a bind mount inside one, was removed with
+  it; a plugin dir renamed or symlinked in after the check was followed (removal now goes
+  through `O_NOFOLLOW` directory fds verified against the checked identities); the cache
+  root is bound to its planned identity; a registry that breaks mid-apply still reports
+  what was already removed; hostile registries (deep nesting, huge integers, NUL bytes,
+  lone surrogates) and Rich markup in paths no longer traceback; and `--apply` re-derives
+  the protected set only when the registry changed (65 s -> 0.6 s for 400 x 5,000) (#89)
 
 ## [1.0.0] - 2026-09-21
 

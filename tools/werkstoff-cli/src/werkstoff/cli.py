@@ -12,6 +12,7 @@ from pathlib import Path
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.padding import Padding
 
 from werkstoff import cache, core
@@ -175,32 +176,42 @@ def _print_doctor_report(reports: list[cache.PluginReport], total: int) -> None:
         console.print("[dim]no plugins found in the marketplace or the cache[/dim]")
         return
     for report in reports:
-        bits = [f"live {report.live}" if report.live else "not installed"]
+        bits = [f"live {escape(report.live)}" if report.live else "not installed"]
         if report.not_in_marketplace:
             bits.append("[yellow]not in marketplace[/yellow]")
         bits.append(f"cached {len(report.cached)}")
         if report.live_unknown:
-            bits.append(f"[red]live unknown, prune skips it: {report.live_unknown}[/red]")
+            bits.append(f"[red]live unknown, prune skips it: {escape(report.live_unknown)}[/red]")
         if report.live_not_newest:
-            bits.append(f"[yellow]newer cached: {report.cached[-1]}[/yellow]")
+            bits.append(f"[yellow]newer cached: {escape(report.cached[-1])}[/yellow]")
         bits.append(_human_size(report.size_bytes))
-        console.print(f"[bold]{report.name}[/bold]  " + "  ".join(bits))
+        console.print(f"[bold]{escape(report.name)}[/bold]  " + "  ".join(bits))
     console.print(f"\n{len(reports)} plugin(s), {_human_size(total)} total")
+
+
+def _say(text: str, err: bool = False) -> None:
+    """Print a line that carries a filesystem path or a registry-supplied
+    reason: literally, never as Rich markup (a directory named `[bold]` or
+    `[/x]` would otherwise be restyled or crash the print), and never soft-
+    wrapped, so each record stays on one line."""
+    (err_console if err else console).print(
+        text, markup=False, highlight=False, soft_wrap=True, emoji=False
+    )
 
 
 def _print_skipped(skipped: list[tuple[str, str]]) -> None:
     for plugin, why in skipped:
-        console.print(f"  skip {plugin}  -- liveness unknown, nothing pruned: {why}")
+        _say(f"  skip {plugin}  -- liveness unknown, nothing pruned: {why}")
 
 
 def _print_prune_dry_run(plan: list[cache.RemovalPlan], skipped: list[tuple[str, str]]) -> None:
     _print_skipped(skipped)
     if not plan:
-        console.print("nothing to prune")
+        _say("nothing to prune")
         return
     for item in plan:
-        console.print(f"  would remove {item.path}  -- stale, kept beyond --keep")
-    console.print(f"{len(plan)} path(s); dry run -- nothing touched. Pass --apply to remove them.")
+        _say(f"  would remove {item.path}  -- stale, kept beyond --keep")
+    _say(f"{len(plan)} path(s); dry run -- nothing touched. Pass --apply to remove them.")
 
 
 def _print_prune_apply(
@@ -211,10 +222,10 @@ def _print_prune_apply(
 ) -> None:
     _print_skipped(skipped)
     for item in removed:
-        console.print(f"  remove {item.path}")
+        _say(f"  remove {item.path}")
     for item, why in failures:
-        err_console.print(f"  FAILED {item.path}: {why}")
-    console.print(f"removed {len(removed)} of {len(plan)}")
+        _say(f"  FAILED {item.path}: {why}", err=True)
+    _say(f"removed {len(removed)} of {len(plan)}")
 
 
 def _item_payload(item: cache.RemovalPlan) -> dict:
@@ -250,14 +261,14 @@ def doctor(
 
     Read-only: never writes to the registry or the cache."""
     marketplace = _resolve_marketplace(repo)
-    resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
     marketplace_names = frozenset(p.name for p in marketplace.plugins)
     try:
+        resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
         reports, total = cache.build_doctor_report(
             resolved_claude_dir, marketplace.name, marketplace_names
         )
     except cache.CacheError as exc:
-        err_console.print(f"error: {exc}")
+        _say(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
     if json_output:
@@ -284,15 +295,15 @@ def prune(
     Dry run by default. Never removes a live directory, an uninstalled
     plugin's cache, or anything reached through a symlink."""
     marketplace = _resolve_marketplace(repo)
-    resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
     removed: list[cache.RemovalPlan] = []
     failures: list[tuple[cache.RemovalPlan, str]] = []
     try:
+        resolved_claude_dir = cache.resolve_claude_dir(claude_dir)
         plan, skipped = cache.build_prune_plan(resolved_claude_dir, marketplace.name, keep)
         if apply:
             removed, failures = cache.apply_prune(plan, resolved_claude_dir, marketplace.name)
     except cache.CacheError as exc:
-        err_console.print(f"error: {exc}")
+        _say(f"error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
 
     if json_output:

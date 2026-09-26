@@ -80,11 +80,26 @@ class PluginReport:
 
 @dataclass(frozen=True)
 class RemovalPlan:
-    """One `prune` row: a stale, non-live cached version directory."""
+    """One `prune` row: a stale, non-live cached version directory, bound to
+    the identity the cache root had when it was planned."""
 
     plugin: str
     version: str
     path: Path
+    root_id: Identity | None = None
+
+
+@dataclass(frozen=True)
+class Protected:
+    """Everything any registry entry could mean as a live install: resolved
+    paths (to refuse a target that CONTAINS one) and (st_dev, st_ino)
+    identities (to refuse one reached through an alias or a bind mount)."""
+
+    paths: frozenset[Path]
+    ids: frozenset[Identity]
+
+
+_RESOLVE_ERRORS = (OSError, RuntimeError, ValueError)
 
 
 def resolve_claude_dir(claude_dir: Path | str | None) -> Path:
@@ -92,13 +107,17 @@ def resolve_claude_dir(claude_dir: Path | str | None) -> Path:
     immediately, whether it was given relative, absolute, or via a symlink
     alias. `Path.resolve()` is used deliberately (not `os.path.normpath`):
     this boundary WANTS symlinks followed, unlike the lexical-only guards
-    documented in the root CLAUDE.md."""
+    documented in the root CLAUDE.md. Raises CacheError for a path that
+    cannot be resolved at all (a symlink loop, a NUL byte)."""
     if claude_dir:
         chosen = Path(claude_dir)
     else:
         env_value = os.environ.get(CLAUDE_CONFIG_DIR_ENV)
         chosen = Path(env_value) if env_value else Path.home() / DEFAULT_CLAUDE_DIRNAME
-    return chosen.resolve()
+    try:
+        return chosen.resolve()
+    except _RESOLVE_ERRORS as exc:
+        raise CacheError(f"cannot resolve the claude dir {str(chosen)!r}: {exc}") from exc
 
 
 def _component_key(part: str) -> tuple[tuple[int, int | str], ...]:
@@ -120,31 +139,36 @@ def version_key(version: str) -> tuple:
     return (release_key, 0 if pre else 1, pre_key)
 
 
-def _safe_component(name: str | None) -> bool:
-    """A path component that is safe to join onto a directory: not empty,
-    not `.`/`..`, and contains no path separator. Anything else never names
-    a directory -- it is dropped at the boundary, before any `Path(...)`
-    join happens."""
-    return bool(name) and name not in {".", ".."} and "/" not in name and "\\" not in name
+def _safe_component(name: object) -> bool:
+    """A path component that is safe to join onto a directory: a non-empty
+    string, not `.`/`..`, with no path separator and no NUL. Anything else
+    never names a directory -- it is dropped at the boundary, before any
+    `Path(...)` join happens."""
+    return (
+        isinstance(name, str)
+        and bool(name)
+        and name not in {".", ".."}
+        and not any(ch in name for ch in "/\\\0")
+    )
 
 
-def load_registry(claude_dir: Path) -> dict:
-    """Parse `<claude_dir>/plugins/installed_plugins.json`.
-
-    Raises CacheError -- a one-line message naming the file, no traceback --
-    when it is missing, unparseable, or not valid UTF-8."""
+def _read_registry_bytes(claude_dir: Path) -> bytes:
+    """The registry file's raw bytes, refusing anything but a regular file (a
+    FIFO would block the read forever; a directory or device is no registry)."""
     path = claude_dir / REGISTRY_REL_PATH
     try:
         mode = path.stat().st_mode
-    except OSError as exc:
+    except _RESOLVE_ERRORS as exc:
         raise CacheError(f"cannot read installed_plugins.json: {exc}") from exc
     if not stat.S_ISREG(mode):
-        # A FIFO would block the read forever; a directory or device is not a registry.
         raise CacheError(f"installed_plugins.json is not a regular file: {path}")
     try:
-        raw = path.read_bytes()
+        return path.read_bytes()
     except OSError as exc:
         raise CacheError(f"cannot read installed_plugins.json: {exc}") from exc
+
+
+def _parse_registry(raw: bytes) -> dict:
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
@@ -153,11 +177,24 @@ def load_registry(claude_dir: Path) -> dict:
         data = json.loads(text, object_pairs_hook=_reject_duplicate_keys)
     except _DuplicateKeyError as exc:
         raise CacheError(f"installed_plugins.json names a key twice: {exc}") from exc
-    except json.JSONDecodeError as exc:
-        raise CacheError(f"installed_plugins.json is not valid JSON: {exc}") from exc
+    except (ValueError, RecursionError) as exc:
+        # JSONDecodeError is a ValueError; so is an integer past Python's digit
+        # limit. Absurd nesting raises RecursionError. All are "not a registry".
+        raise CacheError(
+            f"installed_plugins.json is not valid JSON: {type(exc).__name__}: {str(exc)[:120]}"
+        ) from exc
     if not isinstance(data, dict):
         raise CacheError("installed_plugins.json does not contain a JSON object")
     return data
+
+
+def load_registry(claude_dir: Path) -> dict:
+    """Parse `<claude_dir>/plugins/installed_plugins.json`.
+
+    Raises CacheError -- a one-line message naming the file, no traceback --
+    when it is missing, not a regular file, not UTF-8, not JSON, absurdly
+    nested, or names a key twice."""
+    return _parse_registry(_read_registry_bytes(claude_dir))
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
@@ -173,10 +210,10 @@ def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
 
 def _identity(path: Path) -> Identity | None:
     """(st_dev, st_ino) of what `path` names, following symlinks; None if it
-    cannot be stat'd (missing, a loop, permission)."""
+    cannot be stat'd (missing, a loop, a NUL, permission)."""
     try:
         st = path.stat()
-    except (OSError, RuntimeError, ValueError):
+    except _RESOLVE_ERRORS:
         return None
     return (st.st_dev, st.st_ino)
 
@@ -194,83 +231,121 @@ def _all_entries(registry: dict) -> list[tuple[str, dict]]:
     return found
 
 
-def protected_identities(registry: dict, claude_dir: Path, cache_root: Path) -> set[Identity]:
-    """Everything any registry entry could mean as a live install, by identity.
-    Deliberately generous: a relative installPath is taken both against the
-    claude dir and the current directory, `~` is expanded, and an entry with
-    no installPath protects the directory its version would name. Protecting
-    too much only means a stale copy survives; protecting too little deletes a
-    live one."""
-    candidates: list[Path] = []
-    for key, entry in _all_entries(registry):
-        install_path = entry.get("installPath")
-        if isinstance(install_path, str) and install_path:
+def _interpretations(
+    entry_key: str, entry: dict, bases: list[Path], cache_root: Path
+) -> list[Path]:
+    """Every path an entry could mean. Deliberately generous: a relative
+    installPath is taken against every base, `~` is expanded, and an entry
+    with no installPath protects the directory its version would name."""
+    found: list[Path] = []
+    install_path = entry.get("installPath")
+    if isinstance(install_path, str) and install_path:
+        try:
             raw = Path(install_path)
             if install_path.startswith("~"):
-                candidates.append(raw.expanduser())
+                found.append(raw.expanduser())
             elif raw.is_absolute():
-                candidates.append(raw)
+                found.append(raw)
             else:
-                candidates.extend([claude_dir / raw, Path.cwd() / raw])
-        version = entry.get("version")
-        name = key.partition("@")[0]
-        if isinstance(version, str) and _safe_component(version) and _safe_component(name):
-            candidates.append(cache_root / name / version)
-    return {ident for p in candidates if (ident := _identity(p)) is not None}
+                found.extend(base / raw for base in bases)
+        except _RESOLVE_ERRORS:
+            pass
+    version = entry.get("version")
+    name = entry_key.partition("@")[0]
+    if _safe_component(version) and _safe_component(name):
+        found.append(cache_root / name / version)
+    return found
 
 
-def _live_entries_by_plugin(registry: dict, marketplace: str) -> dict[str, list[dict]]:
-    """Every entry (every scope) under `<plugin>@<marketplace>`, keyed by a
-    validated plugin name. A key naming another marketplace, or a plugin name
-    that is empty, `.`, `..`, or contains a path separator, is dropped here."""
-    by_plugin: dict[str, list[dict]] = {}
+def protected_for(registry: dict, claude_dir: Path, cache_root: Path) -> Protected:
+    """Everything any registry entry could mean as a live install. Protecting
+    too much only means a stale copy survives; protecting too little deletes a
+    live one. Relative installPaths are tried against the claude dir, the
+    registry's own directory, and the current directory."""
+    bases = [claude_dir, claude_dir / REGISTRY_REL_PATH.parent]
+    try:
+        bases.append(Path.cwd())
+    except OSError:
+        pass  # a deleted cwd is simply one base fewer
+    paths: set[Path] = set()
+    ids: set[Identity] = set()
+    for key, entry in _all_entries(registry):
+        for candidate in _interpretations(key, entry, bases, cache_root):
+            try:
+                resolved = candidate.resolve(strict=True)
+                st = resolved.stat()
+            except _RESOLVE_ERRORS:
+                continue
+            paths.add(resolved)
+            ids.add((st.st_dev, st.st_ino))
+    return Protected(paths=frozenset(paths), ids=frozenset(ids))
+
+
+def protected_identities(registry: dict, claude_dir: Path, cache_root: Path) -> set[Identity]:
+    """The identity half of `protected_for`, for callers that only compare ids."""
+    return set(protected_for(registry, claude_dir, cache_root).ids)
+
+
+def _own_entries(registry: dict, marketplace: str) -> dict[str, object]:
+    """The raw value under every `<plugin>@<marketplace>` key, by validated
+    plugin name. A key naming another marketplace, or a plugin name that is
+    not a safe path component, is dropped here."""
     plugins = registry.get("plugins")
     if not isinstance(plugins, dict):
-        return by_plugin
+        return {}
+    by_plugin: dict[str, object] = {}
     for key, entries in plugins.items():
         if not isinstance(key, str) or "@" not in key:
             continue
         name, _, mkt = key.partition("@")
-        if mkt != marketplace or not _safe_component(name):
-            continue
-        if not isinstance(entries, list):
-            continue
-        by_plugin.setdefault(name, []).extend(e for e in entries if isinstance(e, dict))
+        if mkt == marketplace and _safe_component(name):
+            by_plugin[name] = entries
     return by_plugin
 
 
-def _live_dir(entry: dict, cache_root: Path, plugin: str) -> tuple[Path | None, str | None]:
+def _version_fallback(version: object, plugin_dir: Path) -> tuple[Path | None, str]:
+    """An entry with no installPath: the directory its version names, for
+    doctor's display only -- the reason is always set, so prune skips it."""
+    if _safe_component(version):
+        try:
+            resolved = (plugin_dir / str(version)).resolve(strict=True)
+        except _RESOLVE_ERRORS:
+            return None, f"entry has no installPath and {version!r} is not cached"
+        if resolved.parent == plugin_dir and resolved.is_dir():
+            return resolved, "entry has no installPath"
+    return None, "entry has no installPath"
+
+
+def _live_dir(entry: object, cache_root: Path, plugin: str) -> tuple[Path | None, str | None]:
     """(live directory, why it is unusable) for one entry.
 
     The directory is the entry's installPath resolved on disk, and it must be
-    absolute, exist, and resolve to exactly `<cache_root>/<plugin>/<dir>`.
-    Anything else is returned as a reason instead, which makes the plugin's
-    liveness unknown -- prune then skips the plugin rather than guess. An
-    entry WITHOUT installPath names its `version` directory for doctor's
-    display (resolved, so a symlinked version dir is followed), but is still
-    unusable for prune: a version string never stands in for a path."""
+    absolute, exist, BE A DIRECTORY, and resolve to exactly
+    `<cache_root>/<plugin>/<dir>`. Anything else is returned as a reason
+    instead, which makes the plugin's liveness unknown -- prune then skips
+    the plugin rather than guess. An entry WITHOUT installPath names its
+    `version` directory for doctor's display (resolved, so a symlinked
+    version dir is followed), but is still unusable for prune: a version
+    string never stands in for a path."""
+    if not isinstance(entry, dict):
+        return None, f"registry entry is not an object: {entry!r}"[:160]
     install_path = entry.get("installPath")
     plugin_dir = cache_root / plugin
     if install_path is None or install_path == "":
-        version = entry.get("version")
-        if isinstance(version, str) and _safe_component(version):
-            try:
-                resolved = (plugin_dir / version).resolve(strict=True)
-            except (OSError, RuntimeError):
-                return None, f"entry has no installPath and {version!r} is not cached"
-            if resolved.parent == plugin_dir:
-                return resolved, "entry has no installPath"
-        return None, "entry has no installPath"
+        return _version_fallback(entry.get("version"), plugin_dir)
     if not isinstance(install_path, str):
-        return None, f"installPath is not a string: {install_path!r}"
-    if not Path(install_path).is_absolute():
-        return None, f"installPath is not absolute: {install_path}"
+        return None, f"installPath is not a string: {install_path!r}"[:160]
     try:
+        if not Path(install_path).is_absolute():
+            return None, f"installPath is not absolute: {install_path!r}"
         resolved = Path(install_path).resolve(strict=True)
-    except (OSError, RuntimeError):
-        return None, f"installPath does not exist: {install_path}"
+        is_dir = resolved.is_dir()
+    except _RESOLVE_ERRORS:
+        return None, f"installPath does not resolve: {install_path!r}"
     if resolved.parent != plugin_dir:
-        return None, f"installPath is outside {plugin_dir}: {install_path}"
+        return None, f"installPath is outside {plugin_dir}: {install_path!r}"
+    if not is_dir:
+        return None, f"installPath is not a directory: {install_path!r}"
     return resolved, None
 
 
@@ -314,15 +389,40 @@ class _World:
     live_map: dict[str, list[Path]]
     unusable: dict[str, str]
     cached_map: dict[str, list[Path]]
-    protected: set[Identity]
+    protected: Protected
 
 
-def cache_root_for(claude_dir: Path, marketplace_name: str) -> Path:
+def cache_root_for(claude_dir: Path, marketplace_name: object) -> Path:
     """`realpath(<claude_dir>/plugins/cache/<marketplace>)`. Raises CacheError
-    when the marketplace name could name anything but one directory."""
+    when the marketplace name could name anything but one directory, or the
+    path cannot be resolved."""
     if not _safe_component(marketplace_name):
         raise CacheError(f"unsafe marketplace name in marketplace.json: {marketplace_name!r}")
-    return (claude_dir / CACHE_REL_PATH / marketplace_name).resolve()
+    try:
+        return (claude_dir / CACHE_REL_PATH / str(marketplace_name)).resolve()
+    except _RESOLVE_ERRORS as exc:
+        raise CacheError(f"cannot resolve the plugin cache: {exc}") from exc
+
+
+def _plugin_liveness(
+    entries: object, cache_root: Path, plugin: str
+) -> tuple[list[Path], str | None]:
+    """(live dirs, why liveness is unknown). An installed plugin must PROVE a
+    live directory: an empty entry list, a non-list, or any entry that is not
+    usable leaves its liveness unknown."""
+    if not isinstance(entries, list) or not entries:
+        return [], "no usable registry entry"
+    dirs: list[Path] = []
+    why: str | None = None
+    for entry in entries:
+        live, reason = _live_dir(entry, cache_root, plugin)
+        if live is not None:
+            dirs.append(live)
+        if reason is not None and why is None:
+            why = reason
+    if why is None and not dirs:
+        why = "no live directory proven"
+    return dirs, why
 
 
 def _world(claude_dir: Path, marketplace_name: str) -> _World:
@@ -332,21 +432,17 @@ def _world(claude_dir: Path, marketplace_name: str) -> _World:
     registry = load_registry(claude_dir)
     live_map: dict[str, list[Path]] = {}
     unusable: dict[str, str] = {}
-    for plugin, entries in _live_entries_by_plugin(registry, marketplace_name).items():
-        dirs = []
-        for entry in entries:
-            live, why = _live_dir(entry, cache_root, plugin)
-            if live is not None:
-                dirs.append(live)
-            if why is not None and plugin not in unusable:
-                unusable[plugin] = why
+    for plugin, entries in _own_entries(registry, marketplace_name).items():
+        dirs, why = _plugin_liveness(entries, cache_root, plugin)
         live_map[plugin] = dirs
+        if why is not None:
+            unusable[plugin] = why
     return _World(
         cache_root=cache_root,
         live_map=live_map,
         unusable=unusable,
         cached_map=scan_cache(cache_root),
-        protected=protected_identities(registry, claude_dir, cache_root),
+        protected=protected_for(registry, claude_dir, cache_root),
     )
 
 
@@ -398,8 +494,9 @@ def build_prune_plan(
     marketplace -- keeping the `keep` newest. `skipped` names each installed
     plugin whose liveness is unknown, with why; nothing of it is planned. An
     uninstalled plugin's cache, and anything any registry entry names, is
-    never a candidate."""
+    never a candidate. Every row is bound to the cache root's identity."""
     world = _world(claude_dir, marketplace_name)
+    root_id = _identity(world.cache_root)
     plan: list[RemovalPlan] = []
     skipped: list[tuple[str, str]] = []
     for plugin in sorted(world.live_map):
@@ -407,33 +504,127 @@ def build_prune_plan(
             skipped.append((plugin, world.unusable[plugin]))
             continue
         non_live = sorted(
-            (p for p in world.cached_map.get(plugin, []) if _identity(p) not in world.protected),
+            (
+                p
+                for p in world.cached_map.get(plugin, [])
+                if _identity(p) not in world.protected.ids
+            ),
             key=lambda p: version_key(p.name),
         )
         stale = non_live[:-keep] if keep > 0 else list(non_live)
-        plan.extend(RemovalPlan(plugin=plugin, version=p.name, path=p) for p in stale)
+        plan.extend(
+            RemovalPlan(plugin=plugin, version=p.name, path=p, root_id=root_id) for p in stale
+        )
     return plan, skipped
 
 
-def _refusal(item: RemovalPlan, cache_root: Path, protected: set[Identity]) -> str | None:
-    """Why `item` must not be removed right now, or None. Checked on the live
+def _mount_points() -> list[Path]:
+    """Every mount point this process can see (Linux), bind mounts included --
+    a same-filesystem bind mount shares st_dev with its parent, so comparing
+    devices alone cannot find it. Empty where /proc is unavailable."""
+    try:
+        text = Path("/proc/self/mountinfo").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    points = []
+    for line in text.splitlines():
+        fields = line.split(" ")
+        if len(fields) > 4:
+            points.append(Path(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), fields[4])))
+    return points
+
+
+def _nesting_refusal(target: Path, protected: Protected) -> str | None:
+    """A registry entry naming the target, something inside it, or a directory
+    above it (other than its own plugin dir) makes it off-limits."""
+    for live in protected.paths:
+        if live == target or target in live.parents:
+            return f"a registry entry names {live} inside it"
+        if live in target.parents and live != target.parent:
+            return f"a registry entry names {live}, which contains it"
+    for mount in _mount_points():
+        if mount == target or target in mount.parents:
+            return f"{mount} is a mount point inside it"
+    return None
+
+
+def _contents_refusal(target: Path, protected: Protected) -> str | None:
+    """Refuse a target whose subtree holds something live or crosses a mount:
+    `rmtree` would delete a nested live install along with its parent, and it
+    walks straight into a mount point. Walks without following symlinks."""
+    why = _nesting_refusal(target, protected)
+    if why is not None:
+        return why
+    try:
+        root_dev = target.lstat().st_dev
+    except OSError as exc:
+        return f"cannot stat {target}: {exc}"
+    for dirpath, dirnames, filenames in target.walk():
+        for name in dirnames + filenames:
+            try:
+                st = (dirpath / name).lstat()
+            except OSError as exc:
+                return f"cannot stat {dirpath / name}: {exc}"
+            if st.st_dev != root_dev:
+                return f"{dirpath / name} is on another device"
+            if (st.st_dev, st.st_ino) in protected.ids:
+                return f"{dirpath / name} is live"
+    return None
+
+
+def _refusal(
+    item: RemovalPlan, cache_root: Path, protected: Protected
+) -> tuple[str | None, tuple[Identity, Identity] | None]:
+    """(why `item` must not be removed right now, or None; the (plugin dir,
+    version dir) identities that were verified). Checked on the live
     filesystem, never on what the plan believed."""
     if not (_safe_component(item.plugin) and _safe_component(item.version)):
-        return "unsafe plugin or version name"
+        return "unsafe plugin or version name", None
+    if item.root_id is not None and _identity(cache_root) != item.root_id:
+        return "the cache root changed since planning", None
     plugin_dir = cache_root / item.plugin
     target = plugin_dir / item.version
+    ids: list[Identity] = []
     for step in (plugin_dir, target):
         try:
-            mode = step.lstat().st_mode
+            st = step.lstat()
         except OSError:
-            return f"{step} is gone"
-        if stat.S_ISLNK(mode) or not stat.S_ISDIR(mode):
-            return f"{step} is not a real directory"
+            return f"{step} is gone", None
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+            return f"{step} is not a real directory", None
+        ids.append((st.st_dev, st.st_ino))
     if target.resolve() != target or Path(item.path).resolve() != target:
-        return f"{item.path} does not resolve to {target}"
-    if _identity(target) in protected:
-        return "a registry entry names it live"
-    return None
+        return f"{item.path} does not resolve to {target}", None
+    if ids[1] in protected.ids:
+        return "a registry entry names it live", None
+    why = _contents_refusal(target, protected)
+    if why is not None:
+        return why, None
+    return None, (ids[0], ids[1])
+
+
+def _remove_verified(cache_root: Path, item: RemovalPlan, ids: tuple[Identity, Identity]) -> None:
+    """Remove `<cache_root>/<plugin>/<version>` through directory fds opened
+    with O_NOFOLLOW and checked against the identities `_refusal` verified, so
+    a plugin dir swapped for a symlink after the check is never followed.
+    `shutil.rmtree(..., dir_fd=)` then removes the version dir relative to
+    that verified fd without following symlinks inside it."""
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    root_fd = os.open(cache_root, flags)
+    try:
+        plugin_fd = os.open(item.plugin, flags, dir_fd=root_fd)
+        try:
+            pst = os.fstat(plugin_fd)
+            if (pst.st_dev, pst.st_ino) != ids[0]:
+                raise OSError(f"refused: {item.plugin} changed after it was checked")
+            vst = os.stat(item.version, dir_fd=plugin_fd, follow_symlinks=False)
+            if not stat.S_ISDIR(vst.st_mode) or (vst.st_dev, vst.st_ino) != ids[1]:
+                raise OSError(f"refused: {item.version} changed after it was checked")
+            shutil.rmtree(item.version, dir_fd=plugin_fd)
+        finally:
+            os.close(plugin_fd)
+    finally:
+        os.close(root_fd)
 
 
 def apply_prune(
@@ -441,25 +632,39 @@ def apply_prune(
 ) -> tuple[list[RemovalPlan], list[tuple[RemovalPlan, str]]]:
     """Remove every planned directory that still proves safe to remove.
 
-    Trusts nothing the plan computed: the registry is re-read, and the cache
-    root and protected set are re-derived, then each path is re-proved
-    immediately before its removal (see `_refusal`). A path already gone is
-    skipped -- not removed, not a failure. Returns (removed, failures); the
-    caller decides the exit code from `failures`. Raises CacheError if the
-    registry has become unreadable."""
-    cache_root = cache_root_for(claude_dir, marketplace_name)
+    Trusts nothing the plan computed: before EACH removal the registry is
+    re-read (and the protected set re-derived whenever its bytes changed), the
+    cache root is checked against the identity the plan was bound to, and the
+    path is re-proved (see `_refusal`); removal then goes through verified
+    directory fds (see `_remove_verified`). A path already gone is skipped --
+    not removed, not a failure. If the registry becomes unreadable mid-run,
+    every remaining item fails with that reason and what was already removed
+    is still returned. Returns (removed, failures)."""
     removed: list[RemovalPlan] = []
     failures: list[tuple[RemovalPlan, str]] = []
-    for item in plan:
+    try:
+        cache_root = cache_root_for(claude_dir, marketplace_name)
+    except CacheError as exc:
+        return removed, [(item, f"refused: {exc}") for item in plan]
+    seen: bytes | None = None
+    protected = Protected(paths=frozenset(), ids=frozenset())
+    for index, item in enumerate(plan):
         if not item.path.exists() and not item.path.is_symlink():
             continue
-        registry = load_registry(claude_dir)
-        why = _refusal(item, cache_root, protected_identities(registry, claude_dir, cache_root))
-        if why is not None:
+        try:
+            raw = _read_registry_bytes(claude_dir)
+            if raw != seen:
+                protected = protected_for(_parse_registry(raw), claude_dir, cache_root)
+                seen = raw
+        except CacheError as exc:
+            failures.extend((rest, f"refused: {exc}") for rest in plan[index:])
+            break
+        why, ids = _refusal(item, cache_root, protected)
+        if why is not None or ids is None:
             failures.append((item, f"refused: {why}"))
             continue
         try:
-            shutil.rmtree(item.path)
+            _remove_verified(cache_root, item, ids)
         except OSError as exc:
             failures.append((item, str(exc)))
         else:
