@@ -400,6 +400,10 @@ jobs:
           python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
           python3 plugins/arbeitsplan/scripts/handoff.py --selftest
           python3 plugins/arbeitsplan/scripts/build_design_html.py --selftest
+          # The runtime probe's oracles, planted both ways, with sabotage. The
+          # probe itself spends tokens and runs by hand (ADR 0004); CI proves
+          # the instrument, never the runtime.
+          python3 plugins/arbeitsplan/scripts/probe_runtime.py --selftest
           # Authored step scripts end to end, one language at a time -- bash,
           # pwsh, ruby, node, python all ship on ubuntu runners, so a skipped
           # language here is a failure, not a pass.
