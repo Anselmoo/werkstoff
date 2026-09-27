@@ -322,6 +322,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'arbeitsplan build findings', link: '/arbeitsplan-findings' },
+          { text: 'ADR 0001: arbeitsplan scope', link: '/decisions/0001-arbeitsplan-scope-boundaries' },
           { text: 'Plugin rebuild findings', link: '/plugin-rebuild-findings' },
           { text: 'Prompt-quality findings', link: '/prompt-quality-findings' },
           { text: 'Benchmark plan', link: '/plugin-benchmark-plan' },
