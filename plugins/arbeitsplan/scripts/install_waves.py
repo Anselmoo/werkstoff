@@ -10,6 +10,11 @@ design table, not a new script -- the interpreter is the same pinned copy.
 
   .claude/workflows/<name>.js         workflows/waves.js, pinned and stamped
   .claude/workflows/<name>.plan.json  the validated design + what the interpreter needs
+  .claude/workflows/<name>.md         the runbook, for PEOPLE: launch, resume, approve,
+                                      re-verify, the node table. Claude Code treats only
+                                      `.js` here as a workflow and ignores this file; the
+                                      tooling runs without werkstoff, so it carries its own
+                                      manual. Byte-identical for an identical design
   .claude/workflows/<name>_state.py   the state/merge/gate helper (waves_state.py)
   .claude/workflows/<name>.steps/     one SKELETON per authored step (assets/step-templates),
                                       in its runtime's language; the plan's author agent
@@ -143,6 +148,113 @@ def append_lines(path: Path, lines: list, dry: bool) -> list:
     return new
 
 
+def _cell(value: object) -> str:
+    text = " ".join(str(value).split()) if value not in (None, "", []) else "—"
+    return text.replace("|", "\\|")
+
+
+def runbook(design: dict, python: list, stamp: str) -> str:
+    """The generated tooling's manual, derived from the design alone -- no clock,
+    no path of this machine but the interpreter the commands already carry."""
+    name = design["name"]
+    py = " ".join(shlex.quote(a) for a in python)
+    helper = f"{py} .claude/workflows/{name}_state.py"
+    nodes = plan_of(design, python)["nodes"]  # the commands as INSTALLED, interpreter resolved
+    integ = design.get("integration") or {}
+    steps = waves_state.authored_nodes(design)
+    rows = []
+    for n in nodes:
+        sc = n.get("script") or {}
+        runs = (f"`{sc['command']}`" if sc.get("command")
+                else ", ".join(f"`{st['command']}`" for st in (n.get("steps") or n.get(
+                    "acceptance") or [])) or n.get("skip") or "")
+        rows.append(f"| {_cell(n['id'])} | {_cell(n.get('kind'))} | {_cell(n.get('wave'))} | "
+                    f"{_cell(n.get('where'))} | {_cell(', '.join(n.get('depends_on') or []))} | "
+                    f"{_cell(n.get('model'))} | {_cell(', '.join(n.get('writeScope') or []))} | "
+                    f"{_cell(runs)} |")
+    out = [
+        f"<!-- {stamp} -- generated from the design; edit the design and re-install, not this -->",
+        f"# {name} — multi-wave plan",
+        "",
+        f"Installed by werkstoff's `arbeitsplan` from design run `{design['runId']}` "
+        f"(sha256 `{design_spec.design_hash(design)}`). **Everything here runs without "
+        "werkstoff.** Claude Code treats only `.js` files in this directory as workflows; this "
+        "file is for the people who own the tooling.",
+        "",
+        "## Files",
+        "",
+        "| file | what it is |",
+        "|---|---|",
+        f"| `.claude/workflows/{name}.js` | the pinned wave interpreter (a Workflow script) |",
+        f"| `.claude/workflows/{name}.plan.json` | the validated design it executes |",
+        f"| `.claude/workflows/{name}_state.py` | state, merge, gate and verify helper "
+        "(Python >= 3.10, stdlib only) |",
+        f"| `.claude/workflows/{name}.state.json` | the run's state (gitignored) |",
+        f"| `.claude/hooks/{name}_guard.py` | the path, runner and author guard every generated "
+        "agent carries |",
+        f"| `.claude/agents/{name}-*.md` | one agent file per agent type |",
+        *([f"| `.claude/workflows/{name}.steps/` | authored step scripts (gitignored, pinned "
+           "by hash) |"] if steps else []),
+        "",
+        "## Run it",
+        "",
+        "1. After an install that added agent types, **start a fresh session**: agent types "
+        "added mid-session do not resolve.",
+        "2. From the **primary checkout**, never a linked worktree, read the state:",
+        "",
+        "   ```bash",
+        f"   {helper} show",
+        "   ```",
+        "",
+        f"3. Launch the Workflow tool with `scriptPath: .claude/workflows/{name}.js` and "
+        f"`args: {{plan: <the parsed {name}.plan.json>, state: <the output above>}}`, both as "
+        "objects. Relaunching with a fresh `show` is the whole resume: finished waves, "
+        "recorded builders and verified steps are skipped.",
+        "",
+        "## When it stops",
+        "",
+        "| result | do |",
+        "|---|---|",
+        f"| `pending_human_gate: <id>` | approve between runs: `{helper} approve --gate <id>`, "
+        "then relaunch |",
+        "| a red gate | read `findings` (`primary-only` = only the primary checkout's untracked "
+        "or ignored files produced it) and the `kept` worktrees. Do not merge by hand |",
+        "| `WRONG BASE`, `PRIMARY CHECKOUT ONLY` | relaunch from the primary checkout |",
+        "| `SCRIPT CONTRACT` | a declared command exited unexpectedly or broke its schema |",
+        *([f"| `AUTHOR CONTRACT` | an authored step failed verification after its retries; "
+           f"re-check by hand with `{helper} verify-step --node <id>` |"] if steps else []),
+        "",
+        "## Nodes",
+        "",
+        "| node | kind | wave | where | after | model | writes | runs |",
+        "|---|---|---|---|---|---|---|---|",
+        *rows,
+        "",
+        f"Waves merge into `{integ.get('branch')}`; `{integ.get('target')}` moves only after a "
+        "green gate. Gates, run in the primary checkout and in a clean worktree: "
+        + ", ".join(f"`{g['command']}`" for g in design.get("gates") or []) + ".",
+    ]
+    if steps:
+        out += ["", "## Authored steps", "",
+                "Written by the plan's author agent on the first launch, then verified: syntax, "
+                "the sample in a scratch worktree, stdout against the node's schema. The guard "
+                "refuses to run a step whose file or contract changed since.", "",
+                "| node | language | file | sample |", "|---|---|---|---|"]
+        for n in steps:
+            sc = n["script"]
+            out.append(f"| {_cell(n['id'])} | {_cell(sc['runtime'])} | "
+                       f"`{waves_state.step_path(name, n['id'], sc['runtime'])}` | "
+                       f"`{' '.join(sc['author']['sample'].get('args') or []) or '(no args)'}` |")
+    out += ["", "## See it", "",
+            "With werkstoff installed, `arbeitsplan`'s `build_design_html.py` renders this plan "
+            "as a graph, with the state overlaid:", "", "```bash",
+            f"{helper} show > {name}.show.json",
+            f"python3 <werkstoff>/plugins/arbeitsplan/scripts/build_design_html.py "
+            f"--design .claude/workflows/{name}.plan.json --state {name}.show.json "
+            f"--out {name}-design.html", "```", ""]
+    return "\n".join(out)
+
+
 def stub_text(design: dict, node: dict, python: list) -> str:
     """The skeleton for one authored step, filled with its contract. Every value
     lands in a comment or a plain string literal; the purpose is flattened to
@@ -200,6 +312,7 @@ def install(design: dict, root: Path, python: list, artifact: bool, dry: bool) -
           + js[end:], name, written, dry)
     write(wf / f"{name}.plan.json", json.dumps({**plan_of(design, python), "_stamp": stamp},
                                                indent=2) + "\n", name, written, dry)
+    write(wf / f"{name}.md", runbook(design, python, stamp), name, written, dry)
     write(wf / f"{name}_state.py", stamped((HERE / "waves_state.py").read_text(encoding="utf-8"),
                                            stamp, "#"), name, written, dry)
     write(hooks / f"{name}_guard.py", stamped((HERE / "waves_guard.py").read_text(
@@ -324,7 +437,22 @@ def selftest() -> int:
               and ".claude/workflows/rebuild-cli.runner/\r\n" in gi, repr(gi))
         check("--artifact export-ignores the generated tooling", "export-ignore" in (
             root / ".gitattributes").read_text())
+        book = (wf / "rebuild-cli.md").read_text()
+        check("the runbook is written next to the interpreter, stamped, for people",
+              book.startswith(f"<!-- {STAMP}:rebuild-cli") and "runs without werkstoff" in book
+              and "only `.js` files in this directory as workflows" in book, book[:300])
+        check("the runbook's commands carry the resolved interpreter, the node table too",
+              f"{shlex.quote(sys.executable)} .claude/workflows/rebuild-cli_state.py show" in book
+              and "approve --gate <id>" in book and "`python3 .claude" not in book)
+        check("the runbook shows a smoke node's declared steps", "`go run ./cmd/tool --help`"
+              in book, book)
+        check("the runbook's node table has a row for every node",
+              all(f"| {n['id']} |" in book for n in design["nodes"]), book)
+        check("a design without authored steps gets no authored-steps section",
+              "## Authored steps" not in book and "AUTHOR CONTRACT" not in book)
         again = install(design, root, py, artifact=True, dry=False)
+        check("re-install writes a byte-identical runbook", (wf / "rebuild-cli.md").read_text()
+              == book)
         check("re-install is idempotent: no line appended twice",
               not again["gitignore"] and not again["gitattributes"]
               and (root / ".gitignore").read_text().count("rebuild-cli.state.json") == 1)

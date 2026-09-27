@@ -140,6 +140,10 @@ def run_case(runtime: str, check) -> None:
         check(f"{tag} install writes the skeleton with the stub marker",
               step.is_file() and waves_state.STUB_MARKER in step.read_text()
               and str(step) in res["steps"]["written"], res["steps"])
+        book = (wf / "rebuild-cli.md").read_text()
+        check(f"{tag} the runbook lists the authored step, its language and its file",
+              "## Authored steps" in book and f"| api-surface | {runtime} |" in book
+              and step.name in book, book[-600:])
         check(f"{tag} the steps directory is gitignored",
               ".claude/workflows/rebuild-cli.steps/" in (root / ".gitignore").read_text())
         check(f"{tag} the plan names the author agent and the verify template",
