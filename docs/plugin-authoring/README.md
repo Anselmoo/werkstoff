@@ -50,7 +50,8 @@ structure" pattern the craft rules below argue against.
   this before arguing about a finding in `docs/prompt-quality-findings.md`, and change it
   (not the finder) when a rule is wrong.
 - [`references/report-viewer-standard.md`](references/report-viewer-standard.md) — the
-  rules for the 13 self-contained HTML reports (one per plugin, two for `matrize`) under
+  rules for the 14 self-contained HTML reports (one per plugin, two for `matrize` and `arbeitsplan`)
+  under
   `plugins/*/assets/*-viewer.html`: state the verdict in words, never print a number
   twice, an actionable number must not look inert, colour is never the only channel,
   height derives from content — plus the required `<head>`, the three legitimate page
