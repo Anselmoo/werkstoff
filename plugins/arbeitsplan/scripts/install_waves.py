@@ -11,11 +11,16 @@ design table, not a new script -- the interpreter is the same pinned copy.
   .claude/workflows/<name>.js         workflows/waves.js, pinned and stamped
   .claude/workflows/<name>.plan.json  the validated design + what the interpreter needs
   .claude/workflows/<name>_state.py   the state/merge/gate helper (waves_state.py)
+  .claude/workflows/<name>.steps/     one SKELETON per authored step (assets/step-templates),
+                                      in its runtime's language; the plan's author agent
+                                      fills it on first launch, verify-step pins its hash.
+                                      Gitignored: local tooling, never a dirty checkout
   .claude/hooks/<name>_guard.py       the path and runner guard (waves_guard.py)
   .claude/agents/<agentType>.md       one per agent type the design names under <name>-,
                                       plus <name>-runner; each with model, maxTurns, tools
                                       and the guard in its frontmatter `hooks:`
-  .gitignore                          state, state.tmp and the runner ledger, appended once
+  .gitignore                          state, state.tmp, the runner and author ledgers and
+                                      the steps directory, appended once
   .gitattributes                      export-ignore lines, with --artifact only
 
 THE ONE PREREQUISITE is a Python >= 3.10 for the helper and the guard. It is
@@ -42,6 +47,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import design_spec  # the same validator compile_spec.py --design runs
+import waves_state  # AUTHORABLE, STUB_MARKER, step_path: what verify-step will check
 from agent_gen import STAMP, agent_file, agent_types  # one generator, shared with handoff.py
 
 HERE = Path(__file__).resolve().parent
@@ -91,11 +97,17 @@ def plan_of(design: dict, python: list) -> dict:
         sc = n.get("script")
         if isinstance(sc, dict) and isinstance(sc.get("command"), str):
             argv = sc["command"].split()
-            if len(argv) > 1 and argv[1] == helper and argv[0].startswith("python"):
+            ours = argv[1:2] == [helper] or (
+                isinstance(sc.get("author"), dict) and sc.get("runtime") == "python"
+                and argv[1:2] == [waves_state.step_path(name, n["id"], "python")])
+            if ours and argv[0].startswith("python"):
                 sc["command"] = " ".join([py, *argv[1:]])
     plan["runnerAgent"] = f"{name}-runner"
     plan["helper"] = {"record": f"{py} {helper} record --row {{row}} --branch {{branch}} "
                                 "--base {base}"}
+    if waves_state.authored_nodes(plan):
+        plan["authorAgent"] = f"{name}-author"
+        plan["helper"]["verify"] = f"{py} {helper} verify-step --node {{node}}"
     plan["installed"] = {"by": STAMP, "version": plugin_version(), "python": python}
     return plan
 
@@ -131,6 +143,43 @@ def append_lines(path: Path, lines: list, dry: bool) -> list:
     return new
 
 
+def stub_text(design: dict, node: dict, python: list) -> str:
+    """The skeleton for one authored step, filled with its contract. Every value
+    lands in a comment or a plain string literal; the purpose is flattened to
+    one line so it cannot close a comment early."""
+    sc = node["script"]
+    author = sc["author"]
+    tpl = (PLUGIN / "assets" / "step-templates"
+           / f"step.{waves_state.AUTHORABLE[sc['runtime']]['ext']}").read_text(encoding="utf-8")
+    py = " ".join(shlex.quote(a) for a in python)
+    fills = {"NODE": node["id"], "PLAN": design["name"],
+             "PURPOSE": " ".join(str(author.get("purpose") or "").split()),
+             "EXITS": json.dumps(sc.get("expectExit")),
+             "SAMPLE": json.dumps((author.get("sample") or {}).get("args", [])),
+             "HELPER": f"{py} .claude/workflows/{design['name']}_state.py"}
+    for key, val in fills.items():
+        tpl = tpl.replace("{{" + key + "}}", val)
+    return tpl
+
+
+def write_stubs(design: dict, root: Path, python: list, dry: bool) -> dict:
+    """A missing step, or one that is still a stub, gets a fresh skeleton. An
+    AUTHORED step is never overwritten -- stamped or not, it is somebody's work,
+    and its hash is what verify-step pinned."""
+    written, kept = [], []
+    for n in waves_state.authored_nodes(design):
+        path = root / waves_state.step_path(design["name"], n["id"], n["script"]["runtime"])
+        if path.is_file() and waves_state.STUB_MARKER not in path.read_text(
+                encoding="utf-8", errors="replace"):
+            kept.append(str(path))
+            continue
+        written.append(str(path))
+        if not dry:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(stub_text(design, n, python), encoding="utf-8", newline="\n")
+    return {"written": written, "kept": kept}
+
+
 def install(design: dict, root: Path, python: list, artifact: bool, dry: bool) -> dict:
     errors, _w = design_spec.validate_design(design)
     if errors:
@@ -159,14 +208,16 @@ def install(design: dict, root: Path, python: list, artifact: bool, dry: bool) -
     for at, spec in sorted(types.items()):
         write(agents / f"{at}.md", agent_file(name, at, spec, python), name, written, dry)
 
+    steps = write_stubs(design, root, python, dry)
     ignored = append_lines(root / ".gitignore", [
         f".claude/workflows/{name}.state.json", f".claude/workflows/{name}.state.tmp",
-        f".claude/workflows/{name}.runner/"], dry)
+        f".claude/workflows/{name}.runner/", f".claude/workflows/{name}.author/",
+        f".claude/workflows/{name}.steps/"], dry)
     exported = append_lines(root / ".gitattributes", [
         f".claude/workflows/{name}* export-ignore", f".claude/hooks/{name}_guard.py export-ignore",
         *[f".claude/agents/{at}.md export-ignore" for at in sorted(types)]], dry) if artifact else []
     return {"written": written, "agents": sorted(types), "gitignore": ignored,
-            "gitattributes": exported, "python": python}
+            "gitattributes": exported, "python": python, "steps": steps}
 
 
 def notice(result: dict, name: str) -> str:
@@ -174,6 +225,11 @@ def notice(result: dict, name: str) -> str:
         f"installed {len(result['written'])} file(s) for {name} "
         f"(python: {' '.join(result['python'])})",
         *[f"  {p}" for p in result["written"]],
+        "",
+        *(["authored step skeleton(s) -- the Author phase fills them on the first launch:",
+           *[f"  {p}" for p in result["steps"]["written"]]] if result["steps"]["written"] else []),
+        *([f"authored step(s) kept as written: {', '.join(result['steps']['kept'])}"]
+          if result["steps"]["kept"] else []),
         "",
         "START A FRESH SESSION before launching. Agent types added to .claude/agents/ in the",
         "middle of a session do not resolve in agent() -- the run would dispatch to nothing:",

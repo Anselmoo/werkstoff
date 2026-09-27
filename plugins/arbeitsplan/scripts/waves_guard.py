@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PreToolUse guard for the agents an arbeitsplan multi-wave install generates (#106 R10).
 
-usage: <name>_guard.py --paths | --runner | --selftest   (hook event JSON on stdin)
+usage: <name>_guard.py --paths | --runner | --author | --selftest   (hook event JSON on stdin)
 
 VENDORED. install_waves.py copies this file into a project as
 .claude/hooks/<name>_guard.py and wires it into every generated agent's
@@ -22,7 +22,16 @@ only how the hook command finds this file.
   --runner  Bash, for the generated runner agent only: the command must match a
             declared template exactly ({placeholder} slots take ids, branch names
             and paths only), and a dispatch runs ONE command -- an O_EXCL ledger
-            keyed on the hook input's agent_id denies a second.
+            keyed on the hook input's agent_id denies a second. When the matched
+            command runs an AUTHORED step, the step file's sha256 and its node's
+            contract must equal what `<name>_state.py verify-step` recorded: an
+            edited, re-planned or never-verified step is denied. This hash --
+            not offLimits -- is what protects an authored step, because an agent
+            with Bash can write around any Edit hook.
+  --author  Write/Edit/MultiEdit/NotebookEdit, for the generated author agent
+            only: the target must be one of the plan's step files, and one
+            dispatch writes ONE of them -- the first path it writes is pinned in
+            an O_EXCL ledger keyed on agent_id.
 
 Protocol: deny = exit 2 + stdout JSON (hookEventName, permissionDecision,
 permissionDecisionReason) + the reason on stderr; allow = exit 0, no output.
@@ -49,6 +58,10 @@ EDIT_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 SAFE_VALUE = r"[A-Za-z0-9._/,=:@+-]+"
 PLACEHOLDER = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 ESCAPE = "Set ARBEITSPLAN_WAVES_DISABLE_GUARD=1 to bypass it deliberately."
+# waves_state.AUTHORABLE's extensions and contract_digest, restated: this file is
+# vendored alone and imports nothing of the helper's. test_authored_steps.py
+# proves both copies agree.
+STEP_EXT = {"shell": "sh", "powershell": "ps1", "ruby": "rb", "node": "mjs", "python": "py"}
 
 
 def deny(reason: str) -> NoReturn:
@@ -67,6 +80,49 @@ def allow() -> NoReturn:
 def plan_file() -> Path:
     here = Path(__file__).resolve()
     return here.parent.parent / "workflows" / (here.stem.removesuffix("_guard") + ".plan.json")
+
+
+def project_root() -> Path:
+    """.claude/hooks/<name>_guard.py -> the project root, from THIS file."""
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def contract_digest(node: dict) -> str:
+    sc = node.get("script") or {}
+    body = {"command": sc.get("command"), "expectExit": sc.get("expectExit"),
+            "parse": sc.get("parse"), "runtime": sc.get("runtime"), "author": sc.get("author"),
+            "output_schema": node.get("output_schema")}
+    canon = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
+def authored(plan: dict) -> list:
+    """(node, repo-relative step path) for every authored step in the plan."""
+    out = []
+    for n in plan.get("nodes") or []:
+        sc = n.get("script") if isinstance(n, dict) else None
+        if isinstance(sc, dict) and isinstance(sc.get("author"), dict) \
+                and sc.get("runtime") in STEP_EXT:
+            out.append((n, f".claude/workflows/{plan.get('name')}.steps/{n.get('id')}."
+                           f"{STEP_EXT[sc['runtime']]}"))
+    return out
+
+
+def pin_once(ledger: Path, agent_id: str, value: str, what: str) -> None:
+    """O_EXCL: the first call per agent_id records `value`; a later call with a
+    different value is denied. Returns only when the call may proceed."""
+    ledger.mkdir(parents=True, exist_ok=True)
+    entry = ledger / (hashlib.sha256(agent_id.encode()).hexdigest()[:32] + ".json")
+    try:
+        fd = os.open(entry, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError:
+        prior = json.loads(entry.read_text(encoding="utf-8")).get("value")
+        if prior != value:
+            deny(f"arbeitsplan-waves: this dispatch already {what} {prior!r}; one dispatch, one "
+                 f"{what.split()[-1]}. {ESCAPE}")
+        return
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        json.dump({"agent_id": agent_id, "value": value}, fh)
 
 
 def casefolds() -> bool:
@@ -172,6 +228,22 @@ def check_runner(event: dict, plan: dict) -> NoReturn:
     if not isinstance(agent_id, str) or not agent_id:
         deny(f"arbeitsplan-waves: a runner call without agent_id cannot be held to one command. "
              f"{ESCAPE}")
+    for node, rel in authored(plan):
+        if not template_regex(node["script"]["command"]).fullmatch(cmd.strip()):
+            continue
+        spath = plan_file().with_suffix("").with_suffix(".state.json")
+        rec = (json.loads(spath.read_text(encoding="utf-8")) if spath.is_file() else {}) \
+            .get("steps", {}).get(node.get("id"))
+        step = project_root() / rel
+        if not rec:
+            deny(f"arbeitsplan-waves: authored step {rel!r} was never verified; run the plan's "
+                 f"verify-step for node {node.get('id')!r} first. {ESCAPE}")
+        if not step.is_file() or hashlib.sha256(step.read_bytes()).hexdigest() != rec.get("sha256"):
+            deny(f"arbeitsplan-waves: authored step {rel!r} changed since it was verified; "
+                 f"re-verify it (or re-author it) before it runs. {ESCAPE}")
+        if rec.get("contract") != contract_digest(node):
+            deny(f"arbeitsplan-waves: node {node.get('id')!r}'s contract changed since its step "
+                 f"was verified; the step is stale. {ESCAPE}")
     ledger = plan_file().with_suffix("").with_suffix(".runner")
     ledger.mkdir(parents=True, exist_ok=True)
     entry = ledger / (hashlib.sha256(agent_id.encode()).hexdigest()[:32] + ".json")
@@ -184,6 +256,35 @@ def check_runner(event: dict, plan: dict) -> NoReturn:
     allow()
 
 
+def check_author(event: dict, plan: dict) -> NoReturn:
+    if event.get("tool_name") not in EDIT_TOOLS:
+        deny(f"arbeitsplan-waves: the author only writes its step file. {ESCAPE}")
+    targets = edit_targets(event.get("tool_input") or {})
+    if not targets:
+        deny(f"arbeitsplan-waves: an edit with no determinable path cannot be checked. {ESCAPE}")
+    agent_id = event.get("agent_id")
+    if not isinstance(agent_id, str) or not agent_id:
+        deny(f"arbeitsplan-waves: an author call without agent_id cannot be held to one file. "
+             f"{ESCAPE}")
+    root = project_root()
+    fold = casefolds()
+
+    def key(path: str) -> str:
+        return path.lower() if fold else path
+
+    steps = {key(os.path.normpath(str(root / rel))): rel for _n, rel in authored(plan)}
+    cwd = event.get("cwd") or str(root)
+    for raw in targets:
+        # Lexical, like --paths: resolve() would follow a symlink out of the steps dir.
+        abs_path = os.path.normpath(raw if Path(raw).is_absolute() else str(Path(cwd) / raw))
+        rel = steps.get(key(abs_path))
+        if rel is None:
+            deny(f"arbeitsplan-waves: the author may write only a declared step file "
+                 f"({sorted(steps.values())}); {raw!r} is not one. {ESCAPE}")
+        pin_once(plan_file().with_suffix("").with_suffix(".author"), agent_id, rel, "wrote step")
+    allow()
+
+
 def main(argv: list) -> NoReturn:
     import argparse
 
@@ -192,6 +293,7 @@ def main(argv: list) -> NoReturn:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--paths", action="store_true", help="judge an edit against offLimits")
     group.add_argument("--runner", action="store_true", help="judge the runner's Bash call")
+    group.add_argument("--author", action="store_true", help="judge the author's one write")
     group.add_argument("--selftest", action="store_true", help="run the selftest")
     try:
         args = parser.parse_args(argv)
@@ -200,16 +302,16 @@ def main(argv: list) -> NoReturn:
              f"has; refusing rather than allowing the call unchecked. {ESCAPE}")
     if args.selftest:
         sys.exit(selftest())
-    mode = "--paths" if args.paths else "--runner"
+    mode = "--paths" if args.paths else "--author" if args.author else "--runner"
     if os.environ.get("ARBEITSPLAN_WAVES_DISABLE_GUARD") == "1":
         allow()
     try:
-        if mode not in ("--paths", "--runner"):
-            raise ValueError(f"unknown mode {mode!r}")
         event = json.load(sys.stdin)
         plan = json.loads(plan_file().read_text(encoding="utf-8"))
         if mode == "--paths":
             check_paths(event, plan)
+        if mode == "--author":
+            check_author(event, plan)
         check_runner(event, plan)
     except SystemExit:
         raise
@@ -231,10 +333,28 @@ def selftest() -> int:
         wf.mkdir(parents=True)
         guard = hooks / "demo_guard.py"
         guard.write_text(Path(__file__).read_text(encoding="utf-8"), encoding="utf-8")
-        (wf / "demo.plan.json").write_text(json.dumps({
-            "offLimits": ["secrets/**", "*.pem"],
-            "nodes": [{"id": "g", "script": {"command": "python3 x_state.py merge --wave {wave}"}}],
-            "helper": {"record": "python3 x_state.py record --row {row}"}}))
+        steps = wf / "demo.steps"
+        steps.mkdir()
+        author = {"model": "sonnet", "purpose": "p", "sample": {"args": [], "expectExit": [0]}}
+        schema = {"type": "object", "additionalProperties": False, "properties": {}}
+
+        def step_node(nid: str) -> dict:
+            return {"id": nid, "output_schema": schema, "script": {
+                "runtime": "python", "expectExit": [0], "author": author,
+                "command": f"python3 .claude/workflows/demo.steps/{nid}.py {{base}}"}}
+
+        plan = {"name": "demo", "offLimits": ["secrets/**", "*.pem"],
+                "nodes": [{"id": "g", "script": {"command": "python3 x_state.py merge --wave {wave}"}},
+                          step_node("s1"), step_node("s2"), step_node("s3")],
+                "helper": {"record": "python3 x_state.py record --row {row}"}}
+        (wf / "demo.plan.json").write_text(json.dumps(plan))
+        for nid in ("s1", "s2", "s3"):
+            (steps / f"{nid}.py").write_text(f"print('{nid}')\n")
+        sha = {nid: hashlib.sha256((steps / f"{nid}.py").read_bytes()).hexdigest()
+               for nid in ("s1", "s2", "s3")}
+        (wf / "demo.state.json").write_text(json.dumps({"steps": {
+            "s1": {"sha256": sha["s1"], "contract": contract_digest(plan["nodes"][1])},
+            "s3": {"sha256": sha["s3"], "contract": "planned-before-the-contract-changed"}}}))
         tree = Path(tmp) / "wt"
         tree.mkdir()
         (tree / ".git").write_text("gitdir: elsewhere\n")
@@ -284,10 +404,61 @@ def selftest() -> int:
                 "command": "python3 x_state.py merge --wave 2"}}), 2),
             ("runner: a tool other than Bash", run("--runner", {"tool_name": "Write",
                 "agent_id": "a5", "tool_input": {"file_path": "x"}}), 2),
+            ("runner: a verified authored step", run("--runner", {"tool_name": "Bash",
+                "agent_id": "r1", "tool_input": {
+                    "command": "python3 .claude/workflows/demo.steps/s1.py abc123"}}), 0),
+            ("runner: an authored step never verified", run("--runner", {"tool_name": "Bash",
+                "agent_id": "r2", "tool_input": {
+                    "command": "python3 .claude/workflows/demo.steps/s2.py abc123"}}), 2),
+            ("runner: an authored step whose contract changed", run("--runner", {
+                "tool_name": "Bash", "agent_id": "r3", "tool_input": {
+                    "command": "python3 .claude/workflows/demo.steps/s3.py abc123"}}), 2),
+            ("author: its declared step file", run("--author", {
+                "cwd": str(root), "tool_name": "Write", "agent_id": "w1", "tool_input": {
+                    "file_path": ".claude/workflows/demo.steps/s1.py"}}), 0),
+            ("author: the same file again, same dispatch", run("--author", {
+                "cwd": str(root), "tool_name": "Edit", "agent_id": "w1", "tool_input": {
+                    "file_path": str(steps / "s1.py")}}), 0),
+            ("author: a second step file, same dispatch", run("--author", {
+                "cwd": str(root), "tool_name": "Write", "agent_id": "w1", "tool_input": {
+                    "file_path": ".claude/workflows/demo.steps/s2.py"}}), 2),
+            ("author: a file that is no step", run("--author", {
+                "cwd": str(root), "tool_name": "Write", "agent_id": "w2", "tool_input": {
+                    "file_path": "src/a.go"}}), 2),
+            ("author: '..' out of the steps dir", run("--author", {
+                "cwd": str(steps), "tool_name": "Write", "agent_id": "w3", "tool_input": {
+                    "file_path": "../demo.plan.json"}}), 2),
+            ("author: Bash", run("--author", {"tool_name": "Bash", "agent_id": "w4",
+                                              "tool_input": {"command": "ls"}}), 2),
+            ("author: no agent_id", run("--author", {"cwd": str(root), "tool_name": "Write",
+                "tool_input": {"file_path": ".claude/workflows/demo.steps/s1.py"}}), 2),
             ("unknown mode fails closed", run("--nope", {}), 2),
             ("escape hatch", run("--paths", edit("secrets/k"),
                                  {"ARBEITSPLAN_WAVES_DISABLE_GUARD": "1"}), 0),
         ]
+        (steps / "s1.py").write_text("print('edited after it was verified')\n")
+        cases.append(("runner: a verified step edited afterwards", run("--runner", {
+            "tool_name": "Bash", "agent_id": "r5", "tool_input": {
+                "command": "python3 .claude/workflows/demo.steps/s1.py abc123"}}), 2))
+        # A deny is only evidence when it is denied for ITS reason: a template
+        # mismatch would also exit 2 on every authored case above.
+        def reason(mode: str, event: dict) -> str:
+            return subprocess.run([sys.executable, str(guard), mode], input=json.dumps(event),
+                                  capture_output=True, text=True).stderr
+
+        def bash(nid: str, agent: str) -> dict:
+            return {"tool_name": "Bash", "agent_id": agent, "tool_input": {
+                "command": f"python3 .claude/workflows/demo.steps/{nid}.py abc123"}}
+
+        for name, got, want in [
+            ("reason: never verified", reason("--runner", bash("s2", "q1")), "never verified"),
+            ("reason: edited", reason("--runner", bash("s1", "q2")), "changed since it was verified"),
+            ("reason: stale contract", reason("--runner", bash("s3", "q3")), "contract changed"),
+            ("reason: second step file", reason("--author", {
+                "cwd": str(root), "tool_name": "Write", "agent_id": "w1", "tool_input": {
+                    "file_path": ".claude/workflows/demo.steps/s3.py"}}), "already wrote step"),
+        ]:
+            cases.append((name, 0 if want in got else 1, 0))
         for name, got, want in cases:
             ok = got == want
             print(f"  {'ok  ' if ok else 'FAIL'} {name}: exit {got}")

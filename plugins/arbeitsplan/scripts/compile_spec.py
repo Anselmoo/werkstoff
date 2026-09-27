@@ -539,6 +539,11 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
             for msg in design_spec.script_problems(ph.get("script"),
                                                    design_spec.toolchains_of(spec)):
                 err(where, msg)
+            if isinstance(ph.get("script"), dict) and "author" in ph["script"]:
+                err(where, "'script.author' belongs to a node of a WAVE design: install_waves.py "
+                           "writes the step file and the vendored helper verifies it. run.js has "
+                           "neither, so an authored step here would never be written -- refused, "
+                           "not ignored")
             osch = ph.get("outputSchema")
             if not isinstance(osch, dict) or osch.get("type") != "object":
                 err(where, "a 'script' phase needs 'outputSchema' (type: object) -- the "
@@ -1089,6 +1094,10 @@ def selftest(root: Path) -> int:
             modelTier="claude-sonnet-5")] + GOOD["phases"][1:]), 0),
         ("modelTier: not a Claude model", _mut(phases=[dict(GOOD["phases"][0],
             modelTier="gpt-5")] + GOOD["phases"][1:]), 1),
+        ("script: an authored step in a run.js spec", _script(script={
+            "runtime": "python", "command": "python3 x.py", "expectExit": [0],
+            "author": {"model": "sonnet", "purpose": "p",
+                       "sample": {"args": [], "expectExit": [0]}}}), 1),
         ("script: no outputSchema", _script(outputSchema=None), 1),
         ("script: loose outputSchema", _script(outputSchema={"type": "object",
             "properties": {"passed": {"type": "boolean"}}}), 1),
