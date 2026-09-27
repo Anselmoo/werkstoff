@@ -6,6 +6,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-09-27
 ### Fixed
 - **symbol index**: CSS, SCSS, Sass and Less at-rules outside the old six (`@container`, `@page`,
   `@property`, `@scope`, `@mixin`, `@include`, `@use`, ...) were recorded as `selector` symbols, and
