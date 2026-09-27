@@ -17,8 +17,10 @@ stdout -- the runner copies it into `parsed` -- and exits 0, or 1 for a red
 merge-gate (expectExit [0, 1]). Anything else is a defect and exits 2.
 
   preflight  {linkedWorktree, dirty, head, python}: the run refuses a linked
-             worktree (agent worktrees branch from the PRIMARY checkout's HEAD,
-             #106 R1) and a checkout with tracked changes
+             worktree (#106 R1: the wave base is this checkout's HEAD, and agent
+             worktrees start from worktree.baseRef -- the remote's default branch
+             unless "head" -- never from a linked worktree's; ADR 0004) and a
+             checkout with tracked changes
   record     --row R --branch B --base SHA: a finished builder, with the notes
              its commits carry, survives a restart (#106 R3)
   merge      --wave N --stage K --final 0|1 --branches row=branch,... --discard

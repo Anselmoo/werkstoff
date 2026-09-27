@@ -219,7 +219,10 @@ def runbook(design: dict, python: list, stamp: str) -> str:
         "then relaunch |",
         "| a red gate | read `findings` (`primary-only` = only the primary checkout's untracked "
         "or ignored files produced it) and the `kept` worktrees. Do not merge by hand |",
-        "| `WRONG BASE`, `PRIMARY CHECKOUT ONLY` | relaunch from the primary checkout |",
+        "| `PRIMARY CHECKOUT ONLY` | relaunch from the primary checkout |",
+        "| `WRONG BASE` | a builder's worktree (it starts from `worktree.baseRef`: the remote's "
+        "default branch unless `\"head\"`) could not fast-forward to the wave base. Push the "
+        "base, or set `worktree.baseRef` to `\"head\"` in `.claude/settings.json` |",
         "| `SCRIPT CONTRACT` | a declared command exited unexpectedly or broke its schema |",
         *([f"| `AUTHOR CONTRACT` | an authored step failed verification after its retries; "
            f"re-check by hand with `{helper} verify-step --node <id>` |"] if steps else []),
