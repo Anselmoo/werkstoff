@@ -22,7 +22,10 @@ each is a check in code rather than a sentence here:
 - gates run twice, once in the primary checkout and once in a clean worktree, so a finding
   that only the primary checkout shows is labelled `primary-only`;
 - a swarm row's losers are discarded, never merged;
-- prompts carry ids and branch names only.
+- prompts carry ids and branch names only;
+- an **authored** step is written by a shell-less author and verified (syntax, a sample in a
+  scratch worktree, the output schema) before anything runs it, and the guard refuses to run
+  it once its file or its contract has changed.
 
 ## Install (once per design)
 
@@ -38,6 +41,11 @@ each is a check in code rather than a sentence here:
 
    Pass `--artifact` when the repository is itself an installable artefact, so the generated
    tooling is `export-ignore`d.
+
+   A design with **authored steps** gets a skeleton per step under
+   `.claude/workflows/<name>.steps/` (gitignored), in the language its runtime names, plus a
+   `<name>-author` agent. The first launch writes and verifies them; re-installing never
+   overwrites a step that is no longer a stub.
 
    The installer resolves the one prerequisite, a Python >= 3.10 for the helper and the guard,
    by probing `python3`, `python` and `py -3`, or the command given with `--python`. That
@@ -74,6 +82,11 @@ each is a check in code rather than a sentence here:
    | `abortReason` names a red gate | report `findings` with each one's `source` (`primary-only` means only the primary checkout's untracked or ignored files produced it) and the `kept` worktrees. **Do not retry.** A fix is a new row or a new design |
    | `WRONG BASE` or `PRIMARY CHECKOUT ONLY` | the launch site is wrong; relaunch from the primary checkout |
    | `SCRIPT CONTRACT` | a declared command exited unexpectedly or printed output that breaks its schema: a defect in the step, not a flake |
+   | `AUTHOR CONTRACT` | an authored step was refused by `verify-step` after its node's `retries`. Report the `problem` and the `step` path. Read the file; the fix is a sharper `purpose`, a better `sample`, or more `retries` in a new design, never a hand edit the hash would refuse anyway |
+
+   `show` reports each authored step as `missing`, `stub`, `authored`, `verified` or `stale`.
+   Only `verified` is skipped on the next launch. To re-check a step by hand, run
+   `<name>_state.py verify-step --node <id>`.
 
    The state helper persists its state as the run goes. Every finished builder is recorded the
    moment it returns, and every green wave when its gate passes, so a relaunch skips both.

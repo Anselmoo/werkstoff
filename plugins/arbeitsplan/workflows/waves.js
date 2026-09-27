@@ -8,6 +8,7 @@ export const meta = {
     'the post-wave nodes; stops at the first red gate, at a pending human gate, or on a contract breach, ' +
     'returning the state to resume from. Needs no werkstoff at runtime.',
   phases: [
+    { title: 'Author steps', detail: 'write each authored step script, then verify it: syntax, a sample run in a scratch worktree, the output schema' },
     { title: 'Preflight', detail: 'script nodes before the waves: primary checkout only, clean tree' },
     { title: 'Build', detail: 'one worktree per row (a swarm row: N candidates and a blind referee)' },
     { title: 'Merge and gate', detail: 'merge the stage into the integration branch; gate and move the target on the last stage' },
@@ -40,6 +41,21 @@ const RECORD_SCHEMA = {
   required: ['recorded', 'row', 'head'],
   properties: { recorded: { type: 'boolean' }, row: { type: 'string' }, head: { type: 'string' } },
 }
+const AUTHOR_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['path', 'notes'],
+  properties: { path: { type: 'string' }, notes: { type: 'string' } },
+}
+const VERIFY_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['verified', 'node', 'path', 'problem'],
+  properties: { verified: { type: 'boolean' }, node: { type: 'string' }, path: { type: 'string' }, problem: { type: 'string' } },
+}
+// waves_state.py's AUTHORABLE extensions, restated: a Workflow script cannot
+// import Python. `.mjs` for node -- every .js under .claude/workflows is a workflow.
+const STEP_EXT = { shell: 'sh', powershell: 'ps1', ruby: 'rb', node: 'mjs', python: 'py' }
 const REFEREE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -99,7 +115,9 @@ function normalizeArgs(raw) {
   const state = raw.state && typeof raw.state === 'object' ? raw.state : {}
   return {
     plan: raw.plan,
-    state: { waves: state.waves || {}, builders: state.builders || {}, approvals: state.approvals || {} },
+    // `steps` is what `<name>_state.py show` computed from disk: this script
+    // cannot hash a file, so a step's status is the helper's word, never a guess.
+    state: { waves: state.waves || {}, builders: state.builders || {}, approvals: state.approvals || {}, steps: state.steps || {} },
   }
 }
 
@@ -303,6 +321,99 @@ const values = { name: plan.name, runId: plan.runId, integration: integ.branch, 
 // approval, and the next launch passes it in `state`.
 function pendingGate(id) {
   return [...ancestors(id)].find((a) => byId[a].kind === 'human-gate' && !state.approvals[a]) || null
+}
+
+// ---- authored steps -------------------------------------------------------------
+// A script node that AUTHORS its step has the file written here, before any
+// node could run it: one author dispatch per step, in parallel, then one
+// verify-step per step, in sequence -- verify-step read-modify-writes the
+// state file, and two at once would lose a record. A refusal goes back to a
+// fresh author dispatch with that refusal and nothing else, up to the node's
+// `retries`; then the run stops with AUTHOR CONTRACT. A verified step is
+// skipped on resume; a stale one (edited, or its contract changed) is rewritten.
+const stepPath = (n) => `.claude/workflows/${plan.name}.steps/${n.id}.${STEP_EXT[n.script.runtime]}`
+
+function authorPrompt(n, refused) {
+  const sc = n.script
+  const a = sc.author
+  return [
+    `You are the author of step ${n.id} of plan ${plan.name}. Write exactly one file:`,
+    `  ${stepPath(n)}`,
+    `in ${sc.runtime}. The plan runs it as (a {placeholder} is filled at run time):`,
+    '```',
+    sc.command,
+    '```',
+    `Purpose: ${a.purpose}`,
+    ``,
+    `Contract -- verify-step checks every line of it after you return:`,
+    `- arguments are positional, exactly as the command above passes them;`,
+    `- stdout is exactly ONE JSON object meeting this schema, and nothing else:`,
+    `  ${JSON.stringify(n.output_schema)}`,
+    `- diagnostics go to stderr; the exit code is one of ${JSON.stringify(sc.expectExit)};`,
+    `- the sample: from the root of a clean checkout of HEAD, with arguments ${JSON.stringify(a.sample.args)}, it exits ${JSON.stringify(a.sample.expectExit)};`,
+    `- the language's standard library only -- it runs wherever the plan runs.`,
+    ``,
+    `The file may hold a skeleton carrying the marker ARBEITSPLAN-STUB, or an older version: replace it`,
+    `entirely and leave no stub marker. If it does not exist, create it. You have no shell and cannot run`,
+    `it; the state helper checks its syntax and runs the sample once you are done.`,
+    refused ? `Your previous version of this file was refused: ${refused}\nFix exactly that.` : ``,
+    `Return path = the file you wrote, notes = one line on what it does.`,
+    ``,
+    `${RELAYED}`,
+  ].join('\n')
+}
+
+const authored = plan.nodes.filter((n) => n.script && n.script.author && typeof n.script.author === 'object')
+if (authored.length) {
+  phase('Author steps')
+  const authorAgent = typeof plan.authorAgent === 'string' && plan.authorAgent ? plan.authorAgent : null
+  const verifyTmpl = plan.helper && typeof plan.helper.verify === 'string' ? plan.helper.verify : null
+  if (!authorAgent || !verifyTmpl) return stop('plan.authorAgent or plan.helper.verify is missing -- install_waves.py writes both; an authored step would have nobody to write it or to check it', authored[0].id)
+  let pending = []
+  for (const n of authored) {
+    const status = (state.steps[n.id] || {}).status
+    if (status === 'verified') {
+      note('step-skipped', n.id, { status })
+      continue
+    }
+    if (!STEP_EXT[n.script.runtime]) return stop(`node ${n.id}: runtime ${JSON.stringify(n.script.runtime)} cannot be authored`, n.id)
+    if (!modelOk(n.script.author.model)) return stop(`node ${n.id}: script.author.model is not a valid model; an inherited model defeats tiering`, n.id)
+    pending.push(n.id)
+  }
+  const refused = {}
+  for (let attempt = 0; pending.length; attempt++) {
+    const over = spend(pending.length, 'Author steps')
+    if (over) return stop(`budget: ${over}`, pending[0])
+    const tag = attempt ? `:${attempt + 1}` : ''
+    const wrote = await parallel(pending.map((id) => () => agent(
+      authorPrompt(byId[id], refused[id]),
+      { label: `${id}:author${tag}`, phase: 'Author steps', agentType: authorAgent, model: byId[id].script.author.model, schema: AUTHOR_SCHEMA },
+    )))
+    const again = []
+    for (let k = 0; k < pending.length; k++) {
+      const id = pending[k]
+      const n = byId[id]
+      const w = wrote[k]
+      let problem = null
+      if (!w) problem = 'the author returned nothing'
+      else if (w.path !== stepPath(n)) problem = `the author reports writing ${JSON.stringify(w.path)}, not ${stepPath(n)}`
+      else {
+        const v = await runScript({ id: `${id}:verify`, script: { command: verifyTmpl, expectExit: [0, 1] }, model: n.model, output_schema: VERIFY_SCHEMA }, { node: id }, `${id}:verify${tag}`, 'Author steps')
+        if (v.error) return stop(v.error, id, v.output ? { output: v.output } : null)
+        if (!v.parsed.verified) problem = v.parsed.problem || 'verify-step refused it without a reason'
+      }
+      if (problem === null) {
+        state.steps[id] = { status: 'verified', path: stepPath(n) }
+        note('step-verified', id, { path: stepPath(n), attempts: attempt + 1 })
+        continue
+      }
+      const retries = Number.isInteger(n.retries) ? n.retries : 0
+      if (attempt >= retries) return stop(`node ${id}: AUTHOR CONTRACT -- ${problem}`, id, { step: stepPath(n), attempts: attempt + 1 })
+      refused[id] = problem
+      again.push(id)
+    }
+    pending = again
+  }
 }
 
 phase('Preflight')

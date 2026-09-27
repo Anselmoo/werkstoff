@@ -57,7 +57,11 @@ and only after the user approves.
    | how | `kind`, `model` (always explicit), `agentType`, `writeScope`, `inputs` (ids and paths only), `script` or steps |
 
    A deterministic step — a gate, a conformance runner, a state helper — is a `script` node.
-   It is **not** an agent told to run a command.
+   It is **not** an agent told to run a command. When the repository has no such command yet,
+   the node **authors** it: `script.author = {model, purpose, sample}` in a wave design, in
+   bash, pwsh, ruby, node or python, following the repository's own language where it can (see
+   the schema's "Authored steps"). The plan writes the script and verifies it before anything
+   runs it.
 
 6. **Prove the write scopes.** Dispatch `arbeitsplan:scope-prover` for the rows that run
    concurrently. Where two rows need one shared file (a module manifest, a lockfile), give it
