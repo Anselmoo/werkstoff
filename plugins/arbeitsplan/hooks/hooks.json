@@ -1,9 +1,9 @@
 {
-  "description": "arbeitsplan: denies a re-dispatch of an identical prompt, a write to the shared tree during a fan-out phase, a write outside the declared writeScope, and a dispatch past the declared budget. type:command, never type:prompt -- a prompt hook asks a model to decide, and a model asked whether it may retry is the thing being governed. Ordering is NOT gated here; that is takt's job, via the beats arbeitsplan-compile writes. A Stop hook refuses ONE completion while an armed phase has recorded no terminal event in run.jsonl (never twice: stop_hook_active allows). Both are inert until analysis/arbeitsplan/run_scope.json exists.",
+  "description": "arbeitsplan: denies a re-dispatch of an identical prompt, a write to the shared tree during a fan-out phase, a write outside the declared writeScope, and a dispatch past the declared budget. type:command, never type:prompt -- a prompt hook asks a model to decide, and a model asked whether it may retry is the thing being governed. Ordering is NOT gated here; that is takt's job, via the beats arbeitsplan-compile writes. A Stop hook refuses ONE completion while an armed phase has recorded no terminal event in run.jsonl (never twice: stop_hook_active allows). Both are inert until analysis/arbeitsplan/run_scope.json exists -- except for the arbeitsplan:script-runner agent, whose every Bash call is matched against the run's scripts.json allowlist, one command per dispatch, lock or no lock. Every other Bash call passes untouched.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Skill|Task|Agent|Write|Edit|MultiEdit",
+        "matcher": "Skill|Task|Agent|Write|Edit|MultiEdit|Bash",
         "hooks": [
           {
             "type": "command",

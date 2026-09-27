@@ -11,6 +11,7 @@ export const meta = {
     { title: 'Build', detail: 'one candidate per angle, each in its own worktree' },
     { title: 'Referee', detail: 'one blind referee per in-scope candidate' },
     { title: 'Single writer', detail: 'one agent over the previous phases, returning a diff as data' },
+    { title: 'Script', detail: 'one declared command, run once by the script runner, output validated' },
   ],
 }
 
@@ -28,6 +29,74 @@ const KIND_TITLE = {
   'fanout-redundant': 'Build',
   'fanout-blind': 'Referee',
   'single-writer': 'Single writer',
+  script: 'Script',
+}
+
+// Models: an alias or a full claude-... id -- design_spec.py's MODEL_ALIASES and
+// MODEL_ID_RE, restated because a Workflow script cannot import Python.
+const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable']
+const MODEL_ID = /^claude-[a-z0-9]+(?:[-.][a-z0-9]+)*(?:\[1m\])?$/
+const modelOk = (m) => typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m))
+
+// #107: what a script node's runner returns. `parsed` is the node's own
+// outputSchema, so the runtime's schema enforcement covers it -- and
+// strictProblems() below re-checks it anyway, because a null result or a
+// stubbed agent() bypasses that enforcement entirely.
+const scriptSchema = (outputSchema) => ({
+  type: 'object',
+  additionalProperties: false,
+  required: ['exit', 'stdout_digest', 'parsed'],
+  properties: {
+    exit: { type: 'integer' },
+    // A digest in the summary sense: the last <= 40 lines of stdout, verbatim.
+    stdout_digest: { type: 'string' },
+    parsed: outputSchema,
+  },
+})
+
+// A strict JSON Schema check, small on purpose: type, enum, required,
+// properties, additionalProperties:false and items -- the subset compile_spec
+// lets a script node declare. Returns a list of problems; [] means valid.
+function strictProblems(schema, value, where = 'parsed') {
+  if (!schema || typeof schema !== 'object') return [`${where}: no schema to validate against`]
+  const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : []
+  const typeOf = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : Number.isInteger(v) ? 'integer' : typeof v)
+  const t = typeOf(value)
+  if (types.length && !types.some((x) => x === t || (x === 'number' && t === 'integer'))) {
+    return [`${where}: expected ${types.join('|')}, got ${t}`]
+  }
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return [`${where}: not one of the enum values`]
+  const out = []
+  if (t === 'object') {
+    const props = schema.properties || {}
+    for (const k of schema.required || []) if (!(k in value)) out.push(`${where}.${k}: required, missing`)
+    for (const [k, v] of Object.entries(value)) {
+      if (k in props) out.push(...strictProblems(props[k], v, `${where}.${k}`))
+      else if (schema.additionalProperties === false) out.push(`${where}.${k}: not declared, and additionalProperties is false`)
+    }
+  }
+  if (t === 'array' && schema.items) {
+    value.forEach((v, j) => {
+      out.push(...strictProblems(schema.items, v, `${where}[${j}]`))
+    })
+  }
+  return out
+}
+
+// {placeholder} values: ids, branch names, paths, comma lists -- the same
+// character class hooks/arbeitsplan_guard.py lets a template slot match, so a
+// value the guard would refuse is refused here first, with the node named.
+const PLACEHOLDER_VALUE = /^[A-Za-z0-9._/,=:@+-]+$/
+function renderCommand(template, values) {
+  const missing = []
+  const bad = []
+  const cmd = template.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (m, name) => {
+    const v = values[name]
+    if (v === undefined || v === null) { missing.push(name); return m }
+    if (!PLACEHOLDER_VALUE.test(String(v))) { bad.push(name); return m }
+    return String(v)
+  })
+  return { cmd, missing, bad }
 }
 
 // LANDING verdicts are an ALLOWLIST, never a denylist. matrize's prior denylist
@@ -310,7 +379,7 @@ for (let i = start; i < spec.phases.length; i++) {
   }
   // Never infer a gating value. `modelTier || 'sonnet'` used to live here, which
   // silently ran every unmarked phase on a tier nobody chose.
-  if (!['haiku', 'sonnet', 'opus'].includes(ph.modelTier)) {
+  if (!modelOk(ph.modelTier)) {
     return halt(`phase ${nodeId} has no valid modelTier; an inherited tier defeats tiering`, nodeId)
   }
   if (typeof ph.agentType !== 'string' || !ph.agentType.includes(':')) {
@@ -543,6 +612,52 @@ for (let i = start; i < spec.phases.length; i++) {
     lastVerdicts = { phaseId: nodeId, verdicts, ranked }
     opts.carry[nodeId] = { verdicts, winner: ranked[0].candidateId, runnersUp: ranked.slice(1).map((c) => c.candidateId) }
     emit('evaluation', nodeId, 'accepted', { winner: ranked[0].candidateId, accepted: accepted.length, judged: scoped.length }, phaseSpan)
+    emit(`phase ${nodeId}`, nodeId, 'closed', null, rootSpan)
+    continue
+  }
+
+  if (ph.kind === 'script') {
+    const sc = ph.script || {}
+    if (typeof sc.command !== 'string' || !Array.isArray(sc.expectExit) || !sc.expectExit.length) {
+      return halt(`phase ${nodeId}: script needs a command and expectExit; re-compile the spec`, nodeId)
+    }
+    const values = { runId, ...((opts.carry.scriptArgs && opts.carry.scriptArgs[nodeId]) || {}) }
+    const { cmd, missing, bad } = renderCommand(sc.command, values)
+    if (missing.length || bad.length) {
+      return halt(`phase ${nodeId}: placeholder(s) ${[...missing, ...bad].join(', ')} ${missing.length ? 'have no value' : 'carry characters the runner guard refuses'}`, nodeId)
+    }
+    const over = spend(1, nodeId)
+    if (over) return halt(`budget: ${over}`, nodeId)
+    const out = await agent(
+      [
+        `You are the script runner for phase ${nodeId} of run ${runId}.`,
+        ``,
+        `Run exactly this command, once, from the repository root, with the Bash tool:`,
+        '```',
+        cmd,
+        '```',
+        ``,
+        `Do not run anything else -- no setup, no retry, no inspection. The guard allows`,
+        `this one command and denies a second.`,
+        ``,
+        `Return: exit = its exit code; stdout_digest = the last 40 lines of its stdout,`,
+        `verbatim; parsed = ${sc.parse === 'exit-only' ? 'an empty object {}' : 'the JSON object it printed on stdout, copied field for field -- never re-typed, never summarised'}.`,
+        `If the command printed no parseable JSON, return parsed: {} and say nothing else.`,
+        ``,
+        `${RELAYED}`,
+      ].join('\n'),
+      { label: `${nodeId}`, phase: title, agentType: ph.agentType, model: ph.modelTier, schema: scriptSchema(ph.outputSchema) },
+    )
+    if (!out) return halt(`phase ${nodeId}: SCRIPT CONTRACT -- the runner returned nothing`, nodeId)
+    if (!Number.isInteger(out.exit) || !sc.expectExit.includes(out.exit)) {
+      return halt(`phase ${nodeId}: SCRIPT CONTRACT -- exit ${JSON.stringify(out.exit)} is not in expectExit ${JSON.stringify(sc.expectExit)}`, nodeId, { output: out })
+    }
+    const problems = strictProblems(ph.outputSchema, out.parsed)
+    if (problems.length) {
+      return halt(`phase ${nodeId}: SCRIPT CONTRACT -- parsed output does not validate: ${problems.slice(0, 3).join('; ')}`, nodeId, { output: out })
+    }
+    emit(`invoke_agent ${ph.agentType}`, nodeId, 'proposed', { exit: out.exit }, phaseSpan)
+    opts.carry[nodeId] = { exit: out.exit, parsed: out.parsed }
     emit(`phase ${nodeId}`, nodeId, 'closed', null, rootSpan)
     continue
   }

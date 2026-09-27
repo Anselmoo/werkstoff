@@ -19,11 +19,16 @@ Groups, named so a sabotage run can be read at a glance:
   SCOPE     writes outside the declared scope, and shared-tree writes during a
             fan-out, must be denied.
   BUDGET    dispatches past the declared ceiling must be denied.
+  RUNNER    the script runner (#107) may run exactly one declared command per
+            dispatch -- lock or no lock -- and every other agent's Bash call
+            must pass untouched.
 
 Sabotage checks (run them, do not assume them):
   * make dispatch_signature() return a constant -> WIDEN goes red.
   * swap os.O_EXCL out of the os.open() flags  -> REPEAT goes red.
   * make matches() return True unconditionally -> SCOPE goes red.
+  * swap os.O_EXCL out of script_runner()'s os.open() -> RUNNER's
+    "second command" case goes red.
 
 Run: python3 plugins/arbeitsplan/hooks/test_arbeitsplan_guard.py
 """
@@ -54,6 +59,34 @@ def run(cwd: Path, tool: str, tool_input: dict, env: dict | None = None) -> tupl
         env={"PATH": "/usr/bin:/bin", **(env or {})},
     )
     return proc.returncode, (proc.stdout + proc.stderr)
+
+
+def run_event(cwd: Path, event: dict, env: dict | None = None) -> tuple:
+    proc = subprocess.run(
+        [sys.executable, str(GUARD)],
+        input=json.dumps({"cwd": str(cwd), **event}),
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin", **(env or {})},
+    )
+    return proc.returncode, (proc.stdout + proc.stderr)
+
+
+def arm_scripts(tmp: Path, run_id: str, commands: list) -> None:
+    base = tmp / "analysis" / "arbeitsplan"
+    (base / run_id).mkdir(parents=True, exist_ok=True)
+    (base / "scripts_armed.json").write_text(json.dumps({"runId": run_id}))
+    (base / run_id / "scripts.json").write_text(json.dumps(
+        {"runId": run_id, "commands": [{"node": f"n{i}", "command": c}
+                                       for i, c in enumerate(commands)]}))
+
+
+def runner(cmd: str, agent_id: str | None = "agent-1", agent_type: str = "arbeitsplan:script-runner",
+           tool: str = "Bash") -> dict:
+    ev = {"tool_name": tool, "tool_input": {"command": cmd}, "agent_type": agent_type}
+    if agent_id is not None:
+        ev["agent_id"] = agent_id
+    return ev
 
 
 def lock(tmp: Path, **over) -> None:
@@ -276,6 +309,45 @@ def main() -> int:
         if rc == DENY and "cycle" not in out.lower():
             FAILURES.append("cycle denial says cycle")
             print("  FAIL cycle denial says cycle")
+
+        print("RUNNER")
+        with tempfile.TemporaryDirectory() as raw2:
+            rt = Path(raw2)
+            code, out = run_event(rt, runner("make conformance"))
+            check("runner with no armed allowlist -> deny", code, DENY, out)
+            arm_scripts(rt, "ap-run-1", ["make conformance",
+                                         "python3 .claude/workflows/x_state.py merge --wave {wave} --branches {branches}"])
+            code, out = run_event(rt, runner("make conformance"))
+            check("declared command, first call -> allow (no run-scope lock open)", code, ALLOW, out)
+            code, out = run_event(rt, runner("make conformance"))
+            check("second command in the same dispatch -> deny", code, DENY, out)
+            code, out = run_event(rt, runner("make conformance", agent_id="agent-2"))
+            check("same command, another dispatch -> allow", code, ALLOW, out)
+            code, out = run_event(rt, runner("make deploy", agent_id="agent-3"))
+            check("undeclared command -> deny", code, DENY, out)
+            code, out = run_event(rt, runner(
+                "python3 .claude/workflows/x_state.py merge --wave 2 --branches a/b,c/d", agent_id="agent-4"))
+            check("template with safe placeholder values -> allow", code, ALLOW, out)
+            code, out = run_event(rt, runner(
+                "python3 .claude/workflows/x_state.py merge --wave 2;rm --branches a", agent_id="agent-5"))
+            check("placeholder carrying ';' -> deny", code, DENY, out)
+            code, out = run_event(rt, runner(
+                "python3 .claude/workflows/x_state.py merge --wave 2 --branches a b", agent_id="agent-6"))
+            check("placeholder carrying a space (a second argument) -> deny", code, DENY, out)
+            code, out = run_event(rt, runner("make conformance", agent_id=None))
+            check("runner call without agent_id -> deny", code, DENY, out)
+            code, out = run_event(rt, runner("", agent_id="agent-7", tool="Write"))
+            check("runner calling a tool other than Bash -> deny", code, DENY, out)
+            code, out = run_event(rt, runner("rm -rf /", agent_type="arbeitsplan:implementer"))
+            check("another agent's Bash, no lock -> allow (untouched)", code, ALLOW, out)
+            lock(rt)
+            code, out = run_event(rt, runner("rm -rf build", agent_type="arbeitsplan:implementer"))
+            check("another agent's Bash, lock open -> allow (untouched)", code, ALLOW, out)
+            code, out = run_event(rt, {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+            check("the session's own Bash -> allow", code, ALLOW, out)
+            code, out = run_event(rt, runner("make conformance", agent_id="agent-8"),
+                                  env={"CLAUDE_PROJECT_DIR": str(rt)})
+            check("allowlist found via CLAUDE_PROJECT_DIR -> allow", code, ALLOW, out)
 
         print("deny protocol")
         lock(tmp)
