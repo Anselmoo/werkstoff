@@ -1,0 +1,108 @@
+name: probe-27 callee (throwaway, issue #27)
+
+# THROWAWAY. Reproduces issue #27 inside a real `workflow_call`, then is removed
+# before merge; the run URLs live in the fix commit's message. It never calls the
+# real auto-version-bump.yml, which bumps and pushes main. Instead each job
+# carries one expression or script from that file VERBATIM, so what a called
+# workflow actually sees decides the job, not what the comments claim it sees.
+
+on:
+  workflow_call:
+    inputs:
+      groups_and_levels:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  context:
+    name: what a called workflow sees
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+          CALL_INPUT: ${{ inputs.groups_and_levels }}
+        run: |
+          echo "github.event_name=$EVENT_NAME"
+          echo "head_commit (first line)=$(echo "$HEAD_MSG" | head -1)"
+          echo "inputs.groups_and_levels=$CALL_INPUT"
+
+  guard:
+    name: auto-version-bump.yml bump-job guard (verbatim)
+    # auto-version-bump.yml:75 at 248fd5d, character for character.
+    if: "${{ github.event_name == 'workflow_call' || !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "guard passed -- the bump job would run"
+
+  guard-verdict:
+    name: an explicit groups_and_levels must reach the bump job
+    needs: guard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULT: ${{ needs.guard.result }}
+          CALL_INPUT: ${{ inputs.groups_and_levels }}
+        run: |
+          echo "guard job result: $RESULT"
+          if [ -n "$CALL_INPUT" ] && [ "$RESULT" != "success" ]; then
+            echo "::error::explicit groups_and_levels='$CALL_INPUT' was passed, but the bump job's guard evaluated to '$RESULT' -- the job would be skipped and the run would report success having bumped nothing (#27)"
+            exit 1
+          fi
+
+  normalize-pre-7ea80a6:
+    name: Normalize step as it was before 7ea80a6 (verbatim)
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          EVENT_NAME: ${{ github.event_name }}
+          CALL_INPUT: ${{ inputs.groups_and_levels }}
+          PUSH_LEVEL: ""
+          PUSH_GROUPS: ""
+        run: |
+          if [ "$EVENT_NAME" = "workflow_call" ]; then
+            PAIRS="$CALL_INPUT"
+          elif [ -n "$PUSH_LEVEL" ] && [ -n "$PUSH_GROUPS" ]; then
+            PAIRS=""
+            for GROUP in $PUSH_GROUPS; do
+              PAIRS="$PAIRS,$GROUP:$PUSH_LEVEL"
+            done
+            PAIRS="${PAIRS#,}"
+          else
+            PAIRS=""
+          fi
+          echo "Resolved pairs: '${PAIRS:-<none>}'"
+          if [ -n "$CALL_INPUT" ] && [ -z "$PAIRS" ]; then
+            echo "::error::CALL_INPUT='$CALL_INPUT' but PAIRS resolved to <none>: EVENT_NAME='$EVENT_NAME', never 'workflow_call' (#27, as filed)"
+            exit 1
+          fi
+
+  normalize-current:
+    name: Normalize step as it is on main (verbatim)
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          CALL_INPUT: ${{ inputs.groups_and_levels }}
+          PUSH_LEVEL: ""
+          PUSH_GROUPS: ""
+        run: |
+          if [ -n "$CALL_INPUT" ]; then
+            PAIRS="$CALL_INPUT"
+          elif [ -n "$PUSH_LEVEL" ] && [ -n "$PUSH_GROUPS" ]; then
+            PAIRS=""
+            for GROUP in $PUSH_GROUPS; do
+              PAIRS="$PAIRS,$GROUP:$PUSH_LEVEL"
+            done
+            PAIRS="${PAIRS#,}"
+          else
+            PAIRS=""
+          fi
+          echo "Resolved pairs: '${PAIRS:-<none>}'"
+          if [ -n "$CALL_INPUT" ] && [ -z "$PAIRS" ]; then
+            echo "::error::CALL_INPUT='$CALL_INPUT' but PAIRS resolved to <none>"
+            exit 1
+          fi

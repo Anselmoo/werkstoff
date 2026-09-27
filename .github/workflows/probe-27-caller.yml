@@ -1,0 +1,22 @@
+name: probe-27 caller (throwaway, issue #27)
+
+# THROWAWAY -- see probe-27-callee.yml. A push to this branch that touches the
+# probe calls the callee with an explicit groups_and_levels, exactly as
+# batch-release.yml calls auto-version-bump.yml. The probe commit's head message
+# is deliberately bump-shaped ("chore: bump version to v..."), the case in which
+# the bump-job guard's dead `workflow_call` arm would have been the only thing
+# letting an explicit call through.
+
+on:
+  push:
+    branches: [fix/release-guard-and-css-at-rules]
+    paths: [".github/workflows/probe-27-*.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  call:
+    uses: ./.github/workflows/probe-27-callee.yml
+    with:
+      groups_and_levels: "probe:patch"
