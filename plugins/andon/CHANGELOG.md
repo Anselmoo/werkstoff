@@ -4,6 +4,7 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-09-27
 ### Fixed
 - **symbol index**: CSS, SCSS, Sass and Less at-rules outside the old six (`@container`, `@page`,
   `@property`, `@scope`, `@mixin`, `@include`, `@use`, ...) were recorded as `selector` symbols, and
