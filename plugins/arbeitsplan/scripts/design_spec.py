@@ -129,8 +129,16 @@ QUOTED = re.compile(r"'[^']*'|\"(?:\\.|[^\"\\])*\"")
 PLACEHOLDER_RE = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 # The values the multi-wave interpreter (workflows/waves.js) supplies. A
 # placeholder outside this set in a wave design is a slot nothing fills.
-WAVE_PLACEHOLDERS = {"name", "runId", "wave", "stage", "final", "branches", "base",
+WAVE_PLACEHOLDERS = {"name", "runId", "wave", "stage", "final", "branches", "discard", "base",
                      "integration", "target"}
+# The contract between a wave design and workflows/waves.js + the vendored
+# state helper: what the merge-gate must be told, and what the interpreter
+# reads back from each kind of node. Checked here so a design that would make
+# the interpreter guess is refused before anything runs.
+GATE_PLACEHOLDERS = {"wave", "stage", "final", "branches", "discard"}
+GATE_OUTPUT = {"green", "integrationSha", "targetMoved", "findings", "kept"}
+PREFLIGHT_OUTPUT = {"linkedWorktree", "dirty", "head"}
+BUILDER_OUTPUT = {"branch", "baseSha"}
 
 DESIGN_RULES = {
     "AP-NODE-NO-MODEL": 107,
@@ -609,6 +617,33 @@ def _validate_waves(design: dict, nodes: dict, ancestors: dict, table: dict, err
                 err(f"node {nid}", f"placeholders {sorted(unknown)} are filled by nothing; the "
                                    f"wave interpreter supplies {sorted(WAVE_PLACEHOLDERS)}")
 
+    pre_id = integ.get("preflight") if isinstance(integ, dict) else None
+    pre = nodes.get(pre_id) if isinstance(pre_id, str) else None
+    if (pre is None or pre.get("kind") != "script"
+            or any("wave" in nodes[a] for a in ancestors.get(pre_id, set()))):
+        err("integration", "'preflight' must name a script node that runs before every wave: "
+                           "it refuses a linked worktree and a dirty checkout, and its head is "
+                           "wave 1's base")
+    elif _requires(pre, PREFLIGHT_OUTPUT):
+        err(f"node {pre_id}", f"the preflight's output_schema must require "
+                              f"{sorted(_requires(pre, PREFLIGHT_OUTPUT))}")
+    for nid, n in waved.items():
+        if n.get("kind") != "merge-gate":
+            continue
+        slots = set(PLACEHOLDER_RE.findall(str((n.get("script") or {}).get("command") or "")))
+        if GATE_PLACEHOLDERS - slots:
+            err(f"node {nid}", f"a merge-gate command must take {sorted(GATE_PLACEHOLDERS)}; "
+                               f"missing {sorted(GATE_PLACEHOLDERS - slots)}")
+        if _requires(n, GATE_OUTPUT):
+            err(f"node {nid}", f"a merge-gate's output_schema must require "
+                               f"{sorted(_requires(n, GATE_OUTPUT))}")
+    for nid, n in nodes.items():
+        if ("wave" not in n and n.get("kind") == "agent" and n.get("where") == "worktree"
+                and _requires(n, BUILDER_OUTPUT)):
+            err(f"node {nid}", f"a worktree node after the waves must require "
+                               f"{sorted(_requires(n, BUILDER_OUTPUT))} -- its branch goes "
+                               "through the last merge-gate again")
+
     gate_of: dict = {}
     for w in range(1, count + 1):
         rows = [nid for nid, n in waved.items() if n["wave"] == w and n.get("kind") == "agent"]
@@ -666,7 +701,17 @@ def _validate_waves(design: dict, nodes: dict, ancestors: dict, table: dict, err
                                    "the waves runs before them all or after them all")
 
 
+def _requires(n: dict, keys: set) -> set:
+    schema = n.get("output_schema") if isinstance(n.get("output_schema"), dict) else {}
+    return keys - set(schema.get("required") or [])
+
+
 def _validate_row(nid: str, n: dict, err) -> None:
+    missing = _requires(n, BUILDER_OUTPUT)
+    if missing:
+        err(f"node {nid}", f"a wave row's output_schema must require {sorted(missing)}: the "
+                           "interpreter merges the branch it names and halts when baseSha is "
+                           "not the wave base")
     if n.get("where") != "worktree":
         err(f"node {nid}", "a wave row runs in its own worktree ('where': 'worktree')")
     swarm = n.get("swarm", 1)
@@ -747,13 +792,13 @@ def selftest() -> int:
          "AP-NODE-NO-MODEL"),
         ("full model id -- clean", w("w1-parse", model="claude-opus-5-5"), None),
         ("fable alias -- clean", w("w1-parse", model="fable"), None),
-        ("no schema", w(pre, output_schema=None), "AP-NODE-NO-SCHEMA"),
-        ("array schema", w(pre, output_schema={"type": "array"}), "AP-NODE-NO-SCHEMA"),
-        ("loose schema", w(pre, output_schema={"type": "object", "properties": {}}),
+        ("no schema", w("review", output_schema=None), "AP-NODE-NO-SCHEMA"),
+        ("array schema", w("review", output_schema={"type": "array"}), "AP-NODE-NO-SCHEMA"),
+        ("loose schema", w("review", output_schema={"type": "object", "properties": {}}),
          "AP-SCHEMA-NOT-STRICT"),
-        ("nested loose schema", w(pre, output_schema=_obj(
+        ("nested loose schema", w("review", output_schema=_obj(
             inner={"type": "object", "properties": {}})), "AP-SCHEMA-NOT-STRICT"),
-        ("JSON in a string", w(pre, output_schema=_obj(stateJson={"type": "string"})),
+        ("JSON in a string", w("review", output_schema=_obj(stateJson={"type": "string"})),
          "AP-SCHEMA-NOT-STRICT"),
         ("no writeScope", w(pre, writeScope=None), "AP-NODE-NO-SCOPE"),
         ("empty writeScope on a worktree row", w("w1-parse", writeScope=[]),

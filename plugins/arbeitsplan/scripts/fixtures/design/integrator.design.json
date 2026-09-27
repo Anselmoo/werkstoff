@@ -8,7 +8,8 @@
   ],
   "integration": {
     "branch": "integration/split-interp",
-    "target": "trunk"
+    "target": "trunk",
+    "preflight": "preflight"
   },
   "gates": [
     {
@@ -236,7 +237,7 @@
       "writeScope": [],
       "script": {
         "runtime": "python",
-        "command": "python3 .claude/workflows/split-interp_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches}",
+        "command": "python3 .claude/workflows/split-interp_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
         "expectExit": [
           0,
           1

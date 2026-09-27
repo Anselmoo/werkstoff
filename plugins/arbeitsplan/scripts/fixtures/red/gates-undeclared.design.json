@@ -9,7 +9,8 @@
   ],
   "integration": {
     "branch": "integration/rebuild-cli",
-    "target": "main"
+    "target": "main",
+    "preflight": "preflight"
   },
   "nodes": [
     {
@@ -177,7 +178,7 @@
       "writeScope": [],
       "script": {
         "runtime": "python",
-        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches}",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
         "expectExit": [
           0,
           1
@@ -307,7 +308,7 @@
       "writeScope": [],
       "script": {
         "runtime": "python",
-        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches}",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
         "expectExit": [
           0,
           1

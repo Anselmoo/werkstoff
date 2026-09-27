@@ -9,7 +9,8 @@
   ],
   "integration": {
     "branch": "integration/rebuild-cli",
-    "target": "main"
+    "target": "main",
+    "preflight": "preflight"
   },
   "gates": [
     {
@@ -40,6 +41,30 @@
         "expectExit": [
           0
         ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "linkedWorktree",
+          "dirty",
+          "head",
+          "python"
+        ],
+        "properties": {
+          "linkedWorktree": {
+            "type": "boolean"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "head": {
+            "type": "string"
+          },
+          "python": {
+            "type": "string"
+          }
+        }
       }
     },
     {
@@ -165,7 +190,7 @@
       "writeScope": [],
       "script": {
         "runtime": "python",
-        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches}",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
         "expectExit": [
           0,
           1
@@ -295,7 +320,7 @@
       "writeScope": [],
       "script": {
         "runtime": "python",
-        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches}",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
         "expectExit": [
           0,
           1
@@ -422,26 +447,7 @@
         "gate-2",
         "smoke"
       ],
-      "writeScope": [],
-      "output_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "blocking",
-          "findings"
-        ],
-        "properties": {
-          "blocking": {
-            "type": "boolean"
-          },
-          "findings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      }
+      "writeScope": []
     },
     {
       "id": "fix",
