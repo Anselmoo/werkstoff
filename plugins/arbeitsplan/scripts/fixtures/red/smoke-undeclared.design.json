@@ -259,7 +259,7 @@
       "wave": 2,
       "goal": "Reduce cmd/tool/main.go to a dispatcher over the wave-1 packages",
       "depends_on": [
-        "preflight"
+        "gate-1"
       ],
       "where": "worktree",
       "model": "opus",
@@ -397,16 +397,6 @@
         "gate-2"
       ],
       "writeScope": [],
-      "steps": [
-        {
-          "runtime": "go",
-          "command": "go build -o tool ./cmd/tool"
-        },
-        {
-          "runtime": "go",
-          "command": "go run ./cmd/tool --help"
-        }
-      ],
       "output_schema": {
         "type": "object",
         "additionalProperties": false,

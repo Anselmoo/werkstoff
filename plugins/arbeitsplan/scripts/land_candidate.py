@@ -150,6 +150,10 @@ def scope_overlap(a: str, b: str) -> bool:
     else overlaps -- the caller is told to split the shared file (a dispatcher
     plus one module per row), not to trust a clever guess.
     """
+    # Case-folded first: on a case-insensitive filesystem (macOS, Windows)
+    # `Src/A.go` and `src/a.go` are one file, and a check that may only err
+    # towards "overlapping" cannot assume the target filesystem is Linux's.
+    a, b = a.lower(), b.lower()
     lit_a, lit_b = not _WILD.search(a), not _WILD.search(b)
     if lit_a and lit_b:
         return a == b or in_scope(a, [b]) or in_scope(b, [a])

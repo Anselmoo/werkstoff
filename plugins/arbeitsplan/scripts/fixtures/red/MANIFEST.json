@@ -149,6 +149,15 @@
       }
     },
     {
+      "issue": 106,
+      "rule": "AP-SOURCES-OVERLAP",
+      "fixture": "sources-overlap.workflow.json",
+      "args": [],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
       "issue": 107,
       "rule": "AP-NODE-NO-MODEL",
       "fixture": "node-no-model.design.json",
@@ -315,6 +324,17 @@
     },
     {
       "issue": 106,
+      "rule": "AP-GATES-UNDECLARED",
+      "fixture": "gates-undeclared.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
       "rule": "AP-SWARM-INCOMPLETE",
       "fixture": "swarm-incomplete.design.json",
       "args": [
@@ -348,9 +368,11 @@
     },
     {
       "issue": 106,
-      "rule": "AP-SOURCES-OVERLAP",
-      "fixture": "sources-overlap.workflow.json",
-      "args": [],
+      "rule": "AP-SMOKE-UNDECLARED",
+      "fixture": "smoke-undeclared.design.json",
+      "args": [
+        "--design"
+      ],
       "expect": {
         "exit": 1
       }

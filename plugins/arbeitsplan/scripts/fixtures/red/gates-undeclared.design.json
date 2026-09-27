@@ -11,18 +11,6 @@
     "branch": "integration/rebuild-cli",
     "target": "main"
   },
-  "gates": [
-    {
-      "id": "vet",
-      "runtime": "go",
-      "command": "go vet ./..."
-    },
-    {
-      "id": "test",
-      "runtime": "go",
-      "command": "go test ./..."
-    }
-  ],
   "nodes": [
     {
       "id": "preflight",
@@ -259,7 +247,7 @@
       "wave": 2,
       "goal": "Reduce cmd/tool/main.go to a dispatcher over the wave-1 packages",
       "depends_on": [
-        "preflight"
+        "gate-1"
       ],
       "where": "worktree",
       "model": "opus",
