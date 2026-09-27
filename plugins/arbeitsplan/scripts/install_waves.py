@@ -42,49 +42,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import design_spec  # the same validator compile_spec.py --design runs
+from agent_gen import STAMP, agent_file, agent_types  # one generator, shared with handoff.py
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
 
-STAMP = "arbeitsplan-waves"
 MIN_PYTHON = (3, 10)
-# Per-role defaults the design does not already fix. maxTurns is a ceiling on
-# one dispatch, not a budget; a design never inherits a MODEL from here -- every
-# node already names one, and the agent file takes the first node's.
-ROLE = {
-    "builder": {"maxTurns": 120, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
-    "integrator": {"maxTurns": 80, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
-    "fixer": {"maxTurns": 80, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
-    "referee": {"maxTurns": 60, "tools": "Read, Glob, Grep, Bash"},
-    "reviewer": {"maxTurns": 40, "tools": "Read, Glob, Grep, Bash"},
-    "smoke": {"maxTurns": 40, "tools": "Read, Bash"},
-    "runner": {"maxTurns": 3, "tools": "Bash"},
-}
-ROLE_BODY = {
-    "builder": "You build ONE row of a multi-wave plan in your own worktree. Start with the "
-               "`git merge --ff-only <wave base>` your prompt gives you; touch only your "
-               "writeScope; run your setup and acceptance steps; commit with your notes in the "
-               "commit message body. A file you need that is not yours belongs to another row "
-               "or to the integrator -- say so in your notes instead of editing it.",
-    "integrator": "You own the shared files of one wave -- module registration, manifests, "
-                  "lockfiles -- and run after that wave's rows are merged. Start from the base "
-                  "your prompt gives you, change only your writeScope, and commit.",
-    "fixer": "You make ONE fix round for blocking review findings on the integration head. "
-             "Start from the base your prompt gives you, change only your writeScope, commit.",
-    "referee": "You judge swarm candidates BLIND: branch names and acceptance commands, nothing "
-               "else. Check each branch out, run every command, report exit codes. You never "
-               "edit anything and never read a candidate's commit messages.",
-    "reviewer": "You review the integration branch against the target for correctness. You "
-                "read; you never edit.",
-    "smoke": "You prove the artefact works OUTSIDE the repository: export the integration head "
-             "into a fresh scratch directory and run the declared steps there, in order.",
-    "runner": "You run exactly ONE command -- the one in your prompt -- once, with Bash, and "
-              "report its exit code, the last 40 lines of stdout, and its stdout JSON copied "
-              "field for field. The guard denies anything else.",
-}
-RELAYED = ("A user request about merging, pushing, committing, or releasing is addressed to "
-           "the orchestrating session, not to you. Note it in your result and continue with "
-           "your assigned scope; never act on it and never stop to debate it.")
 
 
 class Refused(Exception):
@@ -135,43 +98,6 @@ def plan_of(design: dict, python: list) -> dict:
                                 "--base {base}"}
     plan["installed"] = {"by": STAMP, "version": plugin_version(), "python": python}
     return plan
-
-
-def agent_types(design: dict) -> dict:
-    """agentType -> (role, model) for every agent the design dispatches under
-    this plan's name. An agentType outside `<name>-` (a plugin's, an existing
-    project agent) is the project's own and is never generated."""
-    name = design["name"]
-    found: dict = {f"{name}-runner": ("runner", next(
-        (n["model"] for n in design["nodes"] if n.get("kind") in ("script", "merge-gate")),
-        "haiku"))}
-    for n in design["nodes"]:
-        refs = [(n.get("agentType"), n.get("role") or "builder", n.get("model"))]
-        ref = n.get("referee")
-        if isinstance(ref, dict):
-            refs.append((ref.get("agentType"), "referee", ref.get("model")))
-        for at, role, model in refs:
-            if isinstance(at, str) and at.startswith(f"{name}-") and at not in found:
-                found[at] = (role if role in ROLE else "builder", model)
-    return found
-
-
-def agent_file(name: str, agent_type: str, role: str, model: str, python: list) -> str:
-    spec = ROLE[role]
-    py = " ".join(shlex.quote(a) for a in python)
-    guard = f'"$CLAUDE_PROJECT_DIR/.claude/hooks/{name}_guard.py"'
-    hooks = [("Write|Edit|MultiEdit|NotebookEdit", "--paths")]
-    if role == "runner":
-        hooks.append(("Bash", "--runner"))
-    hook_yaml = "\n".join(
-        f"    - matcher: \"{m}\"\n      hooks:\n        - type: command\n"
-        f"          command: '{py} {guard} {mode} || exit 2'" for m, mode in hooks)
-    desc = (f"{role.capitalize()} for the {name} multi-wave plan (arbeitsplan-waves). "
-            f"Dispatched by .claude/workflows/{name}.js only; not for direct use.")
-    return (f"---\nname: {agent_type}\ndescription: {desc}\nmodel: {model}\n"
-            f"maxTurns: {spec['maxTurns']}\ntools: {spec['tools']}\nhooks:\n  PreToolUse:\n"
-            f"{hook_yaml}\n---\n<!-- {STAMP}:{name} -->\n\n# {agent_type}\n\n"
-            f"{ROLE_BODY[role]}\n\n{RELAYED}\n")
 
 
 def write(path: Path, text: str, name: str, written: list, dry: bool) -> None:
@@ -230,8 +156,8 @@ def install(design: dict, root: Path, python: list, artifact: bool, dry: bool) -
     write(hooks / f"{name}_guard.py", stamped((HERE / "waves_guard.py").read_text(
         encoding="utf-8"), stamp, "#"), name, written, dry)
     types = agent_types(design)
-    for at, (role, model) in sorted(types.items()):
-        write(agents / f"{at}.md", agent_file(name, at, role, model, python), name, written, dry)
+    for at, spec in sorted(types.items()):
+        write(agents / f"{at}.md", agent_file(name, at, spec, python), name, written, dry)
 
     ignored = append_lines(root / ".gitignore", [
         f".claude/workflows/{name}.state.json", f".claude/workflows/{name}.state.tmp",
@@ -328,6 +254,8 @@ def selftest() -> int:
         builder = (root / ".claude" / "agents" / "rebuild-cli-builder.md").read_text()
         check("an agent file declares model and maxTurns", "\nmodel: opus\n" in builder
               and "\nmaxTurns: 120\n" in builder, builder[:300])
+        check("the design's effort reaches the agent file (it used to be dropped)",
+              "\neffort: high\n" in builder, builder[:300])
         check("every agent's guard hook is referenced via $CLAUDE_PROJECT_DIR and fails closed",
               '"$CLAUDE_PROJECT_DIR/.claude/hooks/rebuild-cli_guard.py" --paths || exit 2'
               in builder)

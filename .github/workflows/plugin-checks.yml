@@ -396,6 +396,7 @@ jobs:
           node plugins/arbeitsplan/scripts/test_waves_workflow.js
           python3 plugins/arbeitsplan/scripts/waves_state.py selftest
           python3 plugins/arbeitsplan/scripts/waves_guard.py --selftest
+          python3 plugins/arbeitsplan/scripts/agent_gen.py --selftest
           python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
           python3 plugins/arbeitsplan/scripts/handoff.py --selftest
 

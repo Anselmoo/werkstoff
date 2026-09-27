@@ -161,7 +161,13 @@ DESIGN_RULES = {
     "AP-GATE-NOT-PRIMARY": 106,
     "AP-SMOKE-NOT-SCRATCH": 106,
     "AP-SMOKE-UNDECLARED": 106,
+    "AP-AGENT-CONFLICT": 107,
+    "AP-AGENT-KEYS-UNAPPLIED": 107,
 }
+# The node keys that belong to the agent DEFINITION, not to one dispatch: one
+# agent type has one frontmatter, so every node naming it must agree on them.
+# `model` is deliberately absent -- the interpreter passes it per dispatch.
+AGENT_KEYS = ("role", "effort", "tools", "skills")
 
 
 def design_hash(design: dict) -> str:
@@ -453,7 +459,58 @@ def validate_design(design: dict) -> tuple:
                                "human gate must cut the graph into a run before and a run after")
 
     _validate_waves(design, nodes, ancestors, table, err)
+    _validate_agent_types(design, nodes, err)
     return errors, warnings
+
+
+def _agent_decl(n: dict, key: str) -> object:
+    """A node's value for one AGENT_KEYS key, normalised so that order in a
+    list and the implicit builder role are not disagreements."""
+    val = n.get(key)
+    if key == "role":
+        return val or "builder"
+    if isinstance(val, list):
+        return tuple(sorted(str(v) for v in val))
+    return val
+
+
+def _validate_agent_types(design: dict, nodes: dict, err) -> None:
+    """One agent type, one definition (#107 'how': agentType, skills, tools).
+
+    [AP-AGENT-CONFLICT] -- nodes naming the same agentType disagree on a key
+    the agent FILE carries. Absent vs present is a disagreement too: the
+    generated file can say `effort: high` or nothing, not both.
+
+    [AP-AGENT-KEYS-UNAPPLIED] -- in a wave design, install_waves.py generates
+    the files for `<name>-*` types only. A node that declares effort, tools or
+    skills on any other type (a plugin's, one written by hand) has declared
+    keys nothing will ever write: validated, then silently dropped."""
+    by_type: dict = {}
+    for nid, n in nodes.items():
+        at = n.get("agentType")
+        if isinstance(at, str) and at and n.get("kind") != "human-gate":
+            by_type.setdefault(at, []).append(nid)
+    for at, ids in sorted(by_type.items()):
+        for key in AGENT_KEYS:
+            vals = {_agent_decl(nodes[i], key) for i in ids}
+            if len(vals) > 1:
+                shown = ", ".join(f"{i}={nodes[i].get(key)!r}" for i in ids)
+                err(f"agentType {at}", f"[AP-AGENT-CONFLICT] nodes disagree on '{key}' ({shown}). "
+                                       "An agent type is ONE file with ONE frontmatter; make "
+                                       "them agree, or give the odd one out its own agentType")
+    name = design.get("name")
+    if (not any("wave" in n for n in nodes.values()) or not isinstance(name, str)
+            or not NAME_RE.match(name)):
+        return  # an invalid name is already an error; its prefix proves nothing
+    for nid, n in nodes.items():
+        at = n.get("agentType")
+        declared = [k for k in ("effort", "tools", "skills") if n.get(k) is not None]
+        if isinstance(at, str) and declared and not at.startswith(f"{name}-"):
+            err(f"node {nid}", f"[AP-AGENT-KEYS-UNAPPLIED] declares {declared} on agentType "
+                               f"{at!r}, which this design does not generate (only {name}-* "
+                               "types are written); those keys would reach no file. Name a "
+                               f"{name}-* type, or drop the keys and rely on {at!r}'s own "
+                               "definition")
 
 
 def _validate_steps(where: str, steps: object, table: dict, err, required: bool) -> None:
@@ -872,6 +929,21 @@ def selftest() -> int:
         ("smoke with neither steps nor skip", w("smoke", steps=None), "AP-SMOKE-UNDECLARED"),
         ("smoke skipped with a reason -- clean", w("smoke", steps=None,
                                                    skip="a library with no entry point"), None),
+        ("one builder type, effort on only some nodes", w("w1-render", effort=None),
+         "AP-AGENT-CONFLICT"),
+        ("one builder type, two roles", w("w2-cli", role="integrator"), "AP-AGENT-CONFLICT"),
+        ("one builder type, same tools in another order -- clean",
+         w("w2-cli", w("w1-render", w("w1-parse", tools=["Read", "Bash"]),
+                       tools=["Bash", "Read"]), tools=["Read", "Bash"]), None),
+        ("one builder type, skills on one node only", w("w1-parse", skills=["api-conventions"]),
+         "AP-AGENT-CONFLICT"),
+        ("different models on one type -- clean (model is per dispatch)",
+         w("w2-cli", model="sonnet"), None),
+        ("skills on a plugin agent in a wave design",
+         w("review", agentType="arbeitsplan:synthesizer", skills=["api-conventions"]),
+         "AP-AGENT-KEYS-UNAPPLIED"),
+        ("plugin agent without agent keys -- clean",
+         w("review", agentType="arbeitsplan:synthesizer"), None),
     ]
     gate_mid = copy.deepcopy(good)
     gate_mid["nodes"].append({"id": "approve", "kind": "human-gate", "goal": "g",

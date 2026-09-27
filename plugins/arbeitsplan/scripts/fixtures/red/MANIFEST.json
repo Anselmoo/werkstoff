@@ -376,6 +376,28 @@
       "expect": {
         "exit": 1
       }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AGENT-CONFLICT",
+      "fixture": "agent-conflict.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AGENT-KEYS-UNAPPLIED",
+      "fixture": "agent-keys-unapplied.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
     }
   ]
 }

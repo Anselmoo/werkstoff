@@ -8,7 +8,7 @@ would be nice to do.
 
 **Contents** — [why a design table](#why-a-design-table) · [top level](#top-level) ·
 [nodes](#nodes) · [commands and toolchains](#commands-and-toolchains) · [waves](#waves) ·
-[rejections](#rejections) · [worked instance](#worked-instance)
+[agent types](#agent-types) · [rejections](#rejections) · [worked instance](#worked-instance)
 
 ## Why a design table
 
@@ -51,7 +51,7 @@ supplied by a default.
 | `kind` | `agent` · `script` (a fixed command) · `referee` (blind) · `merge-gate` (merge, then gate) · `human-gate` (**between** runs only: a Workflow run cannot pause for input) |
 | `where` | `primary` · `worktree` · `scratch`. Never inherited from the session's cwd |
 | `model`, `effort` | `model` is **explicit on every dispatched node**: an alias (`haiku`, `sonnet`, `opus`, `fable`) or a full `claude-...` id. A script node gets the smallest model only when the design says so |
-| `agentType`, `skills`, `tools`, `role` | the agent definition; `role` is one of `builder`, `referee`, `merger`, `integrator`, `smoke`, `reviewer`, `fixer`, `runner` |
+| `agentType`, `skills`, `tools`, `role` | the agent definition; `role` is one of `builder`, `referee`, `merger`, `integrator`, `smoke`, `reviewer`, `fixer`, `runner`. In a wave design these, with `effort`, are written into the generated `.claude/agents/<agentType>.md` (see [agent types](#agent-types)) |
 | `writeScope` | globs this node owns. Present on every dispatched node (`[]` means it writes nothing), and non-empty on a worktree agent |
 | `inputs` | **ids and paths only**, never a sibling's content (#106 R8) |
 | `output_schema` | type `object`, **strict**: `additionalProperties: false` at every object level, and no JSON-in-a-string field |
@@ -152,6 +152,29 @@ must meet each of the following.
 **The placeholders the interpreter fills:** `name`, `runId`, `wave`, `stage`, `final`,
 `branches`, `discard`, `base`, `integration` and `target`. A slot outside that set is refused.
 
+## Agent types
+
+An agent type is **one file with one frontmatter**, so every node that names it must agree on
+what that file says. `scripts/agent_gen.py` writes the file for each `<name>-*` type a wave
+design uses, and `install_waves.py` and `handoff.py` both call it, so they cannot disagree about
+which files appear.
+
+| node key | where it goes | rule |
+|---|---|---|
+| `effort`, `skills` | the agent file's frontmatter; `skills` preloads each named skill's full content | absent means the key is not written, never a default |
+| `tools` | replaces the role's default tool list | refused for the runner and the author, whose guard modes depend on their fixed tools |
+| `role` | picks the role's default tools, `maxTurns` and body | defaults to `builder` |
+| `model` | the file's default only | **per dispatch**: `waves.js` passes each node's own model, so nodes of one type may differ |
+
+Two rejections keep this honest. Nodes sharing a type that disagree on `role`, `effort`,
+`tools` or `skills` are refused (`AP-AGENT-CONFLICT`); absent next to present counts as a
+disagreement. A wave design that declares those keys on a type it does not generate, such as a
+plugin's `plugin:agent` or a file someone wrote by hand, is refused
+(`AP-AGENT-KEYS-UNAPPLIED`), because the keys would reach no file.
+
+Before this, `install_waves.py` hard-coded tools per role and dropped `effort` and `skills`:
+every one of them validated, none of them applied.
+
 ## Rejections
 
 Every tagged rule has a committed red fixture under `scripts/fixtures/red/*.design.json`,
@@ -176,6 +199,8 @@ ever compiled a design, so `--baseline` skips them.
 | `AP-GATES-UNDECLARED` | 106 | a wave design with no declared gates |
 | `AP-SWARM-INCOMPLETE` | 106 | a swarm row without acceptance steps or a referee |
 | `AP-GATE-NOT-PRIMARY`, `AP-SMOKE-NOT-SCRATCH`, `AP-SMOKE-UNDECLARED` | 106 | where a gate and a smoke node run, and what smoke runs |
+| `AP-AGENT-CONFLICT` | 107 | nodes naming one `agentType` that disagree on `role`, `effort`, `tools` or `skills` |
+| `AP-AGENT-KEYS-UNAPPLIED` | 107 | in a wave design, `effort`, `tools` or `skills` on an agent type the design does not generate |
 
 Shape errors are untagged, like `compile_spec.py`'s own. They cover a bad `name`, an unknown
 `kind`, a missing `goal` or `where`, an agent without `agentType`, a missing `integration`, and
