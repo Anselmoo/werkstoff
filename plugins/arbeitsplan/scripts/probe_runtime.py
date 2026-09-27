@@ -68,8 +68,11 @@ EDIT_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
 VOID = {"NO_ATTEMPT", "STAGE_FAILED", "ENTER_FAILED", "PRESENT_AT_START", "NO_SHA",
         "UNCACHEABLE", "TOO_FEW", "UNCLEAR", "WORKFLOW_UNAVAILABLE", "WARM"}
 SHA_RE = re.compile(r"\b[0-9a-f]{40}\b")
-NOT_FOUND_RE = re.compile(r"(?i)not found|unknown agent|no such agent|invalid agent|"
-                          r"agent type|does not exist|isn't available|not available")
+# The runtime's own message, from both paths (MEASURED, 2.1.283): the Agent tool's
+# "Agent type 'x' not found. Available agents: ..." and a Workflow agent()'s
+# "agent({agentType}): agent type 'x' not found. ...". Exact on purpose: a looser
+# pattern once matched the model's own prose ("tried to use agent type ...").
+NOT_FOUND_RE = re.compile(r"(?i)agent type '[^']+' not found")
 PLAN_RE = re.compile(r"(?i)plan mode")
 
 # variant -> (probe, what is measured, the recorded claim's label or None, its source)
@@ -242,6 +245,23 @@ def read_agents(home: Path, sid: str) -> list:
         found.append({"agentType": m.get("agentType"), "cwd": cwd, "requests": requests,
                       "tool_texts": texts, "workflow": "workflows" in meta.parts})
     return found
+
+
+def first_workflow_result(p: dict) -> dict:
+    """The `result` of the FIRST Workflow launch, from the output file its
+    task_notification names (shape captured on 2.1.283: a JSON object with
+    `result` and per-agent `workflowProgress`). {} when there is none."""
+    first = next((t for t in p["tool_uses"] if t["name"] == "Workflow"), None)
+    note = next((n for n in p["notes"] if first and n.get("tool_use_id") == first["id"]), None)
+    path = Path((note or {}).get("output_file") or "")
+    if not path.name or not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    res = data.get("result") if isinstance(data, dict) else None
+    return res if isinstance(res, dict) else {}
 
 
 def read_workflow_runs(home: Path, sid: str) -> list:
@@ -669,14 +689,16 @@ def run_p4(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
     if workflow:
         if "Workflow" not in ((p["init"] or {}).get("tools") or []):
             return "WORKFLOW_UNAVAILABLE", {}
-        runs = read_workflow_runs(ctx.home, sid)
-        # The FIRST run is the one the prompt asked for; a model that re-runs the
-        # workflow after a failure does so in a later turn, which is P4e's question.
-        res = (runs[0].get("result") if runs else None) or {}
+        # The FIRST launch is the one the prompt asked for. Its outcome is read from
+        # that launch's own task output file, not workflows/<runId>.json: a model
+        # that relaunches with resumeFromRunId in a later turn OVERWRITES that
+        # record with the later result (MEASURED, sweep 2026-09-27b, P4b run 1).
+        res = first_workflow_result(p)
         early, late = str(res.get("early") or ""), (str(res["late"]) if "late" in res else None)
-        if not runs:
-            late = None
-        evidence = {"workflow": [{k: w.get(k) for k in ("status", "result")} for w in runs]}
+        runs = read_workflow_runs(ctx.home, sid)
+        evidence = {"first_launch": res, "launches": sum(
+            1 for t in p["tool_uses"] if t["name"] == "Workflow"),
+            "record": [{k: w.get(k) for k in ("status", "result")} for w in runs]}
     else:
         replies = {}
         for t in p["tool_uses"]:
@@ -892,6 +914,11 @@ def _cases(clf: dict, tmp: Path) -> list:
          "PRESENT_AT_START"),
         ("late: never staged", late(**{**kw, "staged": False, "late": "LATE-1"}), "STAGE_FAILED"),
         ("late: never dispatched", late(**{**kw, "late": None}), "NO_ATTEMPT"),
+        ("late: the model's prose about an agent type is not the runtime's error",
+         late(**{**kw, "late": "it tried to use agent type probe-late, unavailable"}), "UNCLEAR"),
+        ("late: the Workflow agent() error", late(**{**kw, "late": "ERROR: agent({agentType}): "
+                                                     "agent type 'probe-late' not found."}),
+         "NOT_FOUND"),
     ]
     a, b, r = "a" * 40, "b" * 40, "c" * 40
     shas = {"PRIMARY": a, "CALLER": b, "REMOTE": r}
@@ -950,6 +977,14 @@ def _transcript_cases(tmp: Path) -> list:
                                                               "result": {"sha": "x"}}))
     agents = read_agents(home, "SID")
     by = {a["agentType"]: a for a in agents}
+    first_out, second_out = tmp / "first.output", tmp / "second.output"
+    first_out.write_text(json.dumps({"result": {"late": "ERROR: not found"}}))
+    second_out.write_text(json.dumps({"result": {"late": "LATE-1"}}))
+    launches = parse_events(_stream(
+        _init(), _tu("w1", "Workflow"), {"type": "system", "subtype": "task_notification",
+                                         "tool_use_id": "w1", "output_file": str(first_out)},
+        _tu("w2", "Workflow"), {"type": "system", "subtype": "task_notification",
+                                "tool_use_id": "w2", "output_file": str(second_out)}, _res()))
     return [
         ("transcripts: both subagent layouts found", sorted(by), ["probe-cache-a", "probe-sha"]),
         ("transcripts: a request counted once, not once per block",
@@ -960,6 +995,8 @@ def _transcript_cases(tmp: Path) -> list:
         ("transcripts: the workflow run record", read_workflow_runs(home, "SID")[0]["status"],
          "completed"),
         ("transcripts: an unknown session is empty", read_agents(home, "NOPE"), []),
+        ("transcripts: the FIRST Workflow launch's own output, not a later resume's",
+         first_workflow_result(launches), {"late": "ERROR: not found"}),
     ]
 
 
