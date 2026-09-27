@@ -135,6 +135,32 @@ class SymbolIndexerTest(unittest.TestCase):
             self.assertEqual(index["files_scanned"], len(INDEXER.LANG_EXTENSIONS))
             self.assertLess(elapsed, float(os.environ.get("SYMBOL_INDEX_MAX_SECONDS", "1")))
 
+    # Top-level CSS at-rules -- MDN's at-rules reference, fetched 2026-09-27:
+    # https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/css/reference/at-rules/index.md
+    # ("Index of at-rules and at-rule descriptors" section only; descriptors
+    # such as @font-face/src and the separate "media features" index below it
+    # are excluded). Kept independent of build_symbol_index.py's own
+    # CSS_AT_RULES constant so this test catches a drift in that list, not
+    # just a drift from an empty implementation.
+    MDN_TOP_LEVEL_CSS_AT_RULES = (
+        "charset", "color-profile", "container", "counter-style", "custom-media",
+        "document", "font-face", "font-feature-values", "font-palette-values",
+        "function", "import", "keyframes", "layer", "media", "namespace", "page",
+        "position-try", "property", "scope", "starting-style", "supports",
+        "view-transition",
+    )
+
+    # Sass-only at-rules -- sass-lang.com's at-rules docs, fetched 2026-09-27:
+    # https://raw.githubusercontent.com/sass/sass-site/main/source/documentation/at-rules/index.md
+    # plus its linked sub-pages: control/index.md and control/if.md (@else),
+    # mixin.md (@content), function.md (@return). @import and @function are
+    # plain CSS at-rules (listed above) and are not repeated here.
+    SASS_SITE_AT_RULES = (
+        "use", "forward", "mixin", "include", "extend", "at-root", "error",
+        "warn", "debug", "if", "else", "each", "for", "while", "content",
+        "return",
+    )
+
     def test_css_selectors_and_at_rules_are_extracted(self) -> None:
         temporary = self.make_repo()
         self.addCleanup(temporary.cleanup)
@@ -157,6 +183,116 @@ class SymbolIndexerTest(unittest.TestCase):
         self.assertIn(".card", by_kind.get("selector", set()))
         self.assertIn("--accent-color", by_kind.get("custom-property", set()))
         self.assertTrue(any(name.startswith("@media") for name in by_kind.get("at-rule", set())))
+
+    def test_every_mdn_css_at_rule_is_indexed_as_at_rule_in_block_and_statement_form(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        lines = []
+        for name in self.MDN_TOP_LEVEL_CSS_AT_RULES:
+            lines.append(f"@{name} (foo) {{")
+            lines.append("  color: red;")
+            lines.append("}")
+            lines.append(f"@{name} foo;")
+        (root / "spec.css").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_kind: dict[str, set[str]] = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        at_rule_names = by_kind.get("at-rule", set())
+        selector_names = by_kind.get("selector", set())
+        for name in self.MDN_TOP_LEVEL_CSS_AT_RULES:
+            self.assertTrue(
+                any(recorded.startswith(f"@{name}") for recorded in at_rule_names),
+                f"@{name} (block and statement form) should be indexed as at-rule",
+            )
+            self.assertFalse(
+                any(recorded.startswith(f"@{name}") for recorded in selector_names),
+                f"@{name} must never be recorded as a selector",
+            )
+
+    def test_sass_at_rules_are_indexed_in_scss_and_sass_only(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        scss_lines = []
+        for name in self.SASS_SITE_AT_RULES:
+            scss_lines.append(f"@{name} example() {{")
+            scss_lines.append("  color: red;")
+            scss_lines.append("}")
+        (root / "styles.scss").write_text("\n".join(scss_lines) + "\n", encoding="utf-8")
+        # The indented ".sass" syntax has no braces at all -- the at-rule
+        # match must not depend on a trailing "{" or ";".
+        sass_lines = [f"@{name} example" for name in self.SASS_SITE_AT_RULES]
+        (root / "styles.sass").write_text("\n".join(sass_lines) + "\n", encoding="utf-8")
+        # A .css file is not Sass: @mixin there stays a non-at-rule.
+        (root / "plain.css").write_text("@mixin button-variant() {\n  color: red;\n}\n", encoding="utf-8")
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_file_kind: dict[str, dict[str, set[str]]] = {}
+        for symbol in index["symbols"]:
+            by_file_kind.setdefault(symbol["file"], {}).setdefault(symbol["kind"], set()).add(symbol["name"])
+
+        for filename in ("styles.scss", "styles.sass"):
+            at_rule_names = by_file_kind.get(filename, {}).get("at-rule", set())
+            selector_names = by_file_kind.get(filename, {}).get("selector", set())
+            for name in self.SASS_SITE_AT_RULES:
+                self.assertTrue(
+                    any(recorded.startswith(f"@{name}") for recorded in at_rule_names),
+                    f"@{name} should be indexed as at-rule in {filename}",
+                )
+                self.assertFalse(
+                    any(recorded.startswith(f"@{name}") for recorded in selector_names),
+                    f"@{name} must never be recorded as a selector in {filename}",
+                )
+
+        css_at_rules = by_file_kind.get("plain.css", {}).get("at-rule", set())
+        css_selectors = by_file_kind.get("plain.css", {}).get("selector", set())
+        self.assertFalse(any(name.startswith("@mixin") for name in css_at_rules), "@mixin is not CSS")
+        self.assertTrue(
+            any(name.startswith("@mixin") for name in css_selectors),
+            "a .css file's @mixin stays a non-at-rule (falls through to selector)",
+        )
+
+    def test_an_at_rule_name_is_a_whole_css_identifier_not_a_prefix(self) -> None:
+        # `-` is an identifier character in CSS, so a regex `\b` sits between
+        # `@media` and `-foo` and would match the listed name as a prefix of
+        # an unlisted one. `@media-foo` is not @media, and must not be
+        # recorded as it; the real at-rule beside it still must be.
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "prefix.css").write_text(
+            "@media-foo {\n  color: red;\n}\n@media screen {\n  color: blue;\n}\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        at_rule_names = {s["name"] for s in index["symbols"] if s["kind"] == "at-rule"}
+        self.assertFalse(any(name.startswith("@media-foo") for name in at_rule_names), at_rule_names)
+        self.assertIn("@media screen", at_rule_names)
+
+    def test_less_variables_and_detached_rulesets_are_not_at_rules(self) -> None:
+        temporary = self.make_repo()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        (root / "vars.less").write_text(
+            "@primary: #fff;\n@detached: {\n  color: red;\n}\n",
+            encoding="utf-8",
+        )
+        pointer, _ = INDEXER.build_or_reuse(root, "fixture", False)
+        run = root / "analysis" / "fixture" / "runs" / pointer["generation_id"]
+        index = json.loads((run / "symbol_index.json").read_text())
+        by_kind: dict[str, set[str]] = {}
+        for symbol in index["symbols"]:
+            by_kind.setdefault(symbol["kind"], set()).add(symbol["name"])
+        at_rule_names = by_kind.get("at-rule", set())
+        self.assertFalse(any(name.startswith("@primary") for name in at_rule_names))
+        self.assertFalse(any(name.startswith("@detached") for name in at_rule_names))
 
     def test_html_headings_and_landmarks_are_extracted(self) -> None:
         temporary = self.make_repo()

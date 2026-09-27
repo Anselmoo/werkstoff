@@ -24,6 +24,12 @@ permissions:
 jobs:
   bump-and-tag:
     name: Bump and tag every listed group
+    # Inside the called workflow, the github context is still THIS
+    # workflow's -- github.event_name there reads 'workflow_dispatch' (this
+    # trigger), never the literal string 'workflow_call'. auto-version-bump.yml's
+    # bump job therefore keys its guard off inputs.groups_and_levels (which
+    # this `with:` always supplies non-empty, since the input above is
+    # `required: true`), not off github.event_name.
     uses: ./.github/workflows/auto-version-bump.yml
     with:
       groups_and_levels: ${{ inputs.groups_and_levels }}

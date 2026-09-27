@@ -70,9 +70,23 @@ jobs:
     # Guard against re-triggering on the bump commit(s) this workflow itself
     # pushes -- rrt bump's generated commit message is always exactly
     # "chore: bump version to v<version>". Only applies to the push trigger;
-    # a workflow_call invocation (the manual batch-release path) has no
-    # head_commit to sniff and is never self-triggered this way.
-    if: "${{ github.event_name == 'workflow_call' || !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
+    # a workflow_call invocation (the manual batch-release path) supplies its
+    # own explicit groups_and_levels input, which is the actual signal to key
+    # off of -- NOT github.event_name. Inside a reusable workflow the github
+    # context is always the CALLER's (GitHub's docs: "the github context is
+    # consistently associated with the caller workflow"), so
+    # github.event_name is the caller's own trigger (workflow_dispatch,
+    # push, ...) and is never the literal string 'workflow_call'. That first
+    # arm was therefore always dead code; batch-release.yml's runs only ever
+    # got through because its workflow_dispatch caller has a null
+    # head_commit, so !startsWith(null, ...) happens to be true. A caller
+    # whose own head commit happened to be bump-shaped would have skipped
+    # this job silently despite an explicit input -- the exact silent no-op
+    # #27 is about. inputs.groups_and_levels is '' outside a workflow_call
+    # invocation (see the "Normalize" step below, which already relies on
+    # this), so a non-empty input unconditionally lets the job run; only
+    # when it's absent does the push self-trigger guard apply.
+    if: "${{ inputs.groups_and_levels != '' || !startsWith(github.event.head_commit.message, 'chore: bump version to v') }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
