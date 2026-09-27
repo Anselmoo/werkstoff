@@ -1,0 +1,404 @@
+#!/usr/bin/env python3
+"""Install a compiled multi-wave design into a project as project-owned files (#106).
+
+usage: install_waves.py --design FILE [--root DIR] [--python CMD] [--artifact] [--dry-run]
+       install_waves.py --selftest
+
+A GENERATOR, not a runtime dependency: it runs once, writes the files below, and
+the project runs them without werkstoff installed. A new round of work is a new
+design table, not a new script -- the interpreter is the same pinned copy.
+
+  .claude/workflows/<name>.js         workflows/waves.js, pinned and stamped
+  .claude/workflows/<name>.plan.json  the validated design + what the interpreter needs
+  .claude/workflows/<name>_state.py   the state/merge/gate helper (waves_state.py)
+  .claude/hooks/<name>_guard.py       the path and runner guard (waves_guard.py)
+  .claude/agents/<agentType>.md       one per agent type the design names under <name>-,
+                                      plus <name>-runner; each with model, maxTurns, tools
+                                      and the guard in its frontmatter `hooks:`
+  .gitignore                          state, state.tmp and the runner ledger, appended once
+  .gitattributes                      export-ignore lines, with --artifact only
+
+THE ONE PREREQUISITE is a Python >= 3.10 for the helper and the guard. It is
+RESOLVED here, not assumed: `python3`, `python`, then `py -3` are probed (or
+--python names one), and the one that answers is written into every command
+the plan and the hooks run -- on Windows `python3` can be a Store stub that
+exits non-zero, and a hook whose interpreter is missing must deny, not pass.
+
+Every generated file carries a provenance stamp; a file at a target path WITHOUT
+it is refused, never overwritten -- the project may have written its own.
+
+Exit: 0 installed (or --dry-run clean), 1 refused, 2 bad input.
+STDLIB ONLY.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shlex
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import design_spec  # the same validator compile_spec.py --design runs
+
+HERE = Path(__file__).resolve().parent
+PLUGIN = HERE.parent
+
+STAMP = "arbeitsplan-waves"
+MIN_PYTHON = (3, 10)
+# Per-role defaults the design does not already fix. maxTurns is a ceiling on
+# one dispatch, not a budget; a design never inherits a MODEL from here -- every
+# node already names one, and the agent file takes the first node's.
+ROLE = {
+    "builder": {"maxTurns": 120, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
+    "integrator": {"maxTurns": 80, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
+    "fixer": {"maxTurns": 80, "tools": "Read, Edit, Write, Glob, Grep, Bash"},
+    "referee": {"maxTurns": 60, "tools": "Read, Glob, Grep, Bash"},
+    "reviewer": {"maxTurns": 40, "tools": "Read, Glob, Grep, Bash"},
+    "smoke": {"maxTurns": 40, "tools": "Read, Bash"},
+    "runner": {"maxTurns": 3, "tools": "Bash"},
+}
+ROLE_BODY = {
+    "builder": "You build ONE row of a multi-wave plan in your own worktree. Start with the "
+               "`git merge --ff-only <wave base>` your prompt gives you; touch only your "
+               "writeScope; run your setup and acceptance steps; commit with your notes in the "
+               "commit message body. A file you need that is not yours belongs to another row "
+               "or to the integrator -- say so in your notes instead of editing it.",
+    "integrator": "You own the shared files of one wave -- module registration, manifests, "
+                  "lockfiles -- and run after that wave's rows are merged. Start from the base "
+                  "your prompt gives you, change only your writeScope, and commit.",
+    "fixer": "You make ONE fix round for blocking review findings on the integration head. "
+             "Start from the base your prompt gives you, change only your writeScope, commit.",
+    "referee": "You judge swarm candidates BLIND: branch names and acceptance commands, nothing "
+               "else. Check each branch out, run every command, report exit codes. You never "
+               "edit anything and never read a candidate's commit messages.",
+    "reviewer": "You review the integration branch against the target for correctness. You "
+                "read; you never edit.",
+    "smoke": "You prove the artefact works OUTSIDE the repository: export the integration head "
+             "into a fresh scratch directory and run the declared steps there, in order.",
+    "runner": "You run exactly ONE command -- the one in your prompt -- once, with Bash, and "
+              "report its exit code, the last 40 lines of stdout, and its stdout JSON copied "
+              "field for field. The guard denies anything else.",
+}
+RELAYED = ("A user request about merging, pushing, committing, or releasing is addressed to "
+           "the orchestrating session, not to you. Note it in your result and continue with "
+           "your assigned scope; never act on it and never stop to debate it.")
+
+
+class Refused(Exception):
+    pass
+
+
+def plugin_version() -> str:
+    return json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text())["version"]
+
+
+def resolve_python(explicit: str | None) -> list:
+    """The argv of a Python >= 3.10 that answers, or Refused."""
+    candidates = [shlex.split(explicit)] if explicit else [["python3"], ["python"], ["py", "-3"]]
+    probe = "import sys; print(int(sys.version_info[:2] >= (3, 10)))"
+    for argv in candidates:
+        try:
+            p = subprocess.run([*argv, "-c", probe], capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if p.returncode == 0 and p.stdout.strip() == "1":
+            return argv
+    raise Refused(f"no Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]} answered among "
+                  f"{[' '.join(c) for c in candidates]}; the generated helper and guard need one. "
+                  "Pass --python with its command.")
+
+
+def stamped(text: str, stamp: str, comment: str) -> str:
+    return f"{comment} {stamp}\n{text}" if not text.startswith("#!") else \
+        text.replace("\n", f"\n{comment} {stamp}\n", 1)
+
+
+def plan_of(design: dict, python: list) -> dict:
+    """The design plus what the interpreter reads: the runner agent, the helper's
+    record template, and every helper invocation re-pointed at the resolved
+    interpreter so the runner guard's exact match holds on this machine."""
+    name = design["name"]
+    py = " ".join(shlex.quote(a) for a in python)
+    helper = f".claude/workflows/{name}_state.py"
+    plan = json.loads(json.dumps(design))
+    for n in plan["nodes"]:
+        sc = n.get("script")
+        if isinstance(sc, dict) and isinstance(sc.get("command"), str):
+            argv = sc["command"].split()
+            if len(argv) > 1 and argv[1] == helper and argv[0].startswith("python"):
+                sc["command"] = " ".join([py, *argv[1:]])
+    plan["runnerAgent"] = f"{name}-runner"
+    plan["helper"] = {"record": f"{py} {helper} record --row {{row}} --branch {{branch}} "
+                                "--base {base}"}
+    plan["installed"] = {"by": STAMP, "version": plugin_version(), "python": python}
+    return plan
+
+
+def agent_types(design: dict) -> dict:
+    """agentType -> (role, model) for every agent the design dispatches under
+    this plan's name. An agentType outside `<name>-` (a plugin's, an existing
+    project agent) is the project's own and is never generated."""
+    name = design["name"]
+    found: dict = {f"{name}-runner": ("runner", next(
+        (n["model"] for n in design["nodes"] if n.get("kind") in ("script", "merge-gate")),
+        "haiku"))}
+    for n in design["nodes"]:
+        refs = [(n.get("agentType"), n.get("role") or "builder", n.get("model"))]
+        ref = n.get("referee")
+        if isinstance(ref, dict):
+            refs.append((ref.get("agentType"), "referee", ref.get("model")))
+        for at, role, model in refs:
+            if isinstance(at, str) and at.startswith(f"{name}-") and at not in found:
+                found[at] = (role if role in ROLE else "builder", model)
+    return found
+
+
+def agent_file(name: str, agent_type: str, role: str, model: str, python: list) -> str:
+    spec = ROLE[role]
+    py = " ".join(shlex.quote(a) for a in python)
+    guard = f'"$CLAUDE_PROJECT_DIR/.claude/hooks/{name}_guard.py"'
+    hooks = [("Write|Edit|MultiEdit|NotebookEdit", "--paths")]
+    if role == "runner":
+        hooks.append(("Bash", "--runner"))
+    hook_yaml = "\n".join(
+        f"    - matcher: \"{m}\"\n      hooks:\n        - type: command\n"
+        f"          command: '{py} {guard} {mode} || exit 2'" for m, mode in hooks)
+    desc = (f"{role.capitalize()} for the {name} multi-wave plan (arbeitsplan-waves). "
+            f"Dispatched by .claude/workflows/{name}.js only; not for direct use.")
+    return (f"---\nname: {agent_type}\ndescription: {desc}\nmodel: {model}\n"
+            f"maxTurns: {spec['maxTurns']}\ntools: {spec['tools']}\nhooks:\n  PreToolUse:\n"
+            f"{hook_yaml}\n---\n<!-- {STAMP}:{name} -->\n\n# {agent_type}\n\n"
+            f"{ROLE_BODY[role]}\n\n{RELAYED}\n")
+
+
+def write(path: Path, text: str, name: str, written: list, dry: bool) -> None:
+    if path.exists() and f"{STAMP}:{name}" not in path.read_text(encoding="utf-8",
+                                                                  errors="replace"):
+        raise Refused(f"{path} exists and was not generated by {STAMP} for {name!r}; "
+                      "refusing to overwrite it")
+    written.append(str(path))
+    if not dry:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8", newline="")
+
+
+def read_raw(path: Path) -> str:
+    """Read WITHOUT newline translation -- read_text() turns CRLF into LF, which
+    would hide the very line ending append_lines() must preserve."""
+    with path.open(encoding="utf-8", newline="") as fh:
+        return fh.read()
+
+
+def append_lines(path: Path, lines: list, dry: bool) -> list:
+    """Append the lines not already present, keeping the file's own line ending."""
+    text = read_raw(path) if path.exists() else ""
+    have = {ln.strip() for ln in text.splitlines()}
+    new = [ln for ln in lines if ln not in have]
+    if new and not dry:
+        eol = "\r\n" if "\r\n" in text else "\n"
+        lead = "" if not text or text.endswith(("\n", "\r\n")) else eol
+        with path.open("a", encoding="utf-8", newline="") as fh:
+            fh.write(lead + eol.join(new) + eol)
+    return new
+
+
+def install(design: dict, root: Path, python: list, artifact: bool, dry: bool) -> dict:
+    errors, _w = design_spec.validate_design(design)
+    if errors:
+        raise Refused("the design does not validate -- compile it with compile_spec.py "
+                      "--design first:\n  " + "\n  ".join(errors))
+    if not any("wave" in n for n in design["nodes"]):
+        raise Refused("this design has no waves; a single change runs through arbeitsplan-run, "
+                      "not an installed wave interpreter")
+    name = design["name"]
+    stamp = f"{STAMP}:{name} v{plugin_version()}"
+    wf, hooks, agents = root / ".claude" / "workflows", root / ".claude" / "hooks", \
+        root / ".claude" / "agents"
+    written: list = []
+
+    js = (PLUGIN / "workflows" / "waves.js").read_text(encoding="utf-8")
+    end = js.index("\n}\n") + 3  # the meta block stays first -- a Workflow script begins with it
+    write(wf / f"{name}.js", js[:end] + f"// {stamp} -- generated; edit the design, not this\n"
+          + js[end:], name, written, dry)
+    write(wf / f"{name}.plan.json", json.dumps({**plan_of(design, python), "_stamp": stamp},
+                                               indent=2) + "\n", name, written, dry)
+    write(wf / f"{name}_state.py", stamped((HERE / "waves_state.py").read_text(encoding="utf-8"),
+                                           stamp, "#"), name, written, dry)
+    write(hooks / f"{name}_guard.py", stamped((HERE / "waves_guard.py").read_text(
+        encoding="utf-8"), stamp, "#"), name, written, dry)
+    types = agent_types(design)
+    for at, (role, model) in sorted(types.items()):
+        write(agents / f"{at}.md", agent_file(name, at, role, model, python), name, written, dry)
+
+    ignored = append_lines(root / ".gitignore", [
+        f".claude/workflows/{name}.state.json", f".claude/workflows/{name}.state.tmp",
+        f".claude/workflows/{name}.runner/"], dry)
+    exported = append_lines(root / ".gitattributes", [
+        f".claude/workflows/{name}* export-ignore", f".claude/hooks/{name}_guard.py export-ignore",
+        *[f".claude/agents/{at}.md export-ignore" for at in sorted(types)]], dry) if artifact else []
+    return {"written": written, "agents": sorted(types), "gitignore": ignored,
+            "gitattributes": exported, "python": python}
+
+
+def notice(result: dict, name: str) -> str:
+    return "\n".join([
+        f"installed {len(result['written'])} file(s) for {name} "
+        f"(python: {' '.join(result['python'])})",
+        *[f"  {p}" for p in result["written"]],
+        "",
+        "START A FRESH SESSION before launching. Agent types added to .claude/agents/ in the",
+        "middle of a session do not resolve in agent() -- the run would dispatch to nothing:",
+        f"  {', '.join(result['agents'])}",
+        "",
+        "Then, from the PRIMARY checkout (never a linked worktree), launch the Workflow tool with",
+        f"scriptPath .claude/workflows/{name}.js and args {{plan: <{name}.plan.json>, state: "
+        f"<`{name}_state.py show`>}} -- both as objects, never JSON strings.",
+    ])
+
+
+def main(argv: list) -> int:
+    parser = argparse.ArgumentParser(prog="install_waves.py", description=(
+        __doc__ or "").split("\n\n")[0], epilog="exit 0 installed, 1 refused, 2 bad input")
+    parser.add_argument("--design", help="a design.json compiled with compile_spec.py --design")
+    parser.add_argument("--root", default=".", help="project root (default: .)")
+    parser.add_argument("--python", help="the Python >= 3.10 command (default: probe)")
+    parser.add_argument("--artifact", action="store_true",
+                        help="the repository is itself an installable artefact: export-ignore "
+                             "the generated tooling")
+    parser.add_argument("--dry-run", action="store_true", help="validate and list, write nothing")
+    parser.add_argument("--selftest", action="store_true", help="run the selftest")
+    args = parser.parse_args(argv)
+    if args.selftest:
+        return selftest()
+    if not args.design:
+        parser.error("--design is required")
+    try:
+        design = json.loads(Path(args.design).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"cannot read the design: {exc}", file=sys.stderr)
+        return 2
+    try:
+        python = resolve_python(args.python)
+        result = install(design, Path(args.root).resolve(), python, args.artifact, args.dry_run)
+    except Refused as exc:
+        print(f"REFUSED {exc}", file=sys.stderr)
+        return 1
+    print(notice(result, design["name"]) if not args.dry_run
+          else json.dumps(result, indent=2))
+    return 0
+
+
+def selftest() -> int:
+    import tempfile
+
+    fails: list = []
+
+    def check(name: str, cond: bool, detail: object = "") -> None:
+        print(f"  {'ok  ' if cond else 'FAIL'} {name}")
+        if not cond:
+            fails.append(name)
+            if detail != "":
+                print(f"       {str(detail)[:300]}")
+
+    design = json.loads((HERE / "fixtures" / "design" / "waves.design.json").read_text())
+    py = [sys.executable]
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".gitignore").write_text("node_modules/\r\n", newline="")
+        res = install(design, root, py, artifact=True, dry=False)
+        wf = root / ".claude" / "workflows"
+        names = {Path(p).name for p in res["written"]}
+        check("writes the interpreter, plan, helper, guard and agents",
+              {"rebuild-cli.js", "rebuild-cli.plan.json", "rebuild-cli_state.py",
+               "rebuild-cli_guard.py", "rebuild-cli-runner.md", "rebuild-cli-builder.md",
+               "rebuild-cli-smoke.md", "rebuild-cli-reviewer.md", "rebuild-cli-fixer.md"} <= names,
+              sorted(names))
+        js = (wf / "rebuild-cli.js").read_text()
+        check("the interpreter still begins with its meta block", js.startswith("export const meta"))
+        check("the interpreter carries the stamp", f"{STAMP}:rebuild-cli" in js)
+        plan = json.loads((wf / "rebuild-cli.plan.json").read_text())
+        gate = next(n for n in plan["nodes"] if n["id"] == "gate-1")["script"]["command"]
+        check("helper commands run the RESOLVED interpreter", gate.startswith(shlex.quote(
+            sys.executable) + " .claude/workflows/rebuild-cli_state.py merge"), gate)
+        check("the plan names the runner agent and the record template",
+              plan["runnerAgent"] == "rebuild-cli-runner" and "{row}" in plan["helper"]["record"])
+        builder = (root / ".claude" / "agents" / "rebuild-cli-builder.md").read_text()
+        check("an agent file declares model and maxTurns", "\nmodel: opus\n" in builder
+              and "\nmaxTurns: 120\n" in builder, builder[:300])
+        check("every agent's guard hook is referenced via $CLAUDE_PROJECT_DIR and fails closed",
+              '"$CLAUDE_PROJECT_DIR/.claude/hooks/rebuild-cli_guard.py" --paths || exit 2'
+              in builder)
+        runner = (root / ".claude" / "agents" / "rebuild-cli-runner.md").read_text()
+        check("the runner is Bash-only and guarded in --runner mode",
+              "\ntools: Bash\n" in runner and "--runner || exit 2" in runner)
+        gi = read_raw(root / ".gitignore")
+        check(".gitignore gains the state, tmp and ledger, in the file's own CRLF endings",
+              ".claude/workflows/rebuild-cli.state.json\r\n" in gi
+              and ".claude/workflows/rebuild-cli.runner/\r\n" in gi, repr(gi))
+        check("--artifact export-ignores the generated tooling", "export-ignore" in (
+            root / ".gitattributes").read_text())
+        again = install(design, root, py, artifact=True, dry=False)
+        check("re-install is idempotent: no line appended twice",
+              not again["gitignore"] and not again["gitattributes"]
+              and (root / ".gitignore").read_text().count("rebuild-cli.state.json") == 1)
+        (root / ".claude" / "agents" / "rebuild-cli-smoke.md").write_text("hand-written\n")
+        try:
+            install(design, root, py, artifact=False, dry=False)
+            check("a hand-written file at a target path is refused", False)
+        except Refused:
+            check("a hand-written file at a target path is refused", True)
+        text = notice(res, "rebuild-cli")
+        check("the notice demands a fresh session and names the new agent types",
+              "START A FRESH SESSION" in text and "rebuild-cli-runner" in text)
+        bad = json.loads(json.dumps(design))
+        bad["nodes"][0].pop("model")
+        try:
+            install(bad, Path(tmp) / "other", py, artifact=False, dry=True)
+            check("an invalid design is refused before anything is written", False)
+        except Refused:
+            check("an invalid design is refused before anything is written",
+                  not (Path(tmp) / "other").exists())
+        guard = root / ".claude" / "hooks" / "rebuild-cli_guard.py"
+        (root / ".git").mkdir()
+        p = subprocess.run([sys.executable, str(guard), "--paths"], input=json.dumps({
+            "cwd": str(root), "tool_name": "Edit", "tool_input": {"file_path": "secrets/k"}}),
+            capture_output=True, text=True)
+        check("the installed guard denies an offLimits path from the installed plan",
+              p.returncode == 2, p.stderr)
+        rp = subprocess.run([sys.executable, str(guard), "--runner"], input=json.dumps({
+            "tool_name": "Bash", "agent_id": "a1",
+            "tool_input": {"command": gate.replace("{wave}", "1").replace("{stage}", "0")
+                           .replace("{final}", "1").replace("{branches}", "w1-parse=agent/x")
+                           .replace("{discard}", "none")}}), capture_output=True, text=True)
+        check("the installed guard allows the installed gate command, rendered", rp.returncode == 0,
+              rp.stdout + rp.stderr)
+        node = subprocess.run(["node", "-e", "const fs=require('fs');const s=fs.readFileSync("
+                               "process.argv[1],'utf8').replace(/^export\\s+(?=const\\s+meta\\b)/m,"
+                               "'');new (Object.getPrototypeOf(async()=>{}).constructor)('args',"
+                               "'agent','parallel','pipeline','phase','log','budget',s)",
+                               str(wf / "rebuild-cli.js")], capture_output=True, text=True)
+        check("the installed interpreter compiles as a Workflow body", node.returncode == 0,
+              node.stderr[-300:])
+    try:
+        resolve_python(f"{shlex.quote(sys.executable)}")
+        check("resolve_python accepts a working interpreter", True)
+    except Refused as exc:
+        check("resolve_python accepts a working interpreter", False, exc)
+    try:
+        resolve_python("definitely-not-a-python-xyz")
+        check("resolve_python refuses a missing interpreter", False)
+    except Refused:
+        check("resolve_python refuses a missing interpreter", True)
+    print()
+    if fails:
+        print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
+        return 1
+    print("install_waves selftest passed")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

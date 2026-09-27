@@ -1,0 +1,519 @@
+{
+  "schemaVersion": "design/1",
+  "name": "rebuild-cli",
+  "runId": "ap-2026-09-27-wv01",
+  "problemRef": "analysis/arbeitsplan/ap-2026-09-27-wv01/problem.md",
+  "offLimits": [
+    "secrets/**",
+    ".github/workflows/**"
+  ],
+  "integration": {
+    "branch": "integration/rebuild-cli",
+    "target": "main",
+    "preflight": "preflight"
+  },
+  "gates": [
+    {
+      "id": "vet",
+      "runtime": "go",
+      "command": "go vet ./..."
+    },
+    {
+      "id": "test",
+      "runtime": "go",
+      "command": "go test ./..."
+    }
+  ],
+  "nodes": [
+    {
+      "id": "preflight",
+      "kind": "script",
+      "role": "runner",
+      "goal": "Refuse to run from a linked worktree or a dirty primary checkout, and record the base the first wave starts from",
+      "depends_on": [],
+      "where": "primary",
+      "model": "haiku",
+      "inputs": [],
+      "writeScope": [],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py preflight",
+        "expectExit": [
+          0
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "linkedWorktree",
+          "dirty",
+          "head",
+          "python"
+        ],
+        "properties": {
+          "linkedWorktree": {
+            "type": "boolean"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "head": {
+            "type": "string"
+          },
+          "python": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "w1-parse",
+      "kind": "agent",
+      "role": "builder",
+      "wave": 1,
+      "goal": "Move argument parsing into internal/parse behind the existing public entry point",
+      "depends_on": [
+        "preflight"
+      ],
+      "where": "worktree",
+      "model": "opus",
+      "agentType": "rebuild-cli-builder",
+      "inputs": [
+        "preflight",
+        "analysis/arbeitsplan/ap-2026-09-27-wv01/problem.md"
+      ],
+      "writeScope": [
+        "internal/parse/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "go",
+          "command": "go test ./internal/parse/..."
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "effort": "high",
+      "setup": [
+        {
+          "runtime": "go",
+          "command": "go mod download"
+        }
+      ]
+    },
+    {
+      "id": "w1-render",
+      "kind": "agent",
+      "role": "builder",
+      "wave": 1,
+      "goal": "Move output rendering into internal/render",
+      "depends_on": [
+        "preflight"
+      ],
+      "where": "worktree",
+      "model": "opus",
+      "agentType": "rebuild-cli-builder",
+      "inputs": [
+        "preflight"
+      ],
+      "writeScope": [
+        "internal/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "go",
+          "command": "go test ./internal/render/..."
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "gate-1",
+      "kind": "merge-gate",
+      "role": "merger",
+      "wave": 1,
+      "goal": "Merge wave 1 into the integration branch, run the declared gates in the primary checkout and in a clean worktree, and move the target only when both are green",
+      "depends_on": [
+        "w1-parse",
+        "w1-render"
+      ],
+      "where": "primary",
+      "model": "haiku",
+      "inputs": [
+        "w1-parse",
+        "w1-render"
+      ],
+      "writeScope": [],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
+        "expectExit": [
+          0,
+          1
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "green",
+          "integrationSha",
+          "targetMoved",
+          "findings",
+          "kept"
+        ],
+        "properties": {
+          "green": {
+            "type": "boolean"
+          },
+          "integrationSha": {
+            "type": "string"
+          },
+          "targetMoved": {
+            "type": "boolean"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate",
+                "source",
+                "exit"
+              ],
+              "properties": {
+                "gate": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "both",
+                    "primary-only",
+                    "clean-only"
+                  ]
+                },
+                "exit": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "w2-cli",
+      "kind": "agent",
+      "role": "builder",
+      "wave": 2,
+      "goal": "Reduce cmd/tool/main.go to a dispatcher over the wave-1 packages",
+      "depends_on": [
+        "gate-1"
+      ],
+      "where": "worktree",
+      "model": "opus",
+      "agentType": "rebuild-cli-builder",
+      "inputs": [
+        "gate-1",
+        "w1-parse",
+        "w1-render"
+      ],
+      "writeScope": [
+        "cmd/tool/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "go",
+          "command": "go test ./cmd/tool/..."
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "gate-2",
+      "kind": "merge-gate",
+      "role": "merger",
+      "wave": 2,
+      "goal": "Merge wave 2 into the integration branch, run the declared gates in the primary checkout and in a clean worktree, and move the target only when both are green",
+      "depends_on": [
+        "w2-cli"
+      ],
+      "where": "primary",
+      "model": "haiku",
+      "inputs": [
+        "w2-cli"
+      ],
+      "writeScope": [],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/rebuild-cli_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
+        "expectExit": [
+          0,
+          1
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "green",
+          "integrationSha",
+          "targetMoved",
+          "findings",
+          "kept"
+        ],
+        "properties": {
+          "green": {
+            "type": "boolean"
+          },
+          "integrationSha": {
+            "type": "string"
+          },
+          "targetMoved": {
+            "type": "boolean"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate",
+                "source",
+                "exit"
+              ],
+              "properties": {
+                "gate": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "both",
+                    "primary-only",
+                    "clean-only"
+                  ]
+                },
+                "exit": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "smoke",
+      "kind": "agent",
+      "role": "smoke",
+      "goal": "Export the integrated tree into a scratch directory outside the repository, build it there and run the binary",
+      "depends_on": [
+        "gate-2"
+      ],
+      "where": "scratch",
+      "model": "sonnet",
+      "agentType": "rebuild-cli-smoke",
+      "inputs": [
+        "gate-2"
+      ],
+      "writeScope": [],
+      "steps": [
+        {
+          "runtime": "go",
+          "command": "go build -o tool ./cmd/tool"
+        },
+        {
+          "runtime": "go",
+          "command": "go run ./cmd/tool --help"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "passed",
+          "scratchDir",
+          "failedStep"
+        ],
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "scratchDir": {
+            "type": "string"
+          },
+          "failedStep": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "review",
+      "kind": "agent",
+      "role": "reviewer",
+      "goal": "Review the integration branch diff against the target for correctness",
+      "depends_on": [
+        "smoke"
+      ],
+      "where": "primary",
+      "model": "sonnet",
+      "agentType": "rebuild-cli-reviewer",
+      "inputs": [
+        "gate-2",
+        "smoke"
+      ],
+      "writeScope": [],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "blocking",
+          "findings"
+        ],
+        "properties": {
+          "blocking": {
+            "type": "boolean"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "fix",
+      "kind": "agent",
+      "role": "fixer",
+      "goal": "One fix round for blocking review findings, on the integration branch",
+      "depends_on": [
+        "review"
+      ],
+      "when": {
+        "node": "review",
+        "field": "blocking",
+        "equals": true
+      },
+      "where": "worktree",
+      "model": "sonnet",
+      "agentType": "rebuild-cli-fixer",
+      "inputs": [
+        "review"
+      ],
+      "writeScope": [
+        "internal/**",
+        "cmd/**"
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

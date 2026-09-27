@@ -28,6 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import land_candidate  # subtract_referee_owned: the coverage check below and
                         # worktree_pool.py's fan-out lock share this one seam
+import design_spec  # --design: the node-by-node design table (#107, #106)
 import test_red_fixtures  # --selftest also proves the recorded-red fixtures
 
 # `(?!\.+\Z)` rejects a runId that is nothing but dots. Without it "." matched,
@@ -36,9 +37,10 @@ import test_red_fixtures  # --selftest also proves the recorded-red fixtures
 # the isolation runId exists to provide. ".." was already blocked; "." was not.
 RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
 KINDS = {"fanout-redundant", "fanout-blind", "fanout-readonly", "single-writer",
-         "referee-fixture"}
+         "referee-fixture", "script"}
 FANOUT_KINDS = ("fanout-redundant", "fanout-blind", "fanout-readonly")
-TIERS = {"haiku", "sonnet", "opus"}
+# Model vocabulary is design_spec's (aliases incl. fable, or a full claude-...
+# id), so a workflow spec and a design table can never disagree about it.
 SHAPES = {"change", "question"}
 MODES = {"auto", "plan"}
 WRITES = {"none", "worktree", "shared"}
@@ -57,7 +59,13 @@ KIND_WRITES = {
     "fanout-redundant": {"worktree"},
     "single-writer": WRITES,
     "referee-fixture": {"shared"},
+    # script (#107, the narrow form ADR 0001 accepted for #83): one declared
+    # command run by arbeitsplan:script-runner, whose only tool is Bash and whose
+    # every Bash call the PreToolUse guard matches against scripts.json. It
+    # returns data; it never lands an edit, so it writes nothing.
+    "script": {"none"},
 }
+SCRIPT_AGENT = "arbeitsplan:script-runner"
 
 # Recorded-red (#77 and later waves): a validator that REJECTS something HEAD
 # (3f62503) ACCEPTED is keyed here, id -> the issue that motivated it. Every
@@ -83,7 +91,13 @@ RED_RULES = {
     "AP-CHECK-SHAPE": 81,
     "AP-SUPERSEDES-INVALID": 93,
     "AP-ROUNDBREAKER-INVALID": 93,
+    "AP-SOURCES-OVERLAP": 106,
 }
+# Design-table rules (#107, #106) live beside the validator that emits them.
+# They are not recorded-red -- the design surface is new, so no baseline ever
+# compiled one -- but every id still has a committed red fixture, proved the
+# same way (test_red_fixtures.py reads both dicts).
+DESIGN_RULES = design_spec.DESIGN_RULES
 
 # backend.why is a closed vocabulary, one id per row of
 # references/backend-selection.md's decision table, each naming the backends it
@@ -117,7 +131,17 @@ def catalog_patterns(root: Path) -> tuple:
     if not m:
         return set(), set()
     idx = json.loads(m.group(1))
-    return set(idx.get("accepted", [])), set(idx.get("rejected", []))
+    accepted, rejected = set(idx.get("accepted", [])), set(idx.get("rejected", []))
+    # The index's own prose promised this check and nothing performed it: a
+    # pattern documented under a '### ' heading but absent from the index is
+    # invisible to the compiler, and the reader of the doc is never told.
+    body = ref.read_text(encoding="utf-8")
+    unindexed = sorted({h for h in re.findall(r"^### `([a-z0-9-]+)`", body, re.M)
+                        if h not in accepted | rejected})
+    if unindexed:
+        raise ValueError(f"references/patterns.md documents {unindexed} under '### ' headings "
+                         "but its machine-readable index lists neither; index them or drop them")
+    return accepted, rejected
 
 
 def _owner_of(marker: str, markers: dict, phases_by_id: dict) -> dict | None:
@@ -293,6 +317,9 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
             err("problem.acceptance", "no criterion carries a runnable 'check'; nothing "
                                       "could referee this spec")
 
+    for msg in design_spec.toolchain_problems(spec.get("toolchains")):
+        err("toolchains", msg)
+
     scope = spec.get("writeScope")
     if not isinstance(scope, list) or not scope or not all(isinstance(s, str) and s for s in scope):
         err("writeScope", "must be a non-empty list of globs; an absent scope is never "
@@ -354,7 +381,7 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
     acceptance_ids = {a.get("id") for a in (problem.get("acceptance") or []) if isinstance(a, dict)}
 
     # breaker (#75, recorded-red): HEAD (3f62503) never looked at this key at
-    # all -- run.js:339 and :401 read it unconditionally as
+    # all -- run.js's two breaker halts read it unconditionally as
     # `scoped * acceptDenominator < measured * acceptNumerator`, falling back to
     # DEFAULT_BREAKER only when the key is absent, never when it is malformed.
     # A breaker that could never trip (acceptNumerator == 0 makes the compare
@@ -369,7 +396,8 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
         if kind not in FANOUT_KINDS:
             err(where, f"[AP-BREAKER-KIND] 'breaker' is declared on a {kind!r} phase; only "
                        f"{sorted(FANOUT_KINDS)} phases are ever compared against one "
-                       "(workflows/run.js:339,401) -- nothing reads it here")
+                       "(workflows/run.js, the ACQUISITION and CONTRACT breaker halts) -- "
+                       "nothing reads it here")
         if not isinstance(breaker, dict):
             err(where, "[AP-BREAKER-INCOMPLETE] 'breaker' must be an object "
                        "{acceptNumerator, acceptDenominator}")
@@ -425,9 +453,8 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
             err(where, f"pattern {pattern!r} is not in the accepted list; the compiler "
                        "never improvises a pattern")
 
-        if ph.get("modelTier") not in TIERS:
-            err(where, f"'modelTier' must be one of {sorted(TIERS)} and is never omitted -- "
-                       "an omitted tier inherits the session's model")
+        if not design_spec.model_ok(ph.get("modelTier")):
+            err(where, f"'modelTier' must be {design_spec.MODEL_RULE} model")
 
         # mode and writes are required for the modelTier reason: an omitted value
         # inherits the session's, and a plan-mode session silently turned four
@@ -463,6 +490,21 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
                 err(where, "'sources' must list exactly fanOut partitions for map-reduce-disjoint")
             elif len(set(srcs)) != len(srcs):
                 err(where, "'sources' overlap; map-reduce-disjoint needs pairwise distinct partitions")
+            else:
+                # AP-SOURCES-OVERLAP (#106, recorded-red): distinct STRINGS were
+                # all HEAD checked, so ["src/**", "src/a/**"] compiled clean while
+                # two extractors read the same files -- the disjointness
+                # scope-prover.md claimed the compiler refused, with no code
+                # behind the claim. land_candidate.scope_overlap is conservative:
+                # it never calls an overlapping pair disjoint.
+                clash = [(a, b) for k, a in enumerate(srcs) for b in srcs[k + 1:]
+                         if isinstance(a, str) and isinstance(b, str)
+                         and land_candidate.scope_overlap(a, b)]
+                if clash:
+                    err(where, f"[AP-SOURCES-OVERLAP] partitions {clash[0][0]!r} and "
+                               f"{clash[0][1]!r} can match the same path; map-reduce-disjoint "
+                               "needs partitions that are disjoint by construction, not "
+                               "merely spelled differently")
             rd = ph.get("reDerive")
             if not isinstance(rd, dict):
                 err(where, "map-reduce-disjoint needs 'reDerive' {samplePct, seed}: under-extraction "
@@ -485,6 +527,28 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
                 for aid in must:
                     if aid not in acceptance_ids:
                         err(where, f"'borrowGate' names {aid!r}, which is not an acceptance id")
+
+        if kind == "script":
+            if pattern != "script-step":
+                err(where, "a 'script' phase must use pattern 'script-step'")
+            if agent_type != SCRIPT_AGENT:
+                err(where, f"a 'script' phase is run by {SCRIPT_AGENT!r} and nothing else: its "
+                           "one tool is Bash, and the guard allows exactly the declared command")
+            if ph.get("fanOut") is not None:
+                err(where, "a 'script' phase carries no 'fanOut'; a command is run once")
+            for msg in design_spec.script_problems(ph.get("script"),
+                                                   design_spec.toolchains_of(spec)):
+                err(where, msg)
+            osch = ph.get("outputSchema")
+            if not isinstance(osch, dict) or osch.get("type") != "object":
+                err(where, "a 'script' phase needs 'outputSchema' (type: object) -- the "
+                           "command's output is parsed into it, and run.js halts when it "
+                           "does not validate")
+            else:
+                for prob in design_spec.strict_problems(osch, "outputSchema")[:3]:
+                    err(where, f"'outputSchema' is not strict: {prob}")
+        elif ph.get("script") is not None or ph.get("outputSchema") is not None:
+            err(where, "'script' and 'outputSchema' belong to a 'script' phase only")
 
         cannot = ph.get("cannotCheck")
         if cannot is not None and (not isinstance(cannot, list)
@@ -781,6 +845,32 @@ CHAIN_BASED = json.loads(json.dumps(CHAIN))
 CHAIN_BASED["runId"] = "ap-2026-09-22-ch02"
 CHAIN_BASED["phases"][2]["base"] = "build1"
 
+# A script phase (#107) between the referee and the landing: run the project's
+# conformance runner once and feed its typed result back. writes 'none', its own
+# pattern, and the one agent the guard lets run a declared command.
+SCRIPT_PHASE = {
+    "id": "conform", "kind": "script", "pattern": "script-step", "modelTier": "haiku",
+    "mode": "auto", "writes": "none", "agentType": "arbeitsplan:script-runner",
+    "script": {"runtime": "make", "command": "make conformance", "expectExit": [0, 1]},
+    "outputSchema": {"type": "object", "additionalProperties": False,
+                     "required": ["passed"], "properties": {"passed": {"type": "boolean"}}},
+    "requires": ["refereed"], "marker": "conformed",
+}
+GOOD_SCRIPT = json.loads(json.dumps(GOOD))
+GOOD_SCRIPT["phases"] = [*GOOD["phases"][:2], SCRIPT_PHASE,
+                         dict(GOOD["phases"][2], requires=["conformed"])]
+GOOD_SCRIPT["budget"] = {"totalDispatches": 8, "wallClockMinutes": 25}
+
+
+def _script(**over) -> dict:
+    d = json.loads(json.dumps(GOOD_SCRIPT))
+    for k, v in over.items():
+        if v is None:
+            d["phases"][2].pop(k, None)
+        else:
+            d["phases"][2][k] = v
+    return d
+
 
 def _mut(base: dict | None = None, **over) -> dict:
     import copy
@@ -799,7 +889,11 @@ def _drop(d: dict, key: str) -> dict:
 
 
 def selftest(root: Path) -> int:
-    accepted, rejected = catalog_patterns(root)
+    try:
+        accepted, rejected = catalog_patterns(root)
+    except ValueError as exc:
+        print(f"  FAIL {exc}")
+        return 1
     if not accepted:
         print("  FAIL could not read the pattern index from references/patterns.md")
         return 1
@@ -965,6 +1059,42 @@ def selftest(root: Path) -> int:
             _mut(roundBreaker={"maxAdvancingRounds": "3"}), 1),
         ("roundBreaker.maxAdvancingRounds a bool -> AP-ROUNDBREAKER-INVALID",
             _mut(roundBreaker={"maxAdvancingRounds": True}), 1),
+        # sources / AP-SOURCES-OVERLAP (#106)
+        ("sources: nested partitions -> AP-SOURCES-OVERLAP", _mut(SIX, phases=[dict(
+            SIX["phases"][0], sources=["src/**", "src/a/**", "src/c/**", "docs/**"])]
+            + SIX["phases"][1:]), 1),
+        ("sources: basename glob overlaps every partition -> AP-SOURCES-OVERLAP", _mut(SIX,
+            phases=[dict(SIX["phases"][0], sources=["src/a/**", "*.py", "src/c/**",
+                                                     "docs/**"])] + SIX["phases"][1:]), 1),
+        # script phase (#107)
+        ("script: clean phase between referee and landing", GOOD_SCRIPT, 0),
+        ("script: wrong pattern", _script(pattern="best-of-n"), 1),
+        ("script: another agent", _script(agentType="arbeitsplan:implementer"), 1),
+        ("script: writes worktree", _script(writes="worktree"), 1),
+        ("script: carries fanOut", _script(fanOut=2), 1),
+        ("script: no runtime", _script(script={"command": "python3 x.py",
+                                               "expectExit": [0]}), 1),
+        ("script: chained command", _script(script={"runtime": "bash",
+            "command": "bash x.sh; rm -rf .", "expectExit": [0]}), 1),
+        ("script: runtime mismatch", _script(script={"runtime": "rust",
+            "command": "python3 x.py", "expectExit": [0]}), 1),
+        ("script: go conformance runner -- clean", _script(script={"runtime": "go",
+            "command": "go test ./conformance/...", "expectExit": [0, 1]}), 0),
+        ("script: toolchain declared by the spec -- clean", {**_script(script={
+            "runtime": "zig", "command": "zig build conform", "expectExit": [0]}),
+            "toolchains": {"zig": {"executables": ["zig"], "version": "zig version"}}}, 0),
+        ("modelTier: fable alias -- clean", _mut(phases=[dict(GOOD["phases"][0],
+            modelTier="fable")] + GOOD["phases"][1:]), 0),
+        ("modelTier: full model id -- clean", _mut(phases=[dict(GOOD["phases"][0],
+            modelTier="claude-sonnet-5")] + GOOD["phases"][1:]), 0),
+        ("modelTier: not a Claude model", _mut(phases=[dict(GOOD["phases"][0],
+            modelTier="gpt-5")] + GOOD["phases"][1:]), 1),
+        ("script: no outputSchema", _script(outputSchema=None), 1),
+        ("script: loose outputSchema", _script(outputSchema={"type": "object",
+            "properties": {"passed": {"type": "boolean"}}}), 1),
+        ("script keys on a non-script phase", _mut(phases=[dict(GOOD["phases"][0],
+            script={"runtime": "bash", "command": "bash x", "expectExit": [0]})]
+            + GOOD["phases"][1:]), 1),
     ]
     fails = []
     for name, spec, want in cases:
@@ -1012,6 +1142,27 @@ def selftest(root: Path) -> int:
         print(f"\nSELFTEST FAILED ({len(red_fails)} recorded-red failure(s))")
         return 1
     print("  all recorded-red fixtures behave as recorded")
+
+    print("\ndesign tables (design_spec.py):")
+    if design_spec.selftest() != 0:
+        return 1
+
+    print("\npattern index completeness:")
+    import shutil
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        fake = Path(tmp)
+        (fake / "references").mkdir()
+        shutil.copy(root / "references" / "patterns.md", fake / "references" / "patterns.md")
+        with (fake / "references" / "patterns.md").open("a", encoding="utf-8") as fh:
+            fh.write("\n### `ghost-pattern` — documented, never indexed\n")
+        try:
+            catalog_patterns(fake)
+        except ValueError:
+            print("  ok   a '### ' pattern missing from the index is refused")
+        else:
+            print("  FAIL an unindexed '### ' pattern was accepted silently")
+            return 1
     return 0
 
 
@@ -1084,6 +1235,46 @@ def probe_checks(spec: dict, timeout: float) -> int:
     return 0
 
 
+def write_script_allowlist(dest: Path, spec: dict) -> None:
+    """scripts.json: every declared command template, which
+    hooks/arbeitsplan_guard.py matches a script-runner's Bash call against.
+    Written from the compiled spec, never by hand, so the allowlist and the
+    spec cannot drift apart."""
+    cmds = design_spec.script_commands(spec)
+    if not cmds:
+        return
+    (dest / "scripts.json").write_text(json.dumps(
+        {"runId": spec.get("runId"), "commands": cmds}, indent=2) + "\n")
+    print(f"wrote {dest}/scripts.json")
+
+
+def compile_design(design: dict, args: argparse.Namespace) -> int:
+    errors, warnings = design_spec.validate_design(design)
+    for w in warnings:
+        print(f"WARNING {w}", file=sys.stderr)
+    if errors:
+        for e in errors:
+            print(f"REJECTED {e}", file=sys.stderr)
+        print(f"{len(errors)} rejection(s); nothing written", file=sys.stderr)
+        return 1
+    digest = design_spec.design_hash(design)
+    print(f"DESIGN {design['name']} {design['runId']} sha256:{digest}")
+    # One line per toolchain a script node names: arbeitsplan-preflight runs
+    # exactly these probes, and a missing one makes the design not ready.
+    for rt, probe in sorted(design_spec.toolchains_used(design).items()):
+        print(f"TOOLCHAIN {rt} {probe}")
+    if not args.write:
+        print("design is valid (not written; pass --write)")
+        return 0
+    dest = Path(args.out) / design["runId"]
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / "design.json").write_text(json.dumps(design, indent=2) + "\n")
+    (dest / "design.sha256").write_text(digest + "\n")
+    print(f"wrote {dest}/design.json")
+    write_script_allowlist(dest, design)
+    return 0
+
+
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser(
         prog="compile_spec.py",
@@ -1107,6 +1298,10 @@ def main(argv: list) -> int:
                         help="seconds before a probed check is classified TIMEOUT (default 60)")
     parser.add_argument("--selftest", action="store_true",
                         help="run the planted-defect selftest instead")
+    parser.add_argument("--design", action="store_true",
+                        help="the input is a design table (design.json, #107): validate it, "
+                             "print its sha256, and with --write store it plus the script "
+                             "allowlist the runner guard reads")
     parser.add_argument("--strict", action="store_true",
                         help="treat any WARNING (AP-SIBLING-INVISIBLE) as a rejection; without "
                              "it a warning still prints but the spec still compiles and writes")
@@ -1126,7 +1321,14 @@ def main(argv: list) -> int:
         print(f"spec is not valid JSON: {exc}", file=sys.stderr)
         return 2
 
-    accepted, rejected = catalog_patterns(root)
+    if args.design:
+        return compile_design(spec, args)
+
+    try:
+        accepted, rejected = catalog_patterns(root)
+    except ValueError as exc:
+        print(f"pattern catalogue unreadable: {exc}", file=sys.stderr)
+        return 2
     errors, warnings = validate(spec, accepted, rejected)
     # Warnings print whether or not there are rejections -- a spec that is
     # rejected for one reason may still carry an AP-SIBLING-INVISIBLE warning a
@@ -1182,6 +1384,7 @@ def main(argv: list) -> int:
         dest.mkdir(parents=True, exist_ok=True)
         (dest / "workflow.json").write_text(json.dumps(spec, indent=2) + "\n")
         print(f"wrote {dest}/workflow.json")
+        write_script_allowlist(dest, spec)
     else:
         print("spec is valid (not written; pass --write)")
     return 0

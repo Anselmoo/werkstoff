@@ -185,6 +185,22 @@ a `borrowed` hunk whose `beatsOn` is outside the phase's `borrowGate` halts the 
 }
 ```
 
+## Script-runner output
+
+One dispatch per `script` phase (#107), always to `arbeitsplan:script-runner`. The envelope is fixed;
+`parsed` is the phase's **own** `outputSchema`, so it is not one of the four literal schemas the check
+below compares. It is held by code instead: `run.js` rejects an `exit` outside the phase's `expectExit`
+and re-validates `parsed` against `outputSchema` (additionalProperties included) even when the runtime
+already did, halting with `SCRIPT CONTRACT` on either.
+
+```json
+{
+  "exit": 1,
+  "stdout_digest": "conformance: 41 passed, 1 failed\nFAIL render/table",
+  "parsed": { "passed": false, "failures": ["render/table"] }
+}
+```
+
 ## Kept in sync by a check
 
 The four fenced examples above are not illustrations: `scripts/check_contract_sync.py` evaluates

@@ -44,6 +44,11 @@ land c2. Delete c1 and c3, worktrees and branches.
 Exactly one diff is ever applied, so **there is nothing to merge and a merge conflict cannot
 occur**. Integration cost goes from O(N) conflicts to zero.
 
+Work larger than one change — several rows of *different* work per wave — is the one place this
+plugin does merge, and only in the narrowed form described under
+[designs and waves](#designs-and-waves-107-106): disjointness proven at compile time, a gate per
+wave, and the target moved only on green.
+
 ## What it is not
 
 - **Not a reasoning aid.** A problem that turns out to be a *question* rather than a *change*
@@ -148,6 +153,56 @@ by intent.
 > Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt
 > with its reason, refuted candidates, open doubts, budget used, whether a lock is still open —
 > and quotes the single next command.
+
+##### Design the workflow before running it
+
+````prompt
+"before anything runs, walk me through this workflow step by step — what each step does, where it runs, when, and on which model"
+````
+
+> Triggers `arbeitsplan-design`: builds the design table node by node in plan mode, writes every
+> command in the repository's own toolchain (a gate or a state helper becomes a declared script
+> node, in whatever language the project uses), validates it with `compile_spec.py --design`,
+> preflights each toolchain, and asks for approval against the design's sha256. Then prints the
+> handoff — a fresh session's exact start prompt whenever the design created agent types.
+
+##### Run a restructuring in waves
+
+````prompt
+"this refactor is several waves of parallel work, each building on the last — set it up so it can stop and resume"
+````
+
+> Triggers `arbeitsplan-waves`: installs the approved wave design as project-owned files — a
+> pinned interpreter, the plan, a state helper, a guard, one agent file per role — and runs it
+> from the primary checkout. A red gate stops it with the target unmoved; a relaunch skips every
+> finished wave and builder.
+
+## Designs and waves (#107, #106)
+
+`arbeitsplan-compile` picks a pattern per phase. `arbeitsplan-design` answers what it leaves in
+prose — per node: **what** (goal, strict output schema), **where** (primary checkout, agent
+worktree, scratch directory), **when** (dependencies; a human gate only *between* runs) and
+**how** (kind, explicit model, write scope, and for a script node the exact command and the
+toolchain that runs it). `compile_spec.py --design` validates it against
+`references/design-table-schema.md`; every rule the issues name has a red fixture.
+
+**Script nodes** are how a deterministic step stops being an agent told to run a command. A
+Workflow script cannot exec, so a script node is one dispatch to a runner whose only tool is
+Bash, whose guard allows exactly the declared command once, and whose `{exit, stdout_digest,
+parsed}` is checked in code. The command is in whatever toolchain the project uses — shell,
+PowerShell, Go, Rust, Haskell, Java, .NET, Node, Python, Julia, R, make, CMake, or one the design
+declares — and preflight probes each one it names.
+
+**Waves** are a design whose rows carry `wave`. `arbeitsplan-waves` installs it as
+project-owned files that run **without werkstoff**, and `workflows/waves.js` interprets it. What
+the hand-written prototype got wrong is now a check in code: launching from a linked worktree
+halts; every row merges `--ff-only` to its wave base and a wrong `baseSha` halts; a finished wave
+is skipped before any builder is dispatched; merges go to an integration branch and the target
+moves only when every declared gate is green in both the primary checkout and a clean worktree
+(a failure only the primary shows is labelled `primary-only`); a swarm row's losers are never
+merged; prompts carry ids and branch names only. Concurrent rows own disjoint files, proven by a
+conservative, case-folded overlap check; an integrator row after them owns the module manifest
+and lockfile most ecosystems edit per new module.
 
 ## The two inversions
 
@@ -389,6 +444,14 @@ python3 plugins/arbeitsplan/scripts/sweep_artifacts.py --selftest
 python3 plugins/arbeitsplan/scripts/check_contract_sync.py --selftest
 python3 plugins/arbeitsplan/hooks/test_record_stop_guard.py
 node plugins/arbeitsplan/scripts/test_run_workflow.js
+python3 plugins/arbeitsplan/scripts/design_spec.py --selftest
+python3 plugins/arbeitsplan/scripts/test_red_fixtures.py
+node plugins/arbeitsplan/scripts/test_waves_workflow.js
+python3 plugins/arbeitsplan/scripts/waves_state.py selftest
+python3 plugins/arbeitsplan/scripts/waves_guard.py --selftest
+python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
+python3 plugins/arbeitsplan/scripts/handoff.py --selftest
+python3 plugins/arbeitsplan/scripts/check_contract_sync.py
 bash scripts/ci/check-js-syntax.sh
 ```
 

@@ -1,0 +1,344 @@
+{
+  "schemaVersion": "design/1",
+  "name": "split-interp",
+  "runId": "ap-2026-09-27-rs01",
+  "problemRef": "analysis/arbeitsplan/ap-2026-09-27-rs01/problem.md",
+  "offLimits": [
+    "benches/fixtures/**"
+  ],
+  "integration": {
+    "branch": "integration/split-interp",
+    "target": "trunk",
+    "preflight": "preflight"
+  },
+  "gates": [
+    {
+      "id": "clippy",
+      "runtime": "rust",
+      "command": "cargo clippy --all-targets -- -D warnings"
+    },
+    {
+      "id": "test",
+      "runtime": "rust",
+      "command": "cargo test --workspace"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "preflight",
+      "kind": "script",
+      "role": "runner",
+      "goal": "Refuse to run from a linked worktree or a dirty primary checkout, and record the base the first wave starts from",
+      "depends_on": [],
+      "where": "primary",
+      "model": "haiku",
+      "inputs": [],
+      "writeScope": [],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/split-interp_state.py preflight",
+        "expectExit": [
+          0
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "linkedWorktree",
+          "dirty",
+          "head",
+          "python"
+        ],
+        "properties": {
+          "linkedWorktree": {
+            "type": "boolean"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "head": {
+            "type": "string"
+          },
+          "python": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "w1-lexer",
+      "kind": "agent",
+      "role": "builder",
+      "wave": 1,
+      "goal": "Extract the lexer into src/lexer/ as its own module",
+      "depends_on": [
+        "preflight"
+      ],
+      "where": "worktree",
+      "model": "opus",
+      "agentType": "split-interp-builder",
+      "inputs": [
+        "preflight"
+      ],
+      "writeScope": [
+        "src/lexer/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "rust",
+          "command": "cargo test --lib lexer"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "w1-eval",
+      "kind": "agent",
+      "role": "builder",
+      "wave": 1,
+      "goal": "Extract the evaluator into src/eval/ as its own module",
+      "depends_on": [
+        "preflight"
+      ],
+      "where": "worktree",
+      "model": "opus",
+      "agentType": "split-interp-builder",
+      "inputs": [
+        "preflight"
+      ],
+      "writeScope": [
+        "src/eval/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "rust",
+          "command": "cargo test --lib eval"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "swarm": 2,
+      "referee": {
+        "model": "opus",
+        "agentType": "split-interp-referee"
+      }
+    },
+    {
+      "id": "w1-register",
+      "kind": "agent",
+      "role": "integrator",
+      "wave": 1,
+      "goal": "Register the new modules in src/lib.rs and own every Cargo.toml and Cargo.lock change the rows needed",
+      "depends_on": [
+        "w1-lexer",
+        "w1-eval"
+      ],
+      "where": "worktree",
+      "model": "sonnet",
+      "agentType": "split-interp-integrator",
+      "inputs": [
+        "w1-lexer",
+        "w1-eval"
+      ],
+      "writeScope": [
+        "src/lib.rs",
+        "Cargo.toml",
+        "Cargo.lock",
+        "src/**"
+      ],
+      "acceptance": [
+        {
+          "runtime": "rust",
+          "command": "cargo build --all-targets"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "branch",
+          "baseSha",
+          "notes"
+        ],
+        "properties": {
+          "branch": {
+            "type": "string"
+          },
+          "baseSha": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "gate-1",
+      "kind": "merge-gate",
+      "role": "merger",
+      "wave": 1,
+      "goal": "Merge wave 1 into the integration branch, run the declared gates in the primary checkout and in a clean worktree, and move the target only when both are green",
+      "depends_on": [
+        "w1-register"
+      ],
+      "where": "primary",
+      "model": "haiku",
+      "inputs": [
+        "w1-register"
+      ],
+      "writeScope": [],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/split-interp_state.py merge --wave {wave} --stage {stage} --final {final} --branches {branches} --discard {discard}",
+        "expectExit": [
+          0,
+          1
+        ]
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "green",
+          "integrationSha",
+          "targetMoved",
+          "findings",
+          "kept"
+        ],
+        "properties": {
+          "green": {
+            "type": "boolean"
+          },
+          "integrationSha": {
+            "type": "string"
+          },
+          "targetMoved": {
+            "type": "boolean"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "gate",
+                "source",
+                "exit"
+              ],
+              "properties": {
+                "gate": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "both",
+                    "primary-only",
+                    "clean-only"
+                  ]
+                },
+                "exit": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "kept": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "smoke",
+      "kind": "agent",
+      "role": "smoke",
+      "goal": "No smoke run: a library crate with no binary; the gates' test suite is its evidence",
+      "depends_on": [
+        "gate-1"
+      ],
+      "where": "scratch",
+      "model": "haiku",
+      "agentType": "split-interp-smoke",
+      "inputs": [
+        "gate-1"
+      ],
+      "writeScope": [],
+      "skip": "library crate with no binary or install step",
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "passed",
+          "scratchDir",
+          "failedStep"
+        ],
+        "properties": {
+          "passed": {
+            "type": "boolean"
+          },
+          "scratchDir": {
+            "type": "string"
+          },
+          "failedStep": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

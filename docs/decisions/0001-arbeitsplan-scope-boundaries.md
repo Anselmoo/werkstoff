@@ -6,7 +6,7 @@ day and are kept as a record, not updated. A later change that reverses one of t
 should supersede this record with a new ADR rather than edit it.
 :::
 
-**Status:** Accepted, 2026-09-26.
+**Status:** Accepted, 2026-09-26. The #62 reopen condition was met by #106 and the #83 script phase landed in its narrowest form — see [ADR 0002](./0002-arbeitsplan-designs-and-waves.md).
 
 ## Context
 

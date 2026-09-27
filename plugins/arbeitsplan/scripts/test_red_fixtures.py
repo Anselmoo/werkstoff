@@ -20,6 +20,11 @@ committed fixture proves it. This script is the calibration for that claim:
     the fixture went red for some OTHER reason, which is red for the wrong
     reason and proves nothing about the rule under test
 
+Design-table rules (compile_spec.DESIGN_RULES, #107/#106) are proved by the
+same manifest with args ["--design"]. They are NOT recorded-red -- no baseline
+ever compiled a design, so --baseline skips them -- but each still needs a
+committed fixture that goes red for exactly its own id.
+
 --baseline SHA additionally `git archive`s that commit's plugins/arbeitsplan
 into a scratch directory and asserts every fixture compiles CLEAN there (exit
 0) -- the "HEAD accepted this" half of the claim, checked against the real
@@ -49,11 +54,12 @@ RULE_TAG = re.compile(r"\[(AP-[A-Z0-9-]+)\]")
 
 
 def _red_rules(scripts_dir: Path) -> dict:
-    """compile_spec.RED_RULES, read by a subprocess -- never imported directly,
+    """compile_spec.RED_RULES plus DESIGN_RULES (#107/#106), read by a subprocess -- never imported directly,
     so this check can run standalone (it is also imported BY compile_spec.py,
     and importing compile_spec back from here would be circular)."""
     code = ("import json,sys; sys.path.insert(0, sys.argv[1]); import compile_spec as c; "
-            "print(json.dumps(getattr(c, 'RED_RULES', None)))")
+            "r = getattr(c, 'RED_RULES', None); "
+            "print(json.dumps(None if r is None else {**r, **getattr(c, 'DESIGN_RULES', {})}))")
     r = subprocess.run([sys.executable, "-c", code, str(scripts_dir)],
                        capture_output=True, text=True, timeout=60)
     if r.returncode != 0:
@@ -135,7 +141,9 @@ def run_checks(root: Path, baseline: str | None = None) -> list:
             head_compiler = tmpdir / "plugins" / "arbeitsplan" / "scripts" / "compile_spec.py"
             for e in entries:
                 fx = red_dir / str(e.get("fixture"))
-                if not fx.is_file():
+                if not fx.is_file() or "--design" in (e.get("args") or []):
+                    # A design fixture has no baseline to have been accepted by:
+                    # the design surface is new, so the red half is all it proves.
                     continue
                 head = _compile(head_compiler, fx, [])
                 if head.returncode != 0:

@@ -100,6 +100,11 @@
           "description": "Turns a stated problem into an executable, budgeted workflow spec plus the takt beats that enforce its order. Use when the user describes a change and wants it run as an agentic workflow, asks to plan or set up a swarm, says the advice they have is too vague to act on, or asks what shape a piece of work should be run in. Refuses and points at zirkel when the problem turns out to be a question rather than a change. Writes the run's workflow.json under analysis/arbeitsplan/ and, behind an approval gate, .claude/takt.local.md."
         },
         {
+          "id": "arbeitsplan:arbeitsplan-design",
+          "name": "arbeitsplan-design",
+          "description": "Designs a workflow node by node before anything runs — for each step, what it does, where it runs (primary checkout, agent worktree, scratch directory), when (dependencies, human gates between runs) and how (kind, model, write scope, output schema, and for script nodes the exact command and its toolchain, in any language). Use when the user wants to plan a workflow step by step, a restructuring spans several waves, a deterministic step (a gate, a conformance runner, a state helper) would otherwise be disguised as an agent, or a hand-written workflow keeps making where/when/how decisions in prose. Read-only; produces a validated design.json and a handoff, never runs it."
+        },
+        {
           "id": "arbeitsplan:arbeitsplan-matrix",
           "name": "arbeitsplan-matrix",
           "description": "Compiles and runs a headless sweep — cases x models x plugin-states x repeats, one fresh `claude -p` process per cell — after proving the environment can authenticate. Use when the user wants genuinely independent candidates, a real per-candidate --model, a plugin-present versus plugin-absent comparison, or asks to benchmark or ablate a plugin. Also use afterwards to read results back. A cell that could not be fairly measured is UNMEASURED, never FAIL."
@@ -128,6 +133,11 @@
           "id": "arbeitsplan:arbeitsplan-status",
           "name": "arbeitsplan-status",
           "description": "Read-only report on an arbeitsplan run that has already started — phases done, candidates built and refuted, referee verdicts, open doubts, halts with their reasons, dispatch budget used, whether a lock is open, and the single next command. Use when the user asks how the run is going, what the swarm decided, why it stopped, how to resume it, why something was denied, or what is still holding a lock. Advances nothing and writes nothing."
+        },
+        {
+          "id": "arbeitsplan:arbeitsplan-waves",
+          "name": "arbeitsplan-waves",
+          "description": "Installs an approved multi-wave design into a project as project-owned files — a pinned interpreter, the plan, a state helper, a path and runner guard, and one agent file per agent type — then launches and resumes it from the primary checkout. Use when a restructuring needs several waves of parallel, disjoint rows, each building on the merged and gated result of the last; when a hand-written multi-wave workflow should become a table; or when a stopped wave run must be resumed. The installed files run without werkstoff. Runs nothing it has not been asked to; a red gate or a pending human gate stops the run, never a retry."
         }
       ],
       "agents": [
@@ -246,6 +256,14 @@
           ]
         },
         {
+          "id": "arbeitsplan:script-runner",
+          "name": "script-runner",
+          "description": "Use this agent to run ONE declared command for an arbeitsplan `script` phase or design-table script node and return its exit code, the tail of its stdout, and its stdout JSON copied verbatim. The command arrives in the prompt, already rendered; the PreToolUse guard allows exactly that command, once, and denies anything else. Never dispatched to diagnose a failure, retry, install a dependency, or edit a file — a script node that needs judgement is an agent node, not a script node.",
+          "tools": [
+            "Bash"
+          ]
+        },
+        {
           "id": "arbeitsplan:synthesizer",
           "name": "synthesizer",
           "description": "Use this agent for the single-writer step of select-then-synthesize in an arbeitsplan run — given the refereed winner's diff and the runners-up, it returns the diff to land, borrowing a runner-up hunk ONLY where the spec's borrowGate names an acceptance criterion that hunk beats the winner on. Works in its own worktree and returns the diff as data; never writes the shared tree, never re-judges candidates (candidate-referee did), and never selects the winner (a fixed rule did).",
@@ -268,7 +286,8 @@
         ]
       },
       "workflows": [
-        "arbeitsplan-run-swarm"
+        "arbeitsplan-run-swarm",
+        "arbeitsplan-waves"
       ]
     },
     {
@@ -1363,12 +1382,14 @@
     "andon:andon-verify",
     "arbeitsplan:arbeitsplan-backend",
     "arbeitsplan:arbeitsplan-compile",
+    "arbeitsplan:arbeitsplan-design",
     "arbeitsplan:arbeitsplan-matrix",
     "arbeitsplan:arbeitsplan-patterns",
     "arbeitsplan:arbeitsplan-preflight",
     "arbeitsplan:arbeitsplan-run",
     "arbeitsplan:arbeitsplan-start",
     "arbeitsplan:arbeitsplan-status",
+    "arbeitsplan:arbeitsplan-waves",
     "befund:befund-arch-health",
     "befund:befund-autopilot",
     "befund:befund-ci-topology",
@@ -1470,6 +1491,7 @@
     "arbeitsplan:pattern-researcher",
     "arbeitsplan:refactorer",
     "arbeitsplan:scope-prover",
+    "arbeitsplan:script-runner",
     "arbeitsplan:synthesizer",
     "befund:arch-health-auditor",
     "befund:business-rules-miner",

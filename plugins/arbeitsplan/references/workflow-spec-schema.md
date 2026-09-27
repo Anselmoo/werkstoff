@@ -198,15 +198,17 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | key | type | meaning |
 |---|---|---|
 | `id` | string | unique within the run |
-| `kind` | `"fanout-redundant"` \| `"fanout-blind"` \| `"fanout-readonly"` \| `"single-writer"` \| `"referee-fixture"` | determines who may hold Write. `referee-fixture` (#77) is a single writer that runs before every fan-out phase and produces the spec's `refereeOwned` paths — never fanned out, always `writes: "shared"`, always `pattern: "calibrate-then-measure"` |
+| `kind` | `"fanout-redundant"` \| `"fanout-blind"` \| `"fanout-readonly"` \| `"single-writer"` \| `"referee-fixture"` \| `"script"` | determines who may hold Write. `referee-fixture` (#77) is a single writer that runs before every fan-out phase and produces the spec's `refereeOwned` paths — never fanned out, always `writes: "shared"`, always `pattern: "calibrate-then-measure"`. `script` (#107) runs ONE declared command through `arbeitsplan:script-runner` — always `pattern: "script-step"`, always `writes: "none"`, never fanned out; see [script phases](#script-phases-107) |
 | `pattern` | string | an id from `references/patterns.md`. Unknown id ⇒ **reject**, never improvise |
 | `fanOut` | int | 1..16. Required for every `fanout-*` kind |
-| `modelTier` | `"haiku"` \| `"sonnet"` \| `"opus"` | **always explicit** — an omitted tier inherits the session's model and silently defeats tiering (`docs/orchestration/references/delegation.md`) |
+| `modelTier` | an alias (`"haiku"` \| `"sonnet"` \| `"opus"` \| `"fable"`) or a full `claude-...` model id | **always explicit** — an omitted tier inherits the session's model and silently defeats tiering (`docs/orchestration/references/delegation.md`) |
 | `mode` | `"auto"` \| `"plan"` | **always explicit**, for the `modelTier` reason: an inherited plan mode turned four builders into UNMEASURED cells in the run that motivated this key. A `plan` phase must write `none`, and is never dispatched by the workflow backend — `run.js` halts before it and returns `pending_plan_node` |
 | `writes` | `"none"` \| `"worktree"` \| `"shared"` | **always explicit**. `fanout-readonly` and `fanout-blind` write `none`; `fanout-redundant` writes `worktree`; a `single-writer` may declare any. The `workflow` backend refuses `shared` |
 | `agentType` | string | **required**, namespaced (`plugin:name`). Closes the single-writer hole: without it the session did that work inline, unattributed. Under `matrix` it must be **absent** — a cell is a fresh process, not a dispatch |
 | `angles` | string[] | one per candidate for `fanout-redundant`; `length` must equal `fanOut`. This is how widening is expressed |
-| `sources` | string[] | `map-reduce-disjoint` only: exactly `fanOut` partitions, pairwise distinct |
+| `sources` | string[] | `map-reduce-disjoint` only: exactly `fanOut` partitions, pairwise distinct and **disjoint by construction** (`AP-SOURCES-OVERLAP`, #106: `land_candidate.scope_overlap`, conservative and case-folded) |
+| `script` | object | `script` phases only: `{runtime, command, expectExit[], parse?}` — see [script phases](#script-phases-107) |
+| `outputSchema` | object | `script` phases only: a strict JSON Schema (`additionalProperties: false` at every object level) the command's stdout JSON is validated against |
 | `reDerive` | object | **required** on `map-reduce-disjoint`: `{samplePct: 1..100, seed: int}`. Under-extraction is that pattern's named failure; the sample is picked in code by `scripts/sample_rederive.py`, never by a subagent |
 | `borrowGate` | object | `select-then-synthesize` only: `{mustBeatWinnerOn: [acceptance ids]}`. Without it the synthesizer lands the plain winner; with it, a borrowed hunk must beat the winner on a named criterion |
 | `cannotCheck` | string[] | what this phase declares it cannot verify, **before** any candidate exists — declared later, it would be written by the party whose work it excuses |
@@ -215,6 +217,30 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | `base` | string | optional, **only on `fanout-redundant`** (#79): an earlier `fanout-redundant` phase this one's worktrees are stacked on. **Validated** — see [`base` and stacked fan-outs](#base-and-stacked-fan-outs-79) below |
 | `requires` | string[] | marker names that must exist under `.takt/<runId>/` first |
 | `marker` | string | the marker this phase creates on genuine completion |
+
+### Script phases (#107)
+
+A Workflow script cannot exec, so a deterministic step — a gate, a conformance runner, a state
+helper — used to be an agent told to run a command. A `script` phase declares it instead:
+
+```json
+{"id": "conform", "kind": "script", "pattern": "script-step", "modelTier": "haiku",
+ "mode": "auto", "writes": "none", "agentType": "arbeitsplan:script-runner",
+ "script": {"runtime": "make", "command": "make conformance TARGET={target}", "expectExit": [0, 1]},
+ "outputSchema": {"type": "object", "additionalProperties": false, "required": ["passed"],
+                  "properties": {"passed": {"type": "boolean"}}},
+ "requires": ["refereed"], "marker": "conformed"}
+```
+
+- `runtime` names a toolchain — a built-in (shell, powershell, python, node, go, rust, haskell,
+  java, dotnet, julia, r, ruby, make, cmake, … — `references/design-table-schema.md` has the
+  list) or one the spec declares under a top-level `toolchains` block. The command's argv[0]
+  must be that toolchain's (`AP-SCRIPT-RUNTIME-MISMATCH`), and preflight runs its version probe.
+- `command` is ONE command: no unquoted `;` `|` `&` backtick `$(` or newline
+  (`AP-SCRIPT-NO-COMMAND`). `{placeholder}` values arrive as `carry.scriptArgs.<phaseId>` and
+  may hold only `[A-Za-z0-9._/,=:@+-]`.
+- `compile_spec.py --write` also writes `scripts.json`, the allowlist the guard matches the
+  runner's Bash call against, once per dispatch; `arbeitsplan-run` arms it.
 
 ### `delegates[]`
 
@@ -350,13 +376,18 @@ a default silently supplied:
   (`AP-SUPERSEDES-INVALID`, recorded-red, #93)
 - `roundBreaker` that is not an object, or whose `maxAdvancingRounds` is missing, not a plain
   `int`, or below `2` (`AP-ROUNDBREAKER-INVALID`, recorded-red, #93)
+- `map-reduce-disjoint` `sources` that `land_candidate.scope_overlap` cannot prove disjoint
+  (`AP-SOURCES-OVERLAP`, recorded-red, #106) — distinct strings are not distinct partitions
+- a `script` phase without pattern `script-step`, agent `arbeitsplan:script-runner` and
+  `writes: "none"`, with a `fanOut`, or with a `script` or `outputSchema` that is missing,
+  chained, runtime-mismatched or not strict; `script`/`outputSchema` on any other kind
 - with `--strict`: any `AP-SIBLING-INVISIBLE` `WARNING` (see below) — never checked on a plain
   compile, which still prints the warning and still writes
 
 **Never infer a missing gating value.** Reject and surface it: a halt that depends on a value the
 compiler invented is not a halt.
 
-## Recorded-red validators (issues #77, #74, #75, #79, #81, #93)
+## Recorded-red validators (issues #77, #74, #75, #79, #81, #93, #106)
 
 A **recorded-red** rule is a validator this plugin added that rejects a spec the compiler at
 HEAD `3f62503` would have compiled clean — the whole point of the convention is that the claim
@@ -381,8 +412,12 @@ RED_RULES = {
     "AP-CHECK-SHAPE": 81,
     "AP-SUPERSEDES-INVALID": 93,
     "AP-ROUNDBREAKER-INVALID": 93,
+    "AP-SOURCES-OVERLAP": 106,
 }
 ```
+
+Design-table rules (`DESIGN_RULES`, #107/#106) use the same manifest and the same tagging, with
+args `["--design"]`; they are not recorded-red — see `references/design-table-schema.md`.
 
 `AP-SIBLING-INVISIBLE` is a `WARNING`, not a `REJECTED` line — `test_red_fixtures.py` and
 `compile_spec.py --selftest` both treat a `WARNING` exactly like a `REJECTED` line for tagging

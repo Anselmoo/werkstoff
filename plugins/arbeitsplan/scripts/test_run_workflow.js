@@ -77,7 +77,11 @@ const SABOTAGE = [
   ['plan-node stop removed', "if (ph.mode === 'plan') {", 'if (false) {'],
   ['budget never refuses', 'if (dispatched + n > ceiling)', 'if (false)'],
   ['borrow gate ignored', 'const illegal = (out.borrowed || []).filter((b) => !gate.includes(b.beatsOn))', 'const illegal = []'],
-  ['modelTier defaulted', "if (!['haiku', 'sonnet', 'opus'].includes(ph.modelTier)) {", "if (!(ph.modelTier = ph.modelTier || 'sonnet')) {"],
+  ['modelTier defaulted', 'if (!modelOk(ph.modelTier)) {', "if (!(ph.modelTier = ph.modelTier || 'sonnet')) {"],
+  // #107: the script node's two contract checks, each on its own.
+  ['script exit code unchecked', '!sc.expectExit.includes(out.exit)', 'false'],
+  ['script output never validated', 'const problems = strictProblems(ph.outputSchema, out.parsed)', 'const problems = []'],
+  ['script placeholder values unchecked', 'if (!PLACEHOLDER_VALUE.test(String(v))) { bad.push(name); return m }', ''],
   ['unmeasured counted as failure', 'const measured = results.filter((r) => r.measured !== false)', 'const measured = results'],
   ['builder identity overwritable', '.then((r) => (r ? { ...r, candidateId: id, angle } : null))', '.then((r) => (r ? { candidateId: id, angle, ...r } : null))'],
   ['re-derivation skipped', 'const sample = rd ? sampleIndices(sources.length, rd.samplePct, rd.seed) : []', 'const sample = []'],
@@ -97,7 +101,83 @@ const SABOTAGE = [
     'checks: r.checks || [] }, phaseSpan)'],
 ]
 
+// #107: one script phase, compiled for the workflow backend. `make` on purpose --
+// a script node names whatever toolchain the project uses.
+const SCRIPT_SPEC = {
+  schemaVersion: '2',
+  runId: 'ap-2026-09-27-sc01',
+  problem: { statement: 's', shape: 'change', acceptance: [{ id: 'a1', criterion: 'c', check: 'true' }] },
+  writeScope: ['src/**'],
+  budget: { totalDispatches: 2, wallClockMinutes: 5 },
+  backend: { kind: 'workflow', why: ['fixed-graph-returns-data'], acknowledgedGaps: ['workflow-tool-unhooked'] },
+  phases: [{
+    id: 'conform', kind: 'script', pattern: 'script-step', modelTier: 'haiku', mode: 'auto', writes: 'none',
+    agentType: 'arbeitsplan:script-runner',
+    script: { runtime: 'make', command: 'make conformance RUN={runId} TARGET={target}', expectExit: [0, 1] },
+    outputSchema: {
+      type: 'object', additionalProperties: false, required: ['passed', 'failures'],
+      properties: { passed: { type: 'boolean' }, failures: { type: 'array', items: { type: 'string' } } },
+    },
+    requires: [], marker: 'conformed',
+  }],
+}
+const scriptCarry = (target = 'linux') => ({ scriptArgs: { conform: { target } } })
+const scriptOut = (over) => ({ exit: 0, stdout_digest: 'ok', parsed: { passed: true, failures: [] }, ...over })
+
 async function suite() {
+  // S. Script nodes (#107): a declared command, a typed result, a halt otherwise.
+  {
+    const { result, calls } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry() }, () => scriptOut())
+    ok('script: the declared output completes the phase', !result.aborted && result.carry.conform.parsed.passed === true, result)
+    ok('script: exactly one runner dispatch', calls.length === 1 && result.dispatched === 1, calls.map((c) => c.label))
+    ok('script: dispatched to the script runner, on the declared model',
+      calls[0].opts.agentType === 'arbeitsplan:script-runner' && calls[0].opts.model === 'haiku', calls[0].opts)
+    ok('script: the prompt carries the rendered command on its own line',
+      calls[0].prompt.split('\n').includes('make conformance RUN=ap-2026-09-27-sc01 TARGET=linux'), calls[0].prompt)
+    const sch = calls[0].opts.schema
+    ok('script: the runner schema is strict and wraps the node schema',
+      sch.additionalProperties === false && sch.properties.parsed === SCRIPT_SPEC.phases[0].outputSchema
+        || JSON.stringify(sch.properties.parsed) === JSON.stringify(SCRIPT_SPEC.phases[0].outputSchema), sch)
+  }
+  {
+    const { result } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry() },
+      () => scriptOut({ parsed: { passed: 'yes', failures: [] } }))
+    ok('script: parsed output of the wrong type halts (SCRIPT CONTRACT)', result.aborted && /SCRIPT CONTRACT/.test(result.abortReason), result)
+  }
+  {
+    const { result } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry() },
+      () => scriptOut({ parsed: { passed: true, failures: [], extra: 1 } }))
+    ok('script: an undeclared output key halts (additionalProperties: false)', result.aborted && /SCRIPT CONTRACT/.test(result.abortReason), result)
+  }
+  {
+    const { result } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry() }, () => scriptOut({ exit: 2 }))
+    ok('script: an exit outside expectExit halts', result.aborted && /expectExit/.test(result.abortReason), result)
+  }
+  {
+    const { result } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry() }, () => null)
+    ok('script: a null runner result halts', result.aborted && /returned nothing/.test(result.abortReason), result)
+  }
+  {
+    const { result, calls } = await execute({ spec: clone(SCRIPT_SPEC), carry: scriptCarry('x;rm -rf .') }, () => scriptOut())
+    ok('script: a placeholder value the guard would refuse halts before dispatch', result.aborted && calls.length === 0, result)
+  }
+  {
+    const { result, calls } = await execute({ spec: clone(SCRIPT_SPEC) }, () => scriptOut())
+    ok('script: a placeholder with no value halts before dispatch', result.aborted && calls.length === 0 && /no value/.test(result.abortReason), result)
+  }
+  {
+    const spec = clone(SCRIPT_SPEC)
+    spec.phases[0].modelTier = 'claude-haiku-4-5-20251001'
+    const { result, calls } = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+    ok('model: a full claude-* id is honoured, not defaulted', !result.aborted && calls[0].opts.model === 'claude-haiku-4-5-20251001', result)
+    spec.phases[0].modelTier = 'fable'
+    const again = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+    ok('model: the fable alias is honoured', !again.result.aborted && again.calls[0].opts.model === 'fable', again.result)
+    spec.phases[0].modelTier = 'gpt-5'
+    const bad = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+    ok('model: a non-Claude model name halts', bad.result.aborted && bad.calls.length === 0, bad.result)
+  }
+
   // 1. From the top: INVENTORY runs, then the workflow stops before CONTRACT.
   {
     const { result, calls } = await execute({ spec: clone(SIX) }, happy)

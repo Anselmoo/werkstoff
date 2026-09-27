@@ -11,7 +11,7 @@ carrying a citation — never silently override a measured entry below.
 
 The accepted set is `best-of-n`, `blind-referee`, `escalating-batch`, `per-batch-breaker`,
 `select-then-synthesize`, `self-consistency-vote`, `tribunal`, `map-reduce-disjoint`,
-`calibrate-then-measure`, `ablation-matrix`. The rejected set is `serial-fix-loop`,
+`calibrate-then-measure`, `ablation-matrix`, `script-step`, `gated-disjoint-waves`. The rejected set is `serial-fix-loop`,
 `partition-then-merge-worktrees`, `build-and-verify-in-one-dispatch`, `cumulative-breaker`,
 `unmeasured-counts-as-failure` — each with the measurement that rejected it.
 
@@ -34,7 +34,8 @@ which is the silent-failure shape this repository keeps getting burned by).
   "accepted": [
     "best-of-n", "blind-referee", "escalating-batch", "per-batch-breaker",
     "select-then-synthesize", "self-consistency-vote", "tribunal",
-    "map-reduce-disjoint", "calibrate-then-measure", "ablation-matrix"
+    "map-reduce-disjoint", "calibrate-then-measure", "ablation-matrix",
+    "script-step", "gated-disjoint-waves"
   ],
   "rejected": [
     "serial-fix-loop", "partition-then-merge-worktrees",
@@ -197,6 +198,51 @@ establishes before dispatching, not something the runtime discovers or enforces.
 
 See `references/matrix-schema.md`. The skill compiles and hands over; it never executes.
 
+### `script-step` — a declared command, typed, in between (#107)
+
+| | |
+|---|---|
+| **applies when** | a step is deterministic — a gate, a conformance runner, a state helper — and would otherwise be disguised as an agent in prose |
+| **fan-out** | none; the command runs once |
+| **model tier** | `haiku`, **written explicitly** — the runner reasons about nothing, it runs one command and reports |
+| **stop rule** | an exit outside `expectExit`, or output that does not validate against the phase's `outputSchema`, halts the run (`SCRIPT CONTRACT`) |
+| **cost** | one dispatch |
+| **evidence** | `reasoned` — a Workflow script cannot exec (`fs`, `child_process`, `import()` all throw), so every command already goes through `agent()`; this makes that dispatch declared and typed rather than prose. ADR 0001 accepted the narrow form in principle (#83) |
+
+The phase is run by `arbeitsplan:script-runner`, whose only tool is `Bash`. The guard
+(`hooks/arbeitsplan_guard.py`) allows that agent **exactly** a command listed in the run's
+`scripts.json` — compiled from the spec, never written by hand — and denies a second Bash call from
+the same dispatch. The command is one command: `;`, `|`, `&`, a backtick, `$(` and a newline are
+refused at compile time (`AP-SCRIPT-NO-COMMAND`), because a chain would carry an undeclared command
+through an exact match.
+
+### `gated-disjoint-waves` — different work, proven disjoint, gated per wave (#106)
+
+| | |
+|---|---|
+| **applies when** | a restructuring is larger than one change: several rows of *different* work per wave, each wave building on the merged result of the last |
+| **fan-out** | one worktree per row (a row may itself be a `best-of-n` swarm, refereed blind); cap 16 per wave |
+| **model tier** | per role: `opus` builders and referees, `sonnet` merger, smoke, reviewer and fixer, `haiku` script runners — every one explicit in the design |
+| **stop rule** | a red gate stops the run with the integration branch unmerged into main and every worktree kept; resume skips finished waves before any builder is dispatched |
+| **cost** | rows + merge-gates + smoke + review + one fix round; **no cost cap by default** — subscription limits stop the run and resume makes that cheap |
+| **evidence** | `measured-elsewhere` — a hand-written multi-wave prototype in a second consumer repository (#106), whose ten recorded failures are this pattern's requirements |
+
+**This is the narrowed form of the rejected `partition-then-merge-worktrees`, and only this form is
+accepted.** The rejection's grounds were conflicts reappearing at integration. Three things remove
+them, and each is enforced rather than promised:
+
+1. **Disjoint ownership is proved mechanically** — `AP-WAVE-SCOPE-OVERLAP` rejects a wave whose rows'
+   write scopes `land_candidate.scope_overlap` cannot prove disjoint. It is conservative: it may call
+   a disjoint pair overlapping, never the reverse. A shared file becomes a dispatcher plus one module
+   per row.
+2. **Every wave is merged into an integration branch and gated before main moves** — main is
+   fast-forwarded only when the gate is green, so a red gate never leaves half a wave on main.
+3. **Every row starts from its wave's base** — `git merge --ff-only <wave base>` first, and the
+   interpreter halts when the returned `baseSha` differs (`AP-WAVE-NO-BASE` makes the base
+   declared).
+
+Anything short of all three is still `partition-then-merge-worktrees`, and still rejected.
+
 ---
 
 ## Rejected patterns — named so the compiler can refuse them by name
@@ -222,7 +268,9 @@ worktree explicitly "(conflicts)", which forces parallelism up to the worktree l
 conflicts reappear at integration and cost more.
 
 **Instead:** `best-of-n`. N worktrees doing the *same* work, N−1 deleted. Integration cost is zero
-because nothing is ever merged.
+because nothing is ever merged. When the work genuinely differs per worktree, `gated-disjoint-waves`
+is the only admissible form: disjointness proved at compile time, a gate per wave, and main moved
+only on green. **Unproven** partitions merged at the end remain rejected.
 
 ### `build-and-verify-in-one-dispatch` — REJECTED
 

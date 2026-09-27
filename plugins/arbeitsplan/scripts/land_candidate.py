@@ -122,6 +122,53 @@ def subtract_referee_owned(scope: list, referee_owned: list) -> list:
     return keep
 
 
+_WILD = re.compile(r"[*?\[]")
+
+
+def _literal_prefix(glob: str) -> list:
+    """The whole path segments of `glob` before its first wildcard segment. A
+    glob without '/' has NO prefix: in_scope() also matches it against every
+    path's basename, so it can name a file anywhere in the tree."""
+    if "/" not in glob:
+        return []
+    prefix = []
+    for seg in glob.split("/"):
+        if _WILD.search(seg):
+            break
+        prefix.append(seg)
+    return prefix
+
+
+def scope_overlap(a: str, b: str) -> bool:
+    """Could some path be matched by both write-scope globs, under in_scope()?
+
+    CONSERVATIVE by construction (#106): it may call a disjoint pair
+    overlapping, never the reverse. A literal path is decided exactly by
+    in_scope() in both directions; two globs are disjoint only when their
+    literal prefixes diverge at some segment, because fnmatch's '*' crosses '/'
+    and a glob can match nothing outside its own literal prefix. Everything
+    else overlaps -- the caller is told to split the shared file (a dispatcher
+    plus one module per row), not to trust a clever guess.
+    """
+    # Case-folded first: on a case-insensitive filesystem (macOS, Windows)
+    # `Src/A.go` and `src/a.go` are one file, and a check that may only err
+    # towards "overlapping" cannot assume the target filesystem is Linux's.
+    a, b = a.lower(), b.lower()
+    lit_a, lit_b = not _WILD.search(a), not _WILD.search(b)
+    if lit_a and lit_b:
+        return a == b or in_scope(a, [b]) or in_scope(b, [a])
+    if lit_a:
+        return in_scope(a, [b])
+    if lit_b:
+        return in_scope(b, [a])
+    return all(x == y for x, y in zip(_literal_prefix(a), _literal_prefix(b), strict=False))
+
+
+def scopes_overlap(a: list, b: list) -> list:
+    """Every (glob_a, glob_b) pair scope_overlap() cannot prove disjoint."""
+    return [(x, y) for x in a for y in b if scope_overlap(x, y)]
+
+
 def hunk_body(diff: str) -> list:
     """The +/- lines of a diff, headers and context dropped: what a comparison
     of two diffs of the same paths should agree on regardless of index lines,

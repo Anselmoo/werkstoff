@@ -43,6 +43,18 @@ Contract (Claude Code's PreToolUse hook protocol):
 Inert unless analysis/arbeitsplan/run_scope.json exists. Fail-closed past that.
 Escape hatch: ARBEITSPLAN_DISABLE_GUARD=1.
 
+SCRIPT RUNNER (#107). One exception to "inert without a lock": a Bash call made
+by the arbeitsplan:script-runner agent (the hook input's `agent_type`, present
+whenever a tool call comes from a subagent) is ALWAYS judged, lock or no lock --
+the workflow backend runs with no run-scope lock open, and a runner nobody
+checks is a shell with a label on it. It may run exactly one command, and only
+one that matches a template in analysis/arbeitsplan/<runId>/scripts.json, the
+allowlist compile_spec.py writes from the spec; <runId> comes from
+analysis/arbeitsplan/scripts_armed.json, which arbeitsplan-run writes before
+launch. No armed allowlist, no agent_id, a non-matching command, or a SECOND
+command in the same dispatch (an O_EXCL ledger keyed on agent_id) all deny.
+Every other agent's Bash call is allowed untouched.
+
 STDLIB ONLY. Python >= 3.11, CHECKED once a run is in flight: below it the guard
 denies with the version it found, instead of failing on the first 3.11-only call
 (datetime.UTC in _iso_now) and denying with nothing but a traceback.
@@ -54,6 +66,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import NoReturn
@@ -86,6 +99,14 @@ except Exception as _exc:
     _DELEGATION_IMPORT_ERROR = f"{type(_exc).__name__}: {_exc}"
 
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
+SCRIPT_RUNNER_TYPES = ("arbeitsplan:script-runner", "script-runner")
+ARMED = Path("analysis") / "arbeitsplan" / "scripts_armed.json"
+RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
+# What a {placeholder} may expand to: ids, branch names, paths, comma lists.
+# No whitespace and no shell metacharacter, so a value can never become a
+# second command inside an exact match.
+PLACEHOLDER_VALUE = r"[A-Za-z0-9._/,=:@+-]+"
+PLACEHOLDER = re.compile(r"\{([A-Za-z][A-Za-z0-9_]*)\}")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
 MIN_PYTHON = (3, 11)
 
@@ -248,6 +269,74 @@ def in_any_worktree(target_abs: str, worktrees: list) -> bool:
     return False
 
 
+def template_regex(template: str) -> re.Pattern:
+    """A declared command template as a full-match regex: literal text escaped,
+    each {placeholder} a PLACEHOLDER_VALUE token."""
+    parts, pos = [], 0
+    for m in PLACEHOLDER.finditer(template):
+        parts.append(re.escape(template[pos:m.start()]))
+        parts.append(PLACEHOLDER_VALUE)
+        pos = m.end()
+    parts.append(re.escape(template[pos:]))
+    return re.compile("".join(parts))
+
+
+def command_allowed(command: str, templates: list) -> bool:
+    return any(template_regex(t).fullmatch(command.strip()) for t in templates)
+
+
+def script_runner(event: dict) -> NoReturn:
+    """Judge one tool call by the script-runner agent. Always ends in allow() or
+    deny(); every error denies (see the module docstring)."""
+    try:
+        tool_name = event.get("tool_name") or ""
+        if tool_name != "Bash":
+            deny(f"arbeitsplan: the script runner may only call Bash, not {tool_name!r}. "
+                 f"{ESCAPE_HATCH}")
+        # $CLAUDE_PROJECT_DIR stays at the main checkout while the event's cwd
+        # follows a worktree; the allowlist lives in the main checkout.
+        root = Path(os.environ.get("CLAUDE_PROJECT_DIR") or event.get("cwd") or Path.cwd())
+        armed_path = root / ARMED
+        if not armed_path.is_file():
+            deny("arbeitsplan: the script runner ran with no armed allowlist "
+                 f"({ARMED}); nothing declares what it may execute. arbeitsplan-run arms "
+                 f"one from the compiled spec before launch. {ESCAPE_HATCH}")
+        run_id = json.loads(armed_path.read_text(encoding="utf-8")).get("runId")
+        if not isinstance(run_id, str) or not RUN_ID_RE.match(run_id):
+            raise ValueError(f"{ARMED} carries no valid runId")
+        run_dir = root / "analysis" / "arbeitsplan" / run_id
+        allow_doc = json.loads((run_dir / "scripts.json").read_text(encoding="utf-8"))
+        templates = [c.get("command") for c in allow_doc.get("commands") or []
+                     if isinstance(c, dict) and isinstance(c.get("command"), str)]
+        command = (event.get("tool_input") or {}).get("command")
+        if not isinstance(command, str) or not command_allowed(command, templates):
+            deny(f"arbeitsplan: the script runner may run only a command declared in "
+                 f"{run_dir / 'scripts.json'}; {command!r} matches none of {templates}. "
+                 f"{ESCAPE_HATCH}")
+        agent_id = event.get("agent_id")
+        if not isinstance(agent_id, str) or not agent_id:
+            deny("arbeitsplan: a script-runner Bash call without agent_id cannot be "
+                 f"attributed to one dispatch, so its one-command limit cannot hold. {ESCAPE_HATCH}")
+        ledger = run_dir / "scripts"
+        ledger.mkdir(parents=True, exist_ok=True)
+        entry = ledger / f"{hashlib.sha256(agent_id.encode()).hexdigest()[:32]}.json"
+        try:
+            fd = os.open(entry, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+        except FileExistsError:
+            deny("arbeitsplan: this script-runner dispatch already ran its one declared "
+                 "command; a second command is not a script node, it is a shell. "
+                 f"{ESCAPE_HATCH}")
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"agent_id": agent_id, "command": command}, fh)
+        allow()
+    except SystemExit:
+        raise
+    except Exception as exc:
+        deny(f"arbeitsplan: the script runner's allowlist could not be evaluated "
+             f"({type(exc).__name__}: {exc}). Refusing rather than running an unchecked "
+             f"command. {ESCAPE_HATCH}")
+
+
 def main() -> NoReturn:
     if os.environ.get("ARBEITSPLAN_DISABLE_GUARD") == "1":
         allow()
@@ -256,6 +345,13 @@ def main() -> NoReturn:
         event = json.load(sys.stdin)
     except (json.JSONDecodeError, ValueError):
         allow()  # not a payload this hook can read; never police what it cannot parse
+
+    if not isinstance(event, dict):
+        allow()
+    if event.get("agent_type") in SCRIPT_RUNNER_TYPES:
+        script_runner(event)
+    if event.get("tool_name") == "Bash":
+        allow()  # only the script runner's shell is policed here
 
     cwd = event.get("cwd") or str(Path.cwd())
     lock_path = Path(cwd) / LOCK
