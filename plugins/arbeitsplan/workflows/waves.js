@@ -28,6 +28,11 @@ const modelOk = (m) => typeof m === 'string' && (MODEL_ALIASES.includes(m) || MO
 // What a {placeholder} may expand to -- the same class the project guard lets a
 // template slot match, so a value the guard would deny is refused here first.
 const SAFE = /^[A-Za-z0-9._/,=:@+-]+$/
+// Why a builder can miss its base (ADR 0004, P5): its worktree starts from
+// worktree.baseRef -- by default the remote's default branch -- and the first
+// thing it does is `git merge --ff-only <wave base>`, which fails when that
+// branch is not an ancestor of the wave base.
+const BASE_HINT = 'Agent worktrees start from worktree.baseRef -- the remote\'s default branch unless the project sets "head" -- and fast-forward to the wave base; that fails when the base does not descend from it. Launch from the primary checkout, and push the base or set worktree.baseRef to "head" in .claude/settings.json.'
 
 const scriptSchema = (outputSchema) => ({
   type: 'object',
@@ -278,7 +283,7 @@ async function build(n, base) {
     const probs = strictProblems(n.output_schema, r, labels[k])
     if (probs.length) return { error: `row ${n.id}: output breaks its schema: ${probs.slice(0, 3).join('; ')}` }
     // #106 R1: the base is checked in code, not trusted from the prompt.
-    if (r.baseSha !== base) return { error: `row ${labels[k]}: WRONG BASE -- started from ${r.baseSha}, the wave base is ${base}. Launch from the primary checkout.` }
+    if (r.baseSha !== base) return { error: `row ${labels[k]}: WRONG BASE -- started from ${r.baseSha}, the wave base is ${base}. ${BASE_HINT}` }
     if (!SAFE.test(String(r.branch))) return { error: `row ${labels[k]}: branch ${JSON.stringify(r.branch)} is not a plain branch name` }
     valid.push(r)
   }
@@ -443,9 +448,13 @@ for (const id of pre) {
 }
 const pf = results[integ.preflight]
 if (!pf) return stop(`integration.preflight ${JSON.stringify(integ.preflight)} did not run before the waves`, integ.preflight)
-// #106 R1: agent worktrees branch from the PRIMARY checkout's HEAD. From a
-// linked worktree every builder would start from the wrong base.
-if (pf.linkedWorktree) return stop('PRIMARY CHECKOUT ONLY -- this run was launched from a linked worktree, and agent worktrees would branch from the primary checkout\'s HEAD instead. Relaunch from the primary checkout.', integ.preflight)
+// #106 R1, re-measured by probe_runtime.py P5 on CLI 2.1.283 (ADR 0004): an
+// isolated agent's worktree is created under the PRIMARY repository and starts
+// from worktree.baseRef -- the remote's default branch by default ("fresh"),
+// the primary's HEAD when there is no remote, the CALLER's HEAD with "head".
+// None of those is reliably this linked worktree's HEAD, and the merge-gate
+// switches branches in the primary checkout anyway: primary checkout only.
+if (pf.linkedWorktree) return stop('PRIMARY CHECKOUT ONLY -- this run was launched from a linked worktree. The wave base is measured, and the merge-gate switches branches, in the primary checkout; relaunch from there.', integ.preflight)
 if (pf.dirty) return stop('the primary checkout has tracked changes; the merge-gate switches branches there. Commit or stash them first.', integ.preflight)
 
 // ---- waves --------------------------------------------------------------------
@@ -553,7 +562,7 @@ for (const id of post) {
   if (probs.length) return stop(`node ${id}: output breaks its schema: ${probs.slice(0, 3).join('; ')}`, id)
   results[id] = out
   if (n.where === 'worktree') {
-    if (out.baseSha !== base) return stop(`node ${id}: WRONG BASE -- started from ${out.baseSha}, expected ${base}`, id)
+    if (out.baseSha !== base) return stop(`node ${id}: WRONG BASE -- started from ${out.baseSha}, expected ${base}. ${BASE_HINT}`, id)
     // One fix round: its branch goes through the last wave's merge-gate again.
     const lastGate = waveNodes.find((m) => m.wave === waveCount && m.kind === 'merge-gate')
     const r = await runScript(lastGate, { ...values, wave: waveCount, stage: 'fix', final: 1, branches: `${id}=${out.branch}`, discard: 'none', base }, `${lastGate.id}:fix`, 'After the waves')

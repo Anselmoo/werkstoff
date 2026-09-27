@@ -52,15 +52,24 @@ each is a check in code rather than a sentence here:
    interpreter is written into every command. The installer refuses to overwrite any file it
    did not generate.
 
-3. **Tell the user to start a fresh session.** Agent types added mid-session do not resolve in
-   `agent()`. The installer prints this, and `handoff.py plan` repeats it together with the
-   exact start prompt. Do not launch from the session that ran the install.
+3. **End the turn. Launch on the next one.** An agent type written to `.claude/agents/` is not
+   found in the turn that wrote it, not even 30 s later, and resolves from the next turn on
+   (`scripts/probe_runtime.py`, probe P4, CLI 2.1.283, ADR 0004). The installer prints
+   `LAUNCH IN A LATER TURN`, and `handoff.py plan` repeats it together with a fresh session's
+   exact start prompt, which also works. Never launch in the turn that ran the install.
 
 ## Launch and resume
 
-1. **From the primary checkout.** Agent worktrees branch from the primary checkout's HEAD, not
-   the caller's. The interpreter's preflight halts on a linked worktree and on tracked changes;
-   do not try to route around it.
+1. **From the primary checkout.** The wave base is the primary checkout's HEAD, and the
+   merge-gate switches branches there. The interpreter's preflight halts on a linked worktree
+   and on tracked changes; do not try to route around it.
+
+   **Where a builder's worktree starts** was measured by `scripts/probe_runtime.py` (P5) on
+   CLI 2.1.283 (ADR 0004). It starts from the project's `worktree.baseRef`: the remote's
+   default branch by default, the primary's HEAD when there is no remote, and the caller's
+   HEAD with `"head"`. Each builder then fast-forwards to the wave base. So the base must
+   descend from the remote's default branch: push it, or set `worktree.baseRef` to `"head"`
+   in `.claude/settings.json`.
 
 2. Read the state and launch:
 
@@ -80,7 +89,8 @@ each is a check in code rather than a sentence here:
    | `aborted: false` | report the final `integrationSha` and that the target moved; done |
    | `pending_human_gate: <id>` | show the user what that gate approves. On their yes, run `<name>_state.py approve --gate <id>`, then relaunch |
    | `abortReason` names a red gate | report `findings` with each one's `source` (`primary-only` means only the primary checkout's untracked or ignored files produced it) and the `kept` worktrees. **Do not retry.** A fix is a new row or a new design |
-   | `WRONG BASE` or `PRIMARY CHECKOUT ONLY` | the launch site is wrong; relaunch from the primary checkout |
+   | `PRIMARY CHECKOUT ONLY` | the launch site is wrong; relaunch from the primary checkout |
+   | `WRONG BASE` | a builder could not fast-forward to the wave base (see step 1): push the base, or set `worktree.baseRef` to `"head"`, then relaunch |
    | `SCRIPT CONTRACT` | a declared command exited unexpectedly or printed output that breaks its schema: a defect in the step, not a flake |
    | `AUTHOR CONTRACT` | an authored step was refused by `verify-step` after its node's `retries`. Report the `problem` and the `step` path. Read the file; the fix is a sharper `purpose`, a better `sample`, or more `retries` in a new design, never a hand edit the hash would refuse anyway |
 

@@ -125,11 +125,21 @@ and only after the user approves.
   The run stops at the first checkpoint or red gate and leaves a state file to resume from.
 - **Same session:** `EnterWorktree` into the branch the run produced. The cwd, settings and
   CLAUDE.md move with it; agents and hooks are read from the main checkout.
-- **New session:** print the exact start prompt `handoff.py plan` gives. This is **required**
-  whenever the design created agent types, and `handoff.py` says `NEW SESSION REQUIRED`.
+- **A later turn:** when the design created agent types, `handoff.py` says
+  `LAUNCH IN A LATER TURN`. A type written mid-session is not found in the turn that wrote it,
+  and resolves from the next turn on. A fresh session with the exact start prompt
+  `handoff.py plan` prints also works.
 
-Still to be probed, not assumed: whether plan mode works inside a worktree, and how resume
-behaves across `EnterWorktree`. Neither is documented.
+What `scripts/probe_runtime.py` measured on CLI 2.1.283 (ADR 0004), beyond the docs:
+
+- **Plan mode holds inside a worktree the same way it holds in the primary checkout.** Asked
+  to write a file in plan mode, the model declined in both, 3 of 3 each. That is the model
+  honouring the mode; a headless run never reached the harness's own refusal, so do not treat
+  a worktree as a way around plan mode, nor as a second lock.
+- **Resume returns to the worktree.** A session that ran `EnterWorktree`, resumed from the
+  primary checkout, starts in that worktree and remembers the conversation, 3 of 3.
+- **Agent types: a later turn, not a new session** (above), 3 of 3 for both the Agent tool and
+  a Workflow `agent()`.
 
 ## Rules
 
@@ -162,8 +172,8 @@ problem: analysis/arbeitsplan/ap-2026-09-27-wv01/problem.md
 
 toolchains: go (go version) — installed · python (python3 --version) — installed, helper >= 3.10
 integration: waves merge into integration/rebuild-cli; main moves only on a green gate
-new agent types: rebuild-cli-builder, -smoke, -reviewer, -fixer, -runner → NEW SESSION REQUIRED after install
-Approve this design (sha256 3f9c1e…)?  Next: arbeitsplan-waves install, then a fresh session.
+new agent types: rebuild-cli-builder, -smoke, -reviewer, -fixer, -runner → LAUNCH IN A LATER TURN than the install
+Approve this design (sha256 3f9c1e…)?  Next: arbeitsplan-waves install, then launch on the next turn.
 ```
 
 ## Resources

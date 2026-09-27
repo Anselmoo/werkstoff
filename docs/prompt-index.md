@@ -127,7 +127,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 "before anything runs, walk me through this workflow step by step — what each step does, where it runs, when, and on which model"
 ````
 
-> Triggers `arbeitsplan-design`: builds the design table node by node in plan mode, writes every command in the repository's own toolchain (a gate or a state helper becomes a declared script node, in whatever language the project uses), validates it with `compile_spec.py --design`, preflights each toolchain, and asks for approval against the design's sha256. Then prints the handoff — a fresh session's exact start prompt whenever the design created agent types.
+> Triggers `arbeitsplan-design`: builds the design table node by node in plan mode, writes every command in the repository's own toolchain (a gate or a state helper becomes a declared script node, in whatever language the project uses), validates it with `compile_spec.py --design`, preflights each toolchain, and asks for approval against the design's sha256. Then prints the handoff — launch in a later turn than the install whenever the design created agent types, or in a fresh session with the exact start prompt it prints.
 
 ### Run a restructuring in waves
 

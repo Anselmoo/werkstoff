@@ -185,6 +185,7 @@ async function suite() {
   {
     const { result, calls } = await execute({ plan: clone(PLAN) }, (l, p, o) => (l === 'w1-render' ? { branch: 'agent/w1-render', baseSha: 'SOMEWHERE-ELSE', notes: [] } : happy(l, p, o)))
     ok('base: a wrong baseSha halts', result.aborted && /WRONG BASE/.test(result.abortReason), result)
+    ok('base: the halt names worktree.baseRef, the measured cause (ADR 0004)', /worktree\.baseRef/.test(result.abortReason), result.abortReason)
     ok('base: nothing is merged after a wrong base', !calls.some((c) => c.label.startsWith('gate-')), calls.map((c) => c.label))
   }
 
