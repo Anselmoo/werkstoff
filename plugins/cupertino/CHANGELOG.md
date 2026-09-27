@@ -4,6 +4,14 @@ All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
 
+### Fixed
+- **symbol index**: CSS, SCSS, Sass and Less at-rules outside the old six (`@container`, `@page`,
+  `@property`, `@scope`, `@mixin`, `@include`, `@use`, ...) were recorded as `selector` symbols, and
+  statement at-rules (`@charset "...";`, `@use '...';`) not at all. The vendored
+  `scripts/build_symbol_index.py` now recognises exactly the at-rules MDN's at-rules reference and
+  sass-lang.com's at-rules pages list (fetched 2026-09-27), Sass ones only in `.scss`/`.sass`, and a
+  Less `@variable:` is still not an at-rule (#29).
+
 ## [1.0.2] - 2026-09-26
 ### Fixed
 - **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or

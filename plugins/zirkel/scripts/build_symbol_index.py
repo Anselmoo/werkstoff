@@ -287,7 +287,43 @@ def scan_generic_file(path: Path, repo_root: Path, content: str, language: str) 
     return symbols
 
 
-CSS_AT_RULE_PATTERN = re.compile(r"@(media|supports|keyframes|font-face|import|layer)\b(.*)")
+# Top-level CSS at-rules -- MDN's at-rules reference, fetched 2026-09-27 from
+# https://raw.githubusercontent.com/mdn/content/main/files/en-us/web/css/reference/at-rules/index.md
+# ("Index of at-rules and at-rule descriptors" section only; descriptors such
+# as @font-face/src and the separate "media features" index are excluded).
+# Applies to all four languages this scanner routes here (css, scss, sass,
+# less) -- a Less/Sass file is still CSS wherever it isn't overriding syntax.
+CSS_AT_RULES = (
+    "charset", "color-profile", "container", "counter-style", "custom-media",
+    "document", "font-face", "font-feature-values", "font-palette-values",
+    "function", "import", "keyframes", "layer", "media", "namespace", "page",
+    "position-try", "property", "scope", "starting-style", "supports",
+    "view-transition",
+)
+
+# Sass-only at-rules -- sass-lang.com's at-rules docs, fetched 2026-09-27 from
+# https://raw.githubusercontent.com/sass/sass-site/main/source/documentation/at-rules/index.md
+# plus its linked sub-pages: control/index.md and control/if.md (@else),
+# mixin.md (@content), function.md (@return). @import and @function are
+# already plain CSS at-rules above (the Sass docs note @import "extends the
+# CSS at-rule", and @function is independently an experimental CSS at-rule
+# per MDN) so neither is repeated here. Only applies when language is "scss"
+# or "sass" -- a .css file's `@mixin` is not CSS and stays a non-at-rule.
+SASS_AT_RULES = (
+    "use", "forward", "mixin", "include", "extend", "at-root", "error",
+    "warn", "debug", "if", "else", "each", "for", "while", "content",
+    "return",
+)
+
+
+def _at_rule_pattern(names: tuple[str, ...]) -> re.Pattern[str]:
+    # `(?![\w-])`, not `\b`: `-` is a CSS identifier character, so `\b` would
+    # end the match inside `@media-foo` and record it as `@media`.
+    return re.compile(r"@(" + "|".join(re.escape(name) for name in names) + r")(?![\w-])(.*)", re.IGNORECASE)
+
+
+CSS_AT_RULE_PATTERN = _at_rule_pattern(CSS_AT_RULES)
+SASS_AT_RULE_PATTERN = _at_rule_pattern(SASS_AT_RULES)
 CSS_CUSTOM_PROPERTY_PATTERN = re.compile(r"(--[\w-]+)\s*:\s*(.+?);?\s*$")
 
 
@@ -299,8 +335,13 @@ def scan_css_file(path: Path, repo_root: Path, content: str, language: str) -> l
         if not line:
             continue
         at_rule = CSS_AT_RULE_PATTERN.match(line)
+        if not at_rule and language in ("scss", "sass"):
+            at_rule = SASS_AT_RULE_PATTERN.match(line)
         if at_rule:
-            name = f"@{at_rule.group(1)}{at_rule.group(2)}".rstrip("{ ").strip()
+            # Handles both the block form (`@media ... {`) and the statement
+            # form (`@use 'x';`, `@charset "utf-8";`) -- neither trailing
+            # punctuation belongs in the recorded symbol name.
+            name = f"@{at_rule.group(1)}{at_rule.group(2)}".rstrip("{;").strip()
             symbols.append(Symbol(name[:120], "at-rule", relative, line_number, line[:120], language=language))
             continue
         custom_property = CSS_CUSTOM_PROPERTY_PATTERN.match(line)
