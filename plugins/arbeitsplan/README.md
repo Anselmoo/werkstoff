@@ -164,7 +164,8 @@ by intent.
 > command in the repository's own toolchain (a gate or a state helper becomes a declared script
 > node, in whatever language the project uses), validates it with `compile_spec.py --design`,
 > preflights each toolchain, and asks for approval against the design's sha256. Then prints the
-> handoff — a fresh session's exact start prompt whenever the design created agent types.
+> handoff — launch in a later turn than the install whenever the design created agent types,
+> or in a fresh session with the exact start prompt it prints.
 
 ##### Run a restructuring in waves
 
@@ -496,8 +497,19 @@ python3 plugins/arbeitsplan/scripts/handoff.py --selftest
 python3 plugins/arbeitsplan/scripts/agent_gen.py --selftest
 ARBEITSPLAN_REQUIRE_TOOLCHAINS=1 python3 plugins/arbeitsplan/scripts/test_authored_steps.py
 python3 plugins/arbeitsplan/scripts/build_design_html.py --selftest
+python3 plugins/arbeitsplan/scripts/probe_runtime.py --selftest
 python3 plugins/arbeitsplan/scripts/check_contract_sync.py
 bash scripts/ci/check-js-syntax.sh
+```
+
+`probe_runtime.py --selftest` proves the instrument that measured the runtime behaviours
+arbeitsplan depends on (ADR 0004): plan mode in a worktree, resume across `EnterWorktree`,
+prompt-cache reuse, when a new agent type resolves, and where an isolated worktree starts. The
+measurement itself **spends tokens** — about 55 haiku runs, capped at $0.50 each — and is run by
+hand after a CLI upgrade, never in CI:
+
+```bash
+python3 plugins/arbeitsplan/scripts/probe_runtime.py --probe all --n 3 --out analysis/probes/<stamp>
 ```
 
 `node --check` is gone from this list on purpose. Under Node's module auto-detection,

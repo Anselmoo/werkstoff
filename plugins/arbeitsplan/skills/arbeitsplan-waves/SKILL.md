@@ -52,9 +52,11 @@ each is a check in code rather than a sentence here:
    interpreter is written into every command. The installer refuses to overwrite any file it
    did not generate.
 
-3. **Tell the user to start a fresh session.** Agent types added mid-session do not resolve in
-   `agent()`. The installer prints this, and `handoff.py plan` repeats it together with the
-   exact start prompt. Do not launch from the session that ran the install.
+3. **End the turn. Launch on the next one.** An agent type written to `.claude/agents/` is not
+   found in the turn that wrote it, not even 30 s later, and resolves from the next turn on
+   (`scripts/probe_runtime.py`, probe P4, CLI 2.1.283, ADR 0004). The installer prints
+   `LAUNCH IN A LATER TURN`, and `handoff.py plan` repeats it together with a fresh session's
+   exact start prompt, which also works. Never launch in the turn that ran the install.
 
 ## Launch and resume
 

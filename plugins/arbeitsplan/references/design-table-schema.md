@@ -245,8 +245,9 @@ Before this, `install_waves.py` hard-coded tools per role and dropped `effort` a
 
 What makes a design cheap and fast to run, and what each claim rests on. **enforced**: code
 refuses the alternative. **documented**: the Workflow runtime reference (`agent()`,
-`parallel()`, resume). **measured**: observed in the #106 prototype. **unverified**: stated
-somewhere, not measured here, and nothing below depends on it.
+`parallel()`, resume). **measured**: observed in the #106 prototype or by
+`scripts/probe_runtime.py` on CLI 2.1.283, N=3 (ADR 0004). **unverified**: stated somewhere,
+not measured here, and nothing below depends on it.
 
 | practice | why | evidence |
 |---|---|---|
@@ -260,8 +261,9 @@ somewhere, not measured here, and nothing below depends on it.
 | Prompts carry ids and paths, never content or timestamps | a sibling's content cannot leak (#106 R8), and a relaunch sends the same prompts: within a session, `resumeFromRunId` replays the longest unchanged prefix of `agent()` calls from cache | **enforced** (`AP-INPUT-CONTENT`) + **documented** |
 | Resume through state, across sessions | a finished wave, a recorded builder and a verified step are skipped **before** anything is dispatched; `resumeFromRunId` is same-session only | **enforced** |
 | No cost cap by default | subscription limits stop the run, and resume makes that cheap (#106 R9); a declared `budget` is enforced | **enforced** when declared |
-| A fresh session after new agent types | agent types added mid-session did not resolve in `agent()` | **measured**; `handoff.py` requires it |
-| Agents that share model, effort, tools, schema and working directory reuse a cached prompt prefix | reported in the Claude Code docs research for this change, absent from the runtime reference | **unverified** |
+| Launch in a later turn after new agent types | a type written mid-session is not found in the turn that wrote it, even 30 s later, and resolves from the next turn on, for the Agent tool and `agent()` alike; a fresh session is not needed | **measured** (P4); `install_waves.py` and `handoff.py` say so |
+| Identical siblings share one prompt prefix | three `agent()` calls of one agent type in a `parallel()`: one created the cache, the others read it, 3 of 3. Agent-tool siblings dispatched in one message usually do too, but can race and both create it; siblings with different tools never share | **measured** (P3) |
+| Push the wave base, or set `worktree.baseRef` | an isolated agent's worktree starts from the remote's default branch (the primary's HEAD only without a remote; the caller's HEAD with `"head"`), then fast-forwards to the wave base; a base that does not descend from it halts the wave | **measured** (P5); `waves.js` names the cause when it halts |
 
 ## Rejections
 

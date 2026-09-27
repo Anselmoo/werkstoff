@@ -8,14 +8,17 @@ usage: handoff.py snapshot --root DIR --out FILE
 `snapshot` records which project agent types exist WHEN THE DESIGN IS MADE
 (.claude/agents/*.md). `plan` compares the design's agent types against it.
 
-Agent types added to .claude/agents/ in the middle of a session did not resolve
-in agent() (#106 R2): a run launched from the session that created them
-dispatches to nothing. So when the design needs a project agent type the
-snapshot lacks, a NEW SESSION is not a suggestion -- `plan` prints the exact
-start prompt and says it is required. Otherwise the same session may continue:
-`EnterWorktree` into the branch or worktree the run produced (its cwd, settings
-and CLAUDE.md move with it; agents and hooks are read through from the main
-checkout), and the new-session prompt is still printed as the alternative.
+Agent types added to .claude/agents/ in the middle of a session do not resolve
+in the TURN that wrote them -- an agent() or Agent-tool dispatch of one fails
+with "agent type ... not found", even 30 s later -- and do resolve from the next
+turn (probe P4, `probe_runtime.py`, CLI 2.1.283, ADR 0004; #106 R2 measured
+only the first half). So when the design needs a project agent type the
+snapshot lacks, `plan` says the launch must come in a LATER TURN than the
+install, names the types, and prints a fresh session's start prompt as the
+alternative that works on any CLI version. Either way the same session may
+`EnterWorktree` into the branch or worktree the run produced (its cwd,
+settings and CLAUDE.md move with it; agents and hooks are read through from
+the main checkout).
 
 Namespaced types (plugin:agent) are never "new": they load with their plugin.
 
@@ -74,9 +77,9 @@ def plan(design: dict, snapshot: list, worktree: str | None, branch: str | None)
     waves = any("wave" in n for n in design.get("nodes") or [])
     new = [t for t in needed_types(design) if t not in snapshot]
     result = {"design": design["name"], "sha256": digest, "newAgentTypes": new,
-              "newSessionRequired": bool(new),
+              "laterTurnRequired": bool(new),
               "newSessionPrompt": start_prompt(design, digest, waves)}
-    if not new and (worktree or branch):
+    if worktree or branch:
         result["sameSession"] = (f"EnterWorktree into {worktree or branch} for review or the "
                                  "next step; cwd, settings and CLAUDE.md move with it.")
     return result
@@ -84,16 +87,18 @@ def plan(design: dict, snapshot: list, worktree: str | None, branch: str | None)
 
 def render(r: dict) -> str:
     lines = [f"handoff for {r['design']} (sha256 {r['sha256'][:12]}...)"]
-    if r["newSessionRequired"]:
-        lines += ["", "NEW SESSION REQUIRED -- the design needs agent types this session did not "
-                  "start with, and agent() will not resolve them here:",
+    if r["laterTurnRequired"]:
+        lines += ["", "LAUNCH IN A LATER TURN -- the design needs agent types this session did not "
+                  "start with. agent() cannot resolve a type in the turn that wrote it, and does "
+                  "from the next turn on (probe P4, CLI 2.1.283, ADR 0004):",
                   *[f"  {t}" for t in r["newAgentTypes"]], "",
-                  "Start a fresh session in this repository with exactly this prompt:", "",
-                  r["newSessionPrompt"]]
-    else:
-        lines += ["", r.get("sameSession") or "Same session: nothing new to load; continue here.",
-                  "", "Or, in a fresh session, with exactly this prompt:", "",
-                  r["newSessionPrompt"]]
+                  "End the turn that installed them; launch on the next one."]
+    if r.get("sameSession"):
+        lines += ["", r["sameSession"]]
+    elif not r["laterTurnRequired"]:
+        lines += ["", "Same session: nothing new to load; continue here."]
+    lines += ["", "Or, in a fresh session (works on any CLI version), with exactly this prompt:",
+              "", r["newSessionPrompt"]]
     return "\n".join(lines)
 
 
@@ -140,15 +145,15 @@ def selftest() -> int:
                          / "waves.design.json").read_text())
     everything = needed_types(design)
     cases = [
-        ("new project agent types -> a new session is required, with the prompt",
+        ("new project agent types -> a later turn is required, with the prompt",
          plan(design, [], None, None), True),
         ("every type existed at design time -> same session allowed",
          plan(design, everything, ".claude/worktrees/x", None), False),
-        ("one missing type (the runner) is enough to require a new session",
+        ("one missing type (the runner) is enough to require a later turn",
          plan(design, [t for t in everything if not t.endswith("-runner")], None, None), True),
     ]
     for name, r, want in cases:
-        ok = r["newSessionRequired"] is want and design["runId"] in r["newSessionPrompt"] \
+        ok = r["laterTurnRequired"] is want and design["runId"] in r["newSessionPrompt"] \
             and r["sha256"] in r["newSessionPrompt"]
         if not want:
             ok = ok and "EnterWorktree" in r.get("sameSession", "")
@@ -162,10 +167,22 @@ def selftest() -> int:
     if not ok:
         fails.append("namespaced")
     text = render(cases[0][1])
-    ok = "NEW SESSION REQUIRED" in text and "rebuild-cli-runner" in text
-    print(f"  {'ok  ' if ok else 'FAIL'} the rendered handoff says it is required and names the types")
+    ok = "LAUNCH IN A LATER TURN" in text and "rebuild-cli-runner" in text \
+        and cases[0][1]["newSessionPrompt"] in text
+    print(f"  {'ok  ' if ok else 'FAIL'} the rendered handoff says a later turn, names the types, "
+          "and still prints the fresh-session prompt")
     if not ok:
         fails.append("render")
+    text = render(cases[1][1])
+    ok = "LAUNCH IN A LATER TURN" not in text and "EnterWorktree" in text
+    print(f"  {'ok  ' if ok else 'FAIL'} nothing new to load -> no later-turn demand, same session")
+    if not ok:
+        fails.append("render-same")
+    both = plan(design, [], ".claude/worktrees/x", None)
+    ok = both["laterTurnRequired"] and "EnterWorktree" in both.get("sameSession", "")
+    print(f"  {'ok  ' if ok else 'FAIL'} new types no longer forbid the same session, only this turn")
+    if not ok:
+        fails.append("same-session-with-new")
     print()
     if fails:
         print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))

@@ -47,6 +47,13 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   `-compile` and `-status`.
 - `references/design-table-schema.md`: new "Authored steps", "Agent types" and "Efficient
   designs" sections.
+- **`scripts/probe_runtime.py`** (ADR 0004): measures, as headless `claude -p` runs in scratch
+  repositories, the five runtime behaviours arbeitsplan depends on -- plan mode in a worktree,
+  resume across `EnterWorktree`, prompt-cache reuse between siblings, when an agent type
+  written mid-session resolves, and which commit an isolated worktree starts from. Every
+  verdict comes from files, git and stream-json events, never prose; ERROR and void runs stay
+  out of the denominator. Its `--selftest` (oracles planted both ways, each sabotaged, a stub
+  `claude` end to end) runs in CI; the live sweep spends tokens and does not.
 
 ### Changed
 - `waves.js` passes each node's `effort` on its dispatch. In the Author phase, each step goes
@@ -56,6 +63,17 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 - The compiler now refuses a pattern documented in `references/patterns.md` but missing from
   its machine-readable index -- the catalogue already claimed it did.
 - CI runs the guard calibration, the contract-sync check and every new selftest.
+- **An agent type written mid-session needs a later turn, not a new session** (probe P4, CLI
+  2.1.283): not found in the turn that wrote it, even 30 s later, and resolved from the next
+  turn, for the Agent tool and `agent()` alike. `handoff.py` reports `laterTurnRequired`
+  (was `newSessionRequired`) and says `LAUNCH IN A LATER TURN`; `install_waves.py`, the
+  runbook, both SKILLs and the README follow. The fresh-session prompt is still printed.
+- `waves.js`'s `WRONG BASE` halt names its measured cause (probe P5): an isolated worktree
+  starts from `worktree.baseRef` -- the remote's default branch unless the project sets
+  `"head"` -- not from the primary checkout's HEAD. `PRIMARY CHECKOUT ONLY` states its real
+  reason.
+- `arbeitsplan-design` states what P1 and P2 measured in place of "still to be probed", and
+  "Efficient designs" marks prompt-cache reuse **measured** (P3).
 
 ### Fixed
 - `install_waves.py` generated agent files that dropped the design's `effort` and `skills` and

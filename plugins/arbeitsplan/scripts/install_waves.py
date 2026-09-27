@@ -198,8 +198,10 @@ def runbook(design: dict, python: list, stamp: str) -> str:
         "",
         "## Run it",
         "",
-        "1. After an install that added agent types, **start a fresh session**: agent types "
-        "added mid-session do not resolve.",
+        "1. After an install that added agent types, **launch in a later turn** than the "
+        "install: a type written mid-session is not found in the turn that wrote it, and "
+        "resolves from the next turn on (probe P4, CLI 2.1.283, ADR 0004). A fresh session "
+        "works on any CLI version.",
         "2. From the **primary checkout**, never a linked worktree, read the state:",
         "",
         "   ```bash",
@@ -347,8 +349,9 @@ def notice(result: dict, name: str) -> str:
         *([f"authored step(s) kept as written: {', '.join(result['steps']['kept'])}"]
           if result["steps"]["kept"] else []),
         "",
-        "START A FRESH SESSION before launching. Agent types added to .claude/agents/ in the",
-        "middle of a session do not resolve in agent() -- the run would dispatch to nothing:",
+        "LAUNCH IN A LATER TURN, not this one. An agent type added to .claude/agents/ is not",
+        "found in the turn that wrote it -- the run would dispatch to nothing -- and resolves",
+        "from the next turn on (probe P4, CLI 2.1.283, ADR 0004; a fresh session also works):",
         f"  {', '.join(result['agents'])}",
         "",
         "Then, from the PRIMARY checkout (never a linked worktree), launch the Workflow tool with",
@@ -466,8 +469,8 @@ def selftest() -> int:
         except Refused:
             check("a hand-written file at a target path is refused", True)
         text = notice(res, "rebuild-cli")
-        check("the notice demands a fresh session and names the new agent types",
-              "START A FRESH SESSION" in text and "rebuild-cli-runner" in text)
+        check("the notice demands a later turn and names the new agent types",
+              "LAUNCH IN A LATER TURN" in text and "rebuild-cli-runner" in text)
         bad = json.loads(json.dumps(design))
         bad["nodes"][0].pop("model")
         try:
