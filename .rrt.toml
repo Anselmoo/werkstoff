@@ -587,6 +587,11 @@ description = "docs copy of plugins/nacharbeit/assets/review-viewer-screenshot.j
 command = ["cp", "plugins/nacharbeit/assets/review-viewer-screenshot.jpg", "docs/plugins/assets/review-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/design-viewer-screenshot.jpg"
+description = "docs copy of plugins/arbeitsplan/assets/design-viewer-screenshot.jpg"
+command = ["cp", "plugins/arbeitsplan/assets/design-viewer-screenshot.jpg", "docs/plugins/assets/design-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/run-viewer-screenshot.jpg"
 description = "docs copy of plugins/arbeitsplan/assets/run-viewer-screenshot.jpg"
 command = ["cp", "plugins/arbeitsplan/assets/run-viewer-screenshot.jpg", "docs/plugins/assets/run-viewer-screenshot.jpg"]

@@ -204,6 +204,22 @@ merged; prompts carry ids and branch names only. Concurrent rows own disjoint fi
 conservative, case-folded overlap check; an integrator row after them owns the module manifest
 and lockfile most ecosystems edit per new module.
 
+**Authored steps.** When the deterministic step a design needs does not exist yet, the script
+node **authors** it: `script.author = {model, purpose, sample}`, in bash, pwsh, ruby, node
+(`.mjs` — every `.js` under `.claude/workflows/` is a workflow to Claude Code) or python. The
+runtime is the language and the path is fixed, so neither is a key a design can get wrong. A
+shell-less author agent writes the file; `<name>_state.py verify-step` checks its syntax without
+running it, runs its sample in a throwaway worktree and validates its stdout against the node's
+strict schema; and the runner guard refuses to run a step whose file or contract changed since.
+`test_authored_steps.py` drives all five languages end to end.
+
+**Generated agents honour the design.** `scripts/agent_gen.py` writes each `<name>-*` agent
+file with the node's `effort`, `tools` and `skills` (which the installer used to validate and
+then drop), and the validator refuses nodes that share an agent type but disagree on what its one
+file should say. Next to the interpreter, `install_waves.py` writes `<name>.md` — a runbook for
+the people who own the installed tooling. Claude Code needs no markdown for a workflow and
+ignores it.
+
 ## The two inversions
 
 |  | the usual shape | here |
@@ -423,6 +439,32 @@ needs to see excluded from the breaker's denominator.
 Every outcome is a word plus a glyph; colour is a third channel on top of two that already work
 without it.
 
+## The design report
+
+![A two-wave design drawn top to bottom: wave 1's rows and gate done, a human gate cutting the run in two, wave 2's rows w2-cli and w2-docs outlined red with a dashed overlap arc on cmd/tool/*.md, gate-2 red from the last run, and two dashed authored steps, one verified and one missing because pwsh is not installed](assets/design-viewer-screenshot.jpg)
+
+```bash
+python3 plugins/arbeitsplan/scripts/build_design_html.py \
+  --design analysis/arbeitsplan/<runId>/design.json \
+  [--state <`<name>_state.py show` output>] [--preflight <{toolchain: true|false}>] \
+  [--workflow analysis/arbeitsplan/<runId>/workflow.json] --out /tmp/design.html
+python3 plugins/arbeitsplan/scripts/build_design_html.py \
+  --bundle plugins/arbeitsplan/scripts/fixtures/design-demo.json --out /tmp/design.html
+```
+
+A design table is a list of rows; what a reader needs to see is a graph: which rows run side by
+side, which two of them may write the same file, where a human gate ends one run and starts the
+next, where the last run stopped. The page draws the design top to bottom by longest-path
+layering, with waves as bands, and puts every node's what, where, when and how one click away.
+Everything on it is computed, not described. Rejections come from `design_spec.py`, overlaps from
+`land_candidate.py`, statuses from the state helper's `show`, toolchains from preflight results,
+and the compiled workflow's phases from `compile_spec.py`. A toolchain nobody probed reads "not
+probed", never "installed".
+
+The demo, `scripts/fixtures/design-demo.json`, is SYNTHETIC and carries the failures the page
+exists for. The last run stopped red at gate-2 on a primary-only finding. The revised draft adds
+a docs row whose scope overlaps `w2-cli`, and a PowerShell step on a machine without pwsh.
+
 ## Verifying a change to this plugin
 
 ```bash
@@ -451,6 +493,9 @@ python3 plugins/arbeitsplan/scripts/waves_state.py selftest
 python3 plugins/arbeitsplan/scripts/waves_guard.py --selftest
 python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
 python3 plugins/arbeitsplan/scripts/handoff.py --selftest
+python3 plugins/arbeitsplan/scripts/agent_gen.py --selftest
+ARBEITSPLAN_REQUIRE_TOOLCHAINS=1 python3 plugins/arbeitsplan/scripts/test_authored_steps.py
+python3 plugins/arbeitsplan/scripts/build_design_html.py --selftest
 python3 plugins/arbeitsplan/scripts/check_contract_sync.py
 bash scripts/ci/check-js-syntax.sh
 ```

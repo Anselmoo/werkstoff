@@ -376,6 +376,72 @@
       "expect": {
         "exit": 1
       }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AGENT-CONFLICT",
+      "fixture": "agent-conflict.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AGENT-KEYS-UNAPPLIED",
+      "fixture": "agent-keys-unapplied.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AUTHOR-LANG",
+      "fixture": "author-lang.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AUTHOR-COMMAND",
+      "fixture": "author-command.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AUTHOR-KIND",
+      "fixture": "author-kind.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-AUTHOR-NO-CONTRACT",
+      "fixture": "author-no-contract.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
     }
   ]
 }

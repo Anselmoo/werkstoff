@@ -3,8 +3,9 @@
 Read this before writing or editing any `plugins/*/assets/*-viewer.html` or its
 `plugins/*/scripts/build_*_html.py`.
 
-All 12 plugins ship a self-contained HTML report — 13 files, since `matrize` ships two
-(`derivation-viewer.html`, `provenance-viewer.html`). They were built independently, share
+All 12 plugins ship a self-contained HTML report — 14 files, since `matrize` ships two
+(`derivation-viewer.html`, `provenance-viewer.html`) and so does `arbeitsplan`
+(`run-viewer.html`, `design-viewer.html`). They were built independently, share
 exactly one thing — `tools/design-tokens/tokens.css`, vendored per plugin by
 `.rrt.toml`'s `artifact_targets` — and diverge on everything else. This file is the
 shared part that was never written down.
@@ -180,7 +181,7 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
   `<h1>` (it caught a live one in `cupertino` the first time it ran).
 - **One tokens marker spelling: `<!--__DESIGN_TOKENS__-->`.** `scripts/ci/check_viewer_conformance.py`
   still names two forbidden variants it watches for — `/*__DESIGN_TOKENS__*/` and
-  `/*__TOKENS__*/` — but a grep of all 13 `plugins/*/assets/*-viewer.html` files today
+  `/*__TOKENS__*/` — but a grep of all 14 `plugins/*/assets/*-viewer.html` files today
   shows every one of them already on the canonical comment form; no variant spelling
   remains on disk. The check keeps rejecting the variants anyway, because a marker
   spelling that regresses silently the next time a viewer is copy-pasted from an older

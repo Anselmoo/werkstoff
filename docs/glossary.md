@@ -104,8 +104,8 @@ cannot-be-dropped-in-partway property, which those looser words don't carry).
 A self-contained `.html` file under `plugins/*/assets/*-viewer.html` that renders one
 plugin's findings as a static, dependency-free page: no build step, no external network
 fetch, colour never the sole channel, and a verdict stated in words rather than left for
-the reader to infer from a number. Twelve plugins ship one (13 files — matrize ships
-two), and every one is paired with a `scripts/build_<name>_html.py` generator, a
+the reader to infer from a number. Twelve plugins ship one (14 files — matrize and
+arbeitsplan ship two each), and every one is paired with a `scripts/build_<name>_html.py` generator, a
 committed demo fixture, and a committed screenshot, per
 [`report-viewer-standard.md`](plugin-authoring/references/report-viewer-standard.md)
 and enforced by `nacharbeit_lint.py`'s `A-VIEWER-REQUIRED` rule (see the root

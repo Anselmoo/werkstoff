@@ -44,6 +44,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import land_candidate  # scope_overlap: the one place write-scope overlap is decided
+import waves_state  # AUTHORABLE, step_path: the vendored helper verifies what this admits
 
 DESIGN_SCHEMA_VERSION = "design/1"
 NODE_KINDS = {"agent", "script", "referee", "merge-gate", "human-gate"}
@@ -161,7 +162,20 @@ DESIGN_RULES = {
     "AP-GATE-NOT-PRIMARY": 106,
     "AP-SMOKE-NOT-SCRATCH": 106,
     "AP-SMOKE-UNDECLARED": 106,
+    "AP-AGENT-CONFLICT": 107,
+    "AP-AGENT-KEYS-UNAPPLIED": 107,
+    "AP-AUTHOR-LANG": 107,
+    "AP-AUTHOR-COMMAND": 107,
+    "AP-AUTHOR-KIND": 107,
+    "AP-AUTHOR-NO-CONTRACT": 107,
 }
+AUTHOR_KEYS = {"model", "purpose", "sample"}
+SAMPLE_ARG_RE = re.compile(r"\A[A-Za-z0-9._/,=:@+-]{1,128}\Z")  # the guard's safe value class
+# The node keys that belong to the agent DEFINITION, not to one dispatch: one
+# agent type has one frontmatter, so every node naming it must agree on them.
+# `model` and `effort` are deliberately absent -- agent() takes both per call,
+# and the interpreter passes every node's own.
+AGENT_KEYS = ("role", "tools", "skills")
 
 
 def design_hash(design: dict) -> str:
@@ -453,7 +467,128 @@ def validate_design(design: dict) -> tuple:
                                "human gate must cut the graph into a run before and a run after")
 
     _validate_waves(design, nodes, ancestors, table, err)
+    _validate_agent_types(design, nodes, err)
+    _validate_authored(design, nodes, err)
     return errors, warnings
+
+
+def _validate_authored(design: dict, nodes: dict, err) -> None:
+    """A script node whose step is WRITTEN by the plan rather than found.
+
+    `script.author = {model, purpose, sample: {args, expectExit}}`. There is no
+    path and no language key: the runtime is the language, and the path is
+    fixed (waves_state.step_path) -- two keys that could only disagree with
+    something else are two keys a design cannot get wrong.
+    """
+    waves = any("wave" in n for n in nodes.values())
+    name = design.get("name") if isinstance(design.get("name"), str) else ""
+    for nid, n in nodes.items():
+        sc = n.get("script")
+        author = sc.get("author") if isinstance(sc, dict) else None
+        if author is None:
+            continue
+        where = f"node {nid}"
+        if n.get("kind") != "script" or n.get("writeScope") != [] or not waves:
+            err(where, "[AP-AUTHOR-KIND] only a script node with writeScope [] in a WAVE "
+                       "design may author its step: install_waves.py is the only thing that "
+                       "writes step files, and a merge-gate's command is the state helper's")
+            continue
+        if not isinstance(author, dict) or set(author) - AUTHOR_KEYS:
+            extra = sorted(set(author) - AUTHOR_KEYS) if isinstance(author, dict) else author
+            err(where, f"'script.author' carries only {sorted(AUTHOR_KEYS)}; {extra} is not "
+                       "one -- the path and language follow from the runtime")
+            continue
+        runtime = sc.get("runtime")
+        if runtime not in waves_state.AUTHORABLE:
+            err(where, f"[AP-AUTHOR-LANG] runtime {runtime!r} cannot be authored; the "
+                       f"authorable ones are {sorted(waves_state.AUTHORABLE)}, each with a "
+                       "syntax check the state helper runs before the sample does")
+            continue
+        if not model_ok(author.get("model")):
+            err(where, f"[AP-NODE-NO-MODEL] 'script.author.model' must be {MODEL_RULE}: the "
+                       "author is a dispatch of its own")
+        if NAME_RE.match(name):
+            rel = waves_state.step_path(name, nid, runtime)
+            try:
+                argv = shlex.split(str(sc.get("command") or ""))
+            except ValueError:
+                argv = []
+            exes = waves_state.AUTHORABLE[runtime]["exes"]
+            first = next((a for a in argv[1:] if not a.startswith("-")), None)
+            ok = (bool(argv) and any(fnmatch.fnmatchcase(argv0(argv[0]), e) for e in exes)
+                  and first == rel)
+            if ok and runtime == "powershell":
+                ok = argv[argv.index(rel) - 1].lower() == "-file"
+            if not ok:
+                err(where, f"[AP-AUTHOR-COMMAND] an authored {runtime} step runs as "
+                           f"`{exes[0]} {'-File ' if runtime == 'powershell' else ''}{rel} "
+                           "[args]`: the interpreter the syntax check uses, then the one file "
+                           "the author writes")
+        sample = author.get("sample")
+        exits = (sc.get("expectExit") if isinstance(sc.get("expectExit"), list) else [])
+        good = (isinstance(author.get("purpose"), str) and author["purpose"].strip()
+                and isinstance(sample, dict) and set(sample) <= {"args", "expectExit"}
+                and isinstance(sample.get("args"), list)
+                and all(isinstance(a, str) and SAMPLE_ARG_RE.match(a) for a in sample["args"])
+                and isinstance(sample.get("expectExit"), list) and sample["expectExit"]
+                and all(isinstance(x, int) and not isinstance(x, bool) and x in exits
+                        for x in sample["expectExit"]))
+        if not good:
+            err(where, "[AP-AUTHOR-NO-CONTRACT] an authored step needs 'purpose' (what the "
+                       "author writes) and 'sample' {args: [plain ids, paths or values], "
+                       "expectExit: [a subset of script.expectExit]}: the author writes "
+                       "against that contract and verify-step runs exactly that sample")
+
+
+def _agent_decl(n: dict, key: str) -> object:
+    """A node's value for one AGENT_KEYS key, normalised so that order in a
+    list and the implicit builder role are not disagreements."""
+    val = n.get(key)
+    if key == "role":
+        return val or "builder"
+    if isinstance(val, list):
+        return tuple(sorted(str(v) for v in val))
+    return val
+
+
+def _validate_agent_types(design: dict, nodes: dict, err) -> None:
+    """One agent type, one definition (#107 'how': agentType, skills, tools).
+
+    [AP-AGENT-CONFLICT] -- nodes naming the same agentType disagree on a key
+    the agent FILE carries. Absent vs present is a disagreement too: the
+    generated file can say `tools: Read, Bash` or nothing, not both.
+
+    [AP-AGENT-KEYS-UNAPPLIED] -- in a wave design, install_waves.py generates
+    the files for `<name>-*` types only. A node that declares tools or skills
+    on any other type (a plugin's, one written by hand) has declared keys
+    nothing will ever write: validated, then silently dropped. `effort` is not
+    one of them -- it travels with the dispatch."""
+    by_type: dict = {}
+    for nid, n in nodes.items():
+        at = n.get("agentType")
+        if isinstance(at, str) and at and n.get("kind") != "human-gate":
+            by_type.setdefault(at, []).append(nid)
+    for at, ids in sorted(by_type.items()):
+        for key in AGENT_KEYS:
+            vals = {_agent_decl(nodes[i], key) for i in ids}
+            if len(vals) > 1:
+                shown = ", ".join(f"{i}={nodes[i].get(key)!r}" for i in ids)
+                err(f"agentType {at}", f"[AP-AGENT-CONFLICT] nodes disagree on '{key}' ({shown}). "
+                                       "An agent type is ONE file with ONE frontmatter; make "
+                                       "them agree, or give the odd one out its own agentType")
+    name = design.get("name")
+    if (not any("wave" in n for n in nodes.values()) or not isinstance(name, str)
+            or not NAME_RE.match(name)):
+        return  # an invalid name is already an error; its prefix proves nothing
+    for nid, n in nodes.items():
+        at = n.get("agentType")
+        declared = [k for k in ("tools", "skills") if n.get(k) is not None]
+        if isinstance(at, str) and declared and not at.startswith(f"{name}-"):
+            err(f"node {nid}", f"[AP-AGENT-KEYS-UNAPPLIED] declares {declared} on agentType "
+                               f"{at!r}, which this design does not generate (only {name}-* "
+                               "types are written); those keys would reach no file. Name a "
+                               f"{name}-* type, or drop the keys and rely on {at!r}'s own "
+                               "definition")
 
 
 def _validate_steps(where: str, steps: object, table: dict, err, required: bool) -> None:
@@ -750,6 +885,7 @@ def _obj(**props) -> dict:
 def selftest() -> int:
     good = _load("waves.design.json")
     rust = _load("integrator.design.json")
+    auth = _load("authored.design.json")
 
     def w(nid: str, base: dict | None = None, **over) -> dict:
         d = copy.deepcopy(good if base is None else base)
@@ -872,7 +1008,78 @@ def selftest() -> int:
         ("smoke with neither steps nor skip", w("smoke", steps=None), "AP-SMOKE-UNDECLARED"),
         ("smoke skipped with a reason -- clean", w("smoke", steps=None,
                                                    skip="a library with no entry point"), None),
+        ("one builder type, effort on only some nodes -- clean (effort is per dispatch)",
+         w("w1-render", effort=None), None),
+        ("one builder type, tools on only some nodes", w("w1-render", tools=["Read", "Bash"]),
+         "AP-AGENT-CONFLICT"),
+        ("effort on a plugin agent -- clean (it travels with the dispatch)",
+         w("review", agentType="arbeitsplan:synthesizer", effort="low"), None),
+        ("one builder type, two roles", w("w2-cli", role="integrator"), "AP-AGENT-CONFLICT"),
+        ("one builder type, same tools in another order -- clean",
+         w("w2-cli", w("w1-render", w("w1-parse", tools=["Read", "Bash"]),
+                       tools=["Bash", "Read"]), tools=["Read", "Bash"]), None),
+        ("one builder type, skills on one node only", w("w1-parse", skills=["api-conventions"]),
+         "AP-AGENT-CONFLICT"),
+        ("different models on one type -- clean (model is per dispatch)",
+         w("w2-cli", model="sonnet"), None),
+        ("skills on a plugin agent in a wave design",
+         w("review", agentType="arbeitsplan:synthesizer", skills=["api-conventions"]),
+         "AP-AGENT-KEYS-UNAPPLIED"),
+        ("plugin agent without agent keys -- clean",
+         w("review", agentType="arbeitsplan:synthesizer"), None),
     ]
+    def au(runtime: str | None = None, command: str | None = None, **author) -> dict:
+        """The authored fixture with its step's script or author block changed."""
+        d = copy.deepcopy(auth)
+        sc = _node(d, "api-surface")["script"]
+        if runtime:
+            sc["runtime"] = runtime
+        if command:
+            sc["command"] = command
+        for k, v in author.items():
+            if v is None:
+                sc["author"].pop(k, None)
+            else:
+                sc["author"][k] = v
+        return d
+
+    step = ".claude/workflows/rebuild-cli.steps/api-surface"
+    cases += [
+        ("authored python step -- clean", auth, None),
+        ("authored shell step -- clean", au("shell", f"bash {step}.sh cmd/tool"), None),
+        ("authored powershell step -- clean", au("powershell",
+                                                 f"pwsh -NoProfile -NonInteractive -File {step}.ps1 "
+                                                 "cmd/tool"), None),
+        ("authored ruby step -- clean", au("ruby", f"ruby {step}.rb cmd/tool"), None),
+        ("authored node step is .mjs -- clean", au("node", f"node {step}.mjs cmd/tool"), None),
+        ("authored step with placeholders -- clean", au(command=f"python3 {step}.py {{base}}"),
+         None),
+        ("authored go step", au("go", "go run ./tools/api-surface"), "AP-AUTHOR-LANG"),
+        ("authored step at another path", au(command="python3 tools/api_surface.py cmd/tool"),
+         "AP-AUTHOR-COMMAND"),
+        ("authored node step as .js", au("node", f"node {step}.js cmd/tool"),
+         "AP-AUTHOR-COMMAND"),
+        ("authored powershell step without -File", au("powershell", f"pwsh {step}.ps1"),
+         "AP-AUTHOR-COMMAND"),
+        ("authored step with no sample", au(sample=None), "AP-AUTHOR-NO-CONTRACT"),
+        ("authored step with no purpose", au(purpose=""), "AP-AUTHOR-NO-CONTRACT"),
+        ("sample exit the script never expects", au(sample={"args": [], "expectExit": [3]}),
+         "AP-AUTHOR-NO-CONTRACT"),
+        ("sample argument carrying a space", au(sample={"args": ["a b"], "expectExit": [0]}),
+         "AP-AUTHOR-NO-CONTRACT"),
+        ("authored step without an author model", au(model=None), "AP-NODE-NO-MODEL"),
+        ("author carrying a path key", au(path="x.py"), ""),
+        ("author on a merge-gate", w("gate-1", auth, script={
+            **_node(auth, "gate-1")["script"], "author": _node(auth, "api-surface")["script"][
+                "author"]}), "AP-AUTHOR-KIND"),
+        ("author on a node that writes", w("api-surface", auth, writeScope=["x/**"]),
+         "AP-AUTHOR-KIND"),
+    ]
+    flat = copy.deepcopy(auth)
+    for n in flat["nodes"]:
+        n.pop("wave", None)
+    cases.append(("author in a design without waves", flat, "AP-AUTHOR-KIND"))
+
     gate_mid = copy.deepcopy(good)
     gate_mid["nodes"].append({"id": "approve", "kind": "human-gate", "goal": "g",
                               "depends_on": ["w1-parse"]})

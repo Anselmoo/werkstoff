@@ -396,8 +396,14 @@ jobs:
           node plugins/arbeitsplan/scripts/test_waves_workflow.js
           python3 plugins/arbeitsplan/scripts/waves_state.py selftest
           python3 plugins/arbeitsplan/scripts/waves_guard.py --selftest
+          python3 plugins/arbeitsplan/scripts/agent_gen.py --selftest
           python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
           python3 plugins/arbeitsplan/scripts/handoff.py --selftest
+          python3 plugins/arbeitsplan/scripts/build_design_html.py --selftest
+          # Authored step scripts end to end, one language at a time -- bash,
+          # pwsh, ruby, node, python all ship on ubuntu runners, so a skipped
+          # language here is a failure, not a pass.
+          ARBEITSPLAN_REQUIRE_TOOLCHAINS=1 python3 plugins/arbeitsplan/scripts/test_authored_steps.py
 
       - name: Fail the job if any check failed
         if: |

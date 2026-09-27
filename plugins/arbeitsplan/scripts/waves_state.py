@@ -30,7 +30,16 @@ merge-gate (expectExit [0, 1]). Anything else is a defect and exits 2.
              Green cleans up merged and discarded worktrees; red keeps them all
              and names them.
   approve    --gate ID: record a human gate's approval between runs
-  show       print the state
+  verify-step --node ID: an AUTHORED step script (#107 follow-up) -- refuse a
+             file still carrying the stub marker, check its syntax without
+             running it, run its declared sample in a throwaway detached
+             worktree (never the primary checkout), validate its stdout against
+             the node's strict output_schema, and record {sha256, contract}.
+             The runner guard refuses to run an authored step whose file or
+             contract no longer matches that record.
+  show       print the state, with every authored step's status computed live
+             (missing | stub | authored | verified | stale) -- the Workflow
+             script cannot hash a file, so it trusts this and nothing else
 
 STDLIB ONLY. Python >= 3.10 (checked). No datetime: a timestamp is not needed
 to decide anything here.
@@ -39,6 +48,7 @@ to decide anything here.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -49,6 +59,32 @@ from pathlib import Path
 
 MIN_PYTHON = (3, 10)
 GATE_TIMEOUT = 3600  # seconds per gate run; a hung gate is a red gate, not a hang
+STEP_TIMEOUT = 600  # seconds for one authored step's sample run
+
+# Authored steps. A design's script node may carry `script.author`, and then
+# the step file is WRITTEN by the plan's author agent instead of existing
+# already. The runtime (a toolchain name) fixes everything else: the file's
+# extension, the interpreter the command must start with, and how its syntax is
+# checked without executing it. `.mjs`, not `.js`, for node: Claude Code treats
+# every `.js` under .claude/workflows/ as a workflow, and ignores other files.
+# design_spec.py imports this table, so the validator and the vendored helper
+# cannot disagree about which languages can be authored.
+STUB_MARKER = "ARBEITSPLAN-STUB"
+# Filled by str.replace, NOT str.format: its braces are PowerShell's and stay
+# single. Doubled, `if ($e) {{ ... exit 1 }}` is a scriptblock LITERAL that never
+# runs, and every broken .ps1 would pass its syntax check.
+PWSH_PARSE = ("$e=$null; $null=[System.Management.Automation.Language.Parser]::ParseFile("
+              "'{path}',[ref]$null,[ref]$e); if ($e) { $e | ForEach-Object { $_.ToString() };"
+              " exit 1 }")
+AUTHORABLE = {
+    "shell": {"ext": "sh", "exes": ["bash"], "check": ["{exe}", "-n", "{path}"]},
+    "powershell": {"ext": "ps1", "exes": ["pwsh", "pwsh.exe"],
+                   "check": ["{exe}", "-NoProfile", "-NonInteractive", "-Command", PWSH_PARSE]},
+    "ruby": {"ext": "rb", "exes": ["ruby"], "check": ["{exe}", "-c", "{path}"]},
+    "node": {"ext": "mjs", "exes": ["node"], "check": ["{exe}", "--check", "{path}"]},
+    # Python is compiled in-process: no interpreter call, no __pycache__.
+    "python": {"ext": "py", "exes": ["python3*", "python", "py"], "check": None},
+}
 
 
 class HelperError(Exception):
@@ -94,6 +130,185 @@ def save_state(path: Path, state: dict) -> None:
 
 def split_cmd(cmd: str) -> list:
     return shlex.split(cmd, posix=os.name != "nt")
+
+
+# --- authored steps ----------------------------------------------------------------
+
+def step_path(name: str, node_id: str, runtime: str) -> str:
+    """Repository-relative, POSIX separators: the one place a step lives."""
+    return f".claude/workflows/{name}.steps/{node_id}.{AUTHORABLE[runtime]['ext']}"
+
+
+def contract_digest(node: dict) -> str:
+    """What an author was asked to meet. A verified step whose node changed any
+    of this since is STALE -- re-authored, never silently reused. The vendored
+    guard carries a byte-identical copy; test_authored_steps.py proves they agree."""
+    sc = node.get("script") or {}
+    body = {"command": sc.get("command"), "expectExit": sc.get("expectExit"),
+            "parse": sc.get("parse"), "runtime": sc.get("runtime"), "author": sc.get("author"),
+            "output_schema": node.get("output_schema")}
+    canon = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
+def file_sha(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def authored_nodes(plan: dict) -> list:
+    return [n for n in plan.get("nodes") or []
+            if isinstance(n, dict) and isinstance((n.get("script") or {}).get("author"), dict)]
+
+
+def step_status(root: Path, plan: dict, state: dict) -> dict:
+    """{node id: {status, path, sha256?}} for every authored step, computed from
+    the file on disk, the plan and the state -- never from memory."""
+    out = {}
+    for n in authored_nodes(plan):
+        rel = step_path(plan["name"], n["id"], n["script"]["runtime"])
+        path = root / rel
+        rec = (state.get("steps") or {}).get(n["id"])
+        if not path.is_file():
+            status, sha = "missing", None
+        else:
+            sha = file_sha(path)
+            if STUB_MARKER in path.read_text(encoding="utf-8", errors="replace"):
+                status = "stub"
+            elif not rec:
+                status = "authored"
+            elif rec.get("sha256") != sha or rec.get("contract") != contract_digest(n):
+                status = "stale"
+            else:
+                status = "verified"
+        out[n["id"]] = {"status": status, "path": rel, **({"sha256": sha} if sha else {})}
+    return out
+
+
+def schema_problems(schema: object, value: object, where: str = "stdout") -> list:
+    """The strict-schema check waves.js applies to `parsed`, restated: a step
+    that verified here must not fail there."""
+    if not isinstance(schema, dict):
+        return [f"{where}: no schema to validate against"]
+    types = schema.get("type")
+    types = types if isinstance(types, list) else [types] if types else []
+
+    def type_of(v: object) -> str:
+        if v is None:
+            return "null"
+        if isinstance(v, bool):
+            return "boolean"
+        if isinstance(v, int):
+            return "integer"
+        if isinstance(v, float):
+            return "number"
+        return {str: "string", list: "array", dict: "object"}.get(type(v), "unknown")
+
+    t = type_of(value)
+    if types and not any(x == t or (x == "number" and t == "integer") for x in types):
+        return [f"{where}: expected {'|'.join(types)}, got {t}"]
+    if isinstance(schema.get("enum"), list) and value not in schema["enum"]:
+        return [f"{where}: not one of the enum values"]
+    out: list = []
+    if isinstance(value, dict):
+        props = schema.get("properties") or {}
+        out += [f"{where}.{k}: required, missing" for k in schema.get("required") or []
+                if k not in value]
+        for k, v in value.items():
+            if k in props:
+                out += schema_problems(props[k], v, f"{where}.{k}")
+            elif schema.get("additionalProperties") is False:
+                out.append(f"{where}.{k}: not declared")
+    if isinstance(value, list) and isinstance(schema.get("items"), dict):
+        for j, v in enumerate(value):
+            out += schema_problems(schema["items"], v, f"{where}[{j}]")
+    return out
+
+
+def _interpreter(cmd: str, rel: str) -> list:
+    """Everything the command puts before the step path: the interpreter and
+    its flags (`pwsh -NoProfile -File`, a resolved `py -3`)."""
+    argv = split_cmd(cmd)
+    return argv[:argv.index(rel)] if rel in argv else []
+
+
+def syntax_problem(runtime: str, interp: list, path: Path) -> str | None:
+    check = AUTHORABLE[runtime]["check"]
+    if check is None:
+        try:
+            compile(path.read_text(encoding="utf-8"), str(path), "exec")
+        except (SyntaxError, ValueError) as exc:
+            return f"syntax: {exc}"
+        return None
+    argv = [a.replace("{exe}", interp[0]).replace("{path}", str(path)) for a in check]
+    try:
+        proc = subprocess.run(argv, capture_output=True, text=True, timeout=120)
+    except FileNotFoundError:
+        return f"syntax: {interp[0]!r} is not installed -- preflight the toolchain first"
+    except subprocess.TimeoutExpired:
+        return "syntax: the check timed out"
+    if proc.returncode != 0:
+        return f"syntax: {(proc.stderr or proc.stdout).strip()[-600:]}"
+    return None
+
+
+def verify_step(root: Path, plan: dict, state: dict, node_id: str) -> tuple:
+    node = next((n for n in authored_nodes(plan) if n["id"] == node_id), None)
+    if node is None:
+        raise HelperError(f"{node_id!r} is not an authored script node of plan {plan['name']}")
+    sc = node["script"]
+    rel = step_path(plan["name"], node_id, sc["runtime"])
+    path = root / rel
+
+    def fail(problem: str) -> tuple:
+        (state.setdefault("steps", {})).pop(node_id, None)
+        return {"verified": False, "node": node_id, "path": rel, "problem": problem}, 1
+
+    if not path.is_file():
+        return fail(f"{rel} does not exist -- the author wrote nothing")
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if STUB_MARKER in text:
+        return fail(f"{rel} still carries {STUB_MARKER}: it is the skeleton, not a step")
+    interp = _interpreter(sc["command"], rel)
+    if not interp:
+        return fail(f"the node's command does not run {rel}")
+    bad = syntax_problem(sc["runtime"], interp, path)
+    if bad:
+        return fail(bad)
+    before = file_sha(path)
+    sample = sc["author"].get("sample") or {}
+    with tempfile.TemporaryDirectory(prefix=f"{plan['name']}-step-") as tmp:
+        tree = Path(tmp) / "tree"
+        git("worktree", "add", "--detach", str(tree), "HEAD", cwd=root)
+        try:
+            # The steps directory is gitignored, so the clean tree lacks it:
+            # copy the one file under test to the same relative path.
+            (tree / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tree / rel).write_bytes(path.read_bytes())
+            try:
+                proc = subprocess.run([*interp, rel, *sample.get("args", [])], cwd=tree,
+                                      capture_output=True, text=True, timeout=STEP_TIMEOUT)
+            except FileNotFoundError:
+                return fail(f"sample: {interp[0]!r} is not installed")
+            except subprocess.TimeoutExpired:
+                return fail(f"sample: no exit within {STEP_TIMEOUT}s")
+        finally:
+            git("worktree", "remove", "--force", str(tree), cwd=root, check=False)
+    if file_sha(path) != before:
+        return fail(f"{rel} changed while its sample ran")
+    if proc.returncode not in sample.get("expectExit", [0]):
+        return fail(f"sample: exit {proc.returncode}, expected one of {sample.get('expectExit')};"
+                    f" stderr: {proc.stderr.strip()[-400:]}")
+    if sc.get("parse") != "exit-only":
+        try:
+            parsed = json.loads(proc.stdout.strip() or "null")
+        except json.JSONDecodeError:
+            return fail(f"sample: stdout is not ONE JSON object: {proc.stdout.strip()[-300:]!r}")
+        probs = schema_problems(node.get("output_schema"), parsed)
+        if probs:
+            return fail("sample: stdout breaks output_schema: " + "; ".join(probs[:3]))
+    state.setdefault("steps", {})[node_id] = {"sha256": before, "contract": contract_digest(node),
+                                              "runtime": sc["runtime"]}
+    return {"verified": True, "node": node_id, "path": rel, "problem": ""}, 0
 
 
 # --- preflight -------------------------------------------------------------------
@@ -238,6 +453,11 @@ def merge(root: Path, plan: dict, state: dict, wave: int, stage: str, final: boo
                                                          "integrationSha": integ_sha}
     if not green:
         kept = sorted(set(wave_branches + losers))
+    # Every gate outcome is kept, red ones too: the report (build_design_html.py)
+    # shows where a run stopped from this, not from memory.
+    state.setdefault("gates", {})[f"{wave}:{stage}"] = {"green": green, "final": final,
+                                                        "integrationSha": integ_sha,
+                                                        "findings": findings}
     return ({"green": green, "integrationSha": integ_sha, "targetMoved": target_moved,
              "findings": findings, "kept": kept}, 0 if green else 1)
 
@@ -265,6 +485,8 @@ def main(argv: list) -> int:
     m.add_argument("--discard", default="none")
     a = sub.add_parser("approve", help="record a human gate's approval")
     a.add_argument("--gate", required=True)
+    v = sub.add_parser("verify-step", help="check and sample-run one authored step")
+    v.add_argument("--node", required=True)
     sub.add_parser("show", help="print the state")
     sub.add_parser("selftest", help="run against scratch git repositories")
     args = parser.parse_args(argv)
@@ -279,7 +501,8 @@ def main(argv: list) -> int:
         if args.cmd == "preflight":
             result, code = preflight(root), 0
         elif args.cmd == "show":
-            result, code = state, 0
+            plan = json.loads(plan_path(helper).read_text(encoding="utf-8"))
+            result, code = {**state, "steps": step_status(root, plan, state)}, 0
         elif args.cmd == "approve":
             state.setdefault("approvals", {})[args.gate] = True
             save_state(spath, state)
@@ -288,6 +511,8 @@ def main(argv: list) -> int:
             plan = json.loads(plan_path(helper).read_text(encoding="utf-8"))
             if args.cmd == "record":
                 result, code = record(root, state, args.row, args.branch, args.base), 0
+            elif args.cmd == "verify-step":
+                result, code = verify_step(root, plan, state, args.node)
             else:
                 result, code = merge(root, plan, state, args.wave, args.stage,
                                      args.final == "1", args.branches, args.discard)

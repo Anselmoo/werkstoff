@@ -136,6 +136,7 @@
       ],
       "where": "worktree",
       "model": "opus",
+      "effort": "high",
       "agentType": "rebuild-cli-builder",
       "inputs": [
         "preflight"
@@ -266,6 +267,7 @@
       ],
       "where": "worktree",
       "model": "opus",
+      "effort": "high",
       "agentType": "rebuild-cli-builder",
       "inputs": [
         "gate-1",

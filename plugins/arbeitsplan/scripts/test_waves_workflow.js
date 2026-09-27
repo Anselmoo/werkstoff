@@ -21,6 +21,7 @@ const ROOT = path.resolve(__dirname, '..')
 const SRC = fs.readFileSync(path.join(ROOT, 'workflows', 'waves.js'), 'utf8')
 const DESIGN = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'design', 'waves.design.json'), 'utf8'))
 const RUST = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'design', 'integrator.design.json'), 'utf8'))
+const AUTHORED = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'design', 'authored.design.json'), 'utf8'))
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor
 const BODY = SRC.replace(/^export\s+(?=const\s+meta\b)/m, '')
 let body = BODY
@@ -28,11 +29,19 @@ let quiet = false
 
 const clone = (o) => JSON.parse(JSON.stringify(o))
 // What install_waves.py adds to a design to make it a plan.
-const planOf = (design) => ({
-  ...clone(design),
-  runnerAgent: `${design.name}-runner`,
-  helper: { record: `python3 .claude/workflows/${design.name}_state.py record --row {row} --branch {branch} --base {base}` },
-})
+const planOf = (design) => {
+  const plan = {
+    ...clone(design),
+    runnerAgent: `${design.name}-runner`,
+    helper: { record: `python3 .claude/workflows/${design.name}_state.py record --row {row} --branch {branch} --base {base}` },
+  }
+  if (design.nodes.some((n) => n.script && n.script.author)) {
+    plan.authorAgent = `${design.name}-author`
+    plan.helper.verify = `python3 .claude/workflows/${design.name}_state.py verify-step --node {node}`
+  }
+  return plan
+}
+const STEP_FILE = '.claude/workflows/rebuild-cli.steps/api-surface.py'
 const PLAN = planOf(DESIGN)
 
 async function execute(args, answer) {
@@ -68,6 +77,9 @@ function happy(label, prompt) {
     return script({ green: true, integrationSha: `I-${tag}`, targetMoved: final, findings: [], kept: [] })
   }
   if (label === 'smoke') return { passed: true, scratchDir: '/tmp/scratch-1', failedStep: null }
+  if (/^api-surface:author/.test(label)) return { path: STEP_FILE, notes: 'lists exported names' }
+  if (/^api-surface:verify/.test(label)) return script({ verified: true, node: 'api-surface', path: STEP_FILE, problem: '' })
+  if (label === 'api-surface') return script({ package: 'cmd/tool', exported: ['Run'] })
   if (label === 'review') return { blocking: false, findings: [] }
   if (label.endsWith(':referee')) return null
   // builders (and the fixer): echo the base the prompt told them to merge to
@@ -114,6 +126,13 @@ const SABOTAGE = [
   ['state accepted as a JSON string', "if (typeof raw === 'string') {", 'if (false) {'],
   ['human gate ignored', "return [...ancestors(id)].find((a) => byId[a].kind === 'human-gate' && !state.approvals[a]) || null", 'return null'],
   ['smoke placed in the repository', "const where = n.where === 'scratch'", "const where = false"],
+  ['verified step re-authored', "if (status === 'verified') {", 'if (false) {'],
+  ['refused step accepted', "problem: v.parsed.verified ? null : (v.parsed.problem || 'verify-step refused it without a reason')", 'problem: null'],
+  ['author path unchecked', 'if (w.path !== stepPath(n)) return { id, problem', 'if (false) return { id, problem'],
+  ['verifies run concurrently', 'const run = queue.then(fn)', 'const run = fn()'],
+  ['effort dropped from the builder dispatch', "model: n.model, effort: n.effort, isolation: 'worktree'", "model: n.model, isolation: 'worktree'"],
+  ['retry without the refusal', 'refused ? `Your previous version of this file was refused: ${refused}\\nFix exactly that.` : ``', '``'],
+  ['authored step run before it is verified', "if (authored.length) {", 'if (false) {'],
 ]
 
 async function suite() {
@@ -134,6 +153,9 @@ async function suite() {
     ok('fresh: both waves recorded done', result.state.waves['1'].status === 'done' && result.state.waves['2'].status === 'done', result.state)
     ok('fresh: the fixer is skipped when review is not blocking', !labels.includes('fix'), labels)
     ok('fresh: every dispatched schema is strict, with no JSON-in-a-string', calls.every((c) => strictSchema(c.opts.schema)), calls.map((c) => c.label))
+    ok('fresh: a node\'s declared effort is passed on its dispatch, an undeclared one is not invented',
+      calls.find((c) => c.label === 'w1-render').opts.effort === 'high' && calls.find((c) => c.label === 'smoke').opts.effort === undefined,
+      calls.filter((c) => c.label === 'w1-render' || c.label === 'smoke').map((c) => c.opts))
     const gateCmd = cmdOf(calls.find((c) => c.label === 'gate-1:s0').prompt)
     ok('fresh: gate command carries the stage\'s rows as row=branch pairs',
       gateCmd.includes('--branches w1-parse=agent/w1-parse,w1-render=agent/w1-render') && gateCmd.includes('--final 1'), gateCmd)
@@ -295,6 +317,121 @@ async function suite() {
     ok('stages: the integrator builds on the stage-0 merge', baseOf(calls.find((c) => c.label === 'w1-register').prompt) === 'I-gate1s0')
     ok('stages: the final stage gates and completes', labels.includes('gate-1:s1') && !result.aborted, result)
     ok('stages: a declared smoke skip reports without a scratch build', /declares no steps/.test(calls.find((c) => c.label === 'smoke').prompt))
+  }
+
+  await authoredSuite()
+}
+
+async function authoredSuite() {
+  // 15. Authored steps: written and verified before anything could run them.
+  {
+    const { result, calls } = await execute({ plan: planOf(AUTHORED), state: {} }, happy)
+    const labels = calls.map((c) => c.label)
+    ok('author: the step is written, then verified, before the preflight',
+      labels[0] === 'api-surface:author' && labels[1] === 'api-surface:verify' && labels[2] === 'preflight', labels)
+    const a = calls.find((c) => c.label === 'api-surface:author')
+    ok('author: dispatched to the plan\'s author agent on its declared model',
+      a.opts.agentType === 'rebuild-cli-author' && a.opts.model === 'sonnet' && strictSchema(a.opts.schema), a.opts)
+    ok('author: the prompt names the one file, its command, its schema and the sample',
+      a.prompt.includes(STEP_FILE) && a.prompt.includes('python3 .claude/workflows/rebuild-cli.steps/api-surface.py cmd/tool')
+      && a.prompt.includes('"exported"') && a.prompt.includes('["cmd/tool"]'), a.prompt)
+    ok('author: the prompt carries no other node\'s goal',
+      !AUTHORED.nodes.some((n) => n.id !== 'api-surface' && a.prompt.includes(n.goal)), a.prompt)
+    const v = calls.find((c) => c.label === 'api-surface:verify')
+    ok('author: verify-step runs through the runner with the node filled in',
+      v.opts.agentType === 'rebuild-cli-runner' && cmdOf(v.prompt) === 'python3 .claude/workflows/rebuild-cli_state.py verify-step --node api-surface', v.prompt)
+    ok('author: the step itself runs after the last gate', labels.indexOf('api-surface') > labels.indexOf('gate-2:s0'), labels)
+    ok('author: completes, with the step recorded verified', !result.aborted && result.state.steps['api-surface'].status === 'verified', result)
+  }
+  {
+    const { calls } = await execute({ plan: planOf(AUTHORED), state: { steps: { 'api-surface': { status: 'verified' } } } }, happy)
+    const labels = calls.map((c) => c.label)
+    ok('author: a verified step is not re-authored on resume', !labels.some((l) => /:author|:verify/.test(l)) && labels.includes('api-surface'), labels)
+  }
+  {
+    const { calls } = await execute({ plan: planOf(AUTHORED), state: { steps: { 'api-surface': { status: 'stale' } } } }, happy)
+    ok('author: a stale step is rewritten', calls.some((c) => c.label === 'api-surface:author'), calls.map((c) => c.label))
+  }
+  {
+    const plan = planOf(AUTHORED)
+    plan.nodes.find((n) => n.id === 'api-surface').retries = 1
+    let first = true
+    const { result, calls } = await execute({ plan }, (l, p, o) => {
+      if (l === 'api-surface:verify' && first) {
+        first = false
+        return script({ verified: false, node: 'api-surface', path: STEP_FILE, problem: 'sample: stdout breaks output_schema: stdout.exported: required, missing' }, 1)
+      }
+      return happy(l, p, o)
+    })
+    const second = calls.find((c) => c.label === 'api-surface:author:2')
+    ok('author: a refusal is fed back to a fresh author dispatch', second && second.prompt.includes('stdout.exported: required, missing'), calls.map((c) => c.label))
+    ok('author: the first prompt carried no refusal', !calls.find((c) => c.label === 'api-surface:author').prompt.includes('was refused'))
+    ok('author: the retried step verifies and the run completes', !result.aborted, result)
+  }
+  {
+    const { result, calls } = await execute({ plan: planOf(AUTHORED) }, (l, p, o) => (/^api-surface:verify/.test(l)
+      ? script({ verified: false, node: 'api-surface', path: STEP_FILE, problem: 'syntax: invalid syntax' }, 1) : happy(l, p, o)))
+    ok('author: out of retries, the run stops with AUTHOR CONTRACT before the preflight',
+      result.aborted && /AUTHOR CONTRACT -- syntax/.test(result.abortReason) && !calls.some((c) => c.label === 'preflight'), result)
+  }
+  {
+    const { result, calls } = await execute({ plan: planOf(AUTHORED) }, (l, p, o) => (/^api-surface:author/.test(l)
+      ? { path: 'somewhere/else.py', notes: '' } : happy(l, p, o)))
+    ok('author: a file other than the declared one is not verified, and stops the run',
+      result.aborted && /not \.claude/.test(result.abortReason) && !calls.some((c) => /:verify/.test(c.label)), result)
+  }
+  {
+    // Two authored steps, timed: the fast one's verify must start while the
+    // slow one is still being written (no barrier), and no two verifies may
+    // ever be in flight at once (they share the state file).
+    const plan = planOf(AUTHORED)
+    const twin = clone(plan.nodes.find((n) => n.id === 'api-surface'))
+    twin.id = 'api-surface-2'
+    twin.script.command = 'python3 .claude/workflows/rebuild-cli.steps/api-surface-2.py cmd/tool'
+    plan.nodes.push(twin)
+    const events = []
+    let inflight = 0
+    let most = 0
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+    const { result } = await execute({ plan }, async (l, p, o) => {
+      events.push(`start:${l}`)
+      let out
+      if (/:verify/.test(l)) {
+        inflight += 1
+        most = Math.max(most, inflight)
+        await wait(20)
+        inflight -= 1
+        const node = l.split(':')[0]
+        out = script({ verified: true, node, path: `.claude/workflows/rebuild-cli.steps/${node}.py`, problem: '' })
+      } else if (/:author/.test(l)) {
+        const node = l.split(':')[0]
+        await wait(node === 'api-surface' ? 5 : 15)
+        out = { path: `.claude/workflows/rebuild-cli.steps/${node}.py`, notes: '' }
+      } else if (l === 'api-surface-2') {
+        out = script({ package: 'cmd/tool', exported: [] })
+      } else {
+        out = happy(l, p, o)
+      }
+      events.push(`end:${l}`)
+      return out
+    })
+    ok('author: two steps verify one at a time', most === 1, { most, events })
+    ok('author: a fast step is verified while a slow one is still being written',
+      events.indexOf('start:api-surface:verify') < events.indexOf('end:api-surface-2:author'), events)
+    ok('author: both steps verified, run completes', !result.aborted
+      && result.state.steps['api-surface'].status === 'verified' && result.state.steps['api-surface-2'].status === 'verified', result)
+  }
+  {
+    const plan = planOf(AUTHORED)
+    delete plan.authorAgent
+    const { result, calls } = await execute({ plan }, happy)
+    ok('author: a plan without an author agent stops before any dispatch', result.aborted && calls.length === 0, result)
+  }
+  {
+    const plan = planOf(AUTHORED)
+    delete plan.nodes.find((n) => n.id === 'api-surface').script.author.model
+    const { result, calls } = await execute({ plan }, happy)
+    ok('author: an author without a model stops before any dispatch', result.aborted && /author\.model/.test(result.abortReason) && calls.length === 0, result)
   }
 }
 

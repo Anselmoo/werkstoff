@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import agent_gen
 import design_spec
 
 
@@ -39,15 +40,17 @@ def project_agents(root: Path) -> list:
 
 
 def needed_types(design: dict) -> list:
-    """Every project-local agent type the design dispatches, the wave runner's
-    own `<name>-runner` included when the design has waves."""
+    """Every project-local agent type the design dispatches. A wave design's
+    generated types -- `<name>-runner`, `<name>-author` when a step is
+    authored -- come from agent_gen, the generator install_waves.py writes
+    them with, so the two can never disagree about which files appear."""
     found = set()
     for n in design.get("nodes") or []:
         for at in (n.get("agentType"), (n.get("referee") or {}).get("agentType")):
             if isinstance(at, str) and at and ":" not in at:
                 found.add(at)
     if any("wave" in n for n in design.get("nodes") or []):
-        found.add(f"{design['name']}-runner")
+        found.update(agent_gen.agent_types(design))
     return sorted(found)
 
 

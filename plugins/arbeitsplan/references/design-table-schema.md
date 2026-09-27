@@ -7,8 +7,10 @@ nodes carry `wave` (#106). `scripts/design_spec.py` is the validator, and
 would be nice to do.
 
 **Contents** — [why a design table](#why-a-design-table) · [top level](#top-level) ·
-[nodes](#nodes) · [commands and toolchains](#commands-and-toolchains) · [waves](#waves) ·
-[rejections](#rejections) · [worked instance](#worked-instance)
+[nodes](#nodes) · [commands and toolchains](#commands-and-toolchains) ·
+[authored steps](#authored-steps) · [waves](#waves) ·
+[agent types](#agent-types) ·
+[efficient designs](#efficient-designs) · [rejections](#rejections) · [worked instance](#worked-instance)
 
 ## Why a design table
 
@@ -51,11 +53,11 @@ supplied by a default.
 | `kind` | `agent` · `script` (a fixed command) · `referee` (blind) · `merge-gate` (merge, then gate) · `human-gate` (**between** runs only: a Workflow run cannot pause for input) |
 | `where` | `primary` · `worktree` · `scratch`. Never inherited from the session's cwd |
 | `model`, `effort` | `model` is **explicit on every dispatched node**: an alias (`haiku`, `sonnet`, `opus`, `fable`) or a full `claude-...` id. A script node gets the smallest model only when the design says so |
-| `agentType`, `skills`, `tools`, `role` | the agent definition; `role` is one of `builder`, `referee`, `merger`, `integrator`, `smoke`, `reviewer`, `fixer`, `runner` |
+| `agentType`, `skills`, `tools`, `role` | the agent definition; `role` is one of `builder`, `referee`, `merger`, `integrator`, `smoke`, `reviewer`, `fixer`, `runner`. In a wave design these, with `effort`, are written into the generated `.claude/agents/<agentType>.md` (see [agent types](#agent-types)) |
 | `writeScope` | globs this node owns. Present on every dispatched node (`[]` means it writes nothing), and non-empty on a worktree agent |
 | `inputs` | **ids and paths only**, never a sibling's content (#106 R8) |
 | `output_schema` | type `object`, **strict**: `additionalProperties: false` at every object level, and no JSON-in-a-string field |
-| `script` | script and merge-gate nodes: `{runtime, command, expectExit[], parse?}` |
+| `script` | script and merge-gate nodes: `{runtime, command, expectExit[], parse?, author?}`; `author` makes the plan write the step first ([authored steps](#authored-steps)) |
 | `acceptance`, `setup` | `[{runtime, command}]`; each must exit 0 |
 | `when` | `{node, field, equals}` over a node this one depends on (the fix round runs only on a blocking review) |
 | `retries` | int 0..3 |
@@ -105,6 +107,70 @@ compiles to one runner dispatch:
 
 This is the narrow form of a script-applied phase that ADR 0001 accepted for #83.
 
+## Authored steps
+
+A script node normally runs a command that already exists. In a wave design it can instead
+**author** its step: the plan writes the script, in the language its `runtime` names, before
+anything runs it. This is for the glue a design needs and the repository does not have yet (an
+API-surface listing, a conformance runner, a report), so it is not disguised as an agent told
+to run shell commands.
+
+```json
+"script": {
+  "runtime": "python",
+  "command": "python3 .claude/workflows/rebuild-cli.steps/api-surface.py cmd/tool",
+  "expectExit": [0],
+  "author": {
+    "model": "sonnet",
+    "purpose": "Print {package, exported} for the Go package directory given as the argument",
+    "sample": {"args": ["cmd/tool"], "expectExit": [0]}
+  }
+}
+```
+
+| runtime | file | runs as | syntax check (never executes it) |
+|---|---|---|---|
+| `shell` | `<id>.sh` | `bash <path>` | `bash -n` |
+| `powershell` | `<id>.ps1` | `pwsh [-NoProfile -NonInteractive] -File <path>` | the PowerShell parser, `ParseFile` |
+| `ruby` | `<id>.rb` | `ruby <path>` | `ruby -c` |
+| `node` | `<id>.mjs` | `node <path>` | `node --check` |
+| `python` | `<id>.py` | `python3 <path>`, rewritten to the resolved interpreter at install | `compile()` inside the helper |
+
+There is **no path key and no language key**. The runtime is the language, and the path is
+always `.claude/workflows/<name>.steps/<id>.<ext>`. Two keys that could only disagree with
+something else are two keys a design cannot get wrong. Node steps are `.mjs`, never `.js`:
+Claude Code treats every `.js` under `.claude/workflows/` as a workflow, and ignores other files.
+
+**The lifecycle, each step enforced in code:**
+
+1. **Install.** `install_waves.py` writes a skeleton from `assets/step-templates/`, filled with
+   the node's contract and carrying the `ARBEITSPLAN-STUB` marker. It never overwrites an
+   authored step, only a missing file or one that is still a stub. The steps directory is
+   **gitignored**: authored steps are local tooling pinned by hash, so filling one never dirties
+   the checkout the preflight refuses to run in.
+2. **Author.** The `Author steps` phase dispatches `<name>-author`, one step per dispatch. It has
+   no shell (Read, Write, Edit, Glob, Grep), and its guard (`--author`) lets it write only the
+   plan's step files, one per dispatch.
+3. **Verify.** `<name>_state.py verify-step --node <id>`, run by the runner, does four things:
+   - it refuses a stub;
+   - it checks the syntax without executing the file;
+   - it runs `sample.args` in a throwaway detached worktree, never the primary checkout;
+   - it checks the exit against `sample.expectExit` and stdout against the strict
+     `output_schema`.
+
+   It then records `{sha256, contract}` in state. A failure is fed back to a fresh author
+   dispatch, up to `retries` times, and then the run stops with `AUTHOR CONTRACT`.
+4. **Run.** The runner guard refuses to run an authored step whose file hash or node contract
+   differs from that record. **That hash, not `offLimits`, protects the step:** an agent with
+   Bash can write around any Edit hook, but not around a hash check at the moment of execution.
+5. **Resume.** `show` computes each step's status from disk: `missing`, `stub`, `authored`,
+   `verified` or `stale`. A verified step is skipped, and a stale one is re-authored.
+
+An authored step cannot be a wave **gate**. Gates also run in a clean worktree, which has no
+gitignored files. That is why authoring is confined to `script` nodes; a design's `gates` are
+separate plain steps. To keep an authored step as project source, move it to a tracked path and
+declare it as an ordinary script command.
+
 ## Waves
 
 A design whose nodes carry `wave` is a multi-wave plan. On top of the node rules above, it
@@ -152,6 +218,51 @@ must meet each of the following.
 **The placeholders the interpreter fills:** `name`, `runId`, `wave`, `stage`, `final`,
 `branches`, `discard`, `base`, `integration` and `target`. A slot outside that set is refused.
 
+## Agent types
+
+An agent type is **one file with one frontmatter**, so every node that names it must agree on
+what that file says. `scripts/agent_gen.py` writes the file for each `<name>-*` type a wave
+design uses, and `install_waves.py` and `handoff.py` both call it, so they cannot disagree about
+which files appear.
+
+| node key | where it goes | rule |
+|---|---|---|
+| `skills` | the agent file's frontmatter; each named skill's full content is preloaded | absent means the key is not written, never a default |
+| `tools` | replaces the role's default tool list | refused for the runner and the author, whose guard modes depend on their fixed tools |
+| `role` | picks the role's default tools, `maxTurns` and body | defaults to `builder` |
+| `model`, `effort` | the file's default only | **per dispatch**: `agent()` takes both per call, and `waves.js` passes each node's own, so nodes of one type may differ |
+
+Two rejections keep this honest. Nodes sharing a type that disagree on `role`, `tools` or
+`skills` are refused (`AP-AGENT-CONFLICT`); absent next to present counts as a disagreement. A
+wave design that declares `tools` or `skills` on a type it does not generate, such as a plugin's
+`plugin:agent` or a file someone wrote by hand, is refused (`AP-AGENT-KEYS-UNAPPLIED`), because
+those keys would reach no file.
+
+Before this, `install_waves.py` hard-coded tools per role and dropped `effort` and `skills`, and
+`waves.js` never passed `effort`: every one of them validated, none of them applied.
+
+## Efficient designs
+
+What makes a design cheap and fast to run, and what each claim rests on. **enforced**: code
+refuses the alternative. **documented**: the Workflow runtime reference (`agent()`,
+`parallel()`, resume). **measured**: observed in the #106 prototype. **unverified**: stated
+somewhere, not measured here, and nothing below depends on it.
+
+| practice | why | evidence |
+|---|---|---|
+| Every dispatch names its `model`; the design proposes haiku for runners, sonnet for merger, smoke, reviewer and fixer, opus for builders and referees | an omitted model inherits the session's, which silently defeats per-node tiering | **enforced** (`AP-NODE-NO-MODEL`) |
+| `effort` per node, low for mechanical work | `agent()` takes `effort` per call, and `waves.js` passes each node's own | **documented**; passed by the interpreter, **enforced** by `test_waves_workflow.js` |
+| A deterministic step is a `script` node, and **authored** when it does not exist yet | one small-model dispatch that runs one guarded command, instead of a reasoning agent told to run shell commands | **enforced** (runner guard, `verify-step`) |
+| Strict `output_schema` on every node | `agent()` with a schema forces structured output and retries on a mismatch at the tool-call layer; the interpreter re-checks in code | **documented** + **enforced** (`AP-SCHEMA-NOT-STRICT`) |
+| No barrier the work does not need | a stage's rows run in one `parallel()`; each authored step goes author → verify on its own, and only the verifies are serialized, because they share the state file | **enforced** (`test_waves_workflow.js` times it) |
+| Width is not free | at most `min(16, CPUs − 2)` `agent()` calls run at once and the rest queue, so a 30-row wave runs about ten at a time; a run is capped at 1000 agents | **documented** |
+| Worktree isolation only where rows write in parallel | each isolated agent costs a worktree (≈200–500 ms plus disk); gates and script nodes run in the primary checkout, smoke in a scratch directory | **documented**; `where` **enforced** per kind |
+| Prompts carry ids and paths, never content or timestamps | a sibling's content cannot leak (#106 R8), and a relaunch sends the same prompts: within a session, `resumeFromRunId` replays the longest unchanged prefix of `agent()` calls from cache | **enforced** (`AP-INPUT-CONTENT`) + **documented** |
+| Resume through state, across sessions | a finished wave, a recorded builder and a verified step are skipped **before** anything is dispatched; `resumeFromRunId` is same-session only | **enforced** |
+| No cost cap by default | subscription limits stop the run, and resume makes that cheap (#106 R9); a declared `budget` is enforced | **enforced** when declared |
+| A fresh session after new agent types | agent types added mid-session did not resolve in `agent()` | **measured**; `handoff.py` requires it |
+| Agents that share model, effort, tools, schema and working directory reuse a cached prompt prefix | reported in the Claude Code docs research for this change, absent from the runtime reference | **unverified** |
+
 ## Rejections
 
 Every tagged rule has a committed red fixture under `scripts/fixtures/red/*.design.json`,
@@ -176,6 +287,12 @@ ever compiled a design, so `--baseline` skips them.
 | `AP-GATES-UNDECLARED` | 106 | a wave design with no declared gates |
 | `AP-SWARM-INCOMPLETE` | 106 | a swarm row without acceptance steps or a referee |
 | `AP-GATE-NOT-PRIMARY`, `AP-SMOKE-NOT-SCRATCH`, `AP-SMOKE-UNDECLARED` | 106 | where a gate and a smoke node run, and what smoke runs |
+| `AP-AGENT-CONFLICT` | 107 | nodes naming one `agentType` that disagree on `role`, `tools` or `skills` |
+| `AP-AGENT-KEYS-UNAPPLIED` | 107 | in a wave design, `tools` or `skills` on an agent type the design does not generate |
+| `AP-AUTHOR-LANG` | 107 | an authored step whose runtime has no template and no syntax check |
+| `AP-AUTHOR-COMMAND` | 107 | an authored step whose command is not the runtime's interpreter followed by its fixed path |
+| `AP-AUTHOR-KIND` | 107 | `author` on anything but a `script` node with `writeScope: []` in a wave design |
+| `AP-AUTHOR-NO-CONTRACT` | 107 | an authored step without `purpose`, or a `sample` whose args are not plain values or whose exits the script does not expect |
 
 Shape errors are untagged, like `compile_spec.py`'s own. They cover a bad `name`, an unknown
 `kind`, a missing `goal` or `where`, an agent without `agentType`, a missing `integration`, and

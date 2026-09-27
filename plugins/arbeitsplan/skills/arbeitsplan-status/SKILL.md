@@ -32,6 +32,11 @@ advances one.
    is. **Do not close it** — a stale lock denies every edit, which is the safe direction.
 5. **Report candidate state** from the worktrees that still exist, and say plainly which were
    deleted as losers versus never built.
+6. **Offer the picture, do not draw it unasked.** For a wave run, `build_design_html.py`
+   renders the installed plan with the `show` state as a graph (`--design
+   .claude/workflows/<name>.plan.json --state <show output>`); for a single-change run, the
+   compiled phases (`--workflow`). Either writes one HTML file, so run it only when the user
+   asks, and write it outside the run directory.
 
 ## Rules
 
@@ -72,3 +77,4 @@ next: phase 'land' is open: finish it, or record its halt with --status halted
 
 - `references/workflow-spec-schema.md` — what the phases and markers in the report mean.
 - `scripts/record_event.py` — `status` derives the report from `run.jsonl`.
+- `scripts/build_design_html.py` — the run as a graph, when the user asks for one.

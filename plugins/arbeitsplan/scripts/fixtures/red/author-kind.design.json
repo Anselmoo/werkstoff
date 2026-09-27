@@ -1,8 +1,8 @@
 {
   "schemaVersion": "design/1",
   "name": "rebuild-cli",
-  "runId": "ap-2026-09-27-wv01",
-  "problemRef": "analysis/arbeitsplan/ap-2026-09-27-wv01/problem.md",
+  "runId": "ap-2026-09-27-wv02",
+  "problemRef": "analysis/arbeitsplan/ap-2026-09-27-wv02/problem.md",
   "offLimits": [
     "secrets/**",
     ".github/workflows/**"
@@ -32,6 +32,7 @@
       "goal": "Refuse to run from a linked worktree or a dirty primary checkout, and record the base the first wave starts from",
       "depends_on": [],
       "where": "primary",
+      "model": "haiku",
       "inputs": [],
       "writeScope": [],
       "script": {
@@ -434,19 +435,75 @@
       }
     },
     {
+      "id": "api-surface",
+      "kind": "script",
+      "goal": "List the exported identifiers of cmd/tool so the review can compare them against the old CLI",
+      "depends_on": [
+        "gate-2"
+      ],
+      "where": "primary",
+      "model": "haiku",
+      "writeScope": [
+        "docs/api/**"
+      ],
+      "inputs": [
+        "gate-2"
+      ],
+      "script": {
+        "runtime": "python",
+        "command": "python3 .claude/workflows/rebuild-cli.steps/api-surface.py cmd/tool",
+        "expectExit": [
+          0
+        ],
+        "author": {
+          "model": "sonnet",
+          "purpose": "Print {\"package\": <the directory argument>, \"exported\": [sorted names]} for the Go package directory given as the only argument: every top-level func, type, var or const whose name starts with an upper-case letter, read with a regular expression over its .go files (not _test.go). A directory that does not exist yields an empty list, not an error.",
+          "sample": {
+            "args": [
+              "cmd/tool"
+            ],
+            "expectExit": [
+              0
+            ]
+          }
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "package",
+          "exported"
+        ],
+        "properties": {
+          "package": {
+            "type": "string"
+          },
+          "exported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
       "id": "review",
       "kind": "agent",
       "role": "reviewer",
       "goal": "Review the integration branch diff against the target for correctness",
       "depends_on": [
-        "smoke"
+        "smoke",
+        "api-surface"
       ],
       "where": "primary",
       "model": "sonnet",
       "agentType": "rebuild-cli-reviewer",
       "inputs": [
         "gate-2",
-        "smoke"
+        "smoke",
+        "api-surface"
       ],
       "writeScope": [],
       "output_schema": {

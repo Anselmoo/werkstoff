@@ -57,7 +57,11 @@ and only after the user approves.
    | how | `kind`, `model` (always explicit), `agentType`, `writeScope`, `inputs` (ids and paths only), `script` or steps |
 
    A deterministic step — a gate, a conformance runner, a state helper — is a `script` node.
-   It is **not** an agent told to run a command.
+   It is **not** an agent told to run a command. When the repository has no such command yet,
+   the node **authors** it: `script.author = {model, purpose, sample}` in a wave design, in
+   bash, pwsh, ruby, node or python, following the repository's own language where it can (see
+   the schema's "Authored steps"). The plan writes the script and verifies it before anything
+   runs it.
 
 6. **Prove the write scopes.** Dispatch `arbeitsplan:scope-prover` for the rows that run
    concurrently. Where two rows need one shared file (a module manifest, a lockfile), give it
@@ -77,12 +81,26 @@ and only after the user approves.
    means installed. A missing toolchain makes the design **not ready**, however clean it
    compiled.
 
-9. **Present the design table and the preflight results**, in the output format below, and
+9. **Render the design as a graph** for the user to approve from. Record the probes' results
+   as `{toolchain: true|false}` in `analysis/arbeitsplan/<runId>/preflight.json`, then:
+
+   ```bash
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_design_html.py" \
+     --design analysis/arbeitsplan/<runId>/design.draft.json \
+     --preflight analysis/arbeitsplan/<runId>/preflight.json \
+     --out analysis/arbeitsplan/<runId>/design-report.html
+   ```
+
+   It prints the page's verdict. The page shows which rows run side by side, any two that may
+   write the same file, and where a human gate ends a run. Every rejection on it comes from the
+   same validator as step 7.
+
+10. **Present the design table and the preflight results**, in the output format below, and
    ask for approval. Approval binds to the printed sha256. When an ExitPlanMode hook is
    available, it can check that hash, but that binding is unprobed, so say so rather than
    claim it.
 
-10. **On approval**, write the design:
+11. **On approval**, write the design:
 
     ```bash
     python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --design --write \
@@ -155,3 +173,5 @@ Approve this design (sha256 3f9c1e…)?  Next: arbeitsplan-waves install, then a
 - `references/patterns.md` — `script-step`, `gated-disjoint-waves`, and the rejected
   `partition-then-merge-worktrees` this narrows.
 - `scripts/handoff.py` — the snapshot, and the new-session prompt when one is required.
+- `scripts/build_design_html.py` — the design (and later its run) as a graph with a verdict;
+  `assets/design-viewer.html` is its template.
