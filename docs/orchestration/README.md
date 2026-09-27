@@ -95,6 +95,8 @@ into another workflow's beats and gates.
 |`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
 |`arbeitsplan-compile`|Scopes the problem, derives acceptance criteria, proves the write scope and picks patterns, then writes the spec every later phase reads; a phase invoked without it has no contract to run under|
 |`arbeitsplan-run`|Opens the run-scope lock, fans candidates out into worktrees, applies the per-batch breaker, referees blind and lands exactly one diff; every step consumes what the last one wrote|
+|`arbeitsplan-design`|Snapshots the agent types that exist, designs node by node, validates and preflights the design, and binds approval to its hash; the handoff it ends with reads that snapshot and that hash|
+|`arbeitsplan-waves`|Installs an approved wave design, then launches and resumes it from the primary checkout; every launch reads the state the last one left, and a wave run cannot start without the install|
 |`matrize-decode`|Fans reference-decoders out under a circuit breaker, then has each card re-derived from its cited source by a blind referee; a card that skips the referee is an unverified claim|
 |`matrize-brief`|Stops outright if any discovery artefact is missing, and its signed approval block is what the three build methods read as their entry gate|
 |`matrize-emit`|Runs the committed formatters against a `tokens.json` the earlier phases wrote; there is nothing to format before they have|

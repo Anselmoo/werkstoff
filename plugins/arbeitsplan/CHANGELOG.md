@@ -3,6 +3,32 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **`arbeitsplan-design` (#107)**: designs a workflow node by node -- what, where (primary,
+  worktree, scratch), when (dependencies; human gates between runs) and how (kind, explicit
+  model, write scope, strict output schema) -- validated by `compile_spec.py --design`
+  against `references/design-table-schema.md`, approved against its sha256, and handed off by
+  `scripts/handoff.py`, which requires a fresh session whenever the design created agent types.
+- **Script nodes (#107, the narrow form of #83)**: phase kind `script` (pattern
+  `script-step`) runs ONE declared command through the new `arbeitsplan:script-runner`; the
+  guard now matches Bash and allows that agent exactly one command from the run's compiled
+  `scripts.json` per dispatch. Commands name a toolchain -- a broad built-in set or one the
+  document declares -- and preflight probes each.
+- **`arbeitsplan-waves` (#106)**: installs a wave design as project-owned files
+  (`scripts/install_waves.py`: pinned `workflows/waves.js`, the plan, the vendored
+  `waves_state.py` helper and `waves_guard.py` hook, one agent file per role) that run
+  without werkstoff, from the primary checkout, resumably. Every requirement #106 recorded
+  is a check in code with a test.
+- Accepted patterns `script-step` and `gated-disjoint-waves`; the latter narrows the rejected
+  `partition-then-merge-worktrees` to the one admissible form.
+- `AP-SOURCES-OVERLAP` (recorded-red): `map-reduce-disjoint` partitions must be disjoint by
+  construction, not merely spelled differently; `land_candidate.scope_overlap` decides it.
+
+### Changed
+- Model fields accept `fable` and full `claude-*` ids alongside `haiku`/`sonnet`/`opus`.
+- The compiler now refuses a pattern documented in `references/patterns.md` but missing from
+  its machine-readable index -- the catalogue already claimed it did.
+- CI runs the guard calibration, the contract-sync check and every new selftest.
 
 ## [1.0.4] - 2026-09-26
 ### Added

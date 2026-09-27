@@ -341,9 +341,14 @@ def selftest() -> int:
         g("add", "-A")
         g("commit", "-m", "install")
 
+        # The helper's merges commit; a CI runner has no git identity of its own.
+        ident = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
+                 "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+                 "GIT_CONFIG_GLOBAL": os.devnull}
+
         def run(*args: str, cwd: Path = root) -> tuple:
             p = subprocess.run([sys.executable, str(helper), *args], cwd=cwd,
-                               capture_output=True, text=True)
+                               capture_output=True, text=True, env=ident)
             try:
                 return p.returncode, json.loads(p.stdout or "null"), p.stderr
             except json.JSONDecodeError:

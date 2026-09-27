@@ -242,6 +242,8 @@ jobs:
           python3 plugins/befund/hooks/test_guard_target_edit.py
           python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py
           python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py
+          python3 plugins/arbeitsplan/hooks/test_arbeitsplan_guard.py
+          python3 plugins/arbeitsplan/hooks/test_record_stop_guard.py
 
       - name: Run andon-ledger-validator test suite
         id: ledger_validator_tests
@@ -384,6 +386,18 @@ jobs:
           python3 plugins/arbeitsplan/scripts/sweep_artifacts.py --selftest
           python3 plugins/arbeitsplan/scripts/record_event.py selftest
           python3 plugins/arbeitsplan/scripts/rounds.py --selftest
+          python3 plugins/arbeitsplan/scripts/check_contract_sync.py
+          python3 plugins/arbeitsplan/scripts/check_contract_sync.py --selftest
+          # #107 / #106: the design validator, the script-node and wave
+          # interpreters against stub agents (each with its own sabotages), and
+          # the three files install_waves.py vendors into a project -- the state
+          # helper against scratch git repositories, the guard, the installer.
+          python3 plugins/arbeitsplan/scripts/design_spec.py --selftest
+          node plugins/arbeitsplan/scripts/test_waves_workflow.js
+          python3 plugins/arbeitsplan/scripts/waves_state.py selftest
+          python3 plugins/arbeitsplan/scripts/waves_guard.py --selftest
+          python3 plugins/arbeitsplan/scripts/install_waves.py --selftest
+          python3 plugins/arbeitsplan/scripts/handoff.py --selftest
 
       - name: Fail the job if any check failed
         if: |

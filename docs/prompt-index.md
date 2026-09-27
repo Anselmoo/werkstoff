@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 99 in
+Every example prompt shipped by the 12 plugin READMEs, 101 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -63,7 +63,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## arbeitsplan
 
-[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 7 prompts.
+[`plugins/arbeitsplan/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/arbeitsplan/README.md) — 9 prompts.
 
 ### Turn a vague piece of work into something runnable
 
@@ -120,6 +120,22 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `arbeitsplan-status`: reads the run's `run.jsonl` — phases closed and open, a halt with its reason, refuted candidates, open doubts, budget used, whether a lock is still open — and quotes the single next command.
+
+### Design the workflow before running it
+
+````prompt
+"before anything runs, walk me through this workflow step by step — what each step does, where it runs, when, and on which model"
+````
+
+> Triggers `arbeitsplan-design`: builds the design table node by node in plan mode, writes every command in the repository's own toolchain (a gate or a state helper becomes a declared script node, in whatever language the project uses), validates it with `compile_spec.py --design`, preflights each toolchain, and asks for approval against the design's sha256. Then prints the handoff — a fresh session's exact start prompt whenever the design created agent types.
+
+### Run a restructuring in waves
+
+````prompt
+"this refactor is several waves of parallel work, each building on the last — set it up so it can stop and resume"
+````
+
+> Triggers `arbeitsplan-waves`: installs the approved wave design as project-owned files — a pinned interpreter, the plan, a state helper, a guard, one agent file per role — and runs it from the primary checkout. A red gate stops it with the target unmoved; a relaunch skips every finished wave and builder.
 
 ## befund
 
