@@ -253,6 +253,19 @@ phases, measure the accepted candidate with `reconcile.py --run-checks` (#76), a
 1. **Launch it with the spec as data.** The Workflow tool has no filesystem, so pass the
    parsed `workflow.json` verbatim: `args: {spec}` (plus `startAt` and `carry` on a resume).
    No run-scope lock is open while it runs — nothing inside writes the shared tree.
+1b. **Arm the script allowlist when the spec has a `script` phase (#107).** `compile_spec.py
+   --write` already wrote `analysis/arbeitsplan/<runId>/scripts.json` from the spec; point the
+   guard at it before launching:
+
+   ```bash
+   printf '{"runId": "%s"}\n' <runId> > analysis/arbeitsplan/scripts_armed.json
+   ```
+
+   The guard judges every Bash call `arbeitsplan:script-runner` makes — lock or no lock — and
+   allows exactly one declared command per dispatch. Without an armed allowlist the runner is
+   denied everything, which is the safe direction. For `{placeholder}` slots, pass their values
+   as `carry.scriptArgs.<phaseId>`; a value outside `[A-Za-z0-9._/,=:@+-]` halts the phase
+   before dispatch.
 2. **Persist what it returns, before reading it.** Every return carries `events`:
 
    ```bash

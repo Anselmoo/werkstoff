@@ -31,7 +31,16 @@ cannot make a worktree has already spent N dispatches on a result it cannot use.
    run untimed without one)? Is this session nested — because if so, the matrix runner will
    refuse, correctly, and the user must run it from a terminal.
 
-6. **Say what the run can and cannot measure.** A missing checker means the phases that need
+6. **Toolchains (#107).** When a design exists, `compile_spec.py --design --spec <design>`
+   prints one `TOOLCHAIN <name> <probe>` line per runtime its commands name — script nodes,
+   acceptance, setup, gates, smoke. Run each probe; **exit 0 means installed**, whatever it
+   prints (`go version` and `java -version` share no output convention). A missing toolchain
+   makes the design not ready. For a wave design, also report the helper runtime: a Python
+   >= 3.10 (`python3`, `python` or `py -3`) that `install_waves.py` will resolve, and whether
+   this checkout is the **primary** one (`git rev-parse --git-dir` equals `--git-common-dir`) —
+   a wave run launched from a linked worktree halts at its first node.
+
+7. **Say what the run can and cannot measure.** A missing checker means the phases that need
    it are listed as skipped, never silently passed. Name them.
 
 ## Rules
@@ -47,10 +56,12 @@ cannot make a worktree has already spent N dispatches on a result it cannot use.
 ```
 arbeitsplan preflight — /Users/x/proj
   git                 yes (worktrees supported, .arbeitsplan/ is gitignored)
-  test command        pytest -q            (from pyproject.toml)
+  test command        go test ./...        (from the Makefile's `test` target)
   claude on PATH      yes
   timeout             gtimeout (coreutils)
   nested session      YES — the matrix runner will refuse; run it from a terminal
+  toolchains          go (go version) ok · shell (sh -c true) ok · julia (julia --version) MISSING
+  helper runtime      python3 3.12.3 (>= 3.10) · primary checkout: yes
 
 other guards live in this repository (a run executes under them; a denial from one is
 reported, never bypassed):
@@ -61,6 +72,7 @@ run lock: none open
 state: workflow.json=absent, run_scope.json=absent, matrix results=absent
 
 Can measure: every phase. Cannot measure: nothing skipped.
+Design not ready: julia is named by node conform-jl and is not installed here.
 Caution: takt.local.md is hand-written. arbeitsplan-compile will REFUSE to overwrite it.
 Next: arbeitsplan-compile to turn a problem into a spec.
 ```
@@ -69,3 +81,4 @@ Next: arbeitsplan-compile to turn a problem into a spec.
 
 - `references/matrix-schema.md` — why a nested session cannot run the matrix.
 - `references/workflow-spec-schema.md` — what compile will need from this repository.
+- `references/design-table-schema.md` — the toolchains a design names, and how each is probed.

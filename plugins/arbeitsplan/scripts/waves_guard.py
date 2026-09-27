@@ -185,9 +185,22 @@ def check_runner(event: dict, plan: dict) -> NoReturn:
 
 
 def main(argv: list) -> NoReturn:
-    mode = argv[0] if argv else ""
-    if mode == "--selftest":
+    import argparse
+
+    parser = argparse.ArgumentParser(prog=Path(__file__).name, description=(
+        __doc__ or "").split("\n\n")[0], epilog="exit 0 allow, 2 deny (and on any error)")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--paths", action="store_true", help="judge an edit against offLimits")
+    group.add_argument("--runner", action="store_true", help="judge the runner's Bash call")
+    group.add_argument("--selftest", action="store_true", help="run the selftest")
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit:
+        deny(f"arbeitsplan-waves: the guard was invoked with {argv!r}, which is not a mode it "
+             f"has; refusing rather than allowing the call unchecked. {ESCAPE}")
+    if args.selftest:
         sys.exit(selftest())
+    mode = "--paths" if args.paths else "--runner"
     if os.environ.get("ARBEITSPLAN_WAVES_DISABLE_GUARD") == "1":
         allow()
     try:
