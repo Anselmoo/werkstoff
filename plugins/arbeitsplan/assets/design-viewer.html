@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>arbeitsplan — workflow design</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
+  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
+  .sub .synthetic { color: var(--status-warn); font-weight: 600; }
+  .verdict {
+    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  /* R3: a number to act on (.bad) is not typeset like a number for context. */
+  .tiles { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; }
+  .tile {
+    min-width: 128px; padding: var(--space-2) var(--space-3); background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  .tile .v { font-size: 1.3rem; font-weight: 600; color: var(--smoke); font-family: var(--font-mono); }
+  .tile .k { font-size: 0.76rem; color: var(--muted); }
+  .tile.bad { border-color: var(--status-bad); }
+  .tile.bad .v { color: var(--status-bad); }
+  .tile.bad .k::before { content: "✗ "; color: var(--status-bad); }
+  .legend {
+    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); font-size: 0.8rem; color: var(--muted);
+  }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dd { margin: 0; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.82em; }
+  .split { display: grid; grid-template-columns: minmax(0, auto) minmax(280px, 1fr); gap: var(--space-3); align-items: start; }
+  .graph { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel); padding: var(--space-2); overflow-x: auto; }
+  .graph svg { display: block; margin: 0 auto; }
+  .note { color: var(--muted); font-size: 0.82rem; margin: var(--space-2) 0 0; }
+  .detail {
+    position: sticky; top: var(--space-3); padding: var(--space-3); background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius-panel); font-size: 0.82rem;
+  }
+  .detail h3 { margin: 0 0 var(--space-2); font-size: 0.95rem; font-family: var(--font-mono); }
+  .detail dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .detail dt { color: var(--muted); white-space: nowrap; }
+  .detail dd { margin: 0; overflow-wrap: anywhere; }
+  .detail .rej { color: var(--status-bad); }
+  /* the graph */
+  .band { fill: var(--panel-2); stroke: var(--rule-soft); }
+  .bandlabel { font-size: 11px; fill: var(--smoke); font-weight: 600; }
+  .edge { fill: none; stroke: var(--border); stroke-width: 1.5; marker-end: url(#arrow); }
+  .cut { stroke: var(--status-warn); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .cutlabel { font-size: 10px; fill: var(--status-warn); }
+  .overlap { fill: none; stroke: var(--status-bad); stroke-width: 2; stroke-dasharray: 5 3; }
+  .overlaplabel { font-size: 10px; fill: var(--status-bad); font-weight: 600; }
+  .node { cursor: pointer; }
+  .node rect { fill: var(--panel); stroke-width: 1.5; }
+  .node.sel rect { stroke-width: 3; }
+  .node text { font-size: 11.5px; fill: var(--text); pointer-events: none; }
+  .node .l2 { font-size: 10px; fill: var(--muted); }
+  .node .rejtext { font-size: 10px; fill: var(--status-bad); font-weight: 600; }
+  .node .st { font-size: 13px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--smoke); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  ul.rejections { margin: 0; padding-left: var(--space-4); font-size: 0.84rem; }
+  ul.rejections li { margin: 0 0 var(--space-1); }
+  .ok-word { color: var(--status-good); font-weight: 600; }
+  .bad-word { color: var(--status-bad); font-weight: 600; }
+  .warn-word { color: var(--status-warn); font-weight: 600; }
+  .empty {
+    margin: var(--space-4) 0; padding: var(--space-3); background: var(--panel);
+    border: 1px solid var(--status-bad); border-radius: var(--radius-panel);
+  }
+  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>arbeitsplan — workflow design</h1>
+    <p class="sub" id="sub">A design, node by node: what each node does, where it runs, when, and how.</p>
+    <p class="verdict" id="verdict">Loading the design…</p>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="legend">
+    <dl>
+      <dt>▶ agent</dt><dd>a dispatched model that builds, reviews or fixes. A wave's rows each run in their own agent worktree, side by side.</dd>
+      <dt>$ script</dt><dd>one declared command, run by a Bash-only runner. <strong>Dashed outline: an authored step</strong>, which the plan writes and verifies before anything runs it.</dd>
+      <dt>⇄ merge-gate</dt><dd>merges its wave into the integration branch and runs every gate; the target moves only when they are green.</dd>
+      <dt>‖ human gate</dt><dd>a person approves <strong>between</strong> runs. The dashed line across the graph is where one run ends and the next begins.</dd>
+      <dt>status</dt><dd>✓ done, green, approved or verified · ✗ red · ↻ stale · ∅ missing or still a stub · ○ pending · no mark: the run state records nothing for this node. A red outline marked <em>✗ rejected</em> is the validator's refusal, not a run result.</dd>
+      <dt>overlap</dt><dd>a red dashed arc joins two rows that run at the same time and may write the same file.</dd>
+    </dl>
+  </div>
+
+  <div id="empty" class="empty" hidden>
+    <strong>No design in this report.</strong>
+    <p>Build it from a design: <code>python3 plugins/arbeitsplan/scripts/build_design_html.py --design analysis/arbeitsplan/&lt;runId&gt;/design.json</code>.</p>
+  </div>
+
+  <section id="designpanel" hidden>
+    <h2>Where, when and how each node runs — top to bottom, in the order they can run</h2>
+    <div class="split">
+      <div>
+        <div class="graph"><svg id="dag" role="img" aria-label="The design as a graph"></svg></div>
+        <p class="note" id="dagnote"></p>
+      </div>
+      <aside class="detail" id="detail"></aside>
+    </div>
+
+    <h2>What the validator refuses</h2>
+    <ul class="rejections" id="rejections"></ul>
+
+    <h2>Toolchains the design's commands need</h2>
+    <table>
+      <thead><tr><th>toolchain</th><th>probe</th><th>here</th></tr></thead>
+      <tbody id="toolchains"></tbody>
+    </table>
+  </section>
+
+  <section id="workflowpanel" hidden>
+    <h2 id="wfhead">The compiled workflow</h2>
+    <div class="split">
+      <div><div class="graph"><svg id="wfdag" role="img" aria-label="The compiled workflow's phases"></svg></div></div>
+      <aside class="detail" id="wfdetail"></aside>
+    </div>
+    <ul class="rejections" id="wfrejections"></ul>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/*__DESIGN_DATA__*/
+const DATA = (typeof DESIGN !== "undefined") ? DESIGN : null;
+const SVGNS = "http://www.w3.org/2000/svg";
+function el(id) { return document.getElementById(id); }
+function txt(s) { return document.createTextNode(String(s)); }
+function mk(tag, attrs, parent) {
+  const n = document.createElementNS(SVGNS, tag);
+  for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+function add(parent, tag, text, cls) {
+  const n = document.createElement(tag);
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  if (cls) n.className = cls;
+  parent.appendChild(n);
+  return n;
+}
+function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+
+const KIND = { agent: "▶", script: "$", referee: "⚖", "merge-gate": "⇄", "human-gate": "‖" };
+const STATUS = {
+  done: ["✓", "var(--status-good)"], green: ["✓", "var(--status-good)"],
+  approved: ["✓", "var(--status-good)"], verified: ["✓", "var(--status-good)"],
+  red: ["✗", "var(--status-bad)"], stale: ["↻", "var(--status-warn)"],
+  missing: ["∅", "var(--status-warn)"], stub: ["∅", "var(--status-warn)"],
+  authored: ["?", "var(--status-warn)"], pending: ["○", "var(--muted)"],
+};
+const short = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + "…" : (s || ""));
+
+/* Longest-path layering, top to bottom: a node sits one layer below its
+   deepest dependency, so an edge never points upwards. A design is a long,
+   narrow chain; laid out sideways it would be shrunk past reading. */
+function drawGraph(svg, items, opts) {
+  clear(svg);
+  const byId = {};
+  items.forEach((it) => { byId[it.id] = it; });
+  const depth = {}, seen = {};
+  function dep(id) {
+    if (depth[id] !== undefined) return depth[id];
+    if (seen[id]) return 0;   /* the validator rejects cycles; belt and braces only */
+    seen[id] = true;
+    const ds = byId[id].deps.filter((x) => byId[x]);
+    depth[id] = ds.length ? Math.max.apply(null, ds.map((x) => dep(x) + 1)) : 0;
+    return depth[id];
+  }
+  items.forEach((it) => dep(it.id));
+  const rows = {};
+  items.forEach((it) => { (rows[depth[it.id]] = rows[depth[it.id]] || []).push(it); });
+  const keys = Object.keys(rows).map(Number).sort((a, b) => a - b);
+  const BW = 212, BH = 54, HGAP = 22, VGAP = 30, LG = opts.gutter || 12, PAD = 10;
+  const widest = Math.max.apply(null, keys.map((k) => rows[k].length));
+  const W = LG + widest * BW + (widest - 1) * HGAP + 2 * PAD + (opts.overlaps && opts.overlaps.length ? 30 : 0);
+  const H = keys.length * BH + (keys.length - 1) * VGAP + 2 * PAD + 16;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+
+  const defs = mk("defs", {}, svg);
+  const m = mk("marker", { id: svg.id + "-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5",
+                           markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse" }, defs);
+  mk("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--border)" }, m);
+
+  const at = {};
+  keys.forEach((k, ri) => {
+    const list = rows[k];
+    const span = list.length * BW + (list.length - 1) * HGAP;
+    const x0 = LG + PAD + (widest * BW + (widest - 1) * HGAP - span) / 2;
+    list.forEach((it, i) => { at[it.id] = { x: x0 + i * (BW + HGAP), y: PAD + 8 + ri * (BH + VGAP) }; });
+  });
+
+  const gB = mk("g", {}, svg), gE = mk("g", {}, svg), gN = mk("g", {}, svg), gO = mk("g", {}, svg);
+  /* wave bands: the rows a wave spans, labelled in the left gutter */
+  const waves = {};
+  items.forEach((it) => { if (it.wave !== null && it.wave !== undefined) (waves[it.wave] = waves[it.wave] || []).push(at[it.id].y); });
+  Object.keys(waves).forEach((w) => {
+    const y0 = Math.min.apply(null, waves[w]) - 8, y1 = Math.max.apply(null, waves[w]) + BH + 8;
+    mk("rect", { x: 2, y: y0, width: W - 4, height: y1 - y0, rx: 8, class: "band" }, gB);
+    mk("text", { x: 8, y: y0 + 16, class: "bandlabel" }, gB).appendChild(txt("wave " + w));
+  });
+  items.forEach((it) => it.deps.forEach((d) => {
+    const a = at[d], b = at[it.id];
+    if (!a || !b) return;
+    const x0 = a.x + BW / 2, y0 = a.y + BH, x1 = b.x + BW / 2, y1 = b.y, ym = (y0 + y1) / 2;
+    mk("path", { d: "M" + x0 + "," + y0 + "C" + x0 + "," + ym + " " + x1 + "," + ym + " " + x1 + "," + y1,
+                 class: "edge", "marker-end": "url(#" + svg.id + "-arrow)" }, gE);
+  }));
+  /* a human gate cuts the graph: one run ends above the line, the next begins below */
+  items.filter((it) => it.cut).forEach((it) => {
+    const y = at[it.id].y + BH / 2;
+    mk("line", { x1: 4, y1: y, x2: W - 4, y2: y, class: "cut" }, gB);
+    mk("text", { x: 8, y: y - 5, class: "cutlabel" }, gB).appendChild(txt("run ends · approve · next run"));
+  });
+  items.forEach((it) => {
+    const p = at[it.id];
+    const st = STATUS[it.status] || null;
+    const stroke = it.rejected ? "var(--status-bad)" : (st ? st[1] : "var(--border)");
+    const g = mk("g", { class: "node", tabindex: "0", "data-id": it.id }, gN);
+    const r = mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 7, stroke: stroke }, g);
+    if (it.rejected) r.setAttribute("stroke-width", "2.5");
+    if (it.dashed) r.setAttribute("stroke-dasharray", "5 3");
+    mk("text", { x: p.x + 10, y: p.y + 19 }, g).appendChild(txt(short(it.line1, 30)));
+    mk("text", { x: p.x + 10, y: p.y + 34, class: "l2" }, g).appendChild(txt(short(it.line2, 38)));
+    if (it.rejected) mk("text", { x: p.x + 10, y: p.y + 47, class: "rejtext" }, g)
+      .appendChild(txt("✗ rejected: " + short(it.rejected.replace(/^AP-/, "").toLowerCase(), 24)));
+    else if (it.line3) mk("text", { x: p.x + 10, y: p.y + 47, class: "l2" }, g).appendChild(txt(short(it.line3, 38)));
+    if (st) {
+      const s = mk("text", { x: p.x + BW - 18, y: p.y + 20, class: "st", fill: st[1] }, g);
+      s.appendChild(txt(st[0]));
+    }
+    const title = mk("title", {}, g);
+    title.appendChild(txt(it.id + (it.status ? " — " + it.status : "")));
+    g.addEventListener("click", () => opts.select(it.id));
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter") opts.select(it.id); });
+  });
+  (opts.overlaps || []).forEach((o) => {
+    const a = at[o.a], b = at[o.b];
+    if (!a || !b) return;
+    const left = a.x < b.x ? a : b, right = a.x < b.x ? b : a;
+    const y = Math.min(a.y, b.y), xm = (left.x + BW / 2 + right.x + BW / 2) / 2;
+    mk("path", { d: "M" + (left.x + BW / 2) + "," + y + " Q" + xm + "," + (y - 26) + " " + (right.x + BW / 2) + "," + y,
+                 class: "overlap" }, gO);
+    mk("text", { x: xm, y: y - 16, "text-anchor": "middle", class: "overlaplabel" }, gO)
+      .appendChild(txt("overlap: " + o.globs[1]));
+  });
+  return (id) => {
+    gN.querySelectorAll(".node").forEach((n) => n.classList.toggle("sel", n.getAttribute("data-id") === id));
+  };
+}
+
+function row(dl, key, value, cls) {
+  if (value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length)) return;
+  add(dl, "dt", key);
+  const dd = add(dl, "dd", Array.isArray(value) ? value.join(", ") : value);
+  if (cls) dd.className = cls;
+}
+
+function showNode(n) {
+  const box = el("detail");
+  clear(box);
+  add(box, "h3", (KIND[n.kind] || "·") + " " + n.id);
+  const dl = add(box, "dl");
+  row(dl, "what", n.goal);
+  row(dl, "kind", n.kind + (n.role ? " (" + n.role + ")" : ""));
+  row(dl, "where", n.where);
+  row(dl, "wave", n.wave);
+  row(dl, "after", n.depends_on.length ? n.depends_on : "nothing: it can run first");
+  if (n.when) row(dl, "only if", n.when.node + "." + n.when.field + " is " + JSON.stringify(n.when.equals));
+  row(dl, "model", n.model ? n.model + (n.effort ? ", effort " + n.effort : "") : null);
+  row(dl, "agent", n.agentType);
+  row(dl, "skills", n.skills);
+  row(dl, "tools", n.tools);
+  row(dl, "writes", n.writeScope && n.writeScope.length ? n.writeScope : (n.kind === "human-gate" ? null : "nothing"));
+  row(dl, "inputs", n.inputs);
+  if (n.swarm && n.swarm > 1) row(dl, "swarm", n.swarm + " candidates, one kept" + (n.referee ? "; blind referee " + n.referee.agentType + " on " + n.referee.model : ""));
+  row(dl, "runs", n.command ? (n.runtime ? n.runtime + ": " : "") + n.command : n.steps);
+  if (n.authored) {
+    row(dl, "authored", "written by the plan in " + n.runtime + ", by " + n.authored.model);
+    row(dl, "purpose", n.authored.purpose);
+    if (n.authored.sample) row(dl, "sample", (n.authored.sample.args || []).join(" ") + " → exit " + JSON.stringify(n.authored.sample.expectExit));
+  }
+  row(dl, "status", n.status === null ? "not recorded by the run state" : n.status);
+  n.rejections.forEach((r) => row(dl, "REJECTED", r, "rej"));
+  (DATA.design.overlaps || []).filter((o) => o.a === n.id || o.b === n.id).forEach((o) =>
+    row(dl, "REJECTED", "runs beside " + (o.a === n.id ? o.b : o.a) + " in wave " + o.wave +
+        " and may write the same files (" + o.globs.join(" vs ") + ")", "rej"));
+}
+
+function showPhase(p) {
+  const box = el("wfdetail");
+  clear(box);
+  add(box, "h3", p.id);
+  const dl = add(box, "dl");
+  row(dl, "kind", p.kind);
+  row(dl, "pattern", p.pattern);
+  row(dl, "model tier", p.modelTier);
+  row(dl, "fan-out", p.fanOut);
+  row(dl, "writes", p.writes);
+  row(dl, "agent", p.agentType);
+  row(dl, "requires", p.requires.length ? p.requires : "nothing");
+  row(dl, "marker", p.marker);
+  row(dl, "runs", p.command);
+  p.rejections.forEach((r) => row(dl, "REJECTED", r, "rej"));
+}
+
+function tile(label, value, bad) {
+  const t = add(el("tiles"), "div", null, "tile" + (bad ? " bad" : ""));
+  add(t, "div", value, "v");
+  add(t, "div", label, "k");
+}
+
+function render() {
+  if (!DATA || (!DATA.design && !DATA.workflow)) {
+    el("verdict").textContent =
+      "This design report could not be read, so nothing below is trustworthy. Regenerate it: " +
+      "python3 plugins/arbeitsplan/scripts/build_design_html.py --design <design.json>";
+    el("empty").hidden = false;
+    return;
+  }
+  el("verdict").textContent = DATA.verdict;
+  const d = DATA.design;
+  const sub = el("sub");
+  clear(sub);
+  const bits = [];
+  if (d) bits.push("design " + d.name + " · run " + d.runId + " · sha256 " + String(d.sha256).slice(0, 12) + "…");
+  if (d && d.state) bits.push("state from the run helper's show");
+  if (DATA.generated) bits.push(DATA.generated);
+  sub.appendChild(txt(bits.join(" · ")));
+  if (DATA.synthetic) { sub.appendChild(txt(" · ")); add(sub, "span", "SYNTHETIC demo data", "synthetic"); }
+
+  if (d) {
+    el("designpanel").hidden = false;
+    const waves = new Set(d.nodes.filter((n) => n.wave !== null).map((n) => n.wave));
+    const missing = d.toolchains.filter((t) => t.installed === false).length;
+    const red = d.state ? d.state.redGates.length : 0;
+    tile("nodes", d.nodes.length, false);
+    tile("waves", waves.size, false);
+    tile("rejections", d.rejections.length, d.rejections.length > 0);
+    tile("toolchains not installed", missing, missing > 0);
+    if (d.state) tile("red gates in the last run", red, red > 0);
+    tile("authored steps", d.nodes.filter((n) => n.authored).length, false);
+
+    const items = d.nodes.map((n) => ({
+      id: n.id, deps: n.depends_on, wave: n.wave, status: n.status,
+      cut: n.kind === "human-gate", dashed: !!n.authored,
+      rejected: n.rejections.length ? ((n.rejections[0].match(/\[(AP-[A-Z0-9-]+)\]/) || [])[1] || "see detail") : null,
+      line1: (KIND[n.kind] || "·") + " " + n.id,
+      line2: n.kind === "human-gate" ? "human gate · between runs"
+        : [n.authored ? "authored " + n.runtime : n.kind, n.where, n.model].filter(Boolean).join(" · "),
+      line3: n.swarm && n.swarm > 1 ? "swarm ×" + n.swarm + " · blind referee"
+        : (n.writeScope && n.writeScope.length ? "writes " + n.writeScope.join(", ") : ""),
+    }));
+    /* overlaps are validator rejections of a WAVE, not of a node: mark both rows */
+    d.overlaps.forEach((o) => items.forEach((it) => {
+      if ((it.id === o.a || it.id === o.b) && !it.rejected) it.rejected = "AP-WAVE-SCOPE-OVERLAP";
+    }));
+    const byId = {};
+    d.nodes.forEach((n) => { byId[n.id] = n; });
+    let mark = () => {};
+    const select = (id) => { showNode(byId[id]); mark(id); };
+    mark = drawGraph(el("dag"), items, { gutter: 58, overlaps: d.overlaps, select: select });
+    const first = items.find((it) => it.rejected) || items.find((it) => STATUS[it.status] && STATUS[it.status][0] === "✗") || items[0];
+    if (first) select(first.id);
+    el("dagnote").textContent = "Select a node for its full what, where, when and how. Integration: waves merge into " +
+      d.integration.branch + "; " + d.integration.target + " moves only after a green gate. Gates: " +
+      (d.gates.length ? d.gates.join(", ") : "none declared") + ".";
+
+    const ul = el("rejections");
+    if (!d.rejections.length) add(ul, "li", "Nothing: the validator accepts this design.", "ok-word");
+    d.rejections.forEach((r) => add(ul, "li", r));
+    const tb = el("toolchains");
+    d.toolchains.forEach((t) => {
+      const tr = add(tb, "tr");
+      add(tr, "td", t.name, "mono");
+      add(tr, "td", t.probe, "mono");
+      const td = add(tr, "td");
+      if (t.installed === true) add(td, "span", "✓ installed", "ok-word");
+      else if (t.installed === false) add(td, "span", "✗ not installed", "bad-word");
+      else add(td, "span", "? not probed — run arbeitsplan-preflight", "warn-word");
+    });
+  }
+
+  const wf = DATA.workflow;
+  if (wf) {
+    el("workflowpanel").hidden = false;
+    el("wfhead").textContent = "The compiled workflow " + wf.runId + (wf.totalDispatches ? " — budget " + wf.totalDispatches + " dispatches" : "");
+    const byPhase = {};
+    wf.phases.forEach((p) => { byPhase[p.id] = p; });
+    let markP = () => {};
+    const selectP = (id) => { showPhase(byPhase[id]); markP(id); };
+    markP = drawGraph(el("wfdag"), wf.phases.map((p) => ({
+      id: p.id, deps: p.depends_on, wave: null, status: null, cut: false, dashed: p.kind === "script",
+      rejected: p.rejections.length ? "see detail" : null,
+      line1: p.id, line2: [p.kind, p.pattern].filter(Boolean).join(" · "),
+      line3: [p.modelTier, p.fanOut ? "fan-out " + p.fanOut : null, p.writes ? "writes " + p.writes : null].filter(Boolean).join(" · "),
+    })), { select: selectP });
+    if (wf.phases.length) selectP(wf.phases[0].id);
+    const ul = el("wfrejections");
+    wf.rejections.forEach((r) => add(ul, "li", r));
+  }
+
+  el("footer").textContent = "Generated by build_design_html.py from the design, the run helper's state and the " +
+    "preflight results; rebuild it after the design or the run changes. Rejections come from design_spec.py, " +
+    "overlaps from land_candidate.py, statuses from `<name>_state.py show`.";
+}
+render();
+</script>
+</body>
+</html>

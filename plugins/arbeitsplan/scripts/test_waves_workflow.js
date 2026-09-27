@@ -127,8 +127,10 @@ const SABOTAGE = [
   ['human gate ignored', "return [...ancestors(id)].find((a) => byId[a].kind === 'human-gate' && !state.approvals[a]) || null", 'return null'],
   ['smoke placed in the repository', "const where = n.where === 'scratch'", "const where = false"],
   ['verified step re-authored', "if (status === 'verified') {", 'if (false) {'],
-  ['refused step accepted', "if (!v.parsed.verified) problem = v.parsed.problem || 'verify-step refused it without a reason'", ''],
-  ['author path unchecked', 'else if (w.path !== stepPath(n)) problem', 'else if (false) problem'],
+  ['refused step accepted', "problem: v.parsed.verified ? null : (v.parsed.problem || 'verify-step refused it without a reason')", 'problem: null'],
+  ['author path unchecked', 'if (w.path !== stepPath(n)) return { id, problem', 'if (false) return { id, problem'],
+  ['verifies run concurrently', 'const run = queue.then(fn)', 'const run = fn()'],
+  ['effort dropped from the builder dispatch', "model: n.model, effort: n.effort, isolation: 'worktree'", "model: n.model, isolation: 'worktree'"],
   ['retry without the refusal', 'refused ? `Your previous version of this file was refused: ${refused}\\nFix exactly that.` : ``', '``'],
   ['authored step run before it is verified', "if (authored.length) {", 'if (false) {'],
 ]
@@ -151,6 +153,9 @@ async function suite() {
     ok('fresh: both waves recorded done', result.state.waves['1'].status === 'done' && result.state.waves['2'].status === 'done', result.state)
     ok('fresh: the fixer is skipped when review is not blocking', !labels.includes('fix'), labels)
     ok('fresh: every dispatched schema is strict, with no JSON-in-a-string', calls.every((c) => strictSchema(c.opts.schema)), calls.map((c) => c.label))
+    ok('fresh: a node\'s declared effort is passed on its dispatch, an undeclared one is not invented',
+      calls.find((c) => c.label === 'w1-render').opts.effort === 'high' && calls.find((c) => c.label === 'smoke').opts.effort === undefined,
+      calls.filter((c) => c.label === 'w1-render' || c.label === 'smoke').map((c) => c.opts))
     const gateCmd = cmdOf(calls.find((c) => c.label === 'gate-1:s0').prompt)
     ok('fresh: gate command carries the stage\'s rows as row=branch pairs',
       gateCmd.includes('--branches w1-parse=agent/w1-parse,w1-render=agent/w1-render') && gateCmd.includes('--final 1'), gateCmd)
@@ -374,6 +379,47 @@ async function authoredSuite() {
       ? { path: 'somewhere/else.py', notes: '' } : happy(l, p, o)))
     ok('author: a file other than the declared one is not verified, and stops the run',
       result.aborted && /not \.claude/.test(result.abortReason) && !calls.some((c) => /:verify/.test(c.label)), result)
+  }
+  {
+    // Two authored steps, timed: the fast one's verify must start while the
+    // slow one is still being written (no barrier), and no two verifies may
+    // ever be in flight at once (they share the state file).
+    const plan = planOf(AUTHORED)
+    const twin = clone(plan.nodes.find((n) => n.id === 'api-surface'))
+    twin.id = 'api-surface-2'
+    twin.script.command = 'python3 .claude/workflows/rebuild-cli.steps/api-surface-2.py cmd/tool'
+    plan.nodes.push(twin)
+    const events = []
+    let inflight = 0
+    let most = 0
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+    const { result } = await execute({ plan }, async (l, p, o) => {
+      events.push(`start:${l}`)
+      let out
+      if (/:verify/.test(l)) {
+        inflight += 1
+        most = Math.max(most, inflight)
+        await wait(20)
+        inflight -= 1
+        const node = l.split(':')[0]
+        out = script({ verified: true, node, path: `.claude/workflows/rebuild-cli.steps/${node}.py`, problem: '' })
+      } else if (/:author/.test(l)) {
+        const node = l.split(':')[0]
+        await wait(node === 'api-surface' ? 5 : 15)
+        out = { path: `.claude/workflows/rebuild-cli.steps/${node}.py`, notes: '' }
+      } else if (l === 'api-surface-2') {
+        out = script({ package: 'cmd/tool', exported: [] })
+      } else {
+        out = happy(l, p, o)
+      }
+      events.push(`end:${l}`)
+      return out
+    })
+    ok('author: two steps verify one at a time', most === 1, { most, events })
+    ok('author: a fast step is verified while a slow one is still being written',
+      events.indexOf('start:api-surface:verify') < events.indexOf('end:api-surface-2:author'), events)
+    ok('author: both steps verified, run completes', !result.aborted
+      && result.state.steps['api-surface'].status === 'verified' && result.state.steps['api-surface-2'].status === 'verified', result)
   }
   {
     const plan = planOf(AUTHORED)

@@ -213,7 +213,7 @@ async function runScript(node, values, label, phaseTitle) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label, phase: phaseTitle, agentType: runner, model: node.model, schema: scriptSchema(node.output_schema) },
+    { label, phase: phaseTitle, agentType: runner, model: node.model, effort: node.effort, schema: scriptSchema(node.output_schema) },
   )
   if (!out) return { error: `node ${node.id}: SCRIPT CONTRACT -- the runner returned nothing` }
   if (!Number.isInteger(out.exit) || !(sc.expectExit || [0]).includes(out.exit)) {
@@ -269,7 +269,7 @@ async function build(n, base) {
   const labels = Array.from({ length: swarm }, (_, k) => (swarm > 1 ? `${n.id}:c${k + 1}` : n.id))
   const results = await parallel(labels.map((label, k) => () => agent(
     builderPrompt(n, base, swarm > 1 ? `c${k + 1}` : null),
-    { label, phase: 'Build', agentType: n.agentType, model: n.model, isolation: 'worktree', schema: n.output_schema },
+    { label, phase: 'Build', agentType: n.agentType, model: n.model, effort: n.effort, isolation: 'worktree', schema: n.output_schema },
   )))
   const valid = []
   for (let k = 0; k < results.length; k++) {
@@ -325,9 +325,9 @@ function pendingGate(id) {
 
 // ---- authored steps -------------------------------------------------------------
 // A script node that AUTHORS its step has the file written here, before any
-// node could run it: one author dispatch per step, in parallel, then one
-// verify-step per step, in sequence -- verify-step read-modify-writes the
-// state file, and two at once would lose a record. A refusal goes back to a
+// node could run it: one author dispatch per step, all at once, each followed
+// by its own verify-step as soon as it returns -- the verifies one at a time,
+// since verify-step read-modify-writes the state file. A refusal goes back to a
 // fresh author dispatch with that refusal and nothing else, up to the node's
 // `retries`; then the run stops with AUTHOR CONTRACT. A verified step is
 // skipped on resume; a stale one (edited, or its contract changed) is rewritten.
@@ -380,36 +380,49 @@ if (authored.length) {
     if (!modelOk(n.script.author.model)) return stop(`node ${n.id}: script.author.model is not a valid model; an inherited model defeats tiering`, n.id)
     pending.push(n.id)
   }
+  // Each step goes author -> verify on its own, with no barrier between the
+  // two (a fast author's step is verified while a slow one is still writing);
+  // only the verifies are serialized, through one queue, because verify-step
+  // read-modify-writes the state file and two at once would lose a record.
+  let queue = Promise.resolve()
+  const serially = (fn) => {
+    const run = queue.then(fn)
+    queue = run.catch(() => null)
+    return run
+  }
   const refused = {}
   for (let attempt = 0; pending.length; attempt++) {
     const over = spend(pending.length, 'Author steps')
     if (over) return stop(`budget: ${over}`, pending[0])
     const tag = attempt ? `:${attempt + 1}` : ''
-    const wrote = await parallel(pending.map((id) => () => agent(
-      authorPrompt(byId[id], refused[id]),
-      { label: `${id}:author${tag}`, phase: 'Author steps', agentType: authorAgent, model: byId[id].script.author.model, schema: AUTHOR_SCHEMA },
-    )))
+    const outcomes = await parallel(pending.map((id) => async () => {
+      const n = byId[id]
+      const w = await agent(
+        authorPrompt(n, refused[id]),
+        { label: `${id}:author${tag}`, phase: 'Author steps', agentType: authorAgent, model: n.script.author.model, schema: AUTHOR_SCHEMA },
+      )
+      if (!w) return { id, problem: 'the author returned nothing' }
+      if (w.path !== stepPath(n)) return { id, problem: `the author reports writing ${JSON.stringify(w.path)}, not ${stepPath(n)}` }
+      return serially(async () => {
+        const v = await runScript({ id: `${id}:verify`, script: { command: verifyTmpl, expectExit: [0, 1] }, model: n.model, output_schema: VERIFY_SCHEMA }, { node: id }, `${id}:verify${tag}`, 'Author steps')
+        if (v.error) return { id, fatal: v.error, output: v.output }
+        return { id, problem: v.parsed.verified ? null : (v.parsed.problem || 'verify-step refused it without a reason') }
+      })
+    }))
     const again = []
     for (let k = 0; k < pending.length; k++) {
       const id = pending[k]
       const n = byId[id]
-      const w = wrote[k]
-      let problem = null
-      if (!w) problem = 'the author returned nothing'
-      else if (w.path !== stepPath(n)) problem = `the author reports writing ${JSON.stringify(w.path)}, not ${stepPath(n)}`
-      else {
-        const v = await runScript({ id: `${id}:verify`, script: { command: verifyTmpl, expectExit: [0, 1] }, model: n.model, output_schema: VERIFY_SCHEMA }, { node: id }, `${id}:verify${tag}`, 'Author steps')
-        if (v.error) return stop(v.error, id, v.output ? { output: v.output } : null)
-        if (!v.parsed.verified) problem = v.parsed.problem || 'verify-step refused it without a reason'
-      }
-      if (problem === null) {
+      const o = outcomes[k] || { id, problem: 'the author dispatch failed' }
+      if (o.fatal) return stop(o.fatal, id, o.output ? { output: o.output } : null)
+      if (o.problem === null) {
         state.steps[id] = { status: 'verified', path: stepPath(n) }
         note('step-verified', id, { path: stepPath(n), attempts: attempt + 1 })
         continue
       }
       const retries = Number.isInteger(n.retries) ? n.retries : 0
-      if (attempt >= retries) return stop(`node ${id}: AUTHOR CONTRACT -- ${problem}`, id, { step: stepPath(n), attempts: attempt + 1 })
-      refused[id] = problem
+      if (attempt >= retries) return stop(`node ${id}: AUTHOR CONTRACT -- ${o.problem}`, id, { step: stepPath(n), attempts: attempt + 1 })
+      refused[id] = o.problem
       again.push(id)
     }
     pending = again
@@ -533,7 +546,7 @@ for (const id of post) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label: id, phase: 'After the waves', agentType: n.agentType, model: n.model, isolation: n.where === 'worktree' ? 'worktree' : undefined, schema: n.output_schema },
+    { label: id, phase: 'After the waves', agentType: n.agentType, model: n.model, effort: n.effort, isolation: n.where === 'worktree' ? 'worktree' : undefined, schema: n.output_schema },
   )
   if (!out) return stop(`node ${id} returned nothing`, id)
   const probs = strictProblems(n.output_schema, out, id)

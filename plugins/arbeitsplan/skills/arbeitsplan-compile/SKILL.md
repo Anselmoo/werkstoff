@@ -67,7 +67,15 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/compile_spec.py" --out analysis/arbeitsplan --write
    ```
 
-   It validates before writing and names the offending key on refusal.
+   It validates before writing and names the offending key on refusal. To show the user the
+   phases as a graph (each phase's pattern, fan-out and model tier, chained by
+   `requires` → `marker`), render the spec:
+
+   ```bash
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_design_html.py" \
+     --workflow analysis/arbeitsplan/<runId>/workflow.json \
+     --out analysis/arbeitsplan/<runId>/design-report.html
+   ```
 
 10. **Emit the takt beats — behind an approval gate.**
 

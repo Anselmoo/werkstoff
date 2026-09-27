@@ -88,6 +88,18 @@ each is a check in code rather than a sentence here:
    Only `verified` is skipped on the next launch. To re-check a step by hand, run
    `<name>_state.py verify-step --node <id>`.
 
+   Whatever the result, render where the run stands, from the state it left:
+
+   ```bash
+   python3 .claude/workflows/<name>_state.py show > analysis/arbeitsplan/<runId>/show.json
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_design_html.py" \
+     --design .claude/workflows/<name>.plan.json --state analysis/arbeitsplan/<runId>/show.json \
+     --out analysis/arbeitsplan/<runId>/design-report.html
+   ```
+
+   Red gates, stale or missing authored steps and pending human gates are marked on the graph
+   where they sit. Quote the printed verdict; it is computed from the state, not from the chat.
+
    The state helper persists its state as the run goes. Every finished builder is recorded the
    moment it returns, and every green wave when its gate passes, so a relaunch skips both.
 
@@ -121,3 +133,4 @@ Resume after the fix: relaunch with `rebuild-cli_state.py show` — wave 1 will 
   merging different work is admissible.
 - `scripts/install_waves.py`, `scripts/waves_state.py`, `scripts/waves_guard.py`,
   `workflows/waves.js` — what gets installed, each with its own selftest.
+- `scripts/build_design_html.py` — the plan and its state as a graph.

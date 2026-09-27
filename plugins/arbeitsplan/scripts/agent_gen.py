@@ -11,12 +11,12 @@ never generated here, and design_spec.py refuses node keys that would only
 reach such a file ([AP-AGENT-KEYS-UNAPPLIED]): they would be validated and
 then dropped.
 
-WHAT REACHES THE FRONTMATTER. A node's `effort`, `tools` and `skills` are the
-agent definition's, so they are written into its file -- the validator already
-proved every node sharing that type agrees on them ([AP-AGENT-CONFLICT]).
-`model` is different: waves.js passes each node's model on every dispatch, so
-the file's `model` is only the default for a direct invocation, taken from the
-first node that names the type.
+WHAT REACHES THE FRONTMATTER. A node's `tools` and `skills` are the agent
+definition's, so they are written into its file -- the validator already proved
+every node sharing that type agrees on them ([AP-AGENT-CONFLICT]). `model` and
+`effort` are different: agent() takes both per call and waves.js passes every
+node's own, so the file's values are only the defaults for a direct invocation,
+taken from the first node that names the type.
 
 The runner and the author have FIXED tools: the guard's `--runner` and
 `--author` modes are what make those roles safe, and a Bash-capable author or

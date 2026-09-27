@@ -23,12 +23,44 @@ All notable changes to the `arbeitsplan` plugin are documented here.
   `partition-then-merge-worktrees` to the one admissible form.
 - `AP-SOURCES-OVERLAP` (recorded-red): `map-reduce-disjoint` partitions must be disjoint by
   construction, not merely spelled differently; `land_candidate.scope_overlap` decides it.
+- **Authored steps**: a wave design's script node may carry `script.author = {model,
+  purpose, sample}`, and the plan writes the step in bash, pwsh, ruby, node (`.mjs`) or python
+  before anything runs it. Covered by:
+  - templates under `assets/step-templates/`;
+  - a shell-less `<name>-author` agent;
+  - `<name>_state.py verify-step`, which checks syntax without execution, runs the sample in a
+    scratch worktree and validates stdout against the schema;
+  - a runner guard that refuses a step whose hash or contract changed;
+  - a new first phase in `waves.js`, "Author steps".
+
+  New rules: `AP-AUTHOR-LANG`, `AP-AUTHOR-COMMAND`, `AP-AUTHOR-KIND` and
+  `AP-AUTHOR-NO-CONTRACT`. `test_authored_steps.py` covers all five languages end to end.
+- **`scripts/agent_gen.py`**: the one agent-file generator, for `install_waves.py` and
+  `handoff.py`. A node's `tools` and `skills` reach the frontmatter, and its `model` and
+  `effort` travel with each dispatch. New rules: `AP-AGENT-CONFLICT` and
+  `AP-AGENT-KEYS-UNAPPLIED`.
+- **The runbook**: `install_waves.py` writes `.claude/workflows/<name>.md` for the people who
+  own the installed tooling. The runtime ignores it.
+- **The design report**: `assets/design-viewer.html` and `scripts/build_design_html.py` draw a
+  design, its run state and its compiled workflow as a graph with a verdict. The demo is
+  `scripts/fixtures/design-demo.json`. It is wired into `arbeitsplan-design`, `-waves`,
+  `-compile` and `-status`.
+- `references/design-table-schema.md`: new "Authored steps", "Agent types" and "Efficient
+  designs" sections.
 
 ### Changed
+- `waves.js` passes each node's `effort` on its dispatch. In the Author phase, each step goes
+  author → verify with no barrier, and only the verifies are serialized.
+- `waves_state.py merge` keeps every gate outcome, red ones included, in `state.gates`.
 - Model fields accept `fable` and full `claude-*` ids alongside `haiku`/`sonnet`/`opus`.
 - The compiler now refuses a pattern documented in `references/patterns.md` but missing from
   its machine-readable index -- the catalogue already claimed it did.
 - CI runs the guard calibration, the contract-sync check and every new selftest.
+
+### Fixed
+- `install_waves.py` generated agent files that dropped the design's `effort` and `skills` and
+  hard-coded `tools`, all three of which had been validated. The worked design fixture declared
+  `effort` on one of three nodes sharing an agent type; it and its twenty red copies now agree.
 
 ## [1.0.4] - 2026-09-26
 ### Added

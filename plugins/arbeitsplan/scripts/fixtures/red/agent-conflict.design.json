@@ -134,7 +134,13 @@
       ],
       "where": "worktree",
       "model": "opus",
+      "effort": "high",
       "agentType": "rebuild-cli-builder",
+      "tools": [
+        "Read",
+        "Edit",
+        "Bash"
+      ],
       "inputs": [
         "preflight"
       ],

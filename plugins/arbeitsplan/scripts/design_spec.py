@@ -173,8 +173,9 @@ AUTHOR_KEYS = {"model", "purpose", "sample"}
 SAMPLE_ARG_RE = re.compile(r"\A[A-Za-z0-9._/,=:@+-]{1,128}\Z")  # the guard's safe value class
 # The node keys that belong to the agent DEFINITION, not to one dispatch: one
 # agent type has one frontmatter, so every node naming it must agree on them.
-# `model` is deliberately absent -- the interpreter passes it per dispatch.
-AGENT_KEYS = ("role", "effort", "tools", "skills")
+# `model` and `effort` are deliberately absent -- agent() takes both per call,
+# and the interpreter passes every node's own.
+AGENT_KEYS = ("role", "tools", "skills")
 
 
 def design_hash(design: dict) -> str:
@@ -555,12 +556,13 @@ def _validate_agent_types(design: dict, nodes: dict, err) -> None:
 
     [AP-AGENT-CONFLICT] -- nodes naming the same agentType disagree on a key
     the agent FILE carries. Absent vs present is a disagreement too: the
-    generated file can say `effort: high` or nothing, not both.
+    generated file can say `tools: Read, Bash` or nothing, not both.
 
     [AP-AGENT-KEYS-UNAPPLIED] -- in a wave design, install_waves.py generates
-    the files for `<name>-*` types only. A node that declares effort, tools or
-    skills on any other type (a plugin's, one written by hand) has declared
-    keys nothing will ever write: validated, then silently dropped."""
+    the files for `<name>-*` types only. A node that declares tools or skills
+    on any other type (a plugin's, one written by hand) has declared keys
+    nothing will ever write: validated, then silently dropped. `effort` is not
+    one of them -- it travels with the dispatch."""
     by_type: dict = {}
     for nid, n in nodes.items():
         at = n.get("agentType")
@@ -580,7 +582,7 @@ def _validate_agent_types(design: dict, nodes: dict, err) -> None:
         return  # an invalid name is already an error; its prefix proves nothing
     for nid, n in nodes.items():
         at = n.get("agentType")
-        declared = [k for k in ("effort", "tools", "skills") if n.get(k) is not None]
+        declared = [k for k in ("tools", "skills") if n.get(k) is not None]
         if isinstance(at, str) and declared and not at.startswith(f"{name}-"):
             err(f"node {nid}", f"[AP-AGENT-KEYS-UNAPPLIED] declares {declared} on agentType "
                                f"{at!r}, which this design does not generate (only {name}-* "
@@ -1006,8 +1008,12 @@ def selftest() -> int:
         ("smoke with neither steps nor skip", w("smoke", steps=None), "AP-SMOKE-UNDECLARED"),
         ("smoke skipped with a reason -- clean", w("smoke", steps=None,
                                                    skip="a library with no entry point"), None),
-        ("one builder type, effort on only some nodes", w("w1-render", effort=None),
+        ("one builder type, effort on only some nodes -- clean (effort is per dispatch)",
+         w("w1-render", effort=None), None),
+        ("one builder type, tools on only some nodes", w("w1-render", tools=["Read", "Bash"]),
          "AP-AGENT-CONFLICT"),
+        ("effort on a plugin agent -- clean (it travels with the dispatch)",
+         w("review", agentType="arbeitsplan:synthesizer", effort="low"), None),
         ("one builder type, two roles", w("w2-cli", role="integrator"), "AP-AGENT-CONFLICT"),
         ("one builder type, same tools in another order -- clean",
          w("w2-cli", w("w1-render", w("w1-parse", tools=["Read", "Bash"]),

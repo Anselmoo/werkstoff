@@ -118,6 +118,13 @@ cheapest models routinely take two to three times the turns on multi-step work â
 costing more overall than a mid-tier model would have. The table's "standard" row
 exists because of this, not despite it.
 
+Inside a Workflow script the same choice is made per node, not per session, and it has more
+than one lever: `agent()` takes `effort` per call as well as `model`, and a deterministic step
+is cheaper still as one small-model dispatch that runs a single guarded command than as an agent
+told to run shell commands. `arbeitsplan`'s design table makes all three explicit per node, and
+its "Efficient designs" table (`plugins/arbeitsplan/references/design-table-schema.md`) says for
+each practice whether code enforces it, the runtime documents it, or nobody has measured it.
+
 ## Defaults werkstoff agents already declare
 
 Grepping `^model:` across every `plugins/*/agents/*.md` file in this repository shows

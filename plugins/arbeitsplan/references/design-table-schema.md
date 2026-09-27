@@ -9,7 +9,8 @@ would be nice to do.
 **Contents** — [why a design table](#why-a-design-table) · [top level](#top-level) ·
 [nodes](#nodes) · [commands and toolchains](#commands-and-toolchains) ·
 [authored steps](#authored-steps) · [waves](#waves) ·
-[agent types](#agent-types) · [rejections](#rejections) · [worked instance](#worked-instance)
+[agent types](#agent-types) ·
+[efficient designs](#efficient-designs) · [rejections](#rejections) · [worked instance](#worked-instance)
 
 ## Why a design table
 
@@ -226,19 +227,41 @@ which files appear.
 
 | node key | where it goes | rule |
 |---|---|---|
-| `effort`, `skills` | the agent file's frontmatter; `skills` preloads each named skill's full content | absent means the key is not written, never a default |
+| `skills` | the agent file's frontmatter; each named skill's full content is preloaded | absent means the key is not written, never a default |
 | `tools` | replaces the role's default tool list | refused for the runner and the author, whose guard modes depend on their fixed tools |
 | `role` | picks the role's default tools, `maxTurns` and body | defaults to `builder` |
-| `model` | the file's default only | **per dispatch**: `waves.js` passes each node's own model, so nodes of one type may differ |
+| `model`, `effort` | the file's default only | **per dispatch**: `agent()` takes both per call, and `waves.js` passes each node's own, so nodes of one type may differ |
 
-Two rejections keep this honest. Nodes sharing a type that disagree on `role`, `effort`,
-`tools` or `skills` are refused (`AP-AGENT-CONFLICT`); absent next to present counts as a
-disagreement. A wave design that declares those keys on a type it does not generate, such as a
-plugin's `plugin:agent` or a file someone wrote by hand, is refused
-(`AP-AGENT-KEYS-UNAPPLIED`), because the keys would reach no file.
+Two rejections keep this honest. Nodes sharing a type that disagree on `role`, `tools` or
+`skills` are refused (`AP-AGENT-CONFLICT`); absent next to present counts as a disagreement. A
+wave design that declares `tools` or `skills` on a type it does not generate, such as a plugin's
+`plugin:agent` or a file someone wrote by hand, is refused (`AP-AGENT-KEYS-UNAPPLIED`), because
+those keys would reach no file.
 
-Before this, `install_waves.py` hard-coded tools per role and dropped `effort` and `skills`:
-every one of them validated, none of them applied.
+Before this, `install_waves.py` hard-coded tools per role and dropped `effort` and `skills`, and
+`waves.js` never passed `effort`: every one of them validated, none of them applied.
+
+## Efficient designs
+
+What makes a design cheap and fast to run, and what each claim rests on. **enforced**: code
+refuses the alternative. **documented**: the Workflow runtime reference (`agent()`,
+`parallel()`, resume). **measured**: observed in the #106 prototype. **unverified**: stated
+somewhere, not measured here, and nothing below depends on it.
+
+| practice | why | evidence |
+|---|---|---|
+| Every dispatch names its `model`; the design proposes haiku for runners, sonnet for merger, smoke, reviewer and fixer, opus for builders and referees | an omitted model inherits the session's, which silently defeats per-node tiering | **enforced** (`AP-NODE-NO-MODEL`) |
+| `effort` per node, low for mechanical work | `agent()` takes `effort` per call, and `waves.js` passes each node's own | **documented**; passed by the interpreter, **enforced** by `test_waves_workflow.js` |
+| A deterministic step is a `script` node, and **authored** when it does not exist yet | one small-model dispatch that runs one guarded command, instead of a reasoning agent told to run shell commands | **enforced** (runner guard, `verify-step`) |
+| Strict `output_schema` on every node | `agent()` with a schema forces structured output and retries on a mismatch at the tool-call layer; the interpreter re-checks in code | **documented** + **enforced** (`AP-SCHEMA-NOT-STRICT`) |
+| No barrier the work does not need | a stage's rows run in one `parallel()`; each authored step goes author → verify on its own, and only the verifies are serialized, because they share the state file | **enforced** (`test_waves_workflow.js` times it) |
+| Width is not free | at most `min(16, CPUs − 2)` `agent()` calls run at once and the rest queue, so a 30-row wave runs about ten at a time; a run is capped at 1000 agents | **documented** |
+| Worktree isolation only where rows write in parallel | each isolated agent costs a worktree (≈200–500 ms plus disk); gates and script nodes run in the primary checkout, smoke in a scratch directory | **documented**; `where` **enforced** per kind |
+| Prompts carry ids and paths, never content or timestamps | a sibling's content cannot leak (#106 R8), and a relaunch sends the same prompts: within a session, `resumeFromRunId` replays the longest unchanged prefix of `agent()` calls from cache | **enforced** (`AP-INPUT-CONTENT`) + **documented** |
+| Resume through state, across sessions | a finished wave, a recorded builder and a verified step are skipped **before** anything is dispatched; `resumeFromRunId` is same-session only | **enforced** |
+| No cost cap by default | subscription limits stop the run, and resume makes that cheap (#106 R9); a declared `budget` is enforced | **enforced** when declared |
+| A fresh session after new agent types | agent types added mid-session did not resolve in `agent()` | **measured**; `handoff.py` requires it |
+| Agents that share model, effort, tools, schema and working directory reuse a cached prompt prefix | reported in the Claude Code docs research for this change, absent from the runtime reference | **unverified** |
 
 ## Rejections
 
@@ -264,8 +287,8 @@ ever compiled a design, so `--baseline` skips them.
 | `AP-GATES-UNDECLARED` | 106 | a wave design with no declared gates |
 | `AP-SWARM-INCOMPLETE` | 106 | a swarm row without acceptance steps or a referee |
 | `AP-GATE-NOT-PRIMARY`, `AP-SMOKE-NOT-SCRATCH`, `AP-SMOKE-UNDECLARED` | 106 | where a gate and a smoke node run, and what smoke runs |
-| `AP-AGENT-CONFLICT` | 107 | nodes naming one `agentType` that disagree on `role`, `effort`, `tools` or `skills` |
-| `AP-AGENT-KEYS-UNAPPLIED` | 107 | in a wave design, `effort`, `tools` or `skills` on an agent type the design does not generate |
+| `AP-AGENT-CONFLICT` | 107 | nodes naming one `agentType` that disagree on `role`, `tools` or `skills` |
+| `AP-AGENT-KEYS-UNAPPLIED` | 107 | in a wave design, `tools` or `skills` on an agent type the design does not generate |
 | `AP-AUTHOR-LANG` | 107 | an authored step whose runtime has no template and no syntax check |
 | `AP-AUTHOR-COMMAND` | 107 | an authored step whose command is not the runtime's interpreter followed by its fixed path |
 | `AP-AUTHOR-KIND` | 107 | `author` on anything but a `script` node with `writeScope: []` in a wave design |
