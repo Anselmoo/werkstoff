@@ -5,112 +5,355 @@
       "rule": "AP-REFOWNED-NO-PRODUCER",
       "fixture": "refowned-no-producer.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 77,
       "rule": "AP-REFOWNED-OUTSIDE-SCOPE",
       "fixture": "refowned-outside-scope.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 74,
       "rule": "AP-OUTPUT-OUTSIDE-SCOPE",
       "fixture": "output-outside-scope.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 74,
       "rule": "AP-OUTPUT-REFOWNED",
       "fixture": "output-refowned.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 74,
       "rule": "AP-CHECK-NOT-RAN",
       "fixture": "check-not-ran.workflow.json",
-      "args": ["--probe-checks"],
-      "expect": { "exit": 1 }
+      "args": [
+        "--probe-checks"
+      ],
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 75,
       "rule": "AP-BREAKER-INCOMPLETE",
       "fixture": "breaker-incomplete.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 75,
       "rule": "AP-BREAKER-DISABLED",
       "fixture": "breaker-disabled.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 75,
       "rule": "AP-BREAKER-RATIO",
       "fixture": "breaker-ratio.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 75,
       "rule": "AP-BREAKER-SCOPE",
       "fixture": "breaker-scope.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 75,
       "rule": "AP-BREAKER-KIND",
       "fixture": "breaker-kind.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 79,
       "rule": "AP-SIBLING-INVISIBLE",
       "fixture": "sibling-invisible.workflow.json",
-      "args": ["--strict"],
-      "expect": { "exit": 1 }
+      "args": [
+        "--strict"
+      ],
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 79,
       "rule": "AP-BASE-INVALID",
       "fixture": "base-invalid.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 79,
       "rule": "AP-BASE-BACKEND",
       "fixture": "base-backend.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 81,
       "rule": "AP-CHECK-SHAPE",
       "fixture": "check-shape.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 93,
       "rule": "AP-SUPERSEDES-INVALID",
       "fixture": "supersedes-invalid.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
     },
     {
       "issue": 93,
       "rule": "AP-ROUNDBREAKER-INVALID",
       "fixture": "roundbreaker-invalid.workflow.json",
       "args": [],
-      "expect": { "exit": 1 }
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-NODE-NO-MODEL",
+      "fixture": "node-no-model.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-NODE-NO-SCHEMA",
+      "fixture": "node-no-schema.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-NODE-NO-SCOPE",
+      "fixture": "node-no-scope.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-SCHEMA-NOT-STRICT",
+      "fixture": "schema-not-strict.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-SCRIPT-NO-RUNTIME",
+      "fixture": "script-no-runtime.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-SCRIPT-NO-COMMAND",
+      "fixture": "script-no-command.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-SCRIPT-RUNTIME-MISMATCH",
+      "fixture": "script-runtime-mismatch.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-WAVE-SCOPE-OVERLAP",
+      "fixture": "wave-scope-overlap.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-INPUT-CONTENT",
+      "fixture": "input-content.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-HUMAN-GATE-INSIDE",
+      "fixture": "human-gate-inside.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-DEPENDS-UNKNOWN",
+      "fixture": "depends-unknown.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 107,
+      "rule": "AP-DEPENDS-CYCLE",
+      "fixture": "depends-cycle.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-WAVE-NO-GATE",
+      "fixture": "wave-no-gate.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-WAVE-NO-BASE",
+      "fixture": "wave-no-base.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-WAVE-ORDER",
+      "fixture": "wave-order.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-SWARM-INCOMPLETE",
+      "fixture": "swarm-incomplete.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-GATE-NOT-PRIMARY",
+      "fixture": "gate-not-primary.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-SMOKE-NOT-SCRATCH",
+      "fixture": "smoke-not-scratch.design.json",
+      "args": [
+        "--design"
+      ],
+      "expect": {
+        "exit": 1
+      }
+    },
+    {
+      "issue": 106,
+      "rule": "AP-SOURCES-OVERLAP",
+      "fixture": "sources-overlap.workflow.json",
+      "args": [],
+      "expect": {
+        "exit": 1
+      }
     }
   ]
 }
