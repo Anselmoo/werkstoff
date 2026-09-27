@@ -56,6 +56,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import uuid
 from pathlib import Path
 
@@ -65,7 +66,7 @@ import subrun
 MIN_BYTES = 200
 EDIT_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
 VOID = {"NO_ATTEMPT", "STAGE_FAILED", "ENTER_FAILED", "PRESENT_AT_START", "NO_SHA",
-        "UNCACHEABLE", "TOO_FEW", "UNCLEAR", "WORKFLOW_UNAVAILABLE"}
+        "UNCACHEABLE", "TOO_FEW", "UNCLEAR", "WORKFLOW_UNAVAILABLE", "WARM"}
 SHA_RE = re.compile(r"\b[0-9a-f]{40}\b")
 NOT_FOUND_RE = re.compile(r"(?i)not found|unknown agent|no such agent|invalid agent|"
                           r"agent type|does not exist|isn't available|not available")
@@ -97,6 +98,12 @@ VARIANTS = {
     "P4c-late-agent-tool-wait30": ("P4", "as P4a, waiting 30s instead of 5s after the write, "
                                    "to tell a slow watcher from none", "NOT_FOUND",
                                    "ADR 0002:128, measured on 2.1.281"),
+    "P4d-late-agent-tool-next-turn": ("P4", "written in turn 1 (then 15s), dispatched by the "
+                                      "Agent tool in turn 2 of the same process", "NOT_FOUND",
+                                      "ADR 0002:128, measured on 2.1.281"),
+    "P4e-late-workflow-next-turn": ("P4", "written in turn 1 (then 15s), used by Workflow "
+                                    "agent({agentType}) in turn 2 of the same process",
+                                    "NOT_FOUND", "ADR 0002:128, measured on 2.1.281"),
     "P5a-base-agent-remote": ("P5", "Agent-tool isolation:'worktree' from a linked worktree",
                               "PRIMARY", "ADR 0002:127, measured on 2.1.281"),
     "P5b-base-workflow-remote": ("P5", "Workflow agent({isolation:'worktree'}) from a linked worktree",
@@ -124,8 +131,8 @@ def parse_events(raw: bytes) -> dict:
     captured on 2.1.283: init carries cwd/session_id/tools/agents; an Agent-tool
     reply arrives as a task_notification `summary`; a refusal is a
     system/permission_denied event (subrun's measured shape)."""
-    out = {"init": None, "tool_uses": [], "results": {}, "denials": [],
-           "tasks": [], "notes": [], "result": None}
+    out = {"init": None, "inits": [], "tool_uses": [], "results": {}, "denials": [],
+           "tasks": [], "notes": [], "result": None, "texts": []}
     for line in raw.decode("utf-8", "replace").splitlines():
         try:
             ev = json.loads(line)
@@ -135,7 +142,11 @@ def parse_events(raw: bytes) -> dict:
             continue
         kind, sub = ev.get("type"), ev.get("subtype")
         if kind == "system" and sub == "init":
-            out["init"] = ev
+            # MEASURED on 2.1.283: one init PER TURN, each with the agent registry as
+            # that turn sees it. `init` is the FIRST (the session's start); a later
+            # one is how a type that became visible mid-session shows up.
+            out["inits"].append(ev)
+            out["init"] = out["init"] or ev
         elif kind == "system" and sub == "permission_denied":
             out["denials"].append({"tool": ev.get("tool_name"), "why": ev.get(
                 "decision_reason_type"), "message": ev.get("message") or ""})
@@ -149,6 +160,8 @@ def parse_events(raw: bytes) -> dict:
             for b in ((ev.get("message") or {}).get("content")) or []:
                 if not isinstance(b, dict):
                     continue
+                if kind == "assistant" and b.get("type") == "text":
+                    out["texts"].append(b.get("text") or "")
                 if b.get("type") == "tool_use":
                     out["tool_uses"].append({"id": b.get("id"), "name": b.get("name"),
                                              "input": b.get("input") or {}})
@@ -161,6 +174,13 @@ def parse_events(raw: bytes) -> dict:
 def final_text(p: dict) -> str:
     r = p.get("result") or {}
     return r.get("result") if isinstance(r.get("result"), str) else ""
+
+
+def all_text(p: dict) -> str:
+    """Every assistant text block plus the final reply. The final reply alone is
+    the LAST block only: a code word stated in an earlier block was missed, and
+    the sweep of 2026-09-27 scored two recalls as forgotten because of it."""
+    return "\n".join([*p.get("texts", []), final_text(p)])
 
 
 def error_reason(raw: bytes, stderr: str, timed_out: bool, p: dict) -> str | None:
@@ -251,7 +271,7 @@ def classify_write(p: dict, wrote: bool) -> str:
     if any(d["tool"] in EDIT_TOOLS for d in p["denials"]) or any(
             p["results"].get(i, {}).get("is_error") for i in edit_ids):
         return "DENIED"
-    if not edit_ids and PLAN_RE.search(final_text(p)):
+    if not edit_ids and PLAN_RE.search(all_text(p)):
         return "MODEL_REFUSED"
     return "NO_ATTEMPT"
 
@@ -260,7 +280,7 @@ def classify_enter_then_write(p: dict, entered: bool, wrote: bool) -> str:
     """P1b. A plan-mode refusal of EnterWorktree itself is a finding, not void."""
     tried = [t for t in p["tool_uses"] if t["name"] == "EnterWorktree"]
     if not tried:
-        return "MODEL_REFUSED" if PLAN_RE.search(final_text(p)) else "NO_ATTEMPT"
+        return "MODEL_REFUSED" if PLAN_RE.search(all_text(p)) else "NO_ATTEMPT"
     if not entered:
         return "ENTER_DENIED" if any(d["tool"] == "EnterWorktree" for d in p["denials"]) \
             else "ENTER_FAILED"
@@ -284,21 +304,29 @@ def classify_resume(p: dict, sid: str, code: str, primary: str, worktrees: list)
         loc = "PRIMARY"
     else:
         loc = "ELSEWHERE"
-    return f"RESUMED_{loc}{'+RECALL' if code in final_text(p) else '-RECALL'}"
+    return f"RESUMED_{loc}{'+RECALL' if code in all_text(p) else '-RECALL'}"
 
 
 def classify_cache(agents: list, min_creation: int = 1024) -> str:
-    """Siblings, oldest first. REUSE when every later sibling's first request
-    reads at least the base's read plus 80% of what the base had to create --
-    i.e. it read the base's freshly written prefix, not just a warm preamble."""
-    firsts = sorted((a["requests"][0] for a in agents if a["requests"]), key=lambda r: r["ts"])
+    """ORDER-FREE, on each sibling's first request. The prefix is `size`, the
+    largest amount any sibling created or read. REUSE: exactly one sibling
+    created it and every other one read >= 80% of it. NO_REUSE: none read it.
+    PARTIAL: more than one created it (siblings raced the first write). WARM
+    (void): all read it -- an earlier run warmed it, nothing about siblings.
+    Ordering by transcript timestamp was the first design; a line is stamped
+    when a response ENDS, so it picked the wrong base (sweep 2026-09-27)."""
+    firsts = [a["requests"][0] for a in agents if a["requests"]]
     if len(firsts) < 2:
         return "TOO_FEW"
-    base = firsts[0]
-    if base["creation"] < min_creation:
+    size = max(max(r["creation"], r["read"]) for r in firsts)
+    if size < min_creation:
         return "UNCACHEABLE"
-    hits = [r["read"] >= base["read"] + 0.8 * base["creation"] for r in firsts[1:]]
-    return "REUSE" if all(hits) else "NO_REUSE" if not any(hits) else "PARTIAL"
+    readers = sum(1 for r in firsts if r["read"] >= 0.8 * size)
+    if readers == len(firsts):
+        return "WARM"
+    if readers == 0:
+        return "NO_REUSE"
+    return "REUSE" if readers == len(firsts) - 1 else "PARTIAL"
 
 
 def classify_late(*, at_start: list, staged: bool, early: str, late: str | None,
@@ -393,6 +421,66 @@ def run_claude(ctx: Ctx, prompt: str, cwd: Path, *, mode: str, settings: Path, l
     if p["init"] and not ctx.version:
         ctx.version = p["init"].get("claude_code_version")
     return {"p": p, "error": error_reason(raw, err, timed_out, p), "argv": argv}
+
+
+def run_turns(ctx: Ctx, prompts: list, cwd: Path, *, mode: str, settings: Path, label: str,
+              session_id: str) -> dict:
+    """Several TURNS in one process: each prompt is written to a stream-json stdin
+    only after the previous turn's `result` arrived. MEASURED on 2.1.283: writing
+    them all at once is ONE turn (one init, one result) -- no boundary at all."""
+    argv = [ctx.claude, "-p", "--input-format", "stream-json", "--model", ctx.model,
+            "--output-format", "stream-json", "--verbose", "--settings", str(settings),
+            "--strict-mcp-config", "--permission-mode", mode, "--max-budget-usd",
+            str(ctx.budget), "--session-id", session_id]
+    proc = subprocess.Popen(argv, cwd=cwd, env=ctx.env, stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    timer = threading.Timer(ctx.timeout * len(prompts), proc.kill)
+    timer.start()
+    chunks, sent, answered = [], 0, 0
+
+    def send(text: str) -> None:
+        msg = {"type": "user", "message": {"role": "user", "content": text}}
+        proc.stdin.write((json.dumps(msg) + "\n").encode())
+        proc.stdin.flush()
+
+    try:
+        send(prompts[0])
+        sent = 1
+        for line in proc.stdout:
+            chunks.append(line)
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(ev, dict) and ev.get("type") == "result":
+                answered += 1
+                if sent < len(prompts):
+                    send(prompts[sent])
+                    sent += 1
+                else:
+                    proc.stdin.close()
+        proc.wait()
+    except (BrokenPipeError, OSError):
+        proc.kill()
+        proc.wait()
+    finally:
+        timer.cancel()
+    timed_out = proc.returncode is not None and proc.returncode < 0
+    raw = b"".join(chunks)
+    err = proc.stderr.read().decode("utf-8", "replace") if proc.stderr else ""
+    dest = ctx.out / label
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.with_suffix(".jsonl").write_bytes(raw)
+    dest.with_suffix(".stderr").write_text(err)
+    p = parse_events(raw)
+    if p["init"] and not ctx.version:
+        ctx.version = p["init"].get("claude_code_version")
+    error = error_reason(raw, err, timed_out, p)
+    # A message written into the pipe of a process that already exited still
+    # "sends"; only a result per prompt proves each turn happened.
+    if error is None and answered < len(prompts):
+        error = f"only {answered} of {len(prompts)} turns produced a result"
+    return {"p": p, "error": error, "argv": argv}
 
 
 def git(cwd: Path, env: dict, *args: str) -> str:
@@ -526,13 +614,19 @@ def run_p3(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
 
 
 def run_p4(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
+    """Same turn (a, b, c): write, wait, dispatch -- all in one turn. Next turn
+    (d, e): write and wait 15s in turn 1, dispatch in turn 2 of the same process.
+    MEASURED before this split existed: one init per turn, each carrying the
+    registry as that turn sees it, and a later turn's init listing the late type."""
     ne, nl = "EARLY-" + uuid.uuid4().hex[:10], "LATE-" + uuid.uuid4().hex[:10]
+    next_turn = variant.endswith("next-turn")
+    wait = 30 if variant.endswith("wait30") else 15 if next_turn else 5
+    workflow = variant in ("P4b-late-workflow", "P4e-late-workflow-next-turn")
     files = {
         ".claude/agents/probe-early.md": agent_md("probe-early", f"Reply with exactly: {ne}"),
         ".probe/late.md": agent_md("probe-late", f"Reply with exactly: {nl}"),
         ".probe/stage.sh": "mkdir -p .claude/agents\ncp .probe/late.md "
-                           ".claude/agents/probe-late.md\n"
-                           f"sleep {30 if variant.endswith('wait30') else 5}\necho STAGED\n",
+                           f".claude/agents/probe-late.md\nsleep {wait}\necho STAGED\n",
         ".claude/workflows/probe-late.js": (
             "export const meta = { name: 'probe-late', description: 'early then late type' }\n"
             "const early = await agent('token?', { agentType: 'probe-early', model: 'haiku', "
@@ -549,29 +643,36 @@ def run_p4(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
     repo = scratch_repo(tmp, ctx.env, files)
     sid = str(uuid.uuid4())
     stage = "Run the Bash command `bash .probe/stage.sh` and wait for it to finish."
-    if variant == "P4b-late-workflow":
-        prompt = (f"Do these steps in order. 1) {stage} 2) Use the Workflow tool to run the saved "
-                  "workflow at scriptPath .claude/workflows/probe-late.js. 3) When it completes, "
-                  "reply DONE.")
+    if workflow:
+        use = ("Use the Workflow tool to run the saved workflow at scriptPath "
+               ".claude/workflows/probe-late.js. When it completes, reply DONE.")
         allow = ["Bash(bash .probe/stage.sh)", "Workflow"]
     else:
-        prompt = (f"Do these steps in order. 1) {stage} 2) Use the Agent tool with subagent_type "
-                  "'probe-early' and the prompt 'token?', and wait for its reply. 3) Use the "
-                  "Agent tool with subagent_type 'probe-late' and the prompt 'token?', and wait "
-                  "for its reply. 4) Reply with both replies, one per line.")
+        use = ("Use the Agent tool with subagent_type 'probe-early' and the prompt 'token?', and "
+               "wait for its reply. Then use the Agent tool with subagent_type 'probe-late' and "
+               "the prompt 'token?', and wait for its reply. Reply with both replies, one per "
+               "line.")
         allow = ["Bash(bash .probe/stage.sh)"]
-    r = run_claude(ctx, prompt, repo, mode="acceptEdits", settings=settings_file(ctx, tmp, allow),
-                   label=tag, session_id=sid)
+    settings = settings_file(ctx, tmp, allow)
+    if next_turn:
+        r = run_turns(ctx, [f"{stage} Then reply STAGED.", use], repo, mode="acceptEdits",
+                      settings=settings, label=tag, session_id=sid)
+    else:
+        r = run_claude(ctx, f"Do these steps in order. 1) {stage} 2) {use}", repo,
+                       mode="acceptEdits", settings=settings, label=tag, session_id=sid)
     if r["error"]:
         return "ERROR", {"error": r["error"]}
     p = r["p"]
     staged = (repo / ".claude" / "agents" / "probe-late.md").is_file()
     at_start = (p["init"] or {}).get("agents") or []
-    if variant == "P4b-late-workflow":
+    seen_later = [i for i, ev in enumerate(p["inits"]) if "probe-late" in (ev.get("agents") or [])]
+    if workflow:
         if "Workflow" not in ((p["init"] or {}).get("tools") or []):
             return "WORKFLOW_UNAVAILABLE", {}
         runs = read_workflow_runs(ctx.home, sid)
-        res = (runs[-1].get("result") if runs else None) or {}
+        # The FIRST run is the one the prompt asked for; a model that re-runs the
+        # workflow after a failure does so in a later turn, which is P4e's question.
+        res = (runs[0].get("result") if runs else None) or {}
         early, late = str(res.get("early") or ""), (str(res["late"]) if "late" in res else None)
         if not runs:
             late = None
@@ -583,12 +684,13 @@ def run_p4(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
                 typ = t["input"].get("subagent_type")
                 res = p["results"].get(t["id"], {})
                 note = next((n for n in p["notes"] if n.get("tool_use_id") == t["id"]), None)
-                replies[typ] = (note or {}).get("summary") or res.get("text") or ""
+                replies.setdefault(typ, (note or {}).get("summary") or res.get("text") or "")
         early, late = replies.get("probe-early", ""), replies.get("probe-late")
         evidence = {"replies": replies}
     label = classify_late(at_start=at_start, staged=staged, early=early, late=late,
                           nonce_early=ne, nonce_late=nl, name="probe-late")
-    return label, {**evidence, "agents_at_start": at_start, "staged": staged}
+    return label, {**evidence, "agents_at_start": at_start, "staged": staged,
+                   "turns": len(p["inits"]), "listed_from_turn": seen_later[:1]}
 
 
 def run_p5(ctx: Ctx, variant: str, tag: str, tmp: Path) -> tuple:
@@ -752,6 +854,14 @@ def _cases(clf: dict, tmp: Path) -> list:
          "RESUMED_PRIMARY-RECALL"),
         ("resume: a different session", res(P(_stream(_init(session_id="T"), _res())), "S", "x",
                                             "/r", [wt]), "NOT_RESUMED"),
+        ("resume: the code word in an earlier text block still counts", res(P(_stream(
+            _init(session_id="S"), {"type": "assistant", "message": {"content": [
+                {"type": "text", "text": "The code word is c0de."}]}},
+            _tu("1", "Bash", command="pwd"), _tr("1", wt + "\n"), _res("pwd shown"))),
+            "S", "c0de", "/r", [wt]), "RESUMED_WT+RECALL"),
+        ("parse: init is the FIRST of several (one per turn)",
+         P(_stream(_init(agents=["a"]), _res(), _init(agents=["a", "late"]), _res()))[
+             "init"]["agents"], ["a"]),
     ]
 
     def ag(*firsts) -> list:
@@ -766,6 +876,10 @@ def _cases(clf: dict, tmp: Path) -> list:
         ("cache: one of two", cache(ag((0, 6000), (6000, 0), (0, 6000))), "PARTIAL"),
         ("cache: base too small to cache", cache(ag((0, 0), (0, 0))), "UNCACHEABLE"),
         ("cache: one sibling", cache(ag((0, 6000))), "TOO_FEW"),
+        ("cache: the reader listed before the creator (timestamps lie)",
+         cache(ag((6000, 0), (0, 6000), (6000, 0))), "REUSE"),
+        ("cache: everyone reads -- warmed by an earlier run", cache(ag((6000, 0), (6000, 0))),
+         "WARM"),
     ]
     kw = {"at_start": ["probe-early"], "staged": True, "early": "EARLY-1", "nonce_early":
           "EARLY-1", "nonce_late": "LATE-1", "name": "probe-late"}
@@ -910,6 +1024,33 @@ def selftest() -> int:
             print(f"  {'ok  ' if ok else 'FAIL'} {name}")
             if not ok:
                 fails.append(name)
+        # The turn driver: a stub that answers each stdin message with its own
+        # init + result, and one that dies after the first turn.
+        for name, body, want_turns, want_err in [
+            ("turns: two prompts become two turns", "for line in sys.stdin:\n"
+             "    print(json.dumps({'type':'system','subtype':'init','session_id':'S',"
+             "'agents':[],'pad':'x'*300}), flush=True)\n"
+             "    print(json.dumps({'type':'result','subtype':'success','result':"
+             "json.loads(line)['message']['content'],'is_error':False}), flush=True)\n",
+             2, False),
+            ("turns: a process that dies after turn 1 is an ERROR", "line = sys.stdin.readline()\n"
+             "print(json.dumps({'type':'system','subtype':'init','session_id':'S','pad':'x'*300}))\n"
+             "print(json.dumps({'type':'result','subtype':'success','result':'a',"
+             "'is_error':False}))\n", 1, True),
+        ]:
+            tstub = tmp / f"claude-{want_turns}"
+            tstub.write_text("#!/usr/bin/env python3\nimport json,sys\n" + body)
+            tstub.chmod(0o755)
+            tctx = Ctx(argparse.Namespace(claude_bin=str(tstub), model="haiku", max_budget_usd=0.1,
+                                          timeout=30, home=str(tmp / "home")), tmp / "out")
+            tr = run_turns(tctx, ["one", "two"], tmp, mode="acceptEdits",
+                           settings=tmp / "settings.json", label=f"turns{want_turns}",
+                           session_id="S")
+            ok = len(tr["p"]["inits"]) == want_turns and (tr["error"] is not None) == want_err
+            print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+            if not ok:
+                fails.append(name)
+                print(f"       inits={len(tr['p']['inits'])} error={tr['error']!r}")
         exists = tmp / "exists"
         exists.mkdir()
         code = main(["--probe", "P1", "--out", str(exists), "--claude-bin", str(stub)])
