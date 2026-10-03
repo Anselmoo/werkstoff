@@ -4,6 +4,7 @@ All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-03
 ### Fixed
 - **hooks**: run the PreToolUse command with `python3 -B` so importing a sibling script
   (e.g. `takt_guard.py`) no longer writes `__pycache__` into the installed plugin cache
