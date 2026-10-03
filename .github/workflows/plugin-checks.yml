@@ -238,7 +238,13 @@ jobs:
         # the three PreToolUse guards this repo relies on had their suites
         # invoked by hand or not at all. guard_bash_scope.py had no suite until
         # #73; it was the one hook in the family failing H-TEST-EXISTS.
+        # lehre's three suites joined them for the same reason (#96): none ran in
+        # CI, so the lehre-pin gate's own calibration -- and the hook's -- could
+        # rot with nothing red.
         run: |
+          python3 plugins/lehre/scripts/test_lehre_core.py
+          python3 plugins/lehre/scripts/test_lehre_cli.py
+          python3 plugins/lehre/hooks/test_lehre_guard.py
           python3 plugins/befund/hooks/test_guard_target_edit.py
           python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py
           python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py

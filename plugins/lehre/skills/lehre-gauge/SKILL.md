@@ -54,6 +54,24 @@ which is the failure this plugin exists to remove reintroduced one level up.
    If `needs_judgement_pass` is empty, say so; do not dispatch the auditor with
    nothing to audit.
 
+   **Then re-confirm what the auditor found, before any of it is counted.** These
+   findings come from model judgement alone, and `violation-auditor` itself says its
+   `ARGUABLE` cases sit on a real judgement boundary — so they get the same
+   independent check step 4 gives deterministic hits. Dispatch `violation-verifier`,
+   **one location per dispatch**, for every `ARGUABLE` finding and for one
+   `CERTAIN` finding per rule. Pass the rule's text, its `asks` question, the
+   `file:line` and the quoted span — **never** the auditor's `CERTAIN`/`ARGUABLE`
+   label or reasoning; the verifier is blind to them by design. Cap it at 10
+   locations per rule and say how many were not re-checked rather than presenting
+   them as verified.
+
+   - `CONFIRMED` stays in the report.
+   - `FALSE POSITIVE` is dropped from the findings and listed under
+     `dropped by verifier` with its reason. If a rule's `CERTAIN` sample is
+     dropped, treat that rule's whole audit as suspect and say so instead of
+     listing its remaining findings.
+   - `INCONCLUSIVE` stays, labelled `unverified`. Never promote it to confirmed.
+
 6. **Group by rule, then by unit** — not by file. The actionable question is
    "which rule is this codebase failing", and a file-ordered list buries it.
 
@@ -88,6 +106,10 @@ advisory
 judgement
   no-premature-abstraction   asks: does this factory have >=2 real call sites?
       src/factories/widget.py   auditor: no — single call site, inline it
+      verified: re-confirmed by violation-verifier
+      src/factories/gadget.py   auditor: no — single call site        [unverified]
+      dropped by verifier: src/factories/shape.py — a second call site exists in
+          tests/test_shapes.py:12, so the factory is not premature
 
 UNEVALUATED — not clean, not judged
   src/adapters/vendor_c.py   would not parse (rule no-bare-except)

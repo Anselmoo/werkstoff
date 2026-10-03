@@ -10,16 +10,27 @@ Two phases, both run:
 
 ## Phase 1 — pin the rules
 
-0. **Confirm the unit is validated before pinning anything.** Check that
-   `.lehre/units/<unit-id>.done` exists, or run:
+0. **Run the gate before pinning anything.** Name the unit(s) being pinned; if
+   the user named none, gate on every declared unit:
 
    ```bash
-   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/lehre_cli.py" status --require-validated --unit <unit-id>
    ```
 
-   and confirm the unit's state is `validated`. If the marker is absent, stop —
-   do not emit the CI check — and name `lehre-validate` as the skill to run
-   first.
+   (repeat `--unit` per unit; omit it to require them all). Act on the **exit
+   code**, not on how the printed rows read — plain `status` exits `0` whatever
+   the states are, so only this flag can stop you:
+
+   - `0` — every required unit holds its done-marker; continue.
+   - `1` — **stop. Nothing is pinned.** Report the units it names and send the
+     user to `lehre-validate`. Emit the `BLOCKED` block below, not a CI check.
+   - `2` — **stop.** The ruleset is unusable or the unit does not exist; fix that
+     first. It does not mean the unit is validated.
+
+   In a brownfield ruleset there are no units, so the gate says it has no
+   done-marker to check and exits `0`. That `0` is not a validation: confirm
+   `lehre-validate` passed from its own report before continuing, and say that
+   the confirmation is yours, not the gate's.
 
 1. **Emit a CI invocation of the real gauge**, not a reimplementation:
 
@@ -93,6 +104,17 @@ phase 2 — behaviour pinned
 verified: both tests fail against the pre-conformance revision.
 ```
 
+When the gate halts, this is the whole output — no phase 1, no phase 2:
+
+```
+BLOCKED — nothing pinned
+
+  gate: FAILED -- not validated: domain, cli. Run lehre-validate first; do not pin.
+
+  Pinning now would make CI defend behaviour nobody has confirmed is right.
+  next: lehre-validate domain, then lehre-validate cli, then re-run lehre-pin.
+```
+
 ## Rules
 
 - **Never reimplement a rule in CI.** Call the gauge. Two implementations of one
@@ -102,3 +124,5 @@ verified: both tests fail against the pre-conformance revision.
   written.
 - **Never pin an unvalidated unit.** Pinning cements the current behaviour; if
   `lehre-validate` has not passed, that behaviour is not known to be right.
+  Step 0's gate is the check: write no CI config, linter change or test until it
+  has exited `0`, and never reason around an exit `1` because the unit "looks done".

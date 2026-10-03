@@ -278,6 +278,7 @@ by intent.
 
 ```bash
 python3 plugins/lehre/scripts/test_lehre_core.py     # evaluator + schema known answers
+python3 plugins/lehre/scripts/test_lehre_cli.py      # the lehre-pin gate halts, and its sabotaged copies don't
 python3 plugins/lehre/hooks/test_lehre_guard.py      # the hook denies AND allows
 python3 test/plugins/lint-frontmatter.py plugins/lehre
 python3 test/plugins/verify-hooks-deny.py plugins/lehre

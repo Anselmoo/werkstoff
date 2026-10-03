@@ -1,6 +1,34 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **`decomposition-critic` agent** (#96): the adversarial review `lehre-decompose` was
+  missing. Its units become the enforced build order — a write into a later unit is denied
+  — yet nothing checked a `depends_on`, `owns` or `must_not_know` before they were written.
+  `lehre-decompose` now dispatches it over the whole candidate set (new step 5) and stops
+  if it is unreachable, as `lehre-codify` does with `rule-critic`.
+- **`lehre_cli.py status --require-validated [--unit ID]`** (#96): exits `1` unless every
+  required unit holds its done-marker, `2` for an unknown unit or an unusable ruleset.
+  Plain `status` is unchanged and still exits `0` whatever the states. Zero declared units
+  is decided by the ruleset's required `mode`: greenfield halts (decompose never ran),
+  brownfield passes and says it has no done-marker to check. `--unit` without
+  `--require-validated` is refused rather than silently ignored.
+- `scripts/test_lehre_cli.py`: 12 known-answer cases for that gate, including two
+  sabotaged copies that must let an unvalidated unit through. It also fails against the
+  previous CLI for the right reason (`unrecognized arguments`), not because of a fixture.
+
+### Fixed
+- **`lehre-pin`** (#96): step 0 told the model to "confirm the unit's state is
+  `validated`" by reading `status`, which could not fail — so the rule *Never pin an
+  unvalidated unit* had no executable halt. Step 0 now runs the gate above and acts on
+  its exit code, and a `BLOCKED — nothing pinned` outcome exists. A brownfield `0` is
+  not a validation, and the skill now says so.
+- **`lehre-gauge`** (#96): `violation-auditor`'s `CERTAIN`/`ARGUABLE` findings flowed
+  straight into grouping with no re-check, the one finding class produced by model
+  judgement alone. Step 5 now sends every `ARGUABLE` finding and one `CERTAIN` per rule
+  to `violation-verifier` (one location per dispatch, blind to the auditor's label),
+  drops false positives, and labels what it could not re-check `unverified`.
+  `violation-verifier` documents that dispatch.
 
 ## [1.0.1] - 2026-09-26
 ### Fixed
