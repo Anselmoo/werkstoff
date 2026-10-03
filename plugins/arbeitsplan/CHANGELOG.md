@@ -3,6 +3,8 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-10-03
 ### Added
 - **`arbeitsplan-design` (#107)**: designs a workflow node by node -- what, where (primary,
   worktree, scratch), when (dependencies; human gates between runs) and how (kind, explicit
