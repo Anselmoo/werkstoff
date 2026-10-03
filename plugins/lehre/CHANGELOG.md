@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.0.2] - 2026-10-03
 ### Added
 - **`decomposition-critic` agent** (#96): the adversarial review `lehre-decompose` was
   missing. Its units become the enforced build order — a write into a later unit is denied
