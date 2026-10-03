@@ -37,7 +37,16 @@ to remove.
    surface the conflicting units and their seams to the user instead of forcing
    an order.
 
-5. **Write the units into `.lehre/ruleset.json`.** If the file does not exist,
+5. **Dispatch `decomposition-critic` over the whole candidate unit set**, with the
+   user's intent quoted verbatim. It hunts for `depends_on` edges no seam supports,
+   `owns` and `must_not_know` claims the intent does not back, invented
+   technologies, `utils`-style buckets, and overlapping `paths`. Revise or drop what
+   it refutes, and re-dispatch it over the revised set; do not argue with it on the
+   strength of your own derivation. These units are about to gate real writes, and
+   nothing after this step checks them. If the dispatch errors or is unreachable,
+   stop and report — do not write the units unreviewed.
+
+6. **Write the units into `.lehre/ruleset.json`.** If the file does not exist,
    create it with `"rules": []` — `lehre-codify` fills those in. Record the
    user's intent **verbatim** in the top-level `intent` field, and each unit's
    `owns` and `must_not_know` alongside its `paths` and `depends_on`. These are
@@ -52,7 +61,7 @@ to remove.
    If validation fails, fix the units; never leave an invalid ruleset on disk,
    because the hook fails closed and will deny every write until it parses.
 
-6. **Show the user what is now enforced**, and say plainly that writing into a
+7. **Show the user what is now enforced**, and say plainly that writing into a
    later unit will be **refused** until the earlier one passes `lehre-validate`.
    This is the moment to surface it, not the moment of the first denial.
 
@@ -62,6 +71,9 @@ to remove.
 intent (verbatim, becomes rule provenance)
   "A CLI that ingests CSV exports from three vendors, normalises them to one
    schema, and writes Parquet. Must never mutate the input files."
+
+reviewed by decomposition-critic: 5 units, 1 edge dropped (writer -> adapters: no seam
+  carries anything between them), 1 bucket unit (helpers) refused
 
 units and seams
   1  contracts   src/contracts/*   depends on: —

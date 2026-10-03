@@ -751,6 +751,16 @@
           ]
         },
         {
+          "id": "lehre:decomposition-critic",
+          "name": "decomposition-critic",
+          "description": "Use this agent to adversarially review a candidate unit decomposition before it is written to .lehre/ruleset.json — hunting for invented or missing depends_on edges, owns and must_not_know claims the stated intent does not support, invented technologies, shared-bucket units, and overlapping or uncovered ownership. Read-only; it refutes, it does not rewrite. Not for reviewing rules (rule-critic) and not for checking built code against its unit (spec-fidelity-auditor).",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep"
+          ]
+        },
+        {
           "id": "lehre:doctrine-researcher",
           "name": "doctrine-researcher",
           "description": "Use this agent when one rule-domain (naming, module boundaries and layering, error handling, dependency direction, test placement, public API surface) needs candidate rules researched from external published authority for a specific language and version. Returns candidates with citations only — never writes the ruleset, and never invents repository evidence.",
@@ -1510,6 +1520,7 @@
     "cupertino:handbook-remediator",
     "cupertino:handbook-verifier",
     "lehre:conformance-remediator",
+    "lehre:decomposition-critic",
     "lehre:doctrine-researcher",
     "lehre:pattern-investigator",
     "lehre:rule-critic",

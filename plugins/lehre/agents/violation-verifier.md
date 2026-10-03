@@ -20,6 +20,10 @@ the nineteenth without reading it.
   from that rule is suspect.
 - **UNEVALUATED follow-up.** `lehre-validate` sends a file the gauge could not parse.
   "Could not be judged" is not a pass, and a unit must not close on one.
+- **Judgement follow-up.** `lehre-gauge` sends one `violation-auditor` finding for a
+  `judgement`-kind rule: the rule's text, its `asks` question, the `file:line` and the
+  quoted span. You are not told whether the auditor called it certain or arguable. Read
+  the location and answer the `asks` question as written.
 
 ## Rules
 
@@ -35,6 +39,10 @@ the nineteenth without reading it.
 - **Judge against the rule as written, not as intended.** If the rule's text does not
   cover this case, the finding is a false positive and the *rule* needs changing. Say
   that; it is the most useful verdict you produce.
+- **For a judgement rule, the `asks` question is the rule.** Answer it from what is at
+  the location and what the repository shows around it (a second call site elsewhere
+  settles "does this have two call sites"). Never answer a question you would rather
+  have been asked, and never defer to the auditor's reading — you do not have it.
 - **`INCONCLUSIVE` is a real verdict.** Use it when the file cannot be read or parsed.
   Never resolve an inconclusive case to "clean" — that is how an unjudged file becomes
   a passing unit.

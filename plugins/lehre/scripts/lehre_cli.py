@@ -319,6 +319,10 @@ def cmd_close(args) -> int:
 
 
 def cmd_status(args) -> int:
+    if args.unit and not args.require_validated:
+        print("lehre: --unit only narrows --require-validated; given alone it would be "
+              "silently ignored", file=sys.stderr)
+        return EXIT_UNUSABLE
     root = os.path.abspath(args.root)
     data = load_or_die(args.ruleset or default_ruleset(root))
     rows = []
@@ -336,6 +340,42 @@ def cmd_status(args) -> int:
         for row in rows:
             suffix = f" (blocked by {', '.join(row['blocked_by'])})" if row["blocked_by"] else ""
             print(f"  [{'x' if row['validated'] else ' '}] {row['id']:<24} {row['state']}{suffix}")
+    if args.require_validated:
+        return require_validated(data["mode"], rows, args.unit)
+    return EXIT_OK
+
+
+def require_validated(mode: str, rows: list[dict], wanted: list[str] | None) -> int:
+    """The halt `lehre-pin` needs: exit 1 unless every required unit holds a done-marker.
+
+    Without this flag `status` always exits 0 whatever the states are, so a skill that is
+    told to "confirm the unit is validated" has nothing executable to stop on.
+
+    Zero declared units is decided by the ruleset's own required `mode`, never inferred:
+    greenfield with no units means `lehre-decompose` never ran, so nothing could have been
+    validated (exit 1); brownfield declares no units by design, so there is no done-marker
+    to read and the gate says exactly that rather than claiming a check it cannot make.
+    """
+    by_id = {row["id"]: row for row in rows}
+    unknown = sorted(set(wanted or []) - set(by_id))
+    if unknown:
+        print(f"lehre: no unit {unknown[0]!r}. Declared units: {sorted(by_id)}", file=sys.stderr)
+        return EXIT_UNUSABLE
+    required = [by_id[u] for u in wanted] if wanted else rows
+    if not required:
+        if mode == "brownfield":
+            print("gate: brownfield declares no units, so there is no done-marker to check "
+                  "-- confirm lehre-validate passed from its own report, not from this gate")
+            return EXIT_OK
+        print("gate: FAILED -- greenfield ruleset declares no units; lehre-decompose has not "
+              "run, so nothing has been validated", file=sys.stderr)
+        return EXIT_VIOLATIONS
+    pending = [row["id"] for row in required if not row["validated"]]
+    if pending:
+        print(f"gate: FAILED -- not validated: {', '.join(pending)}. Run lehre-validate "
+              f"first; do not pin.", file=sys.stderr)
+        return EXIT_VIOLATIONS
+    print(f"gate: ok -- validated: {', '.join(row['id'] for row in required)}")
     return EXIT_OK
 
 
@@ -354,6 +394,10 @@ def main(argv=None) -> int:
     close.add_argument("unit")
     status = sub.add_parser("status", help="show unit build state")
     status.add_argument("--json", action="store_true")
+    status.add_argument("--require-validated", action="store_true",
+                        help="exit 1 unless every required unit is validated (the lehre-pin gate)")
+    status.add_argument("--unit", action="append", default=None,
+                        help="with --require-validated: require this unit (repeatable; default all)")
 
     args = parser.parse_args(argv)
     if args.ruleset is None:
