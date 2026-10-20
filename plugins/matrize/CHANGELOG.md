@@ -3,6 +3,8 @@
 All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.3] - 2026-10-20
 ### Changed
 - **hook**: `hooks/matrize_guard.py` checks its interpreter: past the inert check, below
   `MIN_PYTHON = (3, 11)` it denies with the interpreter named and `MATRIZE_DISABLE_GUARD=1`,
