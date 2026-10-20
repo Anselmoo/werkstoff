@@ -64,6 +64,12 @@ should come with a case in test_guard_bash_scope.py. The skip loop
 terminates the moment argv is exhausted (`env` with nothing after it) or the
 next token is not a wrapper/assignment -- it never raises and never treats
 running out of tokens as a match.
+
+PYTHON FLOOR (#123): MIN_PYTHON, checked past the inert test. A hook runs under
+whatever python3 is on PATH; one that cannot import exits 1, which Claude Code
+treats as non-blocking, so it ALLOWS the call. This module therefore stays
+importable on old interpreters (`from __future__ import annotations`) and denies
+explicitly below the floor instead.
 """
 
 from __future__ import annotations
@@ -129,6 +135,8 @@ WRAPPER_FLAGS_WITH_VALUE: dict[str, set[str]] = {
 }
 
 RE_VAR_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = (
     "If this command is genuinely needed and unrelated to a zeugnis audit, "
@@ -264,6 +272,13 @@ def run() -> int:
     cwd = event.get("cwd") or os.getcwd()
     if not os.path.isdir(os.path.join(cwd, "analysis", "zeugnis")):
         return allow()  # inert unless this repo actually uses zeugnis
+
+    if sys.version_info < MIN_PYTHON:
+        return deny(
+            f"zeugnis needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; guard_bash_scope ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     command = (event.get("tool_input") or {}).get("command") or ""
 
