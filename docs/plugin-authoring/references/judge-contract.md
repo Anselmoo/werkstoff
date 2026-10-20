@@ -211,6 +211,8 @@ Status vocabulary:
   that would justify it or retire it. Nothing here was measured, so no row claims a
   measured reason.
 
+### Andon and arbeitsplan
+
 | plugin | judge (where) | shape today | status | resolves_if / note |
 |---|---|---|---|---|
 | andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | kept-unmeasured | a paired run, a single contract judge against the tribunal, on contested-wire cases with a known answer. `test/plugins/fixtures/contested-wire-halts` is one such case (its integrity is held by `test/plugins/verify-contested-fixture.py`), and a measurement needs a sealed set of them, not one. Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
@@ -219,21 +221,41 @@ Status vocabulary:
 | arbeitsplan | waves blind referee (`workflows/waves.js` `REFEREE_SCHEMA`, ~line 69; separate from the `run.js` referee) | blind, branch names only; the referee runs every acceptance command in its own worktree and returns `winner` (a branch or `null`) plus `perCandidate[{branch, allPassed, failing}]`. A `null` winner halts the row with "NO CANDIDATE ACCEPTED" | kept-unmeasured | maps partly: `allPassed` = pass, and a `null` winner is a fail. The schema has no per-criterion `score` or `evidence`, no abstain (a dead referee and "no branch passed" both end in the same halt) and no calibration, and the winner is a first-in-list tie-break rather than a threshold. A command decides in principle (the exit codes), so the referee only reports them. Settled by a sealed set of candidate pairs with known acceptance, measuring whether the referee ever reports a different winner than the exit codes alone |
 | arbeitsplan | adjudicator (`agents/adjudicator.md`) | judges the round, not an item; may not overturn a referee and records disagreement as doubt | kept-unmeasured | a paired measurement of rounds adjudicated against rounds decided by `scripts/rounds.py decide` alone. It does not fit per-item verdict@1 by design |
 | arbeitsplan | script phases (`workflows/run.js`, `sc.expectExit`) | the exit code must be in `expectExit`, or the run halts | conforms | the command decides |
+
+### Befund and cli-scaffold
+
+| plugin | judge (where) | shape today | status | resolves_if / note |
+|---|---|---|---|---|
 | befund | P0 two-judge panel (`skills/befund-extract-rules/SKILL.md` Step 3; `scripts/lib/p0_panel.py`) | two judges, each `confirms: bool`, and both must confirm | **collapsed** | one contract judge per P0 rule (rubric `befund-p0-rule@1`), decided through the vendored `scripts/lib/judge_contract.py`. `JC-PY-DRIFT` holds the copy byte-identical, but byte identity does not show the copy is **called**. Proof: `p0_panel.py` and Step 3 of the SKILL call `decide()`, and `validate-artifact` accepts a P0 rule only with a stored decided verdict whose `outcome` is `pass` |
 | befund | docs-drift auditor (`agents/docs-drift-auditor.md`) | per claim `confirmed`/`contradicted`/`unverifiable` | kept-unmeasured | maps: `unverifiable` = abstain. Settled by a sealed set of documented claims with known truth, measured as a single judge against the current auditor |
 | befund | stage-map wire verification and code-idiom finding verification (`skills/befund-stage-map/SKILL.md`, `skills/befund-code-idiom/SKILL.md`) | re-read and refute each candidate, skipped when `skip_verification` is set | kept-unmeasured | a sealed set of known wires and idioms, with recall and precision measured separately |
 | cli-scaffold | `scripts/verify_scaffold.py` | exit code | conforms | the command decides |
+
+### Cupertino and lehre
+
+| plugin | judge (where) | shape today | status | resolves_if / note |
+|---|---|---|---|---|
 | cupertino | handbook-check, handbook-fix and handbook-draft verifiers (`workflows/handbook-*.js`) | blind, one per item; `confirmed`/`false_positive` | kept-unmeasured | a sealed set of planted handbook violations, with a single contract judge compared against the current verifier |
 | cupertino | `isConfirmed` in `workflows/handbook-fix.js` | `!f.verification \|\| verdict === "confirmed"`, which treats an unverified finding as confirmed (fail-open) | **fixed** | an unverified finding is not confirmed. Proof: `grep -c 'isConfirmed = (f) => !f.verification' plugins/cupertino/workflows/handbook-fix.js` prints 0 |
 | lehre | ruleset `check.kind` (`references/ruleset-schema.md`) | closed vocabulary; `enforcement` is derived from it and never hand-written | conforms | command first: only `check.kind: "judgement"` reaches a model |
 | lehre | violation-verifier (`agents/violation-verifier.md`) | `CONFIRMED`/`FALSE POSITIVE`/`INCONCLUSIVE` | kept-unmeasured | maps: `INCONCLUSIVE` = abstain. Settled by a sealed set from `test/plugins/fixtures/lehre-*` with known violations |
 | lehre | rule-critic, decomposition-critic, spec-fidelity-auditor (`agents/*.md`) | adversarial review of a whole ruleset, a whole decomposition, or one unit against its intent | kept-unmeasured | per-item known-answer sets (planted forced-consistency rules, invented edges, unmet intents) |
+
+### Matrize and nacharbeit
+
+| plugin | judge (where) | shape today | status | resolves_if / note |
+|---|---|---|---|---|
 | matrize | decode-referee (`workflows/decode.js`, `agents/decode-referee.md`) | blind re-derivation per card: `reproduced`/`reproduced_different_relation`/`not_reproduced`/`cannot_reproduce`; only `reproduced` is accepted | kept-unmeasured | maps closely: `cannot_reproduce` = abstain, and anything other than `reproduced` fails. Not yet migrated: it has no 0–1 scores, no threshold and no calibration. Settled by a sealed set of cards with a known relation |
 | matrize | design-critic (`agents/design-critic.md`) | judges a **set** of cards or lexicon entries per call, giving a verdict for each | kept-unmeasured | a paired run of one call per entry against one call per set on a sealed set of copies and honest defaults. Its prompt already says "Judge each entry on its own evidence" |
 | matrize | fact-checker (`agents/fact-checker.md`) | resolves the named thing itself (package, URL, expiry) | conforms | the command or probe decides |
 | nacharbeit | finder (`workflows/review.js` Loop A) | tuned, then a sealed hold-out measured once with recall floors | conforms | **the only calibrated judge in the repo**: a tuning set and a sealed set with a floor. Its two gaps are described above |
 | nacharbeit | refuter, fix-impact lens, collision judge, completeness critic, synthesis (`workflows/review.js`); fix-verifier (`agents/fix-verifier.md`, `workflows/fix.js`) | uncalibrated. The refuter batches findings: one call per file with three or more findings, smaller files pooled into groups of about six (`groupForVerify`), so it is not one call per item | kept-unmeasured | a sealed known-answer set per role. For the refuter, a paired run of one finding per call against today's batching |
 | nacharbeit | mechanical rules (`scripts/nacharbeit_lint.py`) | sabotage-tested linter | conforms | the command decides |
+
+### Passung, takt and zeugnis
+
+| plugin | judge (where) | shape today | status | resolves_if / note |
+|---|---|---|---|---|
 | passung | scan referee (`workflows/scan.js`, Verify phase) | one referee per dimension card: is this divergence genuinely in scope | kept-unmeasured | a sealed set of dimension cards with known in- or out-of-scope answers |
 | passung | canonize referee (`workflows/canonize.js`) | per-candidate maturity and recency re-derivation | kept-unmeasured | a sealed set of candidates with known canon |
 | passung | canonize two-judge provenance panel (`workflows/canonize.js`) | two judges per derived-majority card; a split or a fidelity doubt becomes an open question | **collapsed** | one contract judge per card (rubric `passung-provenance@1`). Standing proof: `canonize.js` is on `REQUIRED_WORKFLOWS`, so `JC-REQUIRED` fails if the block is removed, and `JC-DRIFT` and `JC-SHADOW` fail if the block is edited or its names are rebound |
@@ -241,6 +263,11 @@ Status vocabulary:
 | takt | none | the PreToolUse hook decides | conforms | no model judges |
 | zeugnis | reconcile default (`scripts/{assertion_audit,contract_drift,agentic_reliability}.py`) | read `f.get("confirmed", True)`, so a verify finding missing the key counted as confirmed (fail-open) | **fixed** | proof: `grep -c 'confirmed", True' plugins/zeugnis/scripts/{assertion_audit,contract_drift,agentic_reliability}.py` prints 0 for each file |
 | zeugnis | Find→Verify (`skills/zeugnis-*`, the same agent finds and verifies) | the finder confirms its own findings | kept-unmeasured | a paired run of the same agent against a blind verifier on a sealed set of planted assertion and contract defects |
+
+### Zirkel
+
+| plugin | judge (where) | shape today | status | resolves_if / note |
+|---|---|---|---|---|
 | zirkel | explore-branches scorer (`workflows/explore-branches.js`) | integer 1–10 per axis (feasibility, impact, risk), one branch per call | kept-unmeasured | a paired run of 1–10 scores against 0–1 contract scores on known-better branch pairs |
 | zirkel | optimize-instruction (`workflows/optimize-instruction.js`: Score phase, then Critique) | the Score phase has one agent per candidate report an integer `passed` against the fixed test cases, and the highest count wins (framing order breaks ties). The Critique phase then applies a checklist to the winner alone. The same agent type generates the candidates and scores them | kept-unmeasured | a paired run of the agent's own count against a command or a separate blind judge on candidates with known pass counts, and of the critique against a held-out test case set. There is no per-case evidence, no abstain and no threshold, and a candidate that cannot be scored is silently dropped by `.filter(Boolean)` before the count check |
 | zirkel | solve.js Revise (`workflows/solve.js`) | integer 1–5 per criterion, and the same call revises the draft it scored, so it **judges its own work** | kept-unmeasured | a paired run of self-scoring against a separate contract judge on drafts with known defects |
