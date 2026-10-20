@@ -325,7 +325,12 @@ jobs:
         # command or workflow tells the model to run: -B present, still
         # permitted by the skill's own allowed-tools, and each script run
         # with --help leaves no bytecode (live-proven by befund_cli.py's lib/).
-        run: python3 test/plugins/check-hook-bytecode.py
+        # --selftest first: the audit hook that proves the probe live must match a
+        # path under a symlinked root (macOS /var -> /private/var), or this check
+        # reports INSTRUMENT-DEAD on a healthy tree while ubuntu stays green.
+        run: |
+          python3 test/plugins/check-hook-bytecode.py --selftest
+          python3 test/plugins/check-hook-bytecode.py
 
       - name: Verify every plugin is wired into the release workflows
         id: release_wiring
