@@ -3,6 +3,15 @@
 All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **hook**: `hooks/matrize_guard.py` checks its interpreter: past the inert check, below
+  `MIN_PYTHON = (3, 11)` it denies with the interpreter named and `MATRIZE_DISABLE_GUARD=1`,
+  instead of running on an unsupported Python where a crash would exit 1 -- non-blocking, so
+  allowed (#123). The guard already imported under 3.9, so this closes the gap rather than a
+  live fail-open.
+- **`hooks/test_matrize_guard.py`**: floor cases under every python3 older than 3.11 on PATH
+  (active project denied, inert allowed, a copy with the floor lowered allowed); with
+  `REQUIRE_OLD_PYTHON=1` a missing interpreter fails instead of skipping.
 
 ## [1.0.2] - 2026-09-26
 ### Fixed

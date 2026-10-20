@@ -72,6 +72,7 @@ SETTINGS = ".claude/matrize.local.md"
 SURFACES_KEY = "surfaces"
 DEFAULT_ROOT = ".design"
 ESCAPE = "MATRIZE_DISABLE_GUARD=1"
+MIN_PYTHON = (3, 11)
 CHOICE_RECORD = "system/spread-choice.json"
 
 # Tool inputs that name a path, across the Write/Edit/MultiEdit family. A MultiEdit
@@ -368,6 +369,18 @@ def main() -> int:
         root = (cwd / (cfg.get("root") or DEFAULT_ROOT)).resolve()
         if not root.is_dir():
             return allow()  # not a matrize project — say nothing at all
+
+        # The declared floor, checked rather than assumed (#123). A hook runs under
+        # whatever python3 is on PATH; one that crashes exits 1, which the runtime
+        # treats as non-blocking, so a crash ALLOWS. Past the inert check, so an
+        # unrelated repository never pays.
+        if sys.version_info < MIN_PYTHON:
+            return deny(
+                f"matrize needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+                f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on "
+                f"PATH.\n\n(matrize guard. Override with {ESCAPE}, or `enforcement: off` in "
+                f"{SETTINGS}.)"
+            )
 
         tool_input = event.get("tool_input") or {}
         raws = raw_targets(tool_input)

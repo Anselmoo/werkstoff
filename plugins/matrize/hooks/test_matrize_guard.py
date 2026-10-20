@@ -12,6 +12,7 @@ Run: python3 plugins/matrize/hooks/test_matrize_guard.py
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -55,6 +56,30 @@ def run_env(cwd: Path, tool_input: dict, env: dict) -> tuple[int, str]:
     proc = subprocess.run([sys.executable, str(GUARD)], input=event, capture_output=True,
                           text=True, env={"PATH": "/usr/bin:/bin", **env})
     return proc.returncode, (proc.stdout + proc.stderr)
+
+
+def run_with(python: str, guard: Path, cwd: Path, file_path: str) -> tuple[int, str]:
+    event = json.dumps({"cwd": str(cwd), "tool_name": "Edit", "tool_input": {"file_path": file_path}})
+    proc = subprocess.run([python, "-B", str(guard)], input=event, capture_output=True,
+                          text=True, env={"PATH": "/usr/bin:/bin"})
+    return proc.returncode, (proc.stdout + proc.stderr)
+
+
+FLOOR = (3, 11)
+
+
+def old_interpreters() -> list[str]:
+    """Every python3 older than the guard's floor reachable here (#123)."""
+    found: list[str] = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        r = subprocess.run([path, "-c", f"import sys; print(sys.version_info[:2] < {FLOOR!r})"],
+                           capture_output=True, text=True)
+        if r.stdout.strip() == "True":
+            found.append(path)
+    return found
 
 
 def design_repo(tmp: Path, *, choice: dict | None = None, root: str = ".design") -> Path:
@@ -331,6 +356,30 @@ def main() -> int:
         (off / ".claude/matrize.local.md").write_text("---\nenforcement: off\n---\n")
         code, out = run(off, ".design/references/hig/type.css")
         case("settings: enforcement off releases the deny", ALLOW, code, out)
+
+        # --- the Python floor (#123) -----------------------------------------
+        # Below MIN_PYTHON an active project is DENIED with the floor named, never
+        # crashed open (exit 1 is non-blocking, so a crash allows). The payload is an
+        # edit the guard otherwise allows, so only the version check can deny it, and
+        # the sabotaged copy (floor lowered) must then allow: proof it is that check.
+        floor = design_repo(tmp / "floor")
+        code, out = run_with(sys.executable, GUARD, floor, "notes.md")
+        case("floor: supported python, harmless edit in an active project allowed",
+             ALLOW, code, out)
+        sabotaged = tmp / "matrize_guard.py"
+        sabotaged.write_text(GUARD.read_text().replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+        olds = old_interpreters()
+        if not olds and os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+            case("floor: REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 found", ALLOW, 1, "")
+        elif not olds:
+            print("  skip floor cases below 3.11: no python3 older than 3.11 on PATH")
+        for py in olds:
+            code, out = run_with(py, GUARD, floor, "notes.md")
+            case(f"floor: {py}, active project denied", DENY, code, out, "Python >= 3.11")
+            code, out = run_with(py, GUARD, plain, "src/api.py")
+            case(f"floor: {py}, no design root still inert", ALLOW, code, out)
+            code, out = run_with(py, sabotaged, floor, "notes.md")
+            case(f"floor: {py}, sabotage (floor lowered) allows", ALLOW, code, out)
 
     width = max(len(n) for n, _, _ in CASES)
     for name, _, verdict in CASES:
