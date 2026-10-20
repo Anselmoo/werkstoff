@@ -1,0 +1,31 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "slugify('Hello, World!') returns 'hello-world'",
+      "check": "python3 -c \"from slug import slugify; assert slugify('Hello, World!')=='hello-world'\""
+    },
+    {
+      "id": "a2",
+      "criterion": "runs of spaces or punctuation collapse to one hyphen and no hyphen starts or ends the result",
+      "check": "python3 -c \"from slug import slugify; assert slugify('  a   b -- c  ')=='a-b-c'\""
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1",
+      "command": "python3 -c \"from slug import slugify; assert slugify('Hello, World!')=='hello-world'\"",
+      "exit": 0
+    },
+    {
+      "id": "a2",
+      "command": "python3 -c \"from slug import slugify; assert slugify('  a   b -- c  ')=='a-b-c'\"",
+      "exit": 1
+    }
+  ],
+  "filesTouched": [
+    "slug.py"
+  ],
+  "diff": "diff --git a/slug.py b/slug.py\n--- a/slug.py\n+++ b/slug.py\n@@ -1,2 +1,3 @@\n def slugify(text):\n-    raise NotImplementedError\n+    out = text.lower().replace(' ', '-')\n+    return ''.join(ch for ch in out if ch.isalnum() or ch == '-')\n"
+}

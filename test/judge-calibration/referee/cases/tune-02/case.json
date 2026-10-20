@@ -1,0 +1,31 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "parse_kv('a=1;b=2') returns {'a': '1', 'b': '2'}",
+      "check": "python3 -c \"from kv import parse_kv; assert parse_kv('a=1;b=2')=={'a':'1','b':'2'}\""
+    },
+    {
+      "id": "a2",
+      "criterion": "parse_kv('') returns an empty dict and surrounding whitespace is ignored",
+      "check": "python3 -c \"from kv import parse_kv; assert parse_kv('')=={} and parse_kv(' a = 1 ; ')=={'a':'1'}\""
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1",
+      "command": "python3 -c \"from kv import parse_kv; assert parse_kv('a=1;b=2')=={'a':'1','b':'2'}\"",
+      "exit": 0
+    },
+    {
+      "id": "a2",
+      "command": "python3 -c \"from kv import parse_kv; assert parse_kv('')=={} and parse_kv(' a = 1 ; ')=={'a':'1'}\"",
+      "exit": 0
+    }
+  ],
+  "filesTouched": [
+    "kv.py"
+  ],
+  "diff": "diff --git a/kv.py b/kv.py\n--- a/kv.py\n+++ b/kv.py\n@@ -1,2 +1,9 @@\n def parse_kv(text):\n-    raise NotImplementedError\n+    out = {}\n+    for part in text.split(';'):\n+        part = part.strip()\n+        if not part:\n+            continue\n+        key, _, value = part.partition('=')\n+        out[key.strip()] = value.strip()\n+    return out\n"
+}

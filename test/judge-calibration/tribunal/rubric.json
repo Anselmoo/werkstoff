@@ -1,0 +1,10 @@
+{
+  "id": "andon-tribunal@1",
+  "threshold": 1.0,
+  "criteria": [
+    {
+      "id": "contract-met",
+      "question": "Does every criterion of the wire's contract pass after the fix?"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "retry(fn, n) returns the first successful result of fn()",
+      "check": "python3 -c \"from rt import retry\nc = [0]\ndef f():\n    c[0] += 1\n    if c[0] < 3:\n        raise ValueError\n    return 1\nassert retry(f, 5) == 1 and c[0] == 3\""
+    },
+    {
+      "id": "a2",
+      "criterion": "fn is called at most n times, and the last exception is re-raised when every attempt fails",
+      "check": "python3 -c \"from rt import retry\nc = [0]\ndef g():\n    c[0] += 1\n    raise KeyError(c[0])\ntry:\n    retry(g, 3)\nexcept KeyError as e:\n    assert c[0] == 3 and e.args[0] == 3\nelse:\n    raise SystemExit(1)\""
+    },
+    {
+      "id": "a3",
+      "criterion": "retry(fn, 0) raises ValueError without calling fn",
+      "check": "python3 -c \"from rt import retry\nc = [0]\ndef h():\n    c[0] += 1\ntry:\n    retry(h, 0)\nexcept ValueError:\n    assert c[0] == 0\nelse:\n    raise SystemExit(1)\""
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1",
+      "command": "python3 -c \"from rt import retry\nc = [0]\ndef f():\n    c[0] += 1\n    if c[0] < 3:\n        raise ValueError\n    return 1\nassert retry(f, 5) == 1 and c[0] == 3\"",
+      "exit": 0
+    },
+    {
+      "id": "a2",
+      "command": "python3 -c \"from rt import retry\nc = [0]\ndef g():\n    c[0] += 1\n    raise KeyError(c[0])\ntry:\n    retry(g, 3)\nexcept KeyError as e:\n    assert c[0] == 3 and e.args[0] == 3\nelse:\n    raise SystemExit(1)\"",
+      "exit": 0
+    },
+    {
+      "id": "a3",
+      "command": "python3 -c \"from rt import retry\nc = [0]\ndef h():\n    c[0] += 1\ntry:\n    retry(h, 0)\nexcept ValueError:\n    assert c[0] == 0\nelse:\n    raise SystemExit(1)\"",
+      "exit": 0
+    }
+  ],
+  "filesTouched": [
+    "rt.py"
+  ],
+  "diff": "diff --git a/rt.py b/rt.py\n--- a/rt.py\n+++ b/rt.py\n@@ -1,2 +1,10 @@\n def retry(fn, attempts):\n-    raise NotImplementedError\n+    if attempts < 1:\n+        raise ValueError('attempts must be >= 1')\n+    last = None\n+    for _ in range(attempts):\n+        try:\n+            return fn()\n+        except Exception as exc:\n+            last = exc\n+    raise last\n"
+}

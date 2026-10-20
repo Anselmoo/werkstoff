@@ -1,0 +1,38 @@
+{
+  "file": "styles.css",
+  "lines": [
+    8,
+    23
+  ],
+  "items": [
+    {
+      "selector": ".step-0",
+      "property": "font-size",
+      "value": 1,
+      "unit": "rem"
+    },
+    {
+      "selector": ".step-1",
+      "property": "font-size",
+      "value": 1.25,
+      "unit": "rem"
+    },
+    {
+      "selector": ".step-2",
+      "property": "font-size",
+      "value": 1.563,
+      "unit": "rem"
+    },
+    {
+      "selector": ".step-3",
+      "property": "font-size",
+      "value": 1.953,
+      "unit": "rem"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 1.25
+  },
+  "reliability": "B"
+}

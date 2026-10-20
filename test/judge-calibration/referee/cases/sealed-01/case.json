@@ -1,0 +1,31 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "slugify('Hello, World!') returns 'hello-world'",
+      "check": "python3 -c \"from slug import slugify; assert slugify('Hello, World!')=='hello-world'\""
+    },
+    {
+      "id": "a2",
+      "criterion": "runs of spaces or punctuation collapse to one hyphen and no hyphen starts or ends the result",
+      "check": "python3 -c \"from slug import slugify; assert slugify('  a   b -- c  ')=='a-b-c'\""
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1",
+      "command": "python3 -c \"from slug import slugify; assert slugify('Hello, World!')=='hello-world'\"",
+      "exit": 0
+    },
+    {
+      "id": "a2",
+      "command": "python3 -c \"from slug import slugify; assert slugify('  a   b -- c  ')=='a-b-c'\"",
+      "exit": 0
+    }
+  ],
+  "filesTouched": [
+    "slug.py"
+  ],
+  "diff": "diff --git a/slug.py b/slug.py\n--- a/slug.py\n+++ b/slug.py\n@@ -1,2 +1,6 @@\n+import re\n+\n+\n def slugify(text):\n-    raise NotImplementedError\n+    text = re.sub(r'[^a-z0-9]+', '-', text.lower())\n+    return text.strip('-')\n"
+}

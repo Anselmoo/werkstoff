@@ -1,0 +1,12 @@
+/* spacing */
+*, *::before, *::after { box-sizing: border-box; }
+
+.a {
+  margin: 8px;
+}
+.b {
+  margin: 16px;
+}
+.c {
+  margin: 32px;
+}

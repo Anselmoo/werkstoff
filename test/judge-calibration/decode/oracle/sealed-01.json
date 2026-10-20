@@ -1,0 +1,38 @@
+{
+  "file": "styles.css",
+  "lines": [
+    10,
+    21
+  ],
+  "items": [
+    {
+      "selector": ".chip",
+      "property": "border-radius",
+      "value": 2,
+      "unit": "px"
+    },
+    {
+      "selector": ".btn",
+      "property": "border-radius",
+      "value": 4,
+      "unit": "px"
+    },
+    {
+      "selector": ".card",
+      "property": "border-radius",
+      "value": 8,
+      "unit": "px"
+    },
+    {
+      "selector": ".modal",
+      "property": "border-radius",
+      "value": 16,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 2
+  },
+  "reliability": "B"
+}

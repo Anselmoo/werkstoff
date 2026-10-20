@@ -1,0 +1,15 @@
+/* display */
+*, *::before, *::after { box-sizing: border-box; }
+
+.t1 {
+  font-size: 14px;
+}
+.t2 {
+  font-size: 18px;
+}
+.t3 {
+  font-size: 28px;
+}
+.caption {
+  color: #666;
+}

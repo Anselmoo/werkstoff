@@ -1,0 +1,9 @@
+{
+  "base": {
+    "notify.py": "def format_message(user, msg):\n    return msg\n\n\ndef notify(user, msg):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from notify import format_message\nassert format_message('ann', 'hi') == '[ann] hi'",
+    "c2": "import sys\nsys.exit(3)  # needs the production gateway, which no test environment reaches"
+  }
+}

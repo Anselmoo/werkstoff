@@ -1,0 +1,26 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    11
+  ],
+  "items": [
+    {
+      "selector": ".btn",
+      "property": "border-radius",
+      "value": 12,
+      "unit": "px"
+    },
+    {
+      "selector": ".card",
+      "property": "border-radius",
+      "value": 16,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 1.333
+  },
+  "reliability": "B"
+}

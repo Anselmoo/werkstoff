@@ -1,0 +1,14 @@
+/* hero */
+*, *::before, *::after { box-sizing: border-box; }
+
+.hero {
+  padding: 48px 0;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 3rem;
+  letter-spacing: -0.02em;
+}
+.hero p {
+  font-size: 1.125rem;
+}

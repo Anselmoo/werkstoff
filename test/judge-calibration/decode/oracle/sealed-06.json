@@ -1,0 +1,32 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    13
+  ],
+  "items": [
+    {
+      "selector": ".s-1",
+      "property": "font-size",
+      "value": 16,
+      "unit": "px"
+    },
+    {
+      "selector": ".s-2",
+      "property": "font-size",
+      "value": 24,
+      "unit": "px"
+    },
+    {
+      "selector": ".s-3",
+      "property": "font-size",
+      "value": 36,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 1.2
+  },
+  "reliability": "B"
+}

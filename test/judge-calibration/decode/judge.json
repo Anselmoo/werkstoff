@@ -1,0 +1,10 @@
+{
+  "judge": "decode",
+  "agentType": "matrize:decode-referee",
+  "floor": 0.8,
+  "delivery": "prompt rendered from plugins/matrize/workflows/decode.js (Referee phase), written to a file the Agent tool is told to read; return-format footer appended",
+  "instrumentFiles": [
+    "plugins/matrize/agents/decode-referee.md"
+  ],
+  "mapping": "pass = reproduced (decode.js confirmed allowlist); abstain = cannot_reproduce or no report; fail = reproduced_different_relation, not_reproduced"
+}

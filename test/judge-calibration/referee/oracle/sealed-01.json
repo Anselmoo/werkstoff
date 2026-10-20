@@ -1,0 +1,9 @@
+{
+  "base": {
+    "slug.py": "def slugify(text):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "slug.py": "import re\n\n\ndef slugify(text):\n    text = re.sub(r'[^a-z0-9]+', '-', text.lower())\n    return text.strip('-')\n"
+  },
+  "variants": []
+}

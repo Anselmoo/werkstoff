@@ -1,0 +1,32 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    13
+  ],
+  "items": [
+    {
+      "selector": ".input",
+      "property": "border-radius",
+      "value": 6,
+      "unit": "px"
+    },
+    {
+      "selector": ".menu",
+      "property": "border-radius",
+      "value": 12,
+      "unit": "px"
+    },
+    {
+      "selector": ".sheet",
+      "property": "border-radius",
+      "value": 24,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 2
+  },
+  "reliability": "B"
+}

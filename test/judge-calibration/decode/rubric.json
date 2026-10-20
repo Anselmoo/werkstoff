@@ -1,0 +1,10 @@
+{
+  "id": "matrize-decode-referee@1",
+  "threshold": 1.0,
+  "criteria": [
+    {
+      "id": "reproduces",
+      "question": "Does re-measuring the cited location reproduce the card's values and its stated relation?"
+    }
+  ]
+}

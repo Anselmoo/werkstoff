@@ -1,0 +1,18 @@
+/* rhythm */
+*, *::before, *::after { box-sizing: border-box; }
+
+.p-1 {
+  padding: 4px;
+}
+.p-2 {
+  padding: 8px;
+}
+.p-3 {
+  padding: 12px;
+}
+.p-4 {
+  padding: 18px;
+}
+.row {
+  display: flex;
+}

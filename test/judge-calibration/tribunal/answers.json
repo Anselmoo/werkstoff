@@ -1,0 +1,74 @@
+{
+  "tune-01": {
+    "split": "tune",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "transform now reads rows; export still breaks"
+  },
+  "tune-02": {
+    "split": "tune",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "one consumer left, so a single-side fix satisfies the contract"
+  },
+  "sealed-01": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "extract renames the key; both consumers break"
+  },
+  "sealed-02": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "rows becomes a dict; export works, report breaks"
+  },
+  "sealed-05": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "one consumer left; the dict shape serves it"
+  },
+  "tune-03": {
+    "split": "tune",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "a non-string name is accepted"
+  },
+  "tune-04": {
+    "split": "tune",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 can only be settled against the production gateway"
+  },
+  "sealed-03": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "a refused reservation has already lowered the count"
+  },
+  "sealed-04": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "all three criteria hold"
+  },
+  "sealed-06": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "all three hold"
+  },
+  "sealed-07": {
+    "split": "sealed",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 can only be measured against production"
+  },
+  "sealed-08": {
+    "split": "sealed",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 can only be observed against the production broker"
+  }
+}

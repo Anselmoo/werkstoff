@@ -1,0 +1,18 @@
+{
+  "base": {
+    "cache.py": "from settings import settings\n\n\ndef ttl_for(kind):\n    return 0\n",
+    "settings.py": "class settings:\n    DEFAULT_TTL = 60\n"
+  },
+  "candidate": {
+    "cache.py": "from settings import settings\n\n\ndef ttl_for(kind):\n    return settings.DEFAULT_TTL if kind == 'session' else 0\n",
+    "settings.py": "class settings:\n    DEFAULT_TTL = 60\n"
+  },
+  "variants": [
+    {
+      "settings.py": "class settings:\n    DEFAULT_TTL = 60\n"
+    },
+    {
+      "settings.py": "class settings:\n    DEFAULT_TTL = 30\n"
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    19
+  ],
+  "items": [
+    {
+      "selector": ".t1",
+      "property": "font-size",
+      "value": 14,
+      "unit": "px"
+    },
+    {
+      "selector": ".t2",
+      "property": "font-size",
+      "value": 16,
+      "unit": "px"
+    },
+    {
+      "selector": ".t3",
+      "property": "font-size",
+      "value": 18,
+      "unit": "px"
+    },
+    {
+      "selector": ".t4",
+      "property": "font-size",
+      "value": 20,
+      "unit": "px"
+    },
+    {
+      "selector": ".t5",
+      "property": "font-size",
+      "value": 24,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 1.25
+  },
+  "reliability": "B"
+}

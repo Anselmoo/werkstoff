@@ -1,0 +1,9 @@
+{
+  "base": {
+    "dd.py": "def dedupe(seq):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "dd.py": "def dedupe(seq):\n    seen = set()\n    out = []\n    for x in seq:\n        if x not in seen:\n            seen.add(x)\n            out.append(x)\n    return out\n"
+  },
+  "variants": []
+}

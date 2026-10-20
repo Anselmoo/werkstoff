@@ -1,0 +1,14 @@
+/* shapes */
+*, *::before, *::after { box-sizing: border-box; }
+
+.btn {
+  border-radius: 4px;
+  padding: 8px 16px;
+}
+.card {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+.tag {
+  border-radius: 999px;
+}

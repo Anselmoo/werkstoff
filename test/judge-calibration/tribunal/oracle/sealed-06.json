@@ -1,0 +1,10 @@
+{
+  "base": {
+    "router.py": "ROUTES = {\"/\": \"home\", \"/about\": \"about\"}\n\n\ndef route(path):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from router import route\nassert route('/about') == 'about'",
+    "c2": "from router import route\nassert route('/about/') == 'about' and route('/') == 'home'",
+    "c3": "from router import route\nassert route('/missing') is None"
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "tune-01": {
+    "split": "tune",
+    "expected": "pass",
+    "why": "clamp correct, double untouched"
+  },
+  "tune-02": {
+    "split": "tune",
+    "expected": "pass",
+    "why": "parse_kv correct incl. empty and whitespace"
+  },
+  "tune-03": {
+    "split": "tune",
+    "expected": "fail",
+    "why": "clamp arguments swapped: min/max nested the wrong way round"
+  },
+  "tune-04": {
+    "split": "tune",
+    "expected": "fail",
+    "why": "double() was changed while adding clamp: existing behaviour broken"
+  },
+  "tune-05": {
+    "split": "tune",
+    "expected": "fail",
+    "why": "pages are 1-based but the slice treats page as 0-based"
+  },
+  "tune-06": {
+    "split": "tune",
+    "expected": "abstain",
+    "why": "criterion depends on settings.MAX_ATTEMPTS, which is not in the diff (3 meets it, 10 does not)"
+  },
+  "sealed-01": {
+    "split": "sealed",
+    "expected": "pass",
+    "why": "regex slugify satisfies both criteria"
+  },
+  "sealed-02": {
+    "split": "sealed",
+    "expected": "pass",
+    "why": "seen-set dedupe, order kept, input untouched"
+  },
+  "sealed-03": {
+    "split": "sealed",
+    "expected": "pass",
+    "why": "recursive generator instead of a loop; both criteria hold"
+  },
+  "sealed-04": {
+    "split": "sealed",
+    "expected": "pass",
+    "why": "retry honours count, re-raises last error, rejects 0"
+  },
+  "sealed-05": {
+    "split": "sealed",
+    "expected": "fail",
+    "why": "spaces become hyphens one-for-one: 'a   b' -> 'a---b', edge hyphens stay"
+  },
+  "sealed-06": {
+    "split": "sealed",
+    "expected": "fail",
+    "why": "a2 unmet (sorts the caller's list in place) while the builder reports exit 0 for both"
+  },
+  "sealed-07": {
+    "split": "sealed",
+    "expected": "fail",
+    "why": "two of three met; a3 (empty input raises ValueError) is not"
+  },
+  "sealed-08": {
+    "split": "sealed",
+    "expected": "fail",
+    "why": "add() fixed only for the weakened test: the test file the criterion forbids touching was edited"
+  },
+  "sealed-09": {
+    "split": "sealed",
+    "expected": "abstain",
+    "why": "ttl_for returns settings.DEFAULT_TTL, which the diff does not show (60 meets the criterion, 30 does not)"
+  },
+  "sealed-10": {
+    "split": "sealed",
+    "expected": "abstain",
+    "why": "DOWN is computed by reverse_of(), whose behaviour the diff does not show (correct vs identity)"
+  }
+}

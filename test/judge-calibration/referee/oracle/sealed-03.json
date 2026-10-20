@@ -1,0 +1,9 @@
+{
+  "base": {
+    "fl.py": "def flatten(nested):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "fl.py": "def _walk(node):\n    for item in node:\n        if isinstance(item, list):\n            yield from _walk(item)\n        else:\n            yield item\n\n\ndef flatten(nested):\n    return list(_walk(nested))\n"
+  },
+  "variants": []
+}

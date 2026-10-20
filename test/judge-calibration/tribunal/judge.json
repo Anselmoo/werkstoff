@@ -1,0 +1,14 @@
+{
+  "judge": "tribunal",
+  "agentType": "andon:andon-adjudicator",
+  "floor": 0.8,
+  "delivery": "four roles dispatched fresh through the Agent tool per tribunal-protocol.md: defender and challenger in parallel, then verifier, then adjudicator; prompts written to files the agents are told to read; the orchestrator relays the earlier roles outputs verbatim",
+  "instrumentFiles": [
+    "plugins/andon/agents/andon-defender.md",
+    "plugins/andon/agents/andon-challenger.md",
+    "plugins/andon/agents/andon-verifier.md",
+    "plugins/andon/agents/andon-adjudicator.md",
+    "plugins/andon/skills/andon-verify/references/tribunal-protocol.md"
+  ],
+  "mapping": "pass = overall green; fail = overall red; abstain = overall unknown or no report"
+}

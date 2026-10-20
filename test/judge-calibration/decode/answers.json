@@ -1,0 +1,98 @@
+{
+  "tune-01": {
+    "split": "tune",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "four steps at 1.25"
+  },
+  "tune-02": {
+    "split": "tune",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "values reached through custom properties; both multiples of 8"
+  },
+  "tune-03": {
+    "split": "tune",
+    "expected": "fail",
+    "nativeExpected": "not_reproduced",
+    "why": "the file says 4px and 8px"
+  },
+  "tune-04": {
+    "split": "tune",
+    "expected": "fail",
+    "nativeExpected": "reproduced_different_relation",
+    "why": "values are right; they are a near-linear series, not a 1.25 scale"
+  },
+  "tune-05": {
+    "split": "tune",
+    "expected": "fail",
+    "nativeExpected": "not_reproduced",
+    "why": "18px exists, but on .lead; .body is 16px"
+  },
+  "tune-06": {
+    "split": "tune",
+    "expected": "abstain",
+    "nativeExpected": "cannot_reproduce",
+    "why": "no .hero-title rule exists to open"
+  },
+  "sealed-01": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "doubling series through custom properties"
+  },
+  "sealed-02": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "every margin a multiple of 4"
+  },
+  "sealed-03": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "perfect fourth in px"
+  },
+  "sealed-04": {
+    "split": "sealed",
+    "expected": "pass",
+    "nativeExpected": "reproduced",
+    "why": "6, 12, 24 doubling"
+  },
+  "sealed-05": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "reproduced_different_relation",
+    "why": "values match; 18 is not a multiple of 4"
+  },
+  "sealed-06": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "reproduced_different_relation",
+    "why": "values match; the ratio is 1.5"
+  },
+  "sealed-07": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "not_reproduced",
+    "why": ".t3 is 28px, not 32px"
+  },
+  "sealed-08": {
+    "split": "sealed",
+    "expected": "fail",
+    "nativeExpected": "not_reproduced",
+    "why": "24px is on .panel; .card is 16px"
+  },
+  "sealed-09": {
+    "split": "sealed",
+    "expected": "abstain",
+    "nativeExpected": "cannot_reproduce",
+    "why": "the cited file styles/app.css does not exist; the reference ships styles.css"
+  },
+  "sealed-10": {
+    "split": "sealed",
+    "expected": "abstain",
+    "nativeExpected": "cannot_reproduce",
+    "why": "the file has about 15 lines; the cited lines 48-60 are past its end"
+  }
+}

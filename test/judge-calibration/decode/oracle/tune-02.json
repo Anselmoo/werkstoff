@@ -1,0 +1,26 @@
+{
+  "file": "styles.css",
+  "lines": [
+    9,
+    16
+  ],
+  "items": [
+    {
+      "selector": ".card",
+      "property": "padding",
+      "value": 16,
+      "unit": "px"
+    },
+    {
+      "selector": ".panel",
+      "property": "padding",
+      "value": 24,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 8
+  },
+  "reliability": "B"
+}

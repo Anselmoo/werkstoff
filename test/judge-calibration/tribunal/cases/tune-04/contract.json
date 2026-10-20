@@ -1,0 +1,13 @@
+{
+  "wire": "notify.notify -> the production mail gateway",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "format_message(user, msg) returns '[user] msg'"
+    },
+    {
+      "id": "c2",
+      "text": "the production mail gateway at MAIL_GATEWAY_URL accepts a notify() message and answers 202"
+    }
+  ]
+}

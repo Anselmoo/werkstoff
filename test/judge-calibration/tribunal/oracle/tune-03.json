@@ -1,0 +1,10 @@
+{
+  "base": {
+    "cfg.py": "class ConfigError(Exception):\n    pass\n\n\ndef load_config(raw):\n    \"\"\"Applies defaults to a raw settings mapping.\"\"\"\n    return dict(raw)\n"
+  },
+  "probes": {
+    "c1": "from cfg import load_config\nr = load_config({'name': 'x'})\nassert r['retries'] == 3 and r['verbose'] is False and r['name'] == 'x'",
+    "c2": "from cfg import load_config, ConfigError\ntry:\n    load_config({})\nexcept ConfigError:\n    pass\nelse:\n    raise SystemExit(1)",
+    "c3": "from cfg import load_config, ConfigError\ntry:\n    load_config({'name': 5})\nexcept ConfigError:\n    pass\nelse:\n    raise SystemExit(1)"
+  }
+}

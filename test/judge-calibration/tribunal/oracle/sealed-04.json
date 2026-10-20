@@ -1,0 +1,10 @@
+{
+  "base": {
+    "inventory.py": "class Inventory:\n    def __init__(self, stock):\n        self.stock = dict(stock)\n        self.done = set()\n\n    def reserve(self, order_id, sku, qty):\n        raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from inventory import Inventory\ni = Inventory({'a': 5})\nassert i.reserve('o1', 'a', 2) is True and i.stock['a'] == 3",
+    "c2": "from inventory import Inventory\ni = Inventory({'a': 2})\nassert i.reserve('o1', 'a', 5) is False and i.stock == {'a': 2}",
+    "c3": "from inventory import Inventory\ni = Inventory({'a': 5})\ni.reserve('o1', 'a', 2)\nassert i.reserve('o1', 'a', 2) is True and i.stock['a'] == 3"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "base": {
+    "metrics.py": "class Counters:\n    def __init__(self):\n        self.c = {}\n\n    def incr(self, name, n=1):\n        self.c[name] = self.c.get(name, 0) + n\n\n    def render(self):\n        raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from metrics import Counters\nc = Counters()\nc.incr('b')\nc.incr('a', 2)\nassert c.render() == 'a 2\\nb 1\\n'",
+    "c2": "import sys\nsys.exit(3)  # needs the production backend"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "base": {
+    "mathx.py": "def add(a, b):\n    return a - b\n",
+    "tests/test_mathx.py": "from mathx import add\n\n\ndef test_add():\n    assert add(2, 2) == 4\n    assert add(-1, 1) == 0\n"
+  },
+  "candidate": {
+    "mathx.py": "def add(a, b):\n    return a + b if a >= 0 else a - b\n",
+    "tests/test_mathx.py": "from mathx import add\n\n\ndef test_add():\n    assert add(2, 2) == 4\n"
+  },
+  "variants": []
+}

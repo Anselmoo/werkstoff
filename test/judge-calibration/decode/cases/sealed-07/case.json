@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-07",
+  "source": "{ROOT}/styles.css, selectors .t1 .t2 .t3, property font-size, lines 4-13",
+  "measured": ".t1 font-size: 14px; .t2 font-size: 18px; .t3 font-size: 32px",
+  "relation": "modular scale: each step is 1.5 times the one before it",
+  "reliability": "B"
+}

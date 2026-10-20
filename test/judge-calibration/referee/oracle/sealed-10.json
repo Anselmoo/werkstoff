@@ -1,0 +1,18 @@
+{
+  "base": {
+    "m0007.py": "from migrations_util import reverse_of\n\nUP = 'ALTER TABLE users ADD COLUMN nick TEXT'\n",
+    "migrations_util.py": "def reverse_of(sql):\n    return 'ALTER TABLE users DROP COLUMN nick'\n"
+  },
+  "candidate": {
+    "m0007.py": "from migrations_util import reverse_of\n\nUP = 'ALTER TABLE users ADD COLUMN nick TEXT'\nDOWN = reverse_of(UP)\n",
+    "migrations_util.py": "def reverse_of(sql):\n    return 'ALTER TABLE users DROP COLUMN nick'\n"
+  },
+  "variants": [
+    {
+      "migrations_util.py": "def reverse_of(sql):\n    return 'ALTER TABLE users DROP COLUMN nick'\n"
+    },
+    {
+      "migrations_util.py": "def reverse_of(sql):\n    return sql\n"
+    }
+  ]
+}

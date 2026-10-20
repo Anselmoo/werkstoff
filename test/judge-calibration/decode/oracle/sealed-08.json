@@ -1,0 +1,26 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    13
+  ],
+  "items": [
+    {
+      "selector": ".card",
+      "property": "padding",
+      "value": 24,
+      "unit": "px"
+    },
+    {
+      "selector": ".toast",
+      "property": "padding",
+      "value": 12,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 4
+  },
+  "reliability": "B"
+}

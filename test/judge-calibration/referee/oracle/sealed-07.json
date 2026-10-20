@@ -1,0 +1,9 @@
+{
+  "base": {
+    "stats.py": "def mean(values):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "stats.py": "def mean(values):\n    values = list(values)\n    return sum(values) / len(values) if values else 0.0\n"
+  },
+  "variants": []
+}

@@ -1,0 +1,9 @@
+{
+  "base": {
+    "consumer.py": "def consume(broker, handler):\n    msg = broker.get()\n    broker.ack(msg)\n    handler(msg)\n"
+  },
+  "probes": {
+    "c1": "from consumer import consume\nclass B:\n    def __init__(self):\n        self.acked = []\n    def get(self):\n        return 'm'\n    def ack(self, m):\n        self.acked.append(m)\nb = B()\ndef boom(m):\n    raise RuntimeError\ntry:\n    consume(b, boom)\nexcept RuntimeError:\n    pass\nassert b.acked == []\nconsume(b, lambda m: None)\nassert b.acked == ['m']",
+    "c2": "import sys\nsys.exit(3)  # needs the production broker"
+  }
+}

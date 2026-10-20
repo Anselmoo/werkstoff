@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-01",
+  "source": "{ROOT}/styles.css, selectors .step-0 .step-1 .step-2 .step-3, property font-size, lines 8-23",
+  "measured": ".step-0 font-size: 1rem; .step-1 font-size: 1.25rem; .step-2 font-size: 1.563rem; .step-3 font-size: 1.953rem",
+  "relation": "modular scale: each step is 1.25 times the one before it",
+  "reliability": "B"
+}

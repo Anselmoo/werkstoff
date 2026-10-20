@@ -1,0 +1,13 @@
+{
+  "wire": "extract -> transform, with export as the only other consumer of extract's payload",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "transform.apply.apply() runs against extract's payload without raising"
+    },
+    {
+      "id": "c3",
+      "text": "export.dump.dump() still returns the row identifier, 1"
+    }
+  ]
+}

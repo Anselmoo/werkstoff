@@ -113,6 +113,26 @@ repos:
         # hook adds no new tool to the environment.
         files: ^tools/judge-contract/.*$
 
+      - id: judge-calibration-selftest
+        name: the calibration scorer decides fabricated judges and sabotaged oracles correctly
+        entry: python3 tools/judge-calibration/calibration.py
+        args: [selftest]
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(tools/judge-calibration/.*|tools/judge-contract/judge_contract\.py|test/judge-calibration/.*)$
+
+      - id: check-judge-calibration
+        name: judge calibration fixtures, keys, prompts and records agree
+        entry: python3 tools/judge-calibration/calibration.py
+        args: [check]
+        language: system
+        # The verdict is about every judge's whole set (balance, keys, records), so it
+        # is never handed a subset of files.
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(tools/judge-calibration/.*|test/judge-calibration/.*|plugins/arbeitsplan/(workflows/run\.js|agents/candidate-referee\.md)|plugins/matrize/(workflows/decode\.js|agents/decode-referee\.md)|plugins/andon/(agents/andon-(defender|challenger|verifier|adjudicator)\.md|skills/andon-verify/references/tribunal-protocol\.md))$
+
       - id: check-design-tokens
         name: docs theme and report viewers use design tokens (shrink-only baseline)
         entry: python3 scripts/ci/check_design_tokens.py

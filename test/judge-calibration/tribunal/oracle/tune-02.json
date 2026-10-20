@@ -1,0 +1,12 @@
+{
+  "base": {
+    "extract/run.py": "def extract():\n    \"\"\"Stage 1. Reads the source and returns the payload.\"\"\"\n    return {\"rows\": [{\"id\": 1, \"k\": \"alpha\"}]}\n",
+    "publish/emit.py": "from transform.apply import apply\n\n\ndef emit():\n    \"\"\"Stage 3. Publishes the normalised payload.\"\"\"\n    return {\"published\": apply()}\n",
+    "report/build.py": "from extract.run import extract\n\n\ndef build():\n    \"\"\"Builds the per-row report. Iterates the payload's rows positionally.\"\"\"\n    payload = extract()\n    return [r[\"id\"] for r in payload[\"rows\"]]\n",
+    "transform/apply.py": "from extract.run import extract\n\n\ndef apply():\n    \"\"\"Stage 2. Normalises the extracted payload for downstream stages.\"\"\"\n    payload = extract()\n    return [r for r in payload[\"records\"]]\n"
+  },
+  "probes": {
+    "c1": "from transform.apply import apply\napply()",
+    "c2": "from report.build import build\nassert build() == [1]"
+  }
+}

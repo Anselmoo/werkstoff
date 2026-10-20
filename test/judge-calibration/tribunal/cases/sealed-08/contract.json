@@ -1,0 +1,13 @@
+{
+  "wire": "broker -> consumer.consume",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "consume acknowledges a message only after the handler returned without raising"
+    },
+    {
+      "id": "c2",
+      "text": "a message in flight is redelivered after the production broker restarts"
+    }
+  ]
+}

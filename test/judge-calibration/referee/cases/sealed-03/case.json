@@ -1,0 +1,31 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "flatten(nested) returns every leaf of arbitrarily nested lists, left to right",
+      "check": "python3 -c \"from fl import flatten; assert flatten([1,[2,[3,[4]],5],[]])==[1,2,3,4,5]\""
+    },
+    {
+      "id": "a2",
+      "criterion": "flatten([]) returns []",
+      "check": "python3 -c \"from fl import flatten; assert flatten([])==[]\""
+    }
+  ],
+  "checks": [
+    {
+      "id": "a1",
+      "command": "python3 -c \"from fl import flatten; assert flatten([1,[2,[3,[4]],5],[]])==[1,2,3,4,5]\"",
+      "exit": 0
+    },
+    {
+      "id": "a2",
+      "command": "python3 -c \"from fl import flatten; assert flatten([])==[]\"",
+      "exit": 0
+    }
+  ],
+  "filesTouched": [
+    "fl.py"
+  ],
+  "diff": "diff --git a/fl.py b/fl.py\n--- a/fl.py\n+++ b/fl.py\n@@ -1,2 +1,10 @@\n+def _walk(node):\n+    for item in node:\n+        if isinstance(item, list):\n+            yield from _walk(item)\n+        else:\n+            yield item\n+\n+\n def flatten(nested):\n-    raise NotImplementedError\n+    return list(_walk(nested))\n"
+}

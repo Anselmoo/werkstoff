@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-02",
+  "source": "{ROOT}/styles.css, selectors .gap-1 .gap-2 .gap-3 .gap-4, property margin, lines 4-16",
+  "measured": ".gap-1 margin: 4px; .gap-2 margin: 8px; .gap-3 margin: 12px; .gap-4 margin: 20px",
+  "relation": "4px base grid: every value is a multiple of 4px",
+  "reliability": "B"
+}

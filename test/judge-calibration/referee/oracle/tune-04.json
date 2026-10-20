@@ -1,0 +1,9 @@
+{
+  "base": {
+    "util.py": "def double(x):\n    return x * 2\n"
+  },
+  "candidate": {
+    "util.py": "def double(x):\n    return x + x if x >= 0 else 0\n\n\ndef clamp(x, lo, hi):\n    return max(lo, min(x, hi))\n"
+  },
+  "variants": []
+}

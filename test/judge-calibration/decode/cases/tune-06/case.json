@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-06",
+  "source": "{ROOT}/styles.css, selectors .hero-title, property font-size, lines 4-9",
+  "measured": ".hero-title font-size: 3rem",
+  "relation": "8px base grid: every value is a multiple of 8px",
+  "reliability": "B"
+}
