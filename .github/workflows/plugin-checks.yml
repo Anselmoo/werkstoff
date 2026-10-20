@@ -252,8 +252,13 @@ jobs:
         # lehre's three suites joined them for the same reason (#96): none ran in
         # CI, so the lehre-pin gate's own calibration -- and the hook's -- could
         # rot with nothing red.
+        # matrize's and takt's guard suites joined last (#123): neither ran anywhere,
+        # so their deny-AND-allow cases -- and now their Python-floor cases -- could
+        # rot with nothing red.
         run: |
           python3 plugins/cupertino/hooks/test_pretooluse_guard.py
+          python3 plugins/matrize/hooks/test_matrize_guard.py
+          python3 plugins/takt/hooks/test_takt_guard.py
           python3 plugins/lehre/scripts/test_lehre_core.py
           python3 plugins/lehre/scripts/test_lehre_cli.py
           python3 plugins/lehre/hooks/test_lehre_guard.py
