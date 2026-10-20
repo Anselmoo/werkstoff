@@ -70,7 +70,16 @@ allow for that case, never a new deny.
 Escape hatch: set BEFUND_DISABLE_GUARD=1 to bypass this guard for one call,
 checked first in run() before anything else -- see ESCAPE_HATCH below,
 which every deny interpolates.
+
+Python floor (#123): MIN_PYTHON, checked once the lock is open and before
+`lib` is imported. A hook runs under whatever python3 is on PATH, and one that
+cannot import exits 1 -- non-blocking, so the edit is ALLOWED. This module
+stays importable on old interpreters (`from __future__ import annotations`)
+and denies explicitly below the floor instead of depending on what `lib`
+happens to parse.
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -84,6 +93,8 @@ import sys
 # -- caught immediately by .claude/hooks/gate-on-write.py's PostToolUse check).
 _PLUGIN_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(_PLUGIN_ROOT, "scripts"))
+
+MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = (
     "If this edit is not one befund should be gating, set idiom_fix.mode: "
@@ -161,6 +172,13 @@ def run() -> int:
     scope_path = os.path.join(cwd, "analysis", "befund", "edit_scope.json")
     if not os.path.isfile(scope_path):
         return allow()
+
+    if sys.version_info < MIN_PYTHON:
+        return deny(
+            f"befund needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     try:
         from lib.settings import load_settings  # noqa: E402

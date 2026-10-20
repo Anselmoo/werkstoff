@@ -5,6 +5,19 @@ Releases before the rename were published as `self-assess`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Changed
+- **hook**: `hooks/guard_target_edit.py` now declares the hook floor, `MIN_PYTHON = (3, 11)`,
+  and below it denies an edit under an open edit-scope lock, naming the interpreter and the
+  escape hatch -- checked once the lock is known open, before `lib` is imported, so a repo with
+  no befund run in flight stays inert on any Python. `from __future__ import annotations` keeps
+  the module importable on old interpreters. Until now the guard happened to run under 3.9 and
+  3.10, which held only as long as nothing in it or `lib` used newer syntax; a hook that cannot
+  import exits 1 and is allowed (#123).
+### Added
+- **`TestPythonFloor`** in `hooks/test_guard_target_edit.py`: under every python3 older than
+  3.11 on PATH, an open lock denies, no lock stays inert, and a copy with the floor lowered
+  allows the same payload -- the sabotage that proves the version check is what denies.
+  `REQUIRE_OLD_PYTHON=1` turns "no old interpreter found" into a failure.
 
 ## [1.0.3] - 2026-09-27
 ### Fixed
