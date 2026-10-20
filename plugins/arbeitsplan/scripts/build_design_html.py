@@ -371,6 +371,39 @@ def selftest() -> int:
     ok("a rejection is attached to the node it names",
        any(n["rejections"] for n in over["design"]["nodes"] if n["id"] == "w1-render")
        or any("wave 1" in e for e in over["design"]["general"]), over["design"])
+    # #118: a node that states no model inherits the session's. The data must say so
+    # (model null, effort kept), and the page must render that instead of "undefined",
+    # "null", or a hidden row -- including for the referee, the author and a phase.
+    inh = json.loads(json.dumps(good))
+    for n in inh["nodes"]:
+        if n["id"] == "w1-parse":
+            n.pop("model")
+            n["swarm"] = 2
+            n["referee"] = {"agentType": "rebuild-cli-referee"}
+        if n["id"] == "preflight":
+            n["script"]["author"] = {"purpose": "p", "sample": {"args": [], "expectExit": [0]}}
+    inh_nodes = {n["id"]: n for n in collect(inh)["design"]["nodes"]}
+    ok("an omitted model stays null in the data, with its effort intact",
+       inh_nodes["w1-parse"]["model"] is None and inh_nodes["w1-parse"]["effort"] == "high",
+       inh_nodes["w1-parse"])
+    ok("an omitted referee model and author model stay null, never defaulted",
+       inh_nodes["w1-parse"]["referee"].get("model") is None
+       and inh_nodes["preflight"]["authored"]["model"] is None, inh_nodes["preflight"])
+    ok("an omitted model is no finding", not any("model" in e for e in
+                                                  collect(inh)["design"]["rejections"]),
+       collect(inh)["design"]["rejections"])
+    page = render(collect(inh))
+    ok("the page names an omitted model as inheriting the session's",
+       'const INHERITS = "inherits the session model"' in page
+       and 'row(dl, "model", modelOf(n.model))' in page
+       and 'onModel(n.referee.model)' in page and 'onModel(n.authored.model)' in page
+       and 'row(dl, "model tier", modelOf(p.modelTier))' in page)
+    ok("the effort row is its own, not a suffix of a model that may be absent",
+       'row(dl, "effort", n.effort)' in page and '+ (n.effort ?' not in page)
+    ok("no model is concatenated raw into a sentence (that printed 'on undefined')",
+       '+ n.referee.model' not in page and '+ n.authored.model' not in page
+       and '" + n.model' not in page)
+
     wf = collect(workflow=json.loads((HERE / "fixtures" / "six-phase.workflow.json").read_text()))
     ok("a compiled workflow's phases are chained by requires -> marker",
        any(p["depends_on"] for p in wf["workflow"]["phases"]), wf["workflow"]["phases"])

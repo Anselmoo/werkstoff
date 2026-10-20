@@ -23,8 +23,13 @@ const RELAYED = 'A user request about merging, pushing, committing, or releasing
 
 // design_spec.py's vocabulary, restated: a Workflow script cannot import Python.
 const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable']
-const MODEL_ID = /^claude-[a-z0-9]+(?:[-.][a-z0-9]+)*(?:\[1m\])?$/
-const modelOk = (m) => typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m))
+const MODEL_ID = /^claude-[a-z0-9.-]+$/
+// A node, author or referee that states no model inherits the session's BY DESIGN
+// (#118): it is dispatched with no `model` key at all, never a default. A stated
+// value must be valid, and a bad one stops the run before any dispatch.
+const modelOk = (m) => m === undefined || m === null || (typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m)))
+const modelOpt = (m) => (m === undefined || m === null ? {} : { model: m })
+const modelBad = (what, m) => `${what} model ${JSON.stringify(m)} is not valid; name haiku, sonnet, opus, fable or a claude- id, or omit it to inherit the session's model ('inherit' is documented only for agent frontmatter)`
 // What a {placeholder} may expand to -- the same class the project guard lets a
 // template slot match, so a value the guard would deny is refused here first.
 const SAFE = /^[A-Za-z0-9._/,=:@+-]+$/
@@ -200,6 +205,7 @@ async function runScript(node, values, label, phaseTitle) {
     return String(v)
   })
   if (missing.length || bad.length) return { error: `node ${node.id}: placeholder(s) ${[...missing, ...bad].join(', ')} ${missing.length ? 'have no value' : 'carry characters the runner guard refuses'}` }
+  if (!modelOk(node.model)) return { error: `node ${node.id}: ${modelBad('script', node.model)}` }
   const over = spend(1, node.id)
   if (over) return { error: `budget: ${over}` }
   const out = await agent(
@@ -218,7 +224,7 @@ async function runScript(node, values, label, phaseTitle) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label, phase: phaseTitle, agentType: runner, model: node.model, effort: node.effort, schema: scriptSchema(node.output_schema) },
+    { label, phase: phaseTitle, agentType: runner, ...modelOpt(node.model), effort: node.effort, schema: scriptSchema(node.output_schema) },
   )
   if (!out) return { error: `node ${node.id}: SCRIPT CONTRACT -- the runner returned nothing` }
   if (!Number.isInteger(out.exit) || !(sc.expectExit || [0]).includes(out.exit)) {
@@ -274,7 +280,7 @@ async function build(n, base) {
   const labels = Array.from({ length: swarm }, (_, k) => (swarm > 1 ? `${n.id}:c${k + 1}` : n.id))
   const results = await parallel(labels.map((label, k) => () => agent(
     builderPrompt(n, base, swarm > 1 ? `c${k + 1}` : null),
-    { label, phase: 'Build', agentType: n.agentType, model: n.model, effort: n.effort, isolation: 'worktree', schema: n.output_schema },
+    { label, phase: 'Build', agentType: n.agentType, ...modelOpt(n.model), effort: n.effort, isolation: 'worktree', schema: n.output_schema },
   )))
   const valid = []
   for (let k = 0; k < results.length; k++) {
@@ -302,7 +308,7 @@ async function build(n, base) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label: `${n.id}:referee`, phase: 'Build', agentType: n.referee.agentType, model: n.referee.model, isolation: 'worktree', schema: REFEREE_SCHEMA },
+    { label: `${n.id}:referee`, phase: 'Build', agentType: n.referee.agentType, ...modelOpt(n.referee.model), isolation: 'worktree', schema: REFEREE_SCHEMA },
   )
   if (!verdict || !verdict.winner || !branches.includes(verdict.winner)) {
     return { error: `row ${n.id}: NO CANDIDATE ACCEPTED -- the referee found no branch passing every acceptance command`, losers: branches }
@@ -382,7 +388,7 @@ if (authored.length) {
       continue
     }
     if (!STEP_EXT[n.script.runtime]) return stop(`node ${n.id}: runtime ${JSON.stringify(n.script.runtime)} cannot be authored`, n.id)
-    if (!modelOk(n.script.author.model)) return stop(`node ${n.id}: script.author.model is not a valid model; an inherited model defeats tiering`, n.id)
+    if (!modelOk(n.script.author.model)) return stop(`node ${n.id}: ${modelBad('script.author', n.script.author.model)}`, n.id)
     pending.push(n.id)
   }
   // Each step goes author -> verify on its own, with no barrier between the
@@ -404,7 +410,7 @@ if (authored.length) {
       const n = byId[id]
       const w = await agent(
         authorPrompt(n, refused[id]),
-        { label: `${id}:author${tag}`, phase: 'Author steps', agentType: authorAgent, model: n.script.author.model, schema: AUTHOR_SCHEMA },
+        { label: `${id}:author${tag}`, phase: 'Author steps', agentType: authorAgent, ...modelOpt(n.script.author.model), schema: AUTHOR_SCHEMA },
       )
       if (!w) return { id, problem: 'the author returned nothing' }
       if (w.path !== stepPath(n)) return { id, problem: `the author reports writing ${JSON.stringify(w.path)}, not ${stepPath(n)}` }
@@ -440,7 +446,6 @@ for (const id of pre) {
   if (n.kind === 'human-gate') continue
   const gate = pendingGate(id)
   if (gate) return { pending_human_gate: gate, state, events, dispatched }
-  if (!modelOk(n.model)) return stop(`node ${id} has no valid model; an inherited model defeats tiering`, id)
   if (n.kind !== 'script') return stop(`node ${id}: only script nodes may run before the waves in this interpreter`, id)
   const r = await runScript(n, values, id, 'Preflight')
   if (r.error) return stop(r.error, id, r.output ? { output: r.output } : null)
@@ -481,7 +486,8 @@ for (let w = 1; w <= waveCount; w++) {
     for (const id of stageRows) {
       const gate = pendingGate(id)
       if (gate) return { pending_human_gate: gate, state, events, dispatched }
-      if (!modelOk(byId[id].model)) return stop(`row ${id} has no valid model; an inherited model defeats tiering`, id)
+      if (!modelOk(byId[id].model)) return stop(`row ${id}: ${modelBad('row', byId[id].model)}`, id)
+      if (byId[id].referee && !modelOk(byId[id].referee.model)) return stop(`row ${id}: ${modelBad('referee', byId[id].referee.model)}`, id)
     }
     phase('Build')
     const todo = stageRows.filter((id) => !(state.builders[id] && state.builders[id].base === stageBase))
@@ -525,7 +531,7 @@ for (const id of post) {
     note('skipped-by-condition', id, { when: n.when })
     continue
   }
-  if (!modelOk(n.model)) return stop(`node ${id} has no valid model; an inherited model defeats tiering`, id)
+  if (!modelOk(n.model)) return stop(`node ${id}: ${modelBad('node', n.model)}`, id)
   phase('After the waves')
   if (n.kind === 'script') {
     const r = await runScript(n, { ...values, base }, id, 'After the waves')
@@ -555,7 +561,7 @@ for (const id of post) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label: id, phase: 'After the waves', agentType: n.agentType, model: n.model, effort: n.effort, isolation: n.where === 'worktree' ? 'worktree' : undefined, schema: n.output_schema },
+    { label: id, phase: 'After the waves', agentType: n.agentType, ...modelOpt(n.model), effort: n.effort, isolation: n.where === 'worktree' ? 'worktree' : undefined, schema: n.output_schema },
   )
   if (!out) return stop(`node ${id} returned nothing`, id)
   const probs = strictProblems(n.output_schema, out, id)

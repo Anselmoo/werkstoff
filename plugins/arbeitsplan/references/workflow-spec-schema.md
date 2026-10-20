@@ -201,8 +201,8 @@ decision, and `arbeitsplan-backend` is the skill that makes it
 | `kind` | `"fanout-redundant"` \| `"fanout-blind"` \| `"fanout-readonly"` \| `"single-writer"` \| `"referee-fixture"` \| `"script"` | determines who may hold Write. `referee-fixture` (#77) is a single writer that runs before every fan-out phase and produces the spec's `refereeOwned` paths — never fanned out, always `writes: "shared"`, always `pattern: "calibrate-then-measure"`. `script` (#107) runs ONE declared command through `arbeitsplan:script-runner` — always `pattern: "script-step"`, always `writes: "none"`, never fanned out; see [script phases](#script-phases-107) |
 | `pattern` | string | an id from `references/patterns.md`. Unknown id ⇒ **reject**, never improvise |
 | `fanOut` | int | 1..16. Required for every `fanout-*` kind |
-| `modelTier` | an alias (`"haiku"` \| `"sonnet"` \| `"opus"` \| `"fable"`) or a full `claude-...` model id | **always explicit** — an omitted tier inherits the session's model and silently defeats tiering (`docs/orchestration/references/delegation.md`) |
-| `mode` | `"auto"` \| `"plan"` | **always explicit**, for the `modelTier` reason: an inherited plan mode turned four builders into UNMEASURED cells in the run that motivated this key. A `plan` phase must write `none`, and is never dispatched by the workflow backend — `run.js` halts before it and returns `pending_plan_node` |
+| `modelTier` | an alias (`"haiku"` \| `"sonnet"` \| `"opus"` \| `"fable"`) or a full `claude-...` model id | **recommended, optional** — an omitted tier inherits the session's model by design (#118) and the phase is dispatched with no `model` key; per-role tiering stays a recommendation (`docs/orchestration/references/delegation.md`). A stated tier must be valid: `inherit` or an unknown name halts before any dispatch |
+| `mode` | `"auto"` \| `"plan"` | **always explicit**, unlike `modelTier`: an inherited plan mode turned four builders into UNMEASURED cells in the run that motivated this key. A `plan` phase must write `none`, and is never dispatched by the workflow backend — `run.js` halts before it and returns `pending_plan_node` |
 | `writes` | `"none"` \| `"worktree"` \| `"shared"` | **always explicit**. `fanout-readonly` and `fanout-blind` write `none`; `fanout-redundant` writes `worktree`; a `single-writer` may declare any. The `workflow` backend refuses `shared` |
 | `agentType` | string | **required**, namespaced (`plugin:name`). Closes the single-writer hole: without it the session did that work inline, unattributed. Under `matrix` it must be **absent** — a cell is a fresh process, not a dispatch |
 | `angles` | string[] | one per candidate for `fanout-redundant`; `length` must equal `fanOut`. This is how widening is expressed |
@@ -338,7 +338,7 @@ a default silently supplied:
 - no acceptance criterion carries a runnable `check`
 - a `phases[].pattern` not present in `references/patterns.md`
 - `angles.length != fanOut` on a `fanout-redundant` phase
-- `modelTier`, `mode` or `writes` absent on any phase
+- `mode` or `writes` absent on any phase, or a `modelTier` that is stated and is not an alias or a `claude-...` id
 - `agentType` absent or un-namespaced (except under `matrix`, where it must be absent)
 - a `writes` value its `kind` does not allow, or a `plan` phase that writes
 - `requires` naming a marker no earlier phase creates (a dangling dependency)

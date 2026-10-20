@@ -119,7 +119,7 @@ const CLARIFY_SCHEMA = {
     },
   },
 }
-// Tier stated, never inherited (#87). These dispatches carry no agentType, so no agent file supplies a
+// Tier stated by choice; an omitted model would inherit the session's (#118). These dispatches carry no agentType, so no agent file supplies a
 // default: sonnet for scoping, execution and revision (delegation.md's "standard" row); opus for Decompose
 // alone, because every later stage runs on the stage graph it designs and a weak graph is the error
 // hardest to catch downstream.

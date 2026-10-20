@@ -274,6 +274,13 @@ function drawGraph(svg, items, opts) {
   };
 }
 
+// A node that states no model inherits the session's (#118). That is a fact about the
+// node, not a missing value, so the page says it instead of hiding the row or printing
+// "undefined"/"null". A human gate dispatches nothing and has no model to inherit.
+const INHERITS = "inherits the session model";
+const modelOf = (m) => (typeof m === "string" && m ? m : INHERITS);
+const onModel = (m) => (typeof m === "string" && m ? "on " + m : "inheriting the session model");
+
 function row(dl, key, value, cls) {
   if (value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length)) return;
   add(dl, "dt", key);
@@ -292,16 +299,17 @@ function showNode(n) {
   row(dl, "wave", n.wave);
   row(dl, "after", n.depends_on.length ? n.depends_on : "nothing: it can run first");
   if (n.when) row(dl, "only if", n.when.node + "." + n.when.field + " is " + JSON.stringify(n.when.equals));
-  row(dl, "model", n.model ? n.model + (n.effort ? ", effort " + n.effort : "") : null);
+  if (n.kind !== "human-gate") row(dl, "model", modelOf(n.model));
+  row(dl, "effort", n.effort);
   row(dl, "agent", n.agentType);
   row(dl, "skills", n.skills);
   row(dl, "tools", n.tools);
   row(dl, "writes", n.writeScope && n.writeScope.length ? n.writeScope : (n.kind === "human-gate" ? null : "nothing"));
   row(dl, "inputs", n.inputs);
-  if (n.swarm && n.swarm > 1) row(dl, "swarm", n.swarm + " candidates, one kept" + (n.referee ? "; blind referee " + n.referee.agentType + " on " + n.referee.model : ""));
+  if (n.swarm && n.swarm > 1) row(dl, "swarm", n.swarm + " candidates, one kept" + (n.referee ? "; blind referee " + n.referee.agentType + " " + onModel(n.referee.model) : ""));
   row(dl, "runs", n.command ? (n.runtime ? n.runtime + ": " : "") + n.command : n.steps);
   if (n.authored) {
-    row(dl, "authored", "written by the plan in " + n.runtime + ", by " + n.authored.model);
+    row(dl, "authored", "written by the plan in " + n.runtime + ", by an author " + onModel(n.authored.model));
     row(dl, "purpose", n.authored.purpose);
     if (n.authored.sample) row(dl, "sample", (n.authored.sample.args || []).join(" ") + " → exit " + JSON.stringify(n.authored.sample.expectExit));
   }
@@ -319,7 +327,7 @@ function showPhase(p) {
   const dl = add(box, "dl");
   row(dl, "kind", p.kind);
   row(dl, "pattern", p.pattern);
-  row(dl, "model tier", p.modelTier);
+  row(dl, "model tier", modelOf(p.modelTier));
   row(dl, "fan-out", p.fanOut);
   row(dl, "writes", p.writes);
   row(dl, "agent", p.agentType);

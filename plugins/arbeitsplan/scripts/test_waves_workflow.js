@@ -130,7 +130,25 @@ const SABOTAGE = [
   ['refused step accepted', "problem: v.parsed.verified ? null : (v.parsed.problem || 'verify-step refused it without a reason')", 'problem: null'],
   ['author path unchecked', 'if (w.path !== stepPath(n)) return { id, problem', 'if (false) return { id, problem'],
   ['verifies run concurrently', 'const run = queue.then(fn)', 'const run = fn()'],
-  ['effort dropped from the builder dispatch', "model: n.model, effort: n.effort, isolation: 'worktree'", "model: n.model, isolation: 'worktree'"],
+  ['effort dropped from the builder dispatch', "...modelOpt(n.model), effort: n.effort, isolation: 'worktree'", "...modelOpt(n.model), isolation: 'worktree'"],
+  // #118: an omitted model inherits, so it must dispatch with NO model key; a stated one must be valid.
+  ['omitted builder model defaulted', "agentType: n.agentType, ...modelOpt(n.model), effort: n.effort, isolation: 'worktree'", "agentType: n.agentType, model: n.model || 'haiku', effort: n.effort, isolation: 'worktree'"],
+  ['omitted runner model defaulted', 'agentType: runner, ...modelOpt(node.model)', "agentType: runner, model: node.model || 'haiku'"],
+  ['omitted referee model defaulted', '...modelOpt(n.referee.model), isolation', "model: n.referee.model || 'opus', isolation"],
+  ['omitted author model defaulted', '...modelOpt(n.script.author.model), schema', "model: n.script.author.model || 'sonnet', schema"],
+  ['null model sent as a key', "const modelOpt = (m) => (m === undefined || m === null ? {} : { model: m })", "const modelOpt = (m) => (m === undefined ? {} : { model: m })"],
+  ['invalid row model dispatched', 'if (!modelOk(byId[id].model)) return stop(', 'if (false) return stop('],
+  ['invalid referee model dispatched', 'if (byId[id].referee && !modelOk(byId[id].referee.model)) return stop(', 'if (false) return stop('],
+  ['invalid author model dispatched', 'if (!modelOk(n.script.author.model)) return stop(', 'if (false) return stop('],
+  ['invalid script model dispatched', "if (!modelOk(node.model)) return { error:", 'if (false) return { error:'],
+  ['invalid post-wave model dispatched', "  if (!modelOk(n.model)) return stop(`node ${id}: ${modelBad('node', n.model)}`, id)\n  phase('After the waves')", "  phase('After the waves')"],
+  ['bare claude- prefix accepted as a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-/'],
+  ['uppercase accepted in a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[A-Za-z0-9.-]+$/'],
+  ['empty id body accepted', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.-]*$/'],
+  ['brackets accepted in a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.\\[\\]-]+$/'],
+  ['model id end anchor dropped', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.-]+/'],
+  ['inherit accepted as a model', "const modelOk = (m) => m === undefined", "const modelOk = (m) => m === 'inherit' || m === undefined"],
+  ['fable alias refused', "const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable']", "const MODEL_ALIASES = ['haiku', 'sonnet', 'opus']"],
   ['retry without the refusal', 'refused ? `Your previous version of this file was refused: ${refused}\\nFix exactly that.` : ``', '``'],
   ['authored step run before it is verified', "if (authored.length) {", 'if (false) {'],
 ]
@@ -432,7 +450,68 @@ async function authoredSuite() {
     const plan = planOf(AUTHORED)
     delete plan.nodes.find((n) => n.id === 'api-surface').script.author.model
     const { result, calls } = await execute({ plan }, happy)
-    ok('author: an author without a model stops before any dispatch', result.aborted && /author\.model/.test(result.abortReason) && calls.length === 0, result)
+    const a = calls.find((c) => c.label.startsWith('api-surface:author'))
+    ok('author: an author without a model inherits -- dispatched with no model key (#118)',
+      !result.aborted && a && !('model' in a.opts), { aborted: result.aborted, opts: a && a.opts })
+  }
+  for (const bad of ['gpt-5', 'inherit', 5, 'claude-', 'claude-Opus', 'claude-opus[1m]', 'claude-opus\n']) {
+    const plan = planOf(AUTHORED)
+    plan.nodes.find((n) => n.id === 'api-surface').script.author.model = bad
+    const { result, calls } = await execute({ plan }, happy)
+    ok(`author: an author with model ${JSON.stringify(bad)} stops before any dispatch`,
+      result.aborted && /script\.author model/.test(result.abortReason) && calls.length === 0, result)
+  }
+
+  // #118: a node that states no model inherits the session's -- no model key, no default.
+  {
+    const plan = clone(PLAN)
+    for (const n of plan.nodes) if (n.kind !== 'human-gate') delete n.model
+    plan.nodes.find((n) => n.id === 'w1-render').model = null
+    const { result, calls } = await execute({ plan }, happy)
+    ok('inherit: a plan with no model anywhere completes', result && !result.aborted, result)
+    ok('inherit: every dispatch carries no model key at all (not undefined, not a default)',
+      calls.length > 5 && calls.every((c) => !('model' in c.opts)), calls.filter((c) => 'model' in c.opts).map((c) => [c.label, c.opts.model]))
+  }
+  {
+    const plan = clone(PLAN)
+    const row = plan.nodes.find((n) => n.id === 'w1-parse')
+    delete row.model
+    row.swarm = 2
+    row.referee = { agentType: 'rebuild-cli-referee' }
+    const { result, calls } = await execute({ plan }, (l, p, o) => (l === 'w1-parse:referee'
+      ? { winner: 'agent/w1-parse-c1', perCandidate: [] }
+      : happy(l, p, o)))
+    const ref = calls.find((c) => c.label === 'w1-parse:referee')
+    ok('inherit: a swarm row and its referee with no model dispatch without one',
+      !result.aborted && ref && calls.filter((c) => /^w1-parse:/.test(c.label) && !c.label.endsWith(':record')).every((c) => !('model' in c.opts)), result)
+  }
+  {
+    const plan = clone(PLAN)
+    plan.nodes.find((n) => n.id === 'w1-parse').model = 'claude-opus-5-5'
+    plan.nodes.find((n) => n.id === 'w1-render').model = 'fable'
+    const { result, calls } = await execute({ plan }, happy)
+    ok('model: a claude- id and the fable alias are dispatched as stated',
+      !result.aborted && calls.find((c) => c.label === 'w1-parse').opts.model === 'claude-opus-5-5'
+      && calls.find((c) => c.label === 'w1-render').opts.model === 'fable', result)
+  }
+  for (const [what, id, mutate, re] of [
+    ['a builder row', 'w1-parse', (n) => { n.model = 'gpt-5' }, /row w1-parse.*"gpt-5"/],
+    ...['claude-', 'claude-Opus', 'claude-opus[1m]', 'claude-opus\n'].flatMap((bad) => [
+      [`a builder row carrying ${JSON.stringify(bad)}`, 'w1-parse', (n) => { n.model = bad }, /row w1-parse.*is not valid/],
+      [`a swarm referee carrying ${JSON.stringify(bad)}`, 'w1-parse', (n) => { n.swarm = 2; n.referee = { model: bad, agentType: 'rebuild-cli-referee' } }, /referee model .*is not valid/],
+    ]),
+    ['a builder row with model inherit', 'w1-parse', (n) => { n.model = 'inherit' }, /omit it to inherit/],
+    ['a swarm referee', 'w1-parse', (n) => { n.swarm = 2; n.referee = { model: 'gpt-5', agentType: 'rebuild-cli-referee' } }, /referee model "gpt-5"/],
+    ['the preflight node', 'preflight', (n) => { n.model = 'gpt-5' }, /script model "gpt-5"/],
+    ['a merge-gate', 'gate-1', (n) => { n.model = 'gpt-5' }, /script model "gpt-5"/],
+    ['a post-wave node', 'smoke', (n) => { n.model = 'gpt-5' }, /node smoke.*"gpt-5"/],
+  ]) {
+    const plan = clone(PLAN)
+    mutate(plan.nodes.find((n) => n.id === id))
+    const { result, calls } = await execute({ plan }, happy)
+    const early = id === 'smoke' || id === 'gate-1' ? true : !calls.some((c) => c.label === id || c.label.startsWith(`${id}:`))
+    ok(`model: ${what} with an invalid model stops the run`,
+      result.aborted && re.test(result.abortReason) && early, { reason: result.abortReason, labels: calls.map((c) => c.label) })
   }
 }
 

@@ -326,14 +326,15 @@ if __name__ == "__main__":
       "  return { out, rawArgs }\n"
       "}\n")
     exp["S-WF-SHAPE"] = f"{P}/workflows/dead.js"
-    # Correct shape, carries the briefing -- and dispatches with no model, so it
-    # runs on whatever tier the session happens to be (#87).
-    w(root, f"{P}/workflows/nomodel.js",
-      "export const meta = { name: 'nomodel', description: 'Dispatches on an inherited tier.' }\n"
+    # Correct shape, carries the briefing -- but names a model that does not exist.
+    # (An omitted model inherits by design and is not a finding, #118; the
+    # inheriting shapes are pinned in check_workflow_models.py --selftest.)
+    w(root, f"{P}/workflows/badmodel.js",
+      "export const meta = { name: 'badmodel', description: 'Dispatches on a model that does not exist.' }\n"
       f"const RELAYED = '{RELAY}'\n"
-      "const out = await agent(`Scan.\\n\\n${RELAYED}`, { label: 'scan' })\n"
+      "const out = await agent(`Scan.\\n\\n${RELAYED}`, { label: 'scan', model: 'gpt-5' })\n"
       "return { out }\n")
-    exp["S-WF-MODEL"] = f"{P}/workflows/nomodel.js"
+    exp["S-WF-MODEL"] = f"{P}/workflows/badmodel.js"
     # Names its tier, but a relayed "merge it" reaching this agent is unbriefed (#90).
     w(root, f"{P}/workflows/norelay.js",
       "export const meta = { name: 'norelay', description: 'Dispatches without the briefing.' }\n"
@@ -565,6 +566,20 @@ if __name__ == "__main__":
       f"const RELAYED = '{RELAY}'\n"
       "const found = await agent(`Scan the area\\n\\n${RELAYED}`, { label: 'scan', model: 'haiku' })\n"
       "return { area, found }\n")
+    # Correct shape, carries the briefing, states NO model of its own: the options
+    # spread `modelFor('worker')`, which yields `{}` or `{ model }` at run time. An
+    # omitted model inherits by design (#118), so this must draw no S-WF-MODEL --
+    # "negative: clean plugin silent" is what pins that at the lint layer.
+    w(root, f"{P}/workflows/worker.js",
+      "export const meta = { name: 'worker', description: 'Dispatches on a caller-supplied or inherited model.' }\n"
+      "const ROLE_MODELS = args.models && typeof args.models === 'object' ? args.models : {}\n"
+      "const modelFor = role => {\n"
+      "  const m = [ROLE_MODELS[role], args.model].find(v => typeof v === 'string' && v)\n"
+      "  return m ? { model: m } : {}\n"
+      "}\n"
+      f"const RELAYED = '{RELAY}'\n"
+      "const out = await agent(`Work.\\n\\n${RELAYED}`, { label: 'worker', ...modelFor('worker') })\n"
+      "return { out }\n")
     w(root, f"{P}/.claude-plugin/plugin.json", json.dumps({"name": "clean", "version": "0.1.0", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "keywords": ["widgets"], "license": "MIT"}))
     w(root, ".claude-plugin/marketplace.json", json.dumps({"name": "test", "plugins": [{"name": "clean", "description": "Audits widgets and reports every failing one.", "author": {"name": "Test Author", "email": "t@example.org"}, "source": "./plugins/clean"}]}))
     w(root, f"{P}/README.md", f"""# clean

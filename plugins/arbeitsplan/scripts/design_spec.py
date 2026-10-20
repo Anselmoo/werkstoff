@@ -24,8 +24,11 @@ test_red_fixtures.py. Pure shape errors (a missing id, an unknown kind) are
 untagged and covered by this module's own selftest -- the split compile_spec.py
 already uses.
 
-Never infer a missing gating value: a node without a model does NOT default to
-the smallest one; the design skill proposes a default and the design says it.
+Per-node model tiering is a RECOMMENDATION, not a gate (#118): a node that omits
+`model` inherits the session's by design -- Claude Code documents inheritance as
+the default -- so an omitted model is never a finding. A model that IS stated
+must be valid (AP-NODE-BAD-MODEL). The design skill proposes a tier per role;
+nothing invents one on the design's behalf.
 
 STDLIB ONLY -- it must run under a bare system python3.
 """
@@ -56,12 +59,14 @@ PARSE_MODES = {"json", "exit-only"}
 
 # Models: an alias, or a full model id. The alias list is what agent()'s
 # `model` resolves today; a full `claude-...` id is how a newer model is named
-# without editing this file. Never a default -- an omitted model inherits the
-# session's, which silently defeats per-node tiering.
+# without editing this file. Per-node tiering is RECOMMENDED, not required: an
+# omitted model inherits the session's by design (#118), so omission is never a
+# finding and nothing here supplies a default. A model that is STATED must be
+# valid -- one vocabulary with workflows/*.js and scripts/ci/check_workflow_models.py.
 MODEL_ALIASES = ("haiku", "sonnet", "opus", "fable")
-MODEL_ID_RE = re.compile(r"\Aclaude-[a-z0-9]+(?:[-.][a-z0-9]+)*(?:\[1m\])?\Z")
-MODEL_RULE = (f"an alias {list(MODEL_ALIASES)} or a full model id (claude-...), and is never "
-              "omitted -- an omitted model inherits the session's")
+MODEL_ID_RE = re.compile(r"\Aclaude-[a-z0-9.-]+\Z")
+MODEL_RULE = (f"omitted (the node inherits the session's model), an alias {list(MODEL_ALIASES)} "
+              "or a full model id (claude-...)")
 
 # Toolchains. A STARTING SET, not a whitelist: a design (or a workflow spec)
 # declares any other runtime in its own `toolchains` block, which may also
@@ -142,7 +147,7 @@ PREFLIGHT_OUTPUT = {"linkedWorktree", "dirty", "head"}
 BUILDER_OUTPUT = {"branch", "baseSha"}
 
 DESIGN_RULES = {
-    "AP-NODE-NO-MODEL": 107,
+    "AP-NODE-BAD-MODEL": 107,
     "AP-NODE-NO-SCHEMA": 107,
     "AP-NODE-NO-SCOPE": 107,
     "AP-SCHEMA-NOT-STRICT": 106,
@@ -185,7 +190,18 @@ def design_hash(design: dict) -> str:
 
 
 def model_ok(model: object) -> bool:
-    return isinstance(model, str) and (model in MODEL_ALIASES or bool(MODEL_ID_RE.match(model)))
+    """True for an omitted model (None: it inherits the session's, by design) or a
+    valid alias / full id. Anything else that is present is a bad value."""
+    return model is None or (
+        isinstance(model, str) and (model in MODEL_ALIASES or bool(MODEL_ID_RE.match(model))))
+
+
+def model_hint(model: object) -> str:
+    """Why a PRESENT model is refused. 'inherit' is documented only for agent
+    frontmatter; at dispatch the way to inherit is to omit the key."""
+    if model == "inherit":
+        return "'inherit' is documented only for agent frontmatter: omit `model` to inherit"
+    return f"{model!r} is not a model"
 
 
 def strict_problems(schema: object, where: str = "output_schema") -> list:
@@ -505,8 +521,8 @@ def _validate_authored(design: dict, nodes: dict, err) -> None:
                        "syntax check the state helper runs before the sample does")
             continue
         if not model_ok(author.get("model")):
-            err(where, f"[AP-NODE-NO-MODEL] 'script.author.model' must be {MODEL_RULE}: the "
-                       "author is a dispatch of its own")
+            err(where, f"[AP-NODE-BAD-MODEL] 'script.author.model' must be {MODEL_RULE}; "
+                       f"{model_hint(author.get('model'))} (the author is a dispatch of its own)")
         if NAME_RE.match(name):
             rel = waves_state.step_path(name, nid, runtime)
             try:
@@ -641,8 +657,8 @@ def _validate_node(nid: str, n: dict, nodes: dict, table: dict, err) -> None:
         err(where, f"'where' must be one of {sorted(WHERE)} -- WHERE a node runs is never "
                    "inherited from the session's cwd")
     if not model_ok(n.get("model")):
-        err(where, f"[AP-NODE-NO-MODEL] 'model' must be {MODEL_RULE}; a script node gets the "
-                   "smallest model only when the design says so")
+        err(where, f"[AP-NODE-BAD-MODEL] 'model' must be {MODEL_RULE}; "
+                   f"{model_hint(n.get('model'))}")
     eff = n.get("effort")
     if eff is not None and eff not in EFFORTS:
         err(where, f"'effort' must be one of {sorted(EFFORTS)} when present")
@@ -859,7 +875,8 @@ def _validate_row(nid: str, n: dict, err) -> None:
                   and isinstance(ref.get("agentType"), str) and ref.get("agentType"))
         if not n.get("acceptance") or not ref_ok:
             err(f"node {nid}", "[AP-SWARM-INCOMPLETE] a swarm row (swarm > 1) needs "
-                               "'acceptance' steps and a 'referee' {model, agentType}: the blind "
+                               "'acceptance' steps and a 'referee' {agentType} (its 'model' is "
+                               "optional, but valid when stated): the blind "
                                "referee sees only branch names and those commands, and nothing "
                                "else can pick the one to keep")
 
@@ -923,9 +940,25 @@ def selftest() -> int:
         ("integration target == branch", top(integration={"branch": "trunk", "target": "trunk"}),
          ""),
         ("unknown placeholder", w(pre, script=sc("python", "python3 x.py {colour}")), ""),
-        ("no model", w(pre, model=None), "AP-NODE-NO-MODEL"),
+        ("no model -- inherits the session's by design (#118)", w(pre, model=None), None),
+        ("no model on an agent node -- inherits (#118)", w("w1-parse", model=None), None),
         ("model that is neither alias nor id", w("w1-parse", model="gpt-5"),
-         "AP-NODE-NO-MODEL"),
+         "AP-NODE-BAD-MODEL"),
+        ("model 'inherit' on a script node -- omit it instead", w(pre, model="inherit"),
+         "AP-NODE-BAD-MODEL"),
+        ("model 'inherit' on an agent node", w("w1-parse", model="inherit"),
+         "AP-NODE-BAD-MODEL"),
+        ("model that is not a string", w("w1-parse", model=5), "AP-NODE-BAD-MODEL"),
+        # The full-id grammar is claude-[a-z0-9.-]+, whole string: each case below is
+        # the one thing a loosened MODEL_ID_RE (claude-.*, a dropped \Z, [A-Za-z...]) lets by.
+        ("full model id with no body -- 'claude-'", w("w1-parse", model="claude-"),
+         "AP-NODE-BAD-MODEL"),
+        ("full model id in capitals -- 'claude-Opus'", w("w1-parse", model="claude-Opus"),
+         "AP-NODE-BAD-MODEL"),
+        ("full model id with a context suffix -- 'claude-opus[1m]'",
+         w("w1-parse", model="claude-opus[1m]"), "AP-NODE-BAD-MODEL"),
+        ("full model id with a trailing newline", w("w1-parse", model="claude-opus\n"),
+         "AP-NODE-BAD-MODEL"),
         ("full model id -- clean", w("w1-parse", model="claude-opus-5-5"), None),
         ("fable alias -- clean", w("w1-parse", model="fable"), None),
         ("no schema", w("review", output_schema=None), "AP-NODE-NO-SCHEMA"),
@@ -1003,6 +1036,12 @@ def selftest() -> int:
          "AP-WAVE-ORDER"),
         ("gates undeclared", top(gates=None), "AP-GATES-UNDECLARED"),
         ("swarm without referee", w("w1-parse", swarm=2, referee=None), "AP-SWARM-INCOMPLETE"),
+        ("swarm referee without a model -- inherits (#118)",
+         w("w1-parse", swarm=2, referee={"agentType": "rebuild-cli-referee"}), None),
+        ("swarm referee with a bad model", w("w1-parse", swarm=2, referee={
+            "agentType": "rebuild-cli-referee", "model": "gpt-5"}), "AP-SWARM-INCOMPLETE"),
+        ("swarm referee with a loose id -- 'claude-'", w("w1-parse", swarm=2, referee={
+            "agentType": "rebuild-cli-referee", "model": "claude-"}), "AP-SWARM-INCOMPLETE"),
         ("merge-gate in a worktree", w("gate-1", where="worktree"), "AP-GATE-NOT-PRIMARY"),
         ("smoke in the primary checkout", w("smoke", where="primary"), "AP-SMOKE-NOT-SCRATCH"),
         ("smoke with neither steps nor skip", w("smoke", steps=None), "AP-SMOKE-UNDECLARED"),
@@ -1067,7 +1106,12 @@ def selftest() -> int:
          "AP-AUTHOR-NO-CONTRACT"),
         ("sample argument carrying a space", au(sample={"args": ["a b"], "expectExit": [0]}),
          "AP-AUTHOR-NO-CONTRACT"),
-        ("authored step without an author model", au(model=None), "AP-NODE-NO-MODEL"),
+        ("authored step without an author model -- inherits (#118)", au(model=None), None),
+        ("authored step with an invalid author model", au(model="gpt-5"), "AP-NODE-BAD-MODEL"),
+        ("authored step with a loose author id -- 'claude-'", au(model="claude-"),
+         "AP-NODE-BAD-MODEL"),
+        ("authored step with a loose author id -- 'claude-Opus'", au(model="claude-Opus"),
+         "AP-NODE-BAD-MODEL"),
         ("author carrying a path key", au(path="x.py"), ""),
         ("author on a merge-gate", w("gate-1", auth, script={
             **_node(auth, "gate-1")["script"], "author": _node(auth, "api-surface")["script"][
@@ -1106,6 +1150,16 @@ def selftest() -> int:
             fails.append(name)
             for e in errs:
                 print(f"        {e}")
+    # The 'inherit' branch of model_hint: the case above proves the tag, this proves
+    # the message tells the author what to do instead (#118).
+    inh_errs, _w = validate_design(copy.deepcopy(next(
+        d for n_, d, _ in cases if n_.startswith("model 'inherit' on an agent node"))))
+    hint_ok = any("omit `model` to inherit" in e for e in inh_errs) and not any(
+        "omit `model` to inherit" in e for e in validate_design(copy.deepcopy(next(
+            d for n_, d, _ in cases if n_ == "model that is neither alias nor id")))[0])
+    print(f"  {'ok  ' if hint_ok else 'FAIL'} 'inherit' is told to omit the key; 'gpt-5' is not")
+    if not hint_ok:
+        fails.append("inherit hint")
     overlap = [
         ("src/a/**", "src/b/**", False), ("src/**", "src/a/x.py", True),
         ("src/a.py", "src/a.py", True), ("src/a.py", "src/b.py", False),

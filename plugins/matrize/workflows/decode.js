@@ -95,7 +95,7 @@ while (remaining.length && !aborted) {
   const batch = remaining.slice(0, size)
   remaining = remaining.slice(size)
 
-  // Tier stated, never inherited (#87): sonnet is the dispatched agent's own declared model; an omitted model would run on the session's tier instead.
+  // Tier stated by choice; an omitted model would inherit the session's (#118): sonnet is the dispatched agent's own declared model.
   const results = await parallel(
     batch.map(ref => () =>
       agent(

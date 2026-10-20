@@ -15,8 +15,13 @@ WHAT REACHES THE FRONTMATTER. A node's `tools` and `skills` are the agent
 definition's, so they are written into its file -- the validator already proved
 every node sharing that type agrees on them ([AP-AGENT-CONFLICT]). `model` and
 `effort` are different: agent() takes both per call and waves.js passes every
-node's own, so the file's values are only the defaults for a direct invocation,
-taken from the first node that names the type.
+node's own, so the file's values are only defaults for a node that states none. They
+are written ONLY when EVERY node sharing the type states the SAME value -- taken from
+one node they would reach the others as a value they never chose, which for a node
+that omits its model means running on another node's instead of inheriting (#118).
+When the nodes disagree, or any omits it, the file carries no `model:` / `effort:` and
+each node's own per-call value (or none) decides. The runner's and the author's
+`effort` is never written.
 
 The runner and the author have FIXED tools: the guard's `--runner` and
 `--author` modes are what make those roles safe, and a Bash-capable author or
@@ -89,27 +94,49 @@ def _spec(role: str, model: object, node: dict | None = None) -> dict:
             "skills": node.get("skills")}
 
 
-def agent_types(design: dict) -> dict:
+def shared_model(values: list) -> object:
+    """The one value every node of an agent type states, else None. Absent next
+    to present, or two different ones, is None: a file default taken from one
+    node would reach the others as a value they never chose (#118)."""
+    if not values or values[0] is None or any(v != values[0] for v in values):
+        return None
+    return values[0]
+
+
+def agent_types(design: dict, pick=shared_model) -> dict:
     """agentType -> {role, model, effort, tools, skills} for every agent the
-    design dispatches under its own name. First declaration wins; the
-    validator has already refused a design whose declarations disagree."""
+    design dispatches under its own name. role, tools and skills: first
+    declaration wins (the validator has already refused a design whose
+    declarations disagree). model and effort: only a value EVERY node of the
+    type states, and states identically (shared_model); otherwise none, so a node
+    that omits one is never handed another node's (#118)."""
     name = design["name"]
     nodes = [n for n in design.get("nodes") or [] if isinstance(n, dict)]
     found: dict = {}
-    scripted = [n for n in nodes if n.get("kind") in ("script", "merge-gate")]
-    if scripted:
-        found[f"{name}-runner"] = _spec("runner", scripted[0].get("model") or "haiku")
-    authored = [n for n in nodes if isinstance((n.get("script") or {}).get("author"), dict)]
-    if authored:
-        found[f"{name}-author"] = _spec("author", authored[0]["script"]["author"].get("model"))
+    stated: dict = {}  # agentType -> [(model, effort)] for each node dispatching it
+
+    def note(at: str, role: str, model: object, effort: object, src: dict | None) -> None:
+        found.setdefault(at, _spec(role, None, src))
+        stated.setdefault(at, []).append((model, effort))
+
     for n in nodes:
-        refs = [(n.get("agentType"), n.get("role") or "builder", n.get("model"), n)]
+        if n.get("kind") in ("script", "merge-gate"):
+            note(f"{name}-runner", "runner", n.get("model"), None, None)
+        author = (n.get("script") or {}).get("author")
+        if isinstance(author, dict):
+            note(f"{name}-author", "author", author.get("model"), None, None)
+    for n in nodes:
+        refs = [(n.get("agentType"), n.get("role") or "builder", n.get("model"),
+                 n.get("effort"), n)]
         ref = n.get("referee")
         if isinstance(ref, dict):
-            refs.append((ref.get("agentType"), "referee", ref.get("model"), None))
-        for at, role, model, src in refs:
-            if isinstance(at, str) and at.startswith(f"{name}-") and at not in found:
-                found[at] = _spec(role, model, src)
+            refs.append((ref.get("agentType"), "referee", ref.get("model"), None, None))
+        for at, role, model, effort, src in refs:
+            if isinstance(at, str) and at.startswith(f"{name}-"):
+                note(at, role, model, effort, src)
+    for at, spec in found.items():
+        spec["model"] = pick([m for m, _ in stated[at]])
+        spec["effort"] = pick([e for _, e in stated[at]])
     return found
 
 
@@ -131,7 +158,9 @@ def agent_file(name: str, agent_type: str, spec: dict, python: list) -> str:
         f"          command: '{py} {guard} {mode} || exit 2'" for m, mode in hooks)
     desc = (f"{role.capitalize()} for the {name} multi-wave plan (arbeitsplan-waves). "
             f"Dispatched by .claude/workflows/{name}.js only; not for direct use.")
-    lines = [f"name: {agent_type}", f"description: {desc}", f"model: {spec['model']}"]
+    lines = [f"name: {agent_type}", f"description: {desc}"]
+    if spec.get("model"):  # an omitted model stays omitted: the agent inherits (#118)
+        lines.append(f"model: {spec['model']}")
     if spec.get("effort"):
         lines.append(f"effort: {spec['effort']}")
     lines += [f"maxTurns: {ROLE[role]['maxTurns']}", f"tools: {tools}"]
@@ -151,6 +180,12 @@ def _frontmatter(text: str) -> dict:
             k, v = ln.split(": ", 1)
             out[k] = v
     return out
+
+
+def _first_wins(models: list) -> object:
+    """The defect #118's review found: the file's model from the FIRST node, so a
+    node that omits its own silently runs on another node's. Selftest-only."""
+    return models[0] if models else None
 
 
 def _render_all(design: dict, gen_types, gen_file) -> dict:
@@ -179,6 +214,7 @@ def selftest() -> int:
         if n.get("agentType") == "rebuild-cli-reviewer":
             n.update(tools=["Read", "Grep"], skills=["api-conventions", "zeugnis:contract-drift"],
                      effort="medium")
+    rich["nodes"][0].pop("model", None)  # the runner declares none: it must inherit
     rich["nodes"][0]["script"]["author"] = {"model": "sonnet", "purpose": "p",
                                             "sample": {"args": [], "expectExit": [0]}}
 
@@ -203,10 +239,76 @@ def selftest() -> int:
                     got.get("rebuild-cli-author", {}).get("tools") == ROLE["author"]["tools"]
                     and got.get("rebuild-cli-author", {}).get("model") == "sonnet"))
         out.append(("model is the first declaring node's", b.get("model") == "opus"))
+        out.append(("an omitted model is absent, never defaulted (#118)",
+                    "model" not in got.get("rebuild-cli-runner", {})))
         return out
 
     for name, ok in contract(agent_types, agent_file):
         check(name, ok)
+
+    def mixed(types) -> list:
+        """The #118 claim, one design per way nodes of ONE type can disagree on
+        model: the file carries a model only when every node states the same."""
+        def model_of(mutate, at: str):
+            d = copy.deepcopy(design)
+            mutate(d["nodes"])
+            return _render_all(d, types, agent_file).get(at, {}).get("model")
+
+        def node(nodes, nid):
+            return next(n for n in nodes if n["id"] == nid)
+
+        def omit_later(nodes):
+            node(nodes, "w1-render").pop("model")
+
+        def omit_first(nodes):
+            node(nodes, "w1-parse").pop("model")
+
+        def differ(nodes):
+            node(nodes, "w1-render")["model"] = "sonnet"
+
+        def runner_omit_later(nodes):
+            node(nodes, "gate-1").pop("model")
+
+        def author_two(nodes):
+            for nid in ("preflight", "gate-1"):
+                node(nodes, nid)["script"]["author"] = {
+                    "model": "sonnet", "purpose": "p", "sample": {"args": [], "expectExit": [0]}}
+            node(nodes, "gate-1")["script"]["author"].pop("model")
+
+        def effort_of(mutate, at: str):
+            d = copy.deepcopy(design)
+            mutate(d["nodes"])
+            return _render_all(d, types, agent_file).get(at, {}).get("effort")
+
+        def omit_effort_later(nodes):
+            node(nodes, "w1-render").pop("effort", None)
+
+        b = "rebuild-cli-builder"
+        return [
+            ("a later node omits its effort: the file carries none",
+             effort_of(omit_effort_later, b) is None),
+            ("every node states the same model: it is the file's", model_of(lambda n: None, b)
+             == "opus"),
+            ("a later node omits its model: the file carries none", model_of(omit_later, b)
+             is None),
+            ("the first node omits its model: the file carries none", model_of(omit_first, b)
+             is None),
+            ("two nodes of one type state different models: the file carries none",
+             model_of(differ, b) is None),
+            ("a later script node omits its model: the runner carries none",
+             model_of(runner_omit_later, "rebuild-cli-runner") is None),
+            ("a later authored step omits the author model: the author carries none",
+             model_of(author_two, "rebuild-cli-author") is None),
+        ]
+
+    for name, ok in mixed(agent_types):
+        check(name, ok)
+    first = [n for n, ok in mixed(lambda d: agent_types(d, _first_wins)) if not ok]
+    # The two cases first-wins also satisfies (agreement; the FIRST node omitting) are
+    # not the ones that can see it -- the other five must each go red on their own.
+    check("sabotage: first-node-wins turns the five later-node cases red",
+          len(first) == 5 and not any("same model" in n or "first node omits" in n for n in first),
+          first)
     author = agent_file("rebuild-cli", "rebuild-cli-author",
                         _spec("author", "sonnet", {"tools": ["Bash"]}), ["python3"])
     check("a design cannot hand the author Bash", "\ntools: Read, Write, Edit, Glob, Grep\n"
@@ -221,9 +323,14 @@ def selftest() -> int:
             return agent_file(design_, at, {**spec, key: None}, py)
         return gen
 
-    for key in ("effort", "tools", "skills"):
+    for key in ("model", "effort", "tools", "skills"):
         broken = [n for n, ok in contract(agent_types, drop(key)) if not ok]
         check(f"sabotage: dropping {key!r} turns the contract red", bool(broken), broken)
+    def defaulted(design_, at, spec, py):
+        return agent_file(design_, at, {**spec, "model": spec["model"] or "haiku"}, py)
+
+    injected = [n for n, ok in contract(agent_types, defaulted) if not ok]
+    check("sabotage: defaulting an omitted model turns the contract red", bool(injected), injected)
     no_author = [n for n, ok in contract(
         lambda d: {k: v for k, v in agent_types(d).items() if not k.endswith("-author")},
         agent_file) if not ok]

@@ -89,9 +89,10 @@ docs and rollout notes — or do not split at all.
 Two mechanical rules govern the dispatch itself. From
 `superpowers:dispatching-parallel-agents`: "Multiple dispatch calls in one response =
 parallel execution. One per response = sequential." And from
-`superpowers:subagent-driven-development`: "Always specify the model explicitly when
-dispatching a subagent. An omitted model inherits your session's model — often the most
-capable and most expensive — which silently defeats this section." Mechanical fan-out
+`superpowers:subagent-driven-development`, as a recommendation: "Always specify the model
+explicitly when dispatching a subagent. An omitted model inherits your session's model —
+often the most capable and most expensive — which silently defeats this section."
+Inheritance is the documented default, so nothing here enforces it. Mechanical fan-out
 takes the cheap tier, integration and judgment the standard tier, architecture and the
 final whole-branch review the most capable tier, and any fix round that has already failed
 three times moves at least one tier up.

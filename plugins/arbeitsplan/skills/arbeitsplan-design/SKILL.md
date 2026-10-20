@@ -54,7 +54,7 @@ and only after the user approves.
    | what | `goal`, `output_schema` (strict, no JSON-in-a-string) |
    | where | `where`: `primary`, `worktree` or `scratch` |
    | when | `depends_on`; a `human-gate` only *between* runs |
-   | how | `kind`, `model` (always explicit), `agentType`, `writeScope`, `inputs` (ids and paths only), `script` or steps |
+   | how | `kind`, `model` (recommended per node; omit it to inherit the session's), `agentType`, `writeScope`, `inputs` (ids and paths only), `script` or steps |
 
    A deterministic step — a gate, a conformance runner, a state helper — is a `script` node.
    It is **not** an agent told to run a command. When the repository has no such command yet,
@@ -143,10 +143,13 @@ What `scripts/probe_runtime.py` measured on CLI 2.1.283 (ADR 0004), beyond the d
 
 ## Rules
 
-- **Never infer a gating value.** A node without a model is refused, and so is a wave design
-  without `integration.target`. The skill *proposes* a default (opus for builders and
-  referees, sonnet for merger, smoke, reviewer and fixer, haiku for script runners); the
-  design *states* it.
+- **Never infer a gating value.** A wave design without `integration.target` is refused.
+  A model is not a gating value: tiering is a recommendation, so a node that omits `model`
+  inherits the session's by design (#118) and is dispatched without a `model` key. The skill
+  *proposes* a tier (opus for builders and referees, sonnet for merger, smoke, reviewer and
+  fixer, haiku for script runners) and the design states it; a stated model that is not an
+  alias or a `claude-...` id is refused (`AP-NODE-BAD-MODEL`), and `inherit` is not one --
+  omit the key instead.
 - **Commands come from the repository, not from habit.** Every example here is one language
   among many. Match the project.
 - **A human gate is between runs.** A Workflow run cannot pause for input, and the validator

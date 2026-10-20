@@ -52,7 +52,7 @@ supplied by a default.
 | `id`, `goal`, `depends_on` | what the node does, and the graph. A cycle or an unknown id is rejected |
 | `kind` | `agent` · `script` (a fixed command) · `referee` (blind) · `merge-gate` (merge, then gate) · `human-gate` (**between** runs only: a Workflow run cannot pause for input) |
 | `where` | `primary` · `worktree` · `scratch`. Never inherited from the session's cwd |
-| `model`, `effort` | `model` is **explicit on every dispatched node**: an alias (`haiku`, `sonnet`, `opus`, `fable`) or a full `claude-...` id. A script node gets the smallest model only when the design says so |
+| `model`, `effort` | `model` is **recommended per node, not required**: an alias (`haiku`, `sonnet`, `opus`, `fable`) or a full `claude-...` id. A node that omits it inherits the session's model by design (#118; resolution order under [agent types](#agent-types)) and is dispatched with no `model` key; a model that is stated must be valid, and a bad one (`gpt-5`, or `inherit`, which is documented only for agent frontmatter) is enforced (`AP-NODE-BAD-MODEL`) |
 | `agentType`, `skills`, `tools`, `role` | the agent definition; `role` is one of `builder`, `referee`, `merger`, `integrator`, `smoke`, `reviewer`, `fixer`, `runner`. In a wave design these, with `effort`, are written into the generated `.claude/agents/<agentType>.md` (see [agent types](#agent-types)) |
 | `writeScope` | globs this node owns. Present on every dispatched node (`[]` means it writes nothing), and non-empty on a worktree agent |
 | `inputs` | **ids and paths only**, never a sibling's content (#106 R8) |
@@ -230,13 +230,26 @@ which files appear.
 | `skills` | the agent file's frontmatter; each named skill's full content is preloaded | absent means the key is not written, never a default |
 | `tools` | replaces the role's default tool list | refused for the runner and the author, whose guard modes depend on their fixed tools |
 | `role` | picks the role's default tools, `maxTurns` and body | defaults to `builder` |
-| `model`, `effort` | the file's default only | **per dispatch**: `agent()` takes both per call, and `waves.js` passes each node's own, so nodes of one type may differ |
+| `model`, `effort` | the file's default only, written **only when every node of the type states the same value**; a type whose nodes disagree, or where any omits it, gets no `model:` / `effort:` line | **per dispatch**: `agent()` takes both per call, and `waves.js` passes each node's own, so nodes of one type may differ |
 
 Two rejections keep this honest. Nodes sharing a type that disagree on `role`, `tools` or
 `skills` are refused (`AP-AGENT-CONFLICT`); absent next to present counts as a disagreement. A
 wave design that declares `tools` or `skills` on a type it does not generate, such as a plugin's
 `plugin:agent` or a file someone wrote by hand, is refused (`AP-AGENT-KEYS-UNAPPLIED`), because
 those keys would reach no file.
+
+**Which model a dispatch runs on**, first match wins (Claude Code's own order for a subagent):
+
+1. the per-call `model` -- the node's own, which `waves.js` passes when the node states one and
+   leaves out of the call when it does not;
+2. the agent file's `model:` frontmatter -- present only when every node of that type states
+   the same one, so a node that omits its model never picks up another node's;
+3. the `CLAUDE_CODE_SUBAGENT_MODEL` environment variable, if the user set it;
+4. the session's model.
+
+So "an omitted model inherits the session's" holds exactly when no `CLAUDE_CODE_SUBAGENT_MODEL`
+is set; with one set, an omitted model runs on that instead. Nothing in the design can see the
+variable, which is why the design never claims more than "omit it and the runtime decides".
 
 Before this, `install_waves.py` hard-coded tools per role and dropped `effort` and `skills`, and
 `waves.js` never passed `effort`: every one of them validated, none of them applied.
@@ -251,7 +264,7 @@ not measured here, and nothing below depends on it.
 
 | practice | why | evidence |
 |---|---|---|
-| Every dispatch names its `model`; the design proposes haiku for runners, sonnet for merger, smoke, reviewer and fixer, opus for builders and referees | an omitted model inherits the session's, which silently defeats per-node tiering | **enforced** (`AP-NODE-NO-MODEL`) |
+| A dispatch names its `model`; the design proposes haiku for runners, sonnet for merger, smoke, reviewer and fixer, opus for builders and referees | tiering puts the expensive model where the judgement is; an omitted model inherits the session's, which is the documented default and never a finding | **recommended**; a bad value is **enforced** (`AP-NODE-BAD-MODEL`) |
 | `effort` per node, low for mechanical work | `agent()` takes `effort` per call, and `waves.js` passes each node's own | **documented**; passed by the interpreter, **enforced** by `test_waves_workflow.js` |
 | A deterministic step is a `script` node, and **authored** when it does not exist yet | one small-model dispatch that runs one guarded command, instead of a reasoning agent told to run shell commands | **enforced** (runner guard, `verify-step`) |
 | Strict `output_schema` on every node | `agent()` with a schema forces structured output and retries on a mismatch at the tool-call layer; the interpreter re-checks in code | **documented** + **enforced** (`AP-SCHEMA-NOT-STRICT`) |
@@ -274,7 +287,7 @@ ever compiled a design, so `--baseline` skips them.
 
 | id | issue | rejects |
 |---|---|---|
-| `AP-NODE-NO-MODEL` | 107 | a dispatched node without a valid model |
+| `AP-NODE-BAD-MODEL` | 107 | a dispatched node whose stated `model` is not an alias or a `claude-...` id (an omitted model is fine: it inherits). `inherit` is refused with "omit `model` to inherit" |
 | `AP-NODE-NO-SCHEMA` | 107 | a dispatched node without an object `output_schema` |
 | `AP-NODE-NO-SCOPE` | 107 | a dispatched node without `writeScope`, or a worktree agent with an empty one |
 | `AP-SCHEMA-NOT-STRICT` | 106 | a missing `additionalProperties: false`, or JSON-in-a-string |

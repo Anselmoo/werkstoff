@@ -77,7 +77,29 @@ const SABOTAGE = [
   ['plan-node stop removed', "if (ph.mode === 'plan') {", 'if (false) {'],
   ['budget never refuses', 'if (dispatched + n > ceiling)', 'if (false)'],
   ['borrow gate ignored', 'const illegal = (out.borrowed || []).filter((b) => !gate.includes(b.beatsOn))', 'const illegal = []'],
+  // #118: an omitted modelTier inherits the session's model, so it is dispatched with
+  // NO model key (never a default). `modelTier defaulted` plants the old
+  // `modelTier || 'sonnet'` and the no-key cases must catch it, at the gate and at
+  // every one of the six dispatch sites on its own.
   ['modelTier defaulted', 'if (!modelOk(ph.modelTier)) {', "if (!(ph.modelTier = ph.modelTier || 'sonnet')) {"],
+  ['omitted modelTier sent as an undefined key', 'const modelOpt = (m) => (m === undefined || m === null ? {} : { model: m })', 'const modelOpt = (m) => ({ model: m })'],
+  ['null modelTier sent as a key', 'const modelOpt = (m) => (m === undefined || m === null ? {} : { model: m })', 'const modelOpt = (m) => (m === undefined ? {} : { model: m })'],
+  ['inherit accepted as a modelTier', 'const modelOk = (m) => m === undefined', "const modelOk = (m) => m === 'inherit' || m === undefined"],
+  ['bare claude- prefix accepted as a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-/'],
+  ['uppercase accepted in a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[A-Za-z0-9.-]+$/'],
+  ['empty id body accepted', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.-]*$/'],
+  ['brackets accepted in a model id', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.\\[\\]-]+$/'],
+  ['model id end anchor dropped', 'const MODEL_ID = /^claude-[a-z0-9.-]+$/', 'const MODEL_ID = /^claude-[a-z0-9.-]+/'],
+  ['non-Claude modelTier accepted', "(typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m)))", "typeof m === 'string'"],
+  ['fable alias refused', "const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable']", "const MODEL_ALIASES = ['haiku', 'sonnet', 'opus']"],
+  ...[
+    ['extractor', 'label: `${nodeId}:${k + 1}`, phase: title, agentType: ph.agentType, ', ', schema: INVENTORY_SCHEMA })\n        .then'],
+    ['re-deriver', 'label: `${nodeId}:rederive:${k + 1}`, phase: title, agentType: ph.agentType, ', ', schema: INVENTORY_SCHEMA })))'],
+    ['builder', 'phase: title, agentType: ph.agentType, ', ", isolation: 'worktree', schema: CANDIDATE_SCHEMA"],
+    ['referee', 'phase: title, agentType: ph.agentType, ', ', schema: REFEREE_SCHEMA'],
+    ['script runner', 'phase: title, agentType: ph.agentType, ', ', schema: scriptSchema(ph.outputSchema)'],
+    ['single writer', 'phase: title, agentType: ph.agentType, ', ", isolation: ph.writes === 'worktree'"],
+  ].map(([site, pre, post]) => [`${site} dispatch defaults an omitted modelTier`, `${pre}...modelOpt(ph.modelTier)${post}`, `${pre}model: 'sonnet'${post}`]),
   // #107: the script node's two contract checks, each on its own.
   ['script exit code unchecked', '!sc.expectExit.includes(out.exit)', 'false'],
   ['script output never validated', 'const problems = strictProblems(ph.outputSchema, out.parsed)', 'const problems = []'],
@@ -176,6 +198,20 @@ async function suite() {
     spec.phases[0].modelTier = 'gpt-5'
     const bad = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
     ok('model: a non-Claude model name halts', bad.result.aborted && bad.calls.length === 0, bad.result)
+    spec.phases[0].modelTier = 'inherit'
+    const inh = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+    ok("model: 'inherit' halts and says to omit the key (it is documented only for agent frontmatter)",
+      inh.result.aborted && inh.calls.length === 0 && /omit it to inherit/.test(inh.result.abortReason), inh.result)
+    // The full-id grammar is /^claude-[a-z0-9.-]+$/, whole string: each of these is what a
+    // loosened MODEL_ID (/^claude-/, a wider class, a dropped anchor) lets through.
+    for (const loose of ['claude-', 'claude-Opus', 'claude-opus[1m]', 'claude-opus\n']) {
+      spec.phases[0].modelTier = loose
+      const r = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+      ok(`model: ${JSON.stringify(loose)} is not a model id and halts before dispatch`, r.result.aborted && r.calls.length === 0, r.result)
+    }
+    spec.phases[0].modelTier = 5
+    const num = await execute({ spec, carry: scriptCarry() }, () => scriptOut())
+    ok('model: a non-string modelTier halts before dispatch', num.result.aborted && num.calls.length === 0, num.result)
   }
 
   // 1. From the top: INVENTORY runs, then the workflow stops before CONTRACT.
@@ -257,12 +293,31 @@ async function suite() {
     ok('a disagreeing re-derivation is recorded as doubt', n === 1 && ev && ev.status === 'doubt' && ev.detail.resolves_if, ev)
   }
 
-  // 8. No gating value is inferred.
+  // 8. No tier is invented (#118): an omitted modelTier inherits the session's model,
+  // so the dispatch carries NO model key -- not `model: undefined`, not a default.
   {
     const spec = clone(SIX)
-    delete spec.phases[0].modelTier
-    const { result, calls } = await execute({ spec }, happy)
-    ok('a phase without modelTier halts instead of defaulting to sonnet', result.aborted && calls.length === 0, result)
+    for (const ph of spec.phases) delete ph.modelTier
+    spec.phases[0].modelTier = null
+    const top = await execute({ spec: clone(spec) }, happy)
+    ok('inherit: a spec with no modelTier completes the inventory phase', top.result.pending_plan_node === 'contract' && !top.result.aborted, top.result)
+    ok('inherit: extractors and the re-deriver dispatch with no model key',
+      top.calls.length === 5 && top.calls.every((c) => !('model' in c.opts)), top.calls.map((c) => [c.label, c.opts.model]))
+    const carry = { contract: { acceptance: SIX.problem.acceptance } }
+    const mid = await execute({ spec: clone(spec), startAt: 'build', carry }, happy)
+    ok('inherit: builders, referees and the synthesizer dispatch with no model key',
+      mid.calls.length === 7 && mid.calls.every((c) => !('model' in c.opts)), mid.calls.map((c) => [c.label, c.opts.model]))
+    const sc = clone(SCRIPT_SPEC)
+    delete sc.phases[0].modelTier
+    const scr = await execute({ spec: sc, carry: scriptCarry() }, () => scriptOut())
+    ok('inherit: a script phase with no modelTier dispatches its runner with no model key',
+      !scr.result.aborted && scr.calls.length === 1 && !('model' in scr.calls[0].opts), scr.calls.map((c) => c.opts))
+    const one = clone(SIX)
+    one.phases = [{ id: 'impl', kind: 'single-writer', pattern: 'best-of-n', mode: 'auto', writes: 'worktree', agentType: 'arbeitsplan:implementer', requires: [], marker: 'implemented' }]
+    const fullAns = { rollback: 'git revert', docsSync: 'n/a: no docs', contractSync: 'n/a: none', deadArtifacts: 'n/a: none', releaseWiring: 'n/a: internal' }
+    const w = await execute({ spec: one }, () => ({ diff: 'd', forgotten: fullAns }))
+    ok('inherit: a single writer with no modelTier dispatches with no model key',
+      !w.result.aborted && w.calls.length === 1 && !('model' in w.calls[0].opts), w.calls.map((c) => c.opts))
   }
 
   // 9. The spec is re-checked, not trusted.

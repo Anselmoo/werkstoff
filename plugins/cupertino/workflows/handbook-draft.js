@@ -133,7 +133,7 @@ function verifyPrompt(dim, candidate) {
   )
 }
 
-// Tier stated, never inherited (#87): sonnet is the dispatched agent's own declared model; an omitted model would run on the session's tier instead.
+// Tier stated by choice; an omitted model would inherit the session's (#118): sonnet is the dispatched agent's own declared model.
 const results = await pipeline(
   dimensions,
   (dim) =>

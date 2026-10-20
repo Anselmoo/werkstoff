@@ -33,10 +33,14 @@ const KIND_TITLE = {
 }
 
 // Models: an alias or a full claude-... id -- design_spec.py's MODEL_ALIASES and
-// MODEL_ID_RE, restated because a Workflow script cannot import Python.
+// MODEL_ID_RE, restated because a Workflow script cannot import Python. A phase
+// that states no modelTier inherits the session's model BY DESIGN (#118): it is
+// dispatched with no `model` key at all, never a default. A stated value must be
+// valid, and a bad one stops the run before any dispatch.
 const MODEL_ALIASES = ['haiku', 'sonnet', 'opus', 'fable']
-const MODEL_ID = /^claude-[a-z0-9]+(?:[-.][a-z0-9]+)*(?:\[1m\])?$/
-const modelOk = (m) => typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m))
+const MODEL_ID = /^claude-[a-z0-9.-]+$/
+const modelOk = (m) => m === undefined || m === null || (typeof m === 'string' && (MODEL_ALIASES.includes(m) || MODEL_ID.test(m)))
+const modelOpt = (m) => (m === undefined || m === null ? {} : { model: m })
 
 // #107: what a script node's runner returns. `parsed` is the node's own
 // outputSchema, so the runtime's schema enforcement covers it -- and
@@ -377,10 +381,11 @@ for (let i = start; i < spec.phases.length; i++) {
   if (ph.writes === 'shared') {
     return halt(`phase ${nodeId} writes the shared tree; the workflow backend cannot run it (no hook sees these writes)`, nodeId)
   }
-  // Never infer a gating value. `modelTier || 'sonnet'` used to live here, which
-  // silently ran every unmarked phase on a tier nobody chose.
+  // No tier is invented: `modelTier || 'sonnet'` used to live here, which silently
+  // ran every unmarked phase on a tier nobody chose. An omitted tier is dispatched
+  // without a model key (the session's model); a stated one must be valid.
   if (!modelOk(ph.modelTier)) {
-    return halt(`phase ${nodeId} has no valid modelTier; an inherited tier defeats tiering`, nodeId)
+    return halt(`phase ${nodeId} has an invalid modelTier ${JSON.stringify(ph.modelTier)}; name haiku, sonnet, opus, fable or a claude- id, or omit it to inherit the session's model ('inherit' is documented only for agent frontmatter)`, nodeId)
   }
   if (typeof ph.agentType !== 'string' || !ph.agentType.includes(':')) {
     return halt(`phase ${nodeId} has no namespaced agentType`, nodeId)
@@ -416,7 +421,7 @@ for (let i = start; i < spec.phases.length; i++) {
     ].join('\n')
 
     const extracted = await parallel(sources.map((src, k) => () =>
-      agent(extractPrompt(src), { label: `${nodeId}:${k + 1}`, phase: title, agentType: ph.agentType, model: ph.modelTier, schema: INVENTORY_SCHEMA })
+      agent(extractPrompt(src), { label: `${nodeId}:${k + 1}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), schema: INVENTORY_SCHEMA })
         .then((r) => (r ? { ...r, source: src } : null))))
     extracted.forEach((r, k) => {
       emit(`invoke_agent ${ph.agentType}`, `${nodeId}:${sources[k]}`, r ? (r.truncated ? 'doubt' : 'proposed') : 'unmeasured',
@@ -427,7 +432,7 @@ for (let i = start; i < spec.phases.length; i++) {
     // answer, and compared by item id. Disagreement is recorded as doubt, never
     // resolved by a model -- which answer is right is exactly what is unknown.
     const rederived = await parallel(sample.map((k) => () =>
-      agent(extractPrompt(sources[k]), { label: `${nodeId}:rederive:${k + 1}`, phase: title, agentType: ph.agentType, model: ph.modelTier, schema: INVENTORY_SCHEMA })))
+      agent(extractPrompt(sources[k]), { label: `${nodeId}:rederive:${k + 1}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), schema: INVENTORY_SCHEMA })))
     const disagreements = []
     sample.forEach((k, j) => {
       const a = extracted[k]
@@ -488,7 +493,7 @@ for (let i = start; i < spec.phases.length; i++) {
           ``,
           `${RELAYED}`,
         ].filter((l) => l !== undefined).join('\n'),
-        { label: `${nodeId}:${id}`, phase: title, agentType: ph.agentType, model: ph.modelTier, isolation: 'worktree', schema: CANDIDATE_SCHEMA },
+        { label: `${nodeId}:${id}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), isolation: 'worktree', schema: CANDIDATE_SCHEMA },
       // Controller values LAST, so a builder cannot overwrite its own identity.
       ).then((r) => (r ? { ...r, candidateId: id, angle } : null))
     }))
@@ -557,7 +562,7 @@ for (let i = start; i < spec.phases.length; i++) {
           ``,
           `${RELAYED}`,
         ].join('\n'),
-        { label: `${nodeId}:${c.candidateId}`, phase: title, agentType: ph.agentType, model: ph.modelTier, schema: REFEREE_SCHEMA },
+        { label: `${nodeId}:${c.candidateId}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), schema: REFEREE_SCHEMA },
       ).then((v) => (v ? { ...v, candidateId: c.candidateId } : null))))).filter(Boolean)
 
     const byId = new Map(verdicts.map((v) => [v.candidateId, v]))
@@ -646,7 +651,7 @@ for (let i = start; i < spec.phases.length; i++) {
         ``,
         `${RELAYED}`,
       ].join('\n'),
-      { label: `${nodeId}`, phase: title, agentType: ph.agentType, model: ph.modelTier, schema: scriptSchema(ph.outputSchema) },
+      { label: `${nodeId}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), schema: scriptSchema(ph.outputSchema) },
     )
     if (!out) return halt(`phase ${nodeId}: SCRIPT CONTRACT -- the runner returned nothing`, nodeId)
     if (!Number.isInteger(out.exit) || !sc.expectExit.includes(out.exit)) {
@@ -704,7 +709,7 @@ for (let i = start; i < spec.phases.length; i++) {
       ``,
       `${RELAYED}`,
     ].join('\n'),
-    { label: `${nodeId}`, phase: title, agentType: ph.agentType, model: ph.modelTier, isolation: ph.writes === 'worktree' ? 'worktree' : undefined, schema: SINGLE_SCHEMA },
+    { label: `${nodeId}`, phase: title, agentType: ph.agentType, ...modelOpt(ph.modelTier), isolation: ph.writes === 'worktree' ? 'worktree' : undefined, schema: SINGLE_SCHEMA },
   )
   if (!out) return halt(`phase ${nodeId}: the single writer returned nothing`, nodeId)
   if (FORGETFUL.test(ph.agentType)) {

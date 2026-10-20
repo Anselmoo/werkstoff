@@ -183,7 +183,7 @@ by intent.
 `arbeitsplan-compile` picks a pattern per phase. `arbeitsplan-design` answers what it leaves in
 prose — per node: **what** (goal, strict output schema), **where** (primary checkout, agent
 worktree, scratch directory), **when** (dependencies; a human gate only *between* runs) and
-**how** (kind, explicit model, write scope, and for a script node the exact command and the
+**how** (kind, a recommended per-node model, write scope, and for a script node the exact command and the
 toolchain that runs it). `compile_spec.py --design` validates it against
 `references/design-table-schema.md`; every rule the issues name has a red fixture.
 
