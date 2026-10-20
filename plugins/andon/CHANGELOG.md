@@ -3,6 +3,17 @@
 All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **hook**: `hooks/andon_enforce.py` now declares `MIN_PYTHON = (3, 11)` and, past the inert
+  check, denies below it with the interpreter named and the usual remedies (#123). It imported and
+  enforced correctly on 3.9 and 3.10 already; the floor keeps a future 3.11-only line from becoming
+  an import crash, which exits 1 -- non-blocking, so every edit would be allowed. A repo without a
+  ledger is still allowed on any interpreter.
+### Added
+- **`TestPythonFloor`** in `hooks/test_andon_enforce.py`: under every python3 older than 3.11 on
+  PATH, an active repo is denied naming the floor, an inert one allowed, and a copy with the floor
+  lowered allowed -- proof the version check is what denies. `REQUIRE_OLD_PYTHON=1` turns "none
+  found" into a failure instead of a skip.
 
 ## [1.0.6] - 2026-09-27
 ### Fixed
