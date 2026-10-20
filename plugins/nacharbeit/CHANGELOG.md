@@ -3,6 +3,8 @@
 All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.4] - 2026-10-20
 ### Changed
 - **hook**: `hooks/nacharbeit_guard.py` declares `MIN_PYTHON = (3, 11)` and, while a fix lock is
   open, denies below it with the interpreter named and the escape hatch (#123). It already
