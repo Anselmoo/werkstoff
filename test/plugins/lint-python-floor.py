@@ -17,6 +17,14 @@ delegated to `rrt eol`: this script writes a throwaway `pyproject.toml` whose
 against it, so the EOL dates are rrt's bundled data, never a table kept here. rrt
 missing is exit 2, never a pass.
 
+Declaring a floor is not enforcing it (#123). So every script a `hooks/hooks.json`
+registers -- read from the commands, since zeugnis's live in `scripts/hooks/` -- must
+also carry, by AST: `from __future__ import annotations` (or the module crashes before
+the check can run), a module-level `MIN_PYTHON`, and an `if sys.version_info <
+MIN_PYTHON:` whose body calls something (`pass` there is a guard-shaped no-op). A
+registered script that is missing, a hooks.json that does not parse, or no registered
+hook at all is reported, never skipped.
+
 Usage:
     python3 test/plugins/lint-python-floor.py [--plugins-root plugins] [--selftest]
 
@@ -26,6 +34,8 @@ Exit 0 clean, 1 on a finding, 2 when the instrument cannot run.
 from __future__ import annotations
 
 import argparse
+import ast
+import json
 import re
 import shutil
 import subprocess
@@ -43,6 +53,62 @@ MIN_PYTHON = re.compile(r"^MIN_PYTHON\s*=\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)", re.MUL
 
 class InstrumentError(Exception):
     pass
+
+
+HOOK_SCRIPT = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/([A-Za-z0-9_./-]+?\.py)")
+
+
+def registered_hooks(plugins_root: Path) -> tuple[list[Path], list[str]]:
+    """Scripts every hooks.json registers as a command hook, and the findings met reading them."""
+    scripts, findings = [], []
+    for hj in sorted(plugins_root.glob("*/hooks/hooks.json")):
+        plugin = hj.parent.parent
+        try:
+            events = json.loads(hj.read_text(encoding="utf-8")).get("hooks", {})
+        except (OSError, ValueError) as e:
+            findings.append(f"{hj.relative_to(plugins_root.parent)}: does not parse ({e})")
+            continue
+        for entries in events.values():
+            for entry in entries:
+                for hook in entry.get("hooks", []):
+                    if hook.get("type") != "command":
+                        continue
+                    for rel in HOOK_SCRIPT.findall(hook.get("command", "")):
+                        path = plugin / rel
+                        if path not in scripts:
+                            scripts.append(path)
+    return scripts, findings
+
+
+def _is_floor_check(test: ast.expr) -> bool:
+    return (isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], ast.Lt)
+            and ast.unparse(test.left) == "sys.version_info"
+            and ast.unparse(test.comparators[0]) == "MIN_PYTHON")
+
+
+def unguarded_hooks(plugins_root: Path) -> list[str]:
+    scripts, findings = registered_hooks(plugins_root)
+    if not scripts and not findings:
+        raise InstrumentError(f"no hooks.json under {plugins_root} registers a script: the scan is dead")
+    for path in scripts:
+        name = path.relative_to(plugins_root.parent)
+        if not path.is_file():
+            findings.append(f"{name}: registered in hooks.json but does not exist")
+            continue
+        source = path.read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=str(path))
+        if not any(isinstance(n, ast.ImportFrom) and n.module == "__future__"
+                   and any(a.name == "annotations" for a in n.names) for n in tree.body):
+            findings.append(f"{name}: no `from __future__ import annotations` -- may crash (exit 1 = allow) "
+                            "before the floor check runs")
+        if not MIN_PYTHON.search(source):
+            findings.append(f"{name}: no module-level MIN_PYTHON")
+        checks = [n for n in ast.walk(tree) if isinstance(n, ast.If) and _is_floor_check(n.test)]
+        if not checks:
+            findings.append(f"{name}: no `if sys.version_info < MIN_PYTHON:` -- below the floor it runs untested")
+        elif not any(isinstance(m, ast.Call) for c in checks for stmt in c.body for m in ast.walk(stmt)):
+            findings.append(f"{name}: `if sys.version_info < MIN_PYTHON:` calls nothing -- a guard-shaped no-op")
+    return findings
 
 
 def declared_floors(plugins_root: Path) -> list[tuple[Path, tuple[int, int]]]:
@@ -87,13 +153,27 @@ def eol_finding(floor: tuple[int, int], rrt: str | None) -> str | None:
 
 
 def lint(plugins_root: Path, floor: tuple[int, int], rrt: str | None) -> list[str]:
-    findings = floor_mismatches(plugins_root, floor)
+    findings = floor_mismatches(plugins_root, floor) + unguarded_hooks(plugins_root)
     if not declared_floors(plugins_root):
         raise InstrumentError(f"no MIN_PYTHON found under {plugins_root}: the scan is dead")
     eol = eol_finding(floor, rrt)
     if eol:
         findings.append(f"floor {floor[0]}.{floor[1]} is end-of-life per rrt eol -- raise it")
     return findings
+
+
+_FLOOR_IF = "if sys.version_info < MIN_PYTHON:\n    deny()\n"
+GOOD_HOOK = (
+    "from __future__ import annotations\n\nimport sys\n\nMIN_PYTHON = (3, 11)\n\n\n"
+    "def deny():\n    sys.exit(2)\n\n\n" + _FLOOR_IF
+)
+
+
+def _register(plugin: Path, rel: str) -> None:
+    (plugin / "hooks").mkdir(parents=True, exist_ok=True)
+    command = f'python3 -B "${{CLAUDE_PLUGIN_ROOT}}/{rel}"'
+    (plugin / "hooks" / "hooks.json").write_text(json.dumps(
+        {"hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": command}]}]}}))
 
 
 def selftest(rrt: str | None) -> int:
@@ -108,12 +188,43 @@ def selftest(rrt: str | None) -> int:
         root = Path(tmp) / "plugins"
         (root / "p" / "hooks").mkdir(parents=True)
         (root / "p" / "scripts" / "fixtures").mkdir(parents=True)
-        (root / "p" / "hooks" / "g.py").write_text("MIN_PYTHON = (3, 11)\n")
+        (root / "p" / "hooks" / "g.py").write_text(GOOD_HOOK)
+        _register(root / "p", "hooks/g.py")
         (root / "p" / "scripts" / "fixtures" / "f.py").write_text("MIN_PYTHON = (3, 9)\n")
         check("matching floor is clean", lint(root, (3, 11), rrt) == [])
         (root / "p" / "scripts" / "s.py").write_text("MIN_PYTHON = (3, 10)\n")
         check("a drifted MIN_PYTHON is a finding", len(floor_mismatches(root, (3, 11))) == 1)
         check("fixtures are not scanned", all("fixtures" not in str(p) for p, _ in declared_floors(root)))
+    for label, source, rel in [
+        ("a hook with no floor check is a finding", GOOD_HOOK.replace(_FLOOR_IF, ""), "hooks/g.py"),
+        ("`if ...: pass` is a finding", GOOD_HOOK.replace("    deny()", "    pass"), "hooks/g.py"),
+        ("a hook without __future__ is a finding", GOOD_HOOK.replace("from __future__ import annotations\n", ""),
+         "hooks/g.py"),
+        ("a hook without MIN_PYTHON is a finding", GOOD_HOOK.replace("MIN_PYTHON = (3, 11)\n", ""), "hooks/g.py"),
+        ("a scripts/hooks/ registration (zeugnis's layout) is checked", GOOD_HOOK.replace(_FLOOR_IF, ""),
+         "scripts/hooks/g.py"),
+    ]:
+        with tempfile.TemporaryDirectory() as tmp:
+            plugin = Path(tmp) / "plugins" / "p"
+            (plugin / rel).parent.mkdir(parents=True)
+            (plugin / rel).write_text(source)
+            _register(plugin, rel)
+            check(label, len(unguarded_hooks(plugin.parent)) == 1)
+    with tempfile.TemporaryDirectory() as tmp:
+        plugin = Path(tmp) / "plugins" / "p"
+        (plugin / "hooks").mkdir(parents=True)
+        _register(plugin, "hooks/missing.py")
+        check("a registered script that does not exist is a finding",
+              any("does not exist" in f for f in unguarded_hooks(plugin.parent)))
+        (plugin / "hooks" / "hooks.json").write_text("{not json")
+        check("an unparseable hooks.json is a finding",
+              any("does not parse" in f for f in unguarded_hooks(plugin.parent)))
+        (plugin / "hooks" / "hooks.json").unlink()
+        try:
+            unguarded_hooks(plugin.parent)
+            check("no registered hook at all raises", False)
+        except InstrumentError:
+            check("no registered hook at all raises", True)
     # Sabotage: lower the floor to an EOL cycle and the rrt half must bite.
     check("an EOL floor (3.9) is a finding", eol_finding((3, 9), rrt) is not None)
     try:
@@ -141,7 +252,8 @@ def main() -> int:
     for f in findings:
         print(f"FAIL {f}")
     n = len(declared_floors(args.plugins_root))
-    print(f"{'ok ' if not findings else ''}{n} MIN_PYTHON declaration(s); floor "
+    h = len(registered_hooks(args.plugins_root)[0])
+    print(f"{'ok ' if not findings else ''}{n} MIN_PYTHON declaration(s), {h} registered hook(s); floor "
           f"{HOOK_PYTHON_FLOOR[0]}.{HOOK_PYTHON_FLOOR[1]}: {len(findings)} finding(s)")
     return 1 if findings else 0
 
