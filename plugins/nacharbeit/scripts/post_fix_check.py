@@ -92,6 +92,10 @@ def main(argv: list[str] | None = None) -> int:
                 failed.append({"file": it["file"], "label": c["label"], "cmd": c["cmd"], "output": out})
                 print(f"FAIL {it['file']}: {c['label']}\n     {out.splitlines()[-1] if out else ''}")
 
+    skipped = [{"file": it["file"], **s} for it in items for s in it.get("skippedChecks", [])]
+    for s in skipped:
+        print(f"WARN post-check skipped for {s['file']}: {s['label']} -- {s['reason']}", file=sys.stderr)
+
     contracts: list[dict] = []
     snap_root = state / "pre-fix"
     if not a.contract_diff.is_file():
@@ -137,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     clean = not failed and all(c["status"] in {"clean", "skipped"} for c in contracts) and recheck["status"] != "not-fired"
     report = {
         "checkedAt": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "postChecks": {"passed": passed, "failed": failed},
+        "postChecks": {"passed": passed, "failed": failed, "skipped": skipped},
         "contracts": contracts,
         "routingRecheck": recheck,
         "clean": clean,
@@ -147,6 +151,7 @@ def main(argv: list[str] | None = None) -> int:
         if clean or a.force:
             if lock.is_file():
                 lock.unlink()
+                (state / "guard-heartbeat.json").unlink(missing_ok=True)  # it belonged to this lock
                 report["lockReleased"] = True
                 print(f"released {lock}" + (" (forced)" if not clean else ""))
             else:

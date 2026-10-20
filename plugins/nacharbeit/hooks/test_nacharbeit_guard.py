@@ -136,6 +136,45 @@ def main() -> int:
         with open(os.path.join(r, "state", "fix_scope.json"), "w", encoding="utf-8") as fh:
             json.dump(LOCK, fh)
         expect_deny("NACHARBEIT_STATE_DIR relocates the lock", run(r, {"cwd": r, **edit("plugins/demo/agents/other.md")}, {"NACHARBEIT_STATE_DIR": "state"}), "not in the fix scope")
+
+        # heartbeat (#117): the only proof the runtime actually registered this hook
+        def beat(root):
+            path = os.path.join(root, "analysis", "nacharbeit", "guard-heartbeat.json")
+            if not os.path.isfile(path):
+                return None
+            with open(path, "r", encoding="utf-8") as fh:
+                return json.load(fh)
+
+        def rm_beat(root):
+            try:
+                os.remove(os.path.join(root, "analysis", "nacharbeit", "guard-heartbeat.json"))
+            except FileNotFoundError:
+                pass  # absent is what the following assertion reports; do not crash the run
+
+        r = make_repo(with_lock=False)
+        repos.append(r)
+        run(r, {"cwd": r, **edit("plugins/demo/agents/two.md")})
+        if os.path.exists(os.path.join(r, "analysis")):
+            FAILS.append("no lock: the guard wrote into the repository although it must stay inert")
+        r = make_repo()
+        repos.append(r)
+        expect_allow("heartbeat repo: allowed edit", run(r, {"cwd": r, **edit("plugins/demo/skills/one/SKILL.md")}))
+        hb = beat(r)
+        if not hb or hb.get("lockRunStamp") != LOCK["runStamp"] or hb.get("tool") != "Edit" or not hb.get("seenAt"):
+            FAILS.append(f"allowed call under a lock did not write a heartbeat bound to the lock's runStamp: {hb}")
+        rm_beat(r)
+        expect_deny("heartbeat repo: denied edit", run(r, {"cwd": r, **edit("plugins/demo/agents/other.md", tool="Write")}), "not in the fix scope")
+        hb = beat(r)
+        if not hb or hb.get("tool") != "Write":
+            FAILS.append(f"a DENIED call under a lock must also write a heartbeat (the guard fired): {hb}")
+        rm_beat(r)
+        run(r, {"cwd": r, **edit("plugins/demo/agents/other.md")}, {"NACHARBEIT_DISABLE_GUARD": "1"})
+        if beat(r) is not None:
+            FAILS.append("NACHARBEIT_DISABLE_GUARD=1 wrote a heartbeat: a disabled guard would confirm itself")
+        # an unwritable heartbeat must not change a single decision
+        os.makedirs(os.path.join(r, "analysis", "nacharbeit", "guard-heartbeat.json"))
+        expect_deny("unwritable heartbeat still denies", run(r, {"cwd": r, **edit("plugins/demo/agents/other.md")}), "not in the fix scope")
+        expect_allow("unwritable heartbeat still allows", run(r, {"cwd": r, **edit("plugins/demo/skills/one/SKILL.md")}))
     finally:
         for r in repos:
             shutil.rmtree(r, ignore_errors=True)

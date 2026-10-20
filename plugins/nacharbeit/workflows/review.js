@@ -3,7 +3,7 @@ export const meta = {
   description:
     'Calibrated review of Claude Code plugins against the nacharbeit rubric: sealed-holdout finder calibration per family, lint-gated two-lens finders with gap rounds over skills, agents, commands, workflows, hooks, scripts, viewers, manifests and developer docs, haiku routing simulation for cannibalization, adversarial verify, opus synthesis',
   whenToUse:
-    'Launched by the nacharbeit-review skill through the baked copy `<state-dir>/run.js` that `python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py"` writes; never with hand-built args. Returns the full result; the session then runs scripts/write_results.py on it. Never grades real files until the finder passes the sealed hold-out for every family it will grade.',
+    'Launched by the nacharbeit-review skill through the baked copy `<state-dir>/run.js` that `uv run --script "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py"` writes; never with hand-built args. Returns the full result; the session then runs scripts/write_results.py on it. Never grades real files until the finder passes the sealed hold-out for every family it will grade.',
   phases: [
     { title: 'Calibrate', detail: 'sonnet finder vs planted fixtures; opus rewrites the finder prompt until recall clears; sealed hold-out measured once', model: 'sonnet' },
     { title: 'Find', detail: 'per (plugin, kind) batch: two lens finders, then gap rounds with an already-reported block until dry', model: 'sonnet' },
@@ -16,10 +16,12 @@ export const meta = {
 
 // ---- args -------------------------------------------------------------------
 const A = typeof args === 'string' ? (() => { try { return JSON.parse(args) } catch (e) { return args } })() : args
-for (const k of ['runStamp', 'rubricHash', 'rubric', 'lint', 'batches', 'corpus', 'handoffs', 'fixtures', 'sealed', 'knownAnswers', 'ambiguous']) {
+for (const k of ['runStamp', 'rubricHash', 'rubric', 'lint', 'batches', 'corpus', 'handoffs', 'fixtures', 'sealed', 'fixturePrefix', 'knownAnswers', 'ambiguous']) {
   if (!A || A[k] == null) throw new Error(`nacharbeit-review requires args.${k} — run scripts/build_args.py and launch the run.js it bakes`)
 }
-const FIXTURE_PREFIX = A.fixturePrefix || 'test/plugins/fixtures/'
+// Required, never defaulted: a default here would be a second copy of the prefix build_args.py
+// stages the fixtures under, and the two drifting apart reads as 'no fixture leaked'.
+const FIXTURE_PREFIX = A.fixturePrefix
 const MECHANICAL_IDS = A.mechanicalIds || []
 // Rules produced by CODE from the routing simulation, never by a finder: one file
 // cannot show which sibling a router preferred. Withheld from the finder's rule list,

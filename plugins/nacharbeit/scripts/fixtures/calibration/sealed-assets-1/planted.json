@@ -1,0 +1,28 @@
+{
+  "name": "sealed-assets-1",
+  "kind": "assets",
+  "cleanFiles": [
+    "README.md",
+    "scripts/build_gauge_html.py"
+  ],
+  "planted": [
+    {
+      "file": "assets/gauge-viewer.html",
+      "rule_id": "AQ-R5-HEIGHT",
+      "angle": "procedure",
+      "quoteKey": "min-height: 900px"
+    },
+    {
+      "file": "assets/gauge-viewer.html",
+      "rule_id": "AQ-R2-ONCE",
+      "angle": "clarity",
+      "quoteKey": "${count} items listed above"
+    },
+    {
+      "file": "assets/gauge-viewer.html",
+      "rule_id": "AQ-R3-ACTIONABLE",
+      "angle": "clarity",
+      "quoteKey": "s.textContent = `${blockers} blockers`"
+    }
+  ]
+}

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["pyyaml"]
+# ///
 """Build the `args` object for workflows/review.js and bake it into a launchable copy. No LLM.
 
 Workflow scripts have no filesystem access, so everything the review needs arrives
@@ -12,10 +16,12 @@ left over from an earlier run would be measured as if it were fresh (CLAUDE.md, 
 failed run leaves the previous output in place").
 
 Every werkstoff-specific location is a flag with a werkstoff default, so the same script
-runs in any repository that keeps its plugins under one directory.
+runs in any repository that keeps its plugins under one directory. The calibration fixtures
+are not one of them: they ship inside the plugin (scripts/fixtures/calibration/) and are
+staged into <state-dir>/fixtures/ so the workflow reads repo-relative paths.
 
 Usage: build_args.py [--plugins-root plugins] [--plugin NAME ...] [--state-dir analysis/nacharbeit]
-                     [--fixtures-root test/plugins/fixtures/nacharbeit] [--known-answers docs/prompt-index.md]
+                     [--fixtures-root DIR] [--known-answers docs/prompt-index.md]
                      [--ambiguous FILE] [--repo-name NAME] [--repo-notes TEXT] [--docs-root docs]
                      [--marketplace FILE] [--rubric FILE] [--workflow FILE] [--out FILE]
 Exit: 0 on success, 1 if a required input is missing or the leak assertions fail, 2 on bad args.
@@ -29,9 +35,11 @@ import hashlib
 import importlib.util
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # `uv run` has no -B; keep the installed plugin copy free of __pycache__ (#88)
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
@@ -173,17 +181,74 @@ def build_handoffs(units: list, corpus: dict) -> list[dict]:
     return edges
 
 
-def build_fixtures(fixtures_root: Path) -> tuple[list[dict], list[dict]]:
-    tune, sealed = [], []
+class FixtureError(Exception):
+    """A calibration fixture set that cannot be used; the message says what to fix."""
+
+
+def _fixture_relative(d: Path, field: str, value: object) -> str:
+    """A planted.json path must be relative to its own fixture directory and name a file
+    that exists there. A repository-relative path (the pre-#117 shape) fails the existence
+    test, so there is no silent second format: it is refused by name."""
+    if not isinstance(value, str) or not value:
+        raise FixtureError(f"{d.name}/planted.json: {field} must be a non-empty string, got {value!r}")
+    pp = Path(value)
+    if pp.is_absolute() or ".." in pp.parts:
+        raise FixtureError(f"{d.name}/planted.json: {field} {value!r} must be relative to the fixture directory, with no '..'")
+    if not (d / pp).is_file():
+        raise FixtureError(f"{d.name}/planted.json: {field} {value!r} is not a file under {d.as_posix()}/ "
+                           f"(paths are relative to the fixture directory, not to the repository)")
+    return pp.as_posix()
+
+
+def load_fixtures(fixtures_root: Path) -> list[tuple[Path, dict]]:
+    """[(fixture dir, validated manifest)] in name order. Manifest paths are rewritten to
+    fixture-relative POSIX strings; nothing here knows where the fixtures will be staged."""
     if not fixtures_root.is_dir():
-        return tune, sealed
+        shipped = nc.DEFAULT_FIXTURES_ROOT.relative_to(nc.PLUGIN_ROOT).as_posix()
+        raise FixtureError(f"no fixtures directory at {fixtures_root.as_posix()} -- the plugin ships its calibration "
+                           f"fixtures under {shipped}/; a copy of the plugin without them cannot "
+                           f"calibrate. Reinstall nacharbeit, or pass --fixtures-root DIR.")
+    out = []
     for d in sorted(p for p in fixtures_root.iterdir() if p.is_dir()):
         manifest = d / "planted.json"
         if not manifest.is_file():
             continue
-        m = json.loads(manifest.read_text(encoding="utf-8"))
-        files = sorted(rel(p) for p in d.rglob("*") if p.is_file() and p.suffix in FIXTURE_SUFFIXES and p.name != "planted.json")
-        fx = {"name": m["name"], "kind": m.get("kind", "skills"), "files": files, "cleanFiles": m.get("cleanFiles", []), "planted": m["planted"]}
+        try:
+            m = json.loads(manifest.read_text(encoding="utf-8"))
+            planted = m["planted"]
+            m["name"]  # required key: a manifest without it is unusable, not defaulted
+        except (ValueError, KeyError, TypeError) as e:
+            raise FixtureError(f"{d.name}/planted.json is unusable: {type(e).__name__}: {e}") from e
+        m["cleanFiles"] = [_fixture_relative(d, "cleanFiles[]", f) for f in m.get("cleanFiles", [])]
+        m["planted"] = [{**pl, "file": _fixture_relative(d, "planted[].file", pl.get("file"))} for pl in planted]
+        out.append((d, m))
+    return out
+
+
+def stage_fixtures(fixtures_root: Path, staged: Path) -> None:
+    """Copy the fixture tree to `staged`, replacing any earlier copy only once the new one is
+    complete. Every path handed to the workflow is repo-relative (main() chdirs to the repo
+    root) and its subagents Read them; a path into the plugin's install directory is outside
+    that tree. A failed copy must not leave the previous run's fixtures to be graded as fresh."""
+    tmp = staged.with_name(staged.name + ".tmp")
+    if tmp.exists():
+        shutil.rmtree(tmp)
+    shutil.copytree(fixtures_root, tmp, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    if staged.exists():
+        shutil.rmtree(staged)
+    tmp.replace(staged)
+
+
+def build_fixtures(fixtures_root: Path, staged: Path) -> tuple[list[dict], list[dict]]:
+    """Tuning and sealed fixture records whose every path is `staged`-prefixed (repo-relative
+    when the state dir is inside the repository)."""
+    tune, sealed = [], []
+    for d, m in load_fixtures(fixtures_root):
+        sd = staged / d.name
+        files = sorted(nc.rel(p) for p in sd.rglob("*") if p.is_file() and p.suffix in FIXTURE_SUFFIXES and p.name != "planted.json")
+        fx = {"name": m["name"], "kind": m.get("kind", "skills"), "files": files,
+              "cleanFiles": [nc.rel(sd / f) for f in m["cleanFiles"]],
+              "planted": [{**pl, "file": nc.rel(sd / pl["file"])} for pl in m["planted"]]}
         (sealed if d.name.startswith("sealed") else tune).append(fx)
     return tune, sealed
 
@@ -224,7 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=None, help="args JSON (default <state-dir>/args.json)")
     ap.add_argument("--lint-out", type=Path, default=None, help="lint JSON (default <state-dir>/lint.json)")
     ap.add_argument("--rubric", type=Path, default=None)
-    ap.add_argument("--fixtures-root", type=Path, default=nc.DEFAULT_FIXTURES_ROOT)
+    ap.add_argument("--fixtures-root", type=Path, default=nc.DEFAULT_FIXTURES_ROOT,
+                    help="directory of <name>/planted.json calibration fixtures (default: the set shipped inside the plugin); "
+                         "planted.json paths are relative to each fixture directory")
     ap.add_argument("--known-answers", type=Path, default=None, help=f"prompt index with known-answer prompts (default {nc.DEFAULT_KNOWN_ANSWERS} when present)")
     ap.add_argument("--ambiguous", type=Path, default=None, help="ambiguous-prompts JSON (default: the bundled werkstoff set, only inside werkstoff)")
     ap.add_argument("--repo-name", default=None)
@@ -274,12 +341,19 @@ def main(argv: list[str] | None = None) -> int:
     corpus = build_corpus(all_units)
     batches = build_batches(plugin_dirs, units, state, docs_root)
     handoffs = build_handoffs(all_units, corpus)
-    tune, sealed = build_fixtures(a.fixtures_root)
+    staged = state / nc.STAGED_FIXTURES_NAME
+    try:
+        load_fixtures(a.fixtures_root)  # validate before touching the staged copy
+        stage_fixtures(a.fixtures_root, staged)
+        tune, sealed = build_fixtures(a.fixtures_root, staged)
+    except FixtureError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        return 1
     known_answers, dropped = build_known_answers(known, corpus)
     amb = json.loads(ambiguous.read_text(encoding="utf-8"))["prompts"] if ambiguous and ambiguous.is_file() else []
 
     # leak assertions — the same ones the workflow re-checks at runtime
-    fx_prefix = a.fixtures_root.as_posix().rstrip("/") + "/"
+    fx_prefix = nc.rel(staged).rstrip("/") + "/"
     if any(f.startswith(fx_prefix) for b in batches for f in b["files"]):
         print("ERROR: fixture path leaked into real batches", file=sys.stderr)
         return 1
@@ -287,7 +361,8 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: real path leaked into fixtures", file=sys.stderr)
         return 1
     if not tune or not sealed:
-        print(f"ERROR: need at least one tuning and one sealed fixture under {a.fixtures_root}", file=sys.stderr)
+        print(f"ERROR: need at least one tuning and one sealed fixture under {a.fixtures_root.as_posix()} "
+              f"(found {len(tune)} tuning, {len(sealed)} sealed; a sealed fixture's directory name starts with 'sealed')", file=sys.stderr)
         return 1
     kinds_reviewed = {b["kind"] for b in batches}
     kinds_calibrated = {fx["kind"] for fx in tune} & {fx["kind"] for fx in sealed}

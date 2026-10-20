@@ -1,0 +1,28 @@
+{
+  "name": "sealed-manifest-1",
+  "kind": "manifest",
+  "cleanFiles": [
+    "skills/spool-run/SKILL.md",
+    ".claude-plugin/plugin.json"
+  ],
+  "planted": [
+    {
+      "file": "README.md",
+      "rule_id": "PQ-NOT-SECTION",
+      "angle": "cannibalization",
+      "quoteKey": "- Not a scheduler."
+    },
+    {
+      "file": "README.md",
+      "rule_id": "PQ-PROMPTS-ROUTE",
+      "angle": "cannibalization",
+      "quoteKey": "Triggers `andon-loop`"
+    },
+    {
+      "file": "README.md",
+      "rule_id": "PQ-NARRATIVE",
+      "angle": "other",
+      "quoteKey": "Last Tuesday the queue got stuck behind a 40-minute check"
+    }
+  ]
+}

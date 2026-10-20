@@ -13,16 +13,22 @@ not is a reviewer with an unknown false-negative rate, and its output is an opin
    skipped checker; the report will carry the same gaps.
 
 2. **Build and bake the args** (this also runs the lint; every path is a flag with a
-   werkstoff default — `--help` lists them):
+   default — `--help` lists them. The calibration fixtures ship inside the plugin and are
+   staged into `analysis/nacharbeit/fixtures/`, so this works in any repository):
 
    ```bash
-   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py" [--plugin <name> ...] [--docs-root docs]
+   uv run --script "${CLAUDE_PLUGIN_ROOT}/scripts/build_args.py" [--plugin <name> ...] [--docs-root docs]
    ```
 
    It refuses when a batch kind has no tuning + sealed fixture pair under the fixtures
-   root: a finder cannot grade what it was never calibrated on. It prints the batch
+   root (`--fixtures-root DIR` swaps the set): a finder cannot grade what it was never
+   calibrated on. It prints the batch
    list; tell the user the plugin count, the batch count and the fixture count before
    launching anything.
+
+   `uv run --script` reads the script's PEP 723 header and supplies `pyyaml`. Without `uv`,
+   run the same path with `python3 -B`; that needs `pyyaml` importable, and the linter
+   stops with exit 2 and says so rather than grading frontmatter it cannot parse.
 
 3. **Launch the review** with the Workflow tool, by the baked script path and never
    with hand-built args — the args are 170+ KB and the leak assertions live in them:
@@ -118,3 +124,4 @@ next: nacharbeit-fix applies the haiku and sonnet tiers under the lock; the four
 - `agents/component-finder.md` — the fallback finder for sessions without the Workflow tool.
 - `references/rubric.md` — the standard every finding cites; read a rule before disputing a finding.
 - `scripts/ambiguous-prompts.json` — werkstoff's hand-written ambiguous prompts for the routing simulation; another repository passes its own with `--ambiguous`.
+- `scripts/fixtures/calibration/` — the planted-defect fixtures the finder is calibrated on; never edited after a finder has seen them.

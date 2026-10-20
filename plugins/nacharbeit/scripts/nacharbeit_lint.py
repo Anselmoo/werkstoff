@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["pyyaml"]
+# ///
 """Phase 0 of a nacharbeit review: every mechanically checkable rule.
 
 Implements the mechanical rows of references/rubric.md -- `M-*` (prompt-bearing
@@ -25,7 +29,8 @@ Usage:
   nacharbeit_lint.py plugins/* --format json                    # findings JSON
   nacharbeit_lint.py plugins/* --out analysis/nacharbeit/lint.json
   nacharbeit_lint.py plugins/nacharbeit --docs-root docs --marketplace .claude-plugin/marketplace.json
-Exit: 0 on a completed scan (findings are data, not failure); 2 on bad arguments.
+Exit: 0 on a completed scan (findings are data, not failure); 2 on bad arguments, or when
+pyyaml is missing (declared in the PEP 723 header above, so `uv run --script` resolves it).
 """
 
 from __future__ import annotations
@@ -47,9 +52,27 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    print("pyyaml is required: pip install pyyaml", file=sys.stderr)
-    sys.exit(2)
+    # Not an exit here: preflight.py and build_args.py import this module, and the
+    # tool that is meant to REPORT a missing pyyaml cannot do so if importing the
+    # linter already killed it. Every path that would grade a file calls
+    # require_yaml() first; discovery and --count do not need a YAML parser.
+    yaml = None
 
+PYYAML_REMEDY = (
+    "pyyaml is required to parse frontmatter. Run this script through "
+    "`uv run --script <path>` (its PEP 723 header declares the dependency) or "
+    "`pip install pyyaml`."
+)
+
+
+def require_yaml() -> None:
+    """Refuse to grade without a YAML parser. Frontmatter that cannot be parsed would
+    otherwise be reported as 'YAML: ...' per file -- a wrong answer, not a missing tool."""
+    if yaml is None:
+        print(PYYAML_REMEDY, file=sys.stderr)
+        sys.exit(2)
+
+sys.dont_write_bytecode = True  # `uv run` has no -B; keep the installed plugin copy free of __pycache__ (#88)
 HERE = Path(__file__).resolve().parent
 RUBRIC = HERE.parent / "references" / "rubric.md"
 
@@ -343,6 +366,10 @@ def parse_frontmatter(unit: Unit) -> None:
         unit.body = text
         return
     raw = "\n".join(lines[1:end])
+    if yaml is None:  # discovery only (preflight): count the unit, grade nothing
+        unit.body = "\n".join(lines[end + 1:])
+        unit.body_line0 = end + 2
+        return
     try:
         fm = yaml.safe_load(raw)
     except Exception as e:  # noqa: BLE001
@@ -2212,6 +2239,7 @@ KINDS = ("skill", "agent", "command", "reference", "doc", "workflow", "hooks", "
 
 
 def lint(plugin_dirs: list[Path]) -> dict:
+    require_yaml()
     SKIPPED.clear()
     units = discover(plugin_dirs)
     findings: list[dict] = []

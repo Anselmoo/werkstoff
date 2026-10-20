@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["pyyaml"]
+# ///
 """Read-only inventory before a nacharbeit run: what the target plugins contain,
 which checkers this environment can run, which other guards are live, and whether
 a fix lock is already open. Writes nothing.
@@ -19,6 +23,7 @@ import shutil
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # `uv run` has no -B; keep the installed plugin copy free of __pycache__ (#88)
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
@@ -41,6 +46,14 @@ OTHER_GUARDS = [
     ("cupertino", ".cupertino", "CUPERTINO_DISABLE_GUARD=1"),
 ]
 STALE_HOURS = 6
+
+# Which review batch kind each discovered unit kind lands in (build_args.build_batches). A
+# batch kind with no tuning + sealed fixture pair cannot be calibrated, except the three
+# that the skills calibration covers and that are labelled calibrated:false instead.
+BATCH_OF = {"skill": "skills", "reference": "skills", "doc": "skills", "agent": "agents", "command": "commands",
+            "workflow": "workflows", "hooks": "hooks", "hookscript": "hooks", "script": "scripts",
+            "viewer": "assets", "manifest": "manifest", "docs": "docs"}
+UNCALIBRATED_OK = {"agents", "commands", "workflows"}
 
 
 def lock_age_hours(lock: Path) -> float | None:
@@ -81,15 +94,29 @@ def main(argv: list[str] | None = None) -> int:
     tools = {
         "node": shutil.which("node") is not None,
         "claude": shutil.which("claude") is not None,
-        "pyyaml": True,
+        "pyyaml": lp.yaml is not None,
         "viewer_checker": (HERE / "check_viewer_conformance.py").is_file(),
         "hooks_checker": (HERE / "verify_hooks_deny.py").is_file(),
         "contract_diff": nc.DEFAULT_CONTRACT_DIFF.is_file(),
         "known_answers": nc.DEFAULT_KNOWN_ANSWERS.is_file(),
         "marketplace": nc.DEFAULT_MARKETPLACE.is_file(),
         "docs_root": docs_root.as_posix() if docs_root else None,
-        "fixtures_root": nc.DEFAULT_FIXTURES_ROOT.is_dir(),
     }
+    fixtures = nc.fixture_inventory()
+    tools["fixtures"] = f"{fixtures['tune']} tuning + {fixtures['sealed']} sealed"
+    reviewed = {BATCH_OF[k] for counts in inventory.values() for k in counts if k in BATCH_OF}
+    uncalibrated = sorted(reviewed - set(fixtures["kinds"]) - UNCALIBRATED_OK)
+    cannot = []
+    if lp.yaml is None:
+        cannot.append("every lint rule and the review (pyyaml missing: run the scripts through `uv run --script`, or `pip install pyyaml`)")
+    if uncalibrated:
+        cannot.append(f"a calibrated review of {', '.join(uncalibrated)} (no tuning + sealed fixture pair at {fixtures['root']}; "
+                      f"reinstall nacharbeit, or pass --fixtures-root DIR)")
+    own_guard = nc.guard_status()
+    if not own_guard["ok"]:
+        cannot.append("a fix pass (nacharbeit's own guard is not live, see above; nacharbeit-fix refuses to start)")
+    if not tools["known_answers"]:
+        cannot.append("known-answer routing accuracy (no prompt index; collisions are labelled hints -- pass --known-answers FILE)")
     live = [{"plugin": n, "marker": m, "escape": e} for n, m, e in OTHER_GUARDS if os.path.exists(os.path.join(root, m))]
     lock = state / "fix_scope.json"
     lock_info = None
@@ -98,7 +125,8 @@ def main(argv: list[str] | None = None) -> int:
         lock_info = {"path": lock.as_posix(), "ageHours": None if age is None else round(age, 1), "stale": age is None or age > STALE_HOURS}
     runs = {name: (state / name).is_file() for name in ("lint.json", "args.json", "run.json", "fix-args.json", "fix-check.json")}
 
-    out = {"plugins": inventory, "tools": tools, "liveGuards": live, "fixLock": lock_info, "state": {"dir": state.as_posix(), **runs}}
+    out = {"plugins": inventory, "tools": tools, "fixtures": fixtures, "cannotMeasure": cannot, "ownGuard": own_guard, "liveGuards": live,
+           "fixLock": lock_info, "state": {"dir": state.as_posix(), **runs}}
     if a.format == "json":
         print(json.dumps(out, indent=1))
         return 0
@@ -106,6 +134,10 @@ def main(argv: list[str] | None = None) -> int:
     for name, counts in inventory.items():
         print(f"  {name:<22} " + ", ".join(f"{k}={v}" for k, v in sorted(counts.items())))
     print("checkers: " + ", ".join(f"{k}={'yes' if v else 'no'}" if not isinstance(v, str) else f"{k}={v}" for k, v in tools.items()))
+    print(f"calibration fixtures: {fixtures['root']} -- {tools['fixtures']}; kinds with a pair: {', '.join(fixtures['kinds']) or 'none'}")
+    print("own guard (nacharbeit's fix-lock hook): " + ("present, declared, denies outside a lock and stays inert without one -- "
+          "a live registration is proven when a fix pass opens its lock" if own_guard["ok"] else f"NOT LIVE -- {own_guard['problem']}"))
+    print("cannot measure: " + ("; ".join(cannot) if cannot else "nothing skipped"))
     if live:
         print("other guards live in this repository (a fix pass runs under them; a denial from one is reported, never bypassed):")
         for g in live:

@@ -16,7 +16,7 @@ has already spent tokens on a result it cannot use.
 2. **Run the inventory** (read-only):
 
    ```bash
-   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" [plugins/<name> ...]
+   uv run --script "${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py" [plugins/<name> ...]
    ```
 
    It prints, per plugin, the unit count by kind; which checkers are available
@@ -25,6 +25,10 @@ has already spent tokens on a result it cannot use.
    other guard hooks are live (takt, lehre, andon, zeugnis, befund, cupertino) with
    their escape hatches; whether `analysis/nacharbeit/fix_scope.json` is open and how
    old it is; and which state files from earlier runs exist.
+
+   `uv run --script` reads the script's PEP 723 header and supplies `pyyaml`. Without `uv`,
+   run the same path with `python3 -B`; that needs `pyyaml` importable, and the linter
+   stops with exit 2 and says so rather than grading frontmatter it cannot parse.
 
 3. **Say what the run can and cannot measure.** A missing checker means the rules that
    need it will be listed under `skipped`, never silently passed — name them. A live

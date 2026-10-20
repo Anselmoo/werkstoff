@@ -35,13 +35,19 @@ target-version = "py312"
 # intentionally unused import. Linting (or "fixing") either destroys the test
 # it exists to support. Do not remove this exclusion.
 #
+# plugins/nacharbeit/scripts/fixtures/calibration/ is the same kind of thing: the
+# planted-defect set nacharbeit's finder is calibrated on (unused imports, a hook with an
+# unused variable...). It moved out of test/plugins/fixtures/ so the plugin ships it (#117);
+# the exclusion moved with it. It is an exclusion, not a per-file-ignores entry, so the
+# shrink-only nacharbeit baseline below is untouched.
+#
 # NOTE ON ORDERING: this key and `target-version` are TOP-LEVEL and must stay
 # above the [lint] table. TOML puts every key after a table header inside that
 # table, and `lint.extend-exclude` does not exist -- ruff then refuses to load
 # the file at all. That mistake was made here once and caught only because a
 # deliberately-broken probe file went undetected; a `--quiet` run had reported
 # it as "passing" while ruff was in fact scanning nothing.
-extend-exclude = ["test/plugins/fixtures"]
+extend-exclude = ["test/plugins/fixtures", "plugins/nacharbeit/scripts/fixtures/calibration"]
 
 [lint]
 # The first four are the historical baseline (see the header). The rest were
