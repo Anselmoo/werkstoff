@@ -66,6 +66,8 @@ next token is not a wrapper/assignment -- it never raises and never treats
 running out of tokens as a match.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
