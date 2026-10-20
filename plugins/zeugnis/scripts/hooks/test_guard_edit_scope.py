@@ -20,6 +20,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+FLOOR = (3, 11)
 HOOK = Path(__file__).parent / "guard_edit_scope.py"
 
 FIXABLE_SCOPE = {
@@ -175,6 +176,83 @@ class TestFailureMode(unittest.TestCase):
             r = subprocess.run([sys.executable, str(HOOK)], input=payload,
                                capture_output=True, text=True, timeout=30)
             self.assertEqual(r.returncode, 2)
+
+
+def _old_interpreters() -> list[str]:
+    """Every python3 older than the guard's floor on PATH (#123)."""
+    import shutil
+
+    found: list[str] = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        r = subprocess.run([path, "-c", f"import sys; print(sys.version_info[:2] < {FLOOR!r})"],
+                           capture_output=True, text=True)
+        if r.stdout.strip() == "True":
+            found.append(path)
+    return found
+
+
+class TestPythonFloor(unittest.TestCase):
+    """#123: below MIN_PYTHON an active repo is DENIED, never crashed open.
+
+    A hook that cannot import exits 1, which Claude Code treats as non-blocking:
+    the call goes through. These run the real guard under every python3 older
+    than 3.11 on PATH. The sabotage case lowers the floor in a copy of scripts/
+    and requires the same payload to be allowed -- proof that the version check,
+    not some other failure, is what denies. No old interpreter is a skip, or a
+    failure under REQUIRE_OLD_PYTHON=1 (as CI sets it).
+    """
+
+    def setUp(self):
+        import os
+
+        self.olds = _old_interpreters()
+        if not self.olds:
+            if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+                self.fail("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH")
+            self.skipTest("no python3 older than 3.11 on PATH")
+
+    def _run(self, python: str, hook: Path, repo: Repo) -> subprocess.CompletedProcess:
+        import os
+
+        env = {k: v for k, v in os.environ.items() if k != "ZEUGNIS_DISABLE_GUARD"}
+        payload = json.dumps({"cwd": str(repo.root), "tool_name": "Edit",
+                              "tool_input": {"file_path": "src/correct_file.py", "content": "x"}})
+        return subprocess.run([python, "-B", str(hook)], input=payload,
+                              capture_output=True, text=True, timeout=30, env=env)
+
+    def test_below_floor_active_repo_denies_and_names_the_floor(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            for py in self.olds:
+                r = self._run(py, HOOK, repo)
+                self.assertEqual(r.returncode, 2, f"{py}: {r.stderr}")
+                self.assertIn("Python >= 3.11", r.stderr, py)
+
+    def test_below_floor_inert_repo_allows(self):
+        with Repo(zeugnis_dir=False) as repo:
+            for py in self.olds:
+                r = self._run(py, HOOK, repo)
+                self.assertEqual(r.returncode, 0, f"{py}: {r.stderr}")
+
+    def test_sabotage_floor_lowered_allows(self):
+        import shutil
+
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts = Path(tmp) / "scripts"
+            shutil.copytree(HOOK.parent.parent, scripts,
+                            ignore=shutil.ignore_patterns("__pycache__"))
+            hook = scripts / "hooks" / HOOK.name
+            text = hook.read_text()
+            self.assertIn("MIN_PYTHON = (3, 11)", text)
+            hook.write_text(text.replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+            for py in self.olds:
+                # A fresh scope per interpreter: an allowed edit spends the
+                # one-shot budget, so the next run would be a refused second edit.
+                with Repo(scope=FIXABLE_SCOPE) as repo:
+                    r = self._run(py, hook, repo)
+                    self.assertNotEqual(r.returncode, 2, f"{py}: {r.stderr}")
 
 
 if __name__ == "__main__":

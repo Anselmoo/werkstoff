@@ -5,6 +5,17 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Changed
+- **hooks**: both guards, `guard_edit_scope.py` and `guard_bash_scope.py`, now declare
+  `MIN_PYTHON = (3, 11)` and, past the inert check, deny below it with the interpreter named and
+  the escape hatch (#123). Today both enforce correctly under 3.9 and 3.10, so this is the declared
+  floor made explicit, not a crash fix: an import-time error in a hook exits 1 and is allowed, and
+  the next 3.11-only construct would have opened that hole again with nothing reporting it.
+  `guard_edit_scope.py` gained `from __future__ import annotations`, so it stays importable to say so.
+- **tests**: each guard's suite has a `TestPythonFloor` class. Under every python3 older than 3.11 on
+  PATH, an active repo is denied (and the denial names the floor), an inert repo is allowed, and a
+  copy of `scripts/` with the floor lowered allows the same payload, which proves the version check
+  is what denies. With no old interpreter the class skips, or fails under `REQUIRE_OLD_PYTHON=1`.
 
 ## [1.0.5] - 2026-10-20
 ### Fixed

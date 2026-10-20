@@ -37,7 +37,15 @@ single stderr warning + allow, not a deny -- see the try/except around the
 `from lib...` imports below. A packaging defect is not evidence the edit
 violates a rule, and every future edit in every repo being blocked is a
 strictly worse failure than one missed enforcement check (issue #24).
+
+PYTHON FLOOR (#123): MIN_PYTHON, checked past the inert test. A hook runs under
+whatever python3 is on PATH; one that cannot import exits 1, which Claude Code
+treats as non-blocking, so it ALLOWS the call. This module therefore stays
+importable on old interpreters (`from __future__ import annotations`) and denies
+explicitly below the floor instead.
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -45,6 +53,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = (
     "If this edit is unrelated to a zeugnis remediation, set "
@@ -109,6 +119,13 @@ def run() -> int:
     # the plugin.
     if not os.path.isdir(os.path.join(cwd, "analysis", "zeugnis")):
         return allow()
+
+    if sys.version_info < MIN_PYTHON:
+        return deny(
+            f"zeugnis needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; guard_edit_scope ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     try:
         from lib.paths import UnsafeWritePathError, safe_repo_path  # noqa: E402
