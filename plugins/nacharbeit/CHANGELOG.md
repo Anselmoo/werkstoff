@@ -3,6 +3,16 @@
 All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **hook**: `hooks/nacharbeit_guard.py` declares `MIN_PYTHON = (3, 11)` and, while a fix lock is
+  open, denies below it with the interpreter named and the escape hatch (#123). It already
+  imported and enforced under 3.9 and 3.10; the floor makes that a stated contract instead of an
+  untested accident, matching arbeitsplan and cupertino. The check runs past the inert test and
+  before the heartbeat, so an unsupported interpreter can never confirm the guard either.
+  `test_nacharbeit_guard.py` runs the real hook under every python3 older than 3.11 on PATH: lock
+  open denied, no lock allowed, and a copy with the floor lowered allows the same in-scope edit,
+  which proves the version check is what denies. `REQUIRE_OLD_PYTHON=1` turns "none found" into a
+  failure.
 
 ## [1.0.3] - 2026-10-20
 ### Fixed

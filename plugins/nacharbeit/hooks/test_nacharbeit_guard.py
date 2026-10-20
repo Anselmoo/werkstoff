@@ -10,6 +10,12 @@ the process exit code AND on the stdout JSON shape the runtime requires -- a
 deny that omits hookSpecificOutput.hookEventName is discarded by the runtime,
 so a guard can deny correctly and still be ignored.
 
+The Python floor (#123) is exercised under every python3 older than MIN_PYTHON on PATH
+(python3.9, python3.10, /usr/bin/python3): lock open -> DENY naming the floor; no lock ->
+ALLOW; and a copy of the guard with the floor lowered must ALLOW the same in-scope edit,
+which proves the version check is what denies. None found is a named skip, or a failure
+under REQUIRE_OLD_PYTHON=1, as CI sets it.
+
 Usage: test_nacharbeit_guard.py
 Exit: 0 every case passed; 1 any case failed.
 """
@@ -24,6 +30,7 @@ import sys
 import tempfile
 
 GUARD = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nacharbeit_guard.py")
+FLOOR = (3, 11)
 FAILS: list[str] = []
 LOCK = {
     "runStamp": "2026-09-09T00:00:00Z",
@@ -40,14 +47,27 @@ LOCK = {
 }
 
 
-def run(cwd, payload, env_extra=None):
+def run(cwd, payload, env_extra=None, python=None, guard=GUARD):
     env = dict(os.environ)
     env.pop("NACHARBEIT_DISABLE_GUARD", None)
     env.pop("NACHARBEIT_STATE_DIR", None)
     if env_extra:
         env.update(env_extra)
-    return subprocess.run([sys.executable, GUARD], input=json.dumps(payload),
+    return subprocess.run([python or sys.executable, "-B", guard], input=json.dumps(payload),
                           capture_output=True, text=True, cwd=cwd, env=env, timeout=30)
+
+
+def old_interpreters():
+    found = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        probe = subprocess.run([path, "-c", f"import sys; print(sys.version_info[:2] < {FLOOR!r})"],
+                               capture_output=True, text=True)
+        if probe.stdout.strip() == "True":
+            found.append(path)
+    return found
 
 
 def make_repo(with_lock=True, lock=LOCK):
@@ -175,6 +195,27 @@ def main() -> int:
         os.makedirs(os.path.join(r, "analysis", "nacharbeit", "guard-heartbeat.json"))
         expect_deny("unwritable heartbeat still denies", run(r, {"cwd": r, **edit("plugins/demo/agents/other.md")}), "not in the fix scope")
         expect_allow("unwritable heartbeat still allows", run(r, {"cwd": r, **edit("plugins/demo/skills/one/SKILL.md")}))
+
+        # the Python floor (#123), against real old interpreters
+        olds = old_interpreters()
+        if not olds:
+            if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+                FAILS.append("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH")
+            else:
+                print("  skip below-the-floor cases: no python3 older than 3.11 on PATH")
+        r = make_repo()
+        repos.append(r)
+        inert = make_repo(with_lock=False)
+        repos.append(inert)
+        sabotaged = os.path.join(r, "nacharbeit_guard.py")
+        with open(GUARD, encoding="utf-8") as src, open(sabotaged, "w", encoding="utf-8") as dst:
+            dst.write(src.read().replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+        in_scope = edit("plugins/demo/skills/one/SKILL.md")
+        for py in olds:
+            expect_deny(f"{py}, lock open -> below the floor, denied", run(r, {"cwd": r, **in_scope}, python=py), "Python >= 3.11")
+            expect_allow(f"{py}, no lock -> inert, allowed", run(inert, {"cwd": inert, **in_scope}, python=py))
+            expect_allow(f"{py}, sabotage: floor lowered -> the same in-scope edit is allowed",
+                         run(r, {"cwd": r, **in_scope}, python=py, guard=sabotaged))
     finally:
         for r in repos:
             shutil.rmtree(r, ignore_errors=True)
