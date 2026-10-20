@@ -346,7 +346,8 @@ function spend(n, nodeId) {
 
 function halt(reason, nodeId, extra) {
   emit('halt', nodeId, 'halted', { reason })
-  return { aborted: true, abortReason: reason, haltedAt: nodeId, carry: opts.carry, events, dispatched, ...(extra || {}) }
+  // calibrated: false is top-level, not per verdict: the referee schema is pinned to candidate-contract.md (check_contract_sync.py).
+  return { aborted: true, abortReason: reason, haltedAt: nodeId, carry: opts.carry, events, dispatched, calibrated: false, ...(extra || {}) }
 }
 
 const ids = spec.phases.map((p) => p.id)
@@ -376,6 +377,7 @@ for (let i = start; i < spec.phases.length; i++) {
       carry: opts.carry,
       events,
       dispatched,
+      calibrated: false,
     }
   }
   if (ph.writes === 'shared') {
@@ -743,6 +745,7 @@ return {
   carry: opts.carry,
   events,
   dispatched,
+  calibrated: false, // judge-contract: the referee's verdicts are judgement no sealed set has measured
   note:
     'Judgement only, not measurement: this workflow never runs a check itself. Before landing, ' +
     'the calling session measures the accepted candidate against its OWN tree -- ' +

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Anselmoo/werkstoff/tools/judge-contract/verdict.schema.json",
+  "title": "Judge verdict (verdict@1)",
+  "description": "One DECIDED verdict for one item: what decide() / decideVerdict() return, never what a judge returns. A judge returns only {item, criteria, abstain, abstainReason}; score, outcome and calibrated are derived by code. Cross-field rules the schema states only in part (score is the MINIMUM criterion score; outcome pass iff every criterion passes and score >= threshold) are checked by judge_contract.validate().",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["item", "rubric", "decidedBy", "criteria", "abstain", "abstainReason", "threshold", "score", "outcome", "calibrated"],
+  "properties": {
+    "item": {
+      "type": "string",
+      "description": "The id of the item judged. Empty only on an abstain whose report named no item."
+    },
+    "rubric": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)+@(?:0|[1-9][0-9]*)$",
+      "description": "<plugin>-<name>@<int>; the criteria are listed in that plugin's references."
+    },
+    "decidedBy": {
+      "enum": ["command", "judge"],
+      "description": "command when an exit code, parser, test or probe produced the criteria; judge when one model call did."
+    },
+    "criteria": {
+      "type": "array",
+      "description": "One entry per rubric criterion, in rubric order. Empty exactly when the verdict abstained.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "score", "pass", "evidence"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "pass": { "type": "boolean" },
+          "evidence": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "abstain": { "type": "boolean" },
+    "abstainReason": {
+      "type": ["string", "null"],
+      "description": "A fixed code when code abstained (verdict-missing, missing-item, item-mismatch, malformed:abstain, malformed:criteria, malformed-criterion:<i>, duplicate-criterion:<id>, unknown-criterion:<id>, bad-score:<id>, bad-pass:<id>, bad-evidence:<id>, missing-criterion:<id>), or judge:<text> when the judge abstained itself. Null when the verdict did not abstain."
+    },
+    "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "The MINIMUM criterion score, never an average. 0 on an abstain."
+    },
+    "outcome": {
+      "enum": ["pass", "fail", "abstain"],
+      "description": "An abstain is never a pass: a caller that gates on outcome treats it as not passed."
+    },
+    "calibrated": {
+      "type": "boolean",
+      "description": "True only when the rubric's calibration record shows a sealed known-answer set whose agreement cleared its floor."
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "abstain": { "const": true } }, "required": ["abstain"] },
+      "then": {
+        "properties": {
+          "outcome": { "const": "abstain" },
+          "abstainReason": { "type": "string", "minLength": 1 },
+          "criteria": { "maxItems": 0 },
+          "score": { "const": 0 }
+        }
+      },
+      "else": {
+        "properties": {
+          "item": { "minLength": 1 },
+          "outcome": { "enum": ["pass", "fail"] },
+          "abstainReason": { "type": "null" },
+          "criteria": { "minItems": 1 }
+        }
+      }
+    }
+  ]
+}

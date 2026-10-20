@@ -24,7 +24,7 @@ pairings:
     source: "claude-plugins-official"
     beat: "inspect"
     why: "Two independently-authored extractors emitting the same Given/When/Then shape make disagreement between them signal, not noise -- a single extractor's output is not something you can cross-check against itself."
-    how: "befund-extract-rules mines rules from the executable code first, loops to convergence, and requires a two-judge panel for any P0-rated rule. code-modernization:business-rules-extractor runs second, as an independent second read with the same output shape -- run after the first extractor so it's a cross-check, not an anchor."
+    how: "befund-extract-rules mines rules from the executable code first, loops to convergence, and requires one scored contract judge (rubric befund-p0-rule@1) to pass for any P0 rule. code-modernization:business-rules-extractor runs second, as an independent second read with the same output shape -- run after the first extractor so it's a cross-check, not an anchor."
     prompt: "extract this codebase's real business rules as Given/When/Then specs, from the executable code, not from comments or docs"
     dos:
       - "Run the second extractor after the first, specifically so it can disagree with it, not repeat it."

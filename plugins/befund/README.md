@@ -210,7 +210,7 @@ cannot quietly become a clean, prettier, useless one.
 
 > Triggers `befund-extract-rules` — mines calculations, validations, and
 > state transitions into Given/When/Then rules, looping to convergence and
-> requiring a two-judge panel to confirm any P0 rule.
+> requiring a scored judge verdict to pass for any P0 rule.
 
 ##### Apply the modernization findings
 
@@ -333,7 +333,7 @@ than one missed check. Set `BEFUND_DISABLE_GUARD=1` to bypass the hook for one c
 | `complexity-score-formula` | `formulas.complexity_index()` — `2.94 × KSLOC^1.10`, and `validators.validate_complexity_score_summary` recomputes it and rejects a mismatch |
 | `language-detection-threshold` | `language_detect.detect_languages()` — `MIN_FILES_FOR_DETECTION = 3` |
 | `cycle-definition-in-graph` | `graph.find_cycles()` — Tarjan SCC, `MIN_CYCLE_SIZE = 2` |
-| `p0-rule-panel-confirmation` | `p0_panel.confirm_p0_rule()` plus `validators.validate_business_rules_summary` refusing any P0 rule without `panel_confirmed: true` |
+| `p0-rule-panel-confirmation` | `p0_panel.confirm_p0_rule()` hands one judge report to `judge_contract.decide` (rubric `befund-p0-rule@1`), and `validators.validate_business_rules_summary` refuses any P0 rule whose `p0_verdict` is not a well-formed pass about that rule. The spec id predates the collapse of the two-judge panel into one judge; `panel_confirmed` is no longer honoured |
 | `extract-rules-loop-convergence` | `rules_loop.RuleLoopController` — hard `MAX_ROUNDS_HARD_CAP = 4`, 2 consecutive dry rounds to converge |
 | `stage-graph-vs-stage-map-json` | `validators.validate_stage_graph` rejects the artifact unless `edgeCount == len(wires)` |
 | `file-stage-index-partial-coverage` | `attribution.attribute()` returns `"Unattributed"` on any miss, never an error |

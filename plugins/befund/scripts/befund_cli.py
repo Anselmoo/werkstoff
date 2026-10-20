@@ -174,8 +174,15 @@ def cmd_rules_loop_check(args):
 
 def cmd_p0_confirm(args):
     rule = _load_json_arg(args.rule)
-    judges = _load_json_arg(args.judges)
-    _print(p0_panel.confirm_p0_rule(rule, judges))
+    # `null` is a legitimate value: the judge returned nothing. It decides to a
+    # verdict-missing abstain, which is not a pass.
+    raw_verdict = _load_json_arg(args.verdict)
+    _print(p0_panel.confirm_p0_rule(rule, raw_verdict))
+
+
+def cmd_p0_spot_check(args):
+    rules = _load_json_arg(args.rules)
+    _print(p0_panel.spot_check_verdicts(rules, args.k))
 
 
 def cmd_label_findings(args):
@@ -432,8 +439,13 @@ def build_parser():
 
     p = sub.add_parser("p0-confirm")
     p.add_argument("--rule", required=True)
-    p.add_argument("--judges", required=True)
+    p.add_argument("--verdict", required=True)
     p.set_defaults(func=cmd_p0_confirm)
+
+    p = sub.add_parser("p0-spot-check")
+    p.add_argument("--rules", required=True)
+    p.add_argument("--k", type=int, default=3)
+    p.set_defaults(func=cmd_p0_spot_check)
 
     p = sub.add_parser("label-findings")
     p.add_argument("--repo", required=True)

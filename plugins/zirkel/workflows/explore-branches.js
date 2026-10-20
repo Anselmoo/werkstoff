@@ -127,4 +127,6 @@ return {
   })),
   selected: winner.name,
   rationale: `Highest total (${winner.total}); ties broken by lowest risk.`,
+  // judge-contract: these scores come from a judge no sealed set has measured.
+  calibrated: false,
 }

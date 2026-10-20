@@ -161,6 +161,15 @@ changes in this diff"
 > `andon-verify` needs the contract named in the prompt — it does not infer one
 > from the diff the way the reviewers above do.
 
+## Judges inside these gates follow the judge contract
+
+Several gates above end in a model deciding pass or fail. Wherever that happens, a command
+decides first if one can, and the model judge that remains follows
+[`docs/plugin-authoring/references/judge-contract.md`](../../plugin-authoring/references/judge-contract.md):
+one judge per item, a named rubric scored per criterion, an abstain that never counts as a
+pass, and a `calibrated` label that stays false until a sealed set clears the floor. A gate
+that reads such a verdict gates on `outcome === 'pass'`, not on the absence of a fail.
+
 ## What not to put in a gate
 
 Two categories do not belong in this dispatch slot, for different reasons.

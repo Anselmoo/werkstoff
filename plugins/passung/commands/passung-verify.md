@@ -63,12 +63,28 @@ independently, not in dependency-ordered batches, so carrying over align's
 
 This fans out one **equivalence-verifier** per aligned module, each
 re-reading its diff against the Pattern Card's canonical form and the
-module's tests, then an independent **passung-critic** pass
-adversarially re-checks every PASS verdict before it's trusted (the
-signature false-negative here is a verifier that only re-runs the tests
-the aligner already ran, missing a behavior change the existing test suite
-never covered). Report `refuted` count — the precision the second pass
-bought.
+module's tests. Every `PASS` then goes to **one blind judge** (a
+**passung-critic**, rubric `passung-equivalence@1`: `changed-branches-covered`,
+`docs-current`, `tests-exercise-change`, `no-behavior-change`, threshold 0.7) that is shown neither the
+first verdict nor its reasoning and runs the tests itself — the signature
+false-negative here is a verifier that only re-runs the tests the aligner
+already ran, missing a behavior change the existing test suite never covered.
+Code decides the outcome from the judge's scores: a pass keeps `PASS`; a fail
+where `no-behavior-change` failed (the aligned module no longer behaves identically:
+changed outputs, side effects or error paths) overturns it to `FAIL`; any other
+fail, or an abstain (including a judge that returned nothing), makes the module
+`PASS-WITH-GAPS`, carrying the failing evidence or the abstain reason. Report
+`stats.overturned` — what the judge bought — with `stats.overturnedToFail` and
+`stats.judgeAbstain` separately. A module listed in
+`unchecked` got no Check verdict at all: report it as unverified, never as clean.
+The rubric is in `${CLAUDE_PLUGIN_ROOT}/references/judge-rubrics.md` and the
+contract it follows in `${CLAUDE_PLUGIN_ROOT}/references/judge-contract.md`.
+
+**Show the user `spotCheck` every run.** It is up to three judge verdicts (first,
+middle, last by module), so a person reads what the judge actually said. For each,
+print the module, `outcome`, `score` against `threshold`, and every criterion's
+evidence. Label them **uncalibrated** (`calibrated: false`): no sealed set has been
+measured for `passung-equivalence@1`.
 
 **Fallback** (no Workflow tool): run Steps 1–2 yourself per module.
 

@@ -193,6 +193,10 @@ bash scripts/ci/check-js-syntax.sh                         # parses + workflow S
 bash scripts/ci/check-js-syntax.sh --selftest              # 8 planted-defect cases -- run before trusting it
 python3 scripts/ci/check_workflow_models.py               # every literal agent() model is valid (omitted inherits, #118) + carries the relay briefing (#90)
 python3 scripts/ci/check_workflow_models.py --selftest    # 59 cases (planted defects plus the #118 pass cases) -- run before trusting it
+python3 scripts/ci/check_judge_contract.py --selftest     # the sync check's planted defects (#119) -- run before trusting it
+python3 scripts/ci/check_judge_contract.py                # every vendored judge-contract copy (JS block, befund .py, .md) matches tools/judge-contract/
+python3 tools/judge-contract/judge_contract.py --selftest # the verdict contract's known answers
+python3 tools/judge-contract/test_parity.py               # Python and JS decide every case identically (needs node)
 rrt docs inject --check                                   # README shared blocks (see below) haven't drifted
 rrt artifacts --check --strict                            # vendored files (build_symbol_index.py, lib/ canaries) match their lock
 python3 test/plugins/lint-release-wiring.py                # every plugin is in all 4 release lists (see below)
@@ -322,6 +326,20 @@ rule no gate will look for.
 - **sonnet is sufficient.** Its only failures were YAML frontmatter traps, now
   named in the generator prompt and verified. opus bought nothing.
 - Artifacts land in `analysis/rebuild/` (gitignored).
+
+## Model judges follow one contract
+
+Every place a plugin asks a model whether something holds follows
+`docs/plugin-authoring/references/judge-contract.md` (issue #119): a command decides first
+(exit code, parser, test, probe), and only otherwise ONE judge call per item scores a named
+rubric per criterion. An abstain, a malformed report or a missing result is never a pass,
+and the workflow reports it separately from a fail. A rubric is `calibrated: false` until a
+sealed known-answer set clears its floor, and the calling SKILL.md shows the user a sample of
+verdicts, with their evidence, on every run. The single-judge finding that motivated this
+comes from an eval harness over clear-answer cases; it does not show that existing in-pipeline
+tribunals are worse, so those that are kept are mapped as "unmeasured" with a `resolves_if`,
+never given an invented measured reason. The vendored copies are checked by
+`scripts/ci/check_judge_contract.py`.
 
 ## Enforcement: only hooks actually enforce
 

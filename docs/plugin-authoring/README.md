@@ -63,6 +63,13 @@ structure" pattern the craft rules below argue against.
   shrink-only baseline, and how the source chain runs from `tools/design-tokens/tokens.css`
   through the vendored copies to the DTCG file matrize derives from it. Read this before
   adding a colour, font, or radius anywhere the check covers.
+- [`references/judge-contract.md`](references/judge-contract.md) — the one LLM-as-judge
+  contract every plugin follows when a model, not a command, has to decide: command first,
+  one rubric judge per item scored 0.0-1.0 per criterion with a stated threshold, abstain
+  never a pass, calibration against a sealed known-answer set, and a spot-check sample shown
+  to the user each run. Also maps the existing tribunals and panels onto it, or records them
+  as kept-unmeasured. Read this before adding or changing any model-judged step; the vendored
+  copies are held by `scripts/ci/check_judge_contract.py`.
 
 ## The headline finding
 

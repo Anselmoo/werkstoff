@@ -138,15 +138,22 @@ Repeat the following until the engine tells you to stop:
    `"converged": true` on its very first pass regardless of how many
    findings were described — do not read that as "nothing needs
    attention" when summarizing for the user; report the open findings
-   themselves.
+   themselves. `converged` is also forced `false` while any verified
+   domain's sidecar has `unverifiedCount > 0` (or an unreadable sidecar):
+   the output then lists them under `unverifiedBlockers`. That is an
+   abstain, not a pass: re-run that domain's Verify phase rather than
+   starting more passes (`shouldContinue` stays `false`).
 
 ## Wrap up
 
 7. `analysis/zeugnis/reports/ZEUGNIS_CYCLE.md` already has one line appended per
    pass by the engine. Summarize it for the user: total passes run,
-   whether it stopped due to convergence or the pass cap, findings closed,
-   findings escalated (reopened past `max_reopens`), and anything left
-   open.
+   which of the three stop reasons applied — convergence, the pass cap, or
+   **blocked by unverified findings** (`converged: false` with
+   `unverifiedBlockers`; name each blocked domain and say its Verify phase
+   must be re-run — that is not convergence and not a clean result) —
+   findings closed, findings escalated (reopened past `max_reopens`), and
+   anything left open.
 
 ## What NOT to do
 

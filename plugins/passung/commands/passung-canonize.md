@@ -126,12 +126,23 @@ Workflow({
 This runs one **pattern-extractor** per dimension, loops additional rounds
 until two consecutive rounds find no new divergent site, has an
 independent **pattern-analyst** referee re-derive the maturity/recency
-signal for every candidate canon before it's trusted, and runs a two-judge
-panel (fidelity + basis-soundness) on every `derived-majority` card before
-it can anchor `/passung-brief`. Tell the user the agent count before
+signal for every candidate canon before it's trusted, then puts every
+`derived-majority` card before **one** judge (rubric `passung-provenance@1`:
+`basis-supports-winner`, `form-faithful`, threshold 0.7) before it can anchor
+`/passung-brief`. The judge reports scores and evidence; code decides the outcome,
+and a fail or an abstain makes the card `needs-human-decision`, never canon. The
+rubric is in `${CLAUDE_PLUGIN_ROOT}/references/judge-rubrics.md` and the contract it
+follows in `${CLAUDE_PLUGIN_ROOT}/references/judge-contract.md`. Tell the user the agent count before
 launching. On return, render `confirmedPatterns` into the two artifacts
 above; report `rejectedPatterns` (candidates the referees couldn't
 confirm) as a count with 1–2 examples.
+
+**Show the user `spotCheck` every run.** It is up to three judge verdicts (first,
+middle, last by dimension), so a person reads what the judge actually said. For each,
+print the dimension, `outcome`, `score` against `threshold`, and every criterion's
+evidence. Label them **uncalibrated** (`calibrated: false`): no sealed set has been
+measured for `passung-provenance@1`, so a pass is not a proven pass. Report
+`stats.judgeFail` and `stats.judgeAbstain` separately.
 
 ## Method B — Direct subagent fan-out (fallback)
 

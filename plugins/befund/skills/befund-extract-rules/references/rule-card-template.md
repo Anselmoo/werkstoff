@@ -18,9 +18,9 @@ like end to end.
   When  {trigger}
   Then  {outcome}
 **Status:** confirmed
-  [P0 rules only -- one line naming the panel outcome, e.g. "Two-judge
-  panel confirmed: judge-a and judge-b both independently verified
-  {file}:{line}."]
+  [P0 rules only -- one line naming the judge outcome, e.g. "Judge
+  verdict pass (befund-p0-rule@1, score 0.85, uncalibrated): {file}:{line}
+  contains the logic and it executes."]
 ```
 
 ## Field rules (not optional)
@@ -30,19 +30,19 @@ like end to end.
 - `**Specification:**` always renders `given`/`when`/`then` as three
   separate lines, in that order -- never collapsed into one paragraph, and
   never reordered.
-- A P0 rule reaches `**Status:** confirmed` only when it carries
-  `"panel_confirmed": true` -- `validate-artifact --kind
-  business_rules_summary` (see `plugins/befund/scripts/lib/validators.py`)
-  refuses any P0 rule missing that field or carrying anything else, so a P0
-  rule can never be rendered as a confirmed card without having actually
-  passed the two-judge panel.
-- A P0 rule that did not pass the panel is never rendered as a card and
-  never silently dropped -- it goes in the separate "Unconfirmed rules"
-  section (see `business-rules-report-sample.md`) with its downgrade
-  reason.
-- P1-P3 rules have no panel requirement; `**Status:** confirmed` here means
+- A P0 rule reaches `**Status:** confirmed` only when it carries a `p0_verdict`
+  whose `outcome` is `pass` -- `validate-artifact --kind business_rules_summary`
+  (see `plugins/befund/scripts/lib/validators.py`) refuses any P0 rule whose
+  `p0_verdict` is missing, malformed, from another rubric, about another rule,
+  or not a pass, so a P0 rule can never be rendered as a confirmed card without
+  having actually passed the judge.
+- A P0 rule that did not pass the judge (a `fail` or an `abstain`) is never
+  rendered as a card and never silently dropped -- it goes in the separate
+  "Unconfirmed rules" section (see `business-rules-report-sample.md`) with its
+  downgrade reason.
+- P1-P3 rules have no judge requirement; `**Status:** confirmed` here means
   only "survived Step 2's citation verification" -- omit the bracketed
-  panel-outcome line entirely for these, it applies to P0 only.
+  judge-outcome line entirely for these, it applies to P0 only.
 
 Note: unlike the JSON schema in `business-rules-miner.md`'s "Output
 format" (which `befund-transform-brief`'s `flag-p0-blockers` actually

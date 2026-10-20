@@ -11,7 +11,7 @@ beats:
   - skill: "befund:befund-stage-map"
     why: "Clusters by shallowest package boundary, never by manifest directory — the correction a directory-shaped read of an inherited repo needs first."
   - skill: "befund:befund-extract-rules"
-    why: "Mines rules from executable code, never comments; loops to convergence; requires a two-judge panel for any P0-rated rule."
+    why: "Mines rules from executable code, never comments; loops to convergence; requires one scored contract judge (rubric befund-p0-rule@1) to pass for any P0 rule."
     prompt: "extract this codebase's real business rules as Given/When/Then specs, from the executable code, not from comments or docs"
   - skill: "code-modernization:business-rules-extractor"
     why: "An independent second extractor with the same output shape — what the business requires, not how the old code happened to implement it. Run after the first extractor so it's a cross-check, not an anchor."

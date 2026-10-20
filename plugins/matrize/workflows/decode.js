@@ -238,6 +238,8 @@ return {
   rejectedGradeC: rejected,
   unreadable,
   referee: referee.filter(Boolean),
+  // judge-contract: the referee has no sealed set behind it, so its verdicts are uncalibrated.
+  calibrated: false,
   aborted,
   abortReason,
   remaining,

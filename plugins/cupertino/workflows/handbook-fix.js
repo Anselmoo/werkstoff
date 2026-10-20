@@ -78,11 +78,14 @@ const allFindings = NORMALIZED_ARGS.findings
 // independent re-verification are eligible -- this is the code-level gate for
 // "MUST only apply mechanical: true findings, never touch mechanical: false"
 // combined with "never remediate a finding that wasn't independently confirmed".
-// The check summary's validator (scripts/validators.py handbook-check-summary) does not
-// require a `verification` field -- handbook-check already drops refuted findings before
-// writing the summary. So the verdict is checked only when the field is present; an absent
-// field must not silently turn every finding into "unconfirmed".
-const isConfirmed = (f) => !f.verification || f.verification.verdict === "confirmed"
+// The check summary's validator (scripts/validators.py handbook-check-summary) requires each
+// finding to carry `verification.verdict === "confirmed"`, so a well-formed summary always
+// has it. A finding that does not -- field absent, null, a bare string or boolean, a
+// "false_positive" verdict -- is unconfirmed: a gating value nobody supplied is never
+// inferred (this line used to read `!f.verification ||`, which confirmed exactly the
+// findings nobody had verified).
+const isConfirmed = (f) =>
+  f != null && typeof f.verification === "object" && f.verification !== null && f.verification.verdict === "confirmed"
 const findings = allFindings.filter((f) => f.mechanical === true && isConfirmed(f))
 const nonMechanicalCount = allFindings.filter((f) => f.mechanical !== true).length
 const unconfirmedCount = allFindings.filter((f) => f.mechanical === true && !isConfirmed(f)).length
@@ -93,7 +96,7 @@ if (findings.length === 0) {
     `No mechanical, independently-confirmed findings to fix ` +
       `(${nonMechanicalCount} non-mechanical, ${unconfirmedCount} not independently confirmed finding(s) skipped).`
   )
-  return { clusters: [], skipped: skippedCount }
+  return { clusters: [], skipped: skippedCount, calibrated: false }
 }
 
 // `.rule` is not enforced by any schema this workflow controls (it is only
@@ -177,4 +180,5 @@ const results = await pipeline(
     ).then((verifications) => ({ cluster: c.key, file: c.file, rule: c.rule, remediation, verifications }))
 )
 
-return { clusters: results.filter(Boolean), skipped: skippedCount }
+// judge-contract: no sealed set has measured this judge, so its verdicts are labelled calibrated: false.
+return { clusters: results.filter(Boolean), skipped: skippedCount, calibrated: false }

@@ -18,6 +18,13 @@ Rules enforced here:
   * cycle-convergence-stop — record-pass-result reports converged=true and
     the CLI's exit code signals "stop" so the calling session's loop
     cannot mistake "converged" for "keep going."
+  * cycle-no-convergence-over-unverified — record-pass-result never reports
+    converged=true while any verified domain's (assertion_audit,
+    contract_drift, agentic_reliability) *_summary.json sidecar carries
+    unverified findings (the verifier gave no literal true/false). An
+    abstain is not a pass. The gate reads the sidecar FAIL-CLOSED: a sidecar
+    that exists but is unreadable, or has no integer `unverifiedCount`,
+    blocks convergence rather than counting as zero.
   * shared-finding-schema (checkpoint 5 of 5) — every finding upserted
     into the ledger passes through lib.schema before lib.ledger accepts it
     (lib.ledger's own _validate_ledger_finding_record is the schema for
@@ -41,7 +48,8 @@ Subcommands:
         pass-json: {"passNumber": N, "domain": "...", "mode": "fix"|"propose",
                      "outcomes": [{"findingId", "category", "evidence",
                                    "severity", "outcome"}, ...]}
-        Prints JSON {"converged": bool, "totalPasses": N, "shouldContinue": bool}.
+        Prints JSON {"converged": bool, "totalPasses": N, "shouldContinue": bool,
+        "unverifiedBlockers": [...]}.
 """
 
 import argparse
@@ -65,9 +73,9 @@ from lib.ledger import (  # noqa: E402
     upsert_finding,
 )
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
+from lib.verification import unverified_blockers
 
 DOMAIN_ORDER_FALLBACK = ["dependency_audit", "contract_drift", "agentic_reliability", "assertion_audit"]
-
 
 def _load_domain_summary_counts(repo_root: str) -> dict:
     """Best-effort read of each domain's standalone *_summary.json sidecar
@@ -256,9 +264,21 @@ def cmd_record_pass_result(args) -> int:
     record_pass(ledger, pass_result["passNumber"], domain, closed, fix_or_draft_outcomes)
     save_ledger(repo_root, ledger)
 
-    converged = pass_converged(closed, fix_or_draft_outcomes)
+    no_progress = pass_converged(closed, fix_or_draft_outcomes)
+    blockers = unverified_blockers(repo_root)
+    # rule cycle-no-convergence-over-unverified: "nothing closed this pass"
+    # only means converged when nothing is left the verifier abstained on.
+    converged = no_progress and not blockers
     max_passes = resolve_max_passes(args.max_passes)
-    should_continue = (not converged) and (ledger["totalPasses"] < max_passes)
+    # Another pass cannot resolve an abstain (only re-running Verify can), so
+    # continuation keys off progress, not off the blocked-convergence flag.
+    should_continue = (not no_progress) and (ledger["totalPasses"] < max_passes)
+    if blockers:
+        print(
+            "WARNING: convergence refused: unverified findings remain "
+            f"({json.dumps(blockers)}); re-run the Verify phase for those domains",
+            file=sys.stderr,
+        )
 
     result = {
         "converged": converged,
@@ -266,6 +286,7 @@ def cmd_record_pass_result(args) -> int:
         "shouldContinue": should_continue,
         "closed": closed,
         "fixOrDraftOutcomes": fix_or_draft_outcomes,
+        "unverifiedBlockers": blockers,
     }
 
     log_path = safe_output_path(repo_root, "reports/ZEUGNIS_CYCLE.md")
@@ -273,7 +294,7 @@ def cmd_record_pass_result(args) -> int:
     line = (
         f"- Pass {pass_result['passNumber']} | domain={domain} | mode={mode} | "
         f"closed={closed} | fix/draft outcomes={fix_or_draft_outcomes} | "
-        f"converged={converged}\n"
+        f"converged={converged} | unverified-blockers={len(blockers)}\n"
     )
     header = "# zeugnis Cycle\n\n"
     if os.path.exists(log_path):

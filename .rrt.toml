@@ -297,6 +297,27 @@ path = "plugins/cupertino/references/parallel-safe-research-protocol.md"
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
 command = ["cp", "tools/symbol-indexer/parallel-safe-research-protocol.md", "plugins/cupertino/references/parallel-safe-research-protocol.md"]
 
+# The shared judge verdict contract (tools/judge-contract/, issue #119). The
+# Python module is vendored byte-identical into every plugin that decides a
+# model verdict in Python (today only befund); the human-readable contract into
+# every plugin whose SKILL.md cites it (JC-MD-DRIFT checks both copies). The JS
+# block is not an artifact target: it is pasted into each Workflow script and
+# scripts/ci/check_judge_contract.py compares it against verdict.inline.js.
+[[tool.rrt.artifact_targets]]
+path = "plugins/befund/scripts/lib/judge_contract.py"
+description = "befund's synced copy of tools/judge-contract/judge_contract.py"
+command = ["cp", "tools/judge-contract/judge_contract.py", "plugins/befund/scripts/lib/judge_contract.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/befund/references/judge-contract.md"
+description = "befund's synced copy of tools/judge-contract/judge-contract.md"
+command = ["cp", "tools/judge-contract/judge-contract.md", "plugins/befund/references/judge-contract.md"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/passung/references/judge-contract.md"
+description = "passung's synced copy of tools/judge-contract/judge-contract.md"
+command = ["cp", "tools/judge-contract/judge-contract.md", "plugins/passung/references/judge-contract.md"]
+
 # The shared execution-record library (tools/run-record/). Every adopting plugin
 # gets a byte-identical copy, so a plugin stays standalone and the copies cannot
 # drift: edit the tools/ original, then `rrt artifacts --regenerate`.

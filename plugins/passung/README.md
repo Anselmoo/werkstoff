@@ -281,7 +281,7 @@ Specialist subagents invoked by the commands (or directly):
 - **`passung-critic`** — Adversarial reviewer, skeptical of both
   unresolved divergence and *forced* uniformity where real variation was
   warranted; re-derives PASS verdicts independently rather than
-  rubber-stamping them. Read-only. *(canonize's panel, verify's re-check)*
+  rubber-stamping them. Read-only. *(canonize's provenance judge, verify's blind PASS judge)*
 - **`align-executor`** — Applies the canonical form to one module,
   following the pilot's playbook; refuses to run without one. Write access
   scoped to its own module directory. *(align)*
