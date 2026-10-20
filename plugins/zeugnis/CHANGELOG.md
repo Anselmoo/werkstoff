@@ -5,6 +5,8 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.6] - 2026-10-20
 ### Changed
 - **hooks**: both guards, `guard_edit_scope.py` and `guard_bash_scope.py`, now declare
   `MIN_PYTHON = (3, 11)` and, past the inert check, deny below it with the interpreter named and
