@@ -3,6 +3,8 @@
 All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.3] - 2026-10-20
 ### Changed
 - **hooks**: `takt_guard.py` declares and checks a Python floor, `MIN_PYTHON = (3, 11)`, past the
   inert test: in a repository that declares beats, an older interpreter is denied with the
