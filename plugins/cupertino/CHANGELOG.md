@@ -3,6 +3,8 @@
 All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.4] - 2026-10-20
 ### Fixed
 - **hook**: `hooks/pretooluse_guard.py` raised `TypeError` at import under Python 3.9 (the
   module-level `Exception | None` annotation), exited 1 -- which Claude Code treats as
