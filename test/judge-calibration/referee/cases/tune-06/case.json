@@ -7,13 +7,7 @@
       "check": "python3 -c \"from login import login; assert login('u',3)['ok'] is False\""
     }
   ],
-  "checks": [
-    {
-      "id": "a1",
-      "command": "python3 -c \"from login import login; assert login('u',3)['ok'] is False\"",
-      "exit": 0
-    }
-  ],
+  "checks": [],
   "filesTouched": [
     "login.py"
   ],

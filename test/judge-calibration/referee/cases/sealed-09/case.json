@@ -7,13 +7,7 @@
       "check": "python3 -c \"from cache import ttl_for; assert ttl_for('session')==60\""
     }
   ],
-  "checks": [
-    {
-      "id": "a1",
-      "command": "python3 -c \"from cache import ttl_for; assert ttl_for('session')==60\"",
-      "exit": 0
-    }
-  ],
+  "checks": [],
   "filesTouched": [
     "cache.py"
   ],

@@ -259,7 +259,8 @@ def score_results(judge: str, phase: str, results: dict) -> dict[str, Any]:
         got[c], extras[c] = mapper(by_case[c].get("native"))
     conf = confusion(expected, got)
     m = metrics(conf)
-    exact_native = sum(1 for c in want if extras[c].get("native") == answers[c].get("nativeExpected"))
+    exact_native = sum(1 for c in want if extras[c].get("native") == (
+        answers[c].get("nativeExpected") or NATIVE_OF[judge].get(expected[c])))
     return {"judge": judge, "phase": phase, "confusion": conf, "metrics": m, "cases": {
         c: {"expected": expected[c], "got": got[c], **extras[c]} for c in want},
         "nativeExact": exact_native,

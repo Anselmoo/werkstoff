@@ -7,13 +7,7 @@
       "check": "python3 -c \"import m0007; assert 'DROP COLUMN nick' in m0007.DOWN\""
     }
   ],
-  "checks": [
-    {
-      "id": "a1",
-      "command": "python3 -c \"import m0007; assert 'DROP COLUMN nick' in m0007.DOWN\"",
-      "exit": 0
-    }
-  ],
+  "checks": [],
   "filesTouched": [
     "m0007.py"
   ],
