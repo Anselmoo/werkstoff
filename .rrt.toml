@@ -605,3 +605,15 @@ command = ["cp", "plugins/matrize/assets/sketchbook-screenshot.jpg", "docs/plugi
 path = "docs/plugins/assets/stage-map-viewer-screenshot.jpg"
 description = "docs copy of plugins/befund/assets/stage-map-viewer-screenshot.jpg"
 command = ["cp", "plugins/befund/assets/stage-map-viewer-screenshot.jpg", "docs/plugins/assets/stage-map-viewer-screenshot.jpg"]
+
+# EOL tracking (`rrt eol`). The hook floor (Python 3.11) is not in any pyproject, so
+# test/plugins/lint-python-floor.py feeds it to `rrt eol --project-only` itself;
+# here rrt checks the host runtime and tools/werkstoff-cli's requires-python. A
+# year's warning, an error only on actual EOL. allow_eol stays false: a grace period
+# is a per-invocation `--allow-eol` during a migration, never the default.
+[tool.rrt.eol]
+languages = ["python"]
+warn_days = 365
+error_days = 0
+allow_eol = false
+fetch_live = false

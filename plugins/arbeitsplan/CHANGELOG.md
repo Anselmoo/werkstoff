@@ -3,6 +3,11 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **waves helper floor 3.10 -> 3.11**: `install_waves.py`, `waves_state.py` and `waves_guard.py`
+  required Python >= 3.10 while every other arbeitsplan script and both hooks required 3.11, and
+  3.10 reaches end of life on 2026-10-31 (`rrt eol`). The installer's probe now reads
+  `MIN_PYTHON` instead of restating it. `test/plugins/lint-python-floor.py` holds the floor.
 
 ## [1.1.0] - 2026-10-03
 ### Added

@@ -47,7 +47,7 @@ each is a check in code rather than a sentence here:
    `<name>-author` agent. The first launch writes and verifies them; re-installing never
    overwrites a step that is no longer a stub.
 
-   The installer resolves the one prerequisite, a Python >= 3.10 for the helper and the guard,
+   The installer resolves the one prerequisite, a Python >= 3.11 for the helper and the guard,
    by probing `python3`, `python` and `py -3`, or the command given with `--python`. That
    interpreter is written into every command. The installer refuses to overwrite any file it
    did not generate.

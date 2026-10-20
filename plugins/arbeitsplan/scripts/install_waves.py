@@ -28,7 +28,7 @@ design table, not a new script -- the interpreter is the same pinned copy.
                                       the steps directory, appended once
   .gitattributes                      export-ignore lines, with --artifact only
 
-THE ONE PREREQUISITE is a Python >= 3.10 for the helper and the guard. It is
+THE ONE PREREQUISITE is a Python >= 3.11 for the helper and the guard. It is
 RESOLVED here, not assumed: `python3`, `python`, then `py -3` are probed (or
 --python names one), and the one that answers is written into every command
 the plan and the hooks run -- on Windows `python3` can be a Store stub that
@@ -58,7 +58,7 @@ from agent_gen import STAMP, agent_file, agent_types  # one generator, shared wi
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
 
-MIN_PYTHON = (3, 10)
+MIN_PYTHON = (3, 11)
 
 
 class Refused(Exception):
@@ -70,9 +70,9 @@ def plugin_version() -> str:
 
 
 def resolve_python(explicit: str | None) -> list:
-    """The argv of a Python >= 3.10 that answers, or Refused."""
+    """The argv of a Python >= 3.11 that answers, or Refused."""
     candidates = [shlex.split(explicit)] if explicit else [["python3"], ["python"], ["py", "-3"]]
-    probe = "import sys; print(int(sys.version_info[:2] >= (3, 10)))"
+    probe = f"import sys; print(int(sys.version_info[:2] >= {MIN_PYTHON!r}))"
     for argv in candidates:
         try:
             p = subprocess.run([*argv, "-c", probe], capture_output=True, text=True, timeout=30)
@@ -188,7 +188,7 @@ def runbook(design: dict, python: list, stamp: str) -> str:
         f"| `.claude/workflows/{name}.js` | the pinned wave interpreter (a Workflow script) |",
         f"| `.claude/workflows/{name}.plan.json` | the validated design it executes |",
         f"| `.claude/workflows/{name}_state.py` | state, merge, gate and verify helper "
-        "(Python >= 3.10, stdlib only) |",
+        "(Python >= 3.11, stdlib only) |",
         f"| `.claude/workflows/{name}.state.json` | the run's state (gitignored) |",
         f"| `.claude/hooks/{name}_guard.py` | the path, runner and author guard every generated "
         "agent carries |",
@@ -365,7 +365,7 @@ def main(argv: list) -> int:
         __doc__ or "").split("\n\n")[0], epilog="exit 0 installed, 1 refused, 2 bad input")
     parser.add_argument("--design", help="a design.json compiled with compile_spec.py --design")
     parser.add_argument("--root", default=".", help="project root (default: .)")
-    parser.add_argument("--python", help="the Python >= 3.10 command (default: probe)")
+    parser.add_argument("--python", help="the Python >= 3.11 command (default: probe)")
     parser.add_argument("--artifact", action="store_true",
                         help="the repository is itself an installable artefact: export-ignore "
                              "the generated tooling")

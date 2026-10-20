@@ -100,7 +100,7 @@ from the index.
 
 ### The one runtime prerequisite: Python, declared and resolved
 
-The vendored helper and guard are stdlib-only Python >= 3.10. `install_waves.py` **resolves**
+The vendored helper and guard are stdlib-only Python >= 3.11. `install_waves.py` **resolves**
 the interpreter by probing `python3`, then `python`, then `py -3`, and writes the one that
 answers into every command it generates. Each generated hook command ends in `|| exit 2`, so an
 interpreter that cannot start **denies** instead of passing.
