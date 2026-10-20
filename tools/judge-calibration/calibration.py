@@ -484,7 +484,12 @@ def collect(judge: str, phase: str, raw_dir: Path, note: str, run_date: str) -> 
             print(f"ERROR: no raw output for {cid} at {f.as_posix()}; a run with holes is not recorded", file=sys.stderr)
             return 2
         raw = f.read_text(encoding="utf-8")
-        out.append({"case": cid, "native": parse_native(judge, raw), "raw": raw})
+        rec = {"case": cid, "native": parse_native(judge, raw), "raw": raw}
+        roles = raw_dir / f"{cid}.roles"
+        if roles.is_dir():
+            # The tribunal's earlier roles, verbatim, so a verdict can be read against what it was given.
+            rec["roles"] = {p.stem: p.read_text(encoding="utf-8") for p in sorted(roles.glob("*.txt"))}
+        out.append(rec)
     spec = load_spec(judge)
     results = {"meta": {"judge": judge, "phase": phase, "agentType": spec["agentType"], "runDate": run_date,
                         "delivery": spec["delivery"], "note": note, "instrument": instrument(judge)},

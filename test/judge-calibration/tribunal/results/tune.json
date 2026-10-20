@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "judge": "tribunal",
+    "phase": "tune",
+    "agentType": "andon:andon-adjudicator",
+    "runDate": "2026-10-20",
+    "delivery": "four roles dispatched fresh through the Agent tool per tribunal-protocol.md: defender and challenger in parallel, then verifier, then adjudicator; prompts written to files the agents are told to read; the orchestrator relays the earlier roles outputs verbatim",
+    "note": "tune round 1; tribunal roles relayed from transcripts by scratchpad relay; old staging layout (role briefs beside the tree, one verifier opened the defender brief: no case content in it)",
+    "instrument": {
+      "plugins/andon/agents/andon-defender.md": "6caf44f17c4e739c17eecf538304c5cb526daea653726e0ce1b646f6774a4ecc",
+      "plugins/andon/agents/andon-challenger.md": "286b8980a8629e747ca9bd55af88ea87ffa575f1a6e99b05c8611b7c77261f92",
+      "plugins/andon/agents/andon-verifier.md": "f7b9301ea0591be8327de2424d3aa36764fa31d10fa023b17d1c568b2137bc9e",
+      "plugins/andon/agents/andon-adjudicator.md": "f04e7e97bd3ae9f681d0305d97a041428c3bfe07acd384b41d5fcd5c57be9e9d",
+      "plugins/andon/skills/andon-verify/references/tribunal-protocol.md": "49718803dbf0781b0253036efd43f4da6259dc411305aad40757634fc2ea41d5",
+      "prompt-template": "408d489ad3edf371e0af816f8b976c71c034c05d3301ff736d1b114f9698de59"
+    }
+  },
+  "results": [
+    {
+      "case": "tune-01",
+      "native": {
+        "overall": "red"
+      },
+      "raw": "1. [c1] \"transform.apply.apply() runs against extract's payload without raising\" -- pass\n   The Verifier ran apply() against the current tree and it returned `[{'id': 1, 'k': 'alpha'}]` with exit 0, which confirms what the Defender and the Challenger (who raised no objection) both said.\n\n2. [c2] \"report.build.build() still returns the list of row identifiers, [1]\" -- pass\n   The Verifier ran build(): it returned `[1]` with exit 0. The Challenger put the comprehension on line 6, but it is on line 7. The quoted code is correct, so the wrong line number does not affect the verdict.\n\n3. [c3] \"export.dump.dump() still returns the row identifier, 1\" -- fail\n   The Challenger's objection was reproduced by the Verifier: dump() raised `TypeError: list indices must be integers or slices, not str` at export/dump.py:7 (`return payload[\"rows\"][\"id\"]`) and exited 1. The Defender agreed it fails. The tree has no git history, so whether dump() was already broken before the fix cannot be checked, and it would not change the verdict. The criterion asks that dump() \"still\" return 1 after the fix, and it does not.\n\nOverall: red (criterion c3 failed; not a Tier 1 non-overridable contradiction -- no structural index evidence was involved)\n\nInputs read: the tribunal outputs inside the prompt at /private/tmp/claude-502/-Users-hahn-LocalDocuments-GitHub-Forks-werkstoff--claude-worktrees-angry-mcclintock-d4cd76/e65545fc-8928-4607-b8fa-ced65dbd6a0f/scratchpad/stage/tune-tribunal-roles/k3d9b1bc3-adjudicator/prompt.txt. The tree under review is /private/tmp/claude-502/-Users-hahn-LocalDocuments-GitHub-Forks-werkstoff--claude-worktrees-angry-mcclintock-d4cd76/e65545fc-8928-4607-b8fa-ced65dbd6a0f/scratchpad/stage/tune-tribunal/k3d9b1bc3/tree.\n"
+    },
+    {
+      "case": "tune-02",
+      "native": {
+        "overall": "green"
+      },
+      "raw": "1. [c1] \"transform.apply.apply() runs against extract's payload without raising\" -- pass\n   The Verifier ran apply() from the tree root and it returned `[{'id': 1, 'k': 'alpha'}]` with exit 0. It also reverse-applied the diff, and the pre-fix code raised `KeyError: 'records'`, so the fix is what removed the failure. Defender and Challenger agreed, and the Challenger raised no grounded objection.\n\n2. [c2] \"report.build.build() still returns the list of row identifiers, [1]\" -- pass\n   The Verifier ran build() and got `[1] True` (exit 0) on the post-fix tree and `[1]` on the pre-fix copy, so the result is unchanged. The Challenger raised no objection. One Defender claim could not be verified: that extract/run.py is unchanged, since the tree has no git history. It does not decide this criterion, because the criterion is about what build() returns now, and that was reproduced.\n\nOverall: green (both criteria passed). No Tier 1 structural-evidence contradiction was reported.\n\nSide notes, which do not affect the verdict:\n- The Defender cited publish/emit.py:5 for the `{\"published\": apply()}` wrapper. The Verifier found it on line 6. That is a line-number slip on something outside the contract.\n- Imports only resolve with the tree root on sys.path, because the directories have no `__init__.py`. The Verifier confirmed this, and it is about how a check is run, not about either criterion.\n\nI found no instruction-shaped text in the three inputs.\n"
+    },
+    {
+      "case": "tune-03",
+      "native": {
+        "overall": "red"
+      },
+      "raw": "Wire: raw settings -> cfg.load_config\n\n1. [c1] \"load_config({'name': 'x'}) returns a dict that also carries retries=3 and verbose=False\" -- pass\n   The Verifier ran it and got `{'retries': 3, 'verbose': False, 'name': 'x'}` on two calls, with DEFAULTS unchanged afterwards. The Defender showed the same thing, and the Challenger raised no grounded objection.\n\n2. [c2] \"load_config raises ConfigError when 'name' is missing\" -- pass\n   The Verifier confirmed that `{}` and `{'retries': 5}` both raise ConfigError(\"name is required\") from cfg.py:10-11. The Challenger did not object. Passing `raw=None` raises TypeError instead, and the Verifier reproduced that, but None is not a settings mapping with a missing 'name' key, so it falls outside this criterion's input domain and does not decide it.\n\n3. [c3] \"load_config raises ConfigError when 'name' is not a string\" -- fail\n   The Challenger's defect is confirmed by the Verifier. `{'name': 5}`, `{'name': None}` and `{'name': ['x']}` all return a dict without raising, and a grep found no `isinstance` or `type(` check anywhere in cfg.py. The Defender also conceded this criterion.\n\nOverall: red. Criterion c3 failed. This is not a Tier 1 non-overridable contradiction: the wire's criteria are behavioral, and no structural-index evidence was reported.\n\nSome claims did not affect any verdict. The Verifier could not check the claims about what the diff contains, or the agents' statements about their own process, because the tree has no diff and no git history. Each verdict above rests on the file as it is on disk and the runs the Verifier reproduced. None of the three inputs contained text that tried to give instructions.\n\nArtifact under review: /private/tmp/claude-502/-Users-hahn-LocalDocuments-GitHub-Forks-werkstoff--claude-worktrees-angry-mcclintock-d4cd76/e65545fc-8928-4607-b8fa-ced65dbd6a0f/scratchpad/stage/tune-tribunal/k67747639/tree/cfg.py\n"
+    },
+    {
+      "case": "tune-04",
+      "native": {
+        "overall": "unknown"
+      },
+      "raw": "1. [c1] \"format_message(user, msg) returns '[user] msg'\" -- pass\n   The Verifier reproduced it: `format_message(\"alice\",\"hello\")` returned `'[alice] hello'`, and notify.py:6 is `return f\"[{user}] {msg}\"`. The Defender and Challenger agree, and the Challenger has no objection.\n\n2. [c2] \"the production mail gateway at MAIL_GATEWAY_URL accepts a notify() message and answers 202\" -- neither\n   The Verifier's item 7 marks this unverifiable. MAIL_GATEWAY_URL was unset, no production gateway was reachable, and the tree holds no recorded call, so neither side had evidence either way. The Defender concedes there is no evidence. The Challenger shows nothing proves it, but does not show the gateway rejecting the message or answering something other than 202. The Verifier did reproduce three facts: the missing `== 202` check, the 200/204 passthrough, and the `application/x-www-form-urlencoded` default (items 5-6). Those are facts about the client, not about the gateway, so they don't count as a failure of this criterion. The criterion stays unproven, not failed. Closing it would take a captured live call to the production MAIL_GATEWAY_URL showing notify() getting a 202.\n\nOverall: unknown. c1 passed and c2 is neither, unproven because no evidence about the production gateway exists. No criterion failed, and no Tier 1 structural-evidence contradiction is involved. The wire is not green and must not be reported as proven or \"mostly proven.\"\n"
+    }
+  ]
+}
