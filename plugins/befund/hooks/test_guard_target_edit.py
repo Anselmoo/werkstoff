@@ -274,5 +274,64 @@ class TestEscapeHatch(unittest.TestCase):
             self.assertEqual(r.stdout.strip(), "")
 
 
+FLOOR = (3, 11)
+
+
+def _old_interpreters() -> list[str]:
+    """Every python3 older than the floor on PATH (python3.9, python3.10, /usr/bin/python3)."""
+    found = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        r = subprocess.run([path, "-c", f"import sys; print(sys.version_info[:2] < {FLOOR!r})"],
+                           capture_output=True, text=True)
+        if r.stdout.strip() == "True":
+            found.append(path)
+    return found
+
+
+class TestPythonFloor(unittest.TestCase):
+    """#123: below MIN_PYTHON, an open edit-scope lock DENIES rather than depending on what
+    lib happens to parse; with no lock the guard is still inert. The sabotage case lowers
+    the floor in a copy of the guard and requires the same payload to be allowed -- proof
+    that the version check, not some other failure, is what denies. REQUIRE_OLD_PYTHON=1
+    (as CI sets it) turns "no old interpreter on PATH" into a failure, not a skip."""
+
+    def setUp(self):
+        self.olds = _old_interpreters()
+        if not self.olds:
+            if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+                self.fail("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH")
+            self.skipTest("no python3 older than 3.11 on PATH")
+
+    @staticmethod
+    def _run(python: str, hook: Path, cwd: Path, target: str) -> subprocess.CompletedProcess:
+        payload = json.dumps({"cwd": str(cwd), "tool_name": "Edit", "tool_input": {"file_path": target}})
+        env = {k: v for k, v in os.environ.items() if k != "BEFUND_DISABLE_GUARD"}
+        return subprocess.run([python, "-B", str(hook)], input=payload,
+                              capture_output=True, text=True, timeout=30, env=env)
+
+    def test_below_the_floor(self):
+        scope = {"mode": "idiom_fix", "allowedFiles": ["src/api.py"], "openedAt": 0}
+        outside = "/nonexistent-befund-floor-probe/x.py"  # allowed by containment once lib loads
+        with Repo(settings=IDIOM_FIX_AUTHORIZED, scope=scope) as repo, Repo() as inert, \
+                tempfile.TemporaryDirectory() as tmp:
+            sabotaged = Path(tmp) / "hooks" / HOOK.name
+            sabotaged.parent.mkdir()
+            sabotaged.write_text(HOOK.read_text().replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+            shutil.copytree(HOOK.parent.parent / "scripts" / "lib", Path(tmp) / "scripts" / "lib")
+            for py in self.olds:
+                with self.subTest(python=py):
+                    r = self._run(py, HOOK, repo.root, outside)
+                    self.assertEqual(r.returncode, 2, r.stderr)
+                    self.assertIn("Python >= 3.11", r.stderr)
+                    self.assertIn("hookEventName", r.stdout)
+                    r = self._run(py, HOOK, inert.root, "src/api.py")
+                    self.assertEqual(r.returncode, 0, r.stderr)  # no lock: inert before the floor
+                    r = self._run(py, sabotaged, repo.root, outside)
+                    self.assertEqual(r.returncode, 0, r.stderr)  # floor lowered: same payload allowed
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
