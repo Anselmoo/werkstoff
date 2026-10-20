@@ -13,7 +13,9 @@
       "plugins/andon/agents/andon-adjudicator.md": "f04e7e97bd3ae9f681d0305d97a041428c3bfe07acd384b41d5fcd5c57be9e9d",
       "plugins/andon/skills/andon-verify/references/tribunal-protocol.md": "49718803dbf0781b0253036efd43f4da6259dc411305aad40757634fc2ea41d5",
       "prompt-template": "408d489ad3edf371e0af816f8b976c71c034c05d3301ff736d1b114f9698de59"
-    }
+    },
+    "sealedFixtures": "38024c4335e60401ce2150024873fdd91436145ceeee1263d03946e641696f5a",
+    "sealedFixturesNote": "added after the run (the field did not exist yet); verified equal to the fingerprint of the tree at 99b71c4, the commit that holds the run"
   },
   "results": [
     {

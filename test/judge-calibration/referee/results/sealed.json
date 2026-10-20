@@ -9,7 +9,9 @@
     "instrument": {
       "plugins/arbeitsplan/agents/candidate-referee.md": "0e3a1b16e00c980428ad34eae373bed025be72e72a8608a4e824cfdced4ed718",
       "prompt-template": "35d3dd06ffa99d80a1de2620642f66bcf1d32ab0e876481046e28fe8e1ecdfd0"
-    }
+    },
+    "sealedFixtures": "03404e01fcf62e2f99024797d4cfb4a344626abcdcb4170c0c8236a7a6e77777",
+    "sealedFixturesNote": "added after the run (the field did not exist yet); verified equal to the fingerprint of the tree at 99b71c4, the commit that holds the run"
   },
   "results": [
     {

@@ -9,7 +9,9 @@
     "instrument": {
       "plugins/matrize/agents/decode-referee.md": "eac235cff206949b3dbe2ea53495e396d57d2fcb20c3e6ea461ab9b687c660ac",
       "prompt-template": "c68b6c7f8fbc7272102a2f9d2b4f4cff8a1e8550270536dd8a63c7e9b525d15c"
-    }
+    },
+    "sealedFixtures": "b7ccd17b47160ff6bb849dcc8576c066944d6416398117a361b8af40bc5e207c",
+    "sealedFixturesNote": "added after the run (the field did not exist yet); verified equal to the fingerprint of the tree at 99b71c4, the commit that holds the run"
   },
   "results": [
     {

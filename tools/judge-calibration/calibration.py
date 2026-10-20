@@ -8,14 +8,14 @@ file holds the part that must not be eyeballed:
 
   * the mapping from each judge's native verdict to pass / fail / abstain, which mirrors
     what the calling workflow actually ACTS on (not what the agent's prose says);
-  * the confusion matrix and the five figures a record is derived from;
+  * the confusion matrix and the six figures a record is derived from;
   * the derivation of the rubric's ``calibration`` record ({sealed, agreement, floor}) and
     the refusal to derive one from an incomplete run;
   * the stale-record and drift checks CI runs.
 
-The record's ``agreement`` is the WEAKEST of five figures, not the plain fraction of
+The record's ``agreement`` is the WEAKEST of six figures, not the plain fraction of
 matches: overall agreement, one minus the false-pass rate, and the precision and recall
-of the pass and fail classes. ``judge_contract.is_calibrated`` reads only that one
+of the pass class and of the fail class (four more). ``judge_contract.is_calibrated`` reads only that one
 number against the floor, and the plain fraction can be cleared by a judge that passes
 everything when most cases are passes (judge-contract.md section 4 says so). Taking the
 minimum makes the existing gate carry the precision requirement without changing the
@@ -180,7 +180,7 @@ def metrics(conf: dict[str, dict[str, int]]) -> dict[str, Any]:
 
 
 def derive_record(m: dict[str, Any], floor: float) -> dict[str, Any]:
-    """The rubric's ``calibration`` block. ``agreement`` is the weakest of the five figures
+    """The rubric's ``calibration`` block. ``agreement`` is the weakest of the six figures
     (see the module docstring), rounded DOWN to four places so rounding can never lift a
     figure over the floor."""
     return {"sealed": m["n"], "agreement": int(m["weakest"] * 10000) / 10000, "floor": floor}
@@ -229,6 +229,23 @@ def instrument(judge: str) -> dict[str, str]:
     import prompts  # local module, imported late so selftests of this file stand alone
     out["prompt-template"] = prompts.template_sha(judge)
     return out
+
+
+def sealed_fingerprint(judge: str) -> str:
+    """Hash of everything a sealed case is: its staged files, its oracle and its key.
+    A sealed case edited together with its key would score the same and leave the record
+    green, which is retuning after the fact. This makes that edit a stale record."""
+    d = jdir(judge)
+    answers = load_answers(judge)
+    h = hashlib.sha256()
+    for cid in cases_in(answers, "sealed"):
+        h.update(json.dumps({cid: answers[cid]}, sort_keys=True).encode())
+        for p in sorted((d / "cases" / cid).rglob("*")):
+            if p.is_file() and "__pycache__" not in p.parts:
+                h.update(p.relative_to(d).as_posix().encode() + b"\0" + p.read_bytes())
+        orc = d / "oracle" / f"{cid}.json"
+        h.update(orc.read_bytes())
+    return h.hexdigest()
 
 
 def read_results(judge: str, phase: str, path: Path | None = None) -> dict:
@@ -380,6 +397,11 @@ def check_judge(judge: str) -> list[str]:
     if cal != want_rec:
         probs.append(f"{judge}: rubric record {cal} differs from the one recomputed from the committed "
                      f"results {want_rec}; records are derived, never edited")
+    fixtures = res.get("meta", {}).get("sealedFixtures")
+    if fixtures != sealed_fingerprint(judge):
+        probs.append(f"{judge}: the sealed fixtures or their keys changed since the record was measured "
+                     f"(fingerprint {str(fixtures)[:12]} != {sealed_fingerprint(judge)[:12]}). A sealed set is "
+                     f"measured once; a new set needs a new run, not an edit")
     now = instrument(judge)
     then = res.get("meta", {}).get("instrument", {})
     stale = sorted(k for k in set(now) | set(then) if now.get(k) != then.get(k))
@@ -492,7 +514,8 @@ def collect(judge: str, phase: str, raw_dir: Path, note: str, run_date: str) -> 
         out.append(rec)
     spec = load_spec(judge)
     results = {"meta": {"judge": judge, "phase": phase, "agentType": spec["agentType"], "runDate": run_date,
-                        "delivery": spec["delivery"], "note": note, "instrument": instrument(judge)},
+                        "delivery": spec["delivery"], "note": note, "instrument": instrument(judge),
+                        "sealedFixtures": sealed_fingerprint(judge)},
                "results": out}
     dest = jdir(judge) / "results" / f"{phase}.json"
     if phase == "sealed" and dest.exists():

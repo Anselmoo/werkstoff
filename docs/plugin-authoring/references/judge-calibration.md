@@ -116,6 +116,9 @@ known-abstain case, and no class above half the set. A constant judge cannot cle
 3. `97a59ca`: tuning results, with the prompts frozen.
 4. `99b71c4`: the sealed results, verbatim, and the derived records.
 
+The order is the seal, not the hashes. A rebase would change the hashes and keep the order,
+and the subjects above identify each step. Do not squash this history.
+
 ## Trusting the run
 
 These steps protect the run:
@@ -126,16 +129,28 @@ These steps protect the run:
   return-format footer: the workflows pass a schema to `agent()`, and the Agent tool used
   here has none.
 - **Blindness.** Each case is staged alone, under an opaque name, with no key inside it.
-  Each tribunal role's prompt lives in its own directory. A scan of every transcript from
-  the run found no judge touching `test/judge-calibration/`, an `answers.json` or an oracle
-  file. One referee ran a filesystem-wide `find` for the files its diff did not show. It
-  found nothing, because the hidden base files exist only inside oracle JSON. A content
-  search could have found them.
+  Each tribunal role's prompt lives in its own directory. A scan of all 81 judge
+  transcripts (277 tool calls, tune and sealed) found no tool **input or result** naming
+  `test/judge-calibration/`, an `answers.json` or an oracle file. It also found no Grep or
+  Glob whose path lay outside the case's stage directory. One referee ran a filesystem-wide
+  `find` for the files its diff did not show. It found nothing, because the hidden base files
+  exist only inside oracle JSON. A content search could have found them, so the keys stay
+  readable in principle, and blindness is a property this run had, not one the layout
+  guarantees.
 - **No retyping.** Every report was taken from its agent's transcript by script and
   relayed to the next tribunal role the same way.
 - **Stale records fail.** `results/sealed.json` stores a hash of each judge's agent files
-  and prompt template. `check` fails when any of them has changed since the measurement, or
-  when a record differs from the one recomputed from the committed results.
+  and prompt template, and a fingerprint of the sealed cases, their oracles and their keys.
+  `check` fails when any of these has changed since the measurement, or when a record
+  differs from the one recomputed from the committed results. A sealed case edited together
+  with its key would score the same, so the fingerprint is what makes that edit visible. It
+  was added after the run, which is noted in the file, and checked equal to the tree at
+  `99b71c4`.
+- **The coupling this creates.** Any edit to `candidate-referee.md`, `decode-referee.md`,
+  the four andon agent files, `tribunal-protocol.md`, or the referee prompts in `run.js` or
+  `decode.js` turns `plugin-checks` red until the judge is re-measured on a new sealed set,
+  or its record is removed. That is the point: a record that no longer describes the judge
+  must not stay green.
 
 ## Findings about the judges
 
