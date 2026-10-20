@@ -3,6 +3,17 @@
 All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
+### Fixed
+- **hook**: `hooks/pretooluse_guard.py` raised `TypeError` at import under Python 3.9 (the
+  module-level `Exception | None` annotation), exited 1 -- which Claude Code treats as
+  non-blocking -- and so allowed every call in a repo with `.cupertino/`. It now imports on old
+  interpreters (`from __future__ import annotations`) and, past the inert check, denies below
+  `MIN_PYTHON = (3, 11)` with the interpreter named and the escape hatch (#123).
+### Added
+- **`hooks/test_pretooluse_guard.py`**: runs the guard under every python3 older than 3.11 on
+  PATH -- active repo denied, inert repo allowed, and a sabotaged copy with the floor lowered
+  allowed, so the version check is proven to be what denies. Wired into CI with uv's 3.9/3.10
+  and `REQUIRE_OLD_PYTHON=1`, so a missing interpreter fails instead of skipping.
 
 ## [1.0.3] - 2026-09-27
 ### Fixed
