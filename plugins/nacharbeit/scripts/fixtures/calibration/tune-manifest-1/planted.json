@@ -1,0 +1,34 @@
+{
+  "name": "tune-manifest-1",
+  "kind": "manifest",
+  "cleanFiles": [
+    "skills/fence-audit/SKILL.md",
+    "CHANGELOG.md"
+  ],
+  "planted": [
+    {
+      "file": ".claude-plugin/plugin.json",
+      "rule_id": "PQ-THESIS",
+      "angle": "meaning",
+      "quoteKey": "and fixes them automatically"
+    },
+    {
+      "file": "README.md",
+      "rule_id": "PQ-NOT-SECTION",
+      "angle": "cannibalization",
+      "quoteKey": "Not many things."
+    },
+    {
+      "file": "README.md",
+      "rule_id": "PQ-PROMPTS-ROUTE",
+      "angle": "cannibalization",
+      "quoteKey": "Triggers `zeugnis-dependency-audit`"
+    },
+    {
+      "file": ".claude-plugin/plugin.json",
+      "rule_id": "PQ-WRITE-SURFACE",
+      "angle": "contract",
+      "quoteKey": "Audits code fences in Markdown for a missing language tag"
+    }
+  ]
+}

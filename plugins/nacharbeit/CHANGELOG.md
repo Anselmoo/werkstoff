@@ -4,6 +4,53 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-20
+### Fixed
+- **review**: the calibrated review now runs in any plugin repository with the installed plugin
+  alone (#117). The 20 tuning/sealed fixture sets moved from `test/plugins/fixtures/nacharbeit/`
+  into the plugin (`scripts/fixtures/calibration/`, the subtree the linter already skips and a
+  synced install carries) and `--fixtures-root` defaults there instead of to a path inside the
+  reviewed repository. `build_args.py` stages them into `<state-dir>/fixtures/` so the workflow
+  reads repo-relative paths, replacing the staged copy atomically. `review.js` now requires
+  `args.fixturePrefix` instead of defaulting it.
+- **review**: `--fixtures-root` works for any path. `planted.json` stores `cleanFiles` and
+  `planted[].file` relative to the fixture's own directory; a repository-relative, absolute or
+  `..` path is refused by name rather than failing the old "real path leaked into fixtures"
+  assertion for every root but one.
+- **lint**: a missing `pyyaml` no longer kills the process at import. The scripts that parse
+  frontmatter declare it in a PEP 723 header (`uv run --script` resolves it), the linter stops
+  with exit 2 and the remedy only when asked to grade, and `--count` and preflight still work.
+  `preflight.py` reported `pyyaml=yes` from a constant; it is now measured.
+- **fix**: a copy of the plugin whose guard is absent (installed or synced without `hooks/`) can no
+  longer run a fix pass unguarded. Preflight reports whether nacharbeit's own guard is present,
+  declared and actually denies; `build_fix_args.py` refuses to open a lock otherwise. The guard
+  writes `guard-heartbeat.json` while a lock is open, and `fix-run.js` is baked only by
+  `build_fix_args.py --confirm-guard` once a heartbeat for that lock exists — otherwise the lock
+  is deleted and the pass does not start. `post_fix_check.py --release-lock` removes the heartbeat
+  and `nacharbeit-status` says when a lock's guard has not been seen.
+- **fix**: outside werkstoff a hook-script fix no longer fails its post-check on a missing
+  violating fixture and keeps the lock; the behavioural probe is skipped with a named reason in
+  stderr and in `fix-check.json` `postChecks.skipped`, and `--fixtures-root` is resolved against
+  the repository root.
+
+### Changed
+- **skills**: commands that need `pyyaml` (`nacharbeit-lint`, `nacharbeit-preflight`,
+  `nacharbeit-review`) run through `uv run --script`, with `python3 -B` as the stated fallback.
+  The entry scripts set `sys.dont_write_bytecode` themselves, since `uv run` has no `-B` (#88).
+- **preflight**: reports the resolved fixtures root, tuning/sealed counts and kinds covered, the
+  state of nacharbeit's own guard, and a single *cannot measure* line (missing pyyaml, kinds
+  without a fixture pair, no prompt index) instead of leaving a run to discover them.
+
+### Added
+- `scripts/test_build_args.py` (the shipped fixtures calibrate in a repository that is not
+  werkstoff, with sabotage) and `scripts/test_fix_guard.py` (a missing or silent guard stops the
+  fix pass, with sabotage); `test_nacharbeit_lint.py` gains a no-pyyaml case and
+  `test_nacharbeit_guard.py` the heartbeat cases.
+- `scripts/test_fix_post_checks.py` (the hook post-check is skipped by name, never fatal, never
+  silent, with sabotage)
+- **ci**: `plugin-checks.yml` runs these self-tests as one `nacharbeit_selftests` step, reported on the
+  Andon Board as "nacharbeit selftests".
+
 ## [1.0.2] - 2026-09-26
 ### Fixed
 - **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or

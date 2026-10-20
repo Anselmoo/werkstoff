@@ -42,6 +42,7 @@ jobs:
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
       arbeitsplan_selftests: ${{ steps.arbeitsplan_selftests.outcome }}
+      nacharbeit_selftests: ${{ steps.nacharbeit_selftests.outcome }}
       python_floor: ${{ steps.python_floor.outcome }}
     steps:
       - uses: actions/checkout@v4
@@ -432,6 +433,30 @@ jobs:
           # language here is a failure, not a pass.
           ARBEITSPLAN_REQUIRE_TOOLCHAINS=1 python3 plugins/arbeitsplan/scripts/test_authored_steps.py
 
+      - name: Run nacharbeit selftests
+        id: nacharbeit_selftests
+        continue-on-error: true
+        # nacharbeit's calibrations, which nothing ran until now: test_build_args.py and
+        # test_fix_guard.py (#117) were documented in the README and unwired. Each plants the
+        # defect it names and sabotages its own defence, so green means the instrument can fail.
+        # The linter's calibration goes first, through the shim test/plugins/test-lint-prompts.py
+        # (same file, exit code passed through; the shim's docstring says CI calls that path).
+        # Hermetic: pyyaml and node from the steps above, tempdirs only, no claude/uv/network.
+        # No pipes: the default shell is bash -e without pipefail.
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python3 test/plugins/test-lint-prompts.py
+          python3 plugins/nacharbeit/scripts/test_build_args.py
+          python3 plugins/nacharbeit/scripts/test_fix_guard.py
+          python3 plugins/nacharbeit/scripts/test_fix_post_checks.py
+          node plugins/nacharbeit/scripts/test_review_routing.js
+          python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest
+          python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py
+          python3 plugins/nacharbeit/scripts/route_sim.py --selftest
+          python3 plugins/nacharbeit/scripts/subrun.py --selftest
+          python3 plugins/nacharbeit/scripts/build_review_html.py --selftest
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
@@ -460,6 +485,7 @@ jobs:
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure' ||
           steps.arbeitsplan_selftests.outcome == 'failure' ||
+          steps.nacharbeit_selftests.outcome == 'failure' ||
           steps.python_floor.outcome == 'failure'
         run: exit 1
 
@@ -522,6 +548,7 @@ jobs:
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             row "arbeitsplan selftests (compiler, landing, pool, runner, reconcile, sweep, record, rounds)" "${{ needs.checks.outputs.arbeitsplan_selftests }}"
+            row "nacharbeit selftests (linter, shipped fixtures, fix-pass guard, hook post-check skip, review routing, trigger probe, fix-scope hook)" "${{ needs.checks.outputs.nacharbeit_selftests }}"
             row "Python floor 3.11 (lint-python-floor.py + rrt eol)" "${{ needs.checks.outputs.python_floor }}"
             echo "</tbody></table>"
             echo

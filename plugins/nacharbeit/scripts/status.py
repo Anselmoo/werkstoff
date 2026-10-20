@@ -95,7 +95,9 @@ def main(argv: list[str] | None = None) -> int:
                 age = round((dt.datetime.now(dt.timezone.utc) - t).total_seconds() / 3600, 1)
             except ValueError:
                 age = None
-        out["fixLock"] = {"open": True, "ageHours": age, "stale": age is None or age > STALE_HOURS, "files": len((lock.get("files") or {})) if "_error" not in lock else None, "error": lock.get("_error")}
+        beat = load(state, "guard-heartbeat.json")
+        guard_seen = beat is not None and "_error" not in beat and beat.get("lockRunStamp") == lock.get("runStamp")
+        out["fixLock"] = {"open": True, "guardSeen": guard_seen, "ageHours": age, "stale": age is None or age > STALE_HOURS, "files": len((lock.get("files") or {})) if "_error" not in lock else None, "error": lock.get("_error")}
     else:
         out["fixLock"] = {"open": False}
 
@@ -144,6 +146,8 @@ def main(argv: list[str] | None = None) -> int:
     lk = out["fixLock"]
     if lk["open"]:
         print(f"  fix lock OPEN ({lk['files']} files, age {lk['ageHours']} h{', STALE' if lk['stale'] else ''}) — every edit outside it is denied; release with: python3 plugins/nacharbeit/scripts/post_fix_check.py --release-lock")
+        if not lk["guardSeen"]:
+            print("  guard NOT yet seen firing for this lock — run build_fix_args.py --confirm-guard before launching fix-run.js")
     else:
         print("  fix lock: none open")
     if out.get("declined"):

@@ -32,7 +32,7 @@ they get resolved is a person reading them here.
 nacharbeit status — state analysis/nacharbeit
   lint: 41 finding(s); H-TIMEOUT=3, M-DUP-CONTENT=1, P-MARKETPLACE-MEMBER=7, S-DOCSTRING-USAGE=12 …
   review 2026-09-09T06:12:04Z rubric 3f9c1a2b7d0e: 2 calibration round(s), sealed recall 0.79 (Q 0.81, HQ 0.75, SQ 0.67, AQ 0.75, PQ 0.80, DQ 1.00); verified 164 + lint 41, judged collisions 24
-        blind spots (sealed defects missed): 3 — test/plugins/fixtures/nacharbeit/sealed-2/skills/quill-lint/SKILL.md Q-OTHER-RIGIDITY; …
+        blind spots (sealed defects missed): 3 — analysis/nacharbeit/fixtures/sealed-2/skills/quill-lint/SKILL.md Q-OTHER-RIGIDITY; …
   backlog by tier: haiku 31, sonnet 96, opus 2, human 4
   held for a person (6; never auto-applied):
     [opus ] zirkel: plugins/zirkel/workflows/solve.js — design a real gate for each stage's declared output_contract …
@@ -40,6 +40,7 @@ nacharbeit status — state analysis/nacharbeit
   fix pass 2026-09-09T07:02:11Z (review 2026-09-09T06:12:04Z): 41 file(s), 9 excluded
   post-fix check 2026-09-09T07:41:50Z: 1 failed post-check(s) or a moved contract; lock released: False
   fix lock OPEN (50 files, age 9.3 h, STALE) — every edit outside it is denied; release with: python3 plugins/nacharbeit/scripts/post_fix_check.py --release-lock
+  guard NOT yet seen firing for this lock — run build_fix_args.py --confirm-guard before launching fix-run.js
   declined: 5 verified finding(s) whose fix would make the component worse (kept, never backlog)
   gate --fail-on-severity blocker,major: 2 matching finding(s)
     [major] Q-ROUTE-MISS plugins/zirkel/skills/zirkel-clarify-scope/SKILL.md

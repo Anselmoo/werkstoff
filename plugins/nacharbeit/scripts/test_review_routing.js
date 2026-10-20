@@ -25,11 +25,11 @@ let quiet = false
 
 const S1 = 'plugins/p/skills/s1/SKILL.md'
 const S2 = 'plugins/p/skills/s2/SKILL.md'
-const FX = 'test/plugins/fixtures/'
+const FX = 'analysis/nacharbeit/fixtures/'
 
 function baseArgs(extra) {
   return {
-    runStamp: 't', rubricHash: 'h', rubric: 'rubric', lint: [], handoffs: [],
+    runStamp: 't', rubricHash: 'h', rubric: 'rubric', lint: [], handoffs: [], fixturePrefix: FX,
     judgementIds: ['Q-X', 'Q-ROUTE-MISS', 'Q-CANN-CAPTURE'], mechanicalIds: [],
     batches: [{ key: 'p:skills', plugin: 'p', kind: 'skills', files: [S1] }],
     corpus: {

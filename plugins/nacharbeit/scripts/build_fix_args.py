@@ -13,6 +13,15 @@ Files that are synced copies of an artifact (--artifact-copies) are redirected t
 canonical source when it exists, otherwise excluded — editing a copy would fail the
 artifact check on the next run.
 
+Two phases, because a guard that exists is not a guard that fires (#117):
+  phase 1 (default)        refuses unless nacharbeit's own guard is present and denies
+                           (nacharbeit_common.guard_status), opens the lock, snapshots, and writes
+                           fix-args.json -- but NOT fix-run.js, the only launch path.
+  phase 2 (--confirm-guard) a later call. Because that call is itself a Bash call, the guard sees
+                           it before this script runs and writes <state>/guard-heartbeat.json
+                           bound to the lock's runStamp. Only with that heartbeat does this bake
+                           fix-run.js; without it the lock is deleted and the pass does not start.
+
 Three side effects the fix pass depends on:
   1. <state>/fix_scope.json — the per-dispatch lock the PreToolUse guard reads. It
      names every file the pass may touch with its tier; hooks/nacharbeit_guard.py
@@ -20,13 +29,16 @@ Three side effects the fix pass depends on:
   2. <state>/pre-fix/<plugin>/ — a snapshot of each plugin about to change, for
      contract_diff after the pass.
   3. <state>/fix-run.js — workflows/fix.js with the items baked in, launched by scriptPath.
+     Written by phase 2 only.
 
 Refuses when the review is not a completed, calibrated run, or when a lock is already
 open (a stale lock is released explicitly, never overwritten).
 
 Usage: build_fix_args.py [--state-dir analysis/nacharbeit] [--write-roots plugins/ tools/]
                          [--artifact-copies JSON] [--skip-lint ID ...] [--rubric FILE] [--workflow FILE]
-Exit: 0 written; 1 inputs missing, review incomplete, or a lock already open; 2 bad args.
+       build_fix_args.py --confirm-guard [--state-dir analysis/nacharbeit] [--workflow FILE]
+Exit: 0 written; 1 inputs missing, review incomplete, a lock already open, the guard absent or
+      never seen firing; 2 bad args.
 """
 
 from __future__ import annotations
@@ -35,6 +47,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import shlex
 import shutil
 import sys
 from collections import defaultdict
@@ -43,6 +56,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
+# The constant only. verify_hooks_deny computes FIXTURES_ROOT at import from the working directory
+# or parents[2] -- which is plugins/ in the vendored location -- so nothing here may read it.
+from verify_hooks_deny import DEFAULT_VIOLATING  # noqa: E402
 
 APPLY_TIERS = {"haiku", "sonnet"}
 TIER_RANK = {"haiku": 0, "sonnet": 1, "opus": 2, "human": 3}
@@ -117,8 +133,32 @@ def kind_of(path: str) -> str:
     return "reference"
 
 
-def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path) -> list[dict]:
-    """Commands the blind verifier runs after the remediator; a non-zero exit is a regression."""
+def resolve_fixtures_root(root: Path, arg: Path) -> Path:
+    """`--fixtures-root` against the repository root, once. post_fix_check.py runs each baked command
+    with no cwd= and the fix workflow's verifier runs it from the session cwd, so a relative root
+    would let the gap check below and the subprocess look in different places."""
+    return arg if arg.is_absolute() else root / arg
+
+
+def hook_probe_gap(plugin_dir: str, fixtures_root: Path) -> str | None:
+    """Why verify_hooks_deny.py cannot run for this plugin, or None when it can. It exits 2
+    ("violating fixture not found") when neither fixture it would pick exists -- which would
+    fail every hook-script fix outside werkstoff on a gap that is not a regression."""
+    if not fixtures_root.is_absolute():
+        raise ValueError(f"fixtures_root must be absolute, got {fixtures_root}; resolve it with resolve_fixtures_root first")
+    name = Path(plugin_dir).name
+    if not fixtures_root.is_dir():
+        return f"fixtures root {fixtures_root.as_posix()} does not exist; pass --fixtures-root DIR holding hook-violation-{name}/"
+    if (fixtures_root / f"hook-violation-{name}").is_dir() or (fixtures_root / DEFAULT_VIOLATING).is_dir():
+        return None
+    return f"no hook-violation-{name}/ (and no {DEFAULT_VIOLATING}/) under {fixtures_root.as_posix()}; add one or pass --fixtures-root DIR"
+
+
+def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path, *, skipped: list[dict]) -> list[dict]:
+    """Commands the blind verifier runs after the remediator; a non-zero exit is a regression.
+    A check that cannot run is appended to `skipped` ({label, reason}) instead -- neither a
+    command that fails every pass nor one that passes without checking. `skipped` is required,
+    not optional: a caller that could omit it would make the check vanish without a trace."""
     checks: list[dict] = []
     me = nc.plugin_root() / "scripts"
     if path.endswith(".py"):
@@ -130,7 +170,12 @@ def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path) -> l
         test = Path(path).parent / f"test_{stem}.py"
         if test.is_file():
             checks.append({"label": "hook unit test", "cmd": f"python3 {test.as_posix()}"})
-        checks.append({"label": "hook denies and stays inert", "cmd": f"python3 {(me / 'verify_hooks_deny.py').as_posix()} {plugin_dir} --fixtures-root {fixtures_root.as_posix()}"})
+        gap = hook_probe_gap(plugin_dir, fixtures_root)
+        if gap is None:
+            verify = shlex.quote((me / "verify_hooks_deny.py").as_posix())
+            checks.append({"label": "hook denies and stays inert", "cmd": f"python3 {verify} {shlex.quote(plugin_dir)} --fixtures-root {shlex.quote(fixtures_root.as_posix())}"})
+        else:
+            skipped.append({"label": "hook denies and stays inert", "reason": gap})
     if kind == "hooks":
         checks.append({"label": "hooks.json parses", "cmd": f"python3 -c \"import json,sys; json.load(open('{path}'))\""})
     if kind == "viewer":
@@ -142,18 +187,63 @@ def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path) -> l
     return checks
 
 
+def bake(out_obj: dict, workflow: Path, baked: Path) -> str | None:
+    """Write `workflow` with the fix args embedded as a literal. Returns an error message, or None."""
+    lines = workflow.read_text(encoding="utf-8").splitlines(keepends=True)
+    idx = next((i for i, ln in enumerate(lines) if ln.startswith("const A = typeof args === 'string'")), None)
+    if idx is None:
+        return "canonical fix workflow lacks the `const A = typeof args` line"
+    literal = json.dumps(out_obj, ensure_ascii=False).replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    lines[idx] = f"const A = {literal} // baked by nacharbeit build_fix_args.py at {out_obj['runStamp']}\n"
+    baked.write_text("".join(lines), encoding="utf-8")
+    return None
+
+
+def confirm_guard(state: Path, workflow: Path, fix_args: Path) -> int:
+    """Phase 2: bake fix-run.js only once the guard has been seen firing for THIS lock."""
+    lock_path = state / nc.LOCK_NAME
+    baked = state / "fix-run.js"
+    if not lock_path.is_file() or not fix_args.is_file():
+        print(f"ERROR: no open fix lock / fix-args at {state}; run build_fix_args.py (phase 1) first", file=sys.stderr)
+        return 1
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    try:
+        beat = json.loads((state / nc.HEARTBEAT_NAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        beat = None
+    if not isinstance(beat, dict) or beat.get("lockRunStamp") != lock.get("runStamp"):
+        lock_path.unlink()
+        baked.unlink(missing_ok=True)
+        print("ERROR: the guard has not fired since this lock was opened -- the PreToolUse hook is not registered in this session "
+              "(plugin disabled, installed without hooks/, or NACHARBEIT_DISABLE_GUARD=1). A fix pass would run unguarded, so the lock "
+              "is deleted and fix-run.js was not written. Fix the install, restart the session, and run build_fix_args.py again.", file=sys.stderr)
+        return 1
+    err = bake(json.loads(fix_args.read_text(encoding="utf-8")), workflow, baked)
+    if err:
+        print(f"ERROR: {err}", file=sys.stderr)
+        return 1
+    print(f"guard confirmed: seen firing on a {beat.get('tool')} call at {beat.get('seenAt')} for lock {lock.get('runStamp')}; wrote {baked}")
+    print('  launch with Workflow({ scriptPath: "' + baked.as_posix() + '" })')
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Build fix work items, open the fix lock, snapshot, and bake fix.js.")
     ap.add_argument("--repo-root", type=Path, default=None)
     ap.add_argument("--state-dir", type=Path, default=None)
     ap.add_argument("--plugins-root", type=Path, default=nc.DEFAULT_PLUGINS_ROOT)
-    ap.add_argument("--fixtures-root", type=Path, default=Path("test/plugins/fixtures"), help="root holding hook-violation-<plugin>/ fixtures for the hook post-check")
+    ap.add_argument("--fixtures-root", type=Path, default=Path("test/plugins/fixtures"),
+                    help="root holding hook-violation-<plugin>/ fixtures for the hook post-check, resolved against the repository root. "
+                         "When neither hook-violation-<plugin>/ nor ledger-missing-blast-radius/ exists under it, the hook behavioural probe is "
+                         "skipped with a WARN on stderr and recorded in fix-check.json postChecks.skipped; the hook unit test and py_compile still run")
     ap.add_argument("--out", type=Path, default=None, help="fix-args JSON (default <state-dir>/fix-args.json)")
     ap.add_argument("--rubric", type=Path, default=None)
     ap.add_argument("--workflow", type=Path, default=nc.plugin_root() / "workflows" / "fix.js")
     ap.add_argument("--write-roots", nargs="+", default=list(nc.DEFAULT_WRITE_ROOTS), help="path prefixes the fix pass may write under")
     ap.add_argument("--artifact-copies", default=None, help="JSON object {suffix: canonical path} redirecting synced copies to their source (default: werkstoff's map inside werkstoff, else none)")
     ap.add_argument("--skip-lint", nargs="*", default=list(nc.DEFAULT_SKIP_LINT), help="lint rule ids whose fix is a human decision")
+    ap.add_argument("--confirm-guard", action="store_true",
+                    help="phase 2: bake fix-run.js only if the guard hook has fired since the lock opened (else delete the lock)")
     ap.add_argument("--force-lock", action="store_true", help="overwrite an existing fix_scope.json (only after confirming no fix pass is in flight)")
     a = ap.parse_args(argv)
 
@@ -162,6 +252,13 @@ def main(argv: list[str] | None = None) -> int:
     os.chdir(root)
     state = nc.state_dir(a.state_dir, root)
     out = a.out or state / "fix-args.json"
+    fixtures_root = resolve_fixtures_root(root, a.fixtures_root)
+    status = nc.guard_status()
+    if not status["ok"]:
+        print(f"ERROR: nacharbeit's own fix-lock guard is not live: {status['problem']}", file=sys.stderr)
+        return 1
+    if a.confirm_guard:
+        return confirm_guard(state, a.workflow, out)
     rubric = nc.rubric_path(a.rubric)
     write_roots = [r if r.endswith("/") else r + "/" for r in a.write_roots]
     if a.artifact_copies is not None:
@@ -290,7 +387,8 @@ def main(argv: list[str] | None = None) -> int:
     for w in work:
         w["kind"] = kind_of(w["file"])
         plugin_dir = (a.plugins_root / w["plugin"]).as_posix()
-        w["postChecks"] = post_checks(w["file"], w["kind"], plugin_dir, a.fixtures_root)
+        w["skippedChecks"] = []
+        w["postChecks"] = post_checks(w["file"], w["kind"], plugin_dir, fixtures_root, skipped=w["skippedChecks"])
 
     out_obj = {
         "runStamp": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -329,32 +427,30 @@ def main(argv: list[str] | None = None) -> int:
         "writeRoots": write_roots,
         "files": files,
     }
+    # A heartbeat or baked workflow left by an earlier pass would let phase 2 pass without the guard
+    # having fired for THIS lock; both are removed before the lock exists.
+    (state / nc.HEARTBEAT_NAME).unlink(missing_ok=True)
+    (state / "fix-run.js").unlink(missing_ok=True)
     tmp = lock_path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(lock, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     tmp.replace(lock_path)
-
-    src = a.workflow.read_text(encoding="utf-8")
-    lines = src.splitlines(keepends=True)
-    idx = next((i for i, ln in enumerate(lines) if ln.startswith("const A = typeof args === 'string'")), None)
-    if idx is None:
-        print("ERROR: canonical fix workflow lacks the `const A = typeof args` line", file=sys.stderr)
-        return 1
-    literal = json.dumps(out_obj, ensure_ascii=False).replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-    lines[idx] = f"const A = {literal} // baked by nacharbeit build_fix_args.py at {out_obj['runStamp']}\n"
-    baked = state / "fix-run.js"
-    baked.write_text("".join(lines), encoding="utf-8")
 
     by_tier = defaultdict(int)
     for w in work:
         by_tier[w["tier"]] += 1
     n_entries = sum(len(w["entries"]) for w in work)
-    print(f"wrote {out}, {baked}, lock {lock_path} ({len(files)} files), snapshot {snap_root} ({len(plugins_touched)} plugin(s))")
+    print(f"wrote {out}, lock {lock_path} ({len(files)} files), snapshot {snap_root} ({len(plugins_touched)} plugin(s)); fix-run.js is NOT written yet")
     print(f"  {len(work)} files, {n_entries} entries; files by tier: {dict(by_tier)}; excluded {len(excluded)}")
     for w in work:
         print(f"    [{w['tier']:<6}] {w['file']:<70} {len(w['entries'])} entr{'y' if len(w['entries']) == 1 else 'ies'}  {len(w['postChecks'])} post-check(s)")
     for e in excluded:
         print(f"    excluded: {e['file']} — {e['reason']}")
-    print("  The PreToolUse guard now denies every edit outside the lock; release it with post_fix_check.py --release-lock when the pass is done.")
+    for w in work:
+        for s in w["skippedChecks"]:
+            print(f"    WARN post-check skipped for {w['file']}: {s['label']} -- {s['reason']}", file=sys.stderr)
+    print("  The PreToolUse guard should now deny every edit outside the lock. Prove it fires: run, as a separate command,")
+    print("    python3 -B \"$CLAUDE_PLUGIN_ROOT/scripts/build_fix_args.py\" --confirm-guard")
+    print("  which bakes fix-run.js only if the guard was seen, and deletes the lock if not. Release the lock with post_fix_check.py --release-lock when the pass is done.")
     return 0
 
 

@@ -37,10 +37,23 @@ payload cannot: is this edit one the in-flight pass was given? (see
 
 | moment | actor | effect |
 |---|---|---|
-| open | `scripts/build_fix_args.py` | writes the lock, snapshots each touched plugin to `<state-dir>/pre-fix/<plugin>/`, bakes `fix-run.js`; refuses when a lock is already open |
+| open | `scripts/build_fix_args.py` | refuses unless the guard is present and denies; writes the lock, snapshots each touched plugin to `<state-dir>/pre-fix/<plugin>/`, deletes any old heartbeat and `fix-run.js`; refuses when a lock is already open. Does **not** bake `fix-run.js` |
+| confirm | `scripts/build_fix_args.py --confirm-guard` | bakes `fix-run.js` only if `<state-dir>/guard-heartbeat.json` names this lock's `runStamp`; otherwise deletes the lock and exits 1 |
 | held | `hooks/nacharbeit_guard.py` | denies edits outside `files`, edits to `opus`/`human` entries, edits with no determinable target, and git state changes |
-| release | `scripts/post_fix_check.py --release-lock` | deletes the lock only when every post-check passed and `contract_diff` found nothing lost or moved; `--force` overrides with a stated reason |
+| release | `scripts/post_fix_check.py --release-lock` | deletes the lock (and the heartbeat) only when every post-check passed and `contract_diff` found nothing lost or moved; `--force` overrides with a stated reason |
 | stale | `nacharbeit-status` | reports a lock older than six hours with the release command; the guard itself never expires a lock — a stale lock denies, which is the safe direction |
+
+## The heartbeat: `<state-dir>/guard-heartbeat.json`
+
+```json
+{ "lockRunStamp": "2026-09-09T05:12:52Z", "seenAt": "2026-09-09T05:13:01Z", "tool": "Bash" }
+```
+
+Written by `hooks/nacharbeit_guard.py` on every `Write`, `Edit`, `MultiEdit` or `Bash` call while a
+lock exists — allowed or denied — and never when the lock is absent or `NACHARBEIT_DISABLE_GUARD=1`.
+`lockRunStamp` binds it to one lock, so a heartbeat left by an earlier pass confirms nothing. It is
+the only evidence that the runtime registered the hook: the files being present is not. A failed write
+changes no decision; it only leaves the pass unconfirmed, which refuses to start.
 
 ## What the lock is not
 

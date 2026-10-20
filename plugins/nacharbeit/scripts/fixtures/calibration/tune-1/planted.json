@@ -1,0 +1,63 @@
+{
+  "name": "tune-1",
+  "kind": "skills",
+  "cleanFiles": [
+    "skills/soil-report/SKILL.md"
+  ],
+  "planted": [
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-MEANING-PROMISE",
+      "angle": "meaning",
+      "quoteKey": "fixes them by removing the declarations"
+    },
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-STEPS-TERMINATION",
+      "angle": "step-logic",
+      "quoteKey": "until the tool reports that nothing else can be pruned"
+    },
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-STEPS-INPUTS",
+      "angle": "step-logic",
+      "quoteKey": "candidates.json` from step 8"
+    },
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-PROC-OUTPUT-SHOWN",
+      "angle": "procedure",
+      "quoteKey": "Return a JSON object with fields"
+    },
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-CLARITY-TERMS",
+      "angle": "clarity",
+      "quoteKey": "Each violation should carry the manifest line"
+    },
+    {
+      "file": "skills/prune-audit/SKILL.md",
+      "rule_id": "Q-CANN-NEGATIVE",
+      "angle": "cannibalization",
+      "quoteKey": "find unused packages"
+    },
+    {
+      "file": "skills/prune-check/SKILL.md",
+      "rule_id": "Q-CANN-INTERNAL",
+      "angle": "cannibalization",
+      "quoteKey": "find unused packages"
+    },
+    {
+      "file": "agents/branch-lister.md",
+      "rule_id": "Q-PROC-TOOLS-ROLE",
+      "angle": "procedure",
+      "quoteKey": "tools: Read, Grep, Glob, Bash, WebFetch, Write"
+    },
+    {
+      "file": "agents/branch-lister.md",
+      "rule_id": "Q-FIXTURE-AGREES",
+      "angle": "meaning",
+      "quoteKey": "showing four detected dependencies"
+    }
+  ]
+}
