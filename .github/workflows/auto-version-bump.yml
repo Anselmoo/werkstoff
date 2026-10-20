@@ -13,9 +13,9 @@ name: 🔢 Auto Version Bump
 # rrt bump itself always creates a release/<group>/v<version> branch and
 # commits on it (no in-place-on-current-branch mode) -- this workflow fast-
 # forward-merges that branch onto main, tags each bumped group
-# (`rrt tag create --group <g> --prefix '<g>-v' --push`), and pushes once,
-# per push event -- so a single push touching N groups produces N tags in
-# one CI run.
+# (`rrt tag create --group <g> --prefix '<g>-v'`, locally), pushes main once,
+# and only then pushes each tag, one per push -- so a single run touching N
+# groups produces N tags, and a rejected main push leaves none behind.
 #
 # THOSE TAG PUSHES TRIGGER NOTHING, and used not to be followed by anything
 # either. A push made with the default GITHUB_TOKEN does not create events
@@ -92,6 +92,17 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Start from the tip of main, not the triggering commit
+        # Runs share one concurrency group, so a run can start long after its
+        # push, with main already ahead. Bumping on the triggering commit then
+        # fails the final `git push origin main` (non-fast-forward) -- which on
+        # 2026-10-20 left matrize-v1.0.3 and befund-v1.0.4 pointing at bump
+        # commits that never reached main. Starting from origin/main makes
+        # that push a fast-forward unless main moves during this very run.
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
 
       - name: Configure git identity
         run: |
@@ -181,7 +192,16 @@ jobs:
           # with the current user's OS group IDs) -- naming a plain variable
           # GROUPS silently collides with it instead of raising an error, so
           # this uses MATCHED_GROUPS throughout instead.
-          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          # Everything since the last bump that LANDED, not just HEAD~1: GitHub
+          # keeps only one pending run per concurrency group and cancels the
+          # rest, so on 2026-10-20 four merges (#126-#129) were never bumped
+          # -- the run that survived looked at its own commit only. Bump
+          # commits from a failed run never reach main (the push below is
+          # all-or-nothing), so the newest one on main is a safe base.
+          BASE=$(git log -1 --format=%H --grep='^chore: bump version to v' HEAD)
+          if [ -z "$BASE" ]; then BASE=HEAD~1; fi
+          echo "Changes since $(git log -1 --format='%h %s' "$BASE")"
+          CHANGED=$(git diff --name-only "$BASE" HEAD)
           MATCHED_GROUPS=""
           echo "$CHANGED" | grep -q '^plugins/befund/' && MATCHED_GROUPS="$MATCHED_GROUPS befund"
           echo "$CHANGED" | grep -q '^plugins/zeugnis/' && MATCHED_GROUPS="$MATCHED_GROUPS zeugnis"
@@ -276,10 +296,10 @@ jobs:
             # group must stay prefixed, or a bare tag here would wrongly fire
             # cicd.yml's PyPI publish job for a plugin bump.
             if [ "$GROUP" = "werkstoff-cli" ]; then
-              rrt tag create --group "$GROUP" --push
+              rrt tag create --group "$GROUP"
               PATTERN="v*"
             else
-              rrt tag create --group "$GROUP" --prefix "$GROUP-v" --push
+              rrt tag create --group "$GROUP" --prefix "$GROUP-v"
               PATTERN="$GROUP-v*"
             fi
             # Read the tag back off the commit rrt just tagged rather than
@@ -301,7 +321,13 @@ jobs:
             echo "::endgroup::"
             BUMPED="$BUMPED $GROUP"
           done
+          # Branch first, tags after: a tag pushed before a rejected branch push
+          # names a commit main never gets. One tag per push -- GitHub creates
+          # no event at all for a push carrying more than three tags.
           git push origin main
+          for TAG in $PLUGIN_TAGS $CLI_TAGS; do
+            git push origin "refs/tags/$TAG"
+          done
           echo "bumped_groups=$(echo "$BUMPED" | xargs)" >> "$GITHUB_OUTPUT"
 
           # Matrix input for the `release` job. `jq -R . | jq -sc .` turns the
