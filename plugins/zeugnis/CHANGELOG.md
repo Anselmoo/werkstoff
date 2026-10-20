@@ -5,6 +5,12 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Fixed
+- **hooks**: `guard_bash_scope.py` raised `TypeError` at import under Python 3.9 (`str | None` in
+  `_matched_mutator`'s signature is evaluated at definition time before 3.10). A hook that crashes
+  exits 1, which Claude Code treats as non-blocking, so on such a machine every Bash call was
+  allowed. `from __future__ import annotations` restores import on 3.7+; `npm install x` now exits 2
+  under 3.9 as under 3.12.
 
 ## [1.0.4] - 2026-09-27
 ### Fixed
