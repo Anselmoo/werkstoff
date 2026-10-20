@@ -36,7 +36,8 @@ prompts tell the model to run `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/x.py"`,
 and a script that imports a sibling (befund_cli.py imports its `lib/` package)
 writes bytecode into the installed copy exactly as a hook does. So the same
 installed copies are also checked for every such invocation in a `.md` or `.js`
-file of the plugin:
+file of the plugin (test data under `fixtures/`, `testdata/` is not shipped
+behaviour and is skipped):
 
 - statically, the invocation carries `-B`, and its `${CLAUDE_PLUGIN_ROOT}` path is
   double-quoted (it is substituted as a literal absolute path, which may contain
@@ -90,6 +91,14 @@ INVOCATION = re.compile(
     r"\$\{CLAUDE_PLUGIN_ROOT\}/(?P<script>[A-Za-z0-9_./-]+?\.py)"
 )
 SCANNED_SUFFIXES = {".md", ".js"}
+
+# Test data a plugin ships but never runs: nacharbeit's calibration fixtures plant
+# defects on purpose, a missing `-B` among them. Same skip set as nacharbeit_lint.py.
+NOT_SHIPPED = {"fixtures", "testdata", "__pycache__", "node_modules"}
+
+
+def _shipped(path: Path, plugin: Path) -> bool:
+    return not NOT_SHIPPED.intersection(path.relative_to(plugin).parts)
 
 # Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} textually before the model (or
 # the hook shell) sees it, so the model types a literal absolute path. Under a
@@ -177,7 +186,7 @@ def script_invocations(plugin: Path) -> list[tuple[Path, int, str, str, str]]:
     `python3 ... ${CLAUDE_PLUGIN_ROOT}/<script>.py` in the plugin's .md/.js."""
     found = []
     for path in sorted(plugin.rglob("*")):
-        if path.suffix not in SCANNED_SUFFIXES or not path.is_file():
+        if path.suffix not in SCANNED_SUFFIXES or not path.is_file() or not _shipped(path, plugin):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for m in INVOCATION.finditer(text):
@@ -191,7 +200,7 @@ def stored_in_variable(plugin: Path) -> list[str]:
     """Invocations assigned to a shell variable instead of typed as a command."""
     problems = []
     for path in sorted(plugin.rglob("*")):
-        if path.suffix not in SCANNED_SUFFIXES or not path.is_file():
+        if path.suffix not in SCANNED_SUFFIXES or not path.is_file() or not _shipped(path, plugin):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for m in INVOCATION.finditer(text):
@@ -211,6 +220,8 @@ def unpermitted(plugin: Path) -> list[str]:
     a pattern `x:*` permits commands starting with `x`, anything else exactly."""
     problems = []
     for path in sorted(plugin.rglob("*.md")):
+        if not _shipped(path, plugin):
+            continue
         text = path.read_text(encoding="utf-8", errors="replace")
         if not text.startswith("---"):
             continue
