@@ -4,6 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-20
 ### Fixed
 - **review**: the calibrated review now runs in any plugin repository with the installed plugin
   alone (#117). The 20 tuning/sealed fixture sets moved from `test/plugins/fixtures/nacharbeit/`
