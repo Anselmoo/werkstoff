@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [1.0.3] - 2026-10-20
 ### Changed
 - **`hooks/lehre_guard.py` declares its Python floor** (#123): `MIN_PYTHON = (3, 11)`, checked
   past the inert test and before `lehre_core` loads. Below it, a repository with
