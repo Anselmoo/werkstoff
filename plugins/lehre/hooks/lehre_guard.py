@@ -72,6 +72,12 @@ ESCAPE_HATCH = (
 )
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 
+#: The declared Python floor (#123), checked past the inert test rather than
+#: assumed. A hook runs under whatever python3 is on PATH, and one that crashes
+#: exits 1 -- non-blocking, so the write goes through unchecked. Denying here is
+#: the only below-floor outcome that cannot silently allow.
+MIN_PYTHON = (3, 11)
+
 #: The guard's own control plane. Gate 0 protects these from the agent the rest
 #: of the guard constrains; see the Gate 0 comment in main() for why.
 UNITS_DIR = os.path.join(".lehre", "units")
@@ -246,6 +252,11 @@ def main() -> NoReturn:
     ruleset_path = os.path.join(cwd, RULESET)
     if not os.path.isfile(ruleset_path):
         allow()  # inert: this repository has not declared a doctrine
+
+    if sys.version_info < MIN_PYTHON:
+        deny(f"lehre needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+             f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+             f"{ESCAPE_HATCH}")
 
     try:
         import lehre_core as core

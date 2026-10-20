@@ -1,6 +1,19 @@
 # Changelog
 
 ## [Unreleased]
+### Changed
+- **`hooks/lehre_guard.py` declares its Python floor** (#123): `MIN_PYTHON = (3, 11)`, checked
+  past the inert test and before `lehre_core` loads. Below it, a repository with
+  `.lehre/ruleset.json` is denied with the interpreter named and the escape hatch, instead of
+  being policed by an interpreter the plugin no longer supports. A crashing hook exits 1, which
+  Claude Code treats as non-blocking, so a deny is the only below-floor outcome that cannot
+  silently allow. Measured on `main`: the guard did not crash under 3.9 or 3.10 on the paths
+  tested -- this is the floor made explicit, not a crash fix. Repos without a ruleset stay inert
+  under any interpreter.
+- **`hooks/test_lehre_guard.py`**: floor cases under every python3 older than 3.11 on PATH --
+  opted-in repo denied, inert repo allowed, and a copy with the floor lowered allowing the same
+  write, so the version check is proven to be what denies. `REQUIRE_OLD_PYTHON=1` turns "none
+  found" into a failure.
 
 ## [1.0.2] - 2026-10-03
 ### Added

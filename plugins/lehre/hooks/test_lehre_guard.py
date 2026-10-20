@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -252,6 +253,57 @@ expect_allow("Read is allowed", run(ready, {"tool_name": "Read", "tool_input": {
 expect_allow("unreadable stdin is never policed",
              subprocess.run([sys.executable, GUARD], input="not json",
                             capture_output=True, text=True, cwd=ready, timeout=30))
+
+# -- PYTHON FLOOR (#123) ----------------------------------------------------
+# Below 3.11 an opted-in repo is DENIED, never left to whatever the old
+# interpreter happens to do. Runs the real hook under every python3 older than
+# the floor on PATH; a named skip when there is none, a failure instead under
+# REQUIRE_OLD_PYTHON=1 (as CI sets it) -- a skipped case cannot tell a fix from
+# no test. The sabotage copy lowers the floor and must stop denying the same
+# allowed write: proof that the version check, not some other failure, denies.
+FLOOR = (3, 11)
+olds = []
+for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+    exe = shutil.which(name)
+    if not exe or exe in olds:
+        continue
+    probe = subprocess.run([exe, "-c", f"import sys; print(sys.version_info[:2] < {FLOOR!r})"],
+                           capture_output=True, text=True)
+    if probe.stdout.strip() == "True":
+        olds.append(exe)
+if not olds:
+    if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+        FAILS.append("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH")
+    else:
+        print("  skip below-the-floor cases: no python3 older than 3.11 on PATH")
+# The copy keeps the plugin layout (hooks/ beside a symlinked scripts/) so it
+# finds lehre_core exactly as the real guard does.
+sabotaged_root = tempfile.mkdtemp(prefix="lehre-sabotage-")
+os.makedirs(os.path.join(sabotaged_root, "hooks"))
+os.symlink(os.path.join(os.path.dirname(os.path.dirname(GUARD)), "scripts"),
+           os.path.join(sabotaged_root, "scripts"))
+sabotaged = os.path.join(sabotaged_root, "hooks", "lehre_guard.py")
+with open(GUARD, encoding="utf-8") as fh:
+    guard_src = fh.read()
+assert "MIN_PYTHON = (3, 11)" in guard_src, "sabotage target missing: the floor line changed"
+with open(sabotaged, "w", encoding="utf-8") as fh:
+    fh.write(guard_src.replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+
+
+def run_with(exe, guard, cwd, payload):
+    env = {k: v for k, v in os.environ.items() if k != "LEHRE_DISABLE_GUARD"}
+    return subprocess.run([exe, "-B", guard], input=json.dumps(payload),
+                          capture_output=True, text=True, cwd=cwd, env=env, timeout=30)
+
+
+for exe in olds:
+    allowed_write = write("src/api/h.py", "x = 1\n")
+    expect_deny(f"{exe}: opted-in repo below the floor denied",
+                run_with(exe, GUARD, ready, allowed_write), must_mention="Python >= 3.11")
+    expect_allow(f"{exe}: repo without a ruleset stays inert",
+                 run_with(exe, GUARD, bare, write("utils.py", "x = 1\n")))
+    expect_allow(f"{exe}: sabotage, floor lowered -> the same write is allowed",
+                 run_with(exe, sabotaged, ready, allowed_write))
 
 if FAILS:
     print("\n".join(f"  FAIL {f}" for f in FAILS))
