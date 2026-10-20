@@ -112,8 +112,16 @@ must stay at zero; a new plugin starts absent too.**
 guard decides. `os.path.relpath` returns `../outside` where `Path.relative_to` **raises**, unless
 `walk_up=True`, which is **3.12+**. Both are kept in `takt_guard.py` and `arbeitsplan_guard.py`
 with the reason in a comment. Note the asymmetry that makes this matter: the repo declares
-py312, but a **hook** runs under whatever `python3` the user's machine has, and a hook that
-cannot import does not warn — it **denies every call**.
+py312, but a **hook** runs under whatever `python3` the user's machine has. A hook that
+cannot import exits 1, which Claude Code treats as **non-blocking** — it **allows every call**,
+silently (zeugnis's Bash guard did exactly that under 3.9). Only a hook command ending in
+`|| exit 2`, or a guard that checks `sys.version_info` and denies, fails closed.
+
+**The hook floor is Python 3.11** — the oldest CPython still supported.
+`test/plugins/lint-python-floor.py` holds it once, asks `rrt eol` (never a hand-kept date)
+whether it is still supported, and requires every `MIN_PYTHON` under `plugins/*/hooks/` and
+`plugins/*/scripts/` to equal it. Raise it there when rrt starts warning (`warn_days = 365` in
+`.rrt.toml`'s `[tool.rrt.eol]`), not before.
 
 `PERF` is deliberately **not** selected. Its four remaining hits are the `edit_targets` loops
 whose `isinstance(path, str)` guard carries a long comment explaining that a truthiness check on

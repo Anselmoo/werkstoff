@@ -42,6 +42,7 @@ jobs:
       rrt_branch_name: ${{ steps.rrt_branch_name.outcome }}
       pre_commit: ${{ steps.pre_commit.outcome }}
       arbeitsplan_selftests: ${{ steps.arbeitsplan_selftests.outcome }}
+      python_floor: ${{ steps.python_floor.outcome }}
     steps:
       - uses: actions/checkout@v4
 
@@ -326,6 +327,22 @@ jobs:
           python3 test/plugins/test-lint-release-wiring.py
           python3 test/plugins/lint-release-wiring.py
 
+      - name: Verify the Python floor is declared once and not end-of-life
+        id: python_floor
+        continue-on-error: true
+        # A hook that cannot import exits 1, which Claude Code treats as
+        # non-blocking: zeugnis's Bash guard allowed every call under 3.9 that
+        # way. The lint holds the 3.11 hook floor, requires every MIN_PYTHON
+        # under plugins/ to equal it, and asks `rrt eol` (its bundled EOL data,
+        # never a date kept here) whether it is still supported. Calibration
+        # first; then rrt's own check of this runner and werkstoff-cli's
+        # requires-python under .rrt.toml's [tool.rrt.eol]. Exit 1 = EOL.
+        run: |
+          python3 test/plugins/lint-python-floor.py --selftest
+          python3 test/plugins/lint-python-floor.py
+          rrt eol --language python
+          (cd tools/werkstoff-cli && rrt eol --language python --project-only)
+
       - name: Verify vendored artifacts match their committed lock
         id: rrt_artifacts
         continue-on-error: true
@@ -442,7 +459,8 @@ jobs:
           steps.docs_inject_check.outcome == 'failure' ||
           steps.rrt_branch_name.outcome == 'failure' ||
           steps.pre_commit.outcome == 'failure' ||
-          steps.arbeitsplan_selftests.outcome == 'failure'
+          steps.arbeitsplan_selftests.outcome == 'failure' ||
+          steps.python_floor.outcome == 'failure'
         run: exit 1
 
   board:
@@ -504,6 +522,7 @@ jobs:
             row "release tags vs. published GitHub Releases" "${{ needs.checks.outputs.tag_releases }}"
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             row "arbeitsplan selftests (compiler, landing, pool, runner, reconcile, sweep, record, rounds)" "${{ needs.checks.outputs.arbeitsplan_selftests }}"
+            row "Python floor 3.11 (lint-python-floor.py + rrt eol)" "${{ needs.checks.outputs.python_floor }}"
             echo "</tbody></table>"
             echo
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"

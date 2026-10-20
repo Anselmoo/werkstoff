@@ -7,7 +7,7 @@ VENDORED. install_waves.py copies this file into a project as
 .claude/workflows/<name>_state.py, next to <name>.plan.json (the compiled
 design) and <name>.state.json (this helper's gitignored state). The project runs
 it without werkstoff installed. It is the ONE runtime prerequisite the generated
-tooling has -- python3 >= 3.10, stdlib only -- and the installer resolves and
+tooling has -- python3 >= 3.11, stdlib only -- and the installer resolves and
 records the interpreter rather than assuming `python3` is on PATH.
 
 The workflow interpreter (waves.js) cannot exec anything, so every call below
@@ -43,7 +43,7 @@ merge-gate (expectExit [0, 1]). Anything else is a defect and exits 2.
              (missing | stub | authored | verified | stale) -- the Workflow
              script cannot hash a file, so it trusts this and nothing else
 
-STDLIB ONLY. Python >= 3.10 (checked). No datetime: a timestamp is not needed
+STDLIB ONLY. Python >= 3.11 (checked). No datetime: a timestamp is not needed
 to decide anything here.
 """
 
@@ -59,7 +59,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-MIN_PYTHON = (3, 10)
+MIN_PYTHON = (3, 11)
 GATE_TIMEOUT = 3600  # seconds per gate run; a hung gate is a red gate, not a hang
 STEP_TIMEOUT = 600  # seconds for one authored step's sample run
 

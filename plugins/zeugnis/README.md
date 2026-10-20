@@ -56,7 +56,7 @@ until a zeugnis audit skill has actually run once.
 
 ### Requirements
 
-Python 3.9+ (stdlib only — no third-party dependencies for any enforcement
+Python 3.11+ (stdlib only — no third-party dependencies for any enforcement
 script). Network access is required for `zeugnis-dependency-audit`'s
 registry lookups and `zeugnis-preflight`'s reachability check; both are
 read-only GET requests bounded by a timeout and degrade to `"skipped"`

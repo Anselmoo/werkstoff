@@ -170,7 +170,7 @@ problem: analysis/arbeitsplan/ap-2026-09-27-wv01/problem.md
  review      agent       primary   smoke               sonnet  —                  —
  fix         agent       worktree  review (if blocking) sonnet internal/**, cmd/** —
 
-toolchains: go (go version) — installed · python (python3 --version) — installed, helper >= 3.10
+toolchains: go (go version) — installed · python (python3 --version) — installed, helper >= 3.11
 integration: waves merge into integration/rebuild-cli; main moves only on a green gate
 new agent types: rebuild-cli-builder, -smoke, -reviewer, -fixer, -runner → LAUNCH IN A LATER TURN than the install
 Approve this design (sha256 3f9c1e…)?  Next: arbeitsplan-waves install, then launch on the next turn.

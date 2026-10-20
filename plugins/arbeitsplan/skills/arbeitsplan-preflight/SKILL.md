@@ -36,7 +36,7 @@ cannot make a worktree has already spent N dispatches on a result it cannot use.
    acceptance, setup, gates, smoke. Run each probe; **exit 0 means installed**, whatever it
    prints (`go version` and `java -version` share no output convention). A missing toolchain
    makes the design not ready. For a wave design, also report the helper runtime: a Python
-   >= 3.10 (`python3`, `python` or `py -3`) that `install_waves.py` will resolve, and whether
+   >= 3.11 (`python3`, `python` or `py -3`) that `install_waves.py` will resolve, and whether
    this checkout is the **primary** one (`git rev-parse --git-dir` equals `--git-common-dir`) —
    a wave run launched from a linked worktree halts at its first node.
 
@@ -61,7 +61,7 @@ arbeitsplan preflight — /Users/x/proj
   timeout             gtimeout (coreutils)
   nested session      YES — the matrix runner will refuse; run it from a terminal
   toolchains          go (go version) ok · shell (sh -c true) ok · julia (julia --version) MISSING
-  helper runtime      python3 3.12.3 (>= 3.10) · primary checkout: yes
+  helper runtime      python3 3.12.3 (>= 3.11) · primary checkout: yes
 
 other guards live in this repository (a run executes under them; a denial from one is
 reported, never bypassed):

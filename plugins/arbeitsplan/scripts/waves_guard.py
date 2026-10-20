@@ -40,7 +40,7 @@ so an interpreter that cannot even start this file denies too, rather than the
 runtime reading a crash as "not blocked".
 Escape hatch: ARBEITSPLAN_WAVES_DISABLE_GUARD=1.
 
-STDLIB ONLY. Python >= 3.10.
+STDLIB ONLY. Python >= 3.11.
 """
 
 from __future__ import annotations
