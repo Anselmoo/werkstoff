@@ -95,6 +95,12 @@ ESCAPE_HATCH = (
 # the isolation runId exists to provide. ".." was already blocked; "." was not.
 RUN_ID_RE = re.compile(r"\A(?!\.+\Z)(?!.*\.\.)[A-Za-z0-9._-]{1,64}\Z")
 
+# The declared floor (#123), checked rather than assumed: a hook runs under whatever
+# python3 is on PATH, and one that crashes exits 1, which Claude Code treats as
+# non-blocking -- it allows the call. Checked past the inert test, so a repository
+# without a declaration never pays.
+MIN_PYTHON = (3, 11)
+
 EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
 DISPATCH_TOOLS = ("Skill", "Task", "Agent")
 
@@ -318,6 +324,13 @@ def main() -> NoReturn:
     settings_path = Path(cwd) / SETTINGS
     if not settings_path.is_file():
         allow()  # inert: this repository has not declared any beats
+
+    if sys.version_info < MIN_PYTHON:
+        deny(
+            f"takt needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     # Past this point the repository opted in, so errors deny rather than allow.
     try:

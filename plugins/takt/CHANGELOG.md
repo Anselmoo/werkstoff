@@ -3,6 +3,16 @@
 All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **hooks**: `takt_guard.py` declares and checks a Python floor, `MIN_PYTHON = (3, 11)`, past the
+  inert test: in a repository that declares beats, an older interpreter is denied with the
+  interpreter named and the escape hatch, instead of the guard running on an unsupported
+  runtime it was never tested under. A repository without `.claude/takt.local.md` is still
+  allowed before the check (#123).
+- **`test_takt_guard.py`**: a `python floor` group runs the guard under every python3 older than
+  3.11 on PATH -- beats declared denied, no declaration allowed, and a copy with the floor
+  lowered allowed (the sabotage that proves the version check is what denies). Finding no old
+  interpreter fails under `REQUIRE_OLD_PYTHON=1` and is a named skip otherwise.
 
 ## [1.0.2] - 2026-10-03
 ### Fixed

@@ -26,6 +26,8 @@ Run: python3 plugins/takt/hooks/test_takt_guard.py
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -78,6 +80,27 @@ RUN_BEAT = {
     "require": "built",
     "reason": "candidates must exist before one is landed.",
 }
+
+
+def old_interpreters() -> list[str]:
+    """Every python3 below the guard's floor on PATH (#123)."""
+    found: list[str] = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        probe = subprocess.run([path, "-c", "import sys; print(sys.version_info[:2] < (3, 11))"],
+                               capture_output=True, text=True)
+        if probe.stdout.strip() == "True":
+            found.append(path)
+    return found
+
+
+def run_with(python: str, guard: Path, cwd: Path, tool: str, tool_input: dict) -> tuple[int, str]:
+    event = json.dumps({"cwd": str(cwd), "tool_name": tool, "tool_input": tool_input})
+    proc = subprocess.run([python, "-B", str(guard)], input=event, capture_output=True,
+                          text=True, env={"PATH": "/usr/bin:/bin"})
+    return proc.returncode, (proc.stdout + proc.stderr)
 
 
 def check(name: str, got: int, want: int, out: str = "") -> None:
@@ -335,6 +358,34 @@ def main() -> int:
         if "TAKT_DISABLE_GUARD" not in (proc.stdout + proc.stderr):
             FAILURES.append("deny message names the escape hatch")
             print("  FAIL deny message names the escape hatch")
+
+        # --- the Python floor (#123) -------------------------------------
+        # Every real interpreter below it. An UNGATED edit in a repository that
+        # declares beats is allowed above the floor, so a deny here is the floor and
+        # nothing else; the sabotaged copy lowers the floor and must then allow --
+        # proof the version check is what denies.
+        print("python floor")
+        floor = tmp / "floor"
+        declare(floor, [UI_BEAT])
+        inert = tmp / "floor-inert"
+        inert.mkdir()
+        ungated = {"file_path": str(floor / "README.md")}
+        sabotaged = tmp / "takt_guard_sabotaged.py"
+        sabotaged.write_text(GUARD.read_text().replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+        olds = old_interpreters()
+        if not olds:
+            if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+                check("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH", ALLOW, DENY)
+            else:
+                print("  skip below-the-floor cases: no python3 older than 3.11 on PATH")
+        for py in olds:
+            rc, out = run_with(py, GUARD, floor, "Write", ungated)
+            check(f"FLOOR {py}, beats declared -> DENY", rc, DENY, out)
+            check("  ...and the denial names the floor", ALLOW if "Python >= 3.11" in out else DENY, ALLOW, out)
+            rc, out = run_with(py, GUARD, inert, "Write", ungated)
+            check(f"FLOOR {py}, no declaration -> ALLOW (inert first)", rc, ALLOW, out)
+            rc, out = run_with(py, sabotaged, floor, "Write", ungated)
+            check(f"FLOOR {py}, sabotage: floor lowered -> ALLOW", rc, ALLOW, out)
 
     print()
     if FAILURES:
