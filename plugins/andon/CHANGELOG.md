@@ -3,6 +3,8 @@
 All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.0.7] - 2026-10-20
 ### Changed
 - **hook**: `hooks/andon_enforce.py` now declares `MIN_PYTHON = (3, 11)` and, past the inert
   check, denies below it with the interpreter named and the usual remedies (#123). It imported and
