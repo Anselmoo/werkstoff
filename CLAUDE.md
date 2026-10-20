@@ -120,7 +120,9 @@ silently (zeugnis's Bash guard did exactly that under 3.9). Only a hook command 
 **The hook floor is Python 3.11** — the oldest CPython still supported.
 `test/plugins/lint-python-floor.py` holds it once, asks `rrt eol` (never a hand-kept date)
 whether it is still supported, and requires every `MIN_PYTHON` under `plugins/*/hooks/` and
-`plugins/*/scripts/` to equal it. Raise it there when rrt starts warning (`warn_days = 365` in
+`plugins/*/scripts/` to equal it. Every script a `hooks.json` registers must also carry
+`from __future__ import annotations` and an `if sys.version_info < MIN_PYTHON:` that denies
+(#123) -- checked by AST, so a guard without one fails CI instead of crashing open. Raise it there when rrt starts warning (`warn_days = 365` in
 `.rrt.toml`'s `[tool.rrt.eol]`), not before.
 
 `PERF` is deliberately **not** selected. Its four remaining hits are the `edit_targets` loops
