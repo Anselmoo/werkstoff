@@ -5,6 +5,8 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.5] - 2026-10-20
 ### Fixed
 - **hooks**: `guard_bash_scope.py` raised `TypeError` at import under Python 3.9 (`str | None` in
   `_matched_mutator`'s signature is evaluated at definition time before 3.10). A hook that crashes
