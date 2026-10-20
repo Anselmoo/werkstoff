@@ -31,6 +31,13 @@ exists, any internal error denies rather than silently allowing, with the escape
 hatch named. A stale lock therefore denies, which is the safe direction; the
 nacharbeit-status skill reports one older than six hours with the release command.
 
+Python floor: MIN_PYTHON, checked past the inert test. A hook runs under whatever
+python3 is on PATH, and one that cannot import exits 1, which the runtime treats as
+non-blocking -- it ALLOWS the call. So this module stays importable on old interpreters
+and, while a lock is open, denies below the floor instead of trusting an interpreter
+nothing here is tested on (#123). It denies before the heartbeat, so an unsupported
+interpreter can never confirm the guard either.
+
 Matching is exact path equality after normalisation, never regex and never glob:
 the lock lists files, not patterns.
 
@@ -55,6 +62,7 @@ import os
 import sys
 from typing import NoReturn
 
+MIN_PYTHON = (3, 11)
 DEFAULT_STATE_DIR = os.path.join("analysis", "nacharbeit")
 LOCK_NAME = "fix_scope.json"
 HEARTBEAT_NAME = "guard-heartbeat.json"  # keep in step with nacharbeit_common.HEARTBEAT_NAME; this hook imports nothing of the plugin
@@ -184,6 +192,13 @@ def main() -> NoReturn:
     lock_path = os.path.join(lock_path, LOCK_NAME)
     if not os.path.isfile(lock_path):
         allow()  # inert: no fix pass is in flight in this repository
+
+    if sys.version_info < MIN_PYTHON:
+        deny(
+            f"nacharbeit needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     # Past this point a fix pass opened the lock, so errors deny rather than allow.
     try:
