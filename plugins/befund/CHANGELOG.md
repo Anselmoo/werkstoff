@@ -5,6 +5,8 @@ Releases before the rename were published as `self-assess`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.0.4] - 2026-10-20
 ### Changed
 - **hook**: `hooks/guard_target_edit.py` now declares the hook floor, `MIN_PYTHON = (3, 11)`,
   and below it denies an edit under an open edit-scope lock, naming the interpreter and the
