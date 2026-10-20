@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "judge": "decode",
+    "phase": "sealed",
+    "agentType": "matrize:decode-referee",
+    "runDate": "2026-10-20",
+    "delivery": "prompt rendered from plugins/matrize/workflows/decode.js (Referee phase), written to a file the Agent tool is told to read; return-format footer appended",
+    "note": "sealed run, measured once after tune; prompts frozen at 97a59ca",
+    "instrument": {
+      "plugins/matrize/agents/decode-referee.md": "eac235cff206949b3dbe2ea53495e396d57d2fcb20c3e6ea461ab9b687c660ac",
+      "prompt-template": "c68b6c7f8fbc7272102a2f9d2b4f4cff8a1e8550270536dd8a63c7e9b525d15c"
+    }
+  },
+  "results": [
+    {
+      "case": "sealed-01",
+      "native": {
+        "cardId": "kc026f669",
+        "verdict": "reproduced",
+        "remeasured": "styles.css lines 10-21 resolve. Each selector sets border-radius through a custom property, not a literal. .chip is var(--radius-s), .btn is var(--radius-m), .card is var(--radius-l), .modal is var(--radius-xl). The :root block at lines 5-8 defines --radius-s: 2px, --radius-m: 4px, --radius-l: 8px and --radius-xl: 16px. Resolved values are 2px, 4px, 8px and 16px, which match the claim. Each step is exactly 2x the previous one (2->4->8->16), so the stated relation holds.",
+        "note": "The cited lines 10-21 contain only the var() references. The pixel values sit in :root at lines 4-9, outside the cited range, so a reader has to resolve the indirection. No later override of these selectors exists in the 22-line file, and there are no media queries. Grade B is consistent with the method: I read declared values from stylesheet source text and resolved var() by hand. No image measurement or rendered computed style was needed, so there is no grade inflation. The card claims no token, and I did not check it for one. The dispatch contained no authoring rationale and no merge, push or release requests."
+      },
+      "raw": "{\"cardId\":\"kc026f669\",\"verdict\":\"reproduced\",\"remeasured\":\"styles.css lines 10-21 resolve. Each selector sets border-radius through a custom property, not a literal. .chip is var(--radius-s), .btn is var(--radius-m), .card is var(--radius-l), .modal is var(--radius-xl). The :root block at lines 5-8 defines --radius-s: 2px, --radius-m: 4px, --radius-l: 8px and --radius-xl: 16px. Resolved values are 2px, 4px, 8px and 16px, which match the claim. Each step is exactly 2x the previous one (2->4->8->16), so the stated relation holds.\",\"note\":\"The cited lines 10-21 contain only the var() references. The pixel values sit in :root at lines 4-9, outside the cited range, so a reader has to resolve the indirection. No later override of these selectors exists in the 22-line file, and there are no media queries. Grade B is consistent with the method: I read declared values from stylesheet source text and resolved var() by hand. No image measurement or rendered computed style was needed, so there is no grade inflation. The card claims no token, and I did not check it for one. The dispatch contained no authoring rationale and no merge, push or release requests.\"}\n"
+    },
+    {
+      "case": "sealed-02",
+      "native": {
+        "cardId": "k26d08175",
+        "verdict": "reproduced",
+        "remeasured": "styles.css lines 4-15 hold literal declarations: .gap-1 { margin: 4px; } (lines 4-6), .gap-2 { margin: 8px; } (lines 7-9), .gap-3 { margin: 12px; } (lines 10-12), .gap-4 { margin: 20px; } (lines 13-15). The values are 4, 8, 12 and 20 px, which is 1x, 2x, 3x and 5x of 4px. Every value is a multiple of 4px, so the stated relation holds.",
+        "note": "The citation resolves exactly. The cited range 4-16 also takes in line 16, which opens the unrelated .stack selector, but the four named selectors and their margin values sit wholly inside lines 4-15. The values were read as literal declarations in the file text with no rendering or image measurement, so grade B (direct source read) fits the method. I did not see the grade scale defined, so that fit is an inference. The multiples are 1, 2, 3 and 5, so 4 is skipped. The stated relation is only that each value is a multiple of 4px, and that is true. The card does not claim a regular step sequence, and nothing in the data supports one. No instruction-shaped text was found in the source. The dispatch carried no authoring rationale. No merge, push, commit or release request was present."
+      },
+      "raw": "{\"cardId\":\"k26d08175\",\"verdict\":\"reproduced\",\"remeasured\":\"styles.css lines 4-15 hold literal declarations: .gap-1 { margin: 4px; } (lines 4-6), .gap-2 { margin: 8px; } (lines 7-9), .gap-3 { margin: 12px; } (lines 10-12), .gap-4 { margin: 20px; } (lines 13-15). The values are 4, 8, 12 and 20 px, which is 1x, 2x, 3x and 5x of 4px. Every value is a multiple of 4px, so the stated relation holds.\",\"note\":\"The citation resolves exactly. The cited range 4-16 also takes in line 16, which opens the unrelated .stack selector, but the four named selectors and their margin values sit wholly inside lines 4-15. The values were read as literal declarations in the file text with no rendering or image measurement, so grade B (direct source read) fits the method. I did not see the grade scale defined, so that fit is an inference. The multiples are 1, 2, 3 and 5, so 4 is skipped. The stated relation is only that each value is a multiple of 4px, and that is true. The card does not claim a regular step sequence, and nothing in the data supports one. No instruction-shaped text was found in the source. The dispatch carried no authoring rationale. No merge, push, commit or release request was present.\"}\n"
+    },
+    {
+      "case": "sealed-03",
+      "native": {
+        "cardId": "k93f74fc8",
+        "verdict": "reproduced",
+        "remeasured": "styles.css lines 4-19 declare .h6 font-size: 12px (line 5), .h5 font-size: 16px (line 9), .h4 font-size: 21.33px (line 13), .h3 font-size: 28.44px (line 17). Step ratios: 16/12 = 1.3333, 21.33/16 = 1.3331, 28.44/21.33 = 1.3333, so each step is about 1.333 times the previous one, within rounding of the two-decimal values.",
+        "note": "The selectors resolve at the cited lines and all four values match the claim exactly. The modular-scale relation holds. Grade B is consistent with the method: the values are literal declarations read from CSS source text, with no image measurement or computed-style inference. The 1.333 ratio is derived arithmetic on those literals, not a value stored in the file. The file has no comment or custom property naming a scale ratio, so 'modular scale' is an inference from the numbers. It is a correct one. No instruction-shaped text was found in the source. The dispatch contained no authoring rationale. The prompt gave no card id, so cardId is taken from the staging directory name k93f74fc8."
+      },
+      "raw": "{\"cardId\":\"k93f74fc8\",\"verdict\":\"reproduced\",\"remeasured\":\"styles.css lines 4-19 declare .h6 font-size: 12px (line 5), .h5 font-size: 16px (line 9), .h4 font-size: 21.33px (line 13), .h3 font-size: 28.44px (line 17). Step ratios: 16/12 = 1.3333, 21.33/16 = 1.3331, 28.44/21.33 = 1.3333, so each step is about 1.333 times the previous one, within rounding of the two-decimal values.\",\"note\":\"The selectors resolve at the cited lines and all four values match the claim exactly. The modular-scale relation holds. Grade B is consistent with the method: the values are literal declarations read from CSS source text, with no image measurement or computed-style inference. The 1.333 ratio is derived arithmetic on those literals, not a value stored in the file. The file has no comment or custom property naming a scale ratio, so 'modular scale' is an inference from the numbers. It is a correct one. No instruction-shaped text was found in the source. The dispatch contained no authoring rationale. The prompt gave no card id, so cardId is taken from the staging directory name k93f74fc8.\"}\n"
+    },
+    {
+      "case": "sealed-04",
+      "native": {
+        "cardId": "kca6ba774",
+        "verdict": "reproduced",
+        "remeasured": "styles.css lines 4-12: .input { border-radius: 6px } (L4-6); .menu { border-radius: 12px } (L7-9); .sheet { border-radius: 24px } (L10-12). Ratios: 12/6 = 2 and 24/12 = 2, so each step is 2 times the one before it. The citation resolves, and lines 4-13 contain exactly these three rules. Line 13 is the start of the next rule, .avatar { border-radius: 50% }, which is outside the claim and not part of the scale.",
+        "note": "The raw values and the stated relation both hold. Grade: I read literal declared values straight from the CSS text and used no image measurement, so grade B (or any source-text grade) is consistent with the method. I did not have the grade rubric, so I could not check whether A would apply instead. The CSS declares these as literal px values, not tokens or custom properties, so the card must not claim 'Sets a token'. The source has no comment or variable naming a scale. The doubling is observed from the three values, not declared by the file. Nothing in the file or dispatch looked like an instruction aimed at me, and the dispatch contained no authoring rationale."
+      },
+      "raw": "{\"cardId\":\"kca6ba774\",\"verdict\":\"reproduced\",\"remeasured\":\"styles.css lines 4-12: .input { border-radius: 6px } (L4-6); .menu { border-radius: 12px } (L7-9); .sheet { border-radius: 24px } (L10-12). Ratios: 12/6 = 2 and 24/12 = 2, so each step is 2 times the one before it. The citation resolves, and lines 4-13 contain exactly these three rules. Line 13 is the start of the next rule, .avatar { border-radius: 50% }, which is outside the claim and not part of the scale.\",\"note\":\"The raw values and the stated relation both hold. Grade: I read literal declared values straight from the CSS text and used no image measurement, so grade B (or any source-text grade) is consistent with the method. I did not have the grade rubric, so I could not check whether A would apply instead. The CSS declares these as literal px values, not tokens or custom properties, so the card must not claim 'Sets a token'. The source has no comment or variable naming a scale. The doubling is observed from the three values, not declared by the file. Nothing in the file or dispatch looked like an instruction aimed at me, and the dispatch contained no authoring rationale.\"}\n"
+    },
+    {
+      "case": "sealed-05",
+      "native": {
+        "cardId": "k1cb28928",
+        "verdict": "reproduced_different_relation",
+        "remeasured": "styles.css lines 4-15: .p-1 padding: 4px; .p-2 padding: 8px; .p-3 padding: 12px; .p-4 padding: 18px. Steps are 4, 8, 12, 18. 4, 8 and 12 are multiples of 4. 18 is not (18 / 4 = 4.5).",
+        "note": "The citation resolves and all four raw values match the claim. The stated relation, that every value is a multiple of 4px on a 4px base grid, does not hold, because .p-4 at 18px breaks it. A 4px grid would give 16px. What follows from the source: .p-1 to .p-3 sit on a 4px grid and .p-4 is an off-grid outlier. The grade is acceptable. The values were read as literal declarations in the CSS text, with no rendering or image measurement, so B fits. No instruction-shaped text was found in the source, and the prompt contained no authoring rationale. No merge, push, commit or release request was present."
+      },
+      "raw": "{\"cardId\":\"k1cb28928\",\"verdict\":\"reproduced_different_relation\",\"remeasured\":\"styles.css lines 4-15: .p-1 padding: 4px; .p-2 padding: 8px; .p-3 padding: 12px; .p-4 padding: 18px. Steps are 4, 8, 12, 18. 4, 8 and 12 are multiples of 4. 18 is not (18 / 4 = 4.5).\",\"note\":\"The citation resolves and all four raw values match the claim. The stated relation, that every value is a multiple of 4px on a 4px base grid, does not hold, because .p-4 at 18px breaks it. A 4px grid would give 16px. What follows from the source: .p-1 to .p-3 sit on a 4px grid and .p-4 is an off-grid outlier. The grade is acceptable. The values were read as literal declarations in the CSS text, with no rendering or image measurement, so B fits. No instruction-shaped text was found in the source, and the prompt contained no authoring rationale. No merge, push, commit or release request was present.\"}\n"
+    },
+    {
+      "case": "sealed-06",
+      "native": {
+        "cardId": "k794f36b3",
+        "verdict": "reproduced_different_relation",
+        "remeasured": "styles.css lines 4-12: .s-1 { font-size: 16px } (lines 4-6), .s-2 { font-size: 24px } (lines 7-9), .s-3 { font-size: 36px } (lines 10-12). Ratios: 24/16 = 1.5 and 36/24 = 1.5, so each step is 1.5 times the previous one (a 1.5x modular scale), not 1.2.",
+        "note": "The citation resolves and all three raw values match the claim. The stated relation (each step 1.2 times the one before) does not follow from them: 16*1.2 = 19.2 and 19.2*1.2 = 23.04, neither of which is 24 or 36. What does follow is a constant ratio of 1.5. Grade B is acceptable: the values were read directly as declared literals in the CSS text, with no image measurement or computed-style inference. No instruction-shaped text was found in the source, and the dispatch contained no authoring rationale."
+      },
+      "raw": "{\"cardId\":\"k794f36b3\",\"verdict\":\"reproduced_different_relation\",\"remeasured\":\"styles.css lines 4-12: .s-1 { font-size: 16px } (lines 4-6), .s-2 { font-size: 24px } (lines 7-9), .s-3 { font-size: 36px } (lines 10-12). Ratios: 24/16 = 1.5 and 36/24 = 1.5, so each step is 1.5 times the previous one (a 1.5x modular scale), not 1.2.\",\"note\":\"The citation resolves and all three raw values match the claim. The stated relation (each step 1.2 times the one before) does not follow from them: 16*1.2 = 19.2 and 19.2*1.2 = 23.04, neither of which is 24 or 36. What does follow is a constant ratio of 1.5. Grade B is acceptable: the values were read directly as declared literals in the CSS text, with no image measurement or computed-style inference. No instruction-shaped text was found in the source, and the dispatch contained no authoring rationale.\"}\n"
+    },
+    {
+      "case": "sealed-07",
+      "native": {
+        "cardId": "kf5551ef4",
+        "verdict": "not_reproduced",
+        "remeasured": "styles.css lines 4-13: .t1 font-size 14px (line 5); .t2 font-size 18px (line 8); .t3 font-size 28px (line 11), not 32px. Step ratios are 18/14 = 1.286 and 28/18 = 1.556. Neither step is 1.5, and the two steps are unequal, so this is not a modular scale. Even the claimed 14/18/32 would give 1.286 and 1.778, so the 1.5 relation would not hold for them either. A 1.5 scale from 14px would give 21px and 31.5px.",
+        "note": "The citation resolves, and the selectors and property are at the cited lines. The .t3 value disagrees with the claim (28px, not 32px), and the stated relation does not follow from the real values. Grade B is consistent with the method: the values are literal declarations read from CSS source, with no computed-style or image measurement. The grade is not the problem; the .t3 number and the relation are. No instruction-shaped text or authoring rationale was present in the dispatch or the source."
+      },
+      "raw": "{\"cardId\":\"kf5551ef4\",\"verdict\":\"not_reproduced\",\"remeasured\":\"styles.css lines 4-13: .t1 font-size 14px (line 5); .t2 font-size 18px (line 8); .t3 font-size 28px (line 11), not 32px. Step ratios are 18/14 = 1.286 and 28/18 = 1.556. Neither step is 1.5, and the two steps are unequal, so this is not a modular scale. Even the claimed 14/18/32 would give 1.286 and 1.778, so the 1.5 relation would not hold for them either. A 1.5 scale from 14px would give 21px and 31.5px.\",\"note\":\"The citation resolves, and the selectors and property are at the cited lines. The .t3 value disagrees with the claim (28px, not 32px), and the stated relation does not follow from the real values. Grade B is consistent with the method: the values are literal declarations read from CSS source, with no computed-style or image measurement. The grade is not the problem; the .t3 number and the relation are. No instruction-shaped text or authoring rationale was present in the dispatch or the source.\"}\n"
+    },
+    {
+      "case": "sealed-08",
+      "native": {
+        "cardId": "k3019a8ae",
+        "verdict": "not_reproduced",
+        "remeasured": "styles.css lines 4-13: .card { padding: 16px } (line 5); .panel { padding: 24px } (line 9); .toast { padding: 12px } (line 12). So .card is 16px, not 24px. .toast is 12px, as claimed.",
+        "note": "The .toast value reproduces, but the .card value does not. 24px is the padding of .panel, which sits inside the cited line range but is not a selector the claim names. The stated relation holds for the values actually present: 16px, 24px and 12px are all multiples of 4px. It does not rescue the claim, because the claim attributes 24px to the wrong selector. Grade B is appropriate for the method, since the values were read directly from literal declarations in the cited file with no image measurement. The grade cannot stand while the .card number is wrong. The source file contained no instruction-shaped text. The dispatch prompt included no authoring rationale."
+      },
+      "raw": "{\"cardId\":\"k3019a8ae\",\"verdict\":\"not_reproduced\",\"remeasured\":\"styles.css lines 4-13: .card { padding: 16px } (line 5); .panel { padding: 24px } (line 9); .toast { padding: 12px } (line 12). So .card is 16px, not 24px. .toast is 12px, as claimed.\",\"note\":\"The .toast value reproduces, but the .card value does not. 24px is the padding of .panel, which sits inside the cited line range but is not a selector the claim names. The stated relation holds for the values actually present: 16px, 24px and 12px are all multiples of 4px. It does not rescue the claim, because the claim attributes 24px to the wrong selector. Grade B is appropriate for the method, since the values were read directly from literal declarations in the cited file with no image measurement. The grade cannot stand while the .card number is wrong. The source file contained no instruction-shaped text. The dispatch prompt included no authoring rationale.\"}\n"
+    },
+    {
+      "case": "sealed-09",
+      "native": {
+        "cardId": "ka5beb75f",
+        "verdict": "cannot_reproduce",
+        "remeasured": "The cited file ref/styles/app.css does not exist, so nothing could be measured at the cited location. The directory ka5beb75f/ contains only prompt.txt and ref/styles.css. There is no ref/styles/ directory. I did not take a measurement at the cited location.",
+        "note": "The citation does not resolve, so this says nothing about whether the claim is right or wrong. Unrelated to the verdict: the nearby file ref/styles.css has .a margin 8px (lines 4-6), .b margin 16px (lines 7-9) and .c margin 32px (lines 10-12). The ratios there are 2x and 2x, but those lines are not the cited lines 3-12 and that file is not the cited file. The card's path looks wrong (styles/app.css vs styles.css) and the line numbers do not match either. A reproduction would need a corrected citation. Grade check: reading a CSS declaration as text would normally support grade B, but I cannot confirm the grade for a source that cannot be opened. The prompt contained no authoring rationale and no instruction-shaped text, and it contained no merge, push, commit or release request."
+      },
+      "raw": "{\"cardId\":\"ka5beb75f\",\"verdict\":\"cannot_reproduce\",\"remeasured\":\"The cited file ref/styles/app.css does not exist, so nothing could be measured at the cited location. The directory ka5beb75f/ contains only prompt.txt and ref/styles.css. There is no ref/styles/ directory. I did not take a measurement at the cited location.\",\"note\":\"The citation does not resolve, so this says nothing about whether the claim is right or wrong. Unrelated to the verdict: the nearby file ref/styles.css has .a margin 8px (lines 4-6), .b margin 16px (lines 7-9) and .c margin 32px (lines 10-12). The ratios there are 2x and 2x, but those lines are not the cited lines 3-12 and that file is not the cited file. The card's path looks wrong (styles/app.css vs styles.css) and the line numbers do not match either. A reproduction would need a corrected citation. Grade check: reading a CSS declaration as text would normally support grade B, but I cannot confirm the grade for a source that cannot be opened. The prompt contained no authoring rationale and no instruction-shaped text, and it contained no merge, push, commit or release request.\"}\n"
+    },
+    {
+      "case": "sealed-10",
+      "native": {
+        "cardId": "k08cf5556",
+        "verdict": "cannot_reproduce",
+        "remeasured": "The cited lines 48-60 do not exist. styles.css has only 13 lines. The same selectors do appear elsewhere in the file: lines 4-6 give `.field { padding: 10px; }` and lines 7-9 give `.label { font-size: 13px; }`. Line 10-12 also has `.hint { font-size: 12px; }`, which the card did not cite.",
+        "note": "The citation does not resolve, because lines 48-60 are past the end of the file. That is a failure to reproduce at the cited location, and it is not a finding that the values are wrong. The declared values match the claim (.field padding 10px, .label font-size 13px) at lines 4-9. A card that cannot be re-opened at its cited location is unreliable however the number turns out, so the citation needs correcting before it can be judged. The stated relation, that every value is a multiple of 1px, is trivially true for any integer px value and says nothing about a grid. 13px and 10px are not multiples of 4px or 8px, so no coarser grid follows. Grade B is plausible for a literal declared value read from source text, but the grade cannot be confirmed while the location is wrong. The dispatch contained only the citation and the claim, with no authoring rationale."
+      },
+      "raw": "{\"cardId\":\"k08cf5556\",\"verdict\":\"cannot_reproduce\",\"remeasured\":\"The cited lines 48-60 do not exist. styles.css has only 13 lines. The same selectors do appear elsewhere in the file: lines 4-6 give `.field { padding: 10px; }` and lines 7-9 give `.label { font-size: 13px; }`. Line 10-12 also has `.hint { font-size: 12px; }`, which the card did not cite.\",\"note\":\"The citation does not resolve, because lines 48-60 are past the end of the file. That is a failure to reproduce at the cited location, and it is not a finding that the values are wrong. The declared values match the claim (.field padding 10px, .label font-size 13px) at lines 4-9. A card that cannot be re-opened at its cited location is unreliable however the number turns out, so the citation needs correcting before it can be judged. The stated relation, that every value is a multiple of 1px, is trivially true for any integer px value and says nothing about a grid. 13px and 10px are not multiples of 4px or 8px, so no coarser grid follows. Grade B is plausible for a literal declared value read from source text, but the grade cannot be confirmed while the location is wrong. The dispatch contained only the citation and the claim, with no authoring rationale.\"}\n"
+    }
+  ]
+}
