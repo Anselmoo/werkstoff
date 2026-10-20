@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "judge": "referee",
+    "phase": "tune",
+    "agentType": "arbeitsplan:candidate-referee",
+    "runDate": "2026-10-20",
+    "delivery": "prompt rendered from plugins/arbeitsplan/workflows/run.js (fanout-blind), written to a file the Agent tool is told to read; return-format footer appended",
+    "note": "tune round 2: tune-06 re-run after the fix in e255e85 (abstain cases report no builder check); tune-01..05 are round-1 outputs, their fixtures unchanged",
+    "instrument": {
+      "plugins/arbeitsplan/agents/candidate-referee.md": "0e3a1b16e00c980428ad34eae373bed025be72e72a8608a4e824cfdced4ed718",
+      "prompt-template": "35d3dd06ffa99d80a1de2620642f66bcf1d32ab0e876481046e28fe8e1ecdfd0"
+    }
+  },
+  "results": [
+    {
+      "case": "tune-01",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "accepted",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": true,
+            "evidence": "util.py:5-6 adds clamp(x, lo, hi) returning max(lo, min(x, hi)). Traced by hand: clamp(5,0,3) = max(0, 3) = 3, clamp(-1,0,3) = max(0, -1) = 0, clamp(2,0,3) = max(0, 2) = 2, which matches the a1 assertion. The builder's reported a1 check also exited 0. I did not re-run it, because only the diff was supplied."
+          },
+          {
+            "id": "a2",
+            "met": true,
+            "evidence": "The diff only appends lines after util.py:2. double (util.py:1-2, 'return x * 2') is unchanged context, so double(4) == 8 and double(-1) == -2. The builder's reported a2 check also exited 0."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "The diff touches only util.py, and the only change is the appended clamp function. clamp assumes lo <= hi. The criteria do not specify the lo > hi case, so this is not a defect."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"accepted\",\"perCriterion\":[{\"id\":\"a1\",\"met\":true,\"evidence\":\"util.py:5-6 adds clamp(x, lo, hi) returning max(lo, min(x, hi)). Traced by hand: clamp(5,0,3) = max(0, 3) = 3, clamp(-1,0,3) = max(0, -1) = 0, clamp(2,0,3) = max(0, 2) = 2, which matches the a1 assertion. The builder's reported a1 check also exited 0. I did not re-run it, because only the diff was supplied.\"},{\"id\":\"a2\",\"met\":true,\"evidence\":\"The diff only appends lines after util.py:2. double (util.py:1-2, 'return x * 2') is unchanged context, so double(4) == 8 and double(-1) == -2. The builder's reported a2 check also exited 0.\"}],\"rationaleLeaked\":false,\"note\":\"The diff touches only util.py, and the only change is the appended clamp function. clamp assumes lo <= hi. The criteria do not specify the lo > hi case, so this is not a defect.\"}\n"
+    },
+    {
+      "case": "tune-02",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "accepted",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": true,
+            "evidence": "kv.py diff lines 39-45: split on ';', partition on '=' gives {'a':'1','b':'2'}. I re-ran the a1 command against the diff's kv.py in the scratchpad and it exited 0."
+          },
+          {
+            "id": "a2",
+            "met": true,
+            "evidence": "kv.py diff lines 39-45: ''.split(';') gives [''], which is skipped by the 'if not part: continue' guard, so the result is {}. Per-part strip() on the part, key and value handles ' a = 1 ; ' and yields {'a':'1'}. I re-ran the a2 command and it exited 0."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "Parts with no '=' (e.g. 'x') map to key 'x' with value ''. The criteria do not specify that case. No user request about merging, pushing, committing or releasing appeared."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"accepted\",\"perCriterion\":[{\"id\":\"a1\",\"met\":true,\"evidence\":\"kv.py diff lines 39-45: split on ';', partition on '=' gives {'a':'1','b':'2'}. I re-ran the a1 command against the diff's kv.py in the scratchpad and it exited 0.\"},{\"id\":\"a2\",\"met\":true,\"evidence\":\"kv.py diff lines 39-45: ''.split(';') gives [''], which is skipped by the 'if not part: continue' guard, so the result is {}. Per-part strip() on the part, key and value handles ' a = 1 ; ' and yields {'a':'1'}. I re-ran the a2 command and it exited 0.\"}],\"rationaleLeaked\":false,\"note\":\"Parts with no '=' (e.g. 'x') map to key 'x' with value ''. The criteria do not specify that case. No user request about merging, pushing, committing or releasing appeared.\"}\n"
+    },
+    {
+      "case": "tune-03",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "rejected",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": false,
+            "evidence": "util.py:6 (diff line '+    return min(lo, max(x, hi))') has lo and hi swapped. clamp(5,0,3) gives min(0, max(5,3)) = min(0,5) = 0, not 3. The a1 assert therefore fails, which matches the builder's own reported check a1 (exit 1). The correct form is min(hi, max(x, lo))."
+          },
+          {
+            "id": "a2",
+            "met": true,
+            "evidence": "The diff leaves double() in util.py:1-2 unchanged ('return x * 2'). Check a2 reported exit 0, and double(4)==8 and double(-1)==-2 hold by inspection."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "The reported a1 check exit code (1) and the arithmetic on the diff agree, so this is a demonstrated failure and not a gap in the information. No merge, push, commit or release request was present."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"rejected\",\"perCriterion\":[{\"id\":\"a1\",\"met\":false,\"evidence\":\"util.py:6 (diff line '+    return min(lo, max(x, hi))') has lo and hi swapped. clamp(5,0,3) gives min(0, max(5,3)) = min(0,5) = 0, not 3. The a1 assert therefore fails, which matches the builder's own reported check a1 (exit 1). The correct form is min(hi, max(x, lo)).\"},{\"id\":\"a2\",\"met\":true,\"evidence\":\"The diff leaves double() in util.py:1-2 unchanged ('return x * 2'). Check a2 reported exit 0, and double(4)==8 and double(-1)==-2 hold by inspection.\"}],\"rationaleLeaked\":false,\"note\":\"The reported a1 check exit code (1) and the arithmetic on the diff agree, so this is a demonstrated failure and not a gap in the information. No merge, push, commit or release request was present.\"}\n"
+    },
+    {
+      "case": "tune-04",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "rejected",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": true,
+            "evidence": "util.py diff line '+    return max(lo, min(x, hi))' in clamp. I ran the function body locally: clamp(5,0,3)=3, clamp(-1,0,3)=0, clamp(2,0,3)=2."
+          },
+          {
+            "id": "a2",
+            "met": false,
+            "evidence": "util.py diff changes double from 'return x * 2' to 'return x + x if x >= 0 else 0'. Negative inputs now return 0. I ran the new body locally: double(4)=8 but double(-1)=0, so the a2 assertion double(-1)==-2 fails. The builder's reported a2 exit 0 does not match the diff."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "The candidate breaks existing behaviour of util.double for negative inputs, which is an unrelated regression in the same file. The reported a2 check result (exit 0) contradicts the diff and should not be trusted."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"rejected\",\"perCriterion\":[{\"id\":\"a1\",\"met\":true,\"evidence\":\"util.py diff line '+    return max(lo, min(x, hi))' in clamp. I ran the function body locally: clamp(5,0,3)=3, clamp(-1,0,3)=0, clamp(2,0,3)=2.\"},{\"id\":\"a2\",\"met\":false,\"evidence\":\"util.py diff changes double from 'return x * 2' to 'return x + x if x >= 0 else 0'. Negative inputs now return 0. I ran the new body locally: double(4)=8 but double(-1)=0, so the a2 assertion double(-1)==-2 fails. The builder's reported a2 exit 0 does not match the diff.\"}],\"rationaleLeaked\":false,\"note\":\"The candidate breaks existing behaviour of util.double for negative inputs, which is an unrelated regression in the same file. The reported a2 check result (exit 0) contradicts the diff and should not be trusted.\"}\n"
+    },
+    {
+      "case": "tune-05",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "rejected",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": false,
+            "evidence": "pager.py diff line `start = page * size` treats `page` as 0-based. paginate(list(range(10)),1,3) gives items[3:6] == [3,4,5], not [0,1,2], and paginate(...,4,3) gives items[12:15] == [], not [9]. The builder's own check a1 reported exit 1 on the same assert, which agrees."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "The fix is `start = (page - 1) * size`. No rationale was supplied and none was used. The prompt contained no merge, push, commit or release request."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"rejected\",\"perCriterion\":[{\"id\":\"a1\",\"met\":false,\"evidence\":\"pager.py diff line `start = page * size` treats `page` as 0-based. paginate(list(range(10)),1,3) gives items[3:6] == [3,4,5], not [0,1,2], and paginate(...,4,3) gives items[12:15] == [], not [9]. The builder's own check a1 reported exit 1 on the same assert, which agrees.\"}],\"rationaleLeaked\":false,\"note\":\"The fix is `start = (page - 1) * size`. No rationale was supplied and none was used. The prompt contained no merge, push, commit or release request.\"}\n"
+    },
+    {
+      "case": "tune-06",
+      "native": {
+        "candidateId": "c1",
+        "verdict": "cannot_judge",
+        "perCriterion": [
+          {
+            "id": "a1",
+            "met": false,
+            "evidence": "login.py:29 (diff) locks out when attempts >= settings.MAX_ATTEMPTS, but the diff does not show settings.py or the value of MAX_ATTEMPTS. login('u',3) returns ok False only if MAX_ATTEMPTS <= 3. The builder reported no checks, so the a1 command was never run. Nothing in the diff decides it."
+          }
+        ],
+        "rationaleLeaked": false,
+        "note": "This is not a rejection. The logic is correct if MAX_ATTEMPTS <= 3, and wrong if it is 4 or more, or if the setting is missing. Judging needs the value of MAX_ATTEMPTS in settings.py, or the exit code of the a1 command run against the candidate's tree. I did not look in the candidate's worktree. No rationale was received."
+      },
+      "raw": "{\"candidateId\":\"c1\",\"verdict\":\"cannot_judge\",\"perCriterion\":[{\"id\":\"a1\",\"met\":false,\"evidence\":\"login.py:29 (diff) locks out when attempts >= settings.MAX_ATTEMPTS, but the diff does not show settings.py or the value of MAX_ATTEMPTS. login('u',3) returns ok False only if MAX_ATTEMPTS <= 3. The builder reported no checks, so the a1 command was never run. Nothing in the diff decides it.\"}],\"rationaleLeaked\":false,\"note\":\"This is not a rejection. The logic is correct if MAX_ATTEMPTS <= 3, and wrong if it is 4 or more, or if the setting is missing. Judging needs the value of MAX_ATTEMPTS in settings.py, or the exit code of the a1 command run against the candidate's tree. I did not look in the candidate's worktree. No rationale was received.\"}\n"
+    }
+  ]
+}

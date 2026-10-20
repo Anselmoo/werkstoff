@@ -323,7 +323,7 @@ def stage(judge: str, phase: str, dest: Path, map_file: Path) -> int:
             shutil.copytree(src / "tree", cdir / "tree")
             contract = load_json(src / "contract.json")
             for role, text in prompts.tribunal_prompts(contract, src, cdir / "tree").items():
-                (cdir / f"{role}.txt").write_text(text, encoding="utf-8")
+                role_prompt(cdir, role).write_text(text, encoding="utf-8")
     map_file.parent.mkdir(parents=True, exist_ok=True)
     map_file.write_text(json.dumps(mapping, indent=2) + "\n", encoding="utf-8")
     print(f"staged {len(ids)} {judge} {phase} case(s) under {dest.as_posix()} (key map: {map_file.as_posix()})")
@@ -499,6 +499,14 @@ def collect(judge: str, phase: str, raw_dir: Path, note: str, run_date: str) -> 
     return 0
 
 
+def role_prompt(stage_dir: Path, role: str) -> Path:
+    """Where one tribunal role's prompt lives: its own directory BESIDE the stage, never inside
+    the case directory, so no role can find another role's brief or report next to its own."""
+    d = stage_dir.parent.parent / f"{stage_dir.parent.name}-roles" / f"{stage_dir.name}-{role}"
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "prompt.txt"
+
+
 def tribunal_prompt(case_id: str, stage_dir: Path, role: str, outs: dict[str, Path]) -> int:
     import prompts
     contract = load_json(jdir("tribunal") / "cases" / case_id / "contract.json")
@@ -508,8 +516,9 @@ def tribunal_prompt(case_id: str, stage_dir: Path, role: str, outs: dict[str, Pa
         body = prompts.verifier_prompt(contract, tree, text["defender"], text["challenger"])
     else:
         body = prompts.adjudicator_prompt(contract, text["defender"], text["challenger"], text["verifier"])
-    (stage_dir / f"{role}.txt").write_text(body, encoding="utf-8")
-    print(f"wrote {(stage_dir / f'{role}.txt').as_posix()}")
+    dest = role_prompt(stage_dir, role)
+    dest.write_text(body, encoding="utf-8")
+    print(f"wrote {dest.as_posix()}")
     return 0
 
 
