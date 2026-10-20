@@ -34,6 +34,14 @@ nacharbeit-status skill reports one older than six hours with the release comman
 Matching is exact path equality after normalisation, never regex and never glob:
 the lock lists files, not patterns.
 
+Heartbeat: while a lock exists, every invocation first records <state>/guard-heartbeat.json
+({lockRunStamp, seenAt, tool}). That is the one thing that proves the runtime actually
+REGISTERED this hook -- a guard that exists on disk and is never called looks identical to
+one that works until it is needed. build_fix_args.py --confirm-guard reads it and refuses to
+bake the fix workflow without it. A failed write is swallowed: enforcement must not depend
+on the state directory being writable, only the confirmation does. NACHARBEIT_DISABLE_GUARD=1
+returns before the heartbeat, so a disabled guard can never confirm itself.
+
 Usage: invoked by Claude Code with the PreToolUse event on stdin; set
 NACHARBEIT_STATE_DIR to relocate the lock (default analysis/nacharbeit).
 Exit: 0 allow; 2 deny.
@@ -41,6 +49,7 @@ Exit: 0 allow; 2 deny.
 
 from __future__ import annotations
 
+import datetime
 import json
 import os
 import sys
@@ -48,6 +57,7 @@ from typing import NoReturn
 
 DEFAULT_STATE_DIR = os.path.join("analysis", "nacharbeit")
 LOCK_NAME = "fix_scope.json"
+HEARTBEAT_NAME = "guard-heartbeat.json"  # keep in step with nacharbeit_common.HEARTBEAT_NAME; this hook imports nothing of the plugin
 ESCAPE_HATCH = (
     "set NACHARBEIT_DISABLE_GUARD=1 to bypass this guard for one call, or release the "
     "lock with `python3 plugins/nacharbeit/scripts/post_fix_check.py --release-lock` "
@@ -142,6 +152,23 @@ def bash_changes_git_state(command: str) -> str | None:
     return None
 
 
+def record_heartbeat(lock_path: str, lock: object, tool_name: str) -> None:
+    """Best effort, atomic. Never raises: see the module docstring."""
+    try:
+        stamp = lock.get("runStamp") if isinstance(lock, dict) else None
+        beat = {"lockRunStamp": stamp, "seenAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "tool": tool_name}
+        target = os.path.join(os.path.dirname(lock_path), HEARTBEAT_NAME)
+        tmp = target + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as handle:
+            json.dump(beat, handle)
+        os.replace(tmp, target)
+    except OSError as exc:
+        # Enforcement does not depend on the heartbeat (module docstring), so this never denies;
+        # it is said aloud because the consequence is a fix pass that cannot be confirmed.
+        sys.stderr.write(f"nacharbeit: could not write {HEARTBEAT_NAME} ({exc}); --confirm-guard will refuse this pass\n")
+
+
 def main() -> NoReturn:
     if os.environ.get("NACHARBEIT_DISABLE_GUARD") == "1":
         allow()
@@ -166,6 +193,7 @@ def main() -> NoReturn:
             tool_input = {}
         with open(lock_path, "r", encoding="utf-8") as handle:
             lock = json.load(handle)
+        record_heartbeat(lock_path, lock, tool_name)
         files = lock.get("files")
         if not isinstance(files, dict):
             deny(f"nacharbeit: the fix lock at {relative(cwd, lock_path)} has no `files` map, so no edit can be checked against it. Refusing rather than allowing an unchecked edit. {ESCAPE_HATCH}")

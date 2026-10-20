@@ -147,6 +147,7 @@ def main(argv: list[str] | None = None) -> int:
         if clean or a.force:
             if lock.is_file():
                 lock.unlink()
+                (state / "guard-heartbeat.json").unlink(missing_ok=True)  # it belonged to this lock
                 report["lockReleased"] = True
                 print(f"released {lock}" + (" (forced)" if not clean else ""))
             else:

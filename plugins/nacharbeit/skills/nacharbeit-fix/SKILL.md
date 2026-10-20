@@ -9,8 +9,10 @@ did not make it, and checked by a script that does not care who did.
 
 ## Steps
 
-1. **Preflight.** Run `nacharbeit-preflight`. It must show `run.json=present` and no
-   open lock. Name every other live guard: a denial from takt, lehre, andon, zeugnis,
+1. **Preflight.** Run `nacharbeit-preflight`. It must show `run.json=present`, no open
+   lock, and `own guard ... present, declared, denies`. A line reading `NOT LIVE` (an install
+   synced without `hooks/`, or `NACHARBEIT_DISABLE_GUARD=1` set) means the pass would run
+   unguarded: stop and say so; `build_fix_args.py` refuses on it too. Name every other live guard: a denial from takt, lehre, andon, zeugnis,
    befund or cupertino during this pass is reported as "blocked by <plugin>" and
    never retried with that plugin's escape hatch.
 
@@ -22,13 +24,26 @@ did not make it, and checked by a script that does not care who did.
 
    It refuses a review that is not completed and calibrated, and a lock that is already
    open. On success it has written `analysis/nacharbeit/fix_scope.json` (every file the
-   review touched with its tier — see `references/fix-scope-schema.md`), snapshotted each
-   plugin about to change to `analysis/nacharbeit/pre-fix/`, and baked `fix-run.js`. From
-   this moment the guard denies any edit outside the lock, any edit to an opus- or
-   human-tier file, and any git state change. Tell the user the file count by tier and
-   the excluded list before launching.
+   review touched with its tier — see `references/fix-scope-schema.md`) and snapshotted each
+   plugin about to change to `analysis/nacharbeit/pre-fix/`. It has **not** written
+   `fix-run.js`: that comes only after step 3 shows the guard fires. From this moment the
+   guard should deny any edit outside the lock, any edit to an opus- or human-tier file,
+   and any git state change. Tell the user the file count by tier and the excluded list.
 
-3. **Launch the pass** by the baked script path:
+3. **Prove the guard fires** — as a separate command, so the hook sees it first:
+
+   ```bash
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/build_fix_args.py" --confirm-guard
+   ```
+
+   The guard writes `guard-heartbeat.json` on every call while the lock is open; this
+   bakes `fix-run.js` only if a heartbeat for *this* lock exists. Without one the hook is
+   not registered in this session: the script deletes the lock, writes nothing, and exits
+   1. Report that, name the likely cause (plugin installed without `hooks/`, plugin
+   disabled, a session started before the hook was installed), and stop. Never launch a
+   hand-made `fix-run.js`.
+
+4. **Launch the pass** by the baked script path:
 
    ```
    Workflow({ scriptPath: "analysis/nacharbeit/fix-run.js" })
@@ -43,7 +58,7 @@ did not make it, and checked by a script that does not care who did.
    tier order, then dispatch `fix-verifier` for that file before touching the next.
    Never batch files into one dispatch.
 
-4. **Check the whole pass and release the lock:**
+5. **Check the whole pass and release the lock:**
 
    ```bash
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/post_fix_check.py" --release-lock
@@ -54,7 +69,7 @@ did not make it, and checked by a script that does not care who did.
    nothing failed and nothing moved. A kept lock is the result, not an obstacle: fix what
    it names, rerun, and only a person passes `--force`.
 
-5. **Report, hand off, stop.** List applied, skipped-with-reason, partially resolved and
+6. **Report, hand off, stop.** List applied, skipped-with-reason, partially resolved and
    regressed files; list every opus- and human-tier entry verbatim; state that the
    changes are unverified beyond the post-checks and hand off to `andon:andon-verify` (or
    `andon-loop` for a ledger-recorded proof) and a human diff read. Do not commit.
@@ -63,6 +78,7 @@ did not make it, and checked by a script that does not care who did.
 
 ```
 nacharbeit fix 2026-09-09T07:02:11Z (review 2026-09-09T06:12:04Z) — 41 files, 97 entries
+  guard confirmed: seen firing on a Bash call at 2026-09-09T07:02:40Z for lock 2026-09-09T07:02:11Z
   resolved 33 · partially-resolved 4 · all-skipped 2 · regressions 1 · remediator-failed 0 · verifier-failed 1
   regressions
     plugins/lehre/hooks/lehre_guard.py — post-check failed: hook unit test (2 cases) → repair round did not clear it
@@ -87,11 +103,13 @@ UNVERIFIED beyond the post-checks. Next: andon-verify on the edited wires; read 
 - **Never commit, push, tag or reset during the pass.** The guard denies it; after the
   lock is released the diff is the user's to read and commit.
 - **Never release the lock with `--force` on your own decision.**
+- **Never launch a pass whose guard was not confirmed.** `--confirm-guard` failing is the
+  result, not an obstacle; `NACHARBEIT_DISABLE_GUARD=1` makes the guard unconfirmable on purpose.
 
 ## Resources
 
-- `scripts/build_fix_args.py`, `scripts/post_fix_check.py` — run, in that order, around the workflow.
+- `scripts/build_fix_args.py` (twice: open the lock, then `--confirm-guard`), `scripts/post_fix_check.py` — run, in that order, around the workflow.
 - `workflows/fix.js` — read to understand the remediate / verify / repair loop; its baked copy is what runs.
-- `hooks/nacharbeit_guard.py` — the lock enforcement; `hooks/test_nacharbeit_guard.py` proves it denies and allows.
+- `hooks/nacharbeit_guard.py` — the lock enforcement and the heartbeat; `hooks/test_nacharbeit_guard.py` proves it denies and allows.
 - `references/fix-scope-schema.md` — read for the lock's fields and lifecycle.
 - `agents/fix-verifier.md` — the fallback verifier for sessions without the Workflow tool.

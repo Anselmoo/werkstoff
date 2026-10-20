@@ -85,8 +85,9 @@ run `python3 plugins/nacharbeit/scripts/nacharbeit_lint.py --count` (add `--form
 for a machine-readable breakdown) rather than trusting a number in prose. The linter
 plants one defect per mechanical rule and blanks each rule in turn to prove it
 load-bearing (`scripts/test_nacharbeit_lint.py`); the finder is calibrated per family
-against `test/plugins/fixtures/nacharbeit/` and refuses to grade a family whose sealed
-recall falls below its floor.
+against the planted-defect fixtures shipped inside the plugin
+(`scripts/fixtures/calibration/`) and refuses to grade a family whose sealed recall falls
+below its floor.
 
 ## Skills
 
@@ -180,6 +181,11 @@ path this plugin exists to replace.
   `gh pr create|merge`). Writes under the state directory are always allowed.
 - **Fail-closed** once the lock exists: a malformed lock or any internal error denies,
   naming the escape hatch. A stale lock therefore denies, which is the safe direction.
+- **Proven live, not assumed.** `nacharbeit-preflight` reports whether the guard is present,
+  declared and actually denies in the copy that is running; `build_fix_args.py` refuses to open a
+  lock otherwise. While a lock is open the guard writes `guard-heartbeat.json`, and
+  `build_fix_args.py --confirm-guard` bakes `fix-run.js` only once that heartbeat exists — a plugin
+  installed without `hooks/` cannot start a fix pass.
 - **Why a lock and not repo state**: a PreToolUse payload carries no field saying
   which agent issued the edit, so a guard that gated on "this repo is mid-review" would
   sweep every edit in the session into the gate — the failure
@@ -193,11 +199,22 @@ Every werkstoff-specific location is a flag: `--plugins-root`, `--state-dir`,
 `--fixtures-root`, `--known-answers` (a prompt index for the routing simulation;
 without one, collisions are labelled hints), `--ambiguous`, `--docs-root`,
 `--marketplace`, `--write-roots`, `--artifact-copies`, `--repo-name` and
-`--repo-notes`. `build_report.py --no-vitepress` writes plain Markdown. The fixtures
-under `test/plugins/fixtures/nacharbeit/` travel with the repository, not the plugin;
-another repository copies them (or its own, in the same `planted.json` shape) and
-points `--fixtures-root` at them — the review refuses to grade a kind it has no
-tuning + sealed pair for.
+`--repo-notes`. `build_report.py --no-vitepress` writes plain Markdown.
+
+The calibration fixtures are the exception: they **ship with the plugin**, so the installed
+plugin alone can calibrate in any repository. `build_args.py` stages them into
+`<state-dir>/fixtures/` (so the workflow reads repo-relative paths) and the review refuses to
+grade a kind that has no tuning + sealed pair. `--fixtures-root DIR` swaps in another set: one
+`<name>/planted.json` per fixture, whose `cleanFiles` and `planted[].file` are paths **relative
+to that fixture's own directory**, with a directory name starting `sealed` for the hold-out.
+
+Known-answer routing is the one thing that does not travel: werkstoff's `docs/prompt-index.md`
+maps its own prompts to its own skills, so another repository has no known answers unless it
+passes its own `--known-answers`. `nacharbeit-preflight` says so up front under *cannot measure*.
+
+The scripts that parse frontmatter declare `pyyaml` in a PEP 723 header, so
+`uv run --script "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.py"` resolves it; with plain `python3` the
+linter stops with exit 2 and the remedy, and preflight reports `pyyaml=no`.
 
 ## The review report
 
@@ -218,10 +235,12 @@ evidence that nothing in the reviewed plugin exercised that family.
 ## Verifying a change to this plugin
 
 ```bash
-python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: every rule planted, blanked, synced
+python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: every rule planted, blanked, synced; pyyaml absent
+python3 plugins/nacharbeit/scripts/test_build_args.py          # the shipped fixtures calibrate in a repository that is not werkstoff
+python3 plugins/nacharbeit/scripts/test_fix_guard.py           # a missing or silent guard stops the fix pass
 node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
 python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest  # the probe's parser, verdicts and refusals; no tokens
-python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, 24 cases
+python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, and writes its heartbeat only under a lock
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/nacharbeit --docs-root docs   # the plugin lints clean under its own rules
 python3 test/plugins/lint-frontmatter.py plugins/nacharbeit
 python3 test/plugins/verify-hooks-deny.py plugins/nacharbeit

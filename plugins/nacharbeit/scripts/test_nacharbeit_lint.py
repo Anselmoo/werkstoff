@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["pyyaml"]
+# ///
 """Calibration for nacharbeit_lint.py — the instrument asserts itself.
 
 Four checks, in the order CLAUDE.md's "verify the instrument" rule demands:
@@ -11,6 +15,10 @@ Four checks, in the order CLAUDE.md's "verify the instrument" rule demands:
                red for that rule. A rule the fixture cannot make fail is not load-bearing.
 4. sync      — the rubric's mechanical tables and nacharbeit_lint.META are the same id
                set with the same severities.
+5. no-yaml   — with pyyaml unimportable the linter refuses (exit 2, naming `uv run --script`),
+               --count still answers, and preflight still reports and says `pyyaml=no`;
+               with pyyaml importable the same preflight says `pyyaml=yes`, so the word is
+               measured, never constant (issue #117).
 
 Usage: test_nacharbeit_lint.py            (exit 0 green, 1 red)
 Exit: 0 green; 1 any check red.
@@ -26,10 +34,12 @@ import os
 import re
 import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # `uv run` has no -B; keep the installed plugin copy free of __pycache__ (#88)
 HERE = Path(__file__).resolve().parent
 # The canonical #90 briefing, read from the vendored gate rather than retyped, so
 # the fixtures and S-WF-RELAY cannot disagree about what "verbatim" means.
@@ -642,6 +652,45 @@ def run_main(root: Path, argv: list[str]) -> int:
         os.chdir(cwd)
 
 
+def run_script(script: str, argv: list[str], cwd: Path, *, hide_yaml: bool) -> subprocess.CompletedProcess:
+    """Run one of this plugin's scripts as a fresh process, optionally with `import yaml`
+    made to fail (sys.modules['yaml'] = None is what a missing module looks like to the
+    import system). A fresh process, because the linter reads `yaml` at import time."""
+    boot = "import runpy,sys;" + ("sys.modules['yaml']=None;" if hide_yaml else "") + \
+        "sys.argv=sys.argv[1:];runpy.run_path(sys.argv[0],run_name='__main__')"
+    return subprocess.run([sys.executable, "-B", "-c", boot, str(HERE / script), *argv],
+                          cwd=cwd, capture_output=True, text=True, timeout=120)
+
+
+def check_no_yaml() -> int:
+    """Returns the number of RED lines printed."""
+    red = 0
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        build_clean(root)
+        lint_no = run_script("nacharbeit_lint.py", ["plugins/clean"], root, hide_yaml=True)
+        if lint_no.returncode != 2 or "uv run --script" not in lint_no.stderr:
+            print(f"RED  no-yaml: lint without pyyaml exited {lint_no.returncode} with stderr {lint_no.stderr[:120]!r}, "
+                  "expected exit 2 naming `uv run --script`")
+            red += 1
+        count_no = run_script("nacharbeit_lint.py", ["--count"], root, hide_yaml=True)
+        if count_no.returncode != 0 or "mechanical" not in count_no.stdout:
+            print(f"RED  no-yaml: --count without pyyaml exited {count_no.returncode}; it derives from the rubric alone")
+            red += 1
+        pre_no = run_script("preflight.py", ["plugins/clean"], root, hide_yaml=True)
+        pre_yes = run_script("preflight.py", ["plugins/clean"], root, hide_yaml=False)
+        if pre_no.returncode != 0 or "pyyaml=no" not in pre_no.stdout:
+            print(f"RED  no-yaml: preflight without pyyaml exited {pre_no.returncode} and printed "
+                  f"{pre_no.stdout[-160:]!r}; it must survive and say pyyaml=no")
+            red += 1
+        if "pyyaml=yes" not in pre_yes.stdout:
+            print("RED  no-yaml: preflight WITH pyyaml did not say pyyaml=yes -- the word is not measured")
+            red += 1
+        if not red:
+            print("     no-yaml: lint refuses with the remedy, --count answers, preflight reports pyyaml=no / pyyaml=yes")
+    return red
+
+
 def main() -> int:
     red = 0
     node = shutil.which("node")
@@ -766,6 +815,9 @@ def main() -> int:
             red += 1
         else:
             print(f"     count-prose sabotage: planting '96 mechanical rules' into {target} was caught ({sabotage_hits[0][1]!r})")
+
+    # 7. no-yaml (#117)
+    red += check_no_yaml()
 
     print("GREEN" if not red else f"RED ({red})")
     return 1 if red else 0

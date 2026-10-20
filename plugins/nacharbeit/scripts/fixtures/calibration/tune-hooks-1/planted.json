@@ -1,0 +1,28 @@
+{
+  "name": "tune-hooks-1",
+  "kind": "hooks",
+  "cleanFiles": [
+    "README.md",
+    "hooks/hooks.json"
+  ],
+  "planted": [
+    {
+      "file": "hooks/gatekeep_guard.py",
+      "rule_id": "HQ-LOCK-SCOPE",
+      "angle": "contract",
+      "quoteKey": "any edit in a repository that has a .gatekeep directory"
+    },
+    {
+      "file": "hooks/gatekeep_guard.py",
+      "rule_id": "HQ-EMPTY-SET-DENY",
+      "angle": "step-logic",
+      "quoteKey": "nothing to check, so nothing to deny"
+    },
+    {
+      "file": "hooks/gatekeep_guard.py",
+      "rule_id": "HQ-DENY-NOT-RECIPE",
+      "angle": "other",
+      "quoteKey": "create .gatekeep/approved to let this write through"
+    }
+  ]
+}
