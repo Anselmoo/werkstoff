@@ -78,6 +78,7 @@ DEFAULT_LEDGER_DIR = "analysis/andon/ledger"
 DEFAULT_AUTHORIZATION = "local+reversible"
 BLAST_RANK = {"local+reversible": 1, "hard-to-reverse": 2, "shared-state-visible": 3}
 MAX_CONSECUTIVE_REOPENS = 3
+MIN_PYTHON = (3, 11)
 # An ALLOWLIST OF GOOD, deliberately, not a denylist of bad.
 #
 # This was `NON_ADVANCING_VERDICTS = ("red", "unknown")` -- a list of the
@@ -599,6 +600,18 @@ def main() -> int:
             # "adopted but not initialized yet", and must not guess: both
             # are "nothing to enforce here", never a reason to deny.
             return allow()
+
+        # #123: the declared floor, checked rather than assumed -- past the
+        # inert check, so a repository without a ledger never pays. A hook
+        # runs under whatever python3 is on PATH, and one that cannot import
+        # exits 1, which the runtime treats as non-blocking: it ALLOWS. This
+        # one imports on 3.9 today; the floor keeps a future 3.11-only line
+        # from turning into exactly that silent allow.
+        if sys.version_info < MIN_PYTHON:
+            return deny(
+                f"andon needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+                f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH."
+                "\n\n(andon enforcement hook. " + REMEDIES + ")")
 
         target = (event.get("tool_input") or {}).get("file_path") or ""
         if target:

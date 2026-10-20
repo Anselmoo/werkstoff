@@ -1220,6 +1220,62 @@ class TestFailureMode(unittest.TestCase):
         json.loads(r.stdout)
 
 
+def old_interpreters() -> list[str]:
+    """Every python3 older than the hook's floor on PATH, deduplicated."""
+    found = []
+    for name in ("python3.9", "python3.10", "/usr/bin/python3"):
+        path = shutil.which(name)
+        if not path or path in found:
+            continue
+        r = subprocess.run([path, "-c", "import sys; print(sys.version_info[:2] < (3, 11))"],
+                           capture_output=True, text=True)
+        if r.stdout.strip() == "True":
+            found.append(path)
+    return found
+
+
+class TestPythonFloor(unittest.TestCase):
+    """#123: below MIN_PYTHON an active repo is DENIED by the floor check, never
+    left to whatever an old interpreter happens to do. Runs the real hook under
+    every python3 < 3.11 on PATH; skipped by name when there is none, unless
+    REQUIRE_OLD_PYTHON=1 (CI), where finding none is a failure -- a skipped
+    case cannot tell a fix from no test. The sabotage case lowers the floor in a
+    copy of the hook and requires the same call to be ALLOWED: proof that the
+    version check, not some other failure, is what denies."""
+
+    def run_under(self, python: str, hook: Path, cwd: Path) -> subprocess.CompletedProcess:
+        payload = json.dumps({"cwd": str(cwd), "tool_name": "Edit",
+                              "tool_input": {"file_path": "src/api.py"}})
+        return subprocess.run([python, "-B", str(hook)], input=payload,
+                              capture_output=True, text=True, timeout=30)
+
+    def test_below_floor_denies_active_repo_and_stays_inert_otherwise(self):
+        olds = old_interpreters()
+        if not olds:
+            if os.environ.get("REQUIRE_OLD_PYTHON") == "1":
+                self.fail("REQUIRE_OLD_PYTHON=1 but no python3 older than 3.11 on PATH")
+            self.skipTest("no python3 older than 3.11 on PATH")
+        with Fixture() as active, Fixture(ledger=False) as inert, \
+                tempfile.TemporaryDirectory() as tmp:
+            sabotaged = Path(tmp) / "andon_enforce.py"
+            source = HOOK.read_text()
+            self.assertIn("MIN_PYTHON = (3, 11)", source)
+            sabotaged.write_text(source.replace("MIN_PYTHON = (3, 11)", "MIN_PYTHON = (3, 0)"))
+            for py in olds:
+                with self.subTest(python=py):
+                    r = self.run_under(py, HOOK, active.root)
+                    self.assertEqual(r.returncode, 2, r.stderr)
+                    self.assertIn("Python >= 3.11", deny_reason(r))
+                    self.assertEqual(self.run_under(py, HOOK, inert.root).returncode, 0)
+                    r = self.run_under(py, sabotaged, active.root)
+                    self.assertEqual(r.returncode, 0,
+                                     f"floor lowered, empty ledger must allow: {r.stderr}")
+
+    def test_supported_python_allows_empty_ledger(self):
+        with Fixture() as f:
+            self.assertEqual(decision(run(f.root)), "allow")
+
+
 class TestOutputContractRegression(unittest.TestCase):
     """Guards against re-introducing the exact shape the runtime silently
     ignores: `{"hookSpecificOutput": {"permissionDecision": "deny"},
