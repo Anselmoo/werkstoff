@@ -27,6 +27,10 @@ All notable changes to the `nacharbeit` plugin are documented here.
   `build_fix_args.py --confirm-guard` once a heartbeat for that lock exists — otherwise the lock
   is deleted and the pass does not start. `post_fix_check.py --release-lock` removes the heartbeat
   and `nacharbeit-status` says when a lock's guard has not been seen.
+- **fix**: outside werkstoff a hook-script fix no longer fails its post-check on a missing
+  violating fixture and keeps the lock; the behavioural probe is skipped with a named reason in
+  stderr and in `fix-check.json` `postChecks.skipped`, and `--fixtures-root` is resolved against
+  the repository root.
 
 ### Changed
 - **skills**: commands that need `pyyaml` (`nacharbeit-lint`, `nacharbeit-preflight`,
@@ -41,6 +45,10 @@ All notable changes to the `nacharbeit` plugin are documented here.
   werkstoff, with sabotage) and `scripts/test_fix_guard.py` (a missing or silent guard stops the
   fix pass, with sabotage); `test_nacharbeit_lint.py` gains a no-pyyaml case and
   `test_nacharbeit_guard.py` the heartbeat cases.
+- `scripts/test_fix_post_checks.py` (the hook post-check is skipped by name, never fatal, never
+  silent, with sabotage)
+- **ci**: `plugin-checks.yml` runs these self-tests as one `nacharbeit_selftests` step, reported on the
+  Andon Board as "nacharbeit selftests".
 
 ## [1.0.2] - 2026-09-26
 ### Fixed

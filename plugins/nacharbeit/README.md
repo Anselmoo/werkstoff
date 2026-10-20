@@ -208,6 +208,15 @@ grade a kind that has no tuning + sealed pair. `--fixtures-root DIR` swaps in an
 `<name>/planted.json` per fixture, whose `cleanFiles` and `planted[].file` are paths **relative
 to that fixture's own directory**, with a directory name starting `sealed` for the hold-out.
 
+The fix pass has the same shape for the hook post-check. `build_fix_args.py` bakes
+`verify_hooks_deny.py` into a hook-script fix only when `--fixtures-root` (default
+`test/plugins/fixtures`, resolved against the repository root) holds `hook-violation-<plugin>/`
+or the generic `ledger-missing-blast-radius/`. Otherwise that one check is **skipped by name**: a
+`WARN post-check skipped` line on stderr and an entry in `fix-check.json` `postChecks.skipped`,
+while the hook's unit test and `py_compile` still run. Read `skipped` before trusting
+`clean: true` — outside werkstoff a fixed hook is not behaviourally probed unless the repository
+ships its own violating fixture.
+
 Known-answer routing is the one thing that does not travel: werkstoff's `docs/prompt-index.md`
 maps its own prompts to its own skills, so another repository has no known answers unless it
 passes its own `--known-answers`. `nacharbeit-preflight` says so up front under *cannot measure*.
@@ -234,10 +243,13 @@ evidence that nothing in the reviewed plugin exercised that family.
 
 ## Verifying a change to this plugin
 
+CI runs the self-tests below as the `nacharbeit_selftests` step of `plugin-checks.yml`.
+
 ```bash
 python3 plugins/nacharbeit/scripts/test_nacharbeit_lint.py     # the linter asserts itself: every rule planted, blanked, synced; pyyaml absent
 python3 plugins/nacharbeit/scripts/test_build_args.py          # the shipped fixtures calibrate in a repository that is not werkstoff
 python3 plugins/nacharbeit/scripts/test_fix_guard.py           # a missing or silent guard stops the fix pass
+python3 plugins/nacharbeit/scripts/test_fix_post_checks.py     # outside werkstoff the hook post-check is skipped by name: never fatal, never silent
 node plugins/nacharbeit/scripts/test_review_routing.js          # review.js's routing path against stub hooks, sabotaged 7 ways
 python3 plugins/nacharbeit/scripts/trigger_probe.py --selftest  # the probe's parser, verdicts and refusals; no tokens
 python3 plugins/nacharbeit/hooks/test_nacharbeit_guard.py      # the hook denies AND allows, and writes its heartbeat only under a lock

@@ -69,6 +69,13 @@ did not make it, and checked by a script that does not care who did.
    nothing failed and nothing moved. A kept lock is the result, not an obstacle: fix what
    it names, rerun, and only a person passes `--force`.
 
+   A post-check that cannot run is skipped by name, not failed and not passed: outside
+   werkstoff, a hook-script fix has no `hook-violation-<plugin>/` fixture for
+   `verify_hooks_deny.py` to probe against, so that one check is listed under
+   `postChecks.skipped` in `fix-check.json` and as `WARN post-check skipped` on stderr
+   (the hook's unit test and `py_compile` still run). `clean: true` does not mean the skipped
+   check passed. Report each one, and say the hook was never behaviourally probed.
+
 6. **Report, hand off, stop.** List applied, skipped-with-reason, partially resolved and
    regressed files; list every opus- and human-tier entry verbatim; state that the
    changes are unverified beyond the post-checks and hand off to `andon:andon-verify` (or
@@ -87,7 +94,8 @@ nacharbeit fix 2026-09-09T07:02:11Z (review 2026-09-09T06:12:04Z) — 41 files, 
   excluded (never applied)
     [opus ] plugins/zirkel/workflows/solve.js — design a real gate for each stage's output_contract
     [human] plugins/andon/skills/andon-loop/SKILL.md — decide whether scoped runs are supported at all
-post-fix check: 38 post-checks passed, 1 failed; contracts andon=clean, lehre=clean
+post-fix check: 38 post-checks passed, 1 failed, 1 skipped; contracts andon=clean, lehre=clean
+  skipped plugins/lehre/hooks/lehre_guard.py — hook denies and stays inert: no hook-violation-lehre/ under /repo/test/plugins/fixtures
 lock: KEPT (1 failed post-check) — fix plugins/lehre/hooks/lehre_guard.py, rerun post_fix_check.py --release-lock
 UNVERIFIED beyond the post-checks. Next: andon-verify on the edited wires; read the diff before committing.
 ```

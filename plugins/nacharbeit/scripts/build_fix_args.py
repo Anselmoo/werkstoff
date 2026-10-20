@@ -47,6 +47,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import shlex
 import shutil
 import sys
 from collections import defaultdict
@@ -55,6 +56,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import nacharbeit_common as nc  # noqa: E402
+# The constant only. verify_hooks_deny computes FIXTURES_ROOT at import from the working directory
+# or parents[2] -- which is plugins/ in the vendored location -- so nothing here may read it.
+from verify_hooks_deny import DEFAULT_VIOLATING  # noqa: E402
 
 APPLY_TIERS = {"haiku", "sonnet"}
 TIER_RANK = {"haiku": 0, "sonnet": 1, "opus": 2, "human": 3}
@@ -129,8 +133,32 @@ def kind_of(path: str) -> str:
     return "reference"
 
 
-def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path) -> list[dict]:
-    """Commands the blind verifier runs after the remediator; a non-zero exit is a regression."""
+def resolve_fixtures_root(root: Path, arg: Path) -> Path:
+    """`--fixtures-root` against the repository root, once. post_fix_check.py runs each baked command
+    with no cwd= and the fix workflow's verifier runs it from the session cwd, so a relative root
+    would let the gap check below and the subprocess look in different places."""
+    return arg if arg.is_absolute() else root / arg
+
+
+def hook_probe_gap(plugin_dir: str, fixtures_root: Path) -> str | None:
+    """Why verify_hooks_deny.py cannot run for this plugin, or None when it can. It exits 2
+    ("violating fixture not found") when neither fixture it would pick exists -- which would
+    fail every hook-script fix outside werkstoff on a gap that is not a regression."""
+    if not fixtures_root.is_absolute():
+        raise ValueError(f"fixtures_root must be absolute, got {fixtures_root}; resolve it with resolve_fixtures_root first")
+    name = Path(plugin_dir).name
+    if not fixtures_root.is_dir():
+        return f"fixtures root {fixtures_root.as_posix()} does not exist; pass --fixtures-root DIR holding hook-violation-{name}/"
+    if (fixtures_root / f"hook-violation-{name}").is_dir() or (fixtures_root / DEFAULT_VIOLATING).is_dir():
+        return None
+    return f"no hook-violation-{name}/ (and no {DEFAULT_VIOLATING}/) under {fixtures_root.as_posix()}; add one or pass --fixtures-root DIR"
+
+
+def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path, *, skipped: list[dict]) -> list[dict]:
+    """Commands the blind verifier runs after the remediator; a non-zero exit is a regression.
+    A check that cannot run is appended to `skipped` ({label, reason}) instead -- neither a
+    command that fails every pass nor one that passes without checking. `skipped` is required,
+    not optional: a caller that could omit it would make the check vanish without a trace."""
     checks: list[dict] = []
     me = nc.plugin_root() / "scripts"
     if path.endswith(".py"):
@@ -142,7 +170,12 @@ def post_checks(path: str, kind: str, plugin_dir: str, fixtures_root: Path) -> l
         test = Path(path).parent / f"test_{stem}.py"
         if test.is_file():
             checks.append({"label": "hook unit test", "cmd": f"python3 {test.as_posix()}"})
-        checks.append({"label": "hook denies and stays inert", "cmd": f"python3 {(me / 'verify_hooks_deny.py').as_posix()} {plugin_dir} --fixtures-root {fixtures_root.as_posix()}"})
+        gap = hook_probe_gap(plugin_dir, fixtures_root)
+        if gap is None:
+            verify = shlex.quote((me / "verify_hooks_deny.py").as_posix())
+            checks.append({"label": "hook denies and stays inert", "cmd": f"python3 {verify} {shlex.quote(plugin_dir)} --fixtures-root {shlex.quote(fixtures_root.as_posix())}"})
+        else:
+            skipped.append({"label": "hook denies and stays inert", "reason": gap})
     if kind == "hooks":
         checks.append({"label": "hooks.json parses", "cmd": f"python3 -c \"import json,sys; json.load(open('{path}'))\""})
     if kind == "viewer":
@@ -199,7 +232,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--repo-root", type=Path, default=None)
     ap.add_argument("--state-dir", type=Path, default=None)
     ap.add_argument("--plugins-root", type=Path, default=nc.DEFAULT_PLUGINS_ROOT)
-    ap.add_argument("--fixtures-root", type=Path, default=Path("test/plugins/fixtures"), help="root holding hook-violation-<plugin>/ fixtures for the hook post-check")
+    ap.add_argument("--fixtures-root", type=Path, default=Path("test/plugins/fixtures"),
+                    help="root holding hook-violation-<plugin>/ fixtures for the hook post-check, resolved against the repository root. "
+                         "When neither hook-violation-<plugin>/ nor ledger-missing-blast-radius/ exists under it, the hook behavioural probe is "
+                         "skipped with a WARN on stderr and recorded in fix-check.json postChecks.skipped; the hook unit test and py_compile still run")
     ap.add_argument("--out", type=Path, default=None, help="fix-args JSON (default <state-dir>/fix-args.json)")
     ap.add_argument("--rubric", type=Path, default=None)
     ap.add_argument("--workflow", type=Path, default=nc.plugin_root() / "workflows" / "fix.js")
@@ -216,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     os.chdir(root)
     state = nc.state_dir(a.state_dir, root)
     out = a.out or state / "fix-args.json"
+    fixtures_root = resolve_fixtures_root(root, a.fixtures_root)
     status = nc.guard_status()
     if not status["ok"]:
         print(f"ERROR: nacharbeit's own fix-lock guard is not live: {status['problem']}", file=sys.stderr)
@@ -350,7 +387,8 @@ def main(argv: list[str] | None = None) -> int:
     for w in work:
         w["kind"] = kind_of(w["file"])
         plugin_dir = (a.plugins_root / w["plugin"]).as_posix()
-        w["postChecks"] = post_checks(w["file"], w["kind"], plugin_dir, a.fixtures_root)
+        w["skippedChecks"] = []
+        w["postChecks"] = post_checks(w["file"], w["kind"], plugin_dir, fixtures_root, skipped=w["skippedChecks"])
 
     out_obj = {
         "runStamp": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -407,6 +445,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"    [{w['tier']:<6}] {w['file']:<70} {len(w['entries'])} entr{'y' if len(w['entries']) == 1 else 'ies'}  {len(w['postChecks'])} post-check(s)")
     for e in excluded:
         print(f"    excluded: {e['file']} — {e['reason']}")
+    for w in work:
+        for s in w["skippedChecks"]:
+            print(f"    WARN post-check skipped for {w['file']}: {s['label']} -- {s['reason']}", file=sys.stderr)
     print("  The PreToolUse guard should now deny every edit outside the lock. Prove it fires: run, as a separate command,")
     print("    python3 -B \"$CLAUDE_PLUGIN_ROOT/scripts/build_fix_args.py\" --confirm-guard")
     print("  which bakes fix-run.js only if the guard was seen, and deletes the lock if not. Release the lock with post_fix_check.py --release-lock when the pass is done.")
