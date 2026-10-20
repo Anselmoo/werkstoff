@@ -70,6 +70,12 @@ structure" pattern the craft rules below argue against.
   to the user each run. Also maps the existing tribunals and panels onto it, or records them
   as kept-unmeasured. Read this before adding or changing any model-judged step; the vendored
   copies are held by `scripts/ci/check_judge_contract.py`.
+- [`references/judge-calibration.md`](references/judge-calibration.md) — how three kept judges
+  (arbeitsplan's candidate-referee, matrize's decode-referee, andon's tribunal) were measured
+  against command-derived known answers. It covers the tune and sealed sets, a record whose
+  agreement is the weakest of six figures (precision included), the results and how little a
+  perfect n=10 proves, and the paired tribunal measurement, designed but not run. Read it
+  before calibrating any other judge.
 
 ## The headline finding
 

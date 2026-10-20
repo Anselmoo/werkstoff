@@ -316,6 +316,7 @@ export default defineConfig({
           { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
           { text: 'Design tokens', link: '/plugin-authoring/references/design-tokens' },
           { text: 'Judge contract', link: '/plugin-authoring/references/judge-contract' },
+          { text: 'Judge calibration', link: '/plugin-authoring/references/judge-calibration' },
         ],
       },
       {
