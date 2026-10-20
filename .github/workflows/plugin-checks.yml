@@ -72,6 +72,15 @@ jobs:
       - name: Install pre-commit
         run: uv tool install pre-commit
 
+      - name: Install interpreters below the Python floor
+        # Hook suites run their guard under 3.9 and 3.10 too (#123): below the 3.11
+        # floor a guard must DENY, not crash open (exit 1 is non-blocking, so a
+        # crash allows every call). Job-wide REQUIRE_OLD_PYTHON=1 makes a suite
+        # that finds no old interpreter fail instead of skipping its cases.
+        run: |
+          uv python install 3.9 3.10
+          echo "REQUIRE_OLD_PYTHON=1" >> "$GITHUB_ENV"
+
       - name: Run pre-commit hooks
         id: pre_commit
         continue-on-error: true
@@ -243,7 +252,13 @@ jobs:
         # lehre's three suites joined them for the same reason (#96): none ran in
         # CI, so the lehre-pin gate's own calibration -- and the hook's -- could
         # rot with nothing red.
+        # matrize's and takt's guard suites joined last (#123): neither ran anywhere,
+        # so their deny-AND-allow cases -- and now their Python-floor cases -- could
+        # rot with nothing red.
         run: |
+          python3 plugins/cupertino/hooks/test_pretooluse_guard.py
+          python3 plugins/matrize/hooks/test_matrize_guard.py
+          python3 plugins/takt/hooks/test_takt_guard.py
           python3 plugins/lehre/scripts/test_lehre_core.py
           python3 plugins/lehre/scripts/test_lehre_cli.py
           python3 plugins/lehre/hooks/test_lehre_guard.py

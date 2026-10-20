@@ -18,7 +18,15 @@ looks at the tool call, so it never polices an unrelated project.
 Fail-closed: any internal error (a stat() PermissionError, malformed JSON,
 etc.) that happens AFTER we've confirmed `.cupertino/` exists denies the call
 rather than silently allowing it, with the escape hatch named in the message.
+
+Python floor: MIN_PYTHON, checked past the inert test. A hook runs under whatever
+python3 is on PATH; one that cannot import exits 1, which Claude Code treats as
+non-blocking, so it ALLOWS the call. This module therefore stays importable on old
+interpreters (`from __future__ import annotations` -- the `Exception | None`
+annotation below raised TypeError at import under 3.9) and denies explicitly instead.
 """
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -34,6 +42,8 @@ try:
 except Exception as exc:
     validators = None  # handled defensively below; schema checks degrade to "deny" on write, not "skip"
     _validators_import_error = exc
+
+MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = "set CUPERTINO_DISABLE_GUARD=1 to bypass this guard, or remove .cupertino/ if this repo no longer uses cupertino"
 
@@ -314,6 +324,13 @@ def main():
 
     if not cupertino_active:
         allow()
+
+    if sys.version_info < MIN_PYTHON:
+        deny(
+            f"cupertino needs Python >= {MIN_PYTHON[0]}.{MIN_PYTHON[1]}; this hook ran under "
+            f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH. "
+            f"{ESCAPE_HATCH}"
+        )
 
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input", {}) or {}
