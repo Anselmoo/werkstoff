@@ -3,6 +3,8 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-10-21
 ### Changed
 - **waves helper floor 3.10 -> 3.11**: `install_waves.py`, `waves_state.py` and `waves_guard.py`
   required Python >= 3.10 while every other arbeitsplan script and both hooks required 3.11, and
