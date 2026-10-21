@@ -1,0 +1,152 @@
+{
+  "what": "How the items of the fourth paired measurement are chosen, committed before any candidate was looked at. The items are real bugs from public Python repositories, keyed by their own fix commits: the file at the fix's parent is a red, the file at the fix commit is its green twin. Nobody in this repo planted either defect or wrote either key.",
+  "why": "Runs 2 and 3 were each kept by one defect the item author left in a green (v2-16, v3-10), and run 3's planted defects hit the CEILING in both arms. The open question is whether adversarial search reliably finds defects nobody planted. That needs items whose defects and keys come from somewhere other than this repo's author.",
+  "window": {
+    "authorDateFrom": "2026-07-01",
+    "authorDateTo": "2026-10-20",
+    "reason": "The model both arms run on (claude-opus-5-5) has a knowledge cutoff of June 2026. A fix authored after it cannot be recalled by either arm, only found. The AUTHOR date counts, not the committer date: a commit authored in June and merged in July was public before the cutoff."
+  },
+  "repos": [
+    {
+      "slug": "mahmoud/boltons",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "more-itertools/more-itertools",
+      "license": "MIT"
+    },
+    {
+      "slug": "pytoolz/toolz",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "python-humanize/humanize",
+      "license": "MIT"
+    },
+    {
+      "slug": "dateutil/dateutil",
+      "license": "Apache-2.0 OR BSD-3-Clause"
+    },
+    {
+      "slug": "hukkin/tomli",
+      "license": "MIT"
+    },
+    {
+      "slug": "pypa/packaging",
+      "license": "Apache-2.0 OR BSD-2-Clause"
+    },
+    {
+      "slug": "python-attrs/attrs",
+      "license": "MIT"
+    },
+    {
+      "slug": "tkem/cachetools",
+      "license": "MIT"
+    },
+    {
+      "slug": "pallets/click",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "pallets/werkzeug",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "theskumar/python-dotenv",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "tox-dev/platformdirs",
+      "license": "MIT"
+    },
+    {
+      "slug": "tox-dev/filelock",
+      "license": "Unlicense"
+    },
+    {
+      "slug": "python-jsonschema/jsonschema",
+      "license": "MIT"
+    },
+    {
+      "slug": "andialbrecht/sqlparse",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "Textualize/rich",
+      "license": "MIT"
+    },
+    {
+      "slug": "encode/httpx",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "slug": "python-hyper/h11",
+      "license": "MIT"
+    },
+    {
+      "slug": "urllib3/urllib3",
+      "license": "MIT"
+    }
+  ],
+  "candidate": "A non-merge commit on the repo's default branch, author date inside the window, whose message matches /fix|bug|regress|crash|handle|correct|wrong|broken/i, and which changes at least one .py file outside the tests and at least one test file.",
+  "order": "Every candidate of every listed repo, newest author date first; ties by the repo's position in the list, then by sha. Candidates are examined in that order and the scan stops when 8 are admitted. Every candidate examined is logged in selection-log.json with the first rule it fails, or 'admitted'. Nothing is skipped and nothing is examined out of order.",
+  "admit": [
+    {
+      "id": "A1",
+      "rule": "The repo's license is one of those listed above, and its notice is recorded with the item."
+    },
+    {
+      "id": "A2",
+      "rule": "The commit changes exactly one .py file outside the tests (changelogs, docs and test files do not count)."
+    },
+    {
+      "id": "A3",
+      "rule": "The same commit adds or changes a test that exercises the changed behaviour (the regression test)."
+    },
+    {
+      "id": "A4",
+      "rule": "The tree is that one source file plus the transitive closure of its imports from its own package, each verbatim at the parent and at the fix. It imports with the standard library alone, and is at most 600 lines in all."
+    },
+    {
+      "id": "A5",
+      "rule": "Every callable the regression test calls exists at the parent with the same signature. A fix that adds a parameter or a callable is a feature, not a bug: the parent fails with a TypeError or an AttributeError, not an assertion."
+    },
+    {
+      "id": "A6",
+      "rule": "The source file's diff is at most 60 changed lines: a small fix, not a rewrite."
+    },
+    {
+      "id": "A7",
+      "rule": "The regression test, transcribed (below), fails the parent tree with an AssertionError and passes the fix tree, on Python 3.11 through 3.15, 20 times each, with no network, no clock, no unseeded randomness, and the filesystem only under a temporary directory."
+    },
+    {
+      "id": "A8",
+      "rule": "The behaviour the regression test asserts is stated in the repo's own documentation of the callable at the PARENT commit: its docstring, or its documentation page in the repo. If the documentation does not cover the regression, the candidate is not admitted."
+    },
+    {
+      "id": "A9",
+      "rule": "The defect falls in one of run 3's eight classes: concurrency (a swallowed or lost error), crash-consistency, permission, encoding, whitespace (empty or blank input), precision (huge input), boundary, or ordering. The class comes from the fix's own message and test. At most 2 items per class and at most 3 per repo; a candidate over a cap is logged and skipped, never swapped in later."
+    }
+  ],
+  "neverConsidered": "How subtle a defect looks, whether a model would catch it, and whether the item is interesting. No candidate is looked at for those, and none is admitted or rejected for them.",
+  "transform": "The staged trees are the upstream files with exactly these changes, recorded per item as literal (old, new) replacements, applied identically to both twins, and re-applied by check to the committed upstream originals: (1) the package and module are renamed to a neutral name; (2) the upstream project name, issue and PR numbers, and URLs are replaced in comments and docstrings. Identifiers and code are untouched. The originals' git blob ids are recorded, so anyone can verify them against the upstream repo.",
+  "base": "Both twins share ONE base: the parent tree (after the transform) with the body of each callable under the contract replaced by `raise NotImplementedError`. The diff each arm is shown is base -> tree, so it shows the implementation, never the fix. check asserts: the base is identical for both twins, it is neither tree, and udiff(red tree, green tree) equals the transformed upstream fix diff of the source file.",
+  "criteria": "c1 states the behaviour the regression test exercises in the words of the upstream documentation at the parent, quoted, with at most a clause naming the input domain the documentation implies (for example 'for a str s'). It never names the regression test's input, the defect, or the class. c2 (and at most a c3) states another documented behaviour of the same callable, with a probe transcribed from the upstream tests that already existed at the parent. Both twins carry the same contract, word for word.",
+  "probes": "c1's probe is the regression test transcribed: the same inputs and the same expected values, with only the harness changed (pytest to plain asserts, the import renamed, pytest.raises to try/except raising AssertionError). Each other criterion's probe is transcribed the same way from pre-existing upstream tests. The happy-path probe of a red's c1 is the pre-existing upstream tests of the same callable, which both twins pass. Each twin is the other's control, so c1 is calibrated both ways by history alone. A criterion whose probe both twins pass is calibrated with an author-made break control, recorded as such and never staged.",
+  "key": "A red is the parent tree: its c1 probe fails. A green is the fix tree: every probe passes. That is all the green key says. It does not say the green is free of other defects within its criteria's words; finding those is part of what this run measures (GREEN-CLAIMS below).",
+  "laterHistory": "For each green, the upstream commits after the fix and up to the scan date that touch its source file are listed with their messages in the item's provenance. This is information, not a filter.",
+  "audit": {
+    "scope": "The pre-seal key audit checks only: (a) that each red's c1 failure is a violation of c1's quoted words and not of something the documentation does not say; (b) that each probe asserts what the upstream test asserts and no more; (c) that a criterion's wording is not ambiguous about the fixed behaviour; (d) determinism. It does NOT hunt for defects in the greens: hardening the greens with the challenger's own model would remove exactly what this run measures.",
+    "stopRule": "Round 1: one adversarial auditor per matched pair (8 agents, the session's model). Round 2: one auditor per item that round 1 changed, and only those. There is no round 3. Whatever round 2 finds is fixed only by a change its own command decides (a probe or a criterion's wording), and is listed in the seal as an unaudited residual. If the fix would mean naming the regression's input in a criterion, or changing upstream code, the pair is dropped and the next admitted candidate in the scan order takes its place, unaudited and listed as a residual.",
+    "greenDefectFoundAnyway": "If an auditor reports a defect in a green anyway, it is recorded in key-audit.json. The item, its criteria and its key are NOT changed. The claim is pre-registered as a GREEN-CLAIMS candidate and resolved after the run by the same procedure as every other claim, for both arms alike."
+  },
+  "greenClaims": "After the run, every item keyed green that any run of either arm called red is a claim. For each claim, the inputs and failing behaviours named in that run's reports (and in any audit record for the item) are tried as a probe. The claim is upheld as a key erratum (results/key-errata.json, the v2/v3 layer) only if all four hold: the input is one the criterion's words admit; the output is one they forbid; the probe fails the staged green with an AssertionError and passes a control that changes only the behaviour named; and it is decided on Linux (CI) if it is decided at all. Otherwise the claim is a false red for the arm that made it. Claims are harvested from both arms by the same code, and the reproduction effort is the inputs the claims name, no more.",
+  "layers": "PATTERN_RULE (run 3's, imported verbatim) is read on the 8 historic reds under the sealed key. The GREEN-CLAIMS readout reports, per arm, the greens called red, how many claims were upheld, and how many were false reds. DECISION_RULE (word for word the earlier runs') is read on the final layer: the sealed key, then upheld GREEN-CLAIMS errata, then any instrument errata. Every layer is reported.",
+  "outcomes": {
+    "CEILING": "Both majorities call at least 7 of the 8 reds red. On real bugs, as on planted ones, the reds do not discriminate.",
+    "FLOOR": "Both majorities call at most 1 red red. Real bugs, described in their own documentation's words, were too subtle for either arm.",
+    "SUPPORTED": "b >= 6, c == 0 (exact McNemar p <= 0.031), and the tribunal's majority calls at most 1 green item red, under the sealed key: run 3's PATTERN_RULE, verbatim.",
+    "NO DETECTION ADVANTAGE": "b <= c.",
+    "NOT SETTLED": "Anything else."
+  }
+}
