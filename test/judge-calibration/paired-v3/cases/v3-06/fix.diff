@@ -1,0 +1,12 @@
+diff --git a/mapping.py b/mapping.py
+--- a/mapping.py
++++ b/mapping.py
+@@ -1,2 +1,7 @@
++from concurrent.futures import ThreadPoolExecutor
++
++
+ def map_all(fn, items, workers=8):
+-    raise NotImplementedError
++    """fn(item) for every item, computed on a thread pool, in the order of items."""
++    with ThreadPoolExecutor(max_workers=workers) as pool:
++        return list(pool.map(fn, items))

@@ -1,0 +1,13 @@
+{
+  "wire": "exam scores -> grades.grade -> the transcript",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for an int score from 0 to 100, grade(score) returns F below 50, D from 50 up to but not including 65, C from 65 up to but not including 80, B from 80 up to but not including 90, and A from 90 to 100"
+    },
+    {
+      "id": "c2",
+      "text": "grade raises ValueError for an int score below 0 or above 100"
+    }
+  ]
+}

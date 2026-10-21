@@ -1,0 +1,37 @@
+{
+  "base": {
+    "money.py": "def to_cents(text):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from money import to_cents\nwant = {\"12.34\": 1234, \"0\": 0, \"5.5\": 550, \"-0.07\": -7, \"1000000\": 100000000, \"0.29\": 29,\n        \"007.10\": 710, \"-0\": 0,\n        \"90071992547409.93\": 9007199254740993, \"123456789012345.67\": 12345678901234567,\n        \"999999999999999999.99\": 99999999999999999999, \"-999999999999999999\": -99999999999999999900,\n        \"-90071992547409.93\": -9007199254740993, \"-999999999999999999.99\": -99999999999999999999}\nfor text, cents in want.items():\n    try:\n        got = to_cents(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\n    assert got == cents and type(got) is int, (text, got, cents)\nimport decimal\ndecimal.getcontext().prec = 10\ndecimal.getcontext().Emax = 10\nfor text, cents in want.items():\n    try:\n        got = to_cents(text)\n    except Exception as e:\n        raise AssertionError((\"with the caller's precision and Emax at 10\", text, repr(e)))\n    assert got == cents and type(got) is int, (\"with the caller's precision and Emax at 10\", text, got, cents)\ndecimal.DefaultContext.Emax = 10\ndecimal.DefaultContext.traps[decimal.Overflow] = False\ndecimal.DefaultContext.rounding = decimal.ROUND_DOWN\nfor text, cents in want.items():\n    try:\n        got = to_cents(text)\n    except Exception as e:\n        raise AssertionError((\"with decimal.DefaultContext changed\", text, repr(e)))\n    assert got == cents and type(got) is int, (\"with decimal.DefaultContext changed\", text, got, cents)\n",
+    "c2": "from money import to_cents\nfor text in [\"\", \"abc\", \"1.234\", \"1e3\", \" 1\", \"1 \", \"1.\", \".5\", \"+1\", \"--1\", \"1,5\",\n             \"1234567890123456789\", \"1234567890123456789.5\", \"\\u0661\\u0662\", \"1\\n\", \"-\", \"-.5\", \"1.2.3\",\n             \"0000000000000000001\", \"-00000000000000000012.5\", \"1_0\", \"NaN\", \"Infinity\", \"-0.5.0\", \"1.\\u0661\", \"-\\u0661\"]:\n    try:\n        got = to_cents(text)\n    except ValueError:\n        continue\n    raise AssertionError((\"accepted\", text, got))\nfor text in [\"999999999999999999.99\", \"0.5\"]:\n    try:\n        to_cents(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\n"
+  },
+  "happy": {
+    "c1": "from money import to_cents\nfor text, cents in {\"12.34\": 1234, \"0\": 0, \"5.5\": 550, \"-0.07\": -7, \"1000000\": 100000000, \"0.29\": 29}.items():\n    assert to_cents(text) == cents, (text, to_cents(text))\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "integer arithmetic on the digit strings",
+      "files": {
+        "money.py": "import re\n\n_AMOUNT = re.compile(r\"-?[0-9]{1,18}(\\.[0-9]{1,2})?\")\n\n\ndef to_cents(text):\n    \"\"\"'12.34' -> 1234\"\"\"\n    if not _AMOUNT.fullmatch(text):\n        raise ValueError(f\"not an amount: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\")))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "any-fraction",
+      "why": "the fix with a pattern that accepts any number of fraction digits",
+      "files": {
+        "money.py": "import re\n\n_AMOUNT = re.compile(r\"-?[0-9]{1,18}(\\.[0-9]+)?\")\n\n\ndef to_cents(text):\n    \"\"\"'12.34' -> 1234\"\"\"\n    if not _AMOUNT.fullmatch(text):\n        raise ValueError(f\"not an amount: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\")))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

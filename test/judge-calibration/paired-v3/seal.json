@@ -1,0 +1,125 @@
+{
+  "rubric": "andon-wire@2",
+  "threshold": 0.7,
+  "repeats": 5,
+  "majority": 3,
+  "decisionRule": "keep the tribunal iff arm B has more false passes, or a lower record, than arm A",
+  "patternRule": "On the 8 red items, count the items only the tribunal's majority calls red (b) and only the contract judge's majority calls red (c), and how many reds each majority calls red. Read in this order: SUPPORTED if b >= 6 and c == 0 (exact McNemar p <= 0.031) and the tribunal's majority calls at most 1 green item red. CEILING if both majorities call at least 7 of the 8 reds red: the items did not discriminate, which says nothing about the second run's finding. FLOOR if both call at most 1 red red: the defects were too subtle for either arm. NO DETECTION ADVANTAGE if b <= c. Otherwise NOT SETTLED. Per-run red detection on the 40 red runs per arm, and per class, is reported beside it and decides nothing.",
+  "contamination": "test/judge-calibration|tools/judge-calibration|docs/plugin-authoring|answers\\.json|key-errata|seal\\.json|key-audit|keyaudit|build_v3|scratchpad|/tasks/|\\.claude/projects",
+  "armBHead": "0c7b8160470e21fcec94d016820361302a6d5cd1fd928ee7a9f1c47cfc1a68ee",
+  "workflow": "94b99a401923d914361836e8c636b39a255c34a61820180e113948b930f1337d",
+  "items": {
+    "v3-01": {
+      "prompts": "164d6a4013f6bc0e04c7bed268fb62e4c0cc93492f9ab4191f34ecbf4b0b1bec",
+      "contract": "119dfa029ef3d5e694307b039422df0f2a64e4954c273740f4eb5ea23c85e44f",
+      "tree": "d99f45f734084d08f29253e353ecd90cec3593ceeb6ce84268e8383de0af1d9f",
+      "oracle": "d9edba20c1f951eb8d4801dfd4656454d33d96e87ab6e7880868ed37fd78a811",
+      "answer": "1f4a1ed899c671f0d4c4f1dfccd5bb7772c9bae3cb26f48cc426c0ff610c9185"
+    },
+    "v3-02": {
+      "prompts": "6cc3570d313a5b2218540075ebed7a1baa41b8bb16a9f15808ef31ff816831b5",
+      "contract": "5b8739ddf930babdd40195c30d1942f46ffaa6564a4d7ff679e97951d49d43fb",
+      "tree": "4b49d9bcc3d0b112e47e903f3b858e11e666129d92d0973e56f46a4aa5725ed8",
+      "oracle": "af451636f871c812e8bf4618bf7c601516a8cc83ca87982e10a890615a69666f",
+      "answer": "816ce9493c92be12ab0ee93705faaf27eda156fdca2a5127704789bb77e04b22"
+    },
+    "v3-03": {
+      "prompts": "171d13a4c146dd19a6133605b4cb19ae9be559d28b311ae6fd2d43f2cb6d9f4f",
+      "contract": "91be5d153b977c2e8ff6bba37b158273361414864fe06a0461a79cd007eb5abe",
+      "tree": "cd283c850678bf8b47218e1e11af846bdf182f7608cbb86e103d21a1ed5046fe",
+      "oracle": "06769a5996f1feae459cfde29dddeba7d4ce1fde2ec0344830489f21efcfb520",
+      "answer": "15f90587f5e1478eaeb421be3e4a8eb6b1c0b413bca177b0bb05f4a8eb4c5962"
+    },
+    "v3-04": {
+      "prompts": "339e3150f41db6e6457b0a0de6a3a58ba98196fea0f2b725991d3e825e8786d9",
+      "contract": "72aabd1a6e619c815a27c6ff1c899a9a640d6dba8a4c34086860a632a849f479",
+      "tree": "38d2a3fffa4cf86fe4d8d0358aacb967bee7edb307e98bc453c1e3bf53735530",
+      "oracle": "e52fc407c3432ee723400f695d956bed86b2e2548d491971579410246e014677",
+      "answer": "c9f79ba440c11f84cb9a87877d5afb631fe8e7286c1d7dbfa401d3ac07855643"
+    },
+    "v3-05": {
+      "prompts": "6e011afb7cea5cc4c3c1fcf1fec36cce25c4876791a56e0f48cafc35e6b6e0d5",
+      "contract": "50fb8bfe3cd7f1b6668dddb2ad35b58c248cafa9756f02db37a0e684ca927617",
+      "tree": "a2fca499f8b9a52f71513eabeca936c54d26db24e2c86369841de69844a734e9",
+      "oracle": "f15400b622b71d9d1541a0d6b3e719484eee6785a056cb5e62c3a687f533836a",
+      "answer": "aa76539299b670d21781f815112399f03f9a727401887efb0ee1a7385cd72591"
+    },
+    "v3-06": {
+      "prompts": "07fb399cb58f4ed08f4e57417ef39f4ca6451d8304c8be777b37fb9e4c0a1022",
+      "contract": "2184869a60f3be603cb46251b4fb6f88412b801988ac28ae83bf26864214d12e",
+      "tree": "d4dee074ee0248e8049ae935713f39d0b0b89c8fe41a4d5f83e6e0a38a98bcbc",
+      "oracle": "29aaf6c987573ef19f3d5d7e531ff43a705d760649bc97545d54f15ffbb63d10",
+      "answer": "4db38a5ddfad2a12a2ade269b8d2c66e66ef0db5d67914000bf01c7d507a44d2"
+    },
+    "v3-07": {
+      "prompts": "50082e20f5ac9ccfdfc2078763fbc5780323a958b3e1f1816344df416de8296a",
+      "contract": "5d995670a5d3629c4662bb509879d419c270158244c01d50c37a253dc5d2ef87",
+      "tree": "b2b2057e9a91490aee8b603a37e47d3a8905fe07fb74325f12c3d86e1a101bf7",
+      "oracle": "964c774700147e852aef0e1addb6c342fd402014892a11b4bf710d8c5cba5c69",
+      "answer": "9fef153dd23c61c694584fb45b67757a44ad5f2137a33eedc13365eec742dd84"
+    },
+    "v3-08": {
+      "prompts": "c49f8a341ba2be9895dd86de0a21b5b2d05aadf35f41b9ecc5656ed80e88df6a",
+      "contract": "0b2e46bb99a2a9618a8cdf9ec72f05bf29ba1d3b112f36a2b6ec99f5d92301da",
+      "tree": "69ff9121b8ca81edab8426b7eedf424869cfce0149cf98a1cb6d69fd8904def4",
+      "oracle": "9561aece06674f8d7bfa720e358f0ee968a68a1658ddc6d211506965dc875899",
+      "answer": "23b8c89ab10a322843c1f927b3e4af2e1a3af21df30730da5b26319a8b58ebc8"
+    },
+    "v3-09": {
+      "prompts": "4f0393f6ad63b13f4fb2f79a0174cae87254fa1b34633303f4ede925b2229e57",
+      "contract": "449f4fd79bed3e6dfa6622a5feee94ef0b6ba9140104a3d68f6e2d76377490ab",
+      "tree": "2cdd915d10310b992cdbb347dfdea0eba381476be5fd61a78cc9f080c9f0b0be",
+      "oracle": "7c46f84fa82f05329ddd9c6d41a92d0f0aee471fceebe1717947e62f958b14f4",
+      "answer": "d7d0762f360370a8978ad5cb8e7453ad89561cd031134acb54bc2f91ffec798a"
+    },
+    "v3-10": {
+      "prompts": "6fb7d84f8e8d5dcd2e38350de5a4145052aaf1c4ccd5102d7e97e3a2956375f3",
+      "contract": "d5126650f3555911ba5b24d795bf7dc328b2ea74fa6a4f04f89eadd1d6a0da21",
+      "tree": "34959abcae55cf52b5ea42b135d1476b6f9d31c68ede32a7a9a20855e9b60629",
+      "oracle": "e40d2f0b4c56ea2138c40a8913c33f1cceea4b61b933b9164ab372d6dc3d3a7d",
+      "answer": "a6cc654c23d3b838097a95f7d94aa5a917cfabb3122cc6c5d67b47416691aaf9"
+    },
+    "v3-11": {
+      "prompts": "64535096a7036e0039c6ba07b0753a830e6ac7d868f53ae7afb0dff92304a86d",
+      "contract": "707799f47b768b4ebad151ef9a59491fb4cef09bdeadee0de527831c64d522b4",
+      "tree": "6abc0bb469762ec66a83f38e9ab24be8d8315b680b5033219706be3e2e75bac4",
+      "oracle": "a6dddfd3279141fd29ba2f80d9143edd52586cedf1fc8926e12bdabe5d034e74",
+      "answer": "e262d9a5f04a077d5cca5a855623362bb0c7f38adb1b4dbfb894d5ab981b83f7"
+    },
+    "v3-12": {
+      "prompts": "fc29f4ed48399af01776e561dd41c2bdce4e26df52877cd5bc4d3ccdf852878b",
+      "contract": "7995019d98e1986e84242cd2e149c92002d265cef64c640048f4f802e092fd6e",
+      "tree": "9e7f00d4c615f687fc83172d2cd83ec6648f5640d4b4c017172cb836887378f6",
+      "oracle": "122262f79d9f6b3de0b1d3fd8e9d51f3673277a0b116fb4eb75c1856b162ea0c",
+      "answer": "ed96f4379198ea8ea00e0b382d102d22bee15063a47536bc5c0a0f8c257c24c6"
+    },
+    "v3-13": {
+      "prompts": "a2166dd35f9984d97b19aa1b79f9dc31f2c51c8898a3adf3314b4954f884152c",
+      "contract": "497254e4277a5801fa8e01c6908b8dd64a1893a31d36a6dcba3989d343d29a52",
+      "tree": "bd9da9c27cf874a797a98cf3adf9da98638e3ae7fb529c0edb56e5786cbe0f07",
+      "oracle": "8b226511d8f461c86e0cb78a3ee4693d9b6fff4d0537281082a3767f76539a35",
+      "answer": "1738beb801515a69384107438e4f7a2e5627d0291e766556619ac3d91e5b9ecf"
+    },
+    "v3-14": {
+      "prompts": "63f2703442dd4428f4349f420f99678408240e010f5c9b554a8190c0578faa69",
+      "contract": "1f676d0d4ecc6685d50ea19749e52716edd4efdf7ea5cd6e8d4e442c33700bf6",
+      "tree": "f705996a83b10a3d72c1d4e08a86d13e9095eb063e0711690fd5afa1a845a10d",
+      "oracle": "e62a6bbd14f16456c94f3d90e6b1c7800d50a98f43191cb596deaed43ad40dec",
+      "answer": "259f6634b4bf04df26174b4734cad2c1f1f61c092870e14aca3153c360af774d"
+    },
+    "v3-15": {
+      "prompts": "cdac1565f07f517d10da4247266fd6e1da1641a719160fef976577c12d60ee18",
+      "contract": "8c44534736fd910062f768491cfb0f66233430b3c4ced93f18c2865e69303a8a",
+      "tree": "062fae17c114658c656813fb0a6b62ef1ecd0109a6306135b966b249e67d89ff",
+      "oracle": "0443a0c7c02efb30059cb38b364bb8a256c7feb0208287c6d703c8caad9e6d8c",
+      "answer": "65219569c357ff9f7f085ffab67aae8477e00c739939907501e579000205759d"
+    },
+    "v3-16": {
+      "prompts": "bba7aea4741f8fe7366e89f23a92743160dc8fa8c6567c0bd165667f6a4027a7",
+      "contract": "4bb0fbb6313b5d6f378630c9ac58346fe565d00611f8403179f629df0227c4f5",
+      "tree": "aecf7c3461b8948fff6fab15e5b6052e3f7bf6e04118791ee776aceef1cec05e",
+      "oracle": "042d482f84da137ce654e315397a861da384d3f1a14d7edf55ee6bb87e3571f5",
+      "answer": "1d13b6531b7d7b5984b324e5b6f8d2ae90ee82684b83e950534f779410770775"
+    }
+  }
+}

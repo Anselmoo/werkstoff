@@ -1,0 +1,37 @@
+{
+  "base": {
+    "grades.py": "def grade(score):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from grades import grade\nwant = {0: \"F\", 30: \"F\", 49: \"F\", 50: \"D\", 57: \"D\", 64: \"D\", 65: \"C\", 72: \"C\", 79: \"C\",\n        80: \"B\", 85: \"B\", 89: \"B\", 90: \"A\", 95: \"A\", 100: \"A\"}\nfor s, g in want.items():\n    try:\n        got = grade(s)\n    except Exception as e:\n        raise AssertionError((s, repr(e)))\n    assert got == g, (s, got, g)\n",
+    "c2": "from grades import grade\nfor s in (-1, -50, 101, 1000):\n    try:\n        got = grade(s)\n    except ValueError:\n        continue\n    raise AssertionError((\"no ValueError\", s, got))\nfor s in (0, 100):\n    try:\n        grade(s)\n    except Exception as e:\n        raise AssertionError((s, repr(e)))\n"
+  },
+  "happy": {
+    "c1": "from grades import grade\nfor s, g in {30: \"F\", 57: \"D\", 72: \"C\", 85: \"B\", 95: \"A\"}.items():\n    assert grade(s) == g, (s, grade(s))\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "bisect_right",
+      "files": {
+        "grades.py": "from bisect import bisect_right\n\nCUTS = [50, 65, 80, 90]\nGRADES = [\"F\", \"D\", \"C\", \"B\", \"A\"]\n\n\ndef grade(score):\n    \"\"\"Letter grade for an int score from 0 to 100.\"\"\"\n    if not 0 <= score <= 100:\n        raise ValueError(f\"score out of range: {score}\")\n    return GRADES[bisect_right(CUTS, score)]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "no-range-check",
+      "why": "the fix without the range check: 101 is an A",
+      "files": {
+        "grades.py": "from bisect import bisect_right\n\nCUTS = [50, 65, 80, 90]\nGRADES = [\"F\", \"D\", \"C\", \"B\", \"A\"]\n\n\ndef grade(score):\n    \"\"\"Letter grade for an int score from 0 to 100.\"\"\"\n    return GRADES[bisect_right(CUTS, score)]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

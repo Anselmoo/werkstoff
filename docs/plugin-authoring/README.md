@@ -74,8 +74,9 @@ structure" pattern the craft rules below argue against.
   (arbeitsplan's candidate-referee, matrize's decode-referee, andon's tribunal) were measured
   against command-derived known answers. It covers the tune and sealed sets, a record whose
   agreement is the weakest of six figures (precision included), the results and how little a
-  perfect n=10 proves, and the paired tribunal measurement, designed but not run. Read it
-  before calibrating any other judge.
+  perfect n=10 proves, and the three paired measurements of the tribunal against a single
+  contract judge, with their key and instrument errata. Read it before calibrating any other
+  judge.
 
 ## The headline finding
 

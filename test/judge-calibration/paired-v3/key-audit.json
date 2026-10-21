@@ -1,0 +1,287 @@
+{
+  "what": "The pre-seal key audit of paired-v3. Before the seal, one adversarial general-purpose agent per matched pair (8 agents, the session's model) was given both items, their contracts, trees, keys, probes and controls, and told to prove the KEY wrong in either direction: a green with a real defect under its criterion as written, a red whose stated defect the criterion allows, a criterion ambiguous enough to flip a fair judge, or a probe a broken implementation passes. Every claim had to carry the command it ran and what it printed.",
+  "rule": "The audit decided key correctness and probe strength only. No red was made more or less subtle because an auditor did or did not spot its defect: that would filter the items by the ability the run measures. Where a green was shown wrong or ambiguous, its criterion text was scoped (in the same words for both twins of the pair) or its code made to hold, never its key flipped; where a probe was shown weak, it was strengthened and the implementation that beat it was recorded under the oracle's 'mutants', which check re-runs.",
+  "rounds": {
+    "1": {
+      "auditors": 8,
+      "scope": "all 16 items, one agent per matched pair",
+      "keysFlipped": [
+        "v3-02",
+        "v3-14"
+      ],
+      "criteriaAmbiguous": [
+        "v3-15",
+        "v3-10",
+        "v3-04",
+        "v3-02",
+        "v3-08/v3-16"
+      ],
+      "byPair": {
+        "w": {
+          "pair": "w",
+          "items": {
+            "v3-01": "KEY HOLDS",
+            "v3-15": "CRITERION AMBIGUOUS (key holds under str.strip/isspace)"
+          },
+          "summary": "v3-01: c1 fails under the plain reading (' , A' -> ['', 'a']) on 3.11-3.15; c2 holds over every code point, lone surrogates and a 2M-char input. v3-15: green under the str.isspace reading of 'whitespace-only'; U+001C-U+001F are isspace() but not Unicode White_Space and int() does not strip them, so '1,\\x1c,2' -> [1, 2] reads red under the other reading. The key's reason 'int() strips surrounding whitespace' is false for those four characters.",
+          "probeWeaknesses": [
+            "v3-15 c1: only ASCII-space whitespace fields; an implementation filtering with strip(' ') passes both probes but raises on '1,\\t,2'",
+            "v3-15 c2: no bad field with surrounding whitespace (' x ') or after a skipped field ('1, ,x')"
+          ],
+          "action": "both twins' criteria define the skipped fields as those with f.strip() == ''; probes add tab, newline, U+00A0, U+3000 and U+001C fields; a strip(' ') control; the why corrected"
+        },
+        "a": {
+          "pair": "a",
+          "items": {
+            "v3-02": "KEY WRONG under a literal c1, narrowly (Python 3.11 only); several further readings flagged",
+            "v3-13": "KEY HOLDS"
+          },
+          "summary": "v3-02: on Python 3.11 a dict holding a list nested 992 deep saves normally but load() raises RecursionError, so c1 fails literally (3.12+ unaffected); c3 had no 'returns or raises' scope, so a process killed between the temp write and the rename leaves the temp file; nested dicts with non-str keys did not round-trip; a KeyboardInterrupt landing just after os.replace makes a save 'raise' with its output in place; no fsync (out of scope by c2's wording); concurrent saves unspecified. Held under attack: empty dict, NUL, U+2028, 4000-digit ints, ints over 4300 digits, EFBIG via RLIMIT_FSIZE, a read-only directory, relative and symlinked paths. v3-13: c2 fails under any reading (open(path, 'w') truncates first); c1 also fails with an in-domain trigger (an int over 4300 digits raises after truncation).",
+          "probeWeaknesses": [
+            "only TypeError triggers: 'serialise first, then write in place' and 'clean up the temp file only on TypeError' passed all three probes",
+            "v3-13's c1 trigger (object()) is outside c1's value domain"
+          ],
+          "action": "both twins' c1 scopes values like the encoding pair (bounded nesting, str keys at every level, ints of at most 100 digits, UTF-8-encodable str); c2 and c3 scoped to 'save calls made one at a time in a process that keeps running' and to calls that 'return or raise an Exception'; every probe now drives three failing saves (TypeError, ValueError from a 5000-digit int, OSError EFBIG from RLIMIT_FSIZE); both auditor mutants recorded and caught"
+        },
+        "p": {
+          "pair": "p",
+          "items": {
+            "v3-03": "KEY HOLDS",
+            "v3-10": "KEY HOLDS with an ambiguous tie rule and an unreproduced Python 3.11/Linux depth exposure"
+          },
+          "summary": "v3-03: the c1 probe fails on 3.11-3.15 (9 returned, 16 true); further c1 failures: a 600-deep tree on macOS returns 0, and os.path.isfile swallows EACCES in a mode-0444 directory (5 returned, 12 true). v3-10: raises PermissionError for r-- and --x directories, ignores FIFOs, handles a missing root and symlinked root; 'the path that sorts first' differs between str order ('a-b' < 'a/b') and pathlib order; on Python 3.11 os.walk recurses per level, so a Linux tree deeper than ~1000 levels would raise RecursionError (mechanism shown with a lowered recursion limit, not reproduced end to end).",
+          "probeWeaknesses": [
+            "v3-10 c1's only tie is also found-first, so 'last found wins' passes",
+            "no non-regular file (a FIFO-counting version passes)",
+            "v3-03's fixed control still breaks c1 through os.path.isfile on a mode-0444 directory, so the pair differed in two places",
+            "probes exit 2 as root"
+          ],
+          "action": "the red now classifies entries with lstat + S_ISREG like its twin, so the pair differs only in onerror; both criteria bound the depth at 100 levels and say 'sorts first as a str'; c1 probes add a mode-0444 directory, ties at the root and a-b vs a/b, a FIFO"
+        },
+        "h": {
+          "pair": "h",
+          "items": {
+            "v3-04": "KEY HOLDS under the default decimal context; depends on caller-mutable global state",
+            "v3-09": "KEY HOLDS (the why names the wrong value)"
+          },
+          "summary": "v3-04: 300k in-grammar strings exact and 300k off-grammar strings rejected on 3.11-3.15; but decimal.getcontext().prec=16 (or DefaultContext.prec=10 in a new thread) makes Decimal(text) * 100 round, so c1 depends on the caller never lowering the global context. v3-09: '90071992547409.93' -> 9007199254740994 on 3.11-3.15, misses start at 14 integer digits; the answers.json why said ...992.",
+          "probeWeaknesses": [
+            "c2 lists lacked '1\\n' and '-': a $-anchored re.match passes both probes",
+            "c1 lacked a large negative amount with a fraction"
+          ],
+          "action": "the green computes inside decimal.localcontext(prec=40), and the c1 probes lower the caller's precision first; the red's fixed control does the same; c2 adds '1\\n', '-', '-.5', '1.2.3'; c1 adds '-90071992547409.93'; the why corrected"
+        },
+        "e": {
+          "pair": "e",
+          "items": {
+            "v3-07": "KEY HOLDS",
+            "v3-14": "KEY WRONG under the literal criterion (any str, any int)"
+          },
+          "summary": "v3-07: U+2028/U+2029/U+0085 written raw and split by splitlines(), JSONDecodeError on 3.11-3.15; also UnicodeEncodeError on a lone surrogate. v3-14: a str holding a high surrogate followed by a low surrogate as two code points is written as two escapes and read back as one character (U+1F600), so c1 fails under 'any str'; an int over 4300 digits raises in json.dumps; nesting 1000 deep raises RecursionError on 3.11. Nested dict keys were unconstrained.",
+          "probeWeaknesses": [
+            "v3-14 c1 had no adjacent surrogate pair, no huge int, no deep nesting",
+            "v3-07's fixed control kept ensure_ascii=False and would raise on a lone surrogate, which v3-07's probe did not test, so the twins' probes differed"
+          ],
+          "action": "both twins' c1 scopes values to what JSON round-trips: str keys at every level, str values that encode as UTF-8, ints of at most 100 digits, nesting at most 10 deep; the lone-surrogate case leaves the probe, so both twins share one probe; the why corrected"
+        },
+        "b": {
+          "pair": "b",
+          "items": {
+            "v3-05": "KEY HOLDS",
+            "v3-12": "KEY HOLDS"
+          },
+          "summary": "v3-05: full sweep 0..100 differs from the criterion at exactly 50, 65, 80, 90; c2 holds. v3-12: every int 1..10000 matches c1; c2 swept -20000..0, 10001..39999, +-10**100, +-2**63, all ValueError; bool behaves as 1/0. Probes rerun under 3.11 and 3.15, every control matches its expect. No ambiguity.",
+          "probeWeaknesses": [
+            "samples rather than sweeps between cuts; every cut and its neighbours are tested"
+          ]
+        },
+        "c": {
+          "pair": "c",
+          "items": {
+            "v3-06": "KEY HOLDS",
+            "v3-11": "KEY HOLDS"
+          },
+          "summary": "v3-06: c2 holds for Exception and BaseException subclasses, StopIteration (PEP 479), every position, workers=1; c1 holds for generators, 20000 items, reverse completion. v3-11: RuntimeError, KeyboardInterrupt and SystemExit all return [0, None, 2] on 3.11-3.15. Edge noted: a non-terminating sibling job means map_all neither returns nor raises (any pool behaves so).",
+          "probeWeaknesses": [
+            "c1: results increase with input position, so sorting by value passes",
+            "c2: one exception type at one position, so type-selective swallowing passes"
+          ],
+          "action": "c1 probes return non-monotonic values; c2 probes raise RuntimeError, ValueError and KeyError at the first, a middle and the last position; both criteria scoped to jobs that each return or raise"
+        },
+        "o": {
+          "pair": "o",
+          "items": {
+            "v3-08": "KEY HOLDS",
+            "v3-16": "KEY HOLDS"
+          },
+          "summary": "v3-08 and v3-16 behave identically on newline, non-ASCII digit, sign, case, hidden, underscore, 240-digit and directory-entry names; they differ only where string and int order disagree (9/10, 99/100, leading zeros). NAME_MAX keeps N under int()'s digit limit. Readings the key depends on: an existing directory, ASCII digits, ties unspecified.",
+          "probeWeaknesses": [
+            "no trailing-newline name (a $-anchored match passes)",
+            "no non-ASCII digit name (an isdigit filter passes)",
+            "no leading zeros (a (len, name) key passes)",
+            "only regular files (a files-only scan passes although c1 says entry)"
+          ],
+          "action": "criteria say 'an existing directory', 'N one or more ASCII digits', 'any of them on a tie'; probes add snap-1.db\\n, a non-ASCII-digit name, 010 beside 99, and a directory entry"
+        }
+      }
+    },
+    "2": {
+      "auditors": 5,
+      "scope": "every item changed in round 1: v3-02, v3-04, v3-14, v3-15, and v3-03/v3-10",
+      "keysFlipped": [
+        "v3-04",
+        "v3-14",
+        "v3-02"
+      ],
+      "criteriaAmbiguous": [
+        "v3-10"
+      ],
+      "keysHeld": [
+        "v3-03",
+        "v3-15"
+      ],
+      "byItem": {
+        "a": {
+          "round": 2,
+          "items": {
+            "v3-02": "KEY WRONG on c2 as written (asynchronous signal after the rename); c1 and c3 wording ambiguous"
+          },
+          "summary": "A SIGINT delivered after os.replace returned made the broad except unlink an already-renamed temp file, so save raised FileNotFoundError (an Exception) with the new data at path: 4191 of 20000 timer-driven saves on 3.15, 1592 of 5000 on 3.11. c1 lacked the one-at-a-time scope (two threads: load returns the save that returned first). c3 could be read as forbidding pre-existing siblings. 3000 round-trips over c1's domain on 3.11/3.12/3.15 found nothing.",
+          "probeWeaknesses": [
+            "no probe made the final rename fail: moving os.replace outside the cleanup leaks the temp file and passed",
+            "remove-then-link passed (fault-injected only)"
+          ],
+          "action": "the green unlinks the temp file under contextlib.suppress(FileNotFoundError) so the original exception is re-raised; c1 gains 'for save calls made one at a time'; c2 and c3 'leaving aside exceptions raised by signal handlers'; c3 'no file that save created'; probes save onto a path that is a non-empty directory; the replace-outside-cleanup mutant recorded. Round 3 audits it."
+        },
+        "e": {
+          "round": 2,
+          "items": {
+            "v3-14": "CRITERION AMBIGUOUS, KEY WRONG under one fair reading"
+          },
+          "summary": "c1 bounded how deep dicts nest but not lists: [{'a': [[...0...]]}] at 991 levels (3.11), 9994 (3.12), 9995 (3.13), about 104574 (3.14/3.15) raises RecursionError in save_log. 'exactly' was not pinned: an IntEnum or OrderedDict comes back as int or dict. Inside the bounded domain every non-surrogate code point, 10-deep dicts and 100-digit ints round-trip; 5000 random cases matched by exact type on 3.11 and 3.15.",
+          "probeWeaknesses": [
+            "a load that turns bools into ints, or small ints into floats, passed (== ignores those types)",
+            "no case near any depth limit"
+          ],
+          "action": "both encoding twins and both crash-consistency twins now bound dicts and lists together at 10 levels (the dict itself level 1), require exactly these built-in types, and compare with the same built-in type at every position; probes compare type-aware and add a list nested 9 deep and bool/0/'' values; two type mutants recorded. Round 3 audits the reworded item."
+        },
+        "h": {
+          "round": 2,
+          "items": {
+            "v3-04": "KEY WRONG (decimal.DefaultContext)"
+          },
+          "summary": "localcontext(Context(prec=40)) is not a fresh context: every field Context(...) leaves out is copied from decimal.DefaultContext, which a caller can change. With DefaultContext.Emax = 10, '999999999999999999.99' raises Overflow on 3.11-3.15; with Overflow untrapped and ROUND_DOWN it silently returns 99999999999. In the default context a 200,000-case random check passed.",
+          "probeWeaknesses": [
+            "no pass that changes decimal.DefaultContext",
+            "a mutant bounding the value (|whole| < 10**18) instead of counting digits accepts '0000000000000000001' and passes c2",
+            "no '1_0', 'NaN', 'Infinity' in c2"
+          ],
+          "action": "the green computes the cents from the digit strings with int arithmetic (no decimal at all), taking the sign from the text; the red's fixed control does the same; c1 probe adds a pass with decimal.DefaultContext changed; c2 adds leading-zero 19- and 20-digit strings, '1_0', 'NaN', 'Infinity'; controls 'caller-context' (Decimal in a Context(prec=40)) and 'sign-from-int'; the magnitude mutant recorded. Round 3 audits the rewritten item."
+        },
+        "p": {
+          "round": 2,
+          "items": {
+            "v3-03": "KEY HOLDS (now differs from its fixed control only in onerror)",
+            "v3-10": "CRITERION AMBIGUOUS"
+          },
+          "summary": "'at a depth of at most 100 levels' read as a filter as easily as a precondition (a 50-byte file 150 levels down); nothing required root to be an existing directory (a file root: green raises NotADirectoryError, red returns 0); hard links counted per entry.",
+          "probeWeaknesses": [
+            "no empty regular file (a version where a 0-byte file never wins passed)",
+            "no dotfiles (skipping them passed)",
+            "nothing deeper than a/b/z (stopping at depth 3 passed)"
+          ],
+          "action": "both twins: 'for a root that names an existing directory and a tree under it at most 100 levels deep', 'every directory entry under root that is a regular file'; probes add an empty file, dotfiles and files 8 levels down; five mutants recorded. Round 3 audits the reworded pair."
+        },
+        "w": {
+          "round": 2,
+          "items": {
+            "v3-15": "KEY HOLDS"
+          },
+          "summary": "0 differences from a literal reference over every code point to U+30FF (lone surrogates included) and 300k random strings on 3.11, 3.13, 3.14, 3.15. Wording: c1/c2 never said text is a str (bytes would read differently).",
+          "probeWeaknesses": [
+            "six mutants passed: sorted, sorted(set), first three fields, a whitespace allowlist, an ASCII-digit regex, int(float(f))"
+          ],
+          "action": "'for a str text' added to both twins; c1 adds unordered, duplicate, five-field, U+001D/\\r/U+0085/\\v, '1_000', Arabic-Indic digit and 2**53+1 cases; c2 adds '1e3', '2.0'; five mutants recorded"
+        }
+      }
+    },
+    "3": {
+      "auditors": 4,
+      "scope": "v3-02, v3-04, v3-14, and v3-03/v3-10 (the items rewritten or reworded in round 2)",
+      "keysFlipped": [
+        "v3-14 (surrogate-pair keys, an unscoped c2)",
+        "v3-02 (c3 in a directory where removal is denied, macOS)"
+      ],
+      "criteriaAmbiguous": [
+        "v3-04 (bytes)",
+        "v3-10 (paths past PATH_MAX)"
+      ],
+      "keysHeld": [
+        "v3-03"
+      ],
+      "byItem": {
+        "a": {
+          "round": 3,
+          "items": {
+            "v3-02": "KEY WRONG on c3, macOS only"
+          },
+          "summary": "In a directory where the user may create entries but not remove them (chflags uappnd, or an ACL denying delete_child), os.replace is denied, the cleanup unlink raises PermissionError (not suppressed), and the temp file stays: one more per save, on 3.11 and 3.15. Not reproducible on Linux without CAP_LINUX_IMMUTABLE. Wording: mkstemp's 0600 mode replaces path's mode, which matters only if load runs as another user. Held: symlinked, empty-directory, '', '.', trailing-slash and '..' paths, an unwritable directory, a too-long path, fd exhaustion.",
+          "probeWeaknesses": [
+            "the failing-save helper never checked whether save actually raised: a save that swallows every Exception passed all three probes",
+            "remove-then-rename still passes (only fault injection reaches it)"
+          ],
+          "action": "ONE minimal fix, unaudited: c3 scoped to 'a directory in which the calling user may create and remove entries', c1 to save and load calls 'by the same user'; the helper reports whether each save raised, and a save that returned normally must have written what it was given; the swallowing mutant recorded. Known residuals: this fix is unaudited; remove-then-rename is not reached by any probe."
+        },
+        "e": {
+          "round": 3,
+          "items": {
+            "v3-14": "KEY WRONG under the literal c1 (surrogate-pair keys); c2 unscoped"
+          },
+          "summary": "'a str that encodes as UTF-8' bound the values only; a key holding U+D83D U+DE00 as two code points comes back as one character (U+1F600) on 3.11-3.15. c2 had no input domain, so a float NaN or inf is written as a token JSON does not allow. Inside the stated domain 3000 random cases per version (3.11, 3.15) round-tripped type-aware.",
+          "probeWeaknesses": [
+            "no digit-string key: an object_hook turning '7' into 7 passed",
+            "no empty-list value: turning [] into None passed"
+          ],
+          "action": "ONE minimal fix, unaudited (the stop rule): the shared domain now says every str, key or value, encodes as UTF-8 (both encoding twins and both crash-consistency twins); c2 scoped to 'any list c1 admits'; probes add a '7' key and an empty list; both mutants recorded. Known residual."
+        },
+        "h": {
+          "round": 3,
+          "items": {
+            "v3-04": "CRITERION AMBIGUOUS (narrow); key holds for every str"
+          },
+          "summary": "A differential run against a Fraction-based reference over 471453 strings (every string up to length 5 over a hostile alphabet, 200k random in- and off-grammar strings) found 0 differences on 3.11-3.15; int_max_str_digits cannot reach 18 digits; no decimal left to perturb; v3-09's red reproduces. 'string' was never pinned to str: bytes raise TypeError, not ValueError, in both twins.",
+          "probeWeaknesses": [
+            "a non-ASCII digit only in the fraction ('1.\\u0661') was not tested",
+            "the longest valid string ('-999999999999999999.99', 22 characters) was not in c1, so a length cap of 21 passed"
+          ],
+          "action": "ONE minimal fix, unaudited: 'for a str text' prefixes both twins' c1 and c2; c1 adds '-999999999999999999.99'; c2 adds '1.\\u0661' and '-\\u0661'; both mutants recorded. Known residual. (The auditor wrote a __pycache__ into cases/v3-09/tree while testing and removed it; check excludes __pycache__ and the staged trees are verified before the run.)"
+        },
+        "p": {
+          "round": 3,
+          "items": {
+            "v3-03": "KEY HOLDS",
+            "v3-10": "CRITERION AMBIGUOUS (strict reading of 'cannot determine')"
+          },
+          "summary": "Six nested 250-character directory names (about 1500 bytes of path, past macOS PATH_MAX 1024) make the green raise ENAMETOOLONG although an fd-relative walk (os.fwalk, lstat with dir_fd) settles the tree; on Linux about 17 such levels would. 'Cannot determine' reads as either 'this implementation cannot' or 'the information is unavailable'. A bytes root on Linux would order ties by bytes, not as a str (not reproducible on APFS). Held: hard links, a mode-000 file, a trailing-slash str root, a file 99 levels down. The red's defect shows again outside the probe (the long-path tree returns 1 of 8).",
+          "probeWeaknesses": [
+            "no hard link (counting an inode once passed)",
+            "nothing deeper than 8 levels (pruning below 19 passed)",
+            "only Path roots (slicing the root off a str with a trailing slash passed)",
+            "no path past PATH_MAX"
+          ],
+          "action": "ONE minimal fix, unaudited: both twins scoped to 'a root (a str or os.PathLike) ... in which every path is shorter than 1024 bytes'; probes add a hard link, a file 31 levels down and a str root with a trailing slash; three mutants recorded. Known residual."
+        }
+      }
+    }
+  },
+  "stopRule": "Written before round 3 was launched. Round 3 is the last round, whatever it finds. Its scope is the items rewritten or reworded in round 2: v3-02, v3-04, v3-14 and the pair v3-03/v3-10 (v3-15's key held in round 2; it only gained probe cases and 'for a str text'). If round 3 shows a green wrong, it gets one minimal fix, recalibrated and recorded but NOT audited again, named here as a known residual; if one fix cannot make it hold, the class gets a simpler green whose correctness its probes and controls settle. No round 4. Each round found something one level more exotic than the last (Unicode edge cases, then signals, a mutable module-level default context and unbounded list depth), so a further round would be expected to as well.",
+  "errataAfterTheSeal": "A key error found after the seal, by either arm, is handled as in the second run: the sealed files are never edited, results/key-errata.json records the correction with a probe calibrated both ways, and both arms are audited symmetrically for further errors. A discovery that begins from one arm's disagreement with the key favours that arm, and the docs say so.",
+  "residuals": [
+    "Round 3's fixes (v3-02, v3-04, v3-10, v3-14) were applied by the stop rule and not audited again.",
+    "No probe reaches remove-then-rename in v3-02: only fault injection makes the rename fail after path was removed.",
+    "Every round found something one level more exotic than the last (round 1: Unicode and huge-int edges; round 2: a signal after the rename, decimal.DefaultContext, unbounded list depth; round 3: surrogate-pair keys, an append-only directory, PATH_MAX). A fourth round would be expected to as well; those greens are green under the criteria as written, as far as three rounds could tell.",
+    "The greens were hardened by the same model the tribunal's challenger runs on. A low false-red rate on them says little about code nobody audited."
+  ],
+  "spend": "about 2.6M subagent tokens over 17 auditor agents in three rounds, all before the seal",
+  "unsealedContext": "Across the three rounds the same-model auditors found 7 key errors or criterion ambiguities in greens written to be correct (2 + 3 + 2 flips, plus ambiguities). That bears on the pattern question but was not measured under the seal and is not counted in it."
+}

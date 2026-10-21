@@ -1,0 +1,92 @@
+{
+  "base": {
+    "largest.py": "def largest_file(root):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import os, sys\nif os.geteuid() == 0:\n    sys.exit(2)  # root reads a mode-000 directory, so this cannot be decided as root\nimport tempfile\nfrom pathlib import Path\nfrom largest import largest_file\ndef call(r):\n    try:\n        return largest_file(r)\n    except OSError:\n        return \"raised\"\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    r = Path(d) / \"r\"\n    (r / \"a\" / \"b\").mkdir(parents=True)\n    assert call(r) is None, call(r)\n    (r / \"x\").write_bytes(b\"12345\")\n    (r / \"a\" / \"y\").write_bytes(b\"123\")\n    (r / \"a\" / \"b\" / \"z\").write_bytes(b\"54321\")\n    assert call(r) == (\"a/b/z\", 5), call(r)\n    (r / \"a\" / \"big\").write_bytes(b\"1\" * 9)\n    assert call(r) == (\"a/big\", 9), call(r)\n    os.mkfifo(r / \"a\" / \"p\")\n    assert call(r) == (\"a/big\", 9), call(r)\n    (r / \"ro\").mkdir()\n    (r / \"ro\" / \"v\").write_bytes(b\"1\" * 15)\n    os.chmod(r / \"ro\", 0o444)\n    try:\n        got = call(r)\n    finally:\n        os.chmod(r / \"ro\", 0o755)\n    assert got in (\"raised\", (\"ro/v\", 15)), (\"returned a file that is not the largest\", got)\n    (r / \"locked\").mkdir()\n    (r / \"locked\" / \"w\").write_bytes(b\"1\" * 20)\n    os.chmod(r / \"locked\", 0)\n    try:\n        got = call(r)\n    finally:\n        os.chmod(r / \"locked\", 0o755)\n    assert got in (\"raised\", (\"locked/w\", 20)), (\"returned a file that is not the largest\", got)\nfor names, want in (([(\"b\", 2), (\"a\", 2)], (\"a\", 2)), ([(\"q-r\", 3), (\"q/r\", 3)], (\"q-r\", 3)),\n                    ([(\"B\", 2), (\"a\", 2)], (\"B\", 2)), ([(\"p\", None)], None), ([(\"e\", 0)], (\"e\", 0)),\n                    ([(\"s\", 1), (\".big\", 9)], (\".big\", 9)), ([(\"x\", 1), (\"a/b/c/d/e/f/g/w\", 7)], (\"a/b/c/d/e/f/g/w\", 7))):\n    with tempfile.TemporaryDirectory() as d:\n        r = Path(d)\n        for rel, size in names:\n            (r / rel).parent.mkdir(parents=True, exist_ok=True)\n            if size is None:\n                os.mkfifo(r / rel)\n            else:\n                (r / rel).write_bytes(b\"1\" * size)\n        assert call(r) == want, (names, call(r), want)\nwith tempfile.TemporaryDirectory() as d:\n    r = Path(d) / \"h\"\n    (r / \"a\").mkdir(parents=True)\n    (r / \"a\" / \"c\").write_bytes(b\"123\")\n    os.link(r / \"a\" / \"c\", r / \"b\")\n    assert call(r) == (\"a/c\", 3), (\"a hard-linked file is two directory entries\", call(r))\n    assert call(str(r) + \"/\") == (\"a/c\", 3), (\"a str root with a trailing slash\", call(str(r) + \"/\"))\n    deep = r.joinpath(*[\"d\"] * 30)\n    deep.mkdir(parents=True)\n    (deep / \"w\").write_bytes(b\"1\" * 9)\n    assert call(r) == (\"/\".join([\"d\"] * 30 + [\"w\"]), 9), (\"a file 31 levels down\", call(r))\n",
+    "c2": "import os, tempfile\nfrom pathlib import Path\nfrom largest import largest_file\nwith tempfile.TemporaryDirectory() as d:\n    out = Path(d) / \"out\"\n    out.mkdir()\n    (out / \"big\").write_bytes(b\"x\" * 1000)\n    r = Path(d) / \"r\"\n    r.mkdir()\n    (r / \"f\").write_bytes(b\"ab\")\n    os.symlink(out / \"big\", r / \"link-file\")\n    os.symlink(out, r / \"link-dir\")\n    os.symlink(Path(d) / \"nowhere\", r / \"dangling\")\n    try:\n        got = largest_file(r)\n    except Exception as e:\n        raise AssertionError(repr(e))\n    assert got == (\"f\", 2), got\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "no-onerror",
+      "why": "os.walk(root) skips the unlistable directory",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "stat-follows-links",
+      "why": "os.stat follows a symlink to a file",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.stat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "counts-an-inode-once",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    seen = set()\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode) or (st.st_dev, st.st_ino) in seen:\n                continue\n            seen.add((st.st_dev, st.st_ino))\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "stops-at-depth-twenty",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        if os.path.relpath(dirpath, root).count(os.sep) >= 18:\n            dirnames[:] = []\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "slices-the-root-off",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, p[len(os.fspath(root)) + 1:])\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "empty-file-never-wins",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if (best is None and st.st_size > 0) or (best is not None and key < best):\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "skips-dotfiles",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        dirnames[:] = [n for n in dirnames if not n.startswith('.')]\n        for name in filenames:\n            if name.startswith('.'):\n                continue\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "stops-at-depth-three",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        if os.path.relpath(dirpath, root).count(os.sep) >= 1:\n            dirnames[:] = []\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "last-found-wins-a-tie",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key <= (best[0], chr(0x10ffff)):\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    {
+      "name": "counts-fifos",
+      "breaks": "c1",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if stat.S_ISLNK(st.st_mode) or stat.S_ISDIR(st.st_mode):\n                continue\n            key = (-st.st_size, os.path.relpath(p, root))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    }
+  ]
+}

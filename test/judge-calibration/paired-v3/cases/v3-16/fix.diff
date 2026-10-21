@@ -1,0 +1,15 @@
+diff --git a/rotate.py b/rotate.py
+--- a/rotate.py
++++ b/rotate.py
+@@ -1,2 +1,10 @@
++import os
++import re
++
++_BACKUP = re.compile(r"backup-([0-9]+)\.tar")
++
++
+ def latest_backup(directory):
+-    raise NotImplementedError
++    """Name of the newest backup-N.tar in directory, or None."""
++    names = sorted(n for n in os.listdir(directory) if _BACKUP.fullmatch(n))
++    return names[-1] if names else None

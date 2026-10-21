@@ -1,0 +1,86 @@
+{
+  "base": {
+    "price.py": "def parse_price(text):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from price import parse_price\nwant = {\"12.34\": 1234, \"0\": 0, \"5.5\": 550, \"-0.07\": -7, \"1000000\": 100000000, \"0.29\": 29,\n        \"007.10\": 710, \"-0\": 0,\n        \"90071992547409.93\": 9007199254740993, \"123456789012345.67\": 12345678901234567,\n        \"999999999999999999.99\": 99999999999999999999, \"-999999999999999999\": -99999999999999999900,\n        \"-90071992547409.93\": -9007199254740993, \"-999999999999999999.99\": -99999999999999999999}\nfor text, cents in want.items():\n    try:\n        got = parse_price(text).cents\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\n    assert got == cents and type(got) is int, (text, got, cents)\nimport decimal\ndecimal.getcontext().prec = 10\ndecimal.getcontext().Emax = 10\nfor text, cents in want.items():\n    try:\n        got = parse_price(text).cents\n    except Exception as e:\n        raise AssertionError((\"with the caller's precision and Emax at 10\", text, repr(e)))\n    assert got == cents and type(got) is int, (\"with the caller's precision and Emax at 10\", text, got, cents)\ndecimal.DefaultContext.Emax = 10\ndecimal.DefaultContext.traps[decimal.Overflow] = False\ndecimal.DefaultContext.rounding = decimal.ROUND_DOWN\nfor text, cents in want.items():\n    try:\n        got = parse_price(text).cents\n    except Exception as e:\n        raise AssertionError((\"with decimal.DefaultContext changed\", text, repr(e)))\n    assert got == cents and type(got) is int, (\"with decimal.DefaultContext changed\", text, got, cents)\n",
+    "c2": "from price import parse_price\nfor text in [\"\", \"abc\", \"1.234\", \"1e3\", \" 1\", \"1 \", \"1.\", \".5\", \"+1\", \"--1\", \"1,5\",\n             \"1234567890123456789\", \"1234567890123456789.5\", \"\\u0661\\u0662\", \"1\\n\", \"-\", \"-.5\", \"1.2.3\",\n             \"0000000000000000001\", \"-00000000000000000012.5\", \"1_0\", \"NaN\", \"Infinity\", \"-0.5.0\", \"1.\\u0661\", \"-\\u0661\"]:\n    try:\n        got = parse_price(text)\n    except ValueError:\n        continue\n    raise AssertionError((\"accepted\", text, got))\nfor text in [\"999999999999999999.99\", \"0.5\"]:\n    try:\n        parse_price(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "float",
+      "why": "round(float(text) * 100) loses cents above about 9e13",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.[0-9]{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(round(float(text) * 100))\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "unbounded",
+      "why": "accepts more than 18 integer digits",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]+(?:\\.[0-9]{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\"))))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    },
+    {
+      "name": "caller-context",
+      "why": "Decimal in localcontext(Context(prec=40)): the fields Context leaves out come from decimal.DefaultContext, so a caller's lowered Emax overflows",
+      "files": {
+        "price.py": "import re\nfrom decimal import Context, Decimal, localcontext\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.[0-9]{1,2})?\")\n\n\ndef _exact(text):\n    with localcontext(Context(prec=40)):\n        return int(Decimal(text) * 100)\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(_exact(text))\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "sign-from-int",
+      "why": "takes the sign from int(whole), which is 0 for '-0.07'",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.[0-9]{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(int(whole) * 100 + int(frac.ljust(2, \"0\")) * (-1 if whole.startswith(\"-\") and int(whole) else 1))\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "non-ascii-fraction-digits",
+      "breaks": "c2",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.\\d{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\"))))\n"
+      }
+    },
+    {
+      "name": "caps-the-length-at-21",
+      "breaks": "c1",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.[0-9]{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if len(text) > 21:\n        raise ValueError(f\"too long: {text!r}\")\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\"))))\n"
+      }
+    },
+    {
+      "name": "bounds-the-value-not-the-digits",
+      "breaks": "c2",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]+(?:\\.[0-9]{1,2})?\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.fullmatch(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    if abs(int(text.partition(\".\")[0])) >= 10 ** 18:\n        raise ValueError(f\"too large: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\"))))\n"
+      }
+    },
+    {
+      "name": "dollar-anchored-match",
+      "breaks": "c2",
+      "files": {
+        "price.py": "import re\n\n_PRICE = re.compile(r\"-?[0-9]{1,18}(?:\\.[0-9]{1,2})?$\")\n\n\nclass Price:\n    def __init__(self, cents):\n        self.cents = cents\n\n    def __repr__(self):\n        return f\"Price({float(self.cents) / 100:.2f})\"\n\n\ndef parse_price(text):\n    if not _PRICE.match(text):\n        raise ValueError(f\"not a price: {text!r}\")\n    whole, _, frac = text.partition(\".\")\n    sign = -1 if whole.startswith(\"-\") else 1\n    return Price(sign * (int(whole.lstrip(\"-\")) * 100 + int(frac.ljust(2, \"0\"))))\n"
+      }
+    }
+  ]
+}

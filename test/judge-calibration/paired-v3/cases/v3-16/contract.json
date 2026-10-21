@@ -1,0 +1,13 @@
+{
+  "wire": "restore command -> rotate.latest_backup -> the backup that gets restored",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for an existing directory, latest_backup(directory) returns the name of the entry in directory named backup-N.tar, N one or more ASCII digits, with the greatest N (any of them on a tie), or None if there is no such entry"
+    },
+    {
+      "id": "c2",
+      "text": "entries whose name is not exactly of the form backup-N.tar are ignored"
+    }
+  ]
+}

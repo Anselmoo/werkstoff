@@ -1,0 +1,24 @@
+diff --git a/price.py b/price.py
+--- a/price.py
++++ b/price.py
+@@ -1,2 +1,19 @@
++import re
++
++_PRICE = re.compile(r"-?[0-9]{1,18}(?:\.[0-9]{1,2})?")
++
++
++class Price:
++    def __init__(self, cents):
++        self.cents = cents
++
++    def __repr__(self):
++        return f"Price({float(self.cents) / 100:.2f})"
++
++
+ def parse_price(text):
+-    raise NotImplementedError
++    if not _PRICE.fullmatch(text):
++        raise ValueError(f"not a price: {text!r}")
++    whole, _, frac = text.partition(".")
++    sign = -1 if whole.startswith("-") else 1
++    return Price(sign * (int(whole.lstrip("-")) * 100 + int(frac.ljust(2, "0"))))

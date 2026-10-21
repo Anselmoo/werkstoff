@@ -1,0 +1,17 @@
+{
+  "wire": "worker checkpoint -> state.save -> the state file the next worker resumes from",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for save and load calls made one at a time by the same user, load(path) returns a dict equal to the data passed to the last save(path, data) that returned normally, with the same built-in type at every position, for dicts in which dicts and lists together are nested at most 10 deep (the dict itself is level 1), whose keys are str at every level and whose values are None, bool, an int of at most 100 digits, a str, or lists and dicts of these, all of exactly these built-in types, and in which every str, key or value, encodes as UTF-8"
+    },
+    {
+      "id": "c2",
+      "text": "for save calls made one at a time in a process that keeps running, leaving aside exceptions raised by signal handlers: after a save(path, data) call returns or raises an Exception, the file at path holds the complete output of the last save(path, ...) that returned normally, or what it held before if none did"
+    },
+    {
+      "id": "c3",
+      "text": "for save calls made one at a time in a process that keeps running, leaving aside exceptions raised by signal handlers: after a save(path, data) call returns or raises an Exception, in a directory in which the calling user may create and remove entries, no file that save created is left in the directory of path, other than path itself"
+    }
+  ]
+}

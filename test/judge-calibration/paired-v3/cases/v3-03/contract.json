@@ -1,0 +1,13 @@
+{
+  "wire": "disk-quota job -> du.total_size -> the quota warning",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for a root (a str or os.PathLike) that names an existing directory, and a tree under it at most 100 levels deep in which every path is shorter than 1024 bytes, total_size(root) returns the sum of the sizes in bytes of every directory entry under root that is a regular file, or raises OSError if it cannot determine that sum"
+    },
+    {
+      "id": "c2",
+      "text": "symbolic links under root are neither followed nor counted"
+    }
+  ]
+}

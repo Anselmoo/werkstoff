@@ -1,0 +1,13 @@
+{
+  "wire": "config value -> ints.parse_ints -> the retry schedule",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for a str text, parse_ints(text) returns, in order, int(f) for every comma-separated field f of text with f.strip() != ''; a field with f.strip() == '' is skipped"
+    },
+    {
+      "id": "c2",
+      "text": "for a str text, parse_ints raises ValueError if int(f) raises ValueError for any comma-separated field f of text with f.strip() != ''"
+    }
+  ]
+}

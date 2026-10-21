@@ -1,0 +1,64 @@
+{
+  "base": {
+    "snapshots.py": "def newest_snapshot(directory):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import os, tempfile\nfrom snapshots import newest_snapshot\ndef touch(d, *names):\n    for n in names:\n        open(os.path.join(d, n), \"w\").close()\ndef call(d):\n    try:\n        return newest_snapshot(d)\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    assert call(d) is None, call(d)\n    touch(d, \"snap-1.db\", \"snap-2.db\", \"snap-3.db\")\n    assert call(d) == \"snap-3.db\", call(d)\n    touch(d, \"snap-9.db\", \"snap-10.db\")\n    assert call(d) == \"snap-10.db\", call(d)\n    touch(d, \"snap-100.db\", \"snap-99.db\")\n    assert call(d) == \"snap-100.db\", call(d)\n    os.mkdir(os.path.join(d, \"snap-500.db\"))\n    assert call(d) == \"snap-500.db\", (\"an entry that is a directory\", call(d))\nwith tempfile.TemporaryDirectory() as d:\n    touch(d, \"snap-010.db\", \"snap-99.db\", \"snap-7.db\")\n    assert call(d) == \"snap-99.db\", call(d)\n",
+    "c2": "import os, tempfile\nfrom snapshots import newest_snapshot\ndef touch(d, *names):\n    for n in names:\n        open(os.path.join(d, n), \"w\").close()\ndef call(d):\n    try:\n        return newest_snapshot(d)\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    touch(d, \"snap-notes.db\", \"snap-5.db.bak\", \"xsnap-7.db\", \"snap-.db\", \"snap-8.dbx\",\n          \"snap-9.db\\n\", \"snap-\\u0663.db\", \"snap-\\uff13.db\", \"snap--4.db\")\n    assert call(d) is None, call(d)\n    touch(d, \"snap-2.db\")\n    assert call(d) == \"snap-2.db\", call(d)\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "string-order",
+      "why": "the last name in sorted order: snap-9.db beats snap-10.db",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if _SNAP.fullmatch(n)]\n    if not snaps:\n        return None\n    return snaps[-1]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "prefix-match",
+      "why": "re.match instead of fullmatch: snap-5.db.bak counts",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if _SNAP.match(n)]\n    if not snaps:\n        return None\n    return max(snaps, key=lambda n: int(_SNAP.match(n).group(1)))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "dollar-anchored-match",
+      "breaks": "c2",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db$\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if _SNAP.match(n)]\n    if not snaps:\n        return None\n    return max(snaps, key=lambda n: int(_SNAP.match(n).group(1)))\n"
+      }
+    },
+    {
+      "name": "isdigit-filter",
+      "breaks": "c2",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if n.startswith(\"snap-\") and n.endswith(\".db\") and n[5:-3].isdigit()]\n    if not snaps:\n        return None\n    return max(snaps, key=lambda n: int(n[5:-3]))\n"
+      }
+    },
+    {
+      "name": "length-then-name-key",
+      "breaks": "c1",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if _SNAP.fullmatch(n)]\n    if not snaps:\n        return None\n    return max(snaps, key=lambda n: (len(n), n))\n"
+      }
+    },
+    {
+      "name": "regular-files-only",
+      "breaks": "c1",
+      "files": {
+        "snapshots.py": "import os\nimport re\n\n_SNAP = re.compile(r\"snap-([0-9]+)\\.db\")\n\n\ndef newest_snapshot(directory):\n    \"\"\"Name of the newest snap-N.db in directory, or None.\"\"\"\n    names = sorted(os.listdir(directory))\n    snaps = [n for n in names if _SNAP.fullmatch(n) and os.path.isfile(os.path.join(directory, n))]\n    if not snaps:\n        return None\n    return max(snaps, key=lambda n: int(_SNAP.fullmatch(n).group(1)))\n"
+      }
+    }
+  ]
+}

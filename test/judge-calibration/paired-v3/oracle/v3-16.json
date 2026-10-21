@@ -1,0 +1,37 @@
+{
+  "base": {
+    "rotate.py": "def latest_backup(directory):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import os, tempfile\nfrom rotate import latest_backup\ndef touch(d, *names):\n    for n in names:\n        open(os.path.join(d, n), \"w\").close()\ndef call(d):\n    try:\n        return latest_backup(d)\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    assert call(d) is None, call(d)\n    touch(d, \"backup-1.tar\", \"backup-2.tar\", \"backup-3.tar\")\n    assert call(d) == \"backup-3.tar\", call(d)\n    touch(d, \"backup-9.tar\", \"backup-10.tar\")\n    assert call(d) == \"backup-10.tar\", call(d)\n    touch(d, \"backup-100.tar\", \"backup-99.tar\")\n    assert call(d) == \"backup-100.tar\", call(d)\n    os.mkdir(os.path.join(d, \"backup-500.tar\"))\n    assert call(d) == \"backup-500.tar\", (\"an entry that is a directory\", call(d))\nwith tempfile.TemporaryDirectory() as d:\n    touch(d, \"backup-010.tar\", \"backup-99.tar\", \"backup-7.tar\")\n    assert call(d) == \"backup-99.tar\", call(d)\n",
+    "c2": "import os, tempfile\nfrom rotate import latest_backup\ndef touch(d, *names):\n    for n in names:\n        open(os.path.join(d, n), \"w\").close()\ndef call(d):\n    try:\n        return latest_backup(d)\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    touch(d, \"backup-notes.tar\", \"backup-5.tar.bak\", \"xbackup-7.tar\", \"backup-.tar\", \"backup-8.tarx\",\n          \"backup-9.tar\\n\", \"backup-\\u0663.tar\", \"backup-\\uff13.tar\", \"backup--4.tar\")\n    assert call(d) is None, call(d)\n    touch(d, \"backup-2.tar\")\n    assert call(d) == \"backup-2.tar\", call(d)\n"
+  },
+  "happy": {
+    "c1": "import os, tempfile\nfrom rotate import latest_backup\nwith tempfile.TemporaryDirectory() as d:\n    assert latest_backup(d) is None\n    for n in (\"backup-1.tar\", \"backup-2.tar\", \"backup-3.tar\"):\n        open(os.path.join(d, n), \"w\").close()\n    assert latest_backup(d) == \"backup-3.tar\", latest_backup(d)\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "max with an int key on N",
+      "files": {
+        "rotate.py": "import os\nimport re\n\n_BACKUP = re.compile(r\"backup-([0-9]+)\\.tar\")\n\n\ndef latest_backup(directory):\n    \"\"\"Name of the newest backup-N.tar in directory, or None.\"\"\"\n    names = [n for n in os.listdir(directory) if _BACKUP.fullmatch(n)]\n    if not names:\n        return None\n    return max(names, key=lambda n: int(_BACKUP.fullmatch(n).group(1)))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "prefix-match",
+      "why": "the fix with re.match instead of fullmatch: backup-5.tar.bak counts",
+      "files": {
+        "rotate.py": "import os\nimport re\n\n_BACKUP = re.compile(r\"backup-([0-9]+)\\.tar\")\n\n\ndef latest_backup(directory):\n    \"\"\"Name of the newest backup-N.tar in directory, or None.\"\"\"\n    names = [n for n in os.listdir(directory) if _BACKUP.match(n)]\n    if not names:\n        return None\n    return max(names, key=lambda n: int(_BACKUP.match(n).group(1)))\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

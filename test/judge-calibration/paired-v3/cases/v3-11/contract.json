@@ -1,0 +1,13 @@
+{
+  "wire": "nightly batch -> batch.run_all -> the batch's success report",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for jobs that each return or raise, run_all(jobs) returns, in the order of jobs, the value each job returned"
+    },
+    {
+      "id": "c2",
+      "text": "for jobs that each return or raise, if any job raises, run_all raises an exception instead of returning"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "contamination": {
+    "sealedPattern": "test/judge-calibration|tools/judge-calibration|docs/plugin-authoring|answers\\.json|key-errata|seal\\.json|key-audit|keyaudit|build_v3|scratchpad|/tasks/|\\.claude/projects",
+    "dropped": [
+      "scratchpad"
+    ],
+    "why": "The 'scratchpad' alternative was meant to catch an agent reaching the key-bearing scratch files of the session that authored the items. The Workflow harness hands every subagent that same session's scratch directory as its own work area, so the alternative matched ordinary work: copying the staged tree, writing a check script. It classified the instrument, not the key. The pre-seal review of the regex did not catch this.",
+    "evidence": [
+      "92 of 160 runs flagged, every hit on 'scratchpad' alone; no other alternative matched anywhere in the run.",
+      "No tool input in any of the 400 transcripts names a key-bearing file (answers.json, an oracle, key-audit.json, seal.json, map.json, args.json, anything under test/ or tools/judge-calibration, the docs).",
+      "One tool result, an 'ls' of the scratch directory, listed the names map.json and args.json; map.json pairs opaque keys with item ids and holds no answer, and no agent opened either file.",
+      "The key-bearing scratch files of the audit and the item builder were deleted before staging; the stage directory was outside the scratch directory.",
+      "Run 2 (wf_8cbe77db-baa) staged its trees inside the scratch directory; re-collected, the same pattern flags all 160 of its runs, on 'scratchpad' alone.",
+      "Shared scratch names (v/check.py, chk.py, judge, ...) were used by several runs, across items. All 51 tool calls touching a shared name name their own run's staged tree, and no output names a function of another item: no cross-run read was observed. A write race is not excluded by construction; the docs say so."
+    ],
+    "symmetric": "The correction applies to both arms alike: 53 flagged tribunal runs and 39 flagged contract-judge runs are scored by their outcome again.",
+    "found": "In the sealed score itself (results/score.json, contaminatedRuns). Not blind to the outcomes: the per-run outcomes and both records were on screen when the misfire was diagnosed, and the score without the override was computed before this file was written. The erratum rests on its mechanism, which says nothing about outcomes, and it does not change the decision: the rule says replace before it and after it."
+  }
+}
