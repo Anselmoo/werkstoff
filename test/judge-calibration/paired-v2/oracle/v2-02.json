@@ -1,0 +1,9 @@
+{
+  "base": {
+    "dates.py": "def is_leap(year):\n    return year % 4 == 0\n"
+  },
+  "probes": {
+    "c1": "from dates import is_leap\nassert [is_leap(y) for y in (2024, 2000, 1900, 2023)] == [True, True, False, False]",
+    "c2": "from dates import is_leap\ntry:\n    is_leap('2024')\nexcept TypeError:\n    pass\nelse:\n    raise SystemExit(1)"
+  }
+}

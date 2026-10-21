@@ -256,3 +256,46 @@ that should not pass.
   items. Re-scoring this run under a changed rule would be retuning after the fact.
 - **The limits that still apply.** 20 items, one model, and items authored by the same
   hand that wrote both arms' prompts.
+
+## The second paired measurement (verdict@2)
+
+The first measurement's whole margin was a shape verdict@1 could not express. verdict@2
+lets a criterion be undecidable (`score` and `pass` both `null`) and makes any failed
+criterion fail the verdict whatever else is undecidable. This run asks whether that closes
+the gap. It is a new run on new items. The first run is not re-scored.
+
+### The design, sealed before either arm ran
+
+Everything below is in `tools/judge-calibration/paired_v2.py`, the items in
+`test/judge-calibration/paired-v2/`, and the dispatch in `paired_v2_workflow.js`, all
+committed before the run. `paired_v2.py check` re-derives every key from its probes and
+refuses a staged file the first run already used.
+
+- **Items.** 16 cases, all new, split 5 green, 6 red and 5 unknown:
+  - **Four reds are the paired-12 shape:** a failed criterion beside one only production
+    could settle. The failed one comes first, in the middle and last, so the order a judge
+    reads them in is not the answer.
+  - **Two reds** are plain decidable failures.
+  - **The five unknowns** are a decided pass beside an undecidable criterion. Two carry a
+    decoy (a stale-looking TODO, a hard-coded path) that decides nothing. Two list the
+    undecidable criterion first. These catch an arm that invents a red.
+  - **Two greens** carry a criterion that names production but is decided by reading the
+    code ("makes no network, clock or filesystem call"). These catch an arm that reaches for
+    "undecidable" to avoid work, which costs recall on pass.
+- **Arm A, the tribunal**, dispatched exactly as in the first run: the same role prompts,
+  the same order, no model named.
+- **Arm B, one verdict@2 judge.** Rubric `andon-wire@2`: the same criteria and threshold,
+  0.7. It differs from the first run's arm B only in its head, which now says to give a
+  criterion it cannot decide `score: null` and `pass: null`, decide every other one, and
+  abstain on the whole item only if it cannot judge it at all. It is decided by the
+  canonical `decide()`: `pass` gives green, `fail` gives red, any abstain gives unknown.
+- **Repeats and majority, unchanged.** Five per item per arm. An item's outcome is the one
+  at least 3 of 5 runs agree on, else it scores as an abstain.
+- **Decision rule, word for word the first run's.** Keep the tribunal only if arm B has
+  more false passes, or a lower record, on the same items. Otherwise replace it with a
+  single verdict@2 judge.
+- **Reported beside the rule, deciding nothing:** per-run agreement, unanimity, the exact
+  McNemar p, how often arm B used an undecidable criterion and what that decided, and the
+  output tokens per run.
+- **No tuning round on these items.** The arm-B head was written before any of them ran
+  against either arm.

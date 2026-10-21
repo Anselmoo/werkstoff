@@ -1,0 +1,10 @@
+{
+  "base": {
+    "retry.py": "def with_retries(fn, attempts):\n    return fn()\n"
+  },
+  "probes": {
+    "c1": "from retry import with_retries\ncalls = []\ndef fn():\n    calls.append(1)\n    if len(calls) < 2:\n        raise ValueError(len(calls))\n    return 'ok'\nassert with_retries(fn, 3) == 'ok' and len(calls) == 2",
+    "c2": "from retry import with_retries\nn = []\ndef fn():\n    n.append(1)\n    raise ValueError(len(n))\ntry:\n    with_retries(fn, 3)\nexcept ValueError as e:\n    assert e.args == (3,) and len(n) == 3, (e.args, n)\nelse:\n    raise SystemExit(1)",
+    "c3": "import ast, sys\nsrc = open('retry.py').read()\ntree = ast.parse(src)\nbanned = {'socket', 'time', 'os', 'random', 'datetime', 'urllib', 'requests', 'pathlib', 'shutil', 'subprocess'}\nfor n in ast.walk(tree):\n    if isinstance(n, ast.Import) and any(a.name.split('.')[0] in banned for a in n.names):\n        sys.exit(1)\n    if isinstance(n, ast.ImportFrom) and (n.module or '').split('.')[0] in banned:\n        sys.exit(1)\n    if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in {'open', 'float', 'input'}:\n        sys.exit(1)\n    if isinstance(n, ast.Constant) and isinstance(n.value, float):\n        sys.exit(1)\n    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):\n        sys.exit(1)\n"
+  }
+}

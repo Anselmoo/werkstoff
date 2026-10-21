@@ -1,0 +1,9 @@
+diff --git a/dates.py b/dates.py
+--- a/dates.py
++++ b/dates.py
+@@ -1,2 +1,4 @@
+ def is_leap(year):
+-    return year % 4 == 0
++    if not isinstance(year, int) or isinstance(year, bool):
++        raise TypeError(f'year must be an int, not {type(year).__name__}')
++    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)

@@ -1,0 +1,17 @@
+{
+  "wire": "article editor -> text.slugify -> the URL router",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "slugify('Hello World') returns 'hello-world'"
+    },
+    {
+      "id": "c2",
+      "text": "slugify('a  --  b') returns 'a-b': a run of spaces and hyphens becomes one hyphen"
+    },
+    {
+      "id": "c3",
+      "text": "slugify('--Edge Case--') returns 'edge-case': no leading or trailing hyphen"
+    }
+  ]
+}

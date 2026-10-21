@@ -1,0 +1,9 @@
+{
+  "base": {
+    "migrations.py": "def add_status_column():\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import sqlite3\nfrom migrations import add_status_column\ndb = sqlite3.connect(':memory:')\ndb.execute('CREATE TABLE orders (id INTEGER)')\ndb.execute('INSERT INTO orders VALUES (1)')\ndb.execute(add_status_column())\nassert db.execute('SELECT status FROM orders').fetchone() == ('new',)\ncols = {r[1]: r for r in db.execute('PRAGMA table_info(orders)')}\nassert cols['status'][3] == 1",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

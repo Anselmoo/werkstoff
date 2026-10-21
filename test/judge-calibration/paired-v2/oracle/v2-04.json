@@ -1,0 +1,10 @@
+{
+  "base": {
+    "config/load.py": "import os\n\n\ndef port():\n    return os.environ['PORT']\n",
+    "app/serve.py": "from config.load import port\n\n\ndef bind_address():\n    return ('0.0.0.0', port())\n"
+  },
+  "probes": {
+    "c1": "import os\nos.environ.pop('PORT', None)\nfrom app.serve import bind_address\nassert bind_address() == ('0.0.0.0', 8080)",
+    "c2": "import os\nos.environ['PORT'] = '9000'\nfrom app.serve import bind_address\nb = bind_address()\nassert b == ('0.0.0.0', 9000) and type(b[1]) is int"
+  }
+}

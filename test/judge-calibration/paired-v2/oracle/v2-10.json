@@ -1,0 +1,9 @@
+{
+  "base": {
+    "tz.py": "def local_midnight_utc(day, offset_hours):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import sys\nsys.exit(3)  # needs a production system no test environment reaches",
+    "c2": "from datetime import date, datetime\nfrom tz import local_midnight_utc\ngot = local_midnight_utc(date(2026, 7, 1), 2)\nassert got == datetime(2026, 6, 30, 22, 0), got"
+  }
+}

@@ -1,0 +1,11 @@
+diff --git a/tz.py b/tz.py
+--- a/tz.py
++++ b/tz.py
+@@ -1,2 +1,6 @@
++from datetime import datetime, timedelta
++
++
+ def local_midnight_utc(day, offset_hours):
+-    raise NotImplementedError
++    midnight = datetime(day.year, day.month, day.day)
++    return midnight + timedelta(hours=offset_hours) - timedelta(days=1)

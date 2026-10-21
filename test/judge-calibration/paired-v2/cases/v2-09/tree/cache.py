@@ -1,0 +1,16 @@
+class Cache:
+    def __init__(self):
+        self._data = {}
+        self._stats = {}
+
+    def set(self, key, value):
+        self._data[key] = value
+        self._stats[key] = self._stats.get(key, 0)
+
+    def get(self, key):
+        if key in self._data:
+            self._stats[key] = self._stats.get(key, 0) + 1
+        return self._data.get(key)
+
+    def invalidate(self, key):
+        self._stats.pop(key, None)

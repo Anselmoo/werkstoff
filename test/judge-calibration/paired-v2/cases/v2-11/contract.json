@@ -1,0 +1,17 @@
+{
+  "wire": "invoice list -> export.to_csv -> the finance team's spreadsheet import",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "the first line of to_csv(rows) is the header 'id,customer,amount'"
+    },
+    {
+      "id": "c2",
+      "text": "a customer named 'Acme, Inc.' round-trips: csv.reader reads the row back as three fields"
+    },
+    {
+      "id": "c3",
+      "text": "the finance team's production spreadsheet import opens every exported file without a warning"
+    }
+  ]
+}

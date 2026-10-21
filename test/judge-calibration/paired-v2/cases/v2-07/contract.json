@@ -1,0 +1,13 @@
+{
+  "wire": "search results -> paging.page -> the results table",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "page(list(range(10)), 1, 3) returns [0, 1, 2]: pages are numbered from 1"
+    },
+    {
+      "id": "c2",
+      "text": "page(list(range(10)), 4, 3) returns [9]: the last page may be short"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "base": {
+    "geo.py": "def distance_km(a, b):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import sys\nsys.exit(3)  # needs a production system no test environment reaches",
+    "c2": "from geo import distance_km\nd = distance_km((47.3769, 8.5417), (46.2044, 6.1432))\nassert abs(d - 224) <= 2, d",
+    "c3": "from geo import distance_km\nfor p in [(0.0, 0.0), (47.3769, 8.5417), (-33.9, 151.2)]:\n    assert distance_km(p, p) == 0, p"
+  }
+}

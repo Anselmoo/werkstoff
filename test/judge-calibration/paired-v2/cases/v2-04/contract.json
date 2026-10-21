@@ -1,0 +1,13 @@
+{
+  "wire": "process environment -> config.load.port -> app.serve.bind_address",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "with PORT unset, bind_address() returns ('0.0.0.0', 8080)"
+    },
+    {
+      "id": "c2",
+      "text": "with PORT='9000', bind_address() returns ('0.0.0.0', 9000), the port an int"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+import tarfile
+from pathlib import Path
+
+DEFAULT_DEST = '/var/backups/nightly.tar.gz'
+
+
+def archive(src, dest=DEFAULT_DEST):
+    src = Path(src)
+    with tarfile.open(dest, 'w:gz') as tar:
+        for p in sorted(src.rglob('*')):
+            if p.is_file():
+                tar.add(p, arcname=p.relative_to(src).as_posix())
+    return dest

@@ -1,0 +1,13 @@
+{
+  "wire": "deploy pipeline -> migrations.add_status_column -> the production orders table",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "add_status_column() returns SQL that adds a NOT NULL column 'status' with default 'new' to the table 'orders'"
+    },
+    {
+      "id": "c2",
+      "text": "running that SQL on the production database holds a lock on 'orders' for less than one second"
+    }
+  ]
+}

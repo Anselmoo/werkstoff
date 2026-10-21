@@ -1,0 +1,17 @@
+{
+  "wire": "profile service -> cache.Cache -> the profile page",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "after set('u1', 'Ann'), get('u1') returns 'Ann'"
+    },
+    {
+      "id": "c2",
+      "text": "after set('u1', 'Ann') and invalidate('u1'), get('u1') returns None"
+    },
+    {
+      "id": "c3",
+      "text": "in production the profile cache's hit ratio stays above 90%"
+    }
+  ]
+}

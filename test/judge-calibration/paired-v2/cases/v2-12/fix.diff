@@ -1,0 +1,18 @@
+diff --git a/ratelimit.py b/ratelimit.py
+--- a/ratelimit.py
++++ b/ratelimit.py
+@@ -1,2 +1,13 @@
+ class Bucket:
+-    pass
++    def __init__(self, capacity):
++        self.capacity = capacity
++        self.tokens = capacity
++
++    def take(self):
++        if self.tokens == 0:
++            return False
++        self.tokens -= 1
++        return True
++
++    def refill(self):
++        self.tokens = self.capacity
