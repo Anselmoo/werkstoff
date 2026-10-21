@@ -56,6 +56,7 @@ behaviour and is skipped):
 
 Usage:
     python3 test/plugins/check-hook-bytecode.py [--plugins-root plugins] [-v]
+    python3 test/plugins/check-hook-bytecode.py --selftest
 
 Exit 0 when no copy gained bytecode and the probe is proven live; 1 otherwise.
 """
@@ -114,19 +115,27 @@ BASH_PATTERN = re.compile(r"Bash\(([^)]*)\)")
 # written. The quoting rule above would pass a quoted value, so this is its own rule.
 STORED_IN_VARIABLE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*=[\"']?$")
 
+# Both sides go through realpath: the interpreter opens a sibling by the spelling
+# it resolved the script's directory to, the probe names the copy by the spelling
+# it created, and on macOS (/var -> /private/var) those differ for every tempdir.
+# Unresolved, the probe saw nothing and reported INSTRUMENT-DEAD on a healthy run;
+# the log therefore holds RESOLVED paths, and its readers resolve the copy too.
 SITECUSTOMIZE = """
 import os, sys
 _root = os.environ.get("HOOK_BYTECODE_PROBE_ROOT", "")
 _log = os.environ.get("HOOK_BYTECODE_PROBE_LOG", "")
+_real_root = os.path.realpath(_root) if _root else ""
 def _audit(event, args):
     if event != "open" or not _root or not _log:
         return
     path = args[0] if args else None
     if isinstance(path, bytes):
         path = os.fsdecode(path)
-    if isinstance(path, str) and path.endswith(".py") and path.startswith(_root):
-        with open(_log, "a", encoding="utf-8") as fh:
-            fh.write(path + "\\n")
+    if isinstance(path, str) and path.endswith(".py"):
+        real = os.path.realpath(path)
+        if real.startswith(_real_root):
+            with open(_log, "a", encoding="utf-8") as fh:
+                fh.write(real + "\\n")
 if _root and _log:
     sys.addaudithook(_audit)
 """
@@ -321,11 +330,71 @@ def probe(
     )
 
 
+
+def _sibling_seen(sitecustomize: str, tmp: Path) -> bool:
+    """Run a script that opens a sibling by its REAL path while the probe root is
+    named by a symlink, and report whether the audit hook logged the sibling."""
+    real, link = tmp / "real", tmp / "link"
+    pkg, site = real / "pkg", tmp / "site"
+    pkg.mkdir(parents=True, exist_ok=True)
+    site.mkdir(exist_ok=True)
+    if not link.is_symlink():
+        link.symlink_to(real, target_is_directory=True)
+    (pkg / "sib.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (pkg / "main.py").write_text(
+        f"import sys\nsys.path.insert(0, {str(pkg)!r})\nimport sib\n", encoding="utf-8"
+    )
+    (site / "sitecustomize.py").write_text(sitecustomize, encoding="utf-8")
+    log = tmp / "opened.log"
+    log.unlink(missing_ok=True)
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+    env.update(
+        {
+            "PYTHONPATH": str(site),
+            "HOOK_BYTECODE_PROBE_ROOT": str(link / "pkg"),
+            "HOOK_BYTECODE_PROBE_LOG": str(log),
+        }
+    )
+    subprocess.run(
+        [sys.executable, "-B", str(pkg / "main.py")],
+        env=env,
+        capture_output=True,
+        timeout=30,
+        check=True,
+    )
+    return log.is_file() and "sib.py" in log.read_text(encoding="utf-8")
+
+
+def selftest() -> int:
+    """The audit hook must match a path under a symlinked root, and the case that
+    proves it must go red when the matching is made raw again."""
+    sabotaged = SITECUSTOMIZE.replace("os.path.realpath(", "str(")
+    fails = []
+    with tempfile.TemporaryDirectory(prefix="hook-bytecode-selftest-") as tmp:
+        tmp_path = Path(tmp)
+        if sabotaged == SITECUSTOMIZE:
+            fails.append("sabotage is a no-op: SITECUSTOMIZE no longer calls os.path.realpath(")
+        if not _sibling_seen(SITECUSTOMIZE, tmp_path):
+            fails.append("a sibling opened by its real path under a symlinked root was not seen")
+        if _sibling_seen(sabotaged, tmp_path):
+            fails.append("raw prefix matching still saw the sibling: the case cannot go red")
+    for line in fails:
+        print(f"FAIL {line}")
+    if not fails:
+        print("ok  selftest: a symlinked probe root is matched; raw matching would miss it")
+    return 1 if fails else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--plugins-root", default=str(REPO / "plugins"))
     parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument(
+        "--selftest", action="store_true", help="prove the audit hook's path matching"
+    )
     args = parser.parse_args(argv)
+    if args.selftest:
+        return selftest()
 
     plugins = sorted(
         p.parent.parent for p in Path(args.plugins_root).glob("*/hooks/hooks.json")
@@ -375,7 +444,7 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  probe {plugin.name} {event}: exit {result.returncode}")
             if log.is_file():
                 opened[plugin.name] = {
-                    Path(line).relative_to(copy).as_posix()
+                    Path(line).relative_to(copy.resolve()).as_posix()
                     for line in log.read_text(encoding="utf-8").split()
                 }
             for hit in bytecode_in(copy):
@@ -425,7 +494,7 @@ def main(argv: list[str] | None = None) -> int:
                     )
             if log.is_file():
                 script_opened[plugin.name] = {
-                    Path(line).relative_to(copy).as_posix()
+                    Path(line).relative_to(copy.resolve()).as_posix()
                     for line in log.read_text(encoding="utf-8").split()
                 }
             for hit in bytecode_in(copy):
