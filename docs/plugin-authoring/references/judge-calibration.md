@@ -466,8 +466,8 @@ red, and neither invented a red on the seven greens that both arms agree on.
   `neither` in the fifth.
 - `results/key-errata.json` corrects the key. Its probe builds the files on a real
   filesystem, so only Linux decides it: APFS refuses the name. CI on Linux reproduced
-  it (plugin-checks run 39607898510), and a control with `os.fsdecode` on the tie key
-  passes.
+  it: plugin-checks run 39608817578 reports the erratum decided there, not skipped. A
+  control with `os.fsdecode` on the tie key passes.
 - Run 5's long-path ground rests on the recorded "cannot determine" ambiguity and carries
   nothing.
 - Unlike `v2-16`, this was **not a detection miss**. The contract judge named the same
