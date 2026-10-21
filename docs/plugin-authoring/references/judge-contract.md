@@ -214,15 +214,15 @@ Status vocabulary:
   that would justify it or retire it. No row with this status claims a measured reason.
 - **kept-calibrated**: kept as it is, and measured once on a sealed known-answer set whose
   record clears its floor (`is_calibrated()` is true). It is calibrated against known
-  answers. It is not yet compared with a single contract judge, so the paired measurement
-  in `resolves_if` is still open. See
+  answers. For the tribunal, the paired measurement against a single contract judge has
+  also been run. For the other two it is still open. See
   [`judge-calibration.md`](judge-calibration.md).
 
 ### Andon and arbeitsplan
 
 | plugin | judge (where) | shape today | status | resolves_if / note |
 |---|---|---|---|---|
-| andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | **kept-calibrated** | measured: sealed 8 (3 green, 3 red, 2 unknown, the reds being the `contested-wire-halts` repairs `verify-contested-fixture.py` proves cannot work), agreement 1.0 against floor 0.8, 0 false passes. It ran on the session's model (opus), because the andon agents declare none, and n=8 bounds a perfect score only at 0.63 (95%). The paired run against a single contract judge is designed in [`judge-calibration.md`](judge-calibration.md#the-paired-measurement-designed-not-run) and not run. Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
+| andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | **kept-calibrated** | measured: sealed 8 (3 green, 3 red, 2 unknown, the reds being the `contested-wire-halts` repairs `verify-contested-fixture.py` proves cannot work), agreement 1.0 against floor 0.8, 0 false passes. It ran on the session's model (opus), because the andon agents declare none, and n=8 bounds a perfect score only at 0.63 (95%). Paired against one `andon-wire@1` contract judge on 20 items, 5 repeats each (same model): neither arm had a false pass, and the tribunal's record was 1.0 against 0.875, so the committed rule **keeps** it. The one discordant item is a failed criterion plus an unverifiable one, which verdict@1 can only abstain on (McNemar p = 1.0). The tribunal costs about 10x the output and was less consistent run to run. See [`judge-calibration.md`](judge-calibration.md#the-paired-measurement). Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
 | andon | epistemic rubric, strategy (c) (`skills/andon-verify/references/epistemic-rubric.md`) | five criteria (falsifiability, generalization, evidence-grounding, honesty-of-framing, accessibility), each pass/fail/neither, "do not average" | kept-unmeasured | the same paired run on falsifiability-rubric wires. The closest existing match to verdict@1: five named criteria and no averaging. Only the 0–1 score and the fixed threshold are missing |
 | arbeitsplan | candidate-referee (`workflows/run.js` `REFEREE_SCHEMA`, `agents/candidate-referee.md`) | blind, one candidate per call; `accepted`/`accepted_different_approach`/`rejected`/`cannot_judge` with required `perCriterion[{id, met, evidence}]` | **kept-calibrated** | measured with the `run.js` prompt itself: sealed 10 (4 pass, 4 fail, 2 abstain), agreement 1.0 against floor 0.8, 0 false passes and 0 false fails, on sonnet, the agent's default. A spec that sets `modelTier` runs `run.js` with a different model, which is a different, unmeasured judge. The 95% bound on a perfect 10/10 is only 0.69. Still not migrated (no 0–1 scores, threshold in effect 1.0). Found: `withEvidence` lands an `accepted` with **one** met criterion, which is weaker than the agent's own "every criterion met". The case probing it did not trigger it, but the gap is reachable. See [`judge-calibration.md`](judge-calibration.md#findings-about-the-judges) |
 | arbeitsplan | waves blind referee (`workflows/waves.js` `REFEREE_SCHEMA`, ~line 69; separate from the `run.js` referee) | blind, branch names only; the referee runs every acceptance command in its own worktree and returns `winner` (a branch or `null`) plus `perCandidate[{branch, allPassed, failing}]`. A `null` winner halts the row with "NO CANDIDATE ACCEPTED" | kept-unmeasured | maps partly: `allPassed` = pass, and a `null` winner is a fail. The schema has no per-criterion `score` or `evidence`, no abstain (a dead referee and "no branch passed" both end in the same halt) and no calibration, and the winner is a first-in-list tie-break rather than a threshold. A command decides in principle (the exit codes), so the referee only reports them. Settled by a sealed set of candidate pairs with known acceptance, measuring whether the referee ever reports a different winner than the exit codes alone |
@@ -305,10 +305,12 @@ python3 scripts/ci/check_judge_contract.py                  # the gate over the 
   decode-referee and the tribunal now have sealed sets and records
   ([`judge-calibration.md`](judge-calibration.md)). Every other kept-unmeasured judge
   still carries `calibrated: false` until it has one too.
-- **The paired tribunal measurement.** It is designed (same sealed items, one
-  `andon-wire@1` contract judge as the second arm, five repeats per item, and a decision rule
-  fixed in advance) but not run. Until it is, the tribunal is calibrated but not shown to
-  be better than one judge.
+- **verdict@1 cannot say "one criterion fails, another is unknown".** The paired tribunal
+  measurement ran, and the committed rule keeps the tribunal. But its whole margin was one
+  item, a failed criterion plus an unverifiable one, which a verdict@1 judge can only abstain
+  on. A criterion-level undecidable, with any fail reducing the verdict to `fail`
+  (verdict@2), and a new paired run on new items would settle whether the tribunal is still
+  needed. Re-scoring the finished run under a changed rule would not.
 - **Precision on a sealed set** is now measured for the three judges above. Their record's
   agreement is the weakest of six figures, the pass and fail precision among them. Every
   calibration added later should use the same scorer.

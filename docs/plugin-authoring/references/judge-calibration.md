@@ -182,23 +182,77 @@ These steps protect the run:
   opus. A sonnet session is a different judge.
 - **Repeats.** One pass per case is a single sample of a stochastic judge.
 
-## The paired measurement (designed, not run)
+## The paired measurement
 
-The tribunal's `resolves_if` asks whether four agents earn their cost over **one contract
-judge**. The design:
+The tribunal's `resolves_if` asked whether four agents earn their cost over **one contract
+judge** on the same items. That question was measured. The design, the items and the
+decision rule were committed before either arm ran (`fa751ba`), and the run was workflow
+`wf_589ce94f-c60` on 2026-10-21. The evidence is in `test/judge-calibration/paired/results/`,
+and `paired.py check` recomputes the score from the committed raw run.
 
-- **Items.** The tribunal's sealed set, plus at least 12 new contested-wire and
-  unverifiable-criterion cases written before either arm runs. Arms run on the same staged
-  trees and the same fenced inputs.
-- **Arm A, the tribunal.** Exactly as measured here.
+### The design
+
+- **Items.** 20: the tribunal's 8 sealed cases plus 12 paired-only cases
+  (`test/judge-calibration/paired/`). They split 7 green, 8 red and 5 unknown, and every key
+  is re-derived by its probes. The new cases are harder:
+  - a contested wire fixed on *both* sides (green)
+  - a float rounding bug
+  - a missing cache invalidation
+  - a shipped test that pins the wrong behaviour and passes
+  - a failed criterion **and** an unverifiable one (red, not unknown)
+  - three criteria only production could settle
+- **Arm A, the tribunal.** Defender and challenger blind in parallel, then the verifier,
+  then the adjudicator, with the same prompts as the calibration.
 - **Arm B, one verdict@1 judge.** Rubric `andon-wire@1`: one criterion per contract
-  criterion, threshold 0.7. The judge holds Read, Grep, Glob and Bash, so it can run what the
-  verifier ran, and is decided by `decide()`. The mapping: `pass` gives green, `fail` gives
-  red, `abstain` gives unknown.
-- **Repeats.** Five per item per arm, because one pass is not a verdict. Report per-item
-  majority and the spread.
-- **Measures.** Agreement, false passes, the same six-figure record, discordant pairs, and
-  agent calls and tokens per item.
+  criterion, threshold 0.7. It is a general-purpose agent told to change nothing, so it can
+  run what the verifier ran. It is decided by `decide()`: `pass` gives green, `fail` gives
+  red, `abstain` gives unknown. The prompt told it to abstain if any criterion could not be
+  decided in the environment.
+- **Repeats.** Five per item per arm. An item's outcome is the one at least 3 of 5 runs
+  agree on, else it scores as an abstain.
+- **Same model.** Neither arm names one, so all 500 agents ran on the session's
+  (`claude-opus-5-5`).
 - **Decision rule, fixed before the run.** Keep the tribunal only if arm B has more false
-  passes, or a lower record, on the same items. If not, collapse it onto the contract like
-  the passung panels, and record the measured reason in the mapping row.
+  passes, or a lower six-figure record, on the same items. Otherwise collapse it.
+
+### The result
+
+| arm | per-item agreement | false passes | record | per-run agreement | items unanimous over 5 runs | output tokens per run | agents per run |
+|---|---|---|---|---|---|---|---|
+| tribunal | 1.00 | 0 | **1.0** | 0.94 | 16/20 | ~7,000 | 4 |
+| contract judge | 0.95 | 0 | **0.875** | 0.95 | 20/20 | ~730 | 1 |
+
+**The rule, applied as committed, keeps the tribunal**: arm B's record is lower. The mapping
+row now carries that measured reason. But the margin is one item. Only one pair is
+discordant (only the tribunal right, never the other way), and the exact McNemar p is 1.0.
+
+**The one item is a shape effect, not a judgement effect.** `paired-12` has a failed
+criterion and a criterion only production could settle. The tribunal says red on all five
+runs, because a fail dominates a `neither`. The contract judge abstains on all five, because
+verdict@1 can only abstain on the **whole** item, and arm B's prompt said to abstain whenever
+any criterion cannot be decided. verdict@1 has no way to say "c1 fails, c2 is unknown,
+therefore red". That is a gap in the contract, found by this run.
+
+**Run by run, the single judge was the steadier one.** The tribunal's six wrong runs all
+come from making an outcome up:
+
+- `sealed-04` is green, and once went red and once unknown.
+- Three unknown items (`paired-09` twice, `paired-11` and `sealed-08`) were turned red in
+  four runs.
+
+The contract judge's five wrong runs are all `paired-12`. Neither arm ever passed a wire
+that should not pass.
+
+### What it settles, and what it does not
+
+- **Settled.** On these 20 items and this model, the tribunal is not better at catching
+  bad wires: neither arm has a false pass. It is about ten times as expensive in output and
+  four times in agent calls, and less consistent run to run.
+- **Kept, for a measured reason.** The tribunal is kept because the committed rule says so,
+  and the reason is specific: it expresses per-criterion `neither` where verdict@1 cannot.
+- **Not settled.** Whether a verdict@1 judge with **fail-dominates-abstain**
+  (a criterion-level undecidable, reduced as `red` if any criterion fails) would close the
+  gap. Deciding that needs a contract change (verdict@2) and a **new** paired run on new
+  items. Re-scoring this run under a changed rule would be retuning after the fact.
+- **The limits that still apply.** 20 items, one model, and items authored by the same
+  hand that wrote both arms' prompts.
