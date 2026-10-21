@@ -40,7 +40,11 @@ this run faster by skipping it; the capability does not exist.
        --verify-json <path-from-step-4> \
        [--requested-tool <name>]
    ```
-   This reconciles Find against Verify (only confirmed findings survive),
+   This reconciles Find against Verify in three buckets: `confirmed: true`
+   survives, `confirmed: false` is dropped as refuted, and anything else
+   (key missing, non-boolean, no record for a finding) is an abstain that is
+   kept as `verification: "unverified"`, warned about on stderr and counted
+   in the summary's `unverifiedCount` (an abstain is never a pass),
    forces every surviving finding's `fixability` to `"advisory"`, and
    writes `analysis/zeugnis/reports/ASSERTION_AUDIT.md` (real-tool and llm-reasoned
    findings in clearly separate sections — never blended) and

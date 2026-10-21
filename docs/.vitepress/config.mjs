@@ -315,6 +315,7 @@ export default defineConfig({
           { text: 'Output-shape findings', link: '/plugin-authoring/references/output-shape-findings' },
           { text: 'Report-viewer standard', link: '/plugin-authoring/references/report-viewer-standard' },
           { text: 'Design tokens', link: '/plugin-authoring/references/design-tokens' },
+          { text: 'Judge contract', link: '/plugin-authoring/references/judge-contract' },
         ],
       },
       {

@@ -25,7 +25,9 @@ fixed — never report a fifth category, and never rename one.
 3. Unless `skip_verification` is `true`: dispatch the
    `agentic-reliability-auditor` agent again in **Verify mode**,
    independently re-checking each Find-phase finding against the actual
-   file. Write `{"findings": [{"evidence": "...", "confirmed": true|false}, ...]}`.
+   file. Write `{"findings": [{"evidence": "...", "confirmed": true|false}, ...]}`
+   with a literal boolean for every Find-phase finding: any other answer is kept
+   as `verification: "unverified"` and counted in `unverifiedCount`.
 4. Run:
    ```
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/agentic_reliability.py" <repo_root> \

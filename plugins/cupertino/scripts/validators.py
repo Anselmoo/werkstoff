@@ -226,6 +226,11 @@ def validate_handbook_check_summary(obj):
             _fail([f"findings[{i}].mechanical must be a boolean, got {f['mechanical']!r}"])
         if not isinstance(f["line"], int):
             _fail([f"findings[{i}].line must be an integer, got {f['line']!r}"])
+        # handbook-fix applies a finding only when this is "confirmed"; a summary that omits it
+        # would make fix mode a silent no-op, so refuse it here instead of defaulting it.
+        verification = f.get("verification")
+        if not isinstance(verification, dict) or verification.get("verdict") != "confirmed":
+            _fail([f"findings[{i}].verification must be an object with verdict 'confirmed' (handbook-check drops every other finding), got {verification!r}"])
     return {"ok": True}
 
 

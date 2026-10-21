@@ -5,7 +5,7 @@ their content entirely for whatever repo you are actually mining. These
 exist to show `rule-card-template.md`'s schema filled in with concrete
 values, not to be copied verbatim into a real report.
 
-## A confirmed P1 rule (no panel required)
+## A confirmed P1 rule (no judge required)
 
 ```
 ### RULE-014: Gold-tier checkout discount
@@ -19,7 +19,7 @@ values, not to be copied verbatim into a real report.
 **Status:** confirmed
 ```
 
-## A confirmed P0 rule (panel-verified)
+## A confirmed P0 rule (judge-verified)
 
 ```
 ### RULE-003: Overdraft fee waiver on payroll accounts
@@ -31,17 +31,17 @@ values, not to be copied verbatim into a real report.
   When  the nightly overdraft-fee batch runs
   Then  no overdraft fee is charged (payroll accounts are fee-exempt by statute)
 **Status:** confirmed
-  Two-judge panel confirmed: judge-a and judge-b both independently
+  Judge verdict pass (befund-p0-rule@1, score 0.85, uncalibrated): the judge
   re-read src/billing/overdraft.py:58 and verified the is_payroll exemption.
 ```
 
-## A P0 rule that failed the panel -- not a card at all
+## A P0 rule that did not pass the judge -- not a card at all
 
 `RULE-007` (an interest-rate cap on promotional balances) was mined at
-priority P0, but only one judge (`judge-a`) could be independently
-dispatched before the round closed -- `panel_confirmed` never reached
-`true`. Per `befund-extract-rules` Step 3, this rule is downgraded to
-`unconfirmed` and listed separately in `BUSINESS_RULES.md`'s "Unconfirmed
-rules" section (see `business-rules-report-sample.md`) with that reason.
-It never gets a Rule Card, and it is never promoted into the confirmed set
-on the strength of one judge.
+priority P0, but the judge could not read the cited file and abstained
+(`abstainReason: "judge:src/rates/promo.py not found at the cited commit"`), so
+its `p0_verdict.outcome` is `abstain`. Per `befund-extract-rules` Step 3, this
+rule is downgraded to `unconfirmed` and listed separately in
+`BUSINESS_RULES.md`'s "Unconfirmed rules" section (see
+`business-rules-report-sample.md`) with that reason. It never gets a Rule Card,
+and a `fail` is treated the same way: only `pass` confirms.

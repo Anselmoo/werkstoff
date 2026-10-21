@@ -328,7 +328,7 @@
         {
           "id": "befund:befund-extract-rules",
           "name": "befund-extract-rules",
-          "description": "Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule. Use when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of befund-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written."
+          "description": "Mines executable calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a scored judge verdict to pass for any P0 rule. Use when the user asks to \"extract business logic\", \"document the domain rules hidden in this code\", \"turn tribal knowledge into a spec\", or as part of befund-autopilot's CHECK phase. Not for code style, naming, layering, dependency-direction or other architecture conventions — use lehre-codify for those. This skill extracts what the code decides, not how it is written."
         },
         {
           "id": "befund:befund-idiom-fix",
@@ -1076,7 +1076,7 @@
         {
           "id": "passung:passung-critic",
           "name": "passung-critic",
-          "description": "Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the second-judge pass in canonize and verify.",
+          "description": "Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the single contract judge in canonize and verify.",
           "tools": [
             "Read",
             "Glob",

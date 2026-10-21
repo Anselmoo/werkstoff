@@ -142,4 +142,5 @@ if (refuted > 0) {
   log(`${refuted} candidate finding(s) did not survive independent re-verification and were dropped.`)
 }
 
-return { findings: confirmed }
+// judge-contract: no sealed set has measured this judge, so its verdicts are labelled calibrated: false.
+return { findings: confirmed, calibrated: false }

@@ -33,7 +33,7 @@ class Repo:
         analysis = self.root / "analysis" / "zeugnis"
         analysis.mkdir(parents=True)
         for domain, findings in (summaries or {}).items():
-            summary = {"domain": domain, "findings": findings, "verificationRan": True}
+            summary = {"domain": domain, "findings": findings, "verificationRan": True, "unverifiedCount": 0}
             (analysis / f"{domain}_summary.json").write_text(json.dumps(summary))
 
     def __enter__(self):

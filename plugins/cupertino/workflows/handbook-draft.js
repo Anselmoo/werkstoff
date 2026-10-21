@@ -159,4 +159,5 @@ if (rules.length !== dimensions.length) {
   log(`${dimensions.length - rules.length} dimension(s) failed to produce a candidate and were dropped -- not silently treated as complete coverage.`)
 }
 
-return { domain, rules }
+// judge-contract: no sealed set has measured this judge, so its verdicts are labelled calibrated: false.
+return { domain, rules, calibrated: false }

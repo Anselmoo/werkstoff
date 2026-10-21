@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from lib.constants import AGENTIC_RELIABILITY_CATEGORIES  # noqa: E402
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
 from lib.schema import InvalidFindingError, validate_finding  # noqa: E402
+from lib.verification import begin_run, is_unverified, reconcile_requested, unverified_evidence, write_summary
 
 DOMAIN = "agentic_reliability"
 
@@ -46,11 +47,17 @@ def load_json_list(path):
     return raw.get("findings", raw) if isinstance(raw, dict) else raw
 
 
-def reconcile(find_findings, verify_findings):
-    if verify_findings is None:
-        return find_findings
-    verified_evidence = {f.get("evidence") for f in verify_findings if f.get("confirmed", True)}
-    return [f for f in find_findings if f.get("evidence") in verified_evidence]
+def load_raw(path):
+    with open(path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def reconcile(find_findings, raw_verify, skip_verification=False):
+    # Skip-vs-verify is decided by the flag alone. Three buckets otherwise:
+    # literal True -> kept; literal False -> dropped as refuted; anything else
+    # (missing, non-boolean, no record, an unusable payload such as null) ->
+    # abstain: KEPT and marked verification="unverified". An abstain is never a pass.
+    return reconcile_requested(find_findings, raw_verify, skip_verification=skip_verification, domain=DOMAIN)
 
 
 def main() -> int:
@@ -69,9 +76,13 @@ def main() -> int:
         )
 
     repo_root = os.path.abspath(args.repo_root)
+    begin_run(repo_root, DOMAIN)  # a failed run must not leave the old sidecar readable
     find_findings = load_json_list(args.find_json) or []
-    verify_findings = load_json_list(args.verify_json)
-    survivors = reconcile(find_findings, verify_findings)
+    raw_verify = None if args.skip_verification else load_raw(args.verify_json)
+    survivors = reconcile(find_findings, raw_verify, args.skip_verification)
+    # Counted BEFORE the per-finding filters below: a later drop must not
+    # be able to hide that the verifier abstained.
+    unverified = unverified_evidence(survivors)
 
     clean_findings = []
     by_category = {c: 0 for c in AGENTIC_RELIABILITY_CATEGORIES}
@@ -93,15 +104,18 @@ def main() -> int:
         "domain": DOMAIN,
         "verificationRan": verification_ran,
         "categoryCounts": by_category,
+        "unverifiedCount": len(unverified),
+        "unverified": unverified,
         "findings": clean_findings,
     }
 
     summary_path = safe_output_path(repo_root, "agentic_reliability_summary.json")
-    ensure_parent_dir(summary_path)
-    with open(summary_path, "w", encoding="utf-8") as fh:
-        json.dump(summary, fh, indent=2, sort_keys=True)
+    write_summary(summary_path, summary)
 
     lines = ["# zeugnis Agentic Reliability", "", f"Verification phase ran: {verification_ran}", ""]
+    if unverified:
+        lines += [f"**{len(unverified)} finding(s) UNVERIFIED** (verifier gave no literal true/false): "
+                  "not clean, not converged.", ""]
     for category in AGENTIC_RELIABILITY_CATEGORIES:
         cat_findings = [f for f in clean_findings if f["category"] == category]
         lines.append(f"## {category} ({len(cat_findings)})")
@@ -112,7 +126,8 @@ def main() -> int:
             continue
         lines += ["| Severity | Title | Evidence | Fixability |", "|---|---|---|---|"]
         for f in cat_findings:
-            lines.append(f"| {f['severity']} | {f['title']} | {f['evidence']} | {f['fixability']} |")
+            title = f["title"] + (" [UNVERIFIED]" if is_unverified(f) else "")
+            lines.append(f"| {f['severity']} | {title} | {f['evidence']} | {f['fixability']} |")
         lines.append("")
 
     lines.append("## Trivial-scope exceptions (documented separately, not counted as findings)")
@@ -130,7 +145,7 @@ def main() -> int:
     with open(report_path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
 
-    print(json.dumps({"summary_path": summary_path, "report_path": report_path, "findingCount": len(clean_findings)}, indent=2))
+    print(json.dumps({"summary_path": summary_path, "report_path": report_path, "findingCount": len(clean_findings), "unverifiedCount": len(unverified)}, indent=2))
     return 0
 
 

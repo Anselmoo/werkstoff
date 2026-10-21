@@ -6,6 +6,22 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+### Changed
+- **canonize, verify**: the two-judge provenance panel and the non-blind PASS re-check
+  are each one judge call under the shared verdict contract (`verdict@1`, #119). The
+  judge reports per-criterion scores and evidence; `decideVerdict` decides. A fail, an
+  abstain or a dead judge is never a pass: a card becomes `needs-human-decision`, a
+  module `PASS-WITH-GAPS`. Both workflows return `spotCheck` and `calibrated: false`,
+  and the commands show the sample every run. Rubrics: `references/judge-rubrics.md`.
+- **verify**: rubric `passung-equivalence@1` gains the criterion `no-behavior-change`
+  (the aligned module behaves identically: no changed outputs, side effects or error
+  paths). Judge outcome maps to the module verdict as `pass` -> `PASS`; `fail` with
+  `no-behavior-change` failed -> `FAIL`; any other `fail` or an `abstain` ->
+  `PASS-WITH-GAPS` carrying the failing evidence or the abstain reason. Only a changed
+  behavior overturns a `PASS` to `FAIL`; a coverage or docs gap or an undecided judge
+  cannot. A module whose Check agent died is returned in `unchecked` instead of
+  vanishing from the report. `stats.overturnedToFail` counts the `FAIL` overturns.
+
 ## [1.0.2] - 2026-09-26
 ### Fixed
 - **skills**: every `python3 "${CLAUDE_PLUGIN_ROOT}/…"` that a skill, command or

@@ -118,4 +118,6 @@ return {
   winner: winner.framing,
   critique: critique.checklist,
   final_prompt: critique.final_prompt,
+  // judge-contract: the scoring has no sealed known-answer set behind it.
+  calibrated: false,
 }

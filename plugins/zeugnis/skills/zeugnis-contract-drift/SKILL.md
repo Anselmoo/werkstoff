@@ -28,7 +28,9 @@ documentation — only structural, machine-checkable declarations.
 4. Unless `skip_verification` is `true`: dispatch the `contract-auditor`
    agent again in **Verify mode**, independently re-checking each
    Find-phase finding. Write `{"findings": [{"evidence": "...",
-   "confirmed": true|false}, ...]}` to a second scratch file.
+   "confirmed": true|false}, ...]}` to a second scratch file, with a literal
+   boolean for every Find-phase finding: any other answer is kept as
+   `verification: "unverified"` and counted in `unverifiedCount`.
 5. Run:
    ```
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/contract_drift.py" <repo_root> \

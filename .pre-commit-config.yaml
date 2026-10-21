@@ -74,6 +74,45 @@ repos:
         stages: [pre-commit]
         files: ^scripts/ci/check_workflow_models\.py$
 
+      - id: check-judge-contract
+        name: vendored judge-contract copies match tools/judge-contract/ (JC-* rules)
+        entry: python3 scripts/ci/check_judge_contract.py
+        language: system
+        # Like check-workflow-models, the verdict is about the whole set (every
+        # REQUIRED workflow carries the block, every copy is byte-identical);
+        # handed a subset it would make a weaker claim.
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(plugins/[^/]+/workflows/.*\.js|plugins/[^/]+/scripts/.*judge_contract\.py|plugins/[^/]+/references/judge-contract\.md|tools/judge-contract/.*|scripts/ci/check_judge_contract\.py)$
+
+      - id: check-judge-contract-selftest
+        name: check-judge-contract calibrates itself (planted defects)
+        entry: python3 scripts/ci/check_judge_contract.py
+        args: [--selftest]
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^(scripts/ci/check_judge_contract\.py|tools/judge-contract/.*)$
+
+      - id: judge-contract-selftest
+        name: judge_contract.py decides its own known answers
+        entry: python3 tools/judge-contract/judge_contract.py
+        args: [--selftest]
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        files: ^tools/judge-contract/.*$
+
+      - id: judge-contract-parity
+        name: Python and JS verdict implementations agree (needs node)
+        entry: python3 tools/judge-contract/test_parity.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        # node is already a hard requirement of check-js-syntax above, so this
+        # hook adds no new tool to the environment.
+        files: ^tools/judge-contract/.*$
+
       - id: check-design-tokens
         name: docs theme and report viewers use design tokens (shrink-only baseline)
         entry: python3 scripts/ci/check_design_tokens.py

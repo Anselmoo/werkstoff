@@ -227,7 +227,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 "document the domain rules hidden in this code as testable specs"
 ````
 
-> Triggers `befund-extract-rules` — mines calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a two-judge panel to confirm any P0 rule.
+> Triggers `befund-extract-rules` — mines calculations, validations, and state transitions into Given/When/Then rules, looping to convergence and requiring a scored judge verdict to pass for any P0 rule.
 
 ### Apply the modernization findings
 

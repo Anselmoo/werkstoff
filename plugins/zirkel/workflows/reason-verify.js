@@ -80,4 +80,6 @@ return {
   attempts,
   final_answer: best[0],
   agreement: `${best[1]}/${SELF_CONSISTENCY_ATTEMPTS}`,
+  // judge-contract: self-consistency agreement is not calibration against known answers.
+  calibrated: false,
 }

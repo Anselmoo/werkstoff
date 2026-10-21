@@ -19,6 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
+from lib.verification import unverified_blockers
 
 DOMAIN_SKILLS = {
     "dependency_audit": ("zeugnis-dependency-audit", "dependency_audit_summary.json"),
@@ -69,7 +70,8 @@ def build_dashboard(repo_root: str) -> dict:
             "hasRun": mtime is not None,
             "lastRunEpoch": mtime,
             "staleRelativeToLatestCommit": stale,
-            "findingCount": len(summary["findings"]) if summary else None,
+            # An incomplete-run placeholder has no findings list: unknown, not zero.
+            "findingCount": len(summary["findings"]) if isinstance(summary, dict) and isinstance(summary.get("findings"), list) else None,
         }
 
     ledger = None
@@ -83,21 +85,35 @@ def build_dashboard(repo_root: str) -> dict:
         last_pass = ledger["passes"][-1]
         converged = last_pass["closed"] == 0 and last_pass["fixOrDraftOutcomes"] == 0
 
-    suggestion = suggest_next_action(domains, ledger, converged)
+    # An abstain is not a pass: unverified findings (or a sidecar the gate
+    # cannot read) mean the cycle has not converged, whatever the last pass did.
+    blockers = unverified_blockers(repo_root)
+    if blockers and converged:
+        converged = False
+
+    suggestion = suggest_next_action(domains, ledger, converged, blockers)
 
     return {
         "domains": domains,
         "ledgerPresent": ledger is not None,
         "cycleConverged": converged,
+        "unverifiedBlockers": blockers,
         "suggestion": suggestion,
     }
 
 
-def suggest_next_action(domains: dict, ledger, converged) -> dict:
+def suggest_next_action(domains: dict, ledger, converged, blockers=()) -> dict:
     never_run = [d for d, info in domains.items() if not info["hasRun"]]
     if never_run:
         skill = DOMAIN_SKILLS[never_run[0]][0]
         return {"action": skill, "reason": f"{never_run[0]} has never been run"}
+
+    if blockers:
+        first = blockers[0]
+        return {
+            "action": DOMAIN_SKILLS[first["domain"]][0],
+            "reason": f"{first['domain']}: {first['reason']}; re-run its Verify phase",
+        }
 
     stale = [(d, info) for d, info in domains.items() if info["staleRelativeToLatestCommit"]]
     if stale:

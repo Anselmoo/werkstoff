@@ -32,15 +32,15 @@ Mined <date>. 3 rounds run (converged: 2 consecutive dry rounds).
   When  the nightly overdraft-fee batch runs
   Then  no overdraft fee is charged (payroll accounts are fee-exempt by statute)
 **Status:** confirmed
-  Two-judge panel confirmed: judge-a and judge-b both independently
+  Judge verdict pass (befund-p0-rule@1, score 0.85, uncalibrated): the judge
   re-read src/billing/overdraft.py:58 and verified the is_payroll exemption.
 
 ## Unconfirmed rules (1)
 
-- **RULE-007** (interest-rate cap on promotional balances, P0): only one
-  judge (`judge-a`) was independently dispatched before the round closed --
-  `panel_confirmed` never reached `true`. Not included above; re-run the
-  panel step to confirm or drop it.
+- **RULE-007** (interest-rate cap on promotional balances, P0): the judge
+  abstained (`judge:src/rates/promo.py not found at the cited commit`), so its
+  `p0_verdict` is not a pass. Not included above; fix the citation and re-run
+  the judge step to confirm or drop it.
 ```
 
 ## Sample: nothing found

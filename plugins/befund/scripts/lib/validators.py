@@ -8,6 +8,9 @@ own docstring; two kinds (docs_drift_summary, file_stage_index) have no
 further evidenced rejection condition beyond what's here -- do not invent
 additional ones.
 """
+import unicodedata
+
+from lib import p0_panel
 from lib.errors import SelfAssessError
 from lib.formulas import complexity_index
 
@@ -32,12 +35,57 @@ def validate_complexity_score_summary(data):
             )
 
 
+_PRIORITIES = frozenset({"P0", "P1", "P2", "P3"})
+
+
+def normalised_priority(value):
+    """The closed-set priority ``value`` spells, or None when it spells none.
+
+    A string only (``["P0"]`` and ``None`` are not one). NFKC folds fullwidth
+    ``Ｐ０`` to ``P0``; every whitespace and format (category ``Cf``) character is
+    then removed, so ``P 0`` and ``P0\u200b`` still read as P0; the rest is
+    upper-cased and must be exactly one of P0-P3.
+
+    This is the READING of a spelling, shared by the validator (to name the
+    canonical form in a refusal) and by ``transform_routing.flag_p0_blockers``
+    (defensively, on data that may never have been validated). Stored data is
+    required to already BE the canonical string: the validator refuses every other
+    spelling, so nothing downstream has to repeat this fold to find a P0.
+    """
+    if not isinstance(value, str):
+        return None
+    folded = unicodedata.normalize("NFKC", value)
+    kept = "".join(c for c in folded if not c.isspace() and unicodedata.category(c) != "Cf")
+    kept = kept.upper()
+    return kept if kept in _PRIORITIES else None
+
+
 def validate_business_rules_summary(data):
     for rule in data.get("rules", []):
-        if rule.get("priority") == "P0" and rule.get("panel_confirmed") is not True:
+        raw = rule.get("priority")
+        # Exactly "P0".."P3". A spelling that merely READS as one ("p0", "P 0",
+        # fullwidth) is refused, not stored: transform_routing and every other
+        # consumer compare the stored string, so a non-canonical P0 would pass the
+        # judge here and then slip past the transform brief's P0 blockers.
+        if not isinstance(raw, str) or raw not in _PRIORITIES:
+            reads_as = normalised_priority(raw)
+            hint = f" (it reads as {reads_as!r}; write exactly {reads_as!r})" if reads_as else ""
             raise SelfAssessError(
-                f"business_rules_summary: P0 rule {rule.get('id')!r} is missing "
-                "panel_confirmed: true."
+                f"business_rules_summary: rule {rule.get('id')!r} has priority "
+                f"{raw!r}, which is not exactly one of {sorted(_PRIORITIES)!r}{hint}. "
+                "The canonical form is upper-case with no spaces, e.g. 'P0'."
+            )
+        if raw != "P0":
+            continue
+        # The contract judge's decided verdict is the only evidence: a bare
+        # boolean, the old panel_confirmed, or an abstain/fail verdict never
+        # passes. p0_panel.refusal is the one gate shared with p0-confirm.
+        why = p0_panel.refusal(rule)
+        if why is not None:
+            raise SelfAssessError(
+                f"business_rules_summary: P0 rule {rule.get('id')!r} is unconfirmed: "
+                f"{why}. A P0 rule needs a p0_verdict from rubric "
+                f"{p0_panel.RUBRIC_ID!r} whose outcome is 'pass'."
             )
 
 

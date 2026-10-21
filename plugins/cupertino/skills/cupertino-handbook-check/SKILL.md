@@ -27,7 +27,7 @@ Check files against an existing handbook, one rule at a time, verifying every fi
 
    Sidecar shape, populated:
    ```json
-   {"findings": [{"rule": "no-inline-styles", "file": "src/Card.tsx", "line": 42, "severity": "Medium", "mechanical": true}]}
+   {"findings": [{"rule": "no-inline-styles", "file": "src/Card.tsx", "line": 42, "severity": "Medium", "mechanical": true, "verification": {"verdict": "confirmed"}}]}
    ```
    Sidecar shape, zero findings:
    ```json

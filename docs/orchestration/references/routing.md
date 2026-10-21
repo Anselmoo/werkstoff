@@ -113,8 +113,8 @@ the uplift was about to resolve anyway.
 validations and state transitions into Given/When/Then rules with `file:line`
 citations. The difference is what consumes the output: the former feeds
 `BUSINESS_RULES.md`, a hard input to `/modernize-brief`, so that a rewrite can be
-proven behaviour-equivalent; the latter loops to convergence and requires a two-judge
-panel to confirm any P0 rule, and feeds a repo's own understanding of itself. Running
+proven behaviour-equivalent; the latter loops to convergence and requires one scored
+contract judge (rubric `befund-p0-rule@1`) to pass for any P0 rule, and feeds a repo's own understanding of itself. Running
 both over the same modules produces two rule sets that will not be reconciled by
 anything. Choose by which brief, if any, is going to be signed.
 

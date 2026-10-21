@@ -293,4 +293,6 @@ return {
   revised: revision ? { scores: revision.scores, changes: revision.changes, result: revision.revised } : null,
   revise_converged: reviseConverged,
   phases_run: phasesRun,
+  // judge-contract: the Explore and Revise scores come from judges no sealed set has measured.
+  calibrated: false,
 }

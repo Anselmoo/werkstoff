@@ -36,8 +36,8 @@ both a schema and a worked example, with neither ever left to prose alone.
 The clearest side-by-side is `befund`'s business-rules pipeline against
 its closest official analog, `code-modernization`'s. Both plugins do the same
 job — mine business logic into Given/When/Then rules with file:line citations
-— and both have equivalent enforcement (citation verification, a two-judge
-panel for P0 rules). The only material difference is that one *shows* its
+— and both have equivalent enforcement (citation verification, one scored
+contract judge for P0 rules). The only material difference is that one *shows* its
 output and one *describes* it. See §3 for the full comparison.
 
 ---
@@ -213,7 +213,7 @@ output must match:
 `plugins/befund/skills/befund-extract-rules/SKILL.md`):**
 
 Same job, same enforcement rigor (loop-to-convergence, independent citation
-referee, two-judge P0 panel — arguably *more* rigorous than the official
+referee, one scored contract judge for P0 rules — arguably *more* rigorous than the official
 version). Before this doc, the entire output contract was one
 sentence: "a JSON list of rules, each with `id`, `given`/`when`/`then`,
 `priority`, `confidence`, and `citation` (`file:line`)." — no worked example,

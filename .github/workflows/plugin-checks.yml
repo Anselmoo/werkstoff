@@ -21,6 +21,7 @@ jobs:
       frontmatter: ${{ steps.frontmatter.outcome }}
       js_syntax: ${{ steps.js_syntax.outcome }}
       workflow_models: ${{ steps.workflow_models.outcome }}
+      judge_contract: ${{ steps.judge_contract.outcome }}
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
       design_tokens: ${{ steps.design_tokens.outcome }}
       readme_skeleton: ${{ steps.readme_skeleton.outcome }}
@@ -32,6 +33,7 @@ jobs:
       andon_tests: ${{ steps.andon_tests.outcome }}
       guard_hook_tests: ${{ steps.guard_hook_tests.outcome }}
       ledger_validator_tests: ${{ steps.ledger_validator_tests.outcome }}
+      fail_closed_tests: ${{ steps.fail_closed_tests.outcome }}
       differential_guards: ${{ steps.differential_guards.outcome }}
       hooks_deny: ${{ steps.hooks_deny.outcome }}
       hook_bytecode: ${{ steps.hook_bytecode.outcome }}
@@ -151,6 +153,22 @@ jobs:
           python3 scripts/ci/check_workflow_models.py --selftest
           python3 scripts/ci/check_workflow_models.py
 
+      - name: Check the judge verdict contract (issue #119)
+        id: judge_contract
+        continue-on-error: true
+        # docs/plugin-authoring/references/judge-contract.md. Three instruments,
+        # each calibrated before the gate that trusts it: the contract's own
+        # known answers, the Python-vs-JS parity test (needs node, set up
+        # above), and the sync check's planted defects. Only then the sync
+        # gate itself over the real tree. A verdict implementation that
+        # cannot fail, or two that disagree silently, would make every judge
+        # downstream look decided when nothing was.
+        run: |
+          python3 tools/judge-contract/judge_contract.py --selftest
+          python3 tools/judge-contract/test_parity.py
+          python3 scripts/ci/check_judge_contract.py --selftest
+          python3 scripts/ci/check_judge_contract.py
+
       - name: Check report-viewer conformance
         id: viewer_conformance
         continue-on-error: true
@@ -269,6 +287,23 @@ jobs:
           python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py
           python3 plugins/arbeitsplan/hooks/test_arbeitsplan_guard.py
           python3 plugins/arbeitsplan/hooks/test_record_stop_guard.py
+
+      - name: Run fail-closed judge and verification test suites
+        id: fail_closed_tests
+        continue-on-error: true
+        # The fail-closed fixes of issue #119 each shipped with a test that plants the
+        # old fail-open behaviour back and must go red, and none ran in CI: a guard
+        # whose calibration is never run is a guard that can regress with nothing
+        # red. befund's P0 panel and zeugnis's reconcile and cupertino's
+        # check-summary/fix gate must never read a missing verdict as a pass;
+        # passung's verify mapping must keep a failed no-behavior-change a FAIL and
+        # an abstain a PASS-WITH-GAPS. The .js suites need node (set up above).
+        run: |
+          python3 plugins/befund/scripts/lib/test_p0_panel.py
+          python3 plugins/zeugnis/scripts/test_reconcile_fail_closed.py
+          node plugins/cupertino/scripts/test_fail_closed.js
+          python3 plugins/cupertino/scripts/test_check_summary_verification.py
+          node plugins/passung/scripts/test_verify_mapping.js
 
       - name: Run andon-ledger-validator test suite
         id: ledger_validator_tests
@@ -481,6 +516,7 @@ jobs:
           steps.frontmatter.outcome == 'failure' ||
           steps.js_syntax.outcome == 'failure' ||
           steps.workflow_models.outcome == 'failure' ||
+          steps.judge_contract.outcome == 'failure' ||
           steps.viewer_conformance.outcome == 'failure' ||
           steps.design_tokens.outcome == 'failure' ||
           steps.readme_skeleton.outcome == 'failure' ||
@@ -492,6 +528,7 @@ jobs:
           steps.andon_tests.outcome == 'failure' ||
           steps.guard_hook_tests.outcome == 'failure' ||
           steps.ledger_validator_tests.outcome == 'failure' ||
+          steps.fail_closed_tests.outcome == 'failure' ||
           steps.differential_guards.outcome == 'failure' ||
           steps.hooks_deny.outcome == 'failure' ||
           steps.hook_bytecode.outcome == 'failure' ||
@@ -546,6 +583,7 @@ jobs:
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "Workflow agent() models valid (omitted inherits) + relay briefing" "${{ needs.checks.outputs.workflow_models }}"
+            row "Judge verdict contract (command first, one rubric judge, abstain never passes; vendored copies in sync)" "${{ needs.checks.outputs.judge_contract }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
@@ -557,6 +595,7 @@ jobs:
             row "andon core + hook test suites" "${{ needs.checks.outputs.andon_tests }}"
             row "befund + zeugnis hook test suites" "${{ needs.checks.outputs.guard_hook_tests }}"
             row "andon-ledger-validator test suite" "${{ needs.checks.outputs.ledger_validator_tests }}"
+            row "Fail-closed judge + verification test suites (befund, zeugnis, cupertino, passung)" "${{ needs.checks.outputs.fail_closed_tests }}"
             row "guard differential cases (old denies / new allows, and one both deny)" "${{ needs.checks.outputs.differential_guards }}"
             row "declared hooks actually deny (verify-hooks-deny)" "${{ needs.checks.outputs.hooks_deny }}"
             row "hooks + skill-invoked scripts write no bytecode into the installed copy (#88)" "${{ needs.checks.outputs.hook_bytecode }}"
@@ -572,7 +611,7 @@ jobs:
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
             table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-workflow-models, check-workflow-models-selftest, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-workflow-models, check-workflow-models-selftest, check-judge-contract, check-judge-contract-selftest, judge-contract-selftest, judge-contract-parity, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
             echo "</tbody></table>"
           } > board.md
           cat board.md
