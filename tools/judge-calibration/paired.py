@@ -175,7 +175,8 @@ def stage(dest: Path, out: Path, map_file: Path) -> int:
                     (rd / f"{name}.txt").write_text(text.replace(TREE, tp), encoding="utf-8")
                 runs[f"{r}{arm}"] = rd.as_posix()
         args_items.append({"key": key, "runs": runs})
-    out.write_text(json.dumps({"repeats": REPEATS, "items": args_items}) + "\n", encoding="utf-8")
+    out.write_text(json.dumps({"rolesRoot": roles.as_posix(), "repeats": REPEATS,
+                               "keys": [x["key"] for x in args_items]}) + "\n", encoding="utf-8")
     map_file.write_text(json.dumps(mapping, indent=2) + "\n", encoding="utf-8")
     print(f"staged {len(args_items)} items x {REPEATS} repeats x 2 arms under {dest.as_posix()}; args {out.as_posix()}")
     return 0

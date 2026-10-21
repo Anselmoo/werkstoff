@@ -155,11 +155,13 @@ const fence = (s) => `<<<UNTRUSTED\n${s}\nUNTRUSTED>>>`
 const task = (file) => `Your task is the text in the file ${file} . Read it and do exactly what it says. Reply with what it asks for and nothing else.`
 const taskWith = (file, parts) => [`Your task is the text in the file ${file} , followed by the material below. Read the file and do exactly what it says. Reply with what it asks for and nothing else.`, ...parts].join('\n\n')
 
-const items = args.items
+// args: { rolesRoot, repeats, keys }: each run's prompts are in `${rolesRoot}/${key}-${r}${arm}/`.
+const items = args.keys.map((key) => ({ key }))
 const repeats = args.repeats
+const runDir = (key, r, arm) => `${args.rolesRoot}/${key}-${r}${arm}`
 
 async function tribunal(it, r) {
-  const dir = it.runs[`${r}a`]
+  const dir = runDir(it.key, r, 'a')
   const tag = `${it.key} r${r}`
   const [d, c] = await parallel([
     () => agent(task(`${dir}/defender.txt`), { label: `defender ${tag}`, phase: 'Tribunal', agentType: 'andon:andon-defender' }),
@@ -177,7 +179,7 @@ async function tribunal(it, r) {
 }
 
 async function contractJudge(it, r) {
-  const dir = it.runs[`${r}b`]
+  const dir = runDir(it.key, r, 'b')
   const rep = await agent(task(`${dir}/judge.txt`),
     { label: `contract judge ${it.key} r${r}`, phase: 'Contract judge', agentType: 'general-purpose', schema: JUDGE_VERDICT_SCHEMA })
   if (!rep) return { key: it.key, r, arm: 'b', dead: 'judge' }
