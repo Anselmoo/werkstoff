@@ -6,6 +6,18 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+### Changed
+- **p0-confirm**: `scripts/lib/judge_contract.py` re-vendored at the shared contract's
+  `verdict@2`, a superset of `verdict@1`. A judge may now mark one criterion undecidable
+  (`score` and `pass` both `null`, evidence naming what would decide it). A failed criterion
+  still refuses the rule whatever else is undecidable; with nothing failed, an undecidable one
+  is an abstain (`undecidable:<id>`), and either way the rule is not confirmed. A report with
+  no `null`s decides exactly as before.
+
+### Fixed
+- **p0-confirm**: `downgrade_reason` lists only decided criteria among the failures. Read as
+  `not c["pass"]`, an undecidable criterion (`pass` null) would have been named as one.
+
 ## [1.1.0] - 2026-10-21
 
 ### Added

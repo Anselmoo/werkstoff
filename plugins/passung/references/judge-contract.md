@@ -1,4 +1,4 @@
-# Judge verdict contract (verdict@1)
+# Judge verdict contract (verdict@2)
 
 This file is vendored byte for byte. Do not edit a copy: change the canonical copy and
 vendor it again. A sync check fails on any difference.
@@ -56,8 +56,16 @@ The judge returns only this, under a strict schema:
 }
 ```
 
-A judge that cannot judge says so with `"abstain": true` and a reason. Abstaining is an
-honest answer. A guessed score is not.
+A judge that cannot decide **one criterion** from the evidence it can reach marks that
+criterion undecidable: `score` and `pass` both `null`, and the evidence says what would
+decide it.
+
+```json
+{ "id": "relevant", "score": null, "pass": null, "evidence": "needs EXPLAIN on the production database" }
+```
+
+A judge that cannot judge the **item** at all says so with `"abstain": true` and a reason.
+Abstaining, whole or per criterion, is an honest answer. A guessed score is not.
 
 ## 3. Code decides the outcome
 
@@ -66,16 +74,23 @@ workflow, computes it the same way every time:
 
 | outcome | when |
 |---|---|
-| `abstain` | the report is missing or not an object; it names no item or a different item; `abstain` is not a boolean, or is true; any rubric criterion is missing, duplicated or unknown; any score is not a number in [0, 1] (a boolean is not a number); any `pass` is not a boolean; any evidence is empty |
-| `fail` | the report is well-formed, and any criterion has `pass: false`, or the **minimum** criterion score is below the threshold |
-| `pass` | everything else |
+| `abstain` | the report is missing or not an object; it names no item or a different item; `abstain` is not a boolean, or is true; any rubric criterion is missing, duplicated or unknown; any score is not a number in [0, 1] (a boolean is not a number) and any `pass` is not a boolean, except that both may be `null` together; any evidence is empty |
+| `fail` | the report is well-formed, and any **decided** criterion has `pass: false` or a score below the threshold, whatever the undecidable criteria are |
+| `abstain` | nothing failed, and at least one criterion is undecidable: `abstainReason` is `undecidable:<id>[,<id>...]`, in rubric order |
+| `pass` | everything else: every criterion decided, passed, and at or above the threshold |
 
-- **`score` is the minimum, never an average.** If three criteria pass and a fourth fails,
-  the verdict fails.
+- **A fail dominates an undecidable.** If one criterion fails and another cannot be decided,
+  the verdict fails: no evidence about the second could rescue the first.
+- **`score` is the minimum of the decided criteria, never an average.** If three criteria
+  pass and a fourth fails, the verdict fails.
 - **An abstain is never a pass.** Anything that gates on the verdict treats an abstain as
   not passed, and reports it separately from a fail.
-- **`abstainReason` is a fixed code** such as `missing-criterion:<id>` when code abstained,
-  or `judge:<text>` when the judge abstained. Every abstain can be traced to a cause.
+- **`abstainReason` is a fixed code** such as `missing-criterion:<id>` or
+  `undecidable:<id>` when code abstained, or `judge:<text>` when the judge abstained. Every
+  abstain can be traced to a cause. An `undecidable:` abstain keeps every criterion, so the
+  evidence of the decided ones is kept; any other abstain carries none.
+- **A verdict@1 report decides exactly as before.** Only a criterion with both `score` and
+  `pass` set to `null` behaves differently; a `null` on one of them alone is still malformed.
 
 The decided verdict has these fields: `item`, `rubric`, `decidedBy`, `criteria`,
 `abstain`, `abstainReason`, `threshold`, `score`, `outcome`, `calibrated`.

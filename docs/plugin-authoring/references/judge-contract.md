@@ -2,7 +2,7 @@
 
 Issue #119. Every werkstoff plugin that asks a model whether something holds, whether a
 finding is real, a rule is grounded, a candidate meets its criteria or a wire is proven,
-follows one contract, **verdict@1**. The model reports evidence and code decides. This
+follows one contract, **verdict@2**. The model reports evidence and code decides. This
 page gives the rationale, explains how to adopt and calibrate a judge, and maps every
 judge in the twelve plugins onto the contract.
 
@@ -11,7 +11,7 @@ The canonical files are in `tools/judge-contract/`:
 | file | what it is | how a plugin gets it |
 |---|---|---|
 | `judge_contract.py` | `decide()`, `validate()`, `spot_check()`, `check_rubric()`, a CLI, and `--selftest` | copied byte for byte into `plugins/<p>/scripts/` |
-| `verdict.inline.js` | the block between `// judge-contract:start verdict@1` and `// judge-contract:end`: `JUDGE_VERDICT_SCHEMA`, `decideVerdict()`, `spotCheck()` | pasted verbatim into a Workflow script |
+| `verdict.inline.js` | the block between `// judge-contract:start verdict@2` and `// judge-contract:end`: `JUDGE_VERDICT_SCHEMA`, `decideVerdict()`, `spotCheck()` | pasted verbatim into a Workflow script |
 | `verdict.schema.json` | JSON Schema (draft 2020-12) for the **decided** verdict | referenced, not vendored |
 | `judge-contract.md` | the plugin-neutral contract text | copied into `plugins/<p>/references/` and cited from a SKILL |
 | `test_parity.py` | holds the JS block and the Python module to identical verdicts, and sabotages both | run in CI |
@@ -84,24 +84,44 @@ The full text is in `tools/judge-contract/judge-contract.md`. The parts that mat
 implementation:
 
 - **The judge returns** `{item, criteria: [{id, score, pass, evidence}], abstain,
-  abstainReason}` and nothing else. Code derives the rest.
+  abstainReason}` and nothing else. Code derives the rest. A criterion the judge cannot
+  decide from the evidence it can reach is **undecidable**: `score` and `pass` both `null`,
+  with evidence naming what would decide it.
 - **`decide()` / `decideVerdict()`** return `{item, rubric, decidedBy, criteria, abstain,
   abstainReason, threshold, score, outcome, calibrated}`:
   - `outcome` is `"abstain"` if the report is missing, null or not an object, names no
     item or a different one, has a non-boolean or true `abstain`, has any rubric
     criterion missing, duplicated or unknown, has any score that is not a number in
     [0, 1] (a boolean is not a number, even though Python says `True` is an `int`), has
-    any `pass` that is not a boolean, or has empty evidence.
-  - Otherwise `"fail"` if any `pass` is false or the **minimum** score is below the
-    threshold.
+    any `pass` that is not a boolean, or has empty evidence. A `score` and a `pass` that
+    are **both** `null` are the one exception: that criterion is undecidable. A `null` on
+    one of them alone, or a missing key, is still malformed.
+  - Otherwise `"fail"` if any **decided** criterion has `pass: false` or a score below the
+    threshold, whatever the undecidable criteria are. A fail dominates an undecidable.
+  - Otherwise `"abstain"` with reason `undecidable:<id>[,<id>...]` (rubric order) if any
+    criterion is undecidable.
   - Otherwise `"pass"`.
-- **An abstain is never a pass.** `score` is the minimum and never an average. On an
-  abstain, `score` is 0 and `criteria` is empty.
+- **An abstain is never a pass.** `score` is the minimum of the decided criteria and never
+  an average. On an abstain, `score` is 0. A report-level abstain carries no criteria; an
+  `undecidable:` abstain keeps all of them, so the decided ones' evidence is not lost.
+  `validate()` holds a stored verdict to the same rule: a fail relabelled as an
+  `undecidable:` abstain, or a pass with a `null` criterion, is invalid.
 - **`abstainReason`** is either a fixed code (`verdict-missing`, `missing-item`,
   `item-mismatch`, `malformed:abstain`, `malformed:criteria`, `malformed-criterion:<i>`,
   `duplicate-criterion:<id>`, `unknown-criterion:<id>`, `bad-score:<id>`, `bad-pass:<id>`,
-  `bad-evidence:<id>`, `missing-criterion:<id>`) or `judge:<text>`. Python and JS emit the
-  same string.
+  `bad-evidence:<id>`, `missing-criterion:<id>`, `undecidable:<ids>`) or `judge:<text>`.
+  Python and JS emit the same string.
+- **verdict@2 is a superset of verdict@1.** It changed nothing a verdict@1 report could
+  say: only a criterion with both `null`s decides differently, and the decided verdict keeps
+  its ten keys. The adopters were migrated explicitly: befund's vendored
+  `judge_contract.py`, and both passung workflows re-vendored the block and now tell their
+  judge what a `null` means. Every adopter that listed "the failing criteria" was changed
+  to list **decided** ones only, because `!null` is true. That bug would have made
+  `passung-verify` overturn a PASS to FAIL for a behaviour criterion nobody could decide.
+  The finished paired run (`wf_589ce94f-c60`) is a record of what ran, so its workflow keeps
+  the verdict@1 block it executed, pinned by hash in `paired.py`. Its committed reports
+  still re-score to the same `score.json` under verdict@2, and that recompute proves the
+  superset on every `paired.py check`.
 - **`calibrated`** is derived from the rubric's `calibration: {sealed, agreement, floor}`
   record and is true only when `sealed > 0` and `agreement >= floor`. A bare
   `"calibrated": true` on a rubric is ignored. No rubric has a record yet, so every
@@ -119,7 +139,7 @@ implementation:
 ### In a Workflow script
 
 1. Paste the whole block from `tools/judge-contract/verdict.inline.js` at column 0,
-   from `// judge-contract:start verdict@1` to `// judge-contract:end`. Put it **above
+   from `// judge-contract:start verdict@2` to `// judge-contract:end`. Put it **above
    the first line that uses any of its three names**. A `const` read before its
    declaration throws a `ReferenceError`, and that includes reads inside the `schema` of
    an `agent()` call placed above the block.
@@ -223,10 +243,10 @@ Status vocabulary:
 | plugin | judge (where) | shape today | status | resolves_if / note |
 |---|---|---|---|---|
 | andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | **kept-calibrated** | measured: sealed 8 (3 green, 3 red, 2 unknown, the reds being the `contested-wire-halts` repairs `verify-contested-fixture.py` proves cannot work), agreement 1.0 against floor 0.8, 0 false passes. It ran on the session's model (opus), because the andon agents declare none, and n=8 bounds a perfect score only at 0.63 (95%). Paired against one `andon-wire@1` contract judge on 20 items, 5 repeats each (same model): neither arm had a false pass, and the tribunal's record was 1.0 against 0.875, so the committed rule **keeps** it. The one discordant item is a failed criterion plus an unverifiable one, which verdict@1 can only abstain on (McNemar p = 1.0). The tribunal costs about 10x the output and was less consistent run to run. See [`judge-calibration.md`](judge-calibration.md#the-paired-measurement). Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
-| andon | epistemic rubric, strategy (c) (`skills/andon-verify/references/epistemic-rubric.md`) | five criteria (falsifiability, generalization, evidence-grounding, honesty-of-framing, accessibility), each pass/fail/neither, "do not average" | kept-unmeasured | the same paired run on falsifiability-rubric wires. The closest existing match to verdict@1: five named criteria and no averaging. Only the 0–1 score and the fixed threshold are missing |
+| andon | epistemic rubric, strategy (c) (`skills/andon-verify/references/epistemic-rubric.md`) | five criteria (falsifiability, generalization, evidence-grounding, honesty-of-framing, accessibility), each pass/fail/neither, "do not average" | kept-unmeasured | the same paired run on falsifiability-rubric wires. The closest existing match to the contract: five named criteria and no averaging, and its per-criterion `neither` is verdict@2's undecidable criterion. Only the 0–1 score and the fixed threshold are missing |
 | arbeitsplan | candidate-referee (`workflows/run.js` `REFEREE_SCHEMA`, `agents/candidate-referee.md`) | blind, one candidate per call; `accepted`/`accepted_different_approach`/`rejected`/`cannot_judge` with required `perCriterion[{id, met, evidence}]` | **kept-calibrated** | measured with the `run.js` prompt itself: sealed 10 (4 pass, 4 fail, 2 abstain), agreement 1.0 against floor 0.8, 0 false passes and 0 false fails, on sonnet, the agent's default. A spec that sets `modelTier` runs `run.js` with a different model, which is a different, unmeasured judge. The 95% bound on a perfect 10/10 is only 0.69. Still not migrated (no 0–1 scores, threshold in effect 1.0). Found: `withEvidence` lands an `accepted` with **one** met criterion, which is weaker than the agent's own "every criterion met". The case probing it did not trigger it, but the gap is reachable. See [`judge-calibration.md`](judge-calibration.md#findings-about-the-judges) |
 | arbeitsplan | waves blind referee (`workflows/waves.js` `REFEREE_SCHEMA`, ~line 69; separate from the `run.js` referee) | blind, branch names only; the referee runs every acceptance command in its own worktree and returns `winner` (a branch or `null`) plus `perCandidate[{branch, allPassed, failing}]`. A `null` winner halts the row with "NO CANDIDATE ACCEPTED" | kept-unmeasured | maps partly: `allPassed` = pass, and a `null` winner is a fail. The schema has no per-criterion `score` or `evidence`, no abstain (a dead referee and "no branch passed" both end in the same halt) and no calibration, and the winner is a first-in-list tie-break rather than a threshold. A command decides in principle (the exit codes), so the referee only reports them. Settled by a sealed set of candidate pairs with known acceptance, measuring whether the referee ever reports a different winner than the exit codes alone |
-| arbeitsplan | adjudicator (`agents/adjudicator.md`) | judges the round, not an item; may not overturn a referee and records disagreement as doubt | kept-unmeasured | a paired measurement of rounds adjudicated against rounds decided by `scripts/rounds.py decide` alone. It does not fit per-item verdict@1 by design |
+| arbeitsplan | adjudicator (`agents/adjudicator.md`) | judges the round, not an item; may not overturn a referee and records disagreement as doubt | kept-unmeasured | a paired measurement of rounds adjudicated against rounds decided by `scripts/rounds.py decide` alone. It does not fit a per-item verdict by design |
 | arbeitsplan | script phases (`workflows/run.js`, `sc.expectExit`) | the exit code must be in `expectExit`, or the run halts | conforms | the command decides |
 
 ### Befund and cli-scaffold

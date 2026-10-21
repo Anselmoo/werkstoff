@@ -6,6 +6,19 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+### Changed
+- **canonize, verify**: the vendored judge block moves to the shared contract's `verdict@2`,
+  a superset of `verdict@1`. The judge prompt now says a criterion it cannot decide gets
+  `score: null` and `pass: null`, with evidence naming what would decide it. A failed criterion
+  still fails the card or module whatever else is undecidable; with nothing failed, an
+  undecidable criterion is an abstain (`undecidable:<id>`). Neither is ever a pass.
+
+### Fixed
+- **verify**: the criteria counted as failing are the decided ones only. Read as `!c.pass`,
+  an undecidable `no-behavior-change` criterion beside any real failure would have overturned a
+  PASS to FAIL as a behaviour change nobody showed. **canonize** listed it as a failure in the
+  open question for the same reason.
+
 ## [1.1.0] - 2026-10-21
 ### Changed
 - **canonize, verify**: the two-judge provenance panel and the non-blind PASS re-check

@@ -12,9 +12,12 @@ not trusted here:
    ``1.0`` but every other difference is a mismatch. ``spotCheck`` is compared
    the same way over lists of 0..7 verdicts and k in 0..5.
 2. PARITY CAN FAIL. The threshold comparison is flipped (``<`` to ``<=``) on the
-   JS side, then on the Python side, plus a few more JS branches blanked; each
-   sabotaged copy must produce a mismatch. The case set includes a score exactly
-   at threshold, which is the only case that tells ``<`` from ``<=``.
+   JS side, then on the Python side, plus every other JS decision branch blanked,
+   verdict@2's undecidable branches included; each sabotaged copy must produce a
+   mismatch. The case set includes a score exactly at threshold, which is the only
+   case that tells ``<`` from ``<=``, and an undecidable criterion whose keys are
+   absent rather than null, which is the only case that tells ``=== null`` from
+   ``== null``.
 3. THE PYTHON SELFTEST CAN FAIL. Each decision branch of judge_contract.py is
    blanked on a scratch copy and ``--selftest`` must exit non-zero.
 
@@ -40,7 +43,7 @@ HERE = Path(__file__).resolve().parent
 PY_SRC = HERE / "judge_contract.py"
 JS_SRC = HERE / "verdict.inline.js"
 SCHEMA = HERE / "verdict.schema.json"
-START = "// judge-contract:start verdict@1"
+START = "// judge-contract:start verdict@2"
 END = "// judge-contract:end"
 
 # Values arrive on stdin, never interpolated into the script.
@@ -109,6 +112,13 @@ def build_cases(jc: types.ModuleType) -> tuple[list[dict], list[dict]]:
         {"raw": ok, "rubric": {**rubric, "threshold": 0.9}, "opts": {"item": "item-a"}},
         {"raw": ok, "rubric": {**rubric, "threshold": 0.91}, "opts": {"item": "item-a"}},
         {"raw": ok, "rubric": {**rubric, "calibrated": True}, "opts": {"item": "item-a"}},
+        # verdict@2: a fail's score over two decided criteria beside an undecidable;
+        # a JS-only undefined (the key absent) is not a null.
+        {"raw": raw_of(crit("grounded", 0.9), crit("relevant", 0.3, False)), "rubric": rubric, "opts": {"item": "item-a"}},
+        {"raw": raw_of(crit("grounded"), {"id": "relevant", "score": None, "evidence": "x"}), "rubric": rubric,
+         "opts": {"item": "item-a"}},
+        {"raw": raw_of(crit("grounded"), {"id": "relevant", "pass": None, "evidence": "x"}), "rubric": rubric,
+         "opts": {"item": "item-a"}},
     ]
     for cal in ({"sealed": 12, "agreement": 0.9, "floor": 0.8}, {"sealed": 12, "agreement": 0.7, "floor": 0.8},
                 {"sealed": 0, "agreement": 1.0, "floor": 0.8}, {"sealed": 12.0, "agreement": 0.8, "floor": 0.8},
@@ -188,16 +198,28 @@ def check_schema_shapes(jc: types.ModuleType, js_schema: dict) -> list[str]:
 
 # (where, old, new): each blanks one branch of the JS block; parity must catch it.
 JS_SABOTAGE = [
-    ("threshold comparison flipped", "if (minScore < threshold)", "if (minScore <= threshold)"),
+    ("threshold comparison flipped", "c.score < threshold)", "c.score <= threshold)"),
+    ("pass false ignored", "decided.some((c) => !c.pass || c.score", "decided.some((c) => c.score"),
+    ("fail does not dominate an undecidable", "if (failed) {", "if (failed && !undecided.length) {"),
+    ("undecidable branch removed", "const undecidable = e.score === null && e.pass === null", "const undecidable = false"),
+    ("a half-null read as undecidable", "e.score === null && e.pass === null", "(e.score === null || e.pass === null)"),
+    ("an absent key read as undecidable", "e.score === null && e.pass === null", "e.score == null && e.pass == null"),
+    ("undecidable ids out of rubric order", "filter((c) => c.pass === null).map((c) => c.id)",
+     "filter((c) => c.pass === null).map((c) => c.id).reverse()"),
+    ("fail scored over every criterion", "outcome = 'fail'\n      score = Math.min(...decided.map",
+     "outcome = 'fail'\n      score = Math.min(...criteria.map"),
     ("bool score accepted", "const isNum = (v) => typeof v === 'number'", "const isNum = (v) => typeof v === 'number' || typeof v === 'boolean'"),
     ("unknown criterion accepted", "if (!wanted.includes(cid)) return", "if (false) return"),
     ("missing criterion accepted", "if (!got.has(cid)) return [item, `missing", "if (false) return [item, `missing"),
-    ("average instead of minimum", "Math.min(...criteria.map((c) => c.score))",
-     "criteria.reduce((s, c) => s + c.score, 0) / criteria.length"),
+    ("average instead of minimum", "outcome = 'pass'\n      score = Math.min(...decided.map((c) => c.score))",
+     "outcome = 'pass'\n      score = decided.reduce((s, c) => s + c.score, 0) / decided.length"),
     ("spot-check stride removed", "return Array.from({ length: k }, (_, i) => ordered[Math.floor((i * (n - 1)) / (k - 1))])",
      "return ordered.slice(0, k)"),
 ]
-PY_SABOTAGE = [("threshold comparison flipped", "if min_score < threshold:", "if min_score <= threshold:")]
+PY_SABOTAGE = [
+    ("threshold comparison flipped", 'c["score"] < threshold for c in decided', 'c["score"] <= threshold for c in decided'),
+    ("fail does not dominate an undecidable", "        if failed:\n", "        if failed and not undecided:\n"),
+]
 
 # Each blanks one decision branch of judge_contract.py; --selftest must go red.
 SELFTEST_SABOTAGE = [
@@ -210,21 +232,45 @@ SELFTEST_SABOTAGE = [
     ("malformed-criterion", "if not isinstance(cid, str):\n            return", "if False:\n            return"),
     ("duplicate-criterion", "if cid in got:", "if False:"),
     ("unknown-criterion", "if cid not in wanted:", "if False:"),
-    ("bad-score", 'if not _is_unit(e.get("score")):', "if False:"),
-    ("bad-pass", 'if not isinstance(e.get("pass"), bool):', "if False:"),
+    ("bad-score", 'if not undecidable and not _is_unit(e.get("score")):', "if False:"),
+    ("bad-pass", 'if not undecidable and not isinstance(e.get("pass"), bool):', "if False:"),
     ("bad-evidence", "if not isinstance(ev, str) or not ev.strip():", "if False:"),
     ("missing-criterion", "        if cid not in got:", "        if False:"),
-    ("below threshold", "if min_score < threshold:", "if False:"),
-    ("pass false", 'if not all(c["pass"] for c in criteria):', "if False:"),
-    ("minimum, not average", 'min_score = min(c["score"] for c in criteria)',
-     'min_score = sum(c["score"] for c in criteria) / len(criteria)'),
+    ("below threshold", 'failed = any(not c["pass"] or c["score"] < threshold for c in decided)',
+     'failed = any(not c["pass"] for c in decided)'),
+    ("pass false", 'failed = any(not c["pass"] or c["score"] < threshold for c in decided)',
+     'failed = any(c["score"] < threshold for c in decided)'),
+    ("minimum, not average", 'outcome, score = "pass", min(c["score"] for c in decided)',
+     'outcome, score = "pass", sum(c["score"] for c in decided) / len(decided)'),
+    ("fail scored at its minimum", 'outcome, score = "fail", min(c["score"] for c in decided)',
+     'outcome, score = "fail", max(c["score"] for c in decided)'),
+    ("fail dominates an undecidable", "        if failed:\n", "        if failed and not undecided:\n"),
+    ("undecidable branch", 'undecidable = "score" in e and "pass" in e and e["score"] is None and e["pass"] is None',
+     "undecidable = False"),
+    ("undecidable needs both nulls", 'e["score"] is None and e["pass"] is None', '(e["score"] is None or e["pass"] is None)'),
+    ("undecidable needs both keys", 'undecidable = "score" in e and "pass" in e and e["score"] is None and e["pass"] is None',
+     'undecidable = e.get("score") is None and e.get("pass") is None'),
+    ("undecidable ids in rubric order", 'undecided = [c["id"] for c in criteria if c["pass"] is None]',
+     'undecided = [c["id"] for c in criteria if c["pass"] is None][::-1]'),
+    ("undecidable abstain keeps its criteria", 'outcome, score, reason = "abstain", 0.0, "undecidable:" + ",".join(undecided)',
+     'outcome, score, reason, criteria = "abstain", 0.0, "undecidable:" + ",".join(undecided), []'),
     ("bool is not a number", "isinstance(v, (int, float)) and not isinstance(v, bool)", "isinstance(v, (int, float))"),
     ("unit range", "_is_number(v) and 0 <= v <= 1", "_is_number(v)"),
     ("calibration derived", 'return cal["sealed"] > 0 and cal["agreement"] >= cal["floor"]', "return True"),
     ("spot-check stride", "return [ordered[(i * (n - 1)) // (k - 1)] for i in range(k)]", "return ordered[:k]"),
     ("spot-check sort", 'sorted(verdicts, key=lambda v: v["item"])', "list(verdicts)"),
-    ("validate threshold", 'and v["score"] >= v["threshold"]', ""),
-    ("validate minimum", 'if ok_crit and v["score"] != min(c["score"] for c in crit):', "if False:"),
+    ("validate threshold", 'failing = any(not c["pass"] or c["score"] < v["threshold"] for c in decided)',
+     'failing = any(not c["pass"] for c in decided)'),
+    ("validate minimum", 'if ok_crit and v["score"] != min(c["score"] for c in decided):', "if False:"),
+    ("validate undecidable shape", '(c["score"] is None and c["pass"] is None)', '(c["score"] is None or c["pass"] is None)'),
+    ("validate fail dominates", "            if failing:\n                errs.append(\"an abstain whose", "            if False:\n                errs.append(\"an abstain whose"),
+    ("validate undecidable needs a null", "            if not nulls:\n", "            if False:\n"),
+    ("validate undecidable names the nulls", 'elif why != "undecidable:" + ",".join(nulls):', "elif False:"),
+    ("validate report abstain has no criteria", "        elif crit:\n", "        elif False:\n"),
+    ("validate abstain score", '        if v["score"] != 0:\n', "        if False:\n"),
+    ("validate pass has no null", 'if v["outcome"] == "pass" and (nulls or failing):', 'if v["outcome"] == "pass" and failing:'),
+    ("validate fail has a failure", 'if v["outcome"] == "fail" and not failing:', "if False:"),
+    ("validate needs a decided criterion", "    if not decided:\n        errs.append", "    if False:\n        errs.append"),
 ]
 
 

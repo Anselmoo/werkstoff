@@ -44,13 +44,15 @@ Only the report below. It does not state a pass, a fail or a score for the whole
 }
 ```
 
-A judge that cannot read the citation says so with `"abstain": true` and a reason.
+A judge that can decide some criteria but not one of them gives that one `"score": null` and
+`"pass": null`, with evidence naming what would decide it (verdict@2). A judge that cannot read
+the citation at all says so with `"abstain": true` and a reason.
 
 ## What code decides
 
 `befund_cli.py p0-confirm` hands the report to `judge_contract.decide`, which returns the
-decided verdict: `outcome` is `pass`, `fail` or `abstain`, `score` is the lowest criterion
-score, and `calibrated` is derived from a calibration record the rubric does not have.
+decided verdict: `outcome` is `pass`, `fail` or `abstain` (a failed criterion is a `fail` even
+beside an undecidable one), `score` is the lowest decided criterion score, and `calibrated` is derived from a calibration record the rubric does not have.
 The verdict is stored on the rule as `p0_verdict`. `validate-artifact --kind
 business_rules_summary` accepts a P0 rule only when its `p0_verdict` is a well-formed
 verdict, from `befund-p0-rule@1`, about that rule's own id, with outcome `pass`. A fail,

@@ -133,6 +133,21 @@ class ConfirmTests(unittest.TestCase):
         self.assertFalse(out["confirmed"])
         self.assertEqual(out["rule"]["p0_verdict"]["abstainReason"], "verdict-missing")
 
+    def test_a_fail_beside_an_undecidable_criterion_names_only_the_failure(self):
+        # verdict@2: a failed criterion fails the rule whatever is undecidable, and the
+        # downgrade reason names the failure, not the criterion nobody could decide.
+        raw = report(scores=(0.2, None, 0.9), passes=(False, None, True))
+        out = p0_panel.confirm_p0_rule(rule(), raw)
+        self.assertFalse(out["confirmed"])
+        self.assertEqual(out["rule"]["p0_verdict"]["outcome"], "fail")
+        self.assertIn(CRITERIA[0], out["downgrade_reason"])
+        self.assertNotIn(CRITERIA[1], out["downgrade_reason"])
+
+    def test_an_undecidable_criterion_does_not_confirm(self):
+        out = p0_panel.confirm_p0_rule(rule(), report(scores=(0.9, None, 0.9), passes=(True, None, True)))
+        self.assertFalse(out["confirmed"])
+        self.assertEqual(out["downgrade_reason"], f"abstain: undecidable:{CRITERIA[1]}")
+
     def test_old_vote_shape_does_not_confirm(self):
         out = p0_panel.confirm_p0_rule(rule(), {"judge_id": "judge-a", "confirms": True})
         self.assertFalse(out["confirmed"])

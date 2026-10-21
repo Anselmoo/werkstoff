@@ -1,20 +1,23 @@
-// Canonical JS side of the judge verdict contract (verdict@1). Vendor the block
+// Canonical JS side of the judge verdict contract (verdict@2). Vendor the block
 // below VERBATIM into a Workflow script, above the first line that uses any of
 // its three names (a `const` read before its line throws a ReferenceError):
 // scripts/ci/check_judge_contract.py fails on any byte of drift, and
 // tools/judge-contract/test_parity.py holds it to judge_contract.py's decide().
 // Only the lines from the start marker to the end marker are compared.
-// judge-contract:start verdict@1
-// verdict@1 -- the judge reports, code decides. Vendored verbatim; edit only the
+// judge-contract:start verdict@2
+// verdict@2 -- the judge reports, code decides. Vendored verbatim; edit only the
 // canonical copy (tools/judge-contract/verdict.inline.js) and re-vendor.
 //   JUDGE_VERDICT_SCHEMA         pass as agent({ schema }) for one judge call per item
 //   decideVerdict(raw, rubric, { item, decidedBy })
 //                                the full verdict: outcome is "abstain" for a missing
 //                                or malformed report or any rubric criterion missing,
-//                                unknown or ill-typed; "fail" if any pass is false or
-//                                the MINIMUM score is below rubric.threshold; else
-//                                "pass". An abstain is never a pass. Throws on a
-//                                malformed rubric (an author bug, not a judge result).
+//                                unknown or ill-typed; "fail" if any DECIDED criterion
+//                                has pass false or a score below rubric.threshold,
+//                                whatever else is undecidable; "abstain" with reason
+//                                undecidable:<ids> if nothing failed and a criterion
+//                                is undecidable (score AND pass null); else "pass".
+//                                An abstain is never a pass. Throws on a malformed
+//                                rubric (an author bug, not a judge result).
 //   spotCheck(verdicts, k = 3)   first / middle / last by item id -- never random;
 //                                return it and show it to the user every run.
 const JUDGE_VERDICT_SCHEMA = {
@@ -32,9 +35,9 @@ const JUDGE_VERDICT_SCHEMA = {
         required: ['id', 'score', 'pass', 'evidence'],
         properties: {
           id: { type: 'string', description: 'a criterion id from the rubric, verbatim' },
-          score: { type: 'number', minimum: 0, maximum: 1, description: '0.0 = clearly not met, 1.0 = clearly met' },
-          pass: { type: 'boolean', description: 'is this criterion met' },
-          evidence: { type: 'string', description: 'file:line, a quote, or command output that decided it' },
+          score: { type: ['number', 'null'], minimum: 0, maximum: 1, description: '0.0 = clearly not met, 1.0 = clearly met; null only together with pass null' },
+          pass: { type: ['boolean', 'null'], description: 'is this criterion met; null (with score null) ONLY when no evidence available to you can decide it' },
+          evidence: { type: 'string', description: 'file:line, a quote, or command output that decided it; for an undecidable criterion, what would decide it' },
         },
       },
     },
@@ -97,24 +100,34 @@ function decideVerdict(raw, rubric, opts = {}) {
       if (typeof cid !== 'string') return [item, `malformed-criterion:${i}`, []]
       if (got.has(cid)) return [item, `duplicate-criterion:${cid}`, []]
       if (!wanted.includes(cid)) return [item, `unknown-criterion:${cid}`, []]
-      if (!isUnit(e.score)) return [item, `bad-score:${cid}`, []]
-      if (typeof e.pass !== 'boolean') return [item, `bad-pass:${cid}`, []]
+      const undecidable = e.score === null && e.pass === null
+      if (!undecidable && !isUnit(e.score)) return [item, `bad-score:${cid}`, []]
+      if (!undecidable && typeof e.pass !== 'boolean') return [item, `bad-pass:${cid}`, []]
       if (typeof e.evidence !== 'string' || !e.evidence.trim()) return [item, `bad-evidence:${cid}`, []]
       got.set(cid, { id: cid, score: e.score, pass: e.pass, evidence: e.evidence })
     }
     for (const cid of wanted) if (!got.has(cid)) return [item, `missing-criterion:${cid}`, []]
     return [item, '', wanted.map((cid) => got.get(cid))]
   }
-  const [item, reason, found] = firstDefect()
-  const criteria = reason ? [] : found
+  const [item, defect, found] = firstDefect()
+  const criteria = defect ? [] : found
+  let reason = defect
   let outcome = 'abstain'
   let score = 0
-  if (!reason) {
-    const minScore = Math.min(...criteria.map((c) => c.score))
-    score = minScore
-    outcome = 'pass'
-    if (minScore < threshold) outcome = 'fail'
-    if (!criteria.every((c) => c.pass)) outcome = 'fail'
+  if (!defect) {
+    const decided = criteria.filter((c) => c.pass !== null)
+    const undecided = criteria.filter((c) => c.pass === null).map((c) => c.id)
+    const failed = decided.some((c) => !c.pass || c.score < threshold)
+    // The order of these branches IS the rule: a fail dominates an undecidable.
+    if (failed) {
+      outcome = 'fail'
+      score = Math.min(...decided.map((c) => c.score))
+    } else if (undecided.length) {
+      reason = `undecidable:${undecided.join(',')}`
+    } else {
+      outcome = 'pass'
+      score = Math.min(...decided.map((c) => c.score))
+    }
   }
   const cal = rubric.calibration
   return {
