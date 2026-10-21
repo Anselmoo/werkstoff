@@ -369,3 +369,150 @@ shown to be wrong would let an invented known answer decide.
     defect in its own probe.
   - What would settle it is in the [mapping](judge-contract.md#every-judge-in-every-plugin).
 
+## The third paired measurement
+
+The second run's margin was one defect, `v2-16`'s silently skipped unreadable directory,
+which the challenger found in every run and the single judge in none. One item cannot say
+whether adversarial search reliably finds what a single judge misses. This run asked it
+with items built for the question. Nothing from the earlier runs is re-scored.
+
+### The design, sealed before either arm ran
+
+Everything is in `tools/judge-calibration/paired_v3.py`, the items in
+`test/judge-calibration/paired-v3/`, and the dispatch in `paired_v3_workflow.js`,
+committed in `0e8eb51` before the run. `paired_v3.py check` re-runs all of it, and CI on
+Linux (Python 3.12) passed it on the sealed commit.
+
+- **Items: 16, in 8 matched pairs.** One pair per defect class an adversary looks for:
+  a swallowed worker error, a permission path, an encoding path, a whitespace-only field,
+  the precision of a huge input, a crash part way through a write, a boundary, and an
+  ordering assumption. In each pair:
+  - the **red** passes its happy path and fails one criterion on the class's edge case;
+  - the **green** has the same criterion shape and a tempting non-defect from the same
+    class (`bisect_left` where it is right, a broad `except` that re-raises, `splitlines()`
+    where `ensure_ascii` makes it safe), and holds. A tribunal that invents reds pays for it.
+- **Every probe calibrated both ways.** Each criterion's probe fails one tree and passes
+  another, among the staged tree and its recorded controls: the fix for a red, the
+  tempting defect made real for a green, one break per other criterion. Every failure must
+  be an `AssertionError`, and each red has a happy-path probe that the staged tree passes.
+  36 recorded mutants must fail their probes. Each is an implementation a key auditor
+  showed passing an earlier probe. The probes are deterministic on Python 3.11 to 3.15
+  (20 runs on 3.15).
+- **A pre-seal key audit, three rounds.** 17 adversarial agents on the session's model
+  tried to prove each key wrong, in either direction (`key-audit.json`; about 2.6M
+  subagent tokens). A stop rule written before round 3 made it the last round.
+  - Each round found something one level more exotic than the last:
+    - round 1: Unicode and huge-int edges;
+    - round 2: a signal after the rename, `decimal.DefaultContext`, unbounded list depth;
+    - round 3: surrogate-pair keys, an append-only directory, `PATH_MAX`.
+  - A wrong green was fixed by scoping its criterion in the same words for both twins, or
+    by making the green hold. A key was never flipped, and no red was made more or less
+    subtle.
+  - Round 3's fixes went unaudited and the seal names them as residuals.
+- **Both arms exactly as in the second run.** `ARM_B_HEAD` and `andon-wire@2` are imported
+  from `paired_v2.py`. The workflow is byte-identical to `paired_v2_workflow.js` below its
+  meta. `v2_equivalence()` proves the new scorer reproduces the second run's committed
+  scores.
+- **The same repeats and decision rule.** Five repeats per item per arm, majority of 3,
+  and `DECISION_RULE` word for word.
+- **Pre-registered, beside the rule:**
+  - `CONTAMINATION`: a run whose agents named or were shown a key path scores as an abstain
+    for its arm.
+  - `PATTERN_RULE` on the reds: SUPPORTED, CEILING, FLOOR, NO DETECTION ADVANTAGE or NOT
+    SETTLED.
+  - `seal.json`: fingerprints the prompts, contract, tree, oracle and answer of every item.
+
+### The result
+
+The run was workflow `wf_e4697e20-c20` on 2026-10-21: 400 agents, no errors, 20.7M
+subagent tokens. The tribunal used about 10,500 output tokens per run and the contract
+judge about 870, a factor of 12. `paired_v3.py check` recomputes all three layers from
+the committed raw run.
+
+| scored under | arm | per-item agreement | false passes | record | per-run agreement | rule |
+|---|---|---|---|---|---|---|
+| the seal as committed | tribunal | 0.38 | 0 | 0.25 | 0.34 | replace |
+| the seal as committed | contract judge | 0.50 | 0 | 0.375 | 0.51 | |
+| contamination rule corrected | tribunal | 0.94 | 0 | 0.875 | 0.94 | replace |
+| contamination rule corrected | contract judge | 1.00 | 0 | 1.0 | 1.00 | |
+| and the v3-10 key corrected | tribunal | **1.00** | 0 | **1.0** | 0.99 | **keep** |
+| and the v3-10 key corrected | contract judge | 0.94 | 1 | **0.875** | 0.94 | |
+
+**The sealed figure measures the contamination rule, not the arms.** It flagged 92 of
+160 runs, every hit on its `scratchpad` alternative alone:
+- The Workflow harness hands every subagent the authoring session's scratch directory as
+  its own work area. The agents used it to copy trees and write check scripts.
+- No tool input in any of the 400 transcripts names a key-bearing file.
+- The same pattern would flag every run of the second run, which staged its trees there.
+- `results/instrument-errata.json` drops that one alternative, for both arms, as a
+  separate layer. `check_instrument` lets an instrument erratum drop alternatives the
+  sealed pattern had, never add or rewrite one.
+
+All 400 agents shared that scratch directory. Several runs wrote the same names (`v/check.py`,
+`chk.py`), across items. Every one of the 51 tool calls that touched a shared name pointed at
+its own run's staged tree, and no output named another item's function. So no cross-run read
+was observed, but nothing in the setup prevents a write race.
+
+**With the rule corrected, the planted defects did not discriminate.** Both arms called
+all 8 reds red in all 40 runs. That is the pre-registered CEILING. Neither arm passed a
+red, and neither invented a red on the seven greens that both arms agree on.
+
+**The one disagreement is again a green with a defect the key author missed.**
+- `v3-10`'s c1 admits "a root (a str or os.PathLike)". A PathLike whose `__fspath__`
+  returns bytes makes the tie key order by bytes. For a name that is not valid UTF-8 the
+  code returns `b'\xc3a'` where c1 wants `'é'`.
+- That wording was round 3's unaudited fix, already listed as a residual.
+- The tribunal failed c1 in 4 of 5 runs, three of them on this case. It called it
+  `neither` in the fifth.
+- `results/key-errata.json` corrects the key. Its probe builds the files on a real
+  filesystem, so only Linux decides it: APFS refuses the name. CI on Linux reproduced
+  it (plugin-checks run 39607898510), and a control with `os.fsdecode` on the tie key
+  passes.
+- Run 5's long-path ground rests on the recorded "cannot determine" ambiguity and carries
+  nothing.
+- Unlike `v2-16`, this was **not a detection miss**. The contract judge named the same
+  case in 3 of 5 runs ("compared as bytes, not as a str") and still passed c1 at 0.9. It
+  judged the case out of scope, and the criterion's words say it is in.
+- The discovery path favours arm A. The symmetric audit of both arms over all 16 items
+  found no other key error.
+
+**A collector bug, found by the run.**
+- `paired.collect` reads the journal with `str.splitlines()`. That method also splits on
+  U+2028 and U+0085, which JSON allows raw inside a string.
+- An agent quoting `v3-07`'s probe broke the read. That is the very defect `v3-07`
+  plants.
+- The transcript reader would have dropped such a line silently and turned a report into
+  an abstain.
+- `paired_v3.collect` splits on `"\n"` only and raises on a line it cannot parse.
+  Re-collected with it, the second run's raw run equals its committed `run.json` exactly.
+
+### What it settles, and what it does not
+
+- **Planted subtle defects are not where the tribunal earns its cost, on this model.**
+  The pre-registered verdict is CEILING. The single verdict@2 judge caught every planted
+  edge-case defect in every run, in all eight classes, at about a twelfth of the output.
+  The second run's miss did not repeat as a pattern on defects designed to be missed.
+- **The tribunal's margin has the same shape, twice.** In both runs the whole margin is one
+  defect the item author left in a green: `v2-16`, then `v3-10`.
+  - In `v2-16` the single judge never saw the case.
+  - In `v3-10` it saw the case and ruled it out of scope.
+  - The tribunal held each of them to the criterion's words.
+  - That is consistent with an adversary's value lying in reading a contract literally
+    against code nobody has audited. It is two items, with McNemar p = 1.0 each time, and
+    a discovery path that favours arm A.
+- **Context only, not measured under the seal.** Before the seal, same-model auditors
+  found 7 key errors or ambiguities in greens written to be correct. That bears on the
+  same question, but it is not counted in the result.
+- **Kept, under the committed rule and the corrected key.** It is not migrated, and the
+  result does not show the tribunal is better at finding defects. It shows that on 32
+  items across two runs, the only defects that separated the arms were ones nobody planted.
+- **The limits.**
+  - 16 items, one model.
+  - Both arms' prompts and every item come from one author.
+  - The greens were hardened by the same model the challenger runs on, so a low false-red
+    rate on them says little about unaudited code.
+  - The contamination rule misfired and was corrected after the run.
+  - The corrected key rests on a Linux-only reproduction.
+  - What would settle the question is items whose defects nobody planted, with keys taken
+    from somewhere other than the author's probes. For example, historic bugs whose fix
+    commits are the key. See the [mapping](judge-contract.md#every-judge-in-every-plugin).
