@@ -46,10 +46,17 @@ Usage:
     paired_v3.py stage --dest DIR --out ARGS.json --map MAP.json
     paired_v3.py collect --run-dir DIR --map MAP.json --out RAW.json
     paired_v3.py score --raw RAW.json --map MAP.json [--write OUT.json] [--errata ERRATA.json]
+                       [--instrument INSTRUMENT.json]
 
 KEY ERRATA work as in paired_v2.py: a sealed key later shown wrong is never edited;
 results/key-errata.json records the correction with a probe that reproduces it, and
 results/score-corrected.json is the same raw run scored under the corrected keys.
+
+INSTRUMENT ERRATA are the same idea for a pre-registered rule that misfired: the sealed rule
+and results/score.json stay as committed; results/instrument-errata.json may only DROP
+alternatives of the sealed CONTAMINATION pattern, names them, and says why, with the evidence;
+results/score-instrument.json is the raw run scored with them dropped, in both arms alike, and
+score-corrected.json applies both layers. check recomputes every layer present.
 
 STDLIB ONLY. Python >= 3.11. POSIX, not as root (the permission probes need a mode-000
 directory to be unreadable).
@@ -90,6 +97,7 @@ DECISION_RULE = paired_v2.DECISION_RULE
 WORKFLOW = HERE / "paired_v3_workflow.js"
 SEAL = SET / "seal.json"
 ERRATA = SET / "results" / "key-errata.json"
+INSTRUMENT = SET / "results" / "instrument-errata.json"
 PROBE_TIMEOUT = 60
 CLASSES = ("concurrency", "crash-consistency", "permission", "encoding", "whitespace", "precision", "boundary", "ordering")
 
@@ -305,10 +313,13 @@ def check(repeat: int = 1) -> list[str]:
     res = SET / "results"
     if (res / "run.json").is_file():
         errata = calibration.load_json(ERRATA) if ERRATA.is_file() else None
-        derived = [("score.json", None)] + ([("score-corrected.json", errata)] if errata else [])
-        for name, err in derived:
+        inst = calibration.load_json(INSTRUMENT) if INSTRUMENT.is_file() else None
+        derived = ([("score.json", None, None)] + ([("score-instrument.json", None, inst)] if inst else [])
+                   + ([("score-corrected.json", errata, inst)] if errata else []))
+        for name, err, ins in derived:
             try:
-                again = score(calibration.load_json(res / "run.json"), calibration.load_json(res / "map.json"), errata=err)
+                again = score(calibration.load_json(res / "run.json"), calibration.load_json(res / "map.json"),
+                              errata=err, instrument=ins)
             except ValueError as exc:
                 probs.append(f"the committed run does not score: {exc}")
                 continue
@@ -316,6 +327,22 @@ def check(repeat: int = 1) -> list[str]:
                 probs.append(f"results/{name} differs from the score recomputed from results/run.json")
         if errata:
             probs += check_errata(errata)
+        if inst:
+            probs += check_instrument(inst)
+    return probs
+
+
+def check_instrument(inst: dict) -> list[str]:
+    """An instrument erratum may only drop alternatives the sealed CONTAMINATION pattern had, and
+    it states the pattern it corrects verbatim, so it cannot quietly rewrite the rule."""
+    c = inst.get("contamination", {})
+    probs = []
+    if c.get("sealedPattern") != CONTAMINATION.pattern:
+        probs.append("instrument-errata.json: its sealedPattern is not the CONTAMINATION pattern the seal holds")
+    alts = CONTAMINATION.pattern.split("|")
+    for d in c.get("dropped", []):
+        if d not in alts:
+            probs.append(f"instrument-errata.json: it drops {d!r}, which is not an alternative of the sealed pattern")
     return probs
 
 
@@ -585,9 +612,17 @@ def pattern(core: dict, its: list[dict]) -> dict:
             "redRunsCalledRedPerClass": per_class}
 
 
-def score(raw: dict, mapping: dict[str, str], errata: dict | None = None) -> dict:
+def score(raw: dict, mapping: dict[str, str], errata: dict | None = None, instrument: dict | None = None) -> dict:
+    """The sealed score; with ``instrument``, a run's contamination hits on the alternatives the
+    instrument erratum drops no longer count, in both arms alike."""
+    if instrument:
+        drop = set(instrument["contamination"]["dropped"])
+        raw = {**raw, "runs": [{**r, "contaminated": [h for h in r.get("contaminated", []) if h not in drop]}
+                               for r in raw["runs"]]}
     its = items(errata)
     core = score_core(raw, mapping, its, errata)
+    if instrument:
+        core["instrumentErrata"] = sorted(instrument)
     core["contaminatedRuns"] = sorted(f"{mapping[r['key']]} r{r['r']} arm {r['arm']}: {', '.join(r['contaminated'])}"
                                       for r in raw["runs"] if r.get("contaminated"))
     core["pattern"] = pattern(core, its)
@@ -705,6 +740,20 @@ def selftest() -> int:
             {"type": "tool_use", "name": "Read", "input": {"file_path": "/tmp/stage/wab-1a/tree/rotate.py"}}]}}) + "\n", encoding="utf-8")
         if contamination(t):
             bad.append("the contamination scan flagged a read of the staged tree")
+    # check_instrument refuses a correction that rewrites the rule instead of dropping from it.
+    for name, inst in {"a sealed pattern that is not the seal's": {"contamination": {"sealedPattern": "x", "dropped": []}},
+                       "a dropped alternative the seal never had": {"contamination": {"sealedPattern": CONTAMINATION.pattern,
+                                                                                      "dropped": ["answers"]}}}.items():
+        if not check_instrument(inst):
+            bad.append(f"check_instrument accepted {name}")
+    if check_instrument({"contamination": {"sealedPattern": CONTAMINATION.pattern, "dropped": ["scratchpad"]}}):
+        bad.append("check_instrument refused dropping an alternative the seal has")
+    raw, mp = _fake_raw("right", "right")
+    for run in raw["runs"]:
+        run["contaminated"] = ["scratchpad"] if run["arm"] == "a" else []
+    inst = {"contamination": {"sealedPattern": CONTAMINATION.pattern, "dropped": ["scratchpad"]}}
+    if score(raw, mp)["arms"]["a"]["items"]["agreement"] != 0.0 or score(raw, mp, instrument=inst)["arms"]["a"]["items"]["agreement"] != 1.0:
+        bad.append("an instrument erratum did not lift exactly the contamination it drops")
     for b in bad:
         print(f"FAIL {b}")
     print(f"paired-v3 selftest: {len(bad)} failure(s)")
@@ -734,6 +783,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--map", type=Path, required=True)
     s.add_argument("--write", type=Path)
     s.add_argument("--errata", type=Path, help="score under the corrected keys in this key-errata.json")
+    s.add_argument("--instrument", type=Path, help="score under the instrument corrections in this instrument-errata.json")
     a = p.parse_args(argv)
     if a.cmd == "check":
         probs = check(a.repeat)
@@ -754,7 +804,8 @@ def main(argv: list[str] | None = None) -> int:
               f"{sum(1 for r in raw['runs'] if r['contaminated'])} contaminated")
         return 0
     rep = score(calibration.load_json(a.raw), calibration.load_json(a.map),
-                calibration.load_json(a.errata) if a.errata else None)
+                calibration.load_json(a.errata) if a.errata else None,
+                calibration.load_json(a.instrument) if a.instrument else None)
     if a.write:
         a.write.write_text(json.dumps(rep, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: rep[k] for k in ("decision", "discordant", "pattern", "contaminatedRuns")}, indent=2))
