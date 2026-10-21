@@ -136,6 +136,15 @@ def check() -> list[str]:
             probs.append(f"{i['id']}: a prompt does not carry the tree placeholder")
         if "nativeExpected" in t["armB"] or "answers" in t["armB"]:
             probs.append(f"{i['id']}: arm B's prompt names the answer")
+    res = FIX / "paired" / "results"
+    if (res / "run.json").is_file():
+        try:
+            again = score(calibration.load_json(res / "run.json"), calibration.load_json(res / "map.json"))
+        except ValueError as exc:
+            probs.append(f"the committed run does not score: {exc}")
+        else:
+            if again != calibration.load_json(res / "score.json"):
+                probs.append("results/score.json differs from the score recomputed from results/run.json; it is derived, never edited")
     canon = (HERE.parent / "judge-contract" / "verdict.inline.js").read_text(encoding="utf-8")
     mine = (HERE / "paired_workflow.js").read_text(encoding="utf-8")
     cut = lambda t: t[t.index("// judge-contract:start verdict@1"):t.index("// judge-contract:end")]  # noqa: E731
