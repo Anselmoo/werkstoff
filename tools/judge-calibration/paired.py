@@ -258,6 +258,69 @@ def score(raw: dict, mapping: dict[str, str]) -> dict:
     return out
 
 
+# ---------------------------------------------------------------------------- collect
+
+ROLES = ("defender", "challenger", "verifier", "adjudicator")
+
+
+def _report(transcript: Path) -> tuple[Any, dict[str, int]]:
+    """(final report, token usage) of one workflow agent, read from its own transcript: the
+    input of its StructuredOutput call when it had a schema, else its last text."""
+    structured, text = None, None
+    usage = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+    for line in transcript.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        msg = e.get("message") if isinstance(e, dict) else None
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        u = msg.get("usage") or {}
+        usage["input"] += u.get("input_tokens", 0) or 0
+        usage["output"] += u.get("output_tokens", 0) or 0
+        usage["cacheRead"] += u.get("cache_read_input_tokens", 0) or 0
+        usage["cacheWrite"] += u.get("cache_creation_input_tokens", 0) or 0
+        for c in msg.get("content") if isinstance(msg.get("content"), list) else []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use" and c.get("name") == "StructuredOutput":
+                structured = c.get("input")
+            elif c.get("type") == "text" and c.get("text", "").strip():
+                text = c["text"].strip()
+    return (structured if structured is not None else text), usage
+
+
+def collect(run_dir: Path, mapping: dict[str, str]) -> dict:
+    """Rebuild every run from the workflow's journal: each agent's label names its role, item
+    and repeat, and its transcript holds its report. A run missing any role is kept, marked."""
+    labels: dict[str, str] = {}
+    for line in (run_dir / "journal.jsonl").read_text(encoding="utf-8").splitlines():
+        e = json.loads(line)
+        if e.get("type") == "started" and e.get("agentId"):
+            labels[e["agentId"]] = e["label"]
+    runs: dict[tuple[str, int, str], dict] = {}
+    for aid, label in labels.items():
+        words = label.rsplit(" ", 2)
+        role, key, rep = words[0], words[1], int(words[2].lstrip("r"))
+        arm = "b" if role == "contract judge" else "a"
+        t = run_dir / f"agent-{aid}.jsonl"
+        report, usage = _report(t) if t.is_file() else (None, {})
+        run = runs.setdefault((key, rep, arm), {"key": key, "r": rep, "arm": arm, "roles": {}, "usage": {}, "agents": 0})
+        run["agents"] += 1
+        run["usage"] = {k: run["usage"].get(k, 0) + v for k, v in usage.items()}
+        if arm == "b":
+            run["report"] = report
+        else:
+            run["roles"][role] = report
+            if role == "adjudicator":
+                run["adjudicator"] = report
+    unknown = sorted({k for k, _, _ in runs} - set(mapping))
+    if unknown:
+        raise ValueError(f"journal names items the map does not: {unknown}")
+    return {"runs": [runs[k] for k in sorted(runs)]}
+
+
 def _fake_raw(a_mode: str, b_mode: str) -> tuple[dict, dict]:
     """Fabricated runs: 'right' answers every item correctly; 'pass' always passes; 'split'
     gives each item a 2-2-1 spread (no majority); 'abstain' always abstains."""
@@ -332,6 +395,10 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--dest", type=Path, required=True)
     s.add_argument("--out", type=Path, required=True)
     s.add_argument("--map", type=Path, required=True)
+    s = sub.add_parser("collect")
+    s.add_argument("--run-dir", type=Path, required=True)
+    s.add_argument("--map", type=Path, required=True)
+    s.add_argument("--out", type=Path, required=True)
     s = sub.add_parser("score")
     s.add_argument("--raw", type=Path, required=True)
     s.add_argument("--map", type=Path, required=True)
@@ -347,6 +414,11 @@ def main(argv: list[str] | None = None) -> int:
         return selftest()
     if a.cmd == "stage":
         return stage(a.dest, a.out, a.map)
+    if a.cmd == "collect":
+        raw = collect(a.run_dir, calibration.load_json(a.map))
+        a.out.write_text(json.dumps(raw, indent=1) + "\n", encoding="utf-8")
+        print(f"collected {len(raw['runs'])} runs into {a.out.as_posix()}")
+        return 0
     rep = score(calibration.load_json(a.raw), calibration.load_json(a.map))
     text = json.dumps(rep, indent=2) + "\n"
     if a.write:
