@@ -1,0 +1,13 @@
+{
+  "wire": "account page -> orders.by_customer",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "by_customer returns only the customer's orders, newest first"
+    },
+    {
+      "id": "c2",
+      "text": "on the production database the SQL query is served by the orders_by_customer index, not a sequential scan"
+    }
+  ]
+}

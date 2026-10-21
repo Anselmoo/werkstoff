@@ -1,0 +1,10 @@
+{
+  "base": {
+    "users.py": "DB = {1: \"ann\"}\n_cache = {}\n\n\ndef get_name(uid):\n    return DB[uid]\n\n\ndef rename(uid, name):\n    DB[uid] = name\n"
+  },
+  "probes": {
+    "c1": "import users\nassert users.get_name(1) == 'ann'",
+    "c2": "import users\nusers.get_name(1)\nclass D(dict):\n    def __getitem__(self, k):\n        raise SystemExit(1)\nusers.DB = D(users.DB)\nassert users.get_name(1) == 'ann'",
+    "c3": "import users\nusers.get_name(1)\nusers.rename(1, 'bea')\nassert users.get_name(1) == 'bea'"
+  }
+}

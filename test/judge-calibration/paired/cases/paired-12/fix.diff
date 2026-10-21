@@ -1,0 +1,7 @@
+diff --git a/contact.py b/contact.py
+--- a/contact.py
++++ b/contact.py
+@@ -1,2 +1,2 @@
+ def normalise(addr):
+-    raise NotImplementedError
++    return addr.strip()

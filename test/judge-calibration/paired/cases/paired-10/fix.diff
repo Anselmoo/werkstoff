@@ -1,0 +1,11 @@
+diff --git a/webhook.py b/webhook.py
+--- a/webhook.py
++++ b/webhook.py
+@@ -1,2 +1,6 @@
++import hashlib
++import hmac
++
++
+ def sign(secret, body):
+-    raise NotImplementedError
++    return hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest()

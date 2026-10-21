@@ -1,0 +1,13 @@
+diff --git a/backoff.py b/backoff.py
+--- a/backoff.py
++++ b/backoff.py
+@@ -1,2 +1,8 @@
+ def delays(attempts, base=0.5, cap=8.0):
+-    raise NotImplementedError
++    """Exponential backoff schedule, capped."""
++    out = []
++    d = base
++    for _ in range(attempts):
++        out.append(min(d, cap))
++        d *= 2
++    return out

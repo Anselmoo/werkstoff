@@ -1,0 +1,17 @@
+{
+  "wire": "import job -> Store.upsert",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "upsert of a new key stores it and returns True"
+    },
+    {
+      "id": "c2",
+      "text": "upsert of an existing key replaces the value and returns False"
+    },
+    {
+      "id": "c3",
+      "text": "repeating the same upsert leaves exactly one row for the key"
+    }
+  ]
+}

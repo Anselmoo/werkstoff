@@ -1,0 +1,17 @@
+{
+  "wire": "extract -> transform, with report and export as existing consumers of extract's payload",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "transform.apply.apply() returns the extracted rows, [{'id': 1, 'k': 'alpha'}]"
+    },
+    {
+      "id": "c2",
+      "text": "report.build.build() still returns the list of row identifiers, [1]"
+    },
+    {
+      "id": "c3",
+      "text": "export.dump.dump() returns the row identifier, 1"
+    }
+  ]
+}

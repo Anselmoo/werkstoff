@@ -1,0 +1,9 @@
+{
+  "base": {
+    "orders.py": "def by_customer(rows, cid):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from orders import by_customer\nr = [{'customer_id': 1, 'created_at': 1}, {'customer_id': 2, 'created_at': 5}, {'customer_id': 1, 'created_at': 3}]\nassert [x['created_at'] for x in by_customer(r, 1)] == [3, 1]",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

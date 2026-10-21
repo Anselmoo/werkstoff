@@ -1,0 +1,9 @@
+{
+  "base": {
+    "webhook.py": "def sign(secret, body):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import hashlib, hmac\nfrom webhook import sign\nassert sign('k', 'b') == hmac.new(b'k', b'b', hashlib.sha256).hexdigest()",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

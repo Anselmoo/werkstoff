@@ -1,0 +1,10 @@
+{
+  "base": {
+    "backoff.py": "def delays(attempts, base=0.5, cap=8.0):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from backoff import delays\nassert delays(4) == [0.5, 1.0, 2.0, 4.0]",
+    "c2": "from backoff import delays\nd = delays(7)\nassert d[-2:] == [8.0, 8.0] and max(d) == 8.0",
+    "c3": "from backoff import delays\nassert delays(0) == []"
+  }
+}

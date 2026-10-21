@@ -1,0 +1,24 @@
+diff --git a/export/dump.py b/export/dump.py
+--- a/export/dump.py
++++ b/export/dump.py
+@@ -1,7 +1,7 @@
+ from extract.run import extract
+ 
+ 
+ def dump():
+     """Exports the payload's identifier. Addresses rows by field name."""
+     payload = extract()
+-    return payload["rows"]["id"]
++    return payload["rows"][0]["id"]
+diff --git a/transform/apply.py b/transform/apply.py
+--- a/transform/apply.py
++++ b/transform/apply.py
+@@ -1,7 +1,7 @@
+ from extract.run import extract
+ 
+ 
+ def apply():
+     """Stage 2. Normalises the extracted payload for downstream stages."""
+     payload = extract()
+-    return [r for r in payload["records"]]
++    return [r for r in payload["rows"]]

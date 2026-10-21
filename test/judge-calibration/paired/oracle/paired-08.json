@@ -1,0 +1,10 @@
+{
+  "base": {
+    "store.py": "class Store:\n    def __init__(self):\n        self.rows = {}\n\n    def upsert(self, key, value):\n        raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from store import Store\ns = Store()\nassert s.upsert('a', 1) is True and s.rows == {'a': 1}",
+    "c2": "from store import Store\ns = Store()\ns.upsert('a', 1)\nassert s.upsert('a', 2) is False and s.rows == {'a': 2}",
+    "c3": "from store import Store\ns = Store()\ns.upsert('a', 1)\ns.upsert('a', 1)\nassert list(s.rows) == ['a']"
+  }
+}
