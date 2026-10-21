@@ -1,0 +1,11 @@
+diff --git a/config/load.py b/config/load.py
+--- a/config/load.py
++++ b/config/load.py
+@@ -1,5 +1,6 @@
+ import os
+ 
+ 
+ def port():
+-    return os.environ['PORT']
++    # TODO: handle a missing PORT
++    return int(os.environ.get('PORT', '8080'))

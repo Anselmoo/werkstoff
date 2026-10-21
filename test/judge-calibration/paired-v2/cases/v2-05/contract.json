@@ -1,0 +1,17 @@
+{
+  "wire": "group checkout -> money.split_bill",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "split_bill(1000, 3) returns three ints summing to 1000, e.g. [334, 333, 333]"
+    },
+    {
+      "id": "c2",
+      "text": "for every total from 0 to 500 and n from 1 to 7, the parts sum to the total and differ by at most 1"
+    },
+    {
+      "id": "c3",
+      "text": "split_bill uses integer arithmetic only (no float, no true division), so its result does not depend on the machine it runs on"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+diff --git a/text.py b/text.py
+--- a/text.py
++++ b/text.py
+@@ -1,2 +1,6 @@
++import re
++
++
+ def slugify(title):
+-    raise NotImplementedError
++    s = re.sub(r'[\s-]+', '-', title.strip().lower())
++    return s.strip('-')

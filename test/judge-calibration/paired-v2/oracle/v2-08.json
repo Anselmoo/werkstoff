@@ -1,0 +1,9 @@
+{
+  "base": {
+    "phone.py": "def to_e164(number, country):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from phone import to_e164\nassert to_e164('079 123 45 67', 'CH') == '+41791234567', to_e164('079 123 45 67', 'CH')",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

@@ -1,0 +1,7 @@
+diff --git a/migrations.py b/migrations.py
+--- a/migrations.py
++++ b/migrations.py
+@@ -1,2 +1,2 @@
+ def add_status_column():
+-    raise NotImplementedError
++    return "ALTER TABLE orders ADD COLUMN status TEXT NOT NULL DEFAULT 'new'"

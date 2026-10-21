@@ -1,0 +1,8 @@
+diff --git a/money.py b/money.py
+--- a/money.py
++++ b/money.py
+@@ -1,2 +1,3 @@
+ def split_bill(total_cents, n):
+-    return [total_cents / n] * n
++    q, r = divmod(total_cents, n)
++    return [q + 1] * r + [q] * (n - r)

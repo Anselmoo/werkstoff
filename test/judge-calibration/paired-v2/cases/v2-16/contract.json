@@ -1,0 +1,13 @@
+{
+  "wire": "nightly job -> backup.archive -> the production backup window",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "archive(src, dest) writes a gzip tar at dest containing every regular file under src, with paths relative to src"
+    },
+    {
+      "id": "c2",
+      "text": "the production nightly backup job finishes before 06:00 local time"
+    }
+  ]
+}

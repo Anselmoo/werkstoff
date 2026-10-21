@@ -1,0 +1,9 @@
+{
+  "base": {
+    "ratelimit.py": "class Bucket:\n    pass\n"
+  },
+  "probes": {
+    "c1": "from ratelimit import Bucket\nb = Bucket(capacity=3)\nassert [b.take() for _ in range(4)] == [True, True, True, False]\nb.refill()\nassert b.take() is True",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

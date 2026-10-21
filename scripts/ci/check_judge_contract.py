@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Fail when a vendored copy of the judge verdict contract drifts from its canonical source.
 
-The contract (verdict@1, docs/plugin-authoring/references/judge-contract.md) has three
+The contract (verdict@2, docs/plugin-authoring/references/judge-contract.md) has three
 canonical files under ``tools/judge-contract/``, each vendored byte for byte:
 
-    verdict.inline.js   the block between ``// judge-contract:start verdict@1`` and
+    verdict.inline.js   the block between ``// judge-contract:start verdict@2`` and
                         ``// judge-contract:end``, pasted into a Workflow script
                         (workflows have no imports, so a copy is the only way in)
     judge_contract.py   copied into a plugin's ``scripts/`` for script-side decide()
@@ -99,7 +99,7 @@ from pathlib import Path
 
 MIN_PYTHON = (3, 11)
 REPO_ROOT = Path(__file__).resolve().parents[2]
-START = "// judge-contract:start verdict@1"
+START = "// judge-contract:start verdict@2"
 START_PREFIX = "// judge-contract:start"
 END = "// judge-contract:end"
 CANON_JS = "tools/judge-contract/verdict.inline.js"
@@ -454,7 +454,9 @@ def selftest() -> int:
         ("one changed byte in the block", {req0: f"phase('x')\n{drifted}return 1\n"}, {"JC-DRIFT"}, 1),
         ("the block indented", {req0: "phase('x')\n" + "".join("  " + ln for ln in lines) + "return 1\n"}, {"JC-DRIFT"}, 1),
         ("the block with CRLF line ends", {req0: "phase('x')\n" + block.replace("\n", "\r\n") + "return 1\n"}, {"JC-DRIFT"}, 1),
-        ("a different contract version", {req0: wf.replace(START, START_PREFIX + " verdict@2")}, {"JC-DRIFT"}, 1),
+        # A copy still on the previous contract is drift: verdict@2 is a superset, but a
+        # verdict@1 block cannot read an undecidable criterion, so it must be re-vendored.
+        ("a copy still on verdict@1", {req0: wf.replace(START, START_PREFIX + " verdict@1")}, {"JC-DRIFT"}, 1),
         ("start marker without end", {req0: f"phase('x')\n{no_end}return 1\n"}, {"JC-UNTERMINATED"}, 1),
         ("end marker without start", {other: f"phase('x')\n{END}\nreturn 1\n"}, {"JC-UNTERMINATED"}, 1),
         ("two blocks", {req0: f"phase('x')\n{block}{block}return 1\n"}, {"JC-MULTIPLE"}, 1),
@@ -590,7 +592,7 @@ def selftest() -> int:
                 "if (JUDGE_VERDICT_SCHEMA) {\n  g()\n}\n"
                 "return 1\n"}, set(), 0),
         ("a required markdown copy drifted", {VENDORED_MD[0]: canon_md + "\nedited\n"}, {"JC-MD-DRIFT"}, 1),
-        ("the other required markdown copy drifted", {VENDORED_MD[1]: canon_md.replace("verdict@1", "verdict@2", 1)},
+        ("the other required markdown copy drifted", {VENDORED_MD[1]: canon_md.replace("verdict@2", "verdict@1", 1)},
          {"JC-MD-DRIFT"}, 1),
         ("both required markdown copies identical", {VENDORED_MD[0]: canon_md, VENDORED_MD[1]: canon_md}, set(), 0),
     ]

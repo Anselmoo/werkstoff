@@ -1,0 +1,7 @@
+diff --git a/tags.py b/tags.py
+--- a/tags.py
++++ b/tags.py
+@@ -1,2 +1,2 @@
+ def dedupe(items):
+-    return items
++    return list(set(items))

@@ -1,0 +1,13 @@
+{
+  "wire": "billing calendar -> dates.is_leap",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "is_leap is True for 2024 and 2000 and False for 1900 and 2023"
+    },
+    {
+      "id": "c2",
+      "text": "is_leap('2024') raises TypeError instead of returning a value"
+    }
+  ]
+}

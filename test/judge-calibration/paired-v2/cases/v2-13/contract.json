@@ -1,0 +1,13 @@
+{
+  "wire": "password reset -> mail.compose_reset -> the production SMTP relay",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "compose_reset('ann@example.com', 'T0K3N') returns a message to ann@example.com whose subject is 'Reset your password' and whose body contains the link https://example.com/reset?t=T0K3N"
+    },
+    {
+      "id": "c2",
+      "text": "the production SMTP relay delivers that message to the recipient's inbox, not to spam"
+    }
+  ]
+}

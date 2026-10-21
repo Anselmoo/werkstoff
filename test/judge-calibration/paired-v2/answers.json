@@ -1,0 +1,98 @@
+{
+  "v2-01": {
+    "split": "paired-v2",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "all three hold, including the run of mixed separators"
+  },
+  "v2-02": {
+    "split": "paired-v2",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "the century rule and the 400-year rule both hold; a str raises TypeError"
+  },
+  "v2-03": {
+    "split": "paired-v2",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "retries are bounded and re-raise the last error; c3 names production but is decided by reading: the module imports nothing and calls nothing outside fn"
+  },
+  "v2-04": {
+    "split": "paired-v2",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "both consumers read the default and the override; the TODO in load.py is stale"
+  },
+  "v2-05": {
+    "split": "paired-v2",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "divmod gives n integers that sum to the total and differ by at most 1; c3 names other machines but is decided by reading: integer arithmetic only"
+  },
+  "v2-06": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "set() drops the order: dedupe([3, 1, 3, 2]) is not [3, 1, 2]"
+  },
+  "v2-07": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "pages are 1-based in the contract and 0-based in the code: page 1 skips the first three items"
+  },
+  "v2-08": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "c1 fails (the trunk 0 is kept: +410791234567), so the wire is red whatever c2 would show"
+  },
+  "v2-09": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "c2 fails (invalidate pops from the wrong dict, so the stale value is served); c3 is production-only; red"
+  },
+  "v2-10": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "c2 fails (the offset is applied the wrong way: 23:00 UTC of the day before, not 22:00), so red whatever c1 would show; c1 is listed first on purpose"
+  },
+  "v2-11": {
+    "split": "paired-v2",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "c2 fails (a field holding a comma is written unquoted and splits into two columns); c3 is production-only; red"
+  },
+  "v2-12": {
+    "split": "paired-v2",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c1 holds; c2 needs production traffic"
+  },
+  "v2-13": {
+    "split": "paired-v2",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c1 holds; c2 needs the production relay; the TODO about SPF is a decoy that decides nothing here"
+  },
+  "v2-14": {
+    "split": "paired-v2",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c1 holds; c2 needs the production database under load"
+  },
+  "v2-15": {
+    "split": "paired-v2",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 and c3 hold; c1 needs the production GPS feed; the undecidable criterion is listed first"
+  },
+  "v2-16": {
+    "split": "paired-v2",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c1 holds; c2 needs the production schedule and data volume; the hard-coded path looks suspicious and decides nothing"
+  }
+}

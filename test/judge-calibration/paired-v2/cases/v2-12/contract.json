@@ -1,0 +1,13 @@
+{
+  "wire": "API gateway -> ratelimit.Bucket -> every client request",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "a Bucket(capacity=3) allows 3 calls to take() and refuses the 4th until refill() is called"
+    },
+    {
+      "id": "c2",
+      "text": "under production traffic, no legitimate client is ever refused by the gateway"
+    }
+  ]
+}

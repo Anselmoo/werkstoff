@@ -1,0 +1,13 @@
+{
+  "wire": "signup form -> phone.to_e164 -> the production SMS gateway",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "to_e164('079 123 45 67', 'CH') returns '+41791234567'"
+    },
+    {
+      "id": "c2",
+      "text": "the production SMS gateway accepts every number to_e164 returns"
+    }
+  ]
+}

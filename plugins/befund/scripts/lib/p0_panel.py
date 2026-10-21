@@ -74,7 +74,8 @@ def downgrade_reason(verdict) -> str | None:
     failing = [
         f"{c['id']} ({c['score']}): {c['evidence']}"
         for c in verdict.get("criteria", [])
-        if not c["pass"] or c["score"] < threshold
+        # decided criteria only: an undecidable one (pass None) did not fail
+        if c["pass"] is not None and (not c["pass"] or c["score"] < threshold)
     ]
     return "fail: " + "; ".join(failing) if failing else "fail"
 
@@ -91,7 +92,7 @@ def refusal(rule) -> str | None:
         return "it carries no p0_verdict (panel_confirmed is no longer honoured)"
     problems = judge_contract.validate(verdict)
     if problems:
-        return "its p0_verdict is not a well-formed verdict@1: " + "; ".join(problems)
+        return "its p0_verdict is not a well-formed verdict@2: " + "; ".join(problems)
     if verdict["rubric"] != RUBRIC_ID:
         return f"its p0_verdict is from rubric {verdict['rubric']!r}, not {RUBRIC_ID!r}"
     if verdict["item"] != rule.get("id"):

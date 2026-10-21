@@ -1,0 +1,10 @@
+{
+  "base": {
+    "money.py": "def split_bill(total_cents, n):\n    return [total_cents / n] * n\n"
+  },
+  "probes": {
+    "c1": "from money import split_bill\np = split_bill(1000, 3)\nassert sum(p) == 1000 and len(p) == 3 and all(type(x) is int for x in p)",
+    "c2": "from money import split_bill\nfor t in range(501):\n    for n in range(1, 8):\n        p = split_bill(t, n)\n        assert sum(p) == t and len(p) == n and max(p) - min(p) <= 1, (t, n, p)",
+    "c3": "import ast, sys\nsrc = open('money.py').read()\ntree = ast.parse(src)\nbanned = {'socket', 'time', 'os', 'random', 'datetime', 'urllib', 'requests', 'pathlib', 'shutil', 'subprocess'}\nfor n in ast.walk(tree):\n    if isinstance(n, ast.Import) and any(a.name.split('.')[0] in banned for a in n.names):\n        sys.exit(1)\n    if isinstance(n, ast.ImportFrom) and (n.module or '').split('.')[0] in banned:\n        sys.exit(1)\n    if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in {'open', 'float', 'input'}:\n        sys.exit(1)\n    if isinstance(n, ast.Constant) and isinstance(n.value, float):\n        sys.exit(1)\n    if isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div):\n        sys.exit(1)\n"
+  }
+}

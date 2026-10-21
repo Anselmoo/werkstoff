@@ -1,0 +1,10 @@
+{
+  "base": {
+    "cache.py": "class Cache:\n    pass\n"
+  },
+  "probes": {
+    "c1": "from cache import Cache\nc = Cache()\nc.set('u1', 'Ann')\nassert c.get('u1') == 'Ann'",
+    "c2": "from cache import Cache\nc = Cache()\nc.set('u1', 'Ann')\nc.invalidate('u1')\nassert c.get('u1') is None, c.get('u1')",
+    "c3": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

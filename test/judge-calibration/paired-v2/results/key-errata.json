@@ -1,0 +1,17 @@
+{
+  "v2-16": {
+    "criterion": "c1",
+    "sealed": {
+      "expected": "abstain",
+      "nativeExpected": "unknown"
+    },
+    "corrected": {
+      "expected": "fail",
+      "nativeExpected": "red"
+    },
+    "probe": "import os, sys\nif os.geteuid() == 0:\n    sys.exit(2)  # root reads a mode-000 directory, so this cannot be decided as root\nimport tarfile, tempfile\nfrom pathlib import Path\nfrom backup import archive\nwith tempfile.TemporaryDirectory() as d:\n    s = Path(d) / 's'\n    (s / 'a').mkdir(parents=True)\n    (s / 'x.txt').write_text('1')\n    (s / 'a' / 'y.txt').write_text('2')\n    out = Path(d) / 'o.tar.gz'\n    archive(s, out)\n    with tarfile.open(out) as t:\n        assert sorted(t.getnames()) == ['a/y.txt', 'x.txt'], t.getnames()\n    # A regular file under src that cannot be read: archive() must include it or raise,\n    # never return normally without it.\n    (s / 'locked').mkdir()\n    (s / 'locked' / 'secret.txt').write_text('3')\n    os.chmod(s / 'locked', 0)\n    try:\n        out2 = Path(d) / 'o2.tar.gz'\n        try:\n            archive(s, out2)\n        except OSError:\n            sys.exit(0)  # failed loudly: no file was silently dropped\n        with tarfile.open(out2) as t:\n            assert 'locked/secret.txt' in t.getnames(), ('silently dropped', t.getnames())\n    finally:\n        os.chmod(s / 'locked', 0o755)",
+    "why": "c1 says every regular file under src. archive() walks src with Path.rglob, which silently skips a subdirectory it cannot read: a regular file under src is left out and archive() returns normally. The sealed probe never tested an unreadable directory, so the sealed key read c1 as holding.",
+    "foundBy": "wf_8cbe77db-baa arm A, all five runs on v2-16: the challenger raised the unreadable subdirectory, the verifier reproduced it, the adjudicator failed c1. Reproduced by hand at uid 502 before this erratum. Arm B passed c1 in all five runs.",
+    "audit": "Found because arm A disagreed with the key, a discovery path that favours arm A. Both arms were then audited on every item keyed green or unknown: no arm-B criterion failed or scored below the threshold, and no arm-B evidence string reports a reproduced defect; every other arm-A overall verdict matched the key, and no challenger, verifier or adjudicator reported a reproduced defect inside a contract criterion. On v2-16 itself no arm-B evidence mentions an unreadable directory or a permission error: a detection miss, not a judgement miss. A defect both arms missed cannot be seen this way and is not ruled out."
+  }
+}

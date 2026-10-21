@@ -48,6 +48,9 @@ MAJORITY = 3
 THRESHOLD = 0.7
 TREE = "{TREE}"
 OUTCOME_OF = {"green": "pass", "red": "fail", "unknown": "abstain"}
+# sha256 of paired_workflow.js's block from its start marker up to (not including) its end
+# marker: tools/judge-contract/verdict.inline.js's verdict@1 block as wf_589ce94f-c60 ran it.
+RAN_WITH_V1_BLOCK = "3dbbab8595ab64e8d1b11c2a0e83df3661c0e8b562d6697c82a5572dfa0051b5"
 
 
 def items() -> list[dict]:
@@ -145,11 +148,15 @@ def check() -> list[str]:
         else:
             if again != calibration.load_json(res / "score.json"):
                 probs.append("results/score.json differs from the score recomputed from results/run.json; it is derived, never edited")
-    canon = (HERE.parent / "judge-contract" / "verdict.inline.js").read_text(encoding="utf-8")
+    # This run executed the verdict@1 block, and the canonical copy has since moved on to
+    # verdict@2. The workflow is the record of what ran, so its block is pinned to the hash it
+    # ran with, never re-vendored. score() still decides the committed reports through the
+    # canonical decide(): verdict@2 decides every verdict@1 report identically, which the
+    # score.json recompute above proves on every check.
     mine = (HERE / "paired_workflow.js").read_text(encoding="utf-8")
-    cut = lambda t: t[t.index("// judge-contract:start verdict@1"):t.index("// judge-contract:end")]  # noqa: E731
-    if cut(canon) != cut(mine):
-        probs.append("paired_workflow.js's verdict@1 block differs from tools/judge-contract/verdict.inline.js")
+    block = mine[mine.index("// judge-contract:start verdict@1"):mine.index("// judge-contract:end")]
+    if hashlib.sha256(block.encode("utf-8")).hexdigest() != RAN_WITH_V1_BLOCK:
+        probs.append("paired_workflow.js's verdict@1 block is not the one this run executed")
     return probs
 
 

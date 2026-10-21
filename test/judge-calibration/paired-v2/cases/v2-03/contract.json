@@ -1,0 +1,17 @@
+{
+  "wire": "payment client -> retry.with_retries -> the payment provider",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "with_retries(fn, 3) calls fn at most 3 times and returns the first successful result"
+    },
+    {
+      "id": "c2",
+      "text": "when all 3 attempts raise, with_retries re-raises the LAST exception, not the first"
+    },
+    {
+      "id": "c3",
+      "text": "with_retries itself makes no network, clock, filesystem or randomness call, so it behaves in production exactly as it does in a test"
+    }
+  ]
+}

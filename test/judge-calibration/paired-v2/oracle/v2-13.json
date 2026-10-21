@@ -1,0 +1,9 @@
+{
+  "base": {
+    "mail.py": "def compose_reset(to, token):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from mail import compose_reset\nm = compose_reset('ann@example.com', 'T0K3N')\nassert m['To'] == 'ann@example.com' and m['Subject'] == 'Reset your password'\nassert 'https://example.com/reset?t=T0K3N' in m.get_content()",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

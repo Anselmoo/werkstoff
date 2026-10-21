@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One LLM-as-judge verdict contract (verdict@1): the judge reports, code decides.
+"""One LLM-as-judge verdict contract (verdict@2): the judge reports, code decides.
 
 A judge returns only ``{item, criteria, abstain, abstainReason}``. Everything that
 gates -- ``score``, ``outcome``, ``calibrated`` -- is derived here, deterministically,
@@ -7,6 +7,10 @@ so no model ever states its own pass. This file is the canonical Python side; th
 canonical JS side is the block in ``verdict.inline.js`` beside it, and the two are
 held to identical results by ``test_parity.py``. The file is vendored byte-identical
 into plugins, so it reads nothing relative to itself and names no plugin.
+
+verdict@2 adds one thing to verdict@1: a criterion may be UNDECIDABLE, reported as
+``score: null`` and ``pass: null`` together, with evidence naming what would decide
+it. A verdict@1 report (no nulls) decides exactly as it did under verdict@1.
 
 Semantics of ``decide(raw, rubric)``, in the order the checks run:
 
@@ -16,18 +20,24 @@ Semantics of ``decide(raw, rubric)``, in the order the checks run:
                        ``criteria`` is not a list; an entry is not an object or has
                        no string id; an id is duplicated or not in the rubric
                        a score that is not a finite number in [0, 1] (a bool is
-                       NOT a number here, though Python says it is an int)
-                       a ``pass`` that is not a boolean; evidence that is not a
+                       NOT a number here, though Python says it is an int), unless
+                       score AND pass are both null; a ``pass`` that is not a
+                       boolean, under the same exception; evidence that is not a
                        non-empty string; a rubric criterion with no entry
-    outcome "fail"     well-formed, and any criterion has pass false, or the
-                       MINIMUM criterion score is below the rubric threshold
+    outcome "fail"     well-formed, and any DECIDED criterion has pass false or a
+                       score below the rubric threshold -- whatever the undecidable
+                       criteria are: a fail dominates an undecidable
+    outcome "abstain"  well-formed, nothing failed, and at least one criterion is
+                       undecidable -- ``undecidable:<id>[,<id>...]`` in rubric order
     outcome "pass"     everything else
 
-``score`` is the minimum of the criterion scores, never an average: a verdict that
-passes three criteria and fails a fourth is a fail. An abstain carries score 0.0 and
-no criteria, and is never a pass -- fail-closed. ``abstainReason`` is a fixed code
-(``missing-criterion:<id>``) for anything code detected, or ``judge:<text>`` when the
-judge abstained itself, so the Python and JS sides emit the same string.
+``score`` is the minimum of the decided criterion scores, never an average: a verdict
+that passes three criteria and fails a fourth is a fail. An abstain carries score 0.0
+and is never a pass -- fail-closed. A report-level abstain carries no criteria; an
+``undecidable:`` abstain keeps every criterion, so the evidence of the decided ones is
+not lost. ``abstainReason`` is a fixed code (``missing-criterion:<id>``,
+``undecidable:<ids>``) for anything code detected, or ``judge:<text>`` when the judge
+abstained itself, so the Python and JS sides emit the same string.
 
 ``calibrated`` is true only when the rubric carries a ``calibration`` record showing
 a sealed known-answer set that the judge's agreement cleared. It is derived from that
@@ -57,7 +67,7 @@ from pathlib import Path
 from typing import Any
 
 MIN_PYTHON = (3, 11)
-CONTRACT = "verdict@1"
+CONTRACT = "verdict@2"
 
 # What a rubric looks like. ``calibration`` is optional and absent on every rubric
 # today; ``sealed`` is the size of the known-answer set the judge never tuned on.
@@ -163,9 +173,13 @@ def _first_defect(raw: Any, rubric: dict, item: str | None) -> tuple[str, str, l
             return (item, f"duplicate-criterion:{cid}", [])
         if cid not in wanted:
             return (item, f"unknown-criterion:{cid}", [])
-        if not _is_unit(e.get("score")):
+        # Undecidable only when BOTH are present and null; an absent key is never
+        # read as undecidable. A half-null keeps the code it had under verdict@1: a
+        # null score is bad-score, a null pass is bad-pass.
+        undecidable = "score" in e and "pass" in e and e["score"] is None and e["pass"] is None
+        if not undecidable and not _is_unit(e.get("score")):
             return (item, f"bad-score:{cid}", [])
-        if not isinstance(e.get("pass"), bool):
+        if not undecidable and not isinstance(e.get("pass"), bool):
             return (item, f"bad-pass:{cid}", [])
         ev = e.get("evidence")
         if not isinstance(ev, str) or not ev.strip():
@@ -195,13 +209,16 @@ def decide(raw: Any, rubric: dict, *, item: str | None = None, decided_by: str =
     if reason:
         outcome, score, criteria = "abstain", 0.0, []
     else:
-        min_score = min(c["score"] for c in criteria)
-        score = min_score
-        outcome = "pass"
-        if min_score < threshold:
-            outcome = "fail"
-        if not all(c["pass"] for c in criteria):
-            outcome = "fail"
+        decided = [c for c in criteria if c["pass"] is not None]
+        undecided = [c["id"] for c in criteria if c["pass"] is None]
+        failed = any(not c["pass"] or c["score"] < threshold for c in decided)
+        # The order of these branches IS the rule: a fail dominates an undecidable.
+        if failed:
+            outcome, score = "fail", min(c["score"] for c in decided)
+        elif undecided:
+            outcome, score, reason = "abstain", 0.0, "undecidable:" + ",".join(undecided)
+        else:
+            outcome, score = "pass", min(c["score"] for c in decided)
     return {
         "item": item_id,
         "rubric": rubric["id"],
@@ -217,14 +234,14 @@ def decide(raw: Any, rubric: dict, *, item: str | None = None, decided_by: str =
 
 
 def validate(verdict: Any) -> list[str]:
-    """Every way ``verdict`` is not a well-formed, self-consistent verdict@1."""
+    """Every way ``verdict`` is not a well-formed, self-consistent verdict@2."""
     if not isinstance(verdict, dict):
         return ["verdict is not an object"]
     errs = []
     if set(verdict) != set(VERDICT_KEYS):
         missing = sorted(set(VERDICT_KEYS) - set(verdict))
         extra = sorted(set(verdict) - set(VERDICT_KEYS))
-        errs.append(f"keys differ from verdict@1 (missing {missing}, extra {extra})")
+        errs.append(f"keys differ from verdict@2 (missing {missing}, extra {extra})")
         return errs
     v = verdict
     # Empty only on an abstain: a report with no item cannot name one.
@@ -250,10 +267,11 @@ def validate(verdict: Any) -> list[str]:
         ids = set()
         for i, c in enumerate(crit):
             if (not isinstance(c, dict) or set(c) != set(CRITERION_KEYS)
-                    or not isinstance(c["id"], str) or not _is_unit(c["score"])
-                    or not isinstance(c["pass"], bool)
+                    or not isinstance(c["id"], str)
+                    or not ((_is_unit(c["score"]) and isinstance(c["pass"], bool))
+                            or (c["score"] is None and c["pass"] is None))
                     or not isinstance(c["evidence"], str) or not c["evidence"].strip()):
-                errs.append(f"criterion {i} is not {{id, score in [0,1], pass: bool, evidence}}")
+                errs.append(f"criterion {i} is not {{id, score in [0,1] and pass: bool, or both null, evidence}}")
                 ok_crit = False
             elif c["id"] in ids:
                 errs.append(f"criterion {c['id']} is duplicated")
@@ -264,22 +282,36 @@ def validate(verdict: Any) -> list[str]:
         return errs
     if v["abstain"] != (v["outcome"] == "abstain"):
         errs.append("abstain disagrees with outcome")
+    nulls = [c["id"] for c in crit if c["pass"] is None]
+    decided = [c for c in crit if c["pass"] is not None]
+    failing = any(not c["pass"] or c["score"] < v["threshold"] for c in decided)
     if v["abstain"]:
-        if not isinstance(v["abstainReason"], str) or not v["abstainReason"]:
+        why = v["abstainReason"]
+        if not isinstance(why, str) or not why:
             errs.append("an abstain carries no abstainReason")
-        if crit or v["score"] != 0:
-            errs.append("an abstain carries criteria or a non-zero score")
+        if v["score"] != 0:
+            errs.append("an abstain carries a non-zero score")
+        if isinstance(why, str) and why.startswith("undecidable:"):
+            if not nulls:
+                errs.append("an undecidable abstain has no undecidable criterion")
+            elif why != "undecidable:" + ",".join(nulls):
+                errs.append("abstainReason does not name exactly the undecidable criteria, in order")
+            if failing:
+                errs.append("an abstain whose decided criteria fail is a fail: a fail dominates an undecidable")
+        elif crit:
+            errs.append("an abstain carries criteria but is not an undecidable abstain")
         return errs
     if v["abstainReason"] is not None:
         errs.append("abstainReason is set on a verdict that did not abstain")
-    if not crit:
-        errs.append("a decided verdict has no criteria")
+    if not decided:
+        errs.append("a decided verdict has no decided criterion")
         return errs
-    if ok_crit and v["score"] != min(c["score"] for c in crit):
-        errs.append("score is not the minimum criterion score")
-    should_pass = all(c["pass"] for c in crit) and v["score"] >= v["threshold"]
-    if (v["outcome"] == "pass") != should_pass:
-        errs.append(f"outcome {v['outcome']} does not follow from the criteria and threshold")
+    if ok_crit and v["score"] != min(c["score"] for c in decided):
+        errs.append("score is not the minimum decided criterion score")
+    if v["outcome"] == "pass" and (nulls or failing):
+        errs.append("outcome pass with an undecidable or failed criterion")
+    if v["outcome"] == "fail" and not failing:
+        errs.append("outcome fail with no failed criterion (an undecidable one abstains)")
     return errs
 
 
@@ -322,6 +354,10 @@ def _crit(cid: str, score: Any = 0.9, ok: Any = True, evidence: Any = "file.py:1
     return {"id": cid, "score": score, "pass": ok, "evidence": evidence}
 
 
+def _und(cid: str, evidence: Any = "needs the production database") -> dict:
+    return {"id": cid, "score": None, "pass": None, "evidence": evidence}
+
+
 def _raw(*criteria: dict, item: Any = "item-a", abstain: Any = False, reason: Any = None) -> dict:
     return {"item": item, "criteria": list(criteria), "abstain": abstain, "abstainReason": reason}
 
@@ -351,13 +387,33 @@ CASES: list[tuple[str, Any, str | None, str, str | None]] = [
     ('pass "no" (a string) abstains', _raw(_crit(G, 0.9, "no"), _crit(R)), "item-a", "abstain", "bad-pass:grounded"),
     ("pass 1 (an int) abstains", _raw(_crit(G, 0.9, 1), _crit(R)), "item-a", "abstain", "bad-pass:grounded"),
     ("empty evidence abstains", _raw(_crit(G, evidence="  "), _crit(R)), "item-a", "abstain", "bad-evidence:grounded"),
+    # verdict@2: an undecidable criterion (score AND pass null).
+    ("a fail beside an undecidable criterion fails", _raw(_crit(G, 0.2, False), _und(R)), "item-a", "fail", None),
+    ("a fail listed after an undecidable criterion fails", _raw(_und(G), _crit(R, 0.1, False)), "item-a", "fail", None),
+    ("a below-threshold pass beside an undecidable criterion fails", _raw(_crit(G, 0.5), _und(R)), "item-a", "fail", None),
+    ("a pass beside an undecidable criterion abstains", _raw(_crit(G), _und(R)), "item-a", "abstain", "undecidable:relevant"),
+    ("every criterion undecidable abstains", _raw(_und(G), _und(R)), "item-a", "abstain", "undecidable:grounded,relevant"),
+    ("undecidable ids follow the rubric, not the report", _raw(_und(R), _und(G)), "item-a", "abstain",
+     "undecidable:grounded,relevant"),
+    ("a null score with a boolean pass abstains", _raw(_crit(G, None, True), _crit(R)), "item-a", "abstain", "bad-score:grounded"),
+    ("a null pass with a numeric score abstains", _raw(_crit(G, 0.9, None), _crit(R)), "item-a", "abstain", "bad-pass:grounded"),
+    ("an undecidable criterion with empty evidence abstains", _raw(_crit(G), _und(R, evidence=" ")), "item-a", "abstain",
+     "bad-evidence:relevant"),
+    ("a criterion with no score and no pass abstains", _raw(_crit(G), {"id": R, "evidence": "x"}), "item-a", "abstain",
+     "bad-score:relevant"),
+    ("a malformed criterion beside a fail abstains", _raw(_crit(G, 0.1, False), _crit(R, "x")), "item-a", "abstain",
+     "bad-score:relevant"),
 ]
 
 
 def _selftest_cases() -> list[str]:
     bad = []
     for name, raw, item, outcome, reason in CASES:
-        got = decide(raw, RUBRIC, item=item)
+        try:
+            got = decide(raw, RUBRIC, item=item)
+        except Exception as exc:  # a sabotaged branch that crashes is a finding, named
+            bad.append(f"{name}: decide() raised {type(exc).__name__}: {exc}")
+            continue
         if got["outcome"] != outcome or got["abstainReason"] != reason:
             bad.append(f"{name}: expected {outcome}/{reason}, got {got['outcome']}/{got['abstainReason']}")
         problems = validate(got)
@@ -404,6 +460,43 @@ def _selftest_extras() -> list[str]:
         bad.append("validate accepted an averaged score")
     if not validate({**decide(None, RUBRIC, item="item-a"), "outcome": "pass", "abstain": False}):
         bad.append("validate accepted an abstain relabelled as pass")
+    # verdict@2: the score of a fail is the minimum over DECIDED criteria; an
+    # undecidable abstain keeps every criterion and scores 0.
+    v = decide(_raw(_crit(G, 0.2, False), _und(R)), RUBRIC, item="item-a")
+    if v["score"] != 0.2 or len(v["criteria"]) != 2:
+        bad.append(f"a fail beside an undecidable did not keep both criteria and the decided minimum: {v}")
+    v = decide(_raw(_crit(G, 0.9), _crit(R, 0.3, False)), RUBRIC, item="item-a")
+    if v["score"] != 0.3:
+        bad.append(f"a fail's score is not its decided minimum: {v['score']}")
+    v = decide(_raw(_crit(G), _und(R)), RUBRIC, item="item-a")
+    if v["score"] != 0.0 or [c["pass"] for c in v["criteria"]] != [True, None]:
+        bad.append(f"an undecidable abstain did not keep its criteria at score 0: {v}")
+    # validate holds the same rule over a stored verdict: each forgery is rejected.
+    fail_u = decide(_raw(_crit(G, 0.2, False), _und(R)), RUBRIC, item="item-a")
+    abst_u = decide(_raw(_crit(G), _und(R)), RUBRIC, item="item-a")
+    both_u = decide(_raw(_und(G), _und(R)), RUBRIC, item="item-a")
+    ok_all = decide(_raw(_crit(G), _crit(R)), RUBRIC, item="item-a")
+    forgeries = [
+        ("a fail relabelled as an undecidable abstain",
+         {**fail_u, "outcome": "abstain", "abstain": True, "abstainReason": "undecidable:relevant", "score": 0.0}),
+        ("an undecidable abstain relabelled as a pass",
+         {**abst_u, "outcome": "pass", "abstain": False, "abstainReason": None, "score": 0.9}),
+        ("an undecidable abstain naming the wrong criterion", {**abst_u, "abstainReason": "undecidable:grounded"}),
+        ("an undecidable abstain with nothing undecidable",
+         {**ok_all, "outcome": "abstain", "abstain": True, "abstainReason": "undecidable:grounded", "score": 0.0}),
+        ("an undecidable abstain naming no criterion, with nothing undecidable",
+         {**ok_all, "outcome": "abstain", "abstain": True, "abstainReason": "undecidable:", "score": 0.0}),
+        ("a judge abstain that carries criteria", {**abst_u, "abstainReason": "judge:no"}),
+        ("an undecidable abstain with a non-zero score", {**abst_u, "score": 0.9}),
+        ("a fail scored below its decided minimum", {**fail_u, "score": 0.0}),
+        ("a fail with only undecidable criteria",
+         {**both_u, "outcome": "fail", "abstain": False, "abstainReason": None, "score": 0.0}),
+        ("a fail with no failed criterion", {**abst_u, "outcome": "fail", "abstain": False, "abstainReason": None, "score": 0.9}),
+        ("a half-null criterion", {**fail_u, "criteria": [fail_u["criteria"][0], {**fail_u["criteria"][1], "score": 0.5}]}),
+    ]
+    for name, forged in forgeries:
+        if not validate(forged):
+            bad.append(f"validate accepted {name}")
     # spot_check: deterministic, first/middle/last by item id, independent of input order.
     vs = [decide(_raw(_crit(G), _crit(R), item=f"i{n:02d}"), RUBRIC) for n in (7, 3, 9, 1, 5)]
     picked = [v["item"] for v in spot_check(vs)]
@@ -417,7 +510,11 @@ def _selftest_extras() -> list[str]:
 
 
 def selftest() -> int:
-    bad = _selftest_cases() + _selftest_extras()
+    bad = _selftest_cases()
+    try:
+        bad += _selftest_extras()
+    except Exception as exc:  # reported as a failure, never as a bare traceback
+        bad.append(f"extras raised {type(exc).__name__}: {exc}")
     for b in bad:
         print(f"FAIL {b}")
     print(f"judge_contract selftest: {len(CASES)} cases + extras, {len(bad)} failure(s)")

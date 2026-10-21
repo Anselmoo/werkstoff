@@ -1,0 +1,10 @@
+{
+  "base": {
+    "text.py": "def slugify(title):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from text import slugify\nassert slugify('Hello World') == 'hello-world'",
+    "c2": "from text import slugify\nassert slugify('a  --  b') == 'a-b', slugify('a  --  b')",
+    "c3": "from text import slugify\nassert slugify('--Edge Case--') == 'edge-case', slugify('--Edge Case--')"
+  }
+}

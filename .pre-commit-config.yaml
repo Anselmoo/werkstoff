@@ -124,11 +124,11 @@ repos:
 
       - id: paired-tribunal-measurement
         name: the paired tribunal measurement's items, keys, decision rule and vendored verdict block hold
-        entry: sh -c 'python3 tools/judge-calibration/paired.py selftest && python3 tools/judge-calibration/paired.py check'
+        entry: sh -c 'python3 tools/judge-calibration/paired.py selftest && python3 tools/judge-calibration/paired.py check && python3 tools/judge-calibration/paired_v2.py selftest && python3 tools/judge-calibration/paired_v2.py check'
         language: system
         pass_filenames: false
         stages: [pre-commit]
-        files: ^(tools/judge-calibration/.*|tools/judge-contract/verdict\.inline\.js|test/judge-calibration/.*)$
+        files: ^(tools/judge-calibration/.*|tools/judge-contract/(judge_contract\.py|verdict\.inline\.js)|test/judge-calibration/.*)$
 
       - id: check-judge-calibration
         name: judge calibration fixtures, keys, prompts and records agree

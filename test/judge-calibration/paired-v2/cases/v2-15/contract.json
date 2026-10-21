@@ -1,0 +1,17 @@
+{
+  "wire": "the production GPS feed -> geo.distance_km -> the delivery fee",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "the production GPS feed reports coordinates in WGS84 decimal degrees"
+    },
+    {
+      "id": "c2",
+      "text": "distance_km((47.3769, 8.5417), (46.2044, 6.1432)) is within 2 km of 224 (Zurich to Geneva)"
+    },
+    {
+      "id": "c3",
+      "text": "distance_km(p, p) is 0 for any point p"
+    }
+  ]
+}

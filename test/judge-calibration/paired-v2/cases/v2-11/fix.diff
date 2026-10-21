@@ -1,0 +1,13 @@
+diff --git a/export.py b/export.py
+--- a/export.py
++++ b/export.py
+@@ -1,2 +1,8 @@
++HEADER = ('id', 'customer', 'amount')
++
++
+ def to_csv(rows):
+-    raise NotImplementedError
++    lines = [','.join(HEADER)]
++    for r in rows:
++        lines.append(','.join(str(r[k]) for k in HEADER))
++    return '\n'.join(lines) + '\n'

@@ -1,0 +1,13 @@
+{
+  "wire": "the production scheduler host clock -> tz.local_midnight_utc -> the nightly report trigger",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "the production scheduler host's clock is NTP-synchronised to within one second"
+    },
+    {
+      "id": "c2",
+      "text": "local_midnight_utc(date(2026, 7, 1), +2) returns datetime(2026, 6, 30, 22, 0): local midnight at UTC+2, expressed in UTC"
+    }
+  ]
+}

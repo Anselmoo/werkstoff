@@ -1,0 +1,9 @@
+{
+  "base": {
+    "backup.py": "def archive(src, dest):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import tarfile, tempfile\nfrom pathlib import Path\nfrom backup import archive\nwith tempfile.TemporaryDirectory() as d:\n    s = Path(d) / 's'\n    (s / 'a').mkdir(parents=True)\n    (s / 'x.txt').write_text('1')\n    (s / 'a' / 'y.txt').write_text('2')\n    out = Path(d) / 'o.tar.gz'\n    archive(s, out)\n    with tarfile.open(out) as t:\n        assert sorted(t.getnames()) == ['a/y.txt', 'x.txt'], t.getnames()",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}
