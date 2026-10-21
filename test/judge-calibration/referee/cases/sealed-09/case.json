@@ -1,0 +1,15 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "session cache entries live for 60 seconds",
+      "check": "python3 -c \"from cache import ttl_for; assert ttl_for('session')==60\""
+    }
+  ],
+  "checks": [],
+  "filesTouched": [
+    "cache.py"
+  ],
+  "diff": "diff --git a/cache.py b/cache.py\n--- a/cache.py\n+++ b/cache.py\n@@ -1,5 +1,5 @@\n from settings import settings\n \n \n def ttl_for(kind):\n-    return 0\n+    return settings.DEFAULT_TTL if kind == 'session' else 0\n"
+}

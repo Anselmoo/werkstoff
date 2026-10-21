@@ -1,0 +1,17 @@
+{
+  "wire": "raw settings -> cfg.load_config",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "load_config({'name': 'x'}) returns a dict that also carries retries=3 and verbose=False"
+    },
+    {
+      "id": "c2",
+      "text": "load_config raises ConfigError when 'name' is missing"
+    },
+    {
+      "id": "c3",
+      "text": "load_config raises ConfigError when 'name' is not a string"
+    }
+  ]
+}

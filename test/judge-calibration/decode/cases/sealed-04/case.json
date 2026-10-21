@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-04",
+  "source": "{ROOT}/styles.css, selectors .input .menu .sheet, property border-radius, lines 4-13",
+  "measured": ".input border-radius: 6px; .menu border-radius: 12px; .sheet border-radius: 24px",
+  "relation": "modular scale: each step is 2 times the one before it",
+  "reliability": "B"
+}

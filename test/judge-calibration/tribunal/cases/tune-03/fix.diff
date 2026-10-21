@@ -1,0 +1,19 @@
+diff --git a/cfg.py b/cfg.py
+--- a/cfg.py
++++ b/cfg.py
+@@ -1,7 +1,14 @@
+ class ConfigError(Exception):
+     pass
+ 
+ 
++DEFAULTS = {"retries": 3, "verbose": False}
++
++
+ def load_config(raw):
+     """Applies defaults to a raw settings mapping."""
+-    return dict(raw)
++    if "name" not in raw:
++        raise ConfigError("name is required")
++    out = dict(DEFAULTS)
++    out.update(raw)
++    return out

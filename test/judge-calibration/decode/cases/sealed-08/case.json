@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-08",
+  "source": "{ROOT}/styles.css, selectors .card .toast, property padding, lines 4-13",
+  "measured": ".card padding: 24px; .toast padding: 12px",
+  "relation": "4px base grid: every value is a multiple of 4px",
+  "reliability": "B"
+}

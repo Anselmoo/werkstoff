@@ -1,0 +1,11 @@
+diff --git a/orders.py b/orders.py
+--- a/orders.py
++++ b/orders.py
+@@ -1,2 +1,6 @@
++SQL = 'SELECT * FROM orders WHERE customer_id = %s ORDER BY created_at DESC'
++
++
+ def by_customer(rows, cid):
+-    raise NotImplementedError
++    return sorted((r for r in rows if r['customer_id'] == cid),
++                  key=lambda r: r['created_at'], reverse=True)

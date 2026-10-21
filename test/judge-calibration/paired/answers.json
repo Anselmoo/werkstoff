@@ -1,0 +1,74 @@
+{
+  "paired-01": {
+    "split": "paired",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "transform and export both adapted to the list shape; every consumer works"
+  },
+  "paired-02": {
+    "split": "paired",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "the fix repairs a consumer, not the wire: transform still raises KeyError"
+  },
+  "paired-03": {
+    "split": "paired",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "int(float('19.99') * 100) is 1998"
+  },
+  "paired-04": {
+    "split": "paired",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "rename never invalidates the cache"
+  },
+  "paired-05": {
+    "split": "paired",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "the shipped test pins the wrong behaviour ('a--b') and passes"
+  },
+  "paired-06": {
+    "split": "paired",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "all three hold"
+  },
+  "paired-07": {
+    "split": "paired",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "the TODO is stale; the empty case is handled"
+  },
+  "paired-08": {
+    "split": "paired",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "why": "all three hold"
+  },
+  "paired-09": {
+    "split": "paired",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 needs EXPLAIN against the production database"
+  },
+  "paired-10": {
+    "split": "paired",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 needs the provider's production endpoint"
+  },
+  "paired-11": {
+    "split": "paired",
+    "expected": "abstain",
+    "nativeExpected": "unknown",
+    "why": "c2 needs a production run"
+  },
+  "paired-12": {
+    "split": "paired",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "why": "c1 fails (no lower-casing), so the wire is red whatever c2 would show"
+  }
+}

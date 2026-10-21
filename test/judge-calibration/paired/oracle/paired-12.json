@@ -1,0 +1,9 @@
+{
+  "base": {
+    "contact.py": "def normalise(addr):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from contact import normalise\nassert normalise('  Ann@Example.COM ') == 'ann@example.com'",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

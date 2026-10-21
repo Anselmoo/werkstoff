@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-10",
+  "source": "{ROOT}/styles.css, selectors .field .label, property padding, font-size, lines 48-60",
+  "measured": ".field padding: 10px; .label font-size: 13px",
+  "relation": "1px base grid: every value is a multiple of 1px",
+  "reliability": "B"
+}

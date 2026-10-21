@@ -1,0 +1,20 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    9
+  ],
+  "items": [
+    {
+      "selector": ".hero-title",
+      "property": "font-size",
+      "value": 3,
+      "unit": "rem"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 8
+  },
+  "reliability": "B"
+}

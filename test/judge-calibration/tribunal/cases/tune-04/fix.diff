@@ -1,0 +1,18 @@
+diff --git a/notify.py b/notify.py
+--- a/notify.py
++++ b/notify.py
+@@ -1,6 +1,12 @@
++import os
++import urllib.request
++
++
+ def format_message(user, msg):
+-    return msg
++    return f"[{user}] {msg}"
+ 
+ 
+ def notify(user, msg):
+-    raise NotImplementedError
++    url = os.environ["MAIL_GATEWAY_URL"]
++    req = urllib.request.Request(url, data=format_message(user, msg).encode(), method="POST")
++    return urllib.request.urlopen(req).status

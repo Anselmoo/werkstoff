@@ -1,0 +1,17 @@
+{
+  "wire": "report -> stats.median",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "median([3, 1, 2]) returns 2"
+    },
+    {
+      "id": "c2",
+      "text": "median([4, 1, 3, 2]) returns 2.5"
+    },
+    {
+      "id": "c3",
+      "text": "median([]) raises ValueError"
+    }
+  ]
+}

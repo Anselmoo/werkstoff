@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-03",
+  "source": "{ROOT}/styles.css, selectors .btn .card, property border-radius, lines 4-11",
+  "measured": ".btn border-radius: 12px; .card border-radius: 16px",
+  "relation": "modular scale: each step is 1.333 times the one before it",
+  "reliability": "B"
+}

@@ -1,0 +1,15 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "migration 0007 defines DOWN as a statement that drops the column UP adds",
+      "check": "python3 -c \"import m0007; assert 'DROP COLUMN nick' in m0007.DOWN\""
+    }
+  ],
+  "checks": [],
+  "filesTouched": [
+    "m0007.py"
+  ],
+  "diff": "diff --git a/m0007.py b/m0007.py\n--- a/m0007.py\n+++ b/m0007.py\n@@ -1,3 +1,4 @@\n from migrations_util import reverse_of\n \n UP = 'ALTER TABLE users ADD COLUMN nick TEXT'\n+DOWN = reverse_of(UP)\n"
+}

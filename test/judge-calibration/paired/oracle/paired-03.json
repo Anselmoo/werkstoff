@@ -1,0 +1,10 @@
+{
+  "base": {
+    "money.py": "class AmountError(ValueError):\n    pass\n\n\ndef to_cents(text):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from money import to_cents\nassert to_cents('12.50') == 1250",
+    "c2": "from money import to_cents\nassert to_cents('19.99') == 1999",
+    "c3": "from money import to_cents, AmountError\ntry:\n    to_cents('1.234')\nexcept AmountError:\n    pass\nelse:\n    raise SystemExit(1)"
+  }
+}

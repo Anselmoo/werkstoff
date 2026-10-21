@@ -1,0 +1,13 @@
+diff --git a/store.py b/store.py
+--- a/store.py
++++ b/store.py
+@@ -1,6 +1,8 @@
+ class Store:
+     def __init__(self):
+         self.rows = {}
+ 
+     def upsert(self, key, value):
+-        raise NotImplementedError
++        created = key not in self.rows
++        self.rows[key] = value
++        return created

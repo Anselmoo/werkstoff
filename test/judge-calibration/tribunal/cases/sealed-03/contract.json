@@ -1,0 +1,17 @@
+{
+  "wire": "order -> inventory.reserve",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "reserve(order, sku, qty) with enough stock lowers stock[sku] by qty and returns True"
+    },
+    {
+      "id": "c2",
+      "text": "reserve with qty above stock[sku] returns False and leaves every count unchanged"
+    },
+    {
+      "id": "c3",
+      "text": "repeating reserve with the same order id changes nothing and returns True"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-02",
+  "source": "{ROOT}/styles.css, selectors .card .panel, property padding, lines 9-16",
+  "measured": ".card padding: 16px; .panel padding: 24px",
+  "relation": "8px base grid: every value is a multiple of 8px",
+  "reliability": "B"
+}

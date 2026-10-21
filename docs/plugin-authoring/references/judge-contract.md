@@ -184,6 +184,9 @@ Follow nacharbeit, the only plugin that calibrates a judge today.
   sealed set. Below `SEALED_FLOOR` (0.7) overall, or `FAMILY_SEALED_FLOOR` (0.6) for any
   family, the workflow throws and grades nothing real.
 
+[`judge-calibration.md`](judge-calibration.md) does this for three kept judges, and its
+scorer (`tools/judge-calibration/calibration.py`) is the one to reuse.
+
 Applied to a judge rubric, each known-answer case is an item, its expected outcome
 (`pass`/`fail`) and the evidence that settles it. Tune the prompt on the tuning cases,
 freeze it, then run the sealed cases once. Agreement is the fraction of sealed cases where
@@ -208,16 +211,20 @@ Status vocabulary:
 - **collapsed**: replaced by one contract judge in this change.
 - **fixed**: a fail-open default closed in this change.
 - **kept-unmeasured**: kept as it is, with `resolves_if` naming the paired measurement
-  that would justify it or retire it. Nothing here was measured, so no row claims a
-  measured reason.
+  that would justify it or retire it. No row with this status claims a measured reason.
+- **kept-calibrated**: kept as it is, and measured once on a sealed known-answer set whose
+  record clears its floor (`is_calibrated()` is true). It is calibrated against known
+  answers. For the tribunal, the paired measurement against a single contract judge has
+  also been run. For the other two it is still open. See
+  [`judge-calibration.md`](judge-calibration.md).
 
 ### Andon and arbeitsplan
 
 | plugin | judge (where) | shape today | status | resolves_if / note |
 |---|---|---|---|---|
-| andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | kept-unmeasured | a paired run, a single contract judge against the tribunal, on contested-wire cases with a known answer. `test/plugins/fixtures/contested-wire-halts` is one such case (its integrity is held by `test/plugins/verify-contested-fixture.py`), and a measurement needs a sealed set of them, not one. Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
+| andon | tribunal: defender, challenger, verifier, adjudicator (`skills/andon-verify/references/tribunal-protocol.md`; `agents/andon-adjudicator.md`) | per-criterion `pass`/`fail`/`neither` → wire `green`/`red`/`unknown`, with "not an average" stated outright | **kept-calibrated** | measured: sealed 8 (3 green, 3 red, 2 unknown, the reds being the `contested-wire-halts` repairs `verify-contested-fixture.py` proves cannot work), agreement 1.0 against floor 0.8, 0 false passes. It ran on the session's model (opus), because the andon agents declare none, and n=8 bounds a perfect score only at 0.63 (95%). Paired against one `andon-wire@1` contract judge on 20 items, 5 repeats each (same model): neither arm had a false pass, and the tribunal's record was 1.0 against 0.875, so the committed rule **keeps** it. The one discordant item is a failed criterion plus an unverifiable one, which verdict@1 can only abstain on (McNemar p = 1.0). The tribunal costs about 10x the output and was less consistent run to run. See [`judge-calibration.md`](judge-calibration.md#the-paired-measurement). Maps closely: `neither` = abstain on that criterion, `red` if any fails = min-not-average. Step 3's detection ladder in `andon-verify` already climbs only as far as the defect class needs, which is "a command decides first" in andon's terms |
 | andon | epistemic rubric, strategy (c) (`skills/andon-verify/references/epistemic-rubric.md`) | five criteria (falsifiability, generalization, evidence-grounding, honesty-of-framing, accessibility), each pass/fail/neither, "do not average" | kept-unmeasured | the same paired run on falsifiability-rubric wires. The closest existing match to verdict@1: five named criteria and no averaging. Only the 0–1 score and the fixed threshold are missing |
-| arbeitsplan | candidate-referee (`workflows/run.js` `REFEREE_SCHEMA`, `agents/candidate-referee.md`) | blind, one candidate per call; `accepted`/`accepted_different_approach`/`rejected`/`cannot_judge` with required `perCriterion[{id, met, evidence}]` | kept-unmeasured | maps closely: `cannot_judge` = abstain, `met` = pass, and evidence is required on every criterion. Not yet migrated: it has no 0–1 scores, no stated threshold (in effect 1.0) and no calibration. Settled by a sealed set of candidates with known acceptance |
+| arbeitsplan | candidate-referee (`workflows/run.js` `REFEREE_SCHEMA`, `agents/candidate-referee.md`) | blind, one candidate per call; `accepted`/`accepted_different_approach`/`rejected`/`cannot_judge` with required `perCriterion[{id, met, evidence}]` | **kept-calibrated** | measured with the `run.js` prompt itself: sealed 10 (4 pass, 4 fail, 2 abstain), agreement 1.0 against floor 0.8, 0 false passes and 0 false fails, on sonnet, the agent's default. A spec that sets `modelTier` runs `run.js` with a different model, which is a different, unmeasured judge. The 95% bound on a perfect 10/10 is only 0.69. Still not migrated (no 0–1 scores, threshold in effect 1.0). Found: `withEvidence` lands an `accepted` with **one** met criterion, which is weaker than the agent's own "every criterion met". The case probing it did not trigger it, but the gap is reachable. See [`judge-calibration.md`](judge-calibration.md#findings-about-the-judges) |
 | arbeitsplan | waves blind referee (`workflows/waves.js` `REFEREE_SCHEMA`, ~line 69; separate from the `run.js` referee) | blind, branch names only; the referee runs every acceptance command in its own worktree and returns `winner` (a branch or `null`) plus `perCandidate[{branch, allPassed, failing}]`. A `null` winner halts the row with "NO CANDIDATE ACCEPTED" | kept-unmeasured | maps partly: `allPassed` = pass, and a `null` winner is a fail. The schema has no per-criterion `score` or `evidence`, no abstain (a dead referee and "no branch passed" both end in the same halt) and no calibration, and the winner is a first-in-list tie-break rather than a threshold. A command decides in principle (the exit codes), so the referee only reports them. Settled by a sealed set of candidate pairs with known acceptance, measuring whether the referee ever reports a different winner than the exit codes alone |
 | arbeitsplan | adjudicator (`agents/adjudicator.md`) | judges the round, not an item; may not overturn a referee and records disagreement as doubt | kept-unmeasured | a paired measurement of rounds adjudicated against rounds decided by `scripts/rounds.py decide` alone. It does not fit per-item verdict@1 by design |
 | arbeitsplan | script phases (`workflows/run.js`, `sc.expectExit`) | the exit code must be in `expectExit`, or the run halts | conforms | the command decides |
@@ -245,7 +252,7 @@ Status vocabulary:
 
 | plugin | judge (where) | shape today | status | resolves_if / note |
 |---|---|---|---|---|
-| matrize | decode-referee (`workflows/decode.js`, `agents/decode-referee.md`) | blind re-derivation per card: `reproduced`/`reproduced_different_relation`/`not_reproduced`/`cannot_reproduce`; only `reproduced` is accepted | kept-unmeasured | maps closely: `cannot_reproduce` = abstain, and anything other than `reproduced` fails. Not yet migrated: it has no 0–1 scores, no threshold and no calibration. Settled by a sealed set of cards with a known relation |
+| matrize | decode-referee (`workflows/decode.js`, `agents/decode-referee.md`) | blind re-derivation per card: `reproduced`/`reproduced_different_relation`/`not_reproduced`/`cannot_reproduce`; only `reproduced` is accepted | **kept-calibrated** | measured with the `decode.js` prompt itself: sealed 10 (4 reproduced, 2 different-relation, 2 not-reproduced, 2 cannot-reproduce), agreement 1.0 against floor 0.8, all 10 native verdicts exact (sonnet). The 95% bound on a perfect 10/10 is only 0.69. `decode.js` still hard-codes `calibrated: false`, because a workflow cannot read the record. See [`judge-calibration.md`](judge-calibration.md) |
 | matrize | design-critic (`agents/design-critic.md`) | judges a **set** of cards or lexicon entries per call, giving a verdict for each | kept-unmeasured | a paired run of one call per entry against one call per set on a sealed set of copies and honest defaults. Its prompt already says "Judge each entry on its own evidence" |
 | matrize | fact-checker (`agents/fact-checker.md`) | resolves the named thing itself (package, URL, expiry) | conforms | the command or probe decides |
 | nacharbeit | finder (`workflows/review.js` Loop A) | tuned, then a sealed hold-out measured once with recall floors | conforms | **the only calibrated judge in the repo**: a tuning set and a sealed set with a floor. Its two gaps are described above |
@@ -294,13 +301,16 @@ python3 scripts/ci/check_judge_contract.py                  # the gate over the 
 
 ## Not done in this change
 
-- **Sealed calibration sets for every kept judge.** Every verdict carries
-  `calibrated: false` until its rubric has a sealed known-answer set, an agreement it
-  cleared, and a `calibration` record.
-- **The paired tribunal measurement.** The paired measurements in the mapping's
-  `resolves_if` column have not been run, starting with andon's tribunal against a single
-  contract judge on a sealed set of contested-wire cases (today there is one,
-  `contested-wire-halts`). Until they are, the tribunals and panels
-  kept here are unmeasured, not justified.
-- **Precision on a sealed set.** This is nacharbeit's second gap, and it applies to every
-  calibration added after this.
+- **Sealed calibration sets for the other kept judges.** The candidate-referee, the
+  decode-referee and the tribunal now have sealed sets and records
+  ([`judge-calibration.md`](judge-calibration.md)). Every other kept-unmeasured judge
+  still carries `calibrated: false` until it has one too.
+- **verdict@1 cannot say "one criterion fails, another is unknown".** The paired tribunal
+  measurement ran, and the committed rule keeps the tribunal. But its whole margin was one
+  item, a failed criterion plus an unverifiable one, which a verdict@1 judge can only abstain
+  on. A criterion-level undecidable, with any fail reducing the verdict to `fail`
+  (verdict@2), and a new paired run on new items would settle whether the tribunal is still
+  needed. Re-scoring the finished run under a changed rule would not.
+- **Precision on a sealed set** is now measured for the three judges above. Their record's
+  agreement is the weakest of six figures, the pass and fail precision among them. Every
+  calibration added later should use the same scorer.

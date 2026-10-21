@@ -82,7 +82,7 @@ NUMBER_WORDS = {
     "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
     "nineteen": 19, "twenty": 20, "twenty-one": 21, "twenty-two": 22, "twenty-three": 23,
     "twenty-four": 24, "twenty-five": 25, "twenty-six": 26, "twenty-seven": 27,
-    "twenty-eight": 28, "twenty-nine": 29, "thirty": 30,
+    "twenty-eight": 28, "twenty-nine": 29, "thirty": 30, "thirty-one": 31,
     "thirty-seven": 37,
     "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "seventy-six": 76,
     "eighty": 80, "ninety": 90, "ninety-eight": 98, "one hundred": 100,

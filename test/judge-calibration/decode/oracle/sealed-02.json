@@ -1,0 +1,38 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    16
+  ],
+  "items": [
+    {
+      "selector": ".gap-1",
+      "property": "margin",
+      "value": 4,
+      "unit": "px"
+    },
+    {
+      "selector": ".gap-2",
+      "property": "margin",
+      "value": 8,
+      "unit": "px"
+    },
+    {
+      "selector": ".gap-3",
+      "property": "margin",
+      "value": 12,
+      "unit": "px"
+    },
+    {
+      "selector": ".gap-4",
+      "property": "margin",
+      "value": 20,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 4
+  },
+  "reliability": "B"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "arbeitsplan-candidate-referee@1",
+  "threshold": 1.0,
+  "criteria": [
+    {
+      "id": "lands",
+      "question": "Would the referee let this candidate land: accepted, with a criterion met, as run.js reads the verdict?"
+    }
+  ],
+  "calibration": {
+    "sealed": 10,
+    "agreement": 1.0,
+    "floor": 0.8
+  }
+}

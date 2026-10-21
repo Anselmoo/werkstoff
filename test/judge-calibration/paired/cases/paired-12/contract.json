@@ -1,0 +1,13 @@
+{
+  "wire": "signup -> contact.normalise -> the production mail provider",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "normalise('  Ann@Example.COM ') returns 'ann@example.com'"
+    },
+    {
+      "id": "c2",
+      "text": "the production mail provider delivers to every normalised address"
+    }
+  ]
+}

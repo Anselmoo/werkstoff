@@ -22,6 +22,7 @@ jobs:
       js_syntax: ${{ steps.js_syntax.outcome }}
       workflow_models: ${{ steps.workflow_models.outcome }}
       judge_contract: ${{ steps.judge_contract.outcome }}
+      judge_calibration: ${{ steps.judge_calibration.outcome }}
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
       design_tokens: ${{ steps.design_tokens.outcome }}
       readme_skeleton: ${{ steps.readme_skeleton.outcome }}
@@ -168,6 +169,22 @@ jobs:
           python3 tools/judge-contract/test_parity.py
           python3 scripts/ci/check_judge_contract.py --selftest
           python3 scripts/ci/check_judge_contract.py
+
+      - name: Check judge calibration (known answers, precision, stale records)
+        id: judge_calibration
+        continue-on-error: true
+        # tools/judge-calibration/, fixtures in test/judge-calibration/. The scorer is
+        # calibrated first, on fabricated judges whose right answer is known (a judge that
+        # always passes, always fails or never answers must not clear a floor), with each
+        # oracle sabotaged. Only then the gate over the real fixtures: every answer key
+        # re-derived by a command, each prompt still rendering from its workflow, and any
+        # committed record recomputed from its committed raw outputs. A record is derived,
+        # never edited, and a record whose judge changed since is stale.
+        run: |
+          python3 tools/judge-calibration/calibration.py selftest
+          python3 tools/judge-calibration/calibration.py check
+          python3 tools/judge-calibration/paired.py selftest
+          python3 tools/judge-calibration/paired.py check
 
       - name: Check report-viewer conformance
         id: viewer_conformance
@@ -517,6 +534,7 @@ jobs:
           steps.js_syntax.outcome == 'failure' ||
           steps.workflow_models.outcome == 'failure' ||
           steps.judge_contract.outcome == 'failure' ||
+          steps.judge_calibration.outcome == 'failure' ||
           steps.viewer_conformance.outcome == 'failure' ||
           steps.design_tokens.outcome == 'failure' ||
           steps.readme_skeleton.outcome == 'failure' ||
@@ -584,6 +602,7 @@ jobs:
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
             row "Workflow agent() models valid (omitted inherits) + relay briefing" "${{ needs.checks.outputs.workflow_models }}"
             row "Judge verdict contract (command first, one rubric judge, abstain never passes; vendored copies in sync)" "${{ needs.checks.outputs.judge_contract }}"
+            row "Judge calibration (known-answer sets, precision, derived records, no stale record)" "${{ needs.checks.outputs.judge_calibration }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
@@ -611,7 +630,7 @@ jobs:
             echo "<h4>🪝 Pre-commit hooks (<code>.pre-commit-config.yaml</code>)</h4>"
             table_open "Hook"
             row "rrt-branch-name" "${{ needs.checks.outputs.rrt_branch_name }}"
-            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-workflow-models, check-workflow-models-selftest, check-judge-contract, check-judge-contract-selftest, judge-contract-selftest, judge-contract-parity, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
+            row "rrt-config-validate, rrt-doctor, check-js-syntax, check-js-syntax-selftest, check-workflow-models, check-workflow-models-selftest, check-judge-contract, check-judge-contract-selftest, judge-contract-selftest, judge-contract-parity, check-judge-calibration, judge-calibration-selftest, check-design-tokens, check-design-tokens-selftest (<code>pre-commit run --all-files</code>)" "${{ needs.checks.outputs.pre_commit }}"
             echo "</tbody></table>"
           } > board.md
           cat board.md

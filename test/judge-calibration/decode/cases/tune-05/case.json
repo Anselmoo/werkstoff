@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-05",
+  "source": "{ROOT}/styles.css, selectors .body, property font-size, lines 4-7",
+  "measured": ".body font-size: 18px",
+  "relation": "2px base grid: every value is a multiple of 2px",
+  "reliability": "B"
+}

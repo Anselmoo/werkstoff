@@ -1,0 +1,10 @@
+{
+  "judge": "referee",
+  "agentType": "arbeitsplan:candidate-referee",
+  "floor": 0.8,
+  "delivery": "prompt rendered from plugins/arbeitsplan/workflows/run.js (fanout-blind), written to a file the Agent tool is told to read; return-format footer appended",
+  "instrumentFiles": [
+    "plugins/arbeitsplan/agents/candidate-referee.md"
+  ],
+  "mapping": "pass = verdict accepted with at least one met criterion (run.js withEvidence, LANDS); abstain = cannot_judge or no report; fail = anything else"
+}

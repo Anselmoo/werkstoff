@@ -1,0 +1,38 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    19
+  ],
+  "items": [
+    {
+      "selector": ".h6",
+      "property": "font-size",
+      "value": 12,
+      "unit": "px"
+    },
+    {
+      "selector": ".h5",
+      "property": "font-size",
+      "value": 16,
+      "unit": "px"
+    },
+    {
+      "selector": ".h4",
+      "property": "font-size",
+      "value": 21.33,
+      "unit": "px"
+    },
+    {
+      "selector": ".h3",
+      "property": "font-size",
+      "value": 28.44,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 1.333
+  },
+  "reliability": "B"
+}

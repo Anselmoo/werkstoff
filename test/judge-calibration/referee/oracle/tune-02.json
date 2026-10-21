@@ -1,0 +1,9 @@
+{
+  "base": {
+    "kv.py": "def parse_kv(text):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "kv.py": "def parse_kv(text):\n    out = {}\n    for part in text.split(';'):\n        part = part.strip()\n        if not part:\n            continue\n        key, _, value = part.partition('=')\n        out[key.strip()] = value.strip()\n    return out\n"
+  },
+  "variants": []
+}

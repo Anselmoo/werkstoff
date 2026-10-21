@@ -1,0 +1,13 @@
+{
+  "wire": "payment provider -> webhook.sign",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "sign(secret, body) returns the hex HMAC-SHA256 of body keyed by secret"
+    },
+    {
+      "id": "c2",
+      "text": "the payment provider's production endpoint accepts webhooks signed this way"
+    }
+  ]
+}

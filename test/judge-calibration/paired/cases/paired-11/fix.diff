@@ -1,0 +1,7 @@
+diff --git a/nightly.py b/nightly.py
+--- a/nightly.py
++++ b/nightly.py
+@@ -1,2 +1,2 @@
+ def batches(n, size):
+-    raise NotImplementedError
++    return [(i, min(i + size, n)) for i in range(0, n, size)]

@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-09",
+  "source": "{ROOT}/styles/app.css, selectors .a .b .c, property margin, lines 3-12",
+  "measured": ".a margin: 8px; .b margin: 16px; .c margin: 32px",
+  "relation": "modular scale: each step is 2 times the one before it",
+  "reliability": "B"
+}

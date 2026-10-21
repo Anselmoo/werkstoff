@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-05",
+  "source": "{ROOT}/styles.css, selectors .p-1 .p-2 .p-3 .p-4, property padding, lines 4-16",
+  "measured": ".p-1 padding: 4px; .p-2 padding: 8px; .p-3 padding: 12px; .p-4 padding: 18px",
+  "relation": "4px base grid: every value is a multiple of 4px",
+  "reliability": "B"
+}

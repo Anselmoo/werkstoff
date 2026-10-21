@@ -1,0 +1,12 @@
+/* forms */
+*, *::before, *::after { box-sizing: border-box; }
+
+.field {
+  padding: 10px;
+}
+.label {
+  font-size: 13px;
+}
+.hint {
+  font-size: 12px;
+}

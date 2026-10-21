@@ -1,0 +1,38 @@
+{
+  "file": "styles.css",
+  "lines": [
+    4,
+    16
+  ],
+  "items": [
+    {
+      "selector": ".p-1",
+      "property": "padding",
+      "value": 4,
+      "unit": "px"
+    },
+    {
+      "selector": ".p-2",
+      "property": "padding",
+      "value": 8,
+      "unit": "px"
+    },
+    {
+      "selector": ".p-3",
+      "property": "padding",
+      "value": 12,
+      "unit": "px"
+    },
+    {
+      "selector": ".p-4",
+      "property": "padding",
+      "value": 18,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 4
+  },
+  "reliability": "B"
+}

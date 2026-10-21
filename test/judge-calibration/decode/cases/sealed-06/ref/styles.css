@@ -1,0 +1,15 @@
+/* headings */
+*, *::before, *::after { box-sizing: border-box; }
+
+.s-1 {
+  font-size: 16px;
+}
+.s-2 {
+  font-size: 24px;
+}
+.s-3 {
+  font-size: 36px;
+}
+small {
+  font-size: 0.875em;
+}

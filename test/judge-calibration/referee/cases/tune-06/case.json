@@ -1,0 +1,15 @@
+{
+  "candidateId": "c1",
+  "acceptance": [
+    {
+      "id": "a1",
+      "criterion": "a user with 3 failed attempts is locked out by login()",
+      "check": "python3 -c \"from login import login; assert login('u',3)['ok'] is False\""
+    }
+  ],
+  "checks": [],
+  "filesTouched": [
+    "login.py"
+  ],
+  "diff": "diff --git a/login.py b/login.py\n--- a/login.py\n+++ b/login.py\n@@ -1,5 +1,7 @@\n from settings import settings\n \n \n def login(user, attempts):\n+    if attempts >= settings.MAX_ATTEMPTS:\n+        return {'user': user, 'ok': False, 'locked': True}\n     return {'user': user, 'ok': True}\n"
+}

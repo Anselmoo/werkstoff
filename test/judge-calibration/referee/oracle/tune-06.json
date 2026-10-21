@@ -1,0 +1,18 @@
+{
+  "base": {
+    "login.py": "from settings import settings\n\n\ndef login(user, attempts):\n    return {'user': user, 'ok': True}\n",
+    "settings.py": "class settings:\n    MAX_ATTEMPTS = 3\n"
+  },
+  "candidate": {
+    "login.py": "from settings import settings\n\n\ndef login(user, attempts):\n    if attempts >= settings.MAX_ATTEMPTS:\n        return {'user': user, 'ok': False, 'locked': True}\n    return {'user': user, 'ok': True}\n",
+    "settings.py": "class settings:\n    MAX_ATTEMPTS = 3\n"
+  },
+  "variants": [
+    {
+      "settings.py": "class settings:\n    MAX_ATTEMPTS = 3\n"
+    },
+    {
+      "settings.py": "class settings:\n    MAX_ATTEMPTS = 10\n"
+    }
+  ]
+}

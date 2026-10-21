@@ -1,0 +1,9 @@
+{
+  "base": {
+    "rt.py": "def retry(fn, attempts):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "rt.py": "def retry(fn, attempts):\n    if attempts < 1:\n        raise ValueError('attempts must be >= 1')\n    last = None\n    for _ in range(attempts):\n        try:\n            return fn()\n        except Exception as exc:\n            last = exc\n    raise last\n"
+  },
+  "variants": []
+}

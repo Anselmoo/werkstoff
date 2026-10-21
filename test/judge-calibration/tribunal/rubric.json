@@ -1,0 +1,15 @@
+{
+  "id": "andon-tribunal@1",
+  "threshold": 1.0,
+  "criteria": [
+    {
+      "id": "contract-met",
+      "question": "Does every criterion of the wire's contract pass after the fix?"
+    }
+  ],
+  "calibration": {
+    "sealed": 8,
+    "agreement": 1.0,
+    "floor": 0.8
+  }
+}

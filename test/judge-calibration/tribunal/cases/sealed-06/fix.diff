@@ -1,0 +1,12 @@
+diff --git a/router.py b/router.py
+--- a/router.py
++++ b/router.py
+@@ -1,5 +1,7 @@
+ ROUTES = {"/": "home", "/about": "about"}
+ 
+ 
+ def route(path):
+-    raise NotImplementedError
++    if len(path) > 1:
++        path = path.rstrip("/")
++    return ROUTES.get(path)

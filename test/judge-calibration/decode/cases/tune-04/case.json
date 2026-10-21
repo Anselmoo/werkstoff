@@ -1,0 +1,7 @@
+{
+  "cardId": "tune-04",
+  "source": "{ROOT}/styles.css, selectors .t1 .t2 .t3 .t4 .t5, property font-size, lines 4-19",
+  "measured": ".t1 font-size: 14px; .t2 font-size: 16px; .t3 font-size: 18px; .t4 font-size: 20px; .t5 font-size: 24px",
+  "relation": "modular scale: each step is 1.25 times the one before it",
+  "reliability": "B"
+}

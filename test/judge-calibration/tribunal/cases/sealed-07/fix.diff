@@ -1,0 +1,14 @@
+diff --git a/metrics.py b/metrics.py
+--- a/metrics.py
++++ b/metrics.py
+@@ -1,9 +1,9 @@
+ class Counters:
+     def __init__(self):
+         self.c = {}
+ 
+     def incr(self, name, n=1):
+         self.c[name] = self.c.get(name, 0) + n
+ 
+     def render(self):
+-        raise NotImplementedError
++        return "".join(f"{k} {v}\n" for k, v in sorted(self.c.items()))

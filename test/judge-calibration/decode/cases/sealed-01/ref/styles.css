@@ -1,0 +1,21 @@
+/* radii */
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 8px;
+  --radius-xl: 16px;
+}
+.chip {
+  border-radius: var(--radius-s);
+}
+.btn {
+  border-radius: var(--radius-m);
+}
+.card {
+  border-radius: var(--radius-l);
+}
+.modal {
+  border-radius: var(--radius-xl);
+}

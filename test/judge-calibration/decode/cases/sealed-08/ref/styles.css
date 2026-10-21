@@ -1,0 +1,13 @@
+/* surfaces */
+*, *::before, *::after { box-sizing: border-box; }
+
+.card {
+  padding: 16px;
+  border: 1px solid #ddd;
+}
+.panel {
+  padding: 24px;
+}
+.toast {
+  padding: 12px;
+}

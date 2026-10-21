@@ -1,0 +1,17 @@
+{
+  "wire": "form input -> money.to_cents",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "to_cents('12.50') returns 1250"
+    },
+    {
+      "id": "c2",
+      "text": "to_cents('19.99') returns 1999"
+    },
+    {
+      "id": "c3",
+      "text": "to_cents('1.234') raises AmountError"
+    }
+  ]
+}

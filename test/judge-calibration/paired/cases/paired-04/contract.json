@@ -1,0 +1,17 @@
+{
+  "wire": "profile page -> users.get_name (now cached)",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "get_name(1) returns the stored name"
+    },
+    {
+      "id": "c2",
+      "text": "a second get_name(1) call does not read DB again"
+    },
+    {
+      "id": "c3",
+      "text": "after rename(1, 'bea'), get_name(1) returns 'bea'"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "file": "styles/app.css",
+  "lines": [
+    3,
+    12
+  ],
+  "items": [
+    {
+      "selector": ".a",
+      "property": "margin",
+      "value": 8,
+      "unit": "px"
+    },
+    {
+      "selector": ".b",
+      "property": "margin",
+      "value": 16,
+      "unit": "px"
+    },
+    {
+      "selector": ".c",
+      "property": "margin",
+      "value": 32,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "ratio",
+    "value": 2
+  },
+  "reliability": "B"
+}

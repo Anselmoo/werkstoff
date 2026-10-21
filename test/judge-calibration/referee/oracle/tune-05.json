@@ -1,0 +1,9 @@
+{
+  "base": {
+    "pager.py": "def paginate(items, page, size):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "pager.py": "def paginate(items, page, size):\n    start = page * size\n    return items[start:start + size]\n"
+  },
+  "variants": []
+}

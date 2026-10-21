@@ -1,0 +1,587 @@
+{
+  "items": {
+    "paired/paired-01": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-02": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-03": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-04": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-05": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-06": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-07": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-08": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired/paired-09": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "fail",
+        "abstain",
+        "abstain",
+        "fail"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:I can't decide c2 from anything in this environment. To show that the query uses the orders_by_customer index on the production database, I would need to run EXPLAIN against that database. The tree has only orders.py (`ls -laR` lists that one file). There is no schema, migration or index definition in it: grep for \"orders_by_customer\", \"INDEX\", \"DATABASE\" and \"postgres\" found nothing. There is no database connection either, since `which psql` printed \"psql not found\" and no DATABASE or PG variable is set. All that's left is the SQL string at orders.py:1, 'SELECT * FROM orders WHERE customer_id = %s ORDER BY created_at DESC'. That string can't tell me which plan the planner picks. c1 does have evidence. I loaded orders.py read-only and called by_customer on sample rows with cid=7: it returned ids [3, 1, 4], which is only customer 7's rows, newest first. An unknown cid returned []. This points to c1 holding (orders.py:4-6). But the rubric needs every criterion decided, and c2 is undecidable here, so I am abstaining on the whole item rather than guessing.",
+        "judge:c2 cannot be decided from evidence in this environment. It asks whether the production database serves the SQL query through the orders_by_customer index. The tree holds only orders.py (ls -la shows one file, and it is not a git repo). Nothing in it defines a schema, an index, a migration or a connection, psql is not installed ('psql not found'), and no database environment variables are set. That leaves no way to run EXPLAIN against production, so whether the plan uses the index or a sequential scan is unknown. c1 can be decided and holds: orders.py:4-6 filters on customer_id and sorts by created_at with reverse=True. A sample run returned ['c','a','d'] for customer 1 (created_at 7, 3, 1) and [] for a customer with no orders. Because c2 can only be guessed, I am abstaining on the item rather than scoring it.",
+        "judge:c2 cannot be decided here: it needs the query plan from the production database, and there is no database in this environment. The tree holds only orders.py (no schema, no index definition, no EXPLAIN output), and psql, pg_ctl and postgres are not installed. Whether the orders_by_customer index serves the query, or whether that index even exists, cannot be seen from the source alone.",
+        "judge:c2 cannot be decided in this environment. It asks whether the production database serves the query from the orders_by_customer index. Deciding that needs an EXPLAIN plan from the production database. The tree holds only orders.py (ls -laR lists one file). It has no schema, no index definition, no migration and no connection config. psql, pg_ctl and postgres are not installed, and no PG*/DATABASE environment variable is set. orders.py:1 only defines the SQL string; nothing in the tree runs it against a database. c1 was decidable and holds. orders.py:4-6 filters rows on customer_id == cid and sorts by created_at descending. A run on sample rows with by_customer(rows, 1) printed ['c', 'a', 'd'] (dates 2024-03-01, 2024-01-01, 2023-12-31) and left out customer 2's row. by_customer(rows, 3) printed []. Because one criterion cannot be decided from evidence, I abstain on the item rather than guess c2.",
+        "judge:c2 needs the production database's query plan (EXPLAIN on orders WHERE customer_id = %s ORDER BY created_at DESC) to show the orders_by_customer index is used. None of that is here: the tree holds only orders.py (no schema, no migration, no index definition, no DB connection config), and no psql, pg_ctl or postgres is installed. So c2 cannot be decided from evidence, and scoring it would be a guess. c1 was decided and holds."
+      ]
+    },
+    "paired/paired-10": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:Criterion c2 (the payment provider's production endpoint accepts webhooks signed this way) needs evidence that is not available here. That means a live call to the production endpoint or the provider's signature specification, and the working tree contains only webhook.py. c1 is decided and holds (it matches a known HMAC-SHA256 test vector), but the wire cannot be passed or failed without c2.",
+        "judge:c2 (the payment provider's production endpoint accepts webhooks signed this way) cannot be checked here. The tree holds only webhook.py. It has no provider name, no endpoint, no docs or spec for the provider's signature scheme (header format, encoding, timestamp prefix), and nothing reaches a production endpoint. Any c2 score would be a guess. c1 alone does hold: webhook.py:5-6 returns hmac.new(secret.encode(), body.encode(), hashlib.sha256).hexdigest(). Running sign('key','The quick brown fox jumps over the lazy dog') printed f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8, which is the known HMAC-SHA256 test vector, and it matched a reference hmac.new call (True). Loading the module during that check created a __pycache__ directory in the tree. I removed it afterwards, and ls shows only webhook.py again.",
+        "judge:c2 asks whether the payment provider's production endpoint accepts webhooks signed this way. The working tree holds only webhook.py: no provider documentation, no header or encoding spec, no recorded exchange, and no endpoint to call. Whether the provider expects hex or base64, a timestamp prefix, or a particular header can't be decided from evidence in this environment, so c2 is undecidable rather than failed. c1 is verified (score 1.0).",
+        "judge:c2 cannot be decided from anything in this environment. The working tree holds only webhook.py: no provider documentation, no spec of the signature scheme (header name, encoding, timestamp prefix), no test fixtures and no recorded production response. The only way to show the provider's production endpoint accepts these signatures would be to send a signed webhook to it, and that is outside the tree and outside this judge's remit. c1 is decided and holds. c2 is not guessed.",
+        "judge:c2 says the payment provider's production endpoint accepts webhooks signed this way. Nothing in this environment can show that: the working tree has only webhook.py, with no provider spec, no example signature and no integration test, and the production endpoint cannot be reached from here. c1 is shown to hold: the function matches the reference HMAC-SHA256 test vector."
+      ]
+    },
+    "paired/paired-11": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "fail",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:Criterion c2 (the nightly job finishes inside its 02:00-04:00 window on production data volume) cannot be decided from evidence in this environment. The working tree holds only nightly.py, with no scheduler, no production data or volume spec, and no runtime logs. c1 was verified by execution and holds.",
+        "judge:Criterion c2 (the nightly job finishes inside its 02:00-04:00 window on production data volume) cannot be decided from evidence in this environment. The working tree holds only nightly.py: no scheduler, no job runner, no production data or volume, and no run-time logs. The rubric says not to guess in this case. c1 was verified and passes: batches(10, 4) printed [(0, 4), (4, 8), (8, 10)].",
+        "judge:c2 (nightly job finishes inside its 02:00-04:00 window on production data volume) cannot be decided here: the tree holds only nightly.py (84 bytes, a pure batches() function). There is no scheduler, no job entry point, no production data or volume figures, and no timing logs or run history. Scoring it would be a guess. c1 was decided and holds: running batches(10, 4) prints [(0, 4), (4, 8), (8, 10)].",
+        "judge:c2 (the nightly job finishes inside its 02:00-04:00 window on production data volume) cannot be decided here. The working tree holds only nightly.py (84 bytes, a single pure function). It has no scheduler, no job entry point, no production data or volume figures, no timing logs and no benchmark, so nothing in this environment can show runtime against the window. c1 is decided and holds.",
+        "judge:c2 (the nightly job finishes inside its 02:00-04:00 window on production data volume) cannot be decided in this environment. The working tree holds only nightly.py (84 bytes, a single batches() function). It has no scheduler, no job entry point, no production data or volume figures, no timing logs and no benchmark harness, so I have nothing to measure runtime against the window with. c1 is decidable and holds."
+      ]
+    },
+    "paired/paired-12": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:c2 (the production mail provider delivers to every normalised address) cannot be decided here: the working tree contains only contact.py (ls shows one 45-byte file), with no mail-provider client, configuration, credentials or delivery logs, and there is no access to a production mail provider from this environment. Scoring it would be a guess. c1 itself was decidable and fails. contact.py:2 is `return addr.strip()`, and running `python3 -I -B -c \"from contact import normalise; print(repr(normalise('  Ann@Example.COM ')))\"` inside the tree printed 'Ann@Example.COM', not 'ann@example.com', because the fix strips whitespace but never lowercases. So the wire cannot pass regardless of c2.",
+        "judge:c2 cannot be decided here. \"The production mail provider delivers to every normalised address\" needs observing delivery through the real production provider. The working tree has only contact.py (ls -la shows one 45-byte file), with no provider client, config or test, and this environment has no production access, so I am not guessing. c1 alone is decidable and fails: contact.py:2 is `return addr.strip()`, and running normalise('  Ann@Example.COM ') printed 'Ann@Example.COM', not the 'ann@example.com' the contract wants, because nothing lowercases the address.",
+        "judge:c2 cannot be decided here. The working tree holds only contact.py (ls -la shows one 45-byte file). It contains no mail provider client and no config or credentials, and grep -rniE 'mail|provider|smtp|deliver' . found nothing. Whether the production mail provider delivers to every normalised address is a claim about an external production system, and nothing in this environment can test it. I am abstaining instead of guessing, as the brief requires. For the record, c1 could be decided and it fails. contact.py:2 is `return addr.strip()`. Running python3 -I -c \"from contact import normalise; print(repr(normalise('  Ann@Example.COM ')))\" from inside the tree printed 'Ann@Example.COM', but the contract requires 'ann@example.com'. The fix trims whitespace but does not lowercase.",
+        "judge:c2 cannot be decided here. The working tree holds only contact.py. It contains no mail provider, no signup code, no delivery log and no credentials, and there is no way to reach the production mail provider from this environment, so I have no evidence about whether it delivers to every normalised address. c1 could be decided, and it fails. contact.py:2 is `return addr.strip()`, which does not lowercase. Running `python3 -I -c \"from contact import normalise; print(repr(normalise('  Ann@Example.COM ')))\"` inside the tree printed 'Ann@Example.COM', not 'ann@example.com', so c1 would score 0.0. Because c2 is undecidable, I am abstaining on the item as a whole instead of guessing.",
+        "judge:c2 cannot be decided here. The working tree holds only contact.py. It has no mail-provider code, no configuration and no credentials, and this environment cannot reach the production mail provider, so whether it delivers to every normalised address can't be checked from evidence. c1 could be decided, and it fails. contact.py:2 is `return addr.strip()`, which removes the spaces but does not lowercase. Running `python3 -I -c \"import contact; print(repr(contact.normalise('  Ann@Example.COM ')))\"` inside the tree printed 'Ann@Example.COM', not the 'ann@example.com' the contract requires. If the abstain were not required, c1 would score 0.0 and fail. The wire therefore cannot pass whatever c2 turns out to be."
+      ]
+    },
+    "tribunal/sealed-01": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-02": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-03": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-04": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "fail",
+        "abstain",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-05": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-06": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "tribunal/sealed-07": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:Criterion c2 (p99 latency of a flush to the production metrics backend under 50 ms) cannot be decided from evidence in this environment. The working tree holds only metrics.py, with no flush path, no backend integration and no latency data, and there is no production metrics backend to measure here. c1 is confirmed by running the code directly.",
+        "judge:I can't decide c2 from anything in this environment. The tree holds only metrics.py (9 lines; ls -la lists nothing else). It has no flush path and no backend client. `grep -rniE \"backend|flush|latency|p99\" .` found no matches, and the tree is not a git repo. Nothing here reaches the production metrics backend, so there is no way to measure a p99 flush latency under 50 ms, and giving it a score would be a guess. c1 alone does hold. metrics.py:9 returns \"\".join(f\"{k} {v}\\n\" for k, v in sorted(self.c.items())). I ran it with `python3 -I -B` after incr('b',2), incr('a'), incr('c',5), incr('a',3), and it printed 'a 4\\nb 2\\nc 5\\n': one 'name value' line per counter, sorted by name. An empty Counters printed ''. The -B flag stopped Python writing bytecode, so the tree is unchanged.",
+        "judge:c2 (p99 flush latency to the production metrics backend under 50 ms) cannot be decided from evidence in this environment: the tree contains only metrics.py (ls -la shows one 234-byte file), with no flush code, no backend client, no production endpoint, no benchmark and no latency data, so any score would be a guess. For the record, c1 is decidable and holds: metrics.py:9 returns \"\".join(f\"{k} {v}\\n\" for k, v in sorted(self.c.items())), and running it with incr('b',2), incr('a'), incr('c',5), incr('a',3) printed 'a 4\\nb 2\\nc 5\\n' (one 'name value' line per counter, sorted by name), while an empty Counters().render() printed ''.",
+        "judge:c2 (p99 latency of a flush to the production metrics backend stays under 50 ms) cannot be decided from evidence available in this environment: the working tree contains only metrics.py (ls shows a single 234-byte file), there is no flush code, no backend client, no production endpoint and no latency data (grep for backend|flush|latency|p99 in the tree finds nothing). Any score for c2 would be a guess. c1 alone is decidable and holds: metrics.py:9 returns sorted 'name value' lines, and running it printed 'a 1\\nb 3\\n' after incr('b',2), incr('a'), incr('b'), and '' for no counters. But the wire cannot be judged against its full contract, so I abstain.",
+        "judge:c2 (p99 latency of a flush to the production metrics backend stays under 50 ms) cannot be decided from this environment. The tree holds only metrics.py (ls shows one 234-byte file). It has no flush code, no backend client, and no production endpoint or latency data to measure, and grep for backend/flush/latency finds nothing. Any score for c2 would be a guess. c1 on its own is supported by the evidence: metrics.py:9 returns \"\".join(f\"{k} {v}\\n\" for k, v in sorted(self.c.items())). Running it with incr zeta 3, alpha 1, mid 2, alpha 4 printed 'alpha 5\\nmid 2\\nzeta 3\\n', which is one 'name value' line per counter sorted by name. An empty Counters gave ''. I would score c1 about 0.95 and pass it. The wire still needs a judgement on c2, so the item as a whole is an abstention."
+      ]
+    },
+    "tribunal/sealed-08": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "fail",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "judge:Criterion c2 (a message in flight is redelivered after the production broker restarts) cannot be decided from evidence in this environment. The working tree contains only consumer.py, with no production broker, broker code or restart harness, and the claim depends on broker-side persistence that cannot be seen here. c1 does hold: the handler now runs before the ack, and a handler that raises leaves the message unacked.",
+        "judge:c2 (an in-flight message is redelivered after the production broker restarts) cannot be decided here. The tree holds only consumer.py: no broker implementation, no broker config and no tests, and no production broker can be reached or restarted in this environment. Redelivery after a restart depends on the broker's persistence and unacked-redelivery semantics, which are not visible. Only c1 was decidable, and it holds.",
+        "judge:c2 asks whether an in-flight message is redelivered after the production broker restarts. That depends on how the production broker behaves, and none of that behaviour is in the working tree, which holds only consumer.py. No production broker is reachable in this environment to restart and check. c1 is decided on evidence and holds: ack runs only after the handler returns without raising.",
+        "judge:c2 needs a production broker restart to observe redelivery. The working tree contains only consumer.py, with no broker code and no broker to run, so c2 cannot be decided from evidence available here. c1 was decided: it holds, shown by consumer.py:3-4 and the fake-broker run.",
+        "judge:c2 says an in-flight message is redelivered after the production broker restarts. That depends on a production broker this environment does not have. The working tree contains only consumer.py, with no broker code, and I cannot restart a production broker from here, so the criterion cannot be decided from evidence. c1 is supported: handler runs before ack, and a stub test shows no ack when the handler raises."
+      ]
+    }
+  },
+  "arms": {
+    "a": {
+      "items": {
+        "n": 20,
+        "agreement": 1.0,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 1.0,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 1.0
+        },
+        "weakestTerm": "agreement",
+        "weakest": 1.0
+      },
+      "record": {
+        "sealed": 20,
+        "agreement": 1.0,
+        "floor": 0.8
+      },
+      "runs": {
+        "n": 100,
+        "agreement": 0.94,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 1,
+        "falseFailRate": 0.02857142857142857,
+        "precision": {
+          "pass": 1.0,
+          "fail": 0.8888888888888888,
+          "abstain": 0.9545454545454546
+        },
+        "recall": {
+          "pass": 0.9428571428571428,
+          "fail": 1.0,
+          "abstain": 0.84
+        },
+        "terms": {
+          "agreement": 0.94,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 0.8888888888888888,
+          "recall-pass": 0.9428571428571428,
+          "recall-fail": 1.0
+        },
+        "weakestTerm": "precision-fail",
+        "weakest": 0.8888888888888888
+      },
+      "unanimousItems": 16
+    },
+    "b": {
+      "items": {
+        "n": 20,
+        "agreement": 0.95,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 0.8333333333333334
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 0.875,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 0.95,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 0.875
+        },
+        "weakestTerm": "recall-fail",
+        "weakest": 0.875
+      },
+      "record": {
+        "sealed": 20,
+        "agreement": 0.875,
+        "floor": 0.8
+      },
+      "runs": {
+        "n": 100,
+        "agreement": 0.95,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 0.8333333333333334
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 0.875,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 0.95,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 0.875
+        },
+        "weakestTerm": "recall-fail",
+        "weakest": 0.875
+      },
+      "unanimousItems": 20
+    }
+  },
+  "discordant": {
+    "onlyTribunalRight": 1,
+    "onlyContractJudgeRight": 0,
+    "mcnemarExactP": 1.0
+  },
+  "decision": {
+    "rule": "keep the tribunal iff arm B has more false passes, or a lower record, than arm A",
+    "keepTribunal": true,
+    "falsePasses": {
+      "tribunal": 0,
+      "contractJudge": 0
+    },
+    "record": {
+      "tribunal": 1.0,
+      "contractJudge": 0.875
+    }
+  }
+}

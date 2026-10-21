@@ -1,0 +1,13 @@
+{
+  "wire": "Counters.render -> the production metrics backend",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "render() returns one 'name value' line per counter, sorted by name"
+    },
+    {
+      "id": "c2",
+      "text": "the p99 latency of a flush to the production metrics backend stays under 50 ms"
+    }
+  ]
+}

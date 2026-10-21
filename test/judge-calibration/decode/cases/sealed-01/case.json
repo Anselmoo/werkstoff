@@ -1,0 +1,7 @@
+{
+  "cardId": "sealed-01",
+  "source": "{ROOT}/styles.css, selectors .chip .btn .card .modal, property border-radius, lines 10-21",
+  "measured": ".chip border-radius: 2px; .btn border-radius: 4px; .card border-radius: 8px; .modal border-radius: 16px",
+  "relation": "modular scale: each step is 2 times the one before it",
+  "reliability": "B"
+}

@@ -1,0 +1,9 @@
+{
+  "base": {
+    "slug.py": "def slugify(text):\n    raise NotImplementedError\n"
+  },
+  "candidate": {
+    "slug.py": "def slugify(text):\n    out = text.lower().replace(' ', '-')\n    return ''.join(ch for ch in out if ch.isalnum() or ch == '-')\n"
+  },
+  "variants": []
+}

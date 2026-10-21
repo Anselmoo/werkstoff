@@ -1,0 +1,9 @@
+{
+  "base": {
+    "nightly.py": "def batches(n, size):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from nightly import batches\nassert batches(10, 4) == [(0, 4), (4, 8), (8, 10)]",
+    "c2": "import sys\nsys.exit(3)  # needs a production system no test environment reaches"
+  }
+}

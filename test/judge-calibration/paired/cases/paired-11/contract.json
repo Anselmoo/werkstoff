@@ -1,0 +1,13 @@
+{
+  "wire": "scheduler -> nightly.batches",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "batches(10, 4) returns [(0, 4), (4, 8), (8, 10)]"
+    },
+    {
+      "id": "c2",
+      "text": "the nightly job finishes inside its 02:00-04:00 window on production data volume"
+    }
+  ]
+}

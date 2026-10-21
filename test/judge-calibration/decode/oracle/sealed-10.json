@@ -1,0 +1,26 @@
+{
+  "file": "styles.css",
+  "lines": [
+    48,
+    60
+  ],
+  "items": [
+    {
+      "selector": ".field",
+      "property": "padding",
+      "value": 10,
+      "unit": "px"
+    },
+    {
+      "selector": ".label",
+      "property": "font-size",
+      "value": 13,
+      "unit": "px"
+    }
+  ],
+  "relation": {
+    "kind": "base",
+    "value": 1
+  },
+  "reliability": "B"
+}

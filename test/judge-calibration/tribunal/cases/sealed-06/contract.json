@@ -1,0 +1,17 @@
+{
+  "wire": "request path -> router.route",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "route('/about') returns 'about'"
+    },
+    {
+      "id": "c2",
+      "text": "route('/about/') returns 'about' and route('/') returns 'home'"
+    },
+    {
+      "id": "c3",
+      "text": "route('/missing') returns None"
+    }
+  ]
+}

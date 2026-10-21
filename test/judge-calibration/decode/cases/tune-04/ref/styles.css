@@ -1,0 +1,21 @@
+/* text */
+*, *::before, *::after { box-sizing: border-box; }
+
+.t1 {
+  font-size: 14px;
+}
+.t2 {
+  font-size: 16px;
+}
+.t3 {
+  font-size: 18px;
+}
+.t4 {
+  font-size: 20px;
+}
+.t5 {
+  font-size: 24px;
+}
+code {
+  font-family: monospace;
+}
