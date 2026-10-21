@@ -6,6 +6,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-21
 ### Changed
 - **canonize, verify**: the vendored judge block moves to the shared contract's `verdict@2`,
   a superset of `verdict@1`. The judge prompt now says a criterion it cannot decide gets
