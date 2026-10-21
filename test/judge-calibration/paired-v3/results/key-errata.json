@@ -1,0 +1,25 @@
+{
+  "v3-10": {
+    "criterion": "c1",
+    "sealed": {
+      "expected": "pass",
+      "nativeExpected": "green"
+    },
+    "corrected": {
+      "expected": "fail",
+      "nativeExpected": "red"
+    },
+    "platform": "linux",
+    "probe": "import os, sys\nif os.geteuid() == 0:\n    sys.exit(2)  # root reads a mode-000 directory; kept for parity with the other probes\nif not sys.platform.startswith(\"linux\"):\n    sys.exit(2)  # APFS refuses a filename that is not valid UTF-8, so this is decided on Linux\nimport tempfile\nfrom largest import largest_file\n\n\nclass BytesRoot:\n    \"\"\"An os.PathLike whose __fspath__ returns bytes: a root c1 admits (\"a str or os.PathLike\").\"\"\"\n\n    def __init__(self, path):\n        self.path = os.fsencode(path)\n\n    def __fspath__(self):\n        return self.path\n\n\nwith tempfile.TemporaryDirectory() as d:\n    r = os.path.join(d, \"r\")\n    os.mkdir(r)\n    names = [\"\\u00e9\".encode(), b\"\\xc3a\"]  # 'é', and a name that is not valid UTF-8\n    for name in names:\n        with open(os.path.join(os.fsencode(r), name), \"wb\") as f:\n            f.write(b\"12\")\n    # Equal sizes: c1 breaks the tie by the path \"that sorts first as a str\".\n    want = min(os.fsdecode(n) for n in names)\n    got = largest_file(BytesRoot(r))\n    path = os.fsdecode(got[0]) if isinstance(got[0], bytes) else got[0]\n    assert (path, got[1]) == (want, 2), (\"a tie broken by bytes order, not as a str\", got, want)\n",
+    "control": {
+      "why": "the same code with the tie key os.fsdecode(relpath): ties sort as a str whatever the root returns",
+      "files": {
+        "largest.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef largest_file(root):\n    \"\"\"(path relative to root, size) of the largest regular file under root, or None.\"\"\"\n    best = None\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            p = os.path.join(dirpath, name)\n            st = os.lstat(p)\n            if not stat.S_ISREG(st.st_mode):\n                continue\n            key = (-st.st_size, os.fsdecode(os.path.relpath(p, root)))\n            if best is None or key < best:\n                best = key\n    return None if best is None else (best[1], -best[0])\n"
+      }
+    },
+    "why": "c1 admits 'a root (a str or os.PathLike)'. An os.PathLike whose __fspath__ returns bytes makes os.walk and os.path.relpath produce bytes, and the tie key (-size, relpath) then orders by bytes. For names that are not valid UTF-8 (ext4 allows them; APFS does not) bytes order and str order differ: of 'é' and b'\\xc3a' at equal size, c1 wants 'é', the code returns b'\\xc3a'. The wording came from round 3 of the pre-seal key audit, whose auditor had flagged a bytes root and suggested 'a str or PathLike'; the fix was applied under the stop rule and not audited again, and the seal listed it as a residual.",
+    "notTheGround": "Run 5's adjudicator failed c1 on a macOS long path (relative under 1024 bytes, absolute over PATH_MAX, ENAMETOOLONG). That rests on reading 'cannot determine' as 'the information is unavailable', the ambiguity round 3 recorded; it does not carry this erratum.",
+    "foundBy": "wf_e4697e20-c20 arm A: the challenger raised the bytes-returning PathLike in runs 1-4, the verifiers reproduced the bytes return value on a real filesystem and the tie order with a mock (APFS refuses the name), and the adjudicators failed c1 in runs 1, 2 and 4 on it and called it 'neither' in run 3. Arm B named the same case in runs 2, 4 and 5 ('a PathLike whose __fspath__ returns bytes gives (b'a', 2) ... compared as bytes, not as a str') and passed c1 at 0.9 each time: a judgement difference, not a detection miss. Reproduced end to end on Linux by this probe in CI.",
+    "audit": "Found because arm A disagreed with the key, a discovery path that favours arm A. Both arms were then audited on every item: on the other seven greens no adjudicator failed or called 'neither' on any criterion, no verifier reproduced a defect an adjudicator then dismissed, and no arm-B criterion failed or scored below the threshold; on the eight reds both arms called red in every run. A defect both arms missed cannot be seen this way and is not ruled out; the key audit's other residuals (v3-02, v3-04, v3-14) drew no disagreement from either arm."
+  }
+}

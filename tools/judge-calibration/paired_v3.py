@@ -373,6 +373,10 @@ def check_errata(errata: dict) -> list[str]:
             probs.append(f"erratum {cid}: its sealed key is not the one answers.json holds")
         if paired.OUTCOME_OF[e["corrected"]["nativeExpected"]] != e["corrected"]["expected"]:
             probs.append(f"erratum {cid}: corrected expected and nativeExpected disagree")
+        if e.get("platform") and not sys.platform.startswith(e["platform"]):
+            # A defect only one platform can reproduce (here: a filename that is not valid UTF-8,
+            # which APFS refuses). It is checked where it can be; CI runs on Linux.
+            continue
         code, last = run_probe(e["probe"], oracles._tree_of(SET / "cases" / cid / "tree"))
         want_fail = e["corrected"]["expected"] == "fail"
         if want_fail and (code != 1 or not last.startswith("AssertionError")):
@@ -603,8 +607,11 @@ def pattern(core: dict, its: list[dict]) -> dict:
         verdict = "NOT SETTLED"
     detect = {arm: sum(r[name].count("fail") for r in reds.values())
               for arm, name in (("tribunal", "tribunal"), ("contractJudge", "contractJudge"))}
-    per_class = {cls[iid]: {"tribunal": r["tribunal"].count("fail"), "contractJudge": r["contractJudge"].count("fail")}
-                 for iid, r in sorted(reds.items())}
+    per_class: dict[str, dict[str, int]] = {}
+    for iid, r in sorted(reds.items()):  # summed: a key erratum can make two reds of one class
+        k = per_class.setdefault(cls[iid], {"tribunal": 0, "contractJudge": 0})
+        k["tribunal"] += r["tribunal"].count("fail")
+        k["contractJudge"] += r["contractJudge"].count("fail")
     return {"rule": PATTERN_RULE, "verdict": verdict, "onlyTribunalFoundRed": b, "onlyContractJudgeFoundRed": c,
             "mcnemarExactPOnReds": paired.binom_two_sided(b, c), "tribunalFalseRedGreens": false_red,
             "redItemsCalledRed": {k: f"{v}/{len(reds)}" for k, v in found.items()},
