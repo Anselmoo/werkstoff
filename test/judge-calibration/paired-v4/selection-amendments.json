@@ -1,0 +1,18 @@
+{
+  "what": "Amendments to selection.json. selection.json and its first scan (selection-log.json) stay as committed; an amendment names the rules it replaces, says when and why it was made, and is committed before any candidate is examined under it.",
+  "amendments": [
+    {
+      "id": 1,
+      "madeAfter": "The first scan under selection.json's rules (4ba434b): 1 of 297 candidates admitted. Its log says which rules excluded the rest: the tree's size or imports (A4, 149), several source files (A2, 94), a regression test that drives code outside the file's own import closure (A7, 14), behaviour the parent's docstring does not state (A8, 7), and a lock race outside the concurrency class as glossed (A9, 1).",
+      "madeBefore": "Any candidate was examined under the amended rules. The amendment answers the aggregate failure reasons in the first log, chosen by the user from three options put to them (widen the tree and the documentation; extend the window before the cutoff; stop and report the supply). It was not drawn to admit or exclude any named candidate.",
+      "replaces": {
+        "A4": "The tree is the union of the import closures, within the candidate's own package, of (a) the changed source file and (b) every package module the tests the commit adds or changes import from, each verbatim at the parent and at the fix. It imports with the standard library alone and is at most 1200 lines in all, at the parent and at the fix.",
+        "A8": "The behaviour every added or changed test asserts is stated by upstream, at the parent, in the repo's own documentation of the callable (its docstring or its documentation page); or, where that documentation is silent on it, in the fix commit's own message or the issue or pull request that message links. Documentation that contradicts the asserted behaviour is not silent: a fix that changes a documented contract is not admitted. The criterion quotes whichever upstream source states the behaviour and names which it is.",
+        "A9": "As before, with the concurrency class glossed as 'a race or a swallowed error' instead of 'a swallowed or lost error'."
+      },
+      "unchanged": "Everything else in selection.json: the window (author dates 2026-07-01 to 2026-10-20, after the model's cutoff), the repo list, the candidate definition, the scan order, A1-A3 and A5-A7 (A7's test-tree half now reads A4's amended tree), the caps, the transform, the shared base, the criterion and probe rules, the key, the audit's scope and stop rule, GREEN-CLAIMS and the layers. The 5x majority-of-3, DECISION_RULE and PATTERN_RULE are unchanged, and nothing runs before the user has a cost estimate and has said go.",
+      "rescan": "The same 297 candidates, in the same order, from the top, logged anew in selection-log-a1.json. selection-log.json stays as the record of the first scan.",
+      "property": "Each admitted item's provenance records that nobody in this repo planted its defect or wrote its key: the red is upstream's parent commit, the green upstream's fix, and c1's probe upstream's regression test, transcribed with only the harness changed."
+    }
+  ]
+}
