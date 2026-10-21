@@ -256,6 +256,19 @@ def check_runner(event: dict, plan: dict) -> NoReturn:
     allow()
 
 
+def canonical(path: str) -> str:
+    """One spelling for a path: `..` collapsed lexically, then the DIRECTORY resolved.
+
+    project_root() locates the project with resolve(); an event's cwd carries
+    whatever spelling the agent was started under. Compared raw, a project reached
+    through a symlink (macOS /var -> /private/var, a linked ~/Documents) denied
+    every legitimate step write. The final component is kept as written, so a
+    symlink AT the step file is not followed -- only the directories above it, which
+    the filesystem would follow to reach the file anyway."""
+    lexical = Path(os.path.normpath(path))
+    return str(Path(os.path.realpath(lexical.parent)) / lexical.name)
+
+
 def check_author(event: dict, plan: dict) -> NoReturn:
     if event.get("tool_name") not in EDIT_TOOLS:
         deny(f"arbeitsplan-waves: the author only writes its step file. {ESCAPE}")
@@ -272,11 +285,12 @@ def check_author(event: dict, plan: dict) -> NoReturn:
     def key(path: str) -> str:
         return path.lower() if fold else path
 
-    steps = {key(os.path.normpath(str(root / rel))): rel for _n, rel in authored(plan)}
+    steps = {key(canonical(str(root / rel))): rel for _n, rel in authored(plan)}
     cwd = event.get("cwd") or str(root)
     for raw in targets:
-        # Lexical, like --paths: resolve() would follow a symlink out of the steps dir.
-        abs_path = os.path.normpath(raw if Path(raw).is_absolute() else str(Path(cwd) / raw))
+        # '..' collapsed lexically, like --paths; then canonical() so the event's
+        # spelling of the project and project_root()'s agree.
+        abs_path = canonical(raw if Path(raw).is_absolute() else str(Path(cwd) / raw))
         rel = steps.get(key(abs_path))
         if rel is None:
             deny(f"arbeitsplan-waves: the author may write only a declared step file "
@@ -365,6 +379,19 @@ def selftest() -> int:
                                   env={**os.environ, "ARBEITSPLAN_WAVES_CASEFOLD": "0",
                                        **(env or {})}).returncode
 
+        link = Path(tmp) / "link"
+        link.symlink_to(root, target_is_directory=True)
+
+        def author_event(agent: str, step: str, cwd: Path) -> dict:
+            return {"cwd": str(cwd), "tool_name": "Write", "agent_id": agent, "tool_input": {
+                "file_path": f".claude/workflows/demo.steps/{step}.py"}}
+
+        def run_via_link(mode: str, event: dict) -> int:
+            return subprocess.run(
+                [sys.executable, str(link / ".claude" / "hooks" / "demo_guard.py"), mode],
+                input=json.dumps(event), capture_output=True, text=True,
+                env={**os.environ, "ARBEITSPLAN_WAVES_CASEFOLD": "0"}).returncode
+
         def edit(path: str, cwd: Path = root) -> dict:
             return {"cwd": str(cwd), "tool_name": "Edit", "tool_input": {"file_path": path}}
 
@@ -432,6 +459,29 @@ def selftest() -> int:
                                               "tool_input": {"command": "ls"}}), 2),
             ("author: no agent_id", run("--author", {"cwd": str(root), "tool_name": "Write",
                 "tool_input": {"file_path": ".claude/workflows/demo.steps/s1.py"}}), 2),
+            # The project reached through a symlink (macOS /var -> /private/var, a
+            # ~/Documents link): the guard locates itself with resolve(), the event
+            # carries whatever spelling the agent's cwd has. Linux CI has no such
+            # link on its own, so make one -- these are red on any platform if the
+            # two spellings are compared raw.
+            ("author: declared step, cwd in link spelling", run("--author", {
+                "cwd": str(link), "tool_name": "Write", "agent_id": "l1", "tool_input": {
+                    "file_path": ".claude/workflows/demo.steps/s1.py"}}), 0),
+            ("author: declared step, absolute path in link spelling", run("--author", {
+                "cwd": str(root), "tool_name": "Edit", "agent_id": "l2", "tool_input": {
+                    "file_path": str(link / ".claude/workflows/demo.steps/s1.py")}}), 0),
+            ("author: guard run via the link, cwd in real spelling", run_via_link("--author", {
+                "cwd": str(root), "tool_name": "Write", "agent_id": "l3", "tool_input": {
+                    "file_path": ".claude/workflows/demo.steps/s1.py"}}), 0),
+            ("author: link spelling, a file that is no step", run("--author", {
+                "cwd": str(link), "tool_name": "Write", "agent_id": "l4", "tool_input": {
+                    "file_path": "src/a.go"}}), 2),
+            ("author: link spelling, '..' out of the steps dir", run("--author", {
+                "cwd": str(link / ".claude/workflows/demo.steps"), "tool_name": "Write",
+                "agent_id": "l5", "tool_input": {"file_path": "../demo.plan.json"}}), 2),
+            ("author: link spelling pins the same file as the real spelling", (
+                run("--author", author_event("l6", "s1", link)),
+                run("--author", author_event("l6", "s2", root)))[1], 2),
             ("unknown mode fails closed", run("--nope", {}), 2),
             ("escape hatch", run("--paths", edit("secrets/k"),
                                  {"ARBEITSPLAN_WAVES_DISABLE_GUARD": "1"}), 0),

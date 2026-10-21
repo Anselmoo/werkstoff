@@ -317,10 +317,15 @@ def classify_resume(p: dict, sid: str, code: str, primary: str, worktrees: list)
             first = (p["results"].get(t["id"], {}).get("text") or "").strip().splitlines()
             if first and first[0].startswith("/"):
                 pwd = first[0].strip()
+    # All three sides through realpath: `pwd` is what the model typed, the others are
+    # what the caller computed, and a symlinked tmp (macOS /var -> /private/var)
+    # splits one directory into two spellings. Idempotent for a caller that
+    # already resolved them.
     where = os.path.realpath(pwd or init.get("cwd") or "")
+    worktrees = [os.path.realpath(w) for w in worktrees]
     if any(where == w or where.startswith(w + os.sep) for w in worktrees):
         loc = "WT"
-    elif where == primary:
+    elif where == os.path.realpath(primary):
         loc = "PRIMARY"
     else:
         loc = "ELSEWHERE"
@@ -845,6 +850,15 @@ def _cases(clf: dict, tmp: Path) -> list:
     wr, enter, res = clf["write"], clf["enter"], clf["resume"]
     cache, late, base, agg, err = clf["cache"], clf["late"], clf["base"], clf["agg"], clf["err"]
     wt = str(tmp / "wt")
+    # classify_resume is handed the spellings the probe computed (realpath'd) but
+    # reads a `pwd` the model typed. Linux's tmp has no symlink to tell them apart
+    # and macOS's /var -> /private/var is an accident, so make one on purpose.
+    real_wt, real_primary = tmp / "wt-real", tmp / "primary-real"
+    link_wt, link_primary = tmp / "wt-link", tmp / "primary-link"
+    for real, link in ((real_wt, link_wt), (real_primary, link_primary)):
+        real.mkdir(exist_ok=True)
+        if not link.is_symlink():
+            link.symlink_to(real, target_is_directory=True)
     c = [
         ("write: file on disk", wr(P(_stream(_init(), _tu("1", "Write"), _res())), True), "WROTE"),
         ("write: plan-mode denial event", wr(P(_stream(_init(), _tu("1", "Write"), _deny("Write"),
@@ -881,6 +895,18 @@ def _cases(clf: dict, tmp: Path) -> list:
                 {"type": "text", "text": "The code word is c0de."}]}},
             _tu("1", "Bash", command="pwd"), _tr("1", wt + "\n"), _res("pwd shown"))),
             "S", "c0de", "/r", [wt]), "RESUMED_WT+RECALL"),
+        ("resume: pwd real, worktree given as a link", res(P(_stream(
+            _init(session_id="S", cwd="/r"), _tu("1", "Bash", command="pwd"),
+            _tr("1", str(real_wt) + "\n"), _res("code c0de"))), "S", "c0de", "/r",
+            [str(link_wt)]), "RESUMED_WT+RECALL"),
+        ("resume: pwd through a link, worktree given real", res(P(_stream(
+            _init(session_id="S", cwd="/r"), _tu("1", "Bash", command="pwd"),
+            _tr("1", str(link_wt) + "\n"), _res("code c0de"))), "S", "c0de", "/r",
+            [str(real_wt)]), "RESUMED_WT+RECALL"),
+        ("resume: primary given as a link, pwd real", res(P(_stream(
+            _init(session_id="S", cwd="/r"), _tu("1", "Bash", command="pwd"),
+            _tr("1", str(real_primary) + "\n"), _res("code c0de"))), "S", "c0de",
+            str(link_primary), [str(link_wt)]), "RESUMED_PRIMARY+RECALL"),
         ("parse: init is the FIRST of several (one per turn)",
          P(_stream(_init(agents=["a"]), _res(), _init(agents=["a", "late"]), _res()))[
              "init"]["agents"], ["a"]),
