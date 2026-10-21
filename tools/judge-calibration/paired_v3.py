@@ -326,7 +326,10 @@ def check(repeat: int = 1) -> list[str]:
             if not (res / name).is_file() or again != calibration.load_json(res / name):
                 probs.append(f"results/{name} differs from the score recomputed from results/run.json")
         if errata:
-            probs += check_errata(errata)
+            seen: dict[str, list[str]] = {}
+            probs += check_errata(errata, seen)
+            print(f"paired-v3 key errata decided here: {seen['decided'] or 'none'}; "
+                  f"skipped on this platform: {seen['skipped'] or 'none'}")
         if inst:
             probs += check_instrument(inst)
     return probs
@@ -362,8 +365,14 @@ def v2_equivalence() -> list[str]:
     return probs
 
 
-def check_errata(errata: dict) -> list[str]:
+def check_errata(errata: dict, seen: dict[str, list[str]] | None = None) -> list[str]:
+    """Problems with the key errata. ``seen``, when given, receives the ids of the errata whose
+    probe was run here ('decided') and of those whose platform this is not ('skipped'), so a
+    skip can never be read as a reproduction."""
     probs = []
+    seen = seen if seen is not None else {}
+    seen.setdefault("decided", [])
+    seen.setdefault("skipped", [])
     answers = calibration.load_json(SET / "answers.json")
     for cid, e in sorted(errata.items()):
         if cid not in answers:
@@ -376,7 +385,9 @@ def check_errata(errata: dict) -> list[str]:
         if e.get("platform") and not sys.platform.startswith(e["platform"]):
             # A defect only one platform can reproduce (here: a filename that is not valid UTF-8,
             # which APFS refuses). It is checked where it can be; CI runs on Linux.
+            seen["skipped"].append(f"{cid} (needs {e['platform']})")
             continue
+        seen["decided"].append(cid)
         code, last = run_probe(e["probe"], oracles._tree_of(SET / "cases" / cid / "tree"))
         want_fail = e["corrected"]["expected"] == "fail"
         if want_fail and (code != 1 or not last.startswith("AssertionError")):
@@ -747,6 +758,28 @@ def selftest() -> int:
             {"type": "tool_use", "name": "Read", "input": {"file_path": "/tmp/stage/wab-1a/tree/rotate.py"}}]}}) + "\n", encoding="utf-8")
         if contamination(t):
             bad.append("the contamination scan flagged a read of the staged tree")
+    # check_errata refuses an erratum that reproduces nothing, a control that fails too, and a
+    # platform nothing here matches is reported as skipped, never as decided.
+    with tempfile.TemporaryDirectory() as td:
+        if ERRATA.is_file():
+            real = calibration.load_json(ERRATA)
+            cid, e = next(iter(real.items()))
+            native = {**e, "platform": sys.platform[:5]}
+            planted = {
+                "a probe that passes the staged tree": {cid: {**native, "probe": "pass"}},
+                "a probe that exits 1 without an assertion": {cid: {**native, "probe": "raise SystemExit(1)"}},
+                "a control the probe fails too": {cid: {**native, "probe": "assert False, 'always'",
+                                                        "control": {"files": {}}}},
+                "a sealed key answers.json does not hold": {cid: {**native, "sealed": {"expected": "fail", "nativeExpected": "red"}}},
+                "an erratum for no sealed item": {"v3-99": native},
+            }
+            for name, errata in planted.items():
+                if not check_errata(errata):
+                    bad.append(f"check_errata accepted {name}")
+            seen: dict[str, list[str]] = {}
+            check_errata({cid: {**e, "platform": "no-such-platform"}}, seen)
+            if seen["decided"] or not seen["skipped"]:
+                bad.append(f"an erratum for another platform was not reported as skipped: {seen}")
     # check_instrument refuses a correction that rewrites the rule instead of dropping from it.
     for name, inst in {"a sealed pattern that is not the seal's": {"contamination": {"sealedPattern": "x", "dropped": []}},
                        "a dropped alternative the seal never had": {"contamination": {"sealedPattern": CONTAMINATION.pattern,

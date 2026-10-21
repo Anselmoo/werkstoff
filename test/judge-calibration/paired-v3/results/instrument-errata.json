@@ -14,6 +14,6 @@
       "Shared scratch names (v/check.py, chk.py, judge, ...) were used by several runs, across items. All 51 tool calls touching a shared name name their own run's staged tree, and no output names a function of another item: no cross-run read was observed. A write race is not excluded by construction; the docs say so."
     ],
     "symmetric": "The correction applies to both arms alike: 53 flagged tribunal runs and 39 flagged contract-judge runs are scored by their outcome again.",
-    "found": "Visible in the sealed score itself (results/score.json, contaminatedRuns) before either arm's outcome was examined against the key."
+    "found": "In the sealed score itself (results/score.json, contaminatedRuns). Not blind to the outcomes: the per-run outcomes and both records were on screen when the misfire was diagnosed, and the score without the override was computed before this file was written. The erratum rests on its mechanism, which says nothing about outcomes, and it does not change the decision: the rule says replace before it and after it."
   }
 }
