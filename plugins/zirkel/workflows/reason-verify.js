@@ -50,7 +50,7 @@ const ATTEMPT_SCHEMA = {
 }
 // Each attempt is a separate, isolated dispatch. No attempt can see the others.
 const attempts = (await parallel(STRATEGIES.map((strategy) => () =>
-  // Tier stated, never inherited (#87): sonnet is the dispatched agent's own declared model; an omitted model would run on the session's tier instead.
+  // Tier stated by choice; an omitted model would inherit the session's (#118): sonnet is the dispatched agent's own declared model.
   agent(
     (multimodal ? 'Apply Multimodal-CoT: the visual is described in the task text below — read that description, then reason.\n\n' : '') +
     `Solve this task using ONLY the "${strategy}" strategy, in complete isolation. ` +

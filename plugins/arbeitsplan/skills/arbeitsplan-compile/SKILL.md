@@ -48,11 +48,12 @@ phase *reads* `workflow.json`. Never paraphrase it into a prompt.
    `references/patterns.md`'s machine-readable index. An unknown id is rejected, never
    improvised.
 
-   Give **every** phase `modelTier`, `mode` (`auto`, or `plan` for a planning phase) and
-   `writes` (`worktree` for builders, `none` for referees and extractors, `shared` only for an
-   in-session landing), plus a namespaced `agentType`. All four are required: an omitted
-   value inherits the session's, and an inherited plan mode is how four builders became
-   UNMEASURED in the run that added these keys.
+   Give **every** phase `mode` (`auto`, or `plan` for a planning phase) and `writes`
+   (`worktree` for builders, `none` for referees and extractors, `shared` only for an
+   in-session landing), plus a namespaced `agentType`; all three are required: an inherited
+   plan mode is how four builders became UNMEASURED in the run that added these keys.
+   `modelTier` is recommended, not required: a phase that omits it inherits the session's
+   model by design (#118); one that states it must name an alias or a `claude-...` id.
 
 7. **Choose the backend.** Invoke `arbeitsplan-backend`, which walks
    `references/backend-selection.md`'s table and returns `{kind, why[], acknowledgedGaps[]}`.

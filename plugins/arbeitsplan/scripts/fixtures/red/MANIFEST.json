@@ -159,8 +159,9 @@
     },
     {
       "issue": 107,
-      "rule": "AP-NODE-NO-MODEL",
-      "fixture": "node-no-model.design.json",
+      "rule": "AP-NODE-BAD-MODEL",
+      "fixture": "node-bad-model.design.json",
+      "note": "#118: renamed from AP-NODE-NO-MODEL. An omitted model now inherits the session's by design; only a STATED model that is not an alias or claude-[a-z0-9.-]+ is red.",
       "args": [
         "--design"
       ],

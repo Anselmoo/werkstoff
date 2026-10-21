@@ -137,7 +137,7 @@ function verifyFixPrompt(f) {
   )
 }
 
-// Tier stated, never inherited (#87). Remediate is haiku: it applies exact mechanical fixes at cited lines -- delegation.md's cheapest row, "mechanical work with an exact spec" -- and the sonnet verifier below re-reads every file it touched.
+// Tier stated by choice; an omitted model would inherit the session's (#118). Remediate is haiku: it applies exact mechanical fixes at cited lines -- delegation.md's cheapest row, "mechanical work with an exact spec" -- and the sonnet verifier below re-reads every file it touched.
 const results = await pipeline(
   clusterList,
   (c) =>

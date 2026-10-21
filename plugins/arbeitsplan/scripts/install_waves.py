@@ -472,13 +472,21 @@ def selftest() -> int:
         check("the notice demands a later turn and names the new agent types",
               "LAUNCH IN A LATER TURN" in text and "rebuild-cli-runner" in text)
         bad = json.loads(json.dumps(design))
-        bad["nodes"][0].pop("model")
+        bad["nodes"][0]["model"] = "gpt-5"  # a stated model must be valid (AP-NODE-BAD-MODEL)
         try:
             install(bad, Path(tmp) / "other", py, artifact=False, dry=True)
             check("an invalid design is refused before anything is written", False)
         except Refused:
             check("an invalid design is refused before anything is written",
                   not (Path(tmp) / "other").exists())
+        inherits = json.loads(json.dumps(design))
+        inherits["nodes"][0].pop("model")  # omitted: inherits the session's model (#118)
+        try:
+            install(inherits, Path(tmp) / "inherits", py, artifact=False, dry=True)
+            check("a design whose node omits its model installs (it inherits the session's)", True)
+        except Refused as exc:
+            check("a design whose node omits its model installs (it inherits the session's)",
+                  False, str(exc))
         guard = root / ".claude" / "hooks" / "rebuild-cli_guard.py"
         (root / ".git").mkdir()
         p = subprocess.run([sys.executable, str(guard), "--paths"], input=json.dumps({

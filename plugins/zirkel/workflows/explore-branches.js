@@ -65,7 +65,7 @@ const BRANCH_SCHEMA = {
   properties: { name: { type: 'string' }, description: { type: 'string' } },
 }
 const branches = (await parallel(angles.map((angle) => () =>
-  // Tier stated, never inherited (#87): sonnet is the dispatched agent's own declared model; an omitted model would run on the session's tier instead.
+  // Tier stated by choice; an omitted model would inherit the session's (#118): sonnet is the dispatched agent's own declared model.
   agent(
     `You are proposing ONE approach to this scoped problem under the assigned angle "${angle}".\n\n` +
     `Problem:\n${problem}\n\n` +

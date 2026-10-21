@@ -11,8 +11,9 @@ in-session dispatch.
 
 It buys what in-session dispatch structurally cannot. A fresh process has a fresh registry,
 so a just-edited skill is actually loaded. A cell's `--model` cannot be inherited from the
-caller — the failure named as *"an omitted model inherits your session's model, which
-silently defeats this section"* is impossible here. And plugin-present versus plugin-absent
+caller, so a sweep that silently measures the session's model instead of the arm it claims
+is impossible here (inheriting is the right default for a dispatch, and the wrong one for an
+experiment that varies the model). And plugin-present versus plugin-absent
 arms are expressible at all, which in-session they are not.
 
 `cases × models × plugin_states × repeats` at **1 × 1 × 1 × N** *is* the swarm: N independent

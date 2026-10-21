@@ -96,18 +96,28 @@ nothing here is invented past what that section states.
 | most capable | architecture and design tasks; the final whole-branch review | design judgment and broad-codebase understanding are exactly where a weaker model's mistakes are hardest to catch downstream |
 | at least one tier above the stuck implementer | fix-loop escalation rounds | a loop that survives several resumes on the same model usually means that model cannot see its own problem — fresh eyes plus a capability bump in one move |
 
-The rule that makes this table matter, quoted verbatim:
+Tiering is a recommendation, and inheritance is the documented default. Claude Code's
+own rule: "When nothing else assigns one, the agent runs on your session's model", and
+the Workflow authoring reference says to default to omitting `model`, so the agent
+inherits the main-loop model. `superpowers:subagent-driven-development` makes the
+stricter case, quoted verbatim:
 
 > Always specify the model explicitly when dispatching a subagent. An omitted model
 > inherits your session's model — often the most capable and most expensive — which
 > silently defeats this section.
 
-For a year this sentence was the whole of the rule, and 27 of the 43 `agent()` calls in
-this repo's own workflow scripts broke it (issue #87). It is now a CI failure:
-`scripts/ci/check_workflow_models.py` rejects any `agent()` call whose options are not
-an inline object with a `model` key, and any literal tier other than `haiku`, `sonnet`
-or `opus`. A dynamic value such as `model: ph.modelTier` passes the check; whether it
-resolves to a real tier is a runtime guard's job, as in `arbeitsplan`'s `run.js`.
+Read that as advice for a fan-out designed around cheap candidates, where an inherited
+expensive model changes the cost, not as a rule a script can break. Issue #87 once
+turned it into a CI failure and reported every omitted model as a major defect; issue
+#118 reversed that, because it flagged the documented default as a bug.
+`scripts/ci/check_workflow_models.py` now judges only what can be wrong. A literal
+`model` must be `haiku`, `sonnet`, `opus`, `fable` or a full id matching
+`^claude-[a-z0-9.-]+$`; the literal `'inherit'` fails, since it is documented only for
+agent frontmatter (omit `model` to inherit); and a spread after a stated `model` fails,
+because it can override it. An omitted model, options held in a variable, a spread with
+no `model` key such as `...modelFor('worker')`, `model: undefined` and a dynamic value
+such as `model: args.model` all pass with no finding. Whether a dynamic value resolves
+to a real model is a runtime guard's job, as in `arbeitsplan`'s `run.js`.
 
 And the reason the cheapest tier is not simply "always pick cheap":
 
@@ -181,9 +191,10 @@ session default where the row says "none declared."
 - **Splitting work that shares state.** Two agents editing the same file, or
   depending on the same resource, will interfere with each other regardless of how
   cleanly the task looked split on paper.
-- **Omitting the model.** An omitted model silently inherits the session's model —
-  see the verbatim rule above — which defeats the entire tiering discipline without
-  producing any error a reader would notice.
+- **Tiering nothing in a fan-out sized for cheap candidates.** An omitted model
+  inherits the session's model by design, which is fine for one judgment-heavy
+  dispatch and expensive for a dozen mechanical ones. Tier the mechanical roles
+  deliberately; the gate will not make you, because inheritance is not a defect.
 - **Asking one agent to both build and verify its own work.** This repository already
   separates the two roles rather than trusting a single agent's self-review:
   `befund-idiom-fix` and `befund-transform-execute` both hand off to

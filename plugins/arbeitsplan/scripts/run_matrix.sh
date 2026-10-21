@@ -13,9 +13,10 @@
 # WHY A FRESH PROCESS PER CELL. Claude Code builds its skill/agent registry once,
 # at session start, so a just-edited skill is invisible until a reload. A fresh
 # process is also the only place where `--model` cannot be silently inherited
-# from the caller -- the failure delegation.md names as "an omitted model
-# inherits your session's model, which silently defeats this section". In a
-# matrix cell that inheritance is structurally impossible.
+# from the caller. Inheriting the session's model is the right default for a
+# dispatch (#118) and the wrong one for a model-varying sweep, where every cell
+# must run on the model its row names. In a matrix cell that inheritance is
+# structurally impossible.
 #
 # AUTHENTICATION IS PROBED, NOT ASSUMED. An earlier version refused outright
 # whenever it detected a nested Claude Code session, on the strength of a

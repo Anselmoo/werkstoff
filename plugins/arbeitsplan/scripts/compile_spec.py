@@ -453,12 +453,15 @@ def validate(spec: dict, accepted: set, rejected: set) -> tuple:
             err(where, f"pattern {pattern!r} is not in the accepted list; the compiler "
                        "never improvises a pattern")
 
+        # modelTier is RECOMMENDED, not required (#118): an omitted tier inherits the
+        # session's model by design. A tier that IS stated must be valid.
         if not design_spec.model_ok(ph.get("modelTier")):
-            err(where, f"'modelTier' must be {design_spec.MODEL_RULE} model")
+            err(where, f"'modelTier' must be {design_spec.MODEL_RULE}; "
+                       f"{design_spec.model_hint(ph.get('modelTier'))}")
 
-        # mode and writes are required for the modelTier reason: an omitted value
-        # inherits the session's, and a plan-mode session silently turned four
-        # builders into UNMEASURED cells in the run that motivated this key.
+        # mode and writes stay required: an omitted value inherits the session's,
+        # and a plan-mode session silently turned four builders into UNMEASURED
+        # cells in the run that motivated this key.
         mode = ph.get("mode")
         if mode not in MODES:
             err(where, f"'mode' must be one of {sorted(MODES)} and is never omitted")
@@ -934,7 +937,17 @@ def selftest(root: Path) -> int:
         ("duplicate angles", _mut(phases=[dict(GOOD["phases"][0], angles=["a", "a", "a"])]), 1),
         ("rejected pattern", _mut(phases=[dict(GOOD["phases"][0], pattern="serial-fix-loop")]), 1),
         ("unknown pattern", _mut(phases=[dict(GOOD["phases"][0], pattern="vibes")]), 1),
-        ("missing modelTier", _mut(phases=[_drop(GOOD["phases"][0], "modelTier")]), 1),
+        ("missing modelTier -- inherits the session's, clean (#118)",
+         _mut(phases=[_drop(GOOD["phases"][0], "modelTier")]), 0),
+        ("modelTier 'inherit' -- omit the key instead", _mut(phases=[dict(GOOD["phases"][0],
+            modelTier="inherit")] + GOOD["phases"][1:]), 1),
+        # The full-id grammar is claude-[a-z0-9.-]+, whole string; each of these is what a
+        # loosened pattern (claude-.*, a dropped \Z, a wider class) would let through.
+        *[(f"modelTier {t!r} -- not an alias or a claude- id",
+           _mut(phases=[dict(GOOD["phases"][0], modelTier=t)] + GOOD["phases"][1:]), 1)
+          for t in ("claude-", "claude-Opus", "claude-opus[1m]", "claude-opus\n", 5)],
+        ("modelTier a full claude- id -- clean", _mut(phases=[dict(
+            GOOD["phases"][0], modelTier="claude-opus-5-5")] + GOOD["phases"][1:]), 0),
         ("missing mode", _mut(phases=[_drop(GOOD["phases"][0], "mode")]), 1),
         ("missing writes", _mut(phases=[_drop(GOOD["phases"][0], "writes")]), 1),
         ("missing agentType", _mut(phases=[_drop(GOOD["phases"][0], "agentType")]), 1),

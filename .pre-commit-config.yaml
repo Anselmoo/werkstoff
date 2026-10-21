@@ -56,7 +56,7 @@ repos:
         files: ^(scripts/ci/check-js-syntax\.sh|biome\.jsonc)$
 
       - id: check-workflow-models
-        name: every workflow agent() names a model and carries the relay briefing
+        name: every workflow agent() model is valid (omitted inherits) and carries the relay briefing
         entry: python3 scripts/ci/check_workflow_models.py
         language: system
         # The count ("all N sites across M files") is a claim about the whole

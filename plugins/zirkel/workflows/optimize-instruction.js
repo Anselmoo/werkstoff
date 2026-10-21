@@ -51,7 +51,7 @@ const CAND_SCHEMA = {
 }
 // One candidate per framing, committed fully to that framing (no blending).
 const candidates = (await parallel(APE_FRAMINGS.map((framing) => () =>
-  // Tier stated, never inherited (#87): sonnet is the dispatched agent's own declared model; an omitted model would run on the session's tier instead.
+  // Tier stated by choice; an omitted model would inherit the session's (#118): sonnet is the dispatched agent's own declared model.
   agent(
     `Draft ONE candidate instruction for this recurring task using ONLY the "${framing}" APE framing. ` +
     `Commit fully to that framing — never blend in another framing's structure.\n\nTask:\n${taskDesc}\n\n${RELAYED}`,

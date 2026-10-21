@@ -242,8 +242,8 @@ ${fence(knownGaps.join('\n---\n').slice(0, 6000))}
 `
     : ''
 
-  // Tier stated, never inherited (#87): an omitted model runs on the session's
-  // tier. passung's agents declare no model of their own; sonnet is
+  // Tier stated by choice; an omitted model would inherit the session's (#118).
+  // passung's agents declare no model of their own; sonnet is
   // delegation.md's "standard" row for multi-step extractors, judges and
   // implementers.
   const results = await parallel(

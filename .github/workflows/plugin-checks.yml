@@ -137,13 +137,15 @@ jobs:
         continue-on-error: true
         run: ./scripts/ci/check-js-syntax.sh
 
-      - name: Check workflow agent() dispatches name a model
+      - name: Check workflow agent() models are valid and carry the relay briefing
         id: workflow_models
         continue-on-error: true
-        # Issue #87: 27 of 43 agent() sites passed no model and so inherited the
-        # session's (most expensive) tier; delegation.md had forbidden that in
-        # prose for a year. Issue #90: every dispatching workflow carries the
-        # canonical relayed-request briefing verbatim. Selftest first -- a gate
+        # Issue #118: a literal model must be valid (haiku | sonnet | opus |
+        # fable | a full claude- id); an omitted or caller-supplied model
+        # inherits the session's by design and is not a finding. Per-role
+        # tiering is a recommendation in delegation.md, not a gate. Issue #90:
+        # every dispatching workflow carries the canonical relayed-request
+        # briefing verbatim. Selftest first -- a gate
         # that cannot fail reports success every run and nobody looks again.
         run: |
           python3 scripts/ci/check_workflow_models.py --selftest
@@ -543,7 +545,7 @@ jobs:
             row "Plugin author attribution vs. marketplace.json" "${{ needs.checks.outputs.plugin_authors }}"
             row "SKILL.md/agent frontmatter" "${{ needs.checks.outputs.frontmatter }}"
             row "Workflow JS syntax" "${{ needs.checks.outputs.js_syntax }}"
-            row "Workflow agent() sites name a model + relay briefing" "${{ needs.checks.outputs.workflow_models }}"
+            row "Workflow agent() models valid (omitted inherits) + relay briefing" "${{ needs.checks.outputs.workflow_models }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"

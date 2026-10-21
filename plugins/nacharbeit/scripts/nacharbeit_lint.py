@@ -1277,12 +1277,13 @@ def _workflow_sites(u: Unit, rule: str):
 
 
 def r_s_wf_model(u: Unit, ctx: list[Unit]) -> list[dict]:
-    """Every agent() dispatch names its model tier (issue #87).
+    """A literal per-call agent() model is a valid one (issues #87, #118).
 
-    An omitted model inherits the session's model, usually the most capable and
-    most expensive, so a fan-out designed for cheap candidates runs expensive
-    ones and nothing reports the substitution. 27 of 43 sites in this repo's own
-    workflows did exactly that while delegation.md forbade it in prose.
+    An omitted or caller-supplied model inherits the session's by design -- the
+    documented default -- so it is never a finding. What fails is a model that
+    cannot work: an unknown literal, the frontmatter-only `'inherit'`, or a
+    spread after a stated `model` that can override it. Per-role tiering stays
+    a recommendation in delegation.md, not a gate.
     """
     if u.kind != "workflow":
         return []
@@ -1295,8 +1296,8 @@ def r_s_wf_model(u: Unit, ctx: list[Unit]) -> list[dict]:
         for problem in site.problems:
             out.append(_finding(
                 u, "S-WF-MODEL", f"agent() dispatch: {problem}",
-                "pass the options as an inline object ending in `model: 'haiku' | 'sonnet' | 'opus'` "
-                "(or a value a runtime guard validates); docs/orchestration/references/delegation.md has the tiering",
+                "use `model: 'haiku' | 'sonnet' | 'opus' | 'fable'` or a full `claude-...` id, put `model` after any spread, "
+                "or omit `model` to inherit the session's; docs/orchestration/references/delegation.md has the tiering",
                 line=site.line,
                 quote=u.lines[site.line - 1] if site.line <= len(u.lines) else "",
                 tier="sonnet",
@@ -1309,7 +1310,7 @@ def r_s_wf_model(u: Unit, ctx: list[Unit]) -> list[dict]:
             line = int(m.group(1))
             out.append(_finding(
                 u, "S-WF-MODEL", m.group(2),
-                "call agent(...) directly with an inline options object that names the model",
+                "call agent(...) directly so each dispatch is a visible call site",
                 line=line, quote=u.lines[line - 1] if line <= len(u.lines) else "", tier="sonnet",
             ))
     return out

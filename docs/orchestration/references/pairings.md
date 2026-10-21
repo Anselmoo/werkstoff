@@ -118,7 +118,7 @@ pairings:
     prompt: "break this plan into independent workstreams -- tell me what actually depends on what and what can truly run in parallel"
     dos:
       - "Send every parallel dispatch in the SAME response -- one call per response runs sequentially regardless of intent."
-      - "Always specify the model explicitly per dispatch -- an omitted model silently inherits the session's, usually the most expensive, tier."
+      - "Choose the model tier per dispatch where the cost matters -- an omitted model inherits the session's, possibly most expensive, tier by design."
       - "Give each workstream its own andon-verify proof."
     donts:
       - "Don't split work that shares state -- two agents editing the same file interfere regardless of how cleanly the split looked on paper."
