@@ -257,7 +257,7 @@ that should not pass.
 - **The limits that still apply.** 20 items, one model, and items authored by the same
   hand that wrote both arms' prompts.
 
-## The second paired measurement (verdict@2)
+## The second paired measurement
 
 The first measurement's whole margin was a shape verdict@1 could not express. verdict@2
 lets a criterion be undecidable (`score` and `pass` both `null`) and makes any failed
@@ -299,3 +299,68 @@ refuses a staged file the first run already used.
   output tokens per run.
 - **No tuning round on these items.** The arm-B head was written before any of them ran
   against either arm.
+
+### The result
+
+The run was workflow `wf_8cbe77db-baa` on 2026-10-21: 400 agents, no errors, 20.3M subagent
+tokens. `paired_v2.py check` recomputes both scores from the committed raw run in
+`test/judge-calibration/paired-v2/results/`.
+
+| scored under | arm | per-item agreement | false passes | record | per-run agreement | output tokens per run | agents per run |
+|---|---|---|---|---|---|---|---|
+| the key as sealed | tribunal | 0.94 | 0 | 0.857 | 0.94 | ~7,100 | 4 |
+| the key as sealed | contract judge | 1.00 | 0 | 1.0 | 1.00 | ~650 | 1 |
+| the corrected key | tribunal | **1.00** | 0 | **1.0** | 1.00 | ~7,100 | 4 |
+| the corrected key | contract judge | 0.94 | 0 | **0.857** | 0.94 | ~650 | 1 |
+
+Every item was unanimous over its five runs in both arms. The two arms disagree on one
+item, `v2-16`, and on nothing else.
+
+**The key was wrong on `v2-16`, and the tribunal found it.** The item's first criterion
+says the archive contains "every regular file under src". `archive()` walks `src` with
+`Path.rglob`, which silently skips a subdirectory it cannot read. A file under it is left
+out, and `archive()` returns normally. This is the `Path.glob()` row in this repo's own
+defect table. The sealed probe never tested an unreadable directory, so the key read the
+criterion as holding and the item as unknown. In all five runs:
+- the challenger raised the gap
+- the verifier reproduced it
+- the adjudicator failed the criterion and called the wire red
+
+The single verdict@2 judge passed that criterion five times.
+
+**The sealed artifacts were not edited.** `answers.json`, the oracle and `score.json` are
+what the seal said and what it scored, committed before anything was reinterpreted. The
+correction is a separate erratum, `results/key-errata.json`, whose probe is calibrated both
+ways: it fails the staged tree with an assertion and passes a fixed control that raises.
+`results/score-corrected.json` is the same raw run scored under the corrected key.
+
+**Both arms were audited for further key errors, the same way.** This error came to light
+because arm A disagreed with the key, so the way it was found favours arm A. After it:
+- no arm-B criterion failed on any item keyed green or unknown
+- every other arm-A verdict matched the key
+- no verifier or adjudicator reported a reproduced defect inside a contract criterion
+
+A defect that both arms missed cannot be found this way and is not ruled out.
+
+**The rule, applied to a key known to be right, keeps the tribunal.** Scoring against a key
+shown to be wrong would let an invented known answer decide.
+
+### What it settles, and what it does not
+
+- **verdict@2 closed the shape gap.** The four items that repeat `paired-12`'s shape put
+  the failed criterion first, in the middle and last. The verdict@2 judge called all four
+  red in every run, and every unknown item unknown in every run. It used an undecidable
+  criterion 45 times: 20 runs decided fail, 25 decided abstain. It never used one on a green
+  item, including the two whose criterion names production but is decided by reading the
+  code. On contract shape, the single judge now matches the tribunal at about a tenth of
+  the output.
+- **The tribunal is kept for a detection reason, not a shape reason.** Its margin is one
+  defect that an adversary went looking for and a single judge did not. This is the case
+  for a challenger, and the run measured it once.
+- **The limits.**
+  - Both readings rest on one item, and McNemar p = 1.0 either way.
+  - 16 items, one model.
+  - The items were written by the same hand that wrote both arms' prompts and missed this
+    defect in its own probe.
+  - What would settle it is in the [mapping](judge-contract.md#every-judge-in-every-plugin).
+
