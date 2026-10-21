@@ -6,6 +6,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-21
 ### Changed
 - **p0-confirm**: `scripts/lib/judge_contract.py` re-vendored at the shared contract's
   `verdict@2`, a superset of `verdict@1`. A judge may now mark one criterion undecidable
