@@ -16,7 +16,7 @@ python3 tools/judge-calibration/calibration.py report     # agreement, precision
 
 ## The result
 
-Each sealed set was run once, after tuning, against prompts frozen at commit `97a59ca`.
+Each sealed set was run once, after tuning, against prompts frozen at commit `5119c36`.
 
 | judge | model it ran on | sealed | agreement | false passes | false fails | precision pass / fail | record |
 |---|---|---|---|---|---|---|---|
@@ -105,19 +105,19 @@ known-abstain case, and no class above half the set. A constant judge cannot cle
 
 ## The seal is the commit order
 
-1. `0bf2970`: fixtures, answer keys, oracles, floors (0.8 for all three) and the scorer,
+1. `522559e`: fixtures, answer keys, oracles, floors (0.8 for all three) and the scorer,
    before any judge ran.
-2. `d0e3059`: the one fixture correction tuning found. In tune case `tune-06`, a known
+2. `f8524fe`: the one fixture correction tuning found. In tune case `tune-06`, a known
    abstain, the builder had reported an honest `exit 0` for the criterion's own command.
    The referee used that as its evidence, which its agent definition allows, so the diff
    could not decide the case but the report could. The three referee abstain cases now
    report no check. That fix came from a tuning case and from the fixture's own logic, before
    any sealed case had run. No judge prompt and no agent file was changed at any point.
-3. `97a59ca`: tuning results, with the prompts frozen.
-4. `99b71c4`: the sealed results, verbatim, and the derived records.
+3. `5119c36`: tuning results, with the prompts frozen.
+4. `04a09f6`: the sealed results, verbatim, and the derived records.
 
 The order is the seal, not the hashes. A rebase would change the hashes and keep the order,
-and the subjects above identify each step. Do not squash this history.
+and the subjects above identify each step. Do not squash this history. This branch was rebased onto `main` after #118 and #119 squash-merged (2026-10-21); the `note` fields in each `results/sealed.json` still cite the pre-rebase hashes (`97a59ca` is `5119c36`, `99b71c4` is `04a09f6`) and are left as recorded, since `check` verifies the fingerprints, not the hashes.
 
 ## Trusting the run
 
@@ -145,7 +145,7 @@ These steps protect the run:
   differs from the one recomputed from the committed results. A sealed case edited together
   with its key would score the same, so the fingerprint is what makes that edit visible. It
   was added after the run, which is noted in the file, and checked equal to the tree at
-  `99b71c4`.
+  `04a09f6`.
 - **The coupling this creates.** Any edit to `candidate-referee.md`, `decode-referee.md`,
   the four andon agent files, `tribunal-protocol.md`, or the referee prompts in `run.js` or
   `decode.js` turns `plugin-checks` red until the judge is re-measured on a new sealed set,
