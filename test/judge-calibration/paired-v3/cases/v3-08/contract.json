@@ -1,0 +1,13 @@
+{
+  "wire": "replica bootstrap -> snapshots.newest_snapshot -> the snapshot a new replica loads",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for an existing directory, newest_snapshot(directory) returns the name of the entry in directory named snap-N.db, N one or more ASCII digits, with the greatest N (any of them on a tie), or None if there is no such entry"
+    },
+    {
+      "id": "c2",
+      "text": "entries whose name is not exactly of the form snap-N.db are ignored"
+    }
+  ]
+}

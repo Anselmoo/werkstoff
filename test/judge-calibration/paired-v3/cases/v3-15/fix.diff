@@ -1,0 +1,8 @@
+diff --git a/ints.py b/ints.py
+--- a/ints.py
++++ b/ints.py
+@@ -1,2 +1,3 @@
+ def parse_ints(text):
+-    raise NotImplementedError
++    """Comma-separated integers: '3, 14, 15' -> [3, 14, 15]."""
++    return [int(field) for field in text.split(",") if field.strip()]

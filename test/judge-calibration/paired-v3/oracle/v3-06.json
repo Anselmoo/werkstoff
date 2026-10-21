@@ -1,0 +1,50 @@
+{
+  "base": {
+    "mapping.py": "def map_all(fn, items, workers=8):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import time\nfrom mapping import map_all\nVALUES = [5, 3, 7, 1, 6, 0, 4, 2]\ndef f(i):\n    time.sleep((8 - i) * 0.02)\n    return VALUES[i]\ntry:\n    got = map_all(f, range(8))\n    empty = map_all(f, [])\nexcept Exception as e:\n    raise AssertionError(repr(e))\nassert got == VALUES, got\nassert empty == [], empty\n",
+    "c2": "import time\nfrom mapping import map_all\nBAD = {}\ndef f(i):\n    time.sleep(0.01)\n    if i in BAD:\n        raise BAD[i](f\"item {i} failed\")\n    return i\nfor exc, bad in ((RuntimeError, 0), (ValueError, 3), (KeyError, 5)):\n    BAD.clear()\n    BAD[bad] = exc\n    try:\n        got = map_all(f, range(6), workers=2)\n    except Exception:\n        pass\n    else:\n        raise AssertionError((\"returned although fn raised\", exc.__name__, bad, got))\nBAD.clear()\ntry:\n    ok = map_all(f, (0, 1, 2), workers=2)\nexcept Exception as e:\n    raise AssertionError(repr(e))\nassert sorted(ok) == [0, 1, 2], ok\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "completion-order",
+      "why": "as_completed: results in the order the calls finished",
+      "files": {
+        "mapping.py": "from concurrent.futures import ThreadPoolExecutor, as_completed\n\n\ndef map_all(fn, items, workers=8):\n    \"\"\"fn(item) for every item, computed on a thread pool, in the order of items.\"\"\"\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        futures = [pool.submit(fn, item) for item in items]\n        return [f.result() for f in as_completed(futures)]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "swallowed",
+      "why": "submit without result(): a raised exception never leaves its Future",
+      "files": {
+        "mapping.py": "from concurrent.futures import ThreadPoolExecutor\n\n\ndef map_all(fn, items, workers=8):\n    \"\"\"fn(item) for every item, computed on a thread pool, in the order of items.\"\"\"\n    items = list(items)\n    out = [None] * len(items)\n\n    def one(i, item):\n        out[i] = fn(item)\n\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        for i, item in enumerate(items):\n            pool.submit(one, i, item)\n    return out\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "sorted-by-value",
+      "breaks": "c1",
+      "files": {
+        "mapping.py": "from concurrent.futures import ThreadPoolExecutor\n\n\ndef map_all(fn, items, workers=8):\n    \"\"\"fn(item) for every item, computed on a thread pool, in the order of items.\"\"\"\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        from concurrent.futures import as_completed\n        return sorted(f.result() for f in as_completed([pool.submit(fn, i) for i in items]))\n"
+      }
+    },
+    {
+      "name": "swallows-value-and-key-errors",
+      "breaks": "c2",
+      "files": {
+        "mapping.py": "from concurrent.futures import ThreadPoolExecutor\n\n\ndef map_all(fn, items, workers=8):\n    \"\"\"fn(item) for every item, computed on a thread pool, in the order of items.\"\"\"\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        fs = [pool.submit(fn, i) for i in items]\n        out = []\n        for f in fs:\n            try:\n                out.append(f.result())\n            except (ValueError, KeyError):\n                out.append(None)\n        return out\n"
+      }
+    }
+  ]
+}

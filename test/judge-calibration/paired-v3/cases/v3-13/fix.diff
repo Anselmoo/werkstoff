@@ -1,0 +1,17 @@
+diff --git a/settings.py b/settings.py
+--- a/settings.py
++++ b/settings.py
+@@ -1,6 +1,11 @@
++import json
++
++
+ def save(path, data):
+-    raise NotImplementedError
++    with open(path, "w", encoding="utf-8") as f:
++        json.dump(data, f, indent=2)
+ 
+ 
+ def load(path):
+-    raise NotImplementedError
++    with open(path, encoding="utf-8") as f:
++        return json.load(f)

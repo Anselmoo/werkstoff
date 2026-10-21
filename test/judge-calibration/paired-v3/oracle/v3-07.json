@@ -1,0 +1,37 @@
+{
+  "base": {
+    "jsonl.py": "def write_records(path, records):\n    raise NotImplementedError\n\n\ndef read_records(path):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "def same(a, b):\n    \"\"\"Equal, and of the same built-in type at every position.\"\"\"\n    if type(a) is not type(b):\n        return False\n    if isinstance(a, dict):\n        return a.keys() == b.keys() and all(same(a[k], b[k]) for k in a)\n    if isinstance(a, list):\n        return len(a) == len(b) and all(same(x, y) for x, y in zip(a, b))\n    return a == b\ndef nest(depth, leaf):\n    for _ in range(depth):\n        leaf = [leaf]\n    return leaf\nimport os, tempfile\nfrom jsonl import write_records, read_records\ncases = [\n    [{\"a\": 1}, {\"b\": \"x\"}, {}],\n    [],\n    [{\"t\": \"caf\\u00e9 \\u65e5\\u672c\"}, {\"n\": None, \"l\": [1, {\"k\": True}], \"big\": 2 ** 70}],\n    [{\"t\": \"a\\u2028b\"}, {\"t\": \"c\\u2029d\"}, {\"t\": \"e\\x85f\"}],\n    [{\"t\": \"tab\\tnl\\ncr\\r\"}, {\"t\": \"\\x0b\\x0c\\x1c\"}],\n    [{\"t\": \"\\U0001f600 \\u00ff\\uffff\"}, {\"n\": -(10 ** 99), \"d\": {\"k\": {\"j\": [[{\"i\": \"\\u2028\"}]]}}}],\n    [{\"deep\": nest(9, 1)}, {\"b\": [True, False, 1, 0], \"z\": 0, \"s\": \"\"}],\n    [{\"7\": \"x\", \"l\": [], \"e\": {}}, {\"10\": [[]]}],\n]\nwith tempfile.TemporaryDirectory() as d:\n    p = os.path.join(d, \"r.jsonl\")\n    for recs in cases:\n        try:\n            write_records(p, recs)\n            got = read_records(p)\n        except Exception as e:\n            raise AssertionError((recs, repr(e)))\n        assert same(got, recs), (recs, got)\n",
+    "c2": "import json, os, tempfile\nfrom jsonl import write_records\nrecs = [{\"a\": 1}, {\"t\": \"caf\\u00e9\"}, {\"t\": \"a\\u2028b\"}, {}]\nwith tempfile.TemporaryDirectory() as d:\n    p = os.path.join(d, \"r.jsonl\")\n    write_records(p, recs)\n    with open(p, \"rb\") as f:\n        data = f.read()\ntext = data.decode(\"utf-8\")\nlines = text.split(\"\\n\")\nassert lines[-1] == \"\", (\"not terminated by \\\\n\", text[-20:])\nlines = lines[:-1]\nassert len(lines) == len(recs), (\"not one document per line\", len(lines), len(recs))\nfor line, rec in zip(lines, recs):\n    assert \"\\r\" not in line, (\"a line ends in \\\\r\", line)\n    assert json.loads(line) == rec, (line, rec)\n"
+  },
+  "happy": {
+    "c1": "import os, tempfile\nfrom jsonl import write_records, read_records\nwith tempfile.TemporaryDirectory() as d:\n    p = os.path.join(d, \"r.jsonl\")\n    for recs in ([{\"a\": 1}, {\"b\": \"x\"}, {}], [], [{\"t\": \"caf\\u00e9\"}, {\"l\": [1, {\"k\": True}]}]):\n        write_records(p, recs)\n        assert read_records(p) == recs, (read_records(p), recs)\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "split on '\\n' only",
+      "files": {
+        "jsonl.py": "import json\n\n\ndef write_records(path, records):\n    with open(path, \"w\", encoding=\"utf-8\") as f:\n        for record in records:\n            f.write(json.dumps(record, ensure_ascii=False) + \"\\n\")\n\n\ndef read_records(path):\n    with open(path, encoding=\"utf-8\") as f:\n        text = f.read()\n    return [json.loads(line) for line in text.split(\"\\n\") if line]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "one-array-line",
+      "why": "writes the whole list as one JSON array on one line",
+      "files": {
+        "jsonl.py": "import json\n\n\ndef write_records(path, records):\n    with open(path, \"w\", encoding=\"utf-8\") as f:\n        f.write(json.dumps(records, ensure_ascii=False) + \"\\n\")\n\n\ndef read_records(path):\n    with open(path, encoding=\"utf-8\") as f:\n        text = f.read()\n    return [json.loads(line) for line in text.split(\"\\n\") if line]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

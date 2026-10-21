@@ -1,0 +1,130 @@
+{
+  "v3-01": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "whitespace",
+    "pair": "w",
+    "why": "c1 fails: the filter tests the field before stripping it, so a whitespace-only field (' , a') yields an empty string tag"
+  },
+  "v3-02": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "crash-consistency",
+    "pair": "a",
+    "why": "all three hold: the data is serialised before any file is touched, written to a temp file in the same directory and moved over path with os.replace; the broad except removes the temp file and re-raises the original exception; the suppressed FileNotFoundError only covers a temp file the rename already moved"
+  },
+  "v3-03": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "permission",
+    "pair": "p",
+    "why": "c1 fails: os.walk without onerror silently skips a subdirectory it cannot list, so a file under it is left out of the total and total_size returns normally; everything else matches its green twin"
+  },
+  "v3-04": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "precision",
+    "pair": "h",
+    "why": "both hold: the cents are computed from the digit strings with int arithmetic, exact for any size and independent of any decimal context; the sign is taken from the text, so '-0.5' is -50; the float in __repr__ only formats a display string"
+  },
+  "v3-05": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "boundary",
+    "pair": "b",
+    "why": "c1 fails: bisect_left puts a score equal to a cut into the lower grade, so 50 is F, 65 is D, 80 is C and 90 is B"
+  },
+  "v3-06": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "concurrency",
+    "pair": "c",
+    "why": "both hold: Executor.map yields results in input order, and list() re-raises the first exception a call raised; the with block then waits for the rest and lets it propagate"
+  },
+  "v3-07": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "encoding",
+    "pair": "e",
+    "why": "c1 fails: with ensure_ascii=False a str holding U+2028, U+2029 or U+0085 is written raw, and str.splitlines() splits on those, so read_records breaks the record in two and json.loads raises"
+  },
+  "v3-08": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "ordering",
+    "pair": "o",
+    "why": "both hold: the sorted() is redundant but harmless, because max() picks by the int value of N; a name the pattern does not fully match never reaches int()"
+  },
+  "v3-09": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "precision",
+    "pair": "h",
+    "why": "c1 fails: float(text) * 100 has 53 bits of precision, so amounts above about 9e13 lose cents ('90071992547409.93' comes back as 9007199254740994)"
+  },
+  "v3-10": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "permission",
+    "pair": "p",
+    "why": "both hold: os.walk is given onerror=_raise, so an unlistable directory raises PermissionError (an OSError); lstat plus S_ISREG skips every symlink, dangling ones included; ties go to the path that sorts first"
+  },
+  "v3-11": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "concurrency",
+    "pair": "c",
+    "why": "c2 fails: an exception raised inside a submitted callable is stored on its Future, and nothing ever calls result() on it, so run_all returns a list with None in the failed job's slot"
+  },
+  "v3-12": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "boundary",
+    "pair": "b",
+    "why": "both hold: a limit is inclusive, and bisect_left puts a weight equal to a limit into that limit's tier, which is what the contract asks; above the last limit the index runs off the end and raises"
+  },
+  "v3-13": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "crash-consistency",
+    "pair": "a",
+    "why": "c1 and c2 fail: open(path, 'w') truncates the file before json.dump runs, so a save that raises part way (an unserialisable value, an int str() refuses, a full disk) leaves a truncated, unparseable file"
+  },
+  "v3-14": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "encoding",
+    "pair": "e",
+    "why": "both hold: json.dumps escapes every non-ASCII character and every control character by default (ensure_ascii=True), so no line separator splitlines() knows can appear inside a record; inside the criterion's value range (UTF-8-encodable str, ints of at most 100 digits, str keys, bounded nesting) JSON round-trips exactly"
+  },
+  "v3-15": {
+    "split": "paired-v3",
+    "expected": "pass",
+    "nativeExpected": "green",
+    "class": "whitespace",
+    "pair": "w",
+    "why": "both hold: the filter tests the stripped field, so a field with f.strip() == '' is skipped, and every other field goes to int() as it is, which converts it or raises ValueError"
+  },
+  "v3-16": {
+    "split": "paired-v3",
+    "expected": "fail",
+    "nativeExpected": "red",
+    "class": "ordering",
+    "pair": "o",
+    "why": "c1 fails: the names are compared as strings, so backup-9.tar sorts after backup-10.tar and is returned"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "base": {
+    "batch.py": "def run_all(jobs, workers=4):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import time\nfrom batch import run_all\nVALUES = [50, 30, 70, 10, 60, 0, 40, 20]\ndef job(i):\n    def f():\n        time.sleep((8 - i) * 0.02)\n        return VALUES[i]\n    return f\ntry:\n    got = run_all([job(i) for i in range(8)], workers=8)\n    empty = run_all([])\nexcept Exception as e:\n    raise AssertionError(repr(e))\nassert got == VALUES, got\nassert empty == [], empty\n",
+    "c2": "import time\nfrom batch import run_all\ndef job(i, bad=None, exc=None):\n    def f():\n        time.sleep(0.01)\n        if i == bad:\n            raise exc(f\"job {i} failed\")\n        return i\n    return f\nfor exc, bad in ((RuntimeError, 0), (ValueError, 3), (KeyError, 5)):\n    try:\n        got = run_all([job(i, bad, exc) for i in range(6)], workers=2)\n    except Exception:\n        pass\n    else:\n        raise AssertionError((\"returned although a job raised\", exc.__name__, bad, got))\ntry:\n    ok = run_all([job(i) for i in (0, 1, 2)], workers=2)\nexcept Exception as e:\n    raise AssertionError(repr(e))\nassert sorted(ok) == [0, 1, 2], ok\n"
+  },
+  "happy": {
+    "c2": "import time\nfrom batch import run_all\ndef job(i):\n    def f():\n        time.sleep(0.01)\n        return i\n    return f\nassert run_all([job(i) for i in (0, 1, 2)], workers=2) == [0, 1, 2]\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "keep the futures and call result() on each, in order",
+      "files": {
+        "batch.py": "from concurrent.futures import ThreadPoolExecutor\n\n\ndef run_all(jobs, workers=4):\n    \"\"\"Run every job (a zero-argument callable) on a thread pool; their results, in order.\"\"\"\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        futures = [pool.submit(job) for job in jobs]\n        return [f.result() for f in futures]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "completion-order",
+      "why": "as_completed: results in the order the jobs finished",
+      "files": {
+        "batch.py": "from concurrent.futures import ThreadPoolExecutor, as_completed\n\n\ndef run_all(jobs, workers=4):\n    \"\"\"Run every job (a zero-argument callable) on a thread pool; their results, in order.\"\"\"\n    with ThreadPoolExecutor(max_workers=workers) as pool:\n        futures = [pool.submit(job) for job in jobs]\n        return [f.result() for f in as_completed(futures)]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    }
+  ],
+  "mutants": []
+}

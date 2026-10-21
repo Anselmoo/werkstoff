@@ -1,0 +1,13 @@
+{
+  "wire": "job events -> log.save_log / load_log -> the replay after a restart",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "load_log(path) returns a list equal to the one save_log(path, events) was given, in order and with the same built-in type at every position, for any list of dicts in which dicts and lists together are nested at most 10 deep (the dict itself is level 1), whose keys are str at every level and whose values are None, bool, an int of at most 100 digits, a str, or lists and dicts of these, all of exactly these built-in types, and in which every str, key or value, encodes as UTF-8"
+    },
+    {
+      "id": "c2",
+      "text": "for any list c1 admits, the file save_log writes is UTF-8 text holding one JSON document per record, each on its own line terminated by '\\n'"
+    }
+  ]
+}

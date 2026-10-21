@@ -1,0 +1,13 @@
+{
+  "wire": "checkout -> shipping.tier -> the shipping label",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for an int weight in grams, tier(weight) returns letter from 1 up to and including 500, small above 500 up to and including 2000, and parcel above 2000 up to and including 10000"
+    },
+    {
+      "id": "c2",
+      "text": "tier raises ValueError for an int weight of 0 or less, or above 10000"
+    }
+  ]
+}

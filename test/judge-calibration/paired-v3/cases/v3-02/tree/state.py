@@ -1,0 +1,23 @@
+import contextlib
+import json
+import os
+import tempfile
+
+
+def save(path, data):
+    text = json.dumps(data, indent=2)
+    directory = os.path.dirname(os.path.abspath(path))
+    fd, tmp = tempfile.mkstemp(dir=directory, prefix=".state-", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+        raise
+
+
+def load(path):
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)

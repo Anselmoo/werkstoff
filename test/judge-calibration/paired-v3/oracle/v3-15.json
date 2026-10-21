@@ -1,0 +1,89 @@
+{
+  "base": {
+    "ints.py": "def parse_ints(text):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from ints import parse_ints\ndef call(text):\n    try:\n        return parse_ints(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\nassert call(\"3, 14, 15\") == [3, 14, 15], call(\"3, 14, 15\")\nfor text, want in [(\"\", []), (\" \", []), (\"1,,2\", [1, 2]), (\"1, ,2\", [1, 2]), (\" 7 \", [7]),\n                   (\"-4,\\t5\", [-4, 5]), (\",\", []), (\"+8,\", [8]), (\"1,\\t,2\", [1, 2]), (\"1,\\n,2\", [1, 2]),\n                   (\"\\xa0,3\", [3]), (\"\\u3000,4\", [4]), (\"1,\\x1c,2\", [1, 2]), (\"3,1,2\", [3, 1, 2]), (\"2,2\", [2, 2]),\n                   (\"5,4,3,2,1\", [5, 4, 3, 2, 1]), (\"\\x1d,\\r,\\x85,\\x0b,6\", [6]), (\"1_000\", [1000]), (\"\\u0663\", [3]),\n                   (\"9007199254740993\", [9007199254740993])]:\n    got = call(text)\n    assert got == want, (text, got)\n",
+    "c2": "from ints import parse_ints\nfor text in [\"x\", \"1,x\", \"1.5\", \"1, 2 3\", \"0x10\", \"7,-\", \" x \", \"1, ,x\", \"1e3\", \"2.0\"]:\n    try:\n        got = parse_ints(text)\n    except ValueError:\n        continue\n    raise AssertionError((\"accepted\", text, got))\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "filter-before-strip",
+      "why": "tests the raw field, so int(' ') raises",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(field) for field in text.split(\",\") if field]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    },
+    {
+      "name": "swallows-bad-fields",
+      "why": "skips a field int() rejects instead of raising",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    out = []\n    for field in text.split(\",\"):\n        if not field.strip():\n            continue\n        try:\n            out.append(int(field))\n        except ValueError:\n            continue\n    return out\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    },
+    {
+      "name": "strips-spaces-only",
+      "why": "filters with strip(' '), so a tab-only field reaches int() and raises",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(field) for field in text.split(\",\") if field.strip(\" \")]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 0
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "strips-spaces-only",
+      "breaks": "c1",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(field) for field in text.split(\",\") if field.strip(\" \")]\n"
+      }
+    },
+    {
+      "name": "sorted",
+      "breaks": "c1",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return sorted(int(field) for field in text.split(\",\") if field.strip())\n"
+      }
+    },
+    {
+      "name": "first-three-fields",
+      "breaks": "c1",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(field) for field in text.split(\",\")[:3] if field.strip()]\n"
+      }
+    },
+    {
+      "name": "whitespace-allowlist",
+      "breaks": "c1",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(field) for field in text.split(\",\") if field.strip(\" \\t\\n\\xa0\\u3000\\x1c\")]\n"
+      }
+    },
+    {
+      "name": "ascii-digits-only",
+      "breaks": "c1",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    import re\n    if any(f.strip() and not re.fullmatch(r\"\\s*[+-]?[0-9]+\\s*\", f) for f in text.split(\",\")):\n        raise ValueError(text)\n    return [int(field) for field in text.split(\",\") if field.strip()]\n"
+      }
+    },
+    {
+      "name": "via-float",
+      "breaks": "c2",
+      "files": {
+        "ints.py": "def parse_ints(text):\n    \"\"\"Comma-separated integers: '3, 14, 15' -> [3, 14, 15].\"\"\"\n    return [int(float(field)) for field in text.split(\",\") if field.strip()]\n"
+      }
+    }
+  ]
+}

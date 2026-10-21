@@ -1,0 +1,13 @@
+{
+  "wire": "tag input -> tags.parse_tags -> the search index",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for a str text, parse_tags(text) returns, in order, f.strip().lower() for every comma-separated field f of text with f.strip() != ''; a field with f.strip() == '' is skipped"
+    },
+    {
+      "id": "c2",
+      "text": "parse_tags never raises for a str argument"
+    }
+  ]
+}

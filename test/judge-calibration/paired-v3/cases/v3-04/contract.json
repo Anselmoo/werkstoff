@@ -1,0 +1,13 @@
+{
+  "wire": "catalogue feed -> price.parse_price -> the checkout total",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for every str text of the form [-]D[.F], where D is 1 to 18 ASCII digits and F is 1 or 2 ASCII digits, parse_price(text).cents is the exact number of cents as an int"
+    },
+    {
+      "id": "c2",
+      "text": "parse_price raises ValueError for every other str"
+    }
+  ]
+}

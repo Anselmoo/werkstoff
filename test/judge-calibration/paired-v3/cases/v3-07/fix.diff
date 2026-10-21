@@ -1,0 +1,19 @@
+diff --git a/jsonl.py b/jsonl.py
+--- a/jsonl.py
++++ b/jsonl.py
+@@ -1,6 +1,13 @@
++import json
++
++
+ def write_records(path, records):
+-    raise NotImplementedError
++    with open(path, "w", encoding="utf-8") as f:
++        for record in records:
++            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+ 
+ 
+ def read_records(path):
+-    raise NotImplementedError
++    with open(path, encoding="utf-8") as f:
++        text = f.read()
++    return [json.loads(line) for line in text.splitlines() if line]

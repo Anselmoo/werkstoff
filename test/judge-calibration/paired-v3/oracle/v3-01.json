@@ -1,0 +1,37 @@
+{
+  "base": {
+    "tags.py": "def parse_tags(text):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from tags import parse_tags\ndef call(text):\n    try:\n        return parse_tags(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\nassert call(\"Python, Rust\") == [\"python\", \"rust\"], call(\"Python, Rust\")\nassert call(\"go\") == [\"go\"], call(\"go\")\nfor text, want in [(\"\", []), (\"a,,b\", [\"a\", \"b\"]), (\" , A\", [\"a\"]), (\"a, \\t ,b\", [\"a\", \"b\"]),\n                   (\"   \", []), (\",\", []), (\"X ,\", [\"x\"]), (\"x,\\n,y\", [\"x\", \"y\"]), (\"\\xa0,z\", [\"z\"]),\n                   (\"\\u3000,z\", [\"z\"]), (\"\\x1c,z\", [\"z\"])]:\n    got = call(text)\n    assert got == want, (text, got)\n",
+    "c2": "from tags import parse_tags\nfor text in [\"\", \",\", \" , \", \"a\", \"A,b\", \"\\t\", \",,,\", \"caf\\u00e9, \\u00dcber\"]:\n    try:\n        parse_tags(text)\n    except Exception as e:\n        raise AssertionError((text, repr(e)))\n"
+  },
+  "happy": {
+    "c1": "from tags import parse_tags\nassert parse_tags(\"Python, Rust\") == [\"python\", \"rust\"]\nassert parse_tags(\"go\") == [\"go\"]\nassert parse_tags(\"a,,b\") == [\"a\", \"b\"]\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "filter on the stripped field",
+      "files": {
+        "tags.py": "def parse_tags(text):\n    \"\"\"Split a comma-separated tag list: 'Python, Rust' -> ['python', 'rust'].\"\"\"\n    return [t.strip().lower() for t in text.split(\",\") if t.strip()]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "raises-on-empty",
+      "why": "the fix, plus a ValueError for an empty string",
+      "files": {
+        "tags.py": "def parse_tags(text):\n    \"\"\"Split a comma-separated tag list: 'Python, Rust' -> ['python', 'rust'].\"\"\"\n    if not text:\n        raise ValueError(\"no tags\")\n    return [t.strip().lower() for t in text.split(\",\") if t.strip()]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

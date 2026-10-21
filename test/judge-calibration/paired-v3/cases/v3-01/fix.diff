@@ -1,0 +1,8 @@
+diff --git a/tags.py b/tags.py
+--- a/tags.py
++++ b/tags.py
+@@ -1,2 +1,3 @@
+ def parse_tags(text):
+-    raise NotImplementedError
++    """Split a comma-separated tag list: 'Python, Rust' -> ['python', 'rust']."""
++    return [t.strip().lower() for t in text.split(",") if t]

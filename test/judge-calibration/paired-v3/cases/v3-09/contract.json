@@ -1,0 +1,13 @@
+{
+  "wire": "invoice import -> money.to_cents -> the ledger",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for every str text of the form [-]D[.F], where D is 1 to 18 ASCII digits and F is 1 or 2 ASCII digits, to_cents(text) is the exact number of cents as an int"
+    },
+    {
+      "id": "c2",
+      "text": "to_cents raises ValueError for every other str"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "base": {
+    "shipping.py": "def tier(weight):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "from shipping import tier\nwant = {1: \"letter\", 250: \"letter\", 500: \"letter\", 501: \"small\", 1200: \"small\", 2000: \"small\",\n        2001: \"parcel\", 7000: \"parcel\", 10000: \"parcel\"}\nfor w, t in want.items():\n    try:\n        got = tier(w)\n    except Exception as e:\n        raise AssertionError((w, repr(e)))\n    assert got == t, (w, got, t)\n",
+    "c2": "from shipping import tier\nfor w in (0, -1, -500, 10001, 50000):\n    try:\n        got = tier(w)\n    except ValueError:\n        continue\n    raise AssertionError((\"no ValueError\", w, got))\nfor w in (1, 10000):\n    try:\n        tier(w)\n    except Exception as e:\n        raise AssertionError((w, repr(e)))\n"
+  },
+  "happy": {},
+  "controls": [
+    {
+      "name": "bisect-right",
+      "why": "a weight equal to a limit moves up a tier, and 10000 g raises",
+      "files": {
+        "shipping.py": "from bisect import bisect_right\n\nLIMITS = [500, 2000, 10000]  # grams\nTIERS = [\"letter\", \"small\", \"parcel\"]\n\n\ndef tier(weight):\n    \"\"\"Shipping tier for an int weight in grams.\"\"\"\n    if weight <= 0:\n        raise ValueError(f\"weight must be positive: {weight}\")\n    i = bisect_right(LIMITS, weight)\n    if i == len(LIMITS):\n        raise ValueError(f\"too heavy to ship: {weight} g\")\n    return TIERS[i]\n"
+      },
+      "expect": {
+        "c1": 1,
+        "c2": 1
+      }
+    },
+    {
+      "name": "no-lower-check",
+      "why": "0 g ships as a letter",
+      "files": {
+        "shipping.py": "from bisect import bisect_left\n\nLIMITS = [500, 2000, 10000]  # grams\nTIERS = [\"letter\", \"small\", \"parcel\"]\n\n\ndef tier(weight):\n    \"\"\"Shipping tier for an int weight in grams.\"\"\"\n    i = bisect_left(LIMITS, weight)\n    if i == len(LIMITS):\n        raise ValueError(f\"too heavy to ship: {weight} g\")\n    return TIERS[i]\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": []
+}

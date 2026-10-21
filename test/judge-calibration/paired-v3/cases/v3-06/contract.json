@@ -1,0 +1,13 @@
+{
+  "wire": "thumbnail service -> mapping.map_all -> the gallery page",
+  "criteria": [
+    {
+      "id": "c1",
+      "text": "for an fn that returns or raises on every item, map_all(fn, items) returns, in the order of items, the value fn returned for each item"
+    },
+    {
+      "id": "c2",
+      "text": "for an fn that returns or raises on every item, if fn raises for any item, map_all raises an exception instead of returning"
+    }
+  ]
+}

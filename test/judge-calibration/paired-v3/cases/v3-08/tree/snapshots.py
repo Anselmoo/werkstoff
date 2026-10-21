@@ -1,0 +1,13 @@
+import os
+import re
+
+_SNAP = re.compile(r"snap-([0-9]+)\.db")
+
+
+def newest_snapshot(directory):
+    """Name of the newest snap-N.db in directory, or None."""
+    names = sorted(os.listdir(directory))
+    snaps = [n for n in names if _SNAP.fullmatch(n)]
+    if not snaps:
+        return None
+    return max(snaps, key=lambda n: int(_SNAP.fullmatch(n).group(1)))

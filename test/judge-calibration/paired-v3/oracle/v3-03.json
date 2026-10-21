@@ -1,0 +1,66 @@
+{
+  "base": {
+    "du.py": "def total_size(root):\n    raise NotImplementedError\n"
+  },
+  "probes": {
+    "c1": "import os, sys\nif os.geteuid() == 0:\n    sys.exit(2)  # root reads a mode-000 directory, so this cannot be decided as root\nimport tempfile\nfrom pathlib import Path\nfrom du import total_size\ndef call(r):\n    try:\n        return total_size(r)\n    except OSError:\n        return \"raised\"\n    except Exception as e:\n        raise AssertionError(repr(e))\nwith tempfile.TemporaryDirectory() as d:\n    r = Path(d) / \"r\"\n    (r / \"a\" / \"b\").mkdir(parents=True)\n    (r / \"x\").write_bytes(b\"12345\")\n    (r / \"a\" / \"y\").write_bytes(b\"123\")\n    (r / \"a\" / \"b\" / \"z\").write_bytes(b\"1\")\n    assert call(r) == 9, call(r)\n    (r / \"e\").mkdir()\n    os.mkfifo(r / \"a\" / \"p\")\n    assert call(r) == 9, call(r)\n    (r / \".hidden\").mkdir()\n    (r / \".hidden\" / \".dot\").write_bytes(b\"12\")\n    (r / \"zero\").write_bytes(b\"\")\n    deep = r.joinpath(*\"defghijk\")\n    deep.mkdir(parents=True)\n    (deep / \"w\").write_bytes(b\"1234\")\n    assert call(r) == 15, call(r)\n    (r / \"ro\").mkdir()\n    (r / \"ro\" / \"v\").write_bytes(b\"123\")\n    os.chmod(r / \"ro\", 0o444)\n    try:\n        got = call(r)\n    finally:\n        os.chmod(r / \"ro\", 0o755)\n    assert got in (\"raised\", 18), (\"returned a total that leaves a file out\", got)\n    (r / \"locked\").mkdir()\n    (r / \"locked\" / \"w\").write_bytes(b\"1234567\")\n    os.chmod(r / \"locked\", 0)\n    try:\n        got = call(r)\n    finally:\n        os.chmod(r / \"locked\", 0o755)\n    assert got in (\"raised\", 25), (\"returned a total that leaves a file out\", got)\nwith tempfile.TemporaryDirectory() as d:\n    r = Path(d) / \"h\"\n    (r / \"a\").mkdir(parents=True)\n    (r / \"a\" / \"c\").write_bytes(b\"123\")\n    os.link(r / \"a\" / \"c\", r / \"b\")\n    assert call(r) == 6, (\"a hard-linked file is two directory entries\", call(r))\n    deep = r.joinpath(*[\"d\"] * 30)\n    deep.mkdir(parents=True)\n    (deep / \"w\").write_bytes(b\"12\")\n    assert call(r) == 8, (\"a file 31 levels down\", call(r))\n    assert call(str(r) + \"/\") == 8, (\"a str root with a trailing slash\", call(str(r) + \"/\"))\n",
+    "c2": "import os, tempfile\nfrom pathlib import Path\nfrom du import total_size\nwith tempfile.TemporaryDirectory() as d:\n    out = Path(d) / \"out\"\n    out.mkdir()\n    (out / \"big\").write_bytes(b\"x\" * 1000)\n    r = Path(d) / \"r\"\n    r.mkdir()\n    (r / \"f\").write_bytes(b\"ab\")\n    os.symlink(out / \"big\", r / \"link-file\")\n    os.symlink(out, r / \"link-dir\")\n    os.symlink(Path(d) / \"nowhere\", r / \"dangling\")\n    try:\n        got = total_size(r)\n    except Exception as e:\n        raise AssertionError(repr(e))\n    assert got == 2, got\n"
+  },
+  "happy": {
+    "c1": "import tempfile\nfrom pathlib import Path\nfrom du import total_size\nwith tempfile.TemporaryDirectory() as d:\n    r = Path(d) / \"r\"\n    (r / \"a\" / \"b\").mkdir(parents=True)\n    (r / \"x\").write_bytes(b\"12345\")\n    (r / \"a\" / \"y\").write_bytes(b\"123\")\n    (r / \"a\" / \"b\" / \"z\").write_bytes(b\"1\")\n    assert total_size(r) == 9, total_size(r)\n"
+  },
+  "controls": [
+    {
+      "name": "fixed",
+      "why": "os.walk(root, onerror=_raise)",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            st = os.lstat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode):\n                total += st.st_size\n    return total\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 0
+      }
+    },
+    {
+      "name": "follows-file-links",
+      "why": "the fix with os.stat instead of os.lstat: a symlink to a file is counted, a dangling one raises",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            st = os.stat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode):\n                total += st.st_size\n    return total\n"
+      },
+      "expect": {
+        "c1": 0,
+        "c2": 1
+      }
+    }
+  ],
+  "mutants": [
+    {
+      "name": "counts-an-inode-once",
+      "breaks": "c1",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    seen = set()\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        for name in filenames:\n            st = os.lstat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode) and (st.st_dev, st.st_ino) not in seen:\n                seen.add((st.st_dev, st.st_ino))\n                total += st.st_size\n    return total\n"
+      }
+    },
+    {
+      "name": "stops-at-depth-twenty",
+      "breaks": "c1",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        if os.path.relpath(dirpath, root).count(os.sep) >= 18:\n            dirnames[:] = []\n        for name in filenames:\n            st = os.lstat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode):\n                total += st.st_size\n    return total\n"
+      }
+    },
+    {
+      "name": "skips-dotfiles",
+      "breaks": "c1",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        dirnames[:] = [n for n in dirnames if not n.startswith('.')]\n        for name in filenames:\n            if name.startswith('.'):\n                continue\n            st = os.lstat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode):\n                total += st.st_size\n    return total\n"
+      }
+    },
+    {
+      "name": "stops-at-depth-three",
+      "breaks": "c1",
+      "files": {
+        "du.py": "import os\nimport stat\n\n\ndef _raise(err):\n    raise err\n\n\ndef total_size(root):\n    \"\"\"Total size in bytes of the regular files under root.\"\"\"\n    total = 0\n    for dirpath, dirnames, filenames in os.walk(root, onerror=_raise):\n        if os.path.relpath(dirpath, root).count(os.sep) >= 1:\n            dirnames[:] = []\n        for name in filenames:\n            st = os.lstat(os.path.join(dirpath, name))\n            if stat.S_ISREG(st.st_mode):\n                total += st.st_size\n    return total\n"
+      }
+    }
+  ]
+}
