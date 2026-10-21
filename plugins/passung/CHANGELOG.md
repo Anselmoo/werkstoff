@@ -6,6 +6,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-21
 ### Changed
 - **canonize, verify**: the two-judge provenance panel and the non-blind PASS re-check
   are each one judge call under the shared verdict contract (`verdict@1`, #119). The
