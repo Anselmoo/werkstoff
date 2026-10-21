@@ -4,6 +4,49 @@ All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-21
+
+### Added
+- **judge-calibration**: paired tribunal measurement run; the committed rule keeps the tribunal
+- **judge-calibration**: paired.py collect rebuilds every run from the workflow journal
+- **judge-calibration**: the paired tribunal measurement, sealed before it runs
+- **judge-calibration**: sealed sets measured once; records derived for all three judges
+- **judge-calibration**: known-answer sets, oracles and a scorer for the three kept judges
+- **judge-contract**: one LLM-as-judge contract across plugins (#119) (#137)
+- **ci**: the floor lint requires every registered hook to self-check (#123) (#133)
+
+### Fixed
+- **arbeitsplan**: compare one spelling of a symlinked path in three checks (#138)
+- **judge-calibration**: fingerprint the sealed set; tighten what the docs claim
+- **judge-calibration**: referee abstain cases report no builder check; tune round 1
+- **nacharbeit,arbeitsplan**: an omitted or caller-supplied model inherits by design (#118) (#136)
+- **ci**: auto-version-bump survives merges that land seconds apart (#135)
+- **zeugnis**: both guards deny below Python 3.11 (#131)
+- **befund**: guard denies below Python 3.11 (#130)
+- **lehre**: guard denies below Python 3.11 (#129)
+- **andon**: guard denies below Python 3.11 (#128)
+- **nacharbeit**: guard denies below Python 3.11 (#127)
+- **takt**: guard denies below Python 3.11 (#126)
+- **matrize**: guard denies below Python 3.11 (#125)
+- **cupertino**: guard denies below Python 3.11 instead of crashing open (#124)
+- **zeugnis**: Bash guard no longer crashes open under Python 3.9 (#121)
+- **nacharbeit**: calibrated review and fix pass run outside werkstoff (#117) (#120)
+- **lehre**: close the three agentic-reliability gaps in #96
+- gate auto-version-bump on the call input (#27); recognise spec-listed CSS/Sass at-rules (#29) (#108)
+- **plugins**: run every skill-invoked plugin script with python3 -B, plugin root quoted (#88 follow-up) (#104)
+- every workflow agent() names its tier; dispatches brief relayed requests (#87, #90) (#101)
+- **arbeitsplan**: measured checks, preserving sweep, reason-reading breaker (#81, #76, #80, #78, #93) (#100)
+- **arbeitsplan**: compile_spec validates what it used to count (#77, #74, #75, #79) (#99)
+- **andon**: evidence can go stale (#72); worktrees share the main ledger (#71) (#98)
+- close three fail-open paths in andon, and the two cleanups underneath (#97)
+- stop three guards denying beyond their own rule (#95)
+- **andon**: keep wire degradation on a strategy whose trigger fired (#94)
+
+### Documentation
+- **judge-calibration**: the paired tribunal measurement's result and what it does not settle
+- **judge-calibration**: cite the rebased commit hashes
+- **judge-calibration**: record the measurement; three mapping rows move to kept-calibrated
+
 ## [1.2.0] - 2026-10-21
 ### Changed
 - **waves helper floor 3.10 -> 3.11**: `install_waves.py`, `waves_state.py` and `waves_guard.py`
