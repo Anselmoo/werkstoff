@@ -336,9 +336,14 @@ ways: it fails the staged tree with an assertion and passes a fixed control that
 
 **Both arms were audited for further key errors, the same way.** This error came to light
 because arm A disagreed with the key, so the way it was found favours arm A. After it:
-- no arm-B criterion failed on any item keyed green or unknown
+- no arm-B criterion failed on any item keyed green or unknown, and no arm-B evidence
+  reported a reproduced defect
 - every other arm-A verdict matched the key
-- no verifier or adjudicator reported a reproduced defect inside a contract criterion
+- no challenger, verifier or adjudicator reported a reproduced defect inside a contract
+  criterion
+- on `v2-16` itself, no arm-B evidence mentions an unreadable directory or a permission
+  error. The single judge did not see the case and pass it anyway; it never saw the case,
+  so this is a detection miss, not a judgement miss
 
 A defect that both arms missed cannot be found this way and is not ruled out.
 
