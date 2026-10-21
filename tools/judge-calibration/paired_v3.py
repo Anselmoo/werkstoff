@@ -413,14 +413,50 @@ def stage(dest: Path, out: Path, map_file: Path) -> int:
     return 0
 
 
+def jsonl(path: Path) -> list[Any]:
+    """Every record of a JSON-lines file, split on '\\n' ONLY. str.splitlines() also splits on
+    U+2028, U+2029, U+0085 and \\x1c-\\x1e, which JSON allows raw inside a string: an agent quoting
+    v3-07's probe broke paired.collect's journal read, and its transcript reader would have
+    dropped such a line silently (``except ValueError: continue``), turning a report into an
+    abstain. A line that still does not parse is an error here, never a skipped line."""
+    out = []
+    for n, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+        if line.strip():
+            try:
+                out.append(json.loads(line))
+            except ValueError as exc:
+                raise ValueError(f"{path}:{n} is not a JSON record: {exc}") from exc
+    return out
+
+
+def _report(transcript: Path) -> tuple[Any, dict[str, int]]:
+    """paired._report over jsonl(): the input of the agent's StructuredOutput call when it had a
+    schema, else its last text, and its token usage."""
+    structured, text = None, None
+    usage = {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+    for e in jsonl(transcript):
+        msg = e.get("message") if isinstance(e, dict) else None
+        if not isinstance(msg, dict) or msg.get("role") != "assistant":
+            continue
+        u = msg.get("usage") or {}
+        usage["input"] += u.get("input_tokens", 0) or 0
+        usage["output"] += u.get("output_tokens", 0) or 0
+        usage["cacheRead"] += u.get("cache_read_input_tokens", 0) or 0
+        usage["cacheWrite"] += u.get("cache_creation_input_tokens", 0) or 0
+        for c in msg.get("content") if isinstance(msg.get("content"), list) else []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use" and c.get("name") == "StructuredOutput":
+                structured = c.get("input")
+            elif c.get("type") == "text" and c.get("text", "").strip():
+                text = c["text"].strip()
+    return (structured if structured is not None else text), usage
+
+
 def contamination(transcript: Path) -> list[str]:
     """The key paths one agent's tool inputs or tool results named."""
     hits = set()
-    for line in transcript.read_text(encoding="utf-8", errors="replace").splitlines():
-        try:
-            e = json.loads(line)
-        except ValueError:
-            continue
+    for e in jsonl(transcript):
         msg = e.get("message") if isinstance(e, dict) else None
         content = msg.get("content") if isinstance(msg, dict) else None
         for c in content if isinstance(content, list) else []:
@@ -431,23 +467,36 @@ def contamination(transcript: Path) -> list[str]:
 
 
 def collect(run_dir: Path, mapping: dict[str, str]) -> dict:
-    """paired.collect, plus the contamination scan of every agent of every run."""
-    raw = paired.collect(run_dir, mapping)
-    labels: dict[str, str] = {}
-    for line in (run_dir / "journal.jsonl").read_text(encoding="utf-8").splitlines():
-        e = json.loads(line)
-        if e.get("type") == "started" and e.get("agentId"):
-            labels[e["agentId"]] = e["label"]
-    found: dict[tuple[str, int, str], set[str]] = {}
+    """paired.collect's rebuild of every run from the workflow journal (each agent's label names
+    its role, item and repeat; its transcript holds its report), read through jsonl(), plus the
+    contamination scan of every agent of every run."""
+    labels = {e["agentId"]: e["label"] for e in jsonl(run_dir / "journal.jsonl")
+              if e.get("type") == "started" and e.get("agentId")}
+    runs: dict[tuple[str, int, str], dict] = {}
     for aid, label in labels.items():
         role, key, rep = label.rsplit(" ", 2)
+        arm = "b" if role == "contract judge" else "a"
         t = run_dir / f"agent-{aid}.jsonl"
-        hits = contamination(t) if t.is_file() else []
-        if hits:
-            found.setdefault((key, int(rep.lstrip("r")), "b" if role == "contract judge" else "a"), set()).update(hits)
-    for run in raw["runs"]:
-        run["contaminated"] = sorted(found.get((run["key"], run["r"], run["arm"]), set()))
-    return raw
+        report, usage = _report(t) if t.is_file() else (None, {})
+        run = runs.setdefault((key, int(rep.lstrip("r")), arm),
+                              {"key": key, "r": int(rep.lstrip("r")), "arm": arm, "roles": {}, "usage": {},
+                               "agents": 0, "contaminated": set()})
+        run["agents"] += 1
+        run["usage"] = {k: run["usage"].get(k, 0) + v for k, v in usage.items()}
+        run["contaminated"].update(contamination(t) if t.is_file() else [])
+        if arm == "b":
+            run["report"] = report
+        else:
+            run["roles"][role] = report
+            if role == "adjudicator":
+                run["adjudicator"] = report
+    unknown = sorted({k for k, _, _ in runs} - set(mapping))
+    if unknown:
+        raise ValueError(f"journal names items the map does not: {unknown}")
+    out = [runs[k] for k in sorted(runs)]
+    for run in out:
+        run["contaminated"] = sorted(run["contaminated"])
+    return {"runs": out}
 
 
 # ---------------------------------------------------------------------------- scoring
