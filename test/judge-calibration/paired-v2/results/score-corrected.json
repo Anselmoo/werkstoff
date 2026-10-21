@@ -1,0 +1,489 @@
+{
+  "items": {
+    "paired-v2/v2-01": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-02": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-03": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-04": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-05": {
+      "expected": "pass",
+      "tribunal": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "contractJudge": [
+        "pass",
+        "pass",
+        "pass",
+        "pass",
+        "pass"
+      ],
+      "tribunalMajority": "pass",
+      "contractJudgeMajority": "pass",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-06": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-07": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-08": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-09": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-10": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-11": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "fail",
+      "contractJudgeAbstainReasons": []
+    },
+    "paired-v2/v2-12": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "undecidable:c2"
+      ]
+    },
+    "paired-v2/v2-13": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "undecidable:c2"
+      ]
+    },
+    "paired-v2/v2-14": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "undecidable:c2"
+      ]
+    },
+    "paired-v2/v2-15": {
+      "expected": "abstain",
+      "tribunal": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "abstain",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "undecidable:c1"
+      ]
+    },
+    "paired-v2/v2-16": {
+      "expected": "fail",
+      "tribunal": [
+        "fail",
+        "fail",
+        "fail",
+        "fail",
+        "fail"
+      ],
+      "contractJudge": [
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain",
+        "abstain"
+      ],
+      "tribunalMajority": "fail",
+      "contractJudgeMajority": "abstain",
+      "contractJudgeAbstainReasons": [
+        "undecidable:c2"
+      ]
+    }
+  },
+  "arms": {
+    "a": {
+      "items": {
+        "n": 16,
+        "agreement": 1.0,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 1.0,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 1.0
+        },
+        "weakestTerm": "agreement",
+        "weakest": 1.0
+      },
+      "record": {
+        "sealed": 16,
+        "agreement": 1.0,
+        "floor": 0.8
+      },
+      "runs": {
+        "n": 80,
+        "agreement": 1.0,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 1.0,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 1.0
+        },
+        "weakestTerm": "agreement",
+        "weakest": 1.0
+      },
+      "unanimousItems": 16
+    },
+    "b": {
+      "items": {
+        "n": 16,
+        "agreement": 0.9375,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 0.8
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 0.8571428571428571,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 0.9375,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 0.8571428571428571
+        },
+        "weakestTerm": "recall-fail",
+        "weakest": 0.8571428571428571
+      },
+      "record": {
+        "sealed": 16,
+        "agreement": 0.8571,
+        "floor": 0.8
+      },
+      "runs": {
+        "n": 80,
+        "agreement": 0.9375,
+        "falsePasses": 0,
+        "falsePassRate": 0.0,
+        "falseFails": 0,
+        "falseFailRate": 0.0,
+        "precision": {
+          "pass": 1.0,
+          "fail": 1.0,
+          "abstain": 0.8
+        },
+        "recall": {
+          "pass": 1.0,
+          "fail": 0.8571428571428571,
+          "abstain": 1.0
+        },
+        "terms": {
+          "agreement": 0.9375,
+          "no-false-pass": 1.0,
+          "precision-pass": 1.0,
+          "precision-fail": 1.0,
+          "recall-pass": 1.0,
+          "recall-fail": 0.8571428571428571
+        },
+        "weakestTerm": "recall-fail",
+        "weakest": 0.8571428571428571
+      },
+      "unanimousItems": 16
+    }
+  },
+  "discordant": {
+    "onlyTribunalRight": 1,
+    "onlyContractJudgeRight": 0,
+    "mcnemarExactP": 1.0
+  },
+  "keyErrata": [
+    "v2-16"
+  ],
+  "decision": {
+    "rule": "keep the tribunal iff arm B has more false passes, or a lower record, than arm A",
+    "keepTribunal": true,
+    "falsePasses": {
+      "tribunal": 0,
+      "contractJudge": 0
+    },
+    "record": {
+      "tribunal": 1.0,
+      "contractJudge": 0.8571
+    }
+  },
+  "undecidableUse": {
+    "runsWithAnUndecidableCriterion": 45,
+    "ofWhichFail": 20,
+    "ofWhichAbstain": 25
+  }
+}

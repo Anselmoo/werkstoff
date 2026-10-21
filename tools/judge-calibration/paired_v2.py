@@ -29,7 +29,15 @@ Usage:
     paired_v2.py selftest
     paired_v2.py stage --dest DIR --out ARGS.json --map MAP.json
     paired_v2.py collect --run-dir DIR --map MAP.json --out RAW.json
-    paired_v2.py score --raw RAW.json --map MAP.json [--write OUT.json]
+    paired_v2.py score --raw RAW.json --map MAP.json [--write OUT.json] [--errata ERRATA.json]
+
+KEY ERRATA. A sealed key later shown wrong is never edited: answers.json, the oracle and
+results/score.json stay what the seal said and what it scored. results/key-errata.json records
+each correction (the sealed and corrected key, the criterion, a probe that reproduces the defect
+on the staged tree, who found it, and how both arms were audited for others), and
+results/score-corrected.json is the same run.json scored under the corrected keys. check
+re-runs every erratum probe -- it must fail the staged tree with an AssertionError, so a probe
+that errors for any other reason reproduces nothing -- and recomputes both scores.
 
 STDLIB ONLY. Python >= 3.11.
 """
@@ -39,8 +47,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +71,7 @@ THRESHOLD = 0.7
 TREE = paired.TREE
 RUBRIC_ID = "andon-wire@2"
 WORKFLOW = HERE / "paired_v2_workflow.js"
+ERRATA = SET / "results" / "key-errata.json"
 DECISION_RULE = "keep the tribunal iff arm B has more false passes, or a lower record, than arm A"
 
 ARM_B_HEAD = (
@@ -76,11 +88,38 @@ ARM_B_HEAD = (
 )
 
 
-def items() -> list[dict]:
+def items(errata: dict | None = None) -> list[dict]:
+    """The sealed items; with ``errata``, each corrected item carries its corrected key."""
     answers = calibration.load_json(SET / "answers.json")
+    fix = {cid: e["corrected"] for cid, e in (errata or {}).items()}
     return [{"id": f"paired-v2/{cid}", "dir": SET / "cases" / cid, "oracle": SET / "oracle" / f"{cid}.json",
-             "expected": a["expected"], "native": a["nativeExpected"]}
+             "expected": fix.get(cid, a)["expected"], "native": fix.get(cid, a)["nativeExpected"]}
             for cid, a in sorted(answers.items())]
+
+
+def check_errata(errata: dict) -> list[str]:
+    """Every erratum names a sealed item, matches the sealed key it corrects, and its probe
+    fails the staged tree with an AssertionError (exit 1), never as root."""
+    if os.geteuid() == 0:
+        return ["the key errata cannot be checked as root: root reads a mode-000 directory"]
+    probs = []
+    answers = calibration.load_json(SET / "answers.json")
+    for cid, e in sorted(errata.items()):
+        if cid not in answers:
+            probs.append(f"erratum {cid} names no sealed item")
+            continue
+        if e["sealed"] != {k: answers[cid][k] for k in ("expected", "nativeExpected")}:
+            probs.append(f"erratum {cid}: its sealed key is not the one answers.json holds")
+        if paired.OUTCOME_OF[e["corrected"]["nativeExpected"]] != e["corrected"]["expected"]:
+            probs.append(f"erratum {cid}: corrected expected and nativeExpected disagree")
+        with tempfile.TemporaryDirectory() as td:
+            oracles.write_tree(Path(td), oracles._tree_of(SET / "cases" / cid / "tree"))
+            r = subprocess.run([sys.executable, "-B", "-c", e["probe"]], cwd=td, capture_output=True, text=True,
+                               env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": td}, check=False)
+        if r.returncode != 1 or "AssertionError" not in r.stderr:
+            probs.append(f"erratum {cid}: its probe does not reproduce the defect (exit {r.returncode}, "
+                         f"{(r.stderr.strip().splitlines() or [''])[-1][:80]!r})")
+    return probs
 
 
 def rubric(contract: dict) -> dict:
@@ -150,13 +189,18 @@ def check() -> list[str]:
         probs.append("paired_v2_workflow.js's verdict@2 block differs from tools/judge-contract/verdict.inline.js")
     res = SET / "results"
     if (res / "run.json").is_file():
-        try:
-            again = score(calibration.load_json(res / "run.json"), calibration.load_json(res / "map.json"))
-        except ValueError as exc:
-            probs.append(f"the committed run does not score: {exc}")
-        else:
-            if again != calibration.load_json(res / "score.json"):
-                probs.append("results/score.json differs from the score recomputed from results/run.json")
+        errata = calibration.load_json(ERRATA) if ERRATA.is_file() else None
+        derived = [("score.json", None)] + ([("score-corrected.json", errata)] if errata else [])
+        for name, err in derived:
+            try:
+                again = score(calibration.load_json(res / "run.json"), calibration.load_json(res / "map.json"), err)
+            except ValueError as exc:
+                probs.append(f"the committed run does not score: {exc}")
+                continue
+            if not (res / name).is_file() or again != calibration.load_json(res / name):
+                probs.append(f"results/{name} differs from the score recomputed from results/run.json")
+        if errata:
+            probs += check_errata(errata)
     return probs
 
 
@@ -198,8 +242,8 @@ def outcome_b(report: Any, contract: dict, key: str) -> tuple[str, dict]:
     return v["outcome"], v
 
 
-def score(raw: dict, mapping: dict[str, str]) -> dict:
-    by_id = {i["id"]: i for i in items()}
+def score(raw: dict, mapping: dict[str, str], errata: dict | None = None) -> dict:
+    by_id = {i["id"]: i for i in items(errata)}
     per_item: dict[str, dict] = {}
     for run in raw["runs"]:
         iid = mapping[run["key"]]
@@ -232,6 +276,8 @@ def score(raw: dict, mapping: dict[str, str]) -> dict:
     A, B = out["arms"]["a"], out["arms"]["b"]
     keep = (B["items"]["falsePasses"] > A["items"]["falsePasses"]
             or B["record"]["agreement"] < A["record"]["agreement"])
+    if errata:  # only a corrected score names its errata; the sealed score.json stays as committed
+        out["keyErrata"] = sorted(errata)
     out["decision"] = {"rule": DECISION_RULE, "keepTribunal": keep,
                        "falsePasses": {"tribunal": A["items"]["falsePasses"], "contractJudge": B["items"]["falsePasses"]},
                        "record": {"tribunal": A["record"]["agreement"], "contractJudge": B["record"]["agreement"]}}
@@ -311,6 +357,21 @@ def selftest() -> int:
         bad.append("an incomplete run was scored")
     except ValueError:
         pass
+    # check_errata refuses an erratum that reproduces nothing or corrects a key the seal never held.
+    if ERRATA.is_file():
+        real = calibration.load_json(ERRATA)
+        cid, e = next(iter(real.items()))
+        planted = {
+            "a probe that exits 1 without an assertion": {cid: {**e, "probe": "raise SystemExit(1)"}},
+            "a probe that passes the staged tree": {cid: {**e, "probe": "pass"}},
+            "a sealed key answers.json does not hold": {cid: {**e, "sealed": {"expected": "pass", "nativeExpected": "green"}}},
+            "an erratum for no sealed item": {"v2-99": e},
+        }
+        for name, errata in planted.items():
+            if not check_errata(errata):
+                bad.append(f"check_errata accepted {name}")
+        if check_errata(real):
+            bad.append(f"check_errata refused the committed errata: {check_errata(real)}")
     for b in bad:
         print(f"FAIL {b}")
     print(f"paired-v2 selftest: {len(bad)} failure(s)")
@@ -337,6 +398,7 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--raw", type=Path, required=True)
     s.add_argument("--map", type=Path, required=True)
     s.add_argument("--write", type=Path)
+    s.add_argument("--errata", type=Path, help="score under the corrected keys in this key-errata.json")
     a = p.parse_args(argv)
     if a.cmd == "check":
         probs = check()
@@ -353,7 +415,8 @@ def main(argv: list[str] | None = None) -> int:
         a.out.write_text(json.dumps(raw, indent=1) + "\n", encoding="utf-8")
         print(f"collected {len(raw['runs'])} runs into {a.out.as_posix()}")
         return 0
-    rep = score(calibration.load_json(a.raw), calibration.load_json(a.map))
+    rep = score(calibration.load_json(a.raw), calibration.load_json(a.map),
+                calibration.load_json(a.errata) if a.errata else None)
     if a.write:
         a.write.write_text(json.dumps(rep, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({k: rep[k] for k in ("decision", "discordant", "undecidableUse")}, indent=2))
