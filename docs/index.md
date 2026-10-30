@@ -27,7 +27,7 @@ hero:
 
 features:
   - title: Indexed by task, not by plugin
-    details: 38 development tasks, each broken into beats naming the skill that fires there and why it belongs there rather than later. 102 copy-paste prompts.
+    details: 38 development tasks, each broken into beats naming the skill that fires there and why it belongs there rather than later. 103 copy-paste prompts.
     link: /catalog/
     linkText: Open the catalog
   - title: Every prompt each plugin answers

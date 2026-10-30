@@ -5,6 +5,12 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Added
+- **zeugnis-mutation-harden** (#142): runs mutmut 3 on fresh `git archive` copies as background
+  scripts, proves each killing test by applying its mutant, and reports score per module before
+  and after with untested mutants, equivalents and unreached survivors apart. New
+  `mutation-killer` agent, `mutation_harden` domain with a test-path lock, and a Mutation tab
+  with hover, click and keyboard interactions in the burndown viewer.
 
 ## [1.2.0] - 2026-10-30
 ### Changed

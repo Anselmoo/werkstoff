@@ -177,5 +177,85 @@ class SplitViewStructureTests(unittest.TestCase):
         self.assertNotIn("function renderChart(", html)
 
 
+class MutationTabTests(unittest.TestCase):
+    """Issue #142: the Mutation tab is data-driven -- absent without a
+    mutation_harden summary, present (and reduced) with one, and an unreadable
+    summary is an error the tab states, never a silent "no run"."""
+
+    FIXTURE = SCRIPT_DIR / "fixtures" / "sample_mutation_harden_summary.json"
+
+    def _payload(self, repo: Repo) -> dict:
+        r = run_builder_with_both_flags(repo)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        html = Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
+        marker = "/*__BURNDOWN_DATA__*/ "
+        start = html.index(marker) + len(marker)
+        return json.JSONDecoder().raw_decode(html[start:])[0]
+
+    def test_no_summary_no_tab_data(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            self.assertIsNone(self._payload(repo)["mutation"])
+
+    def test_summary_is_embedded_with_untested_beside_the_score(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            (repo.root / "analysis" / "zeugnis" / "mutation_harden_summary.json").write_text(self.FIXTURE.read_text())
+            mutation = self._payload(repo)["mutation"]
+        self.assertFalse(mutation["complete"])
+        runner = next(m for m in mutation["modules"] if m["module"] == "src/runner/conditions.py")
+        # The fixture's point (report-viewer-standard C3): a 100 % score over 72 untested mutants.
+        self.assertEqual((runner["after"]["score"], runner["after"]["noTests"]), (1.0, 72))
+        self.assertEqual(len(mutation["equivalents"]), 2)
+        self.assertEqual(mutation["rejected"][0]["state"], "contradicted")
+
+    def test_unreadable_summary_is_an_error_not_absence(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            (repo.root / "analysis" / "zeugnis" / "mutation_harden_summary.json").write_text("{not json")
+            mutation = self._payload(repo)["mutation"]
+        self.assertIn("unreadable", mutation["error"])
+
+    def test_tab_renders_through_text_content_only(self):
+        html = TEMPLATE.read_text(encoding="utf-8")
+        body = html[html.index("function renderMutationView"):html.index("function setActiveTab")]
+        self.assertNotIn("innerHTML", body)
+        self.assertIn('id="tabMutationBtn" data-view="mutation" aria-pressed="false" hidden', html)
+
+    def test_module_rows_carry_their_kills_and_alive_mutants(self):
+        with Repo(THREE_PASS_LEDGER) as repo:
+            (repo.root / "analysis" / "zeugnis" / "mutation_harden_summary.json").write_text(self.FIXTURE.read_text())
+            mutation = self._payload(repo)["mutation"]
+        for m in mutation["modules"]:
+            kills = sum(k["module"] == m["module"] for k in mutation["kills"])
+            alive = sum(a["module"] == m["module"] for a in mutation["alive"])
+            self.assertEqual(kills, m["after"]["killed"] - m["before"]["killed"], m["module"])
+            self.assertEqual(alive, m["after"]["survived"] - m["after"]["equivalent"] + m["after"]["noTests"])
+
+
+class InteractionTests(unittest.TestCase):
+    """Every control is a keyboard-reachable button with a state attribute; a
+    selection is shown by more than colour; motion respects the user."""
+
+    HTML = TEMPLATE.read_text(encoding="utf-8")
+
+    def test_no_inner_html_anywhere_in_the_script(self):
+        script = self.HTML[self.HTML.index('<script type="module">'):]
+        code = "\n".join(ln for ln in script.splitlines() if not ln.strip().startswith("//"))
+        self.assertNotIn("innerHTML", code)
+
+    def test_controls_are_buttons_with_state(self):
+        for needle in ("button('bar-row')", "button('finding-toggle')", "button('mut-row')",
+                       ".attr('role', 'button')", ".attr('tabindex', 0)",
+                       "'aria-pressed'", "'aria-expanded'", "'aria-controls'"):
+            self.assertIn(needle, self.HTML)
+
+    def test_keyboard_and_escape(self):
+        self.assertIn("event.key === 'Enter' || event.key === ' '", self.HTML)
+        self.assertIn("event.key !== 'Escape'", self.HTML)
+
+    def test_selection_is_more_than_colour_and_motion_is_optional(self):
+        self.assertIn('.bar-row[aria-pressed="true"] .label { color: var(--text); font-weight: 600; }', self.HTML)
+        self.assertIn(":focus-visible { outline: 2px solid var(--accent)", self.HTML)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", self.HTML)
+
+
 if __name__ == "__main__":
     unittest.main()

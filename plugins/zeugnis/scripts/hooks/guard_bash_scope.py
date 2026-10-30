@@ -7,10 +7,25 @@ in an agent system prompt can fully guarantee on its own:
   - assertion-auditor "cannot use Bash to install, uninstall, or otherwise
     write" and "cannot run mutation tool in write/patch mode"
 
-Read-only registry lookups (rule: dependency-lookup-timeout) and read-only
-mutation-tool invocations (e.g. `mutmut run --paths-to-mutate` in its
-default dry/report mode) are unaffected; only commands that match a known
-mutating pattern are denied.
+Read-only registry lookups (rule: dependency-lookup-timeout) are
+unaffected; only commands that match a known mutating pattern are denied.
+
+MUTATION TOOLS ARE NOT READ-ONLY (issue #142). An earlier version of this
+docstring allowed `mutmut run` as a "default dry/report mode". mutmut 3 has
+no such mode: `run` creates ./mutants/ in the cwd and resumes any leftover
+state it finds there, and `apply` writes the mutant into the source file
+itself (checked against mutmut 3.8.1). cosmic-ray's `exec` writes each
+mutant to the module on disk and restores it afterwards; cargo-mutants'
+`--in-place` and StrykerJS's `--inPlace` drop their default copy/sandbox.
+Those invocations (COPY_ONLY_* below) are therefore allowed ONLY when the
+command's effective cwd lies inside a fresh `git archive` copy that
+scripts/mutation_harden.py prepared -- `lib.mutation_scope.copy_root_for`,
+a lexical check, decides. Everywhere else, the working tree included, they
+are denied. The effective cwd starts at the event's cwd and follows `cd`
+through `&&`, `;` and newlines; after `|`, `||`, `&`, a heredoc, `pushd` or
+`env -C` it is unknown, and an unknown cwd is never a copy. Heredoc body
+lines are text, not commands, and are skipped (_strip_heredoc_bodies), so a
+README written through `cat <<'EOF'` may mention `mutmut run`.
 
 Same fail-closed / inert-when-absent / escape-hatch contract as
 guard_edit_scope.py — see that file's docstring for the full protocol
@@ -82,7 +97,12 @@ import sys
 
 # Segment separators: shell control operators that start a new command.
 # Matched as exact, standalone tokens (see module docstring's scope note).
-SEGMENT_SEPARATORS = ("&&", "||", ";", "|")
+SEGMENT_SEPARATORS = ("&&", "||", ";", "|", "&")
+
+# Separators after which a preceding `cd` still holds for the next segment.
+# `a | b` and `a &` run `a` in a subshell; `cd x || b` runs b only if cd
+# FAILED. After any of those the effective cwd is unknown.
+CWD_PROPAGATING = ("&&", ";", "(")  # a subshell inherits its parent's cwd
 
 # `<tool> <verb>` mutators: argv[0] (by basename) plus argv[1], both
 # case-folded. This is the "clean argv form" issue #73 asks for -- these
@@ -100,9 +120,32 @@ TWO_TOKEN_MUTATORS: dict[str, set[str]] = {
     "bundle": {"install", "update"},
     "go": {"install"},
     "twine": {"upload"},
-    "mutmut": {"apply"},
-    "cosmic-ray": {"apply"},
 }
+
+# Mutation-tool invocations that write mutants to disk in the cwd: allowed
+# only inside a mutation_harden copy (module docstring). Verb sets are the
+# first non-flag token after the tool; flags are matched anywhere after it.
+COPY_ONLY_VERBS: dict[str, set[str]] = {
+    "mutmut": {"run", "apply", "browse"},  # browse binds `a` to "Apply mutant to disk"
+    "cosmic-ray": {"exec", "apply"},
+}
+COPY_ONLY_FLAGS: dict[str, set[str]] = {
+    "mutmut": {"--patch"},  # mutmut 2.x
+    "cosmic-ray": {"--patch"},
+    "stryker": {"--inplace"},  # compared case-folded: StrykerJS spells it --inPlace
+}
+MUTATION_TOOLS = {"mutmut", "cosmic-ray", "cargo", "stryker"}
+
+# Launchers that run a mutation tool named later in their argv
+# (`uv run mutmut run`, `python -m mutmut run`, `npx stryker run --inPlace`).
+# A tool name is looked for only behind one of these, never anywhere in a
+# segment -- `echo mutmut run` is not a mutmut invocation.
+LAUNCHER_VERBS: dict[str, set[str]] = {
+    "uv": {"run"}, "poetry": {"run"}, "pipenv": {"run"}, "pdm": {"run"},
+    "hatch": {"run"}, "pipx": {"run"}, "pnpm": {"exec", "dlx"}, "yarn": {"exec", "dlx"},
+}
+BARE_LAUNCHERS = {"uvx", "npx", "pnpx", "bunx"}
+RE_PYTHON = re.compile(r"^python(\d+(\.\d+)?)?$")
 
 # argv[0]-only mutators: the command name alone is mutating, no verb needed.
 ONE_TOKEN_MUTATORS = {"easy_install"}
@@ -129,12 +172,17 @@ WRAPPER_COMMANDS = {"sudo", "env", "command", "nohup", "nice", "time", "xargs"}
 # (`sudo -u root npm install x` -- `root` must be skipped along with `-u`).
 WRAPPER_FLAGS_WITH_VALUE: dict[str, set[str]] = {
     "sudo": {"-u", "-g", "-h", "-p", "-r", "-t", "-C", "-U"},
-    "env": {"-u", "-S"},
+    "env": {"-u", "-S", "-C", "--chdir"},
     "nice": {"-n"},
     "xargs": {"-I", "-n", "-P", "-d", "-a", "-s", "-E", "-L", "-l"},
 }
 
 RE_VAR_ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
+
+# scripts/ on sys.path, for the lazy `lib.mutation_scope` import -- the only
+# lib import in this file, made only when a copy-only verb is matched, so a
+# broken lib package still never denies anything else (issue #24).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 MIN_PYTHON = (3, 11)
 
@@ -239,18 +287,239 @@ def _matched_mutator(segment: list[str]) -> str | None:
         if argv0 == "go" and argv1.lower() == "get" and "-u" in rest_lower[1:]:
             return "go get ... -u"
 
-    # `mutmut`/`cosmic-ray` with `--patch`: this is the one pattern with no
-    # clean argv[0]/argv[1] shape. `--patch` is a flag, not a subcommand,
-    # and the original pattern deliberately allowed it either side of the
-    # mode verb (`mutmut --patch run` and `mutmut run --patch` both
-    # matched). There is no fixed position to anchor it to, so we anchor
-    # only the tool name to argv[0] (never a bare substring match anywhere
-    # in the command -- that laxity is exactly what let the old guard
-    # refuse a grep for the word "mutmut") and accept `--patch` anywhere
-    # in the rest of that segment's argv.
-    if argv0 in ("mutmut", "cosmic-ray") and "--patch" in rest_lower:
-        return f"{argv0_raw} ... --patch"
+    return None
 
+
+def _find_zeugnis_root(cwd: str) -> str | None:
+    """Nearest ancestor of cwd (itself included) holding analysis/zeugnis/.
+    stdlib only, so inertness never depends on lib importing; the same walk
+    as lib.mutation_scope.find_zeugnis_root. Walking up keeps the guard
+    active when the session's cwd is inside a mutation copy (issue #142)."""
+    here = os.path.normpath(os.path.abspath(cwd))
+    while True:
+        if os.path.isdir(os.path.join(here, "analysis", "zeugnis")):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            return None
+        here = parent
+
+
+RE_HEREDOC = re.compile(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+
+
+def _unquoted_heredocs(line: str) -> list[tuple[bool, str]]:
+    """(strip_tabs, delimiter) for each `<<WORD` operator on `line` that sits
+    outside quotes -- `echo "a <<EOF"` opens no heredoc."""
+    found: list[tuple[bool, str]] = []
+    quote = ""
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if ch == "\\" and quote != "'":
+            i += 2
+            continue
+        if quote:
+            quote = "" if ch == quote else quote
+        elif ch in ("'", '"'):
+            quote = ch
+        elif line.startswith("<<", i) and not line.startswith("<<<", i):
+            match = RE_HEREDOC.match(line, i)
+            if match:
+                found.append((match.group(1) == "-", match.group(3)))
+                i = match.end()
+                continue
+        i += 1
+    return found
+
+
+def _strip_heredoc_bodies(command: str) -> str:
+    """Drop heredoc BODY lines, which are text a command reads, not commands
+    the shell runs -- a README written with `cat > f <<'EOF'` may well say
+    `mutmut run` (the #73 false-positive class). The `<<WORD` operator line
+    itself stays, so the copy-only check still marks the cwd unknown after it.
+    A heredoc whose terminator never appears strips NOTHING: the body lines
+    are then scanned as commands, which can only deny more, never less."""
+    lines = command.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        out.append(lines[i])
+        pending = _unquoted_heredocs(lines[i])
+        i += 1
+        for strip_tabs, delimiter in pending:
+            end = next((j for j in range(i, len(lines))
+                        if (lines[j].lstrip("\t") if strip_tabs else lines[j]) == delimiter), None)
+            if end is None:
+                return command
+            i = end + 1
+    return "\n".join(out)
+
+
+def _newlines_as_separators(command: str) -> str:
+    """Turn every unquoted newline into ` ; `, so a multi-line command is
+    segmented line by line for the copy-only check. shlex.split treats a bare
+    newline as whitespace, which would glue `cd x` and the next line's
+    `mutmut run` into one segment whose argv[0] is `cd`. A backslash-newline
+    is a line continuation and becomes a space."""
+    out: list[str] = []
+    quote = ""
+    i = 0
+    while i < len(command):
+        ch = command[i]
+        if ch == "\\" and quote != "'" and i + 1 < len(command):
+            nxt = command[i + 1]
+            out.append(" " if nxt == "\n" else ch + nxt)
+            i += 2
+            continue
+        if quote:
+            if ch == quote:
+                quote = ""
+        elif ch in ("'", '"'):
+            quote = ch
+        elif ch == "\n":
+            out.append(" ; ")
+            i += 1
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+# Separators for the copy-only check, which tokenises with shlex's
+# punctuation_chars mode: `cat;mutmut run` splits at the `;` there, where the
+# plain shlex.split above glues `cat;` into one word (a limit the install
+# check documents and keeps). `(` and `)` delimit a subshell, so a `cd` inside
+# one is followed only up to the `)`.
+COPY_CHECK_SEPARATORS = ("&&", "||", ";", "|", "&", "|&", ";;", "(", ")")
+
+
+def _copy_check_tokens(command: str) -> list[str]:
+    lexer = shlex.shlex(_newlines_as_separators(_strip_heredoc_bodies(command)), posix=True,
+                        punctuation_chars=True)
+    lexer.whitespace_split = True
+    return list(lexer)
+
+
+def _segments_with_ops(tokens: list[str]) -> list[tuple[str | None, list[str]]]:
+    """Like _split_segments, but each segment keeps the separator before it."""
+    segments: list[tuple[str | None, list[str]]] = [(None, [])]
+    for tok in tokens:
+        if tok in COPY_CHECK_SEPARATORS:
+            segments.append((tok, []))
+        else:
+            segments[-1][1].append(tok)
+    # Empty segments are kept: `)` followed by `&&` is two separators in a
+    # row, and the `)` must still be seen to end the subshell.
+    return segments
+
+
+def _tool_candidates(argv: list[str]) -> list[list[str]]:
+    """argv lists, each starting at a mutation tool this segment would run."""
+    if not argv:
+        return []
+    name = argv[0].rsplit("/", 1)[-1].lower()
+    if name in MUTATION_TOOLS:
+        return [argv]
+    rest: list[str] | None = None
+    if RE_PYTHON.match(name) and len(argv) >= 3 and argv[1] == "-m":
+        return [argv[2:]]
+    if name in BARE_LAUNCHERS:
+        rest = argv[1:]
+    elif name in LAUNCHER_VERBS and len(argv) >= 2 and argv[1].lower() in LAUNCHER_VERBS[name]:
+        rest = argv[2:]
+    if rest is None:
+        return []
+    # A launcher flag's VALUE may itself be a tool name (`uv run --with mutmut
+    # mutmut run`), so every position is a candidate, not just the first.
+    return [rest[i:] for i, tok in enumerate(rest) if tok.rsplit("/", 1)[-1].lower() in MUTATION_TOOLS]
+
+
+def _copy_only_invocation(segment: list[str]) -> str | None:
+    """Describes a mutation-tool invocation that writes mutants in its cwd."""
+    for argv in _tool_candidates(_skip_wrappers(segment)):
+        tool = argv[0].rsplit("/", 1)[-1].lower()
+        rest = [t.lower() for t in argv[1:]]
+        if tool == "cargo":
+            if rest[:1] == ["mutants"] and "--in-place" in rest:
+                return "cargo mutants --in-place"
+            continue
+        flags = COPY_ONLY_FLAGS.get(tool, set())
+        hit = next((t for t in rest if t in flags), None)
+        if hit:
+            return f"{argv[0]} ... {hit}"
+        verb = next((t for t in rest if not t.startswith("-")), None)
+        if verb in COPY_ONLY_VERBS.get(tool, set()):
+            return f"{argv[0]} {verb}"
+    return None
+
+
+def _uses_env_chdir(segment: list[str]) -> bool:
+    for tok in segment:
+        if tok in ("-C", "--chdir") or tok.startswith("--chdir="):
+            return True
+        if not (RE_VAR_ASSIGN.match(tok) or tok.startswith("-")
+                or tok.rsplit("/", 1)[-1].lower() in WRAPPER_COMMANDS):
+            return False
+    return False
+
+
+def _copy_only_denial(command: str, cwd: str) -> str | None:
+    """The deny reason for the first copy-only invocation whose effective cwd
+    is not inside a mutation copy, or None. See the module docstring."""
+    try:
+        tokens = _copy_check_tokens(command)
+    except ValueError:
+        return None  # run() already refused an untokenisable command
+    current: str | None = os.path.normpath(os.path.abspath(cwd))
+    moved = False
+    heredoc = False
+    subshells: list[tuple[str | None, bool]] = []
+    for op, segment in _segments_with_ops(tokens):
+        if op == "(":
+            subshells.append((current, moved))
+        elif op == ")":
+            # Whatever the subshell's `cd` did ends here.
+            current, moved = subshells.pop() if subshells else (None, True)
+        elif moved and op is not None and op not in CWD_PROPAGATING:
+            current = None
+        if not segment:
+            continue
+        argv = _skip_wrappers(segment)
+        # After a heredoc the cwd is unknown (its body was stripped above, but a
+        # body whose terminator was missing is still here as text). Sticky, so a
+        # later absolute `cd` cannot revive it.
+        heredoc = heredoc or any(tok.startswith("<<") for tok in segment)
+        if heredoc:
+            current = None
+        invocation = _copy_only_invocation(segment)
+        if invocation:
+            where = None if _uses_env_chdir(segment) else current
+            copy_root = None
+            if where is not None:
+                try:
+                    from lib.mutation_scope import copy_root_for  # noqa: E402
+                except (ImportError, ModuleNotFoundError) as exc:
+                    return (f"{invocation!r} needs lib.mutation_scope to prove it runs inside a "
+                            f"mutation copy, and lib failed to import ({exc}); failing closed")
+                copy_root = copy_root_for(where)
+            if copy_root is None:
+                place = "an unknown directory" if where is None else repr(where)
+                return (f"{invocation!r} would run in {place}, which is not inside a mutation copy. "
+                        "Mutation tools write mutants into their cwd (mutmut 3 `run` creates ./mutants/ "
+                        "and `apply` rewrites the source file), so they run only inside a fresh "
+                        "`git archive` copy prepared by scripts/mutation_harden.py under "
+                        "analysis/zeugnis/mutation/<runId>/ -- use its run-shard/prove subcommands")
+        name = argv[0].rsplit("/", 1)[-1] if argv else ""
+        if name in ("cd", "pushd", "popd"):
+            moved = True
+            target = next((t for t in argv[1:] if not t.startswith("-")), None)
+            target = os.path.expanduser(target or "~")
+            if heredoc or name != "cd" or target == "-" or (current is None and not os.path.isabs(target)):
+                current = None  # pushd/popd stacks and `cd -` are not followed
+            else:
+                # Lexical: os.path.normpath, never realpath -- see lib.mutation_scope.
+                current = os.path.normpath(os.path.join(current or "/", target))
     return None
 
 
@@ -270,7 +539,7 @@ def run() -> int:
         return allow()
 
     cwd = event.get("cwd") or os.getcwd()
-    if not os.path.isdir(os.path.join(cwd, "analysis", "zeugnis")):
+    if _find_zeugnis_root(cwd) is None:
         return allow()  # inert unless this repo actually uses zeugnis
 
     if sys.version_info < MIN_PYTHON:
@@ -299,10 +568,14 @@ def run() -> int:
                 f"Refusing Bash command: segment {segment!r} matches mutating invocation "
                 f"{matched!r} (matched by argv position, not a raw-string search of the "
                 f"whole command): {command!r}. zeugnis's dependency-auditor and "
-                "assertion-auditor agents may only perform read-only registry lookups and "
-                "read-only mutation-tool runs, never install/publish/patch operations. "
+                "assertion-auditor agents may only perform read-only registry lookups, never "
+                "install/publish operations. "
                 f"{ESCAPE_HATCH}"
             )
+
+    denial = _copy_only_denial(command, cwd)
+    if denial:
+        return deny(f"Refusing Bash command {command!r}: {denial}. {ESCAPE_HATCH}")
 
     return allow()
 

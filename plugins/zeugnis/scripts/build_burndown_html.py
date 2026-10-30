@@ -13,6 +13,10 @@ findings-by-domain snapshot from "findings" as of now. It does not claim a
 "still open at pass N" curve, because that data was never persisted -- see
 lib/ledger.py's record_pass and upsert_finding for the exact fields kept.
 
+When zeugnis-mutation-harden has written analysis/zeugnis/mutation_harden_summary.json,
+a third tab shows its per-module mutation score before and after; see
+build_mutation.
+
 Usage:
     build_burndown_html.py <repo_root> --template <path> --d3 <path> --tokens <path> [--out <path>]
 """
@@ -70,7 +74,52 @@ def build_burndown(repo_root):
         "passes": pass_series,
         "byStatus": by_status,
         "byDomain": by_domain,
+        "mutation": build_mutation(repo_root),
     }
+
+
+def build_mutation(repo_root):
+    """The Mutation tab's data, from zeugnis-mutation-harden's summary (issue
+    #142), or None when no mutation run has been reported -- the tab is then
+    not shown at all, so a ledger-only report renders exactly as before.
+
+    Only what the tab draws is copied: per-module scores before and after,
+    each module's kills and still-alive mutants (shown when its row is
+    opened), the equivalents with their reasons, and the rejected claims. A summary
+    that exists but cannot be read is not silently treated as "no run": it
+    becomes {"error": ...} and the tab says so (report-viewer-standard S4).
+    """
+    path = safe_output_path(repo_root, "mutation_harden_summary.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            summary = json.load(fh)
+        keep = ("killed", "survived", "noTests", "notChecked", "timeout", "score", "equivalent")
+        return {
+            "runId": summary["runId"],
+            "tool": summary.get("tool"),
+            "complete": bool(summary["complete"]),
+            "shards": [{"shard": s["shard"], "baselineComplete": s["baselineComplete"],
+                        "remeasureComplete": s.get("remeasureComplete")} for s in summary["shards"]],
+            "modules": [{"module": m["module"],
+                         "before": {k: m["before"].get(k) for k in keep if k in m["before"]},
+                         "after": {k: m["after"].get(k) for k in keep if k in m["after"]},
+                         "unreached": m.get("unreached", 0)} for m in summary["modules"]],
+            # A module row opens to these: what the proven tests killed, and
+            # what the tool still reports alive.
+            "kills": [{"mutantId": k["mutantId"], "module": k["module"], "test": k.get("test")}
+                      for k in summary.get("kills", [])],
+            "alive": [{"mutantId": f["mutantId"], "module": f.get("module") or f["evidence"].split(":")[0],
+                       "evidence": f["evidence"], "category": f.get("category"), "state": f.get("state")}
+                      for f in summary.get("findings", [])],
+            "equivalents": [{"mutantId": e["mutantId"], "module": e["module"], "reason": e["reason"]}
+                            for e in summary.get("equivalents", [])],
+            "rejected": [{"mutantId": r["mutantId"], "state": r["state"], "reason": r.get("reason", "")}
+                         for r in summary.get("rejected", [])],
+        }
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return {"error": f"analysis/zeugnis/mutation_harden_summary.json is unreadable ({type(exc).__name__}: {exc})"}
 
 
 def render_html(template_path, d3_path, tokens_path, burndown):

@@ -93,9 +93,50 @@
   .legend .swatch.trend { background: var(--accent-2); }
   .legend .glyph { font-size: 11px; color: var(--smoke); width: 1em; text-align: center; }
   .legend .name { color: var(--smoke); }
-  .bar-row { display: flex; align-items: center; gap: 8px; margin: var(--space-2) 0; font-size: 12px; cursor: pointer; }
+  /* Interaction (every control is a real <button>, reachable by keyboard).
+     A selection is never colour alone: it gains an outline AND bold text. */
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .bar-row {
+    display: flex; align-items: center; gap: 8px; margin: var(--space-1) 0; font-size: 12px; cursor: pointer;
+    width: 100%; background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2); text-align: left; transition: var(--transition-fast);
+  }
+  .bar-row:hover { background: var(--panel-2); }
   .bar-row:hover .label { color: var(--accent); }
-  .bar-row .label { width: 100px; flex-shrink: 0; color: var(--muted); }
+  .bar-row[aria-pressed="true"] { border-color: var(--accent); background: var(--panel-2); }
+  .bar-row[aria-pressed="true"] .label { color: var(--text); font-weight: 600; }
+  .filter-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
+  .filter-chip {
+    border: 1px solid var(--accent); border-radius: var(--radius-control); padding: 2px var(--space-2);
+    font-size: 12px; font-weight: 600;
+  }
+  .small-btn {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-control);
+    padding: 2px var(--space-2); font-size: 11px; color: var(--muted); cursor: pointer; transition: var(--transition-fast);
+  }
+  .small-btn:hover { color: var(--text); border-color: var(--accent); }
+  .finding-list { list-style: none; margin: 0; padding: 0; }
+  .finding-toggle {
+    display: flex; gap: var(--space-2); align-items: baseline; width: 100%; background: none; border: 1px solid transparent;
+    border-radius: var(--radius-sm); padding: var(--space-1); text-align: left; cursor: pointer; transition: var(--transition-fast);
+  }
+  .finding-toggle:hover { background: var(--panel-2); }
+  .finding-toggle[aria-expanded="true"] { border-color: var(--border); }
+  .finding-toggle[aria-expanded="true"] .id { font-weight: 600; }
+  .chev { color: var(--muted); width: 1em; flex-shrink: 0; display: inline-block; }
+  .sev { color: var(--muted); font-size: 11px; }
+  .finding-detail { padding: 0 var(--space-1) var(--space-2) calc(1em + var(--space-3)); }
+  .readout { margin: var(--space-2) 0 0; font-size: 12px; color: var(--muted); min-height: 1.8em;
+    display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+  .readout.pinned { color: var(--text); font-weight: 600; }
+  .pass-point { cursor: pointer; outline: none; }
+  .pass-point .ring { fill: none; stroke: transparent; stroke-width: 2; transition: var(--transition-fast); }
+  .pass-point:hover .ring, .pass-point:focus-visible .ring { stroke: var(--muted); }
+  .pass-point:focus-visible .ring { stroke: var(--accent); }
+  .pass-point[aria-pressed="true"] .ring { stroke: var(--text); }
+  .crosshair { stroke: var(--muted); stroke-dasharray: 3 3; }
+  .bar-row .label { width: 140px; flex-shrink: 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar-row .track { flex: 1; background: var(--panel-2); border-radius: var(--radius-sm); height: 16px; overflow: hidden; }
   .bar-row .fill { height: 100%; border-radius: var(--radius-sm); }
   .bar-row .count { width: 28px; text-align: right; flex-shrink: 0; }
@@ -119,6 +160,46 @@
     padding: var(--space-1) var(--space-2); font-family: var(--font-mono); font-size: 11px;
     word-break: break-word;
   }
+  /* Mutation tab (issue #142). The track runs 0-100 %; the hollow ring is the
+     score before, the filled dot the score after, so shape -- not hue alone --
+     tells them apart (R4). Rows are DOM, so the panel grows with the module
+     count instead of a constant height (R5). */
+  .mut-item { border-bottom: 1px solid var(--border); }
+  .mut-row {
+    display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(160px, 2fr) minmax(240px, 1.7fr);
+    gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-1); font-size: 12px;
+    width: 100%; background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
+    text-align: left; cursor: pointer; transition: var(--transition-fast);
+  }
+  .mut-row:hover { background: var(--panel-2); }
+  .mut-row[aria-expanded="true"] { border-color: var(--accent); }
+  .mut-row[aria-expanded="true"] .module { font-weight: 600; }
+  .mut-row .module { font-family: var(--font-mono); font-size: 11px; word-break: break-all; display: block; }
+  .mut-row .figures { display: block; }
+  .mut-track { display: block; position: relative; height: 16px; background: var(--panel-2); border-radius: var(--radius-sm); }
+  .mut-track .mut-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+  .mut-mark { font-size: 13px; line-height: 1; }
+  .mut-mark.before { color: var(--muted); }
+  .mut-mark.after { color: var(--accent); }
+  .mut-row .figures { color: var(--muted); }
+  .mut-row .figures .untested.hot { color: var(--status-warn); }
+  .mut-list { margin: 0; padding-left: var(--space-4); font-size: 12px; }
+  .mut-list li { margin: var(--space-2) 0; }
+  .mut-list .id { font-family: var(--font-mono); font-size: 11px; color: var(--smoke); }
+  .mut-list .more { color: var(--muted); list-style: none; }
+  .mut-detail > div { min-width: 0; }
+  .mut-detail li { overflow-wrap: anywhere; }
+  .mut-detail {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3);
+    padding: var(--space-2) var(--space-3) var(--space-3);
+  }
+  .mut-detail h3 {
+    font-size: 11px; margin: 0 0 var(--space-1); color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -128,8 +209,9 @@
   <h1 id="title">zeugnis — burndown</h1>
   <span class="sub" id="subtitle"></span>
   <div class="tabs">
-    <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend">Trend</button>
-    <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown">Breakdown</button>
+    <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend" aria-pressed="true">Trend</button>
+    <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown" aria-pressed="false">Breakdown</button>
+    <button type="button" class="tab-btn" id="tabMutationBtn" data-view="mutation" aria-pressed="false" hidden>Mutation</button>
   </div>
 </header>
 
@@ -163,8 +245,33 @@
 <div id="view-breakdown" class="layout" hidden>
   <div class="content" id="breakdownContent"></div>
   <div class="sidebar" id="sidebar">
-    <div class="placeholder">Click a "by status" or "by domain" bar to see the actual findings behind that count.</div>
+    <div class="placeholder">Click a "by status" or "by domain" bar, or focus it and press Enter, to list the findings behind that count.</div>
   </div>
+</div>
+
+<div id="view-mutation" class="content" hidden>
+  <div class="panel wide">
+    <h2>Did the new tests kill what survived?</h2>
+    <p class="verdict" id="mutationVerdict">
+      A mutant counts as killed only when a real mutation tool saw a test fail on
+      it, or when a new test was proven to pass on the original code and to fail
+      with that mutant applied. The modules and their scores are filled in from
+      analysis/zeugnis/mutation_harden_summary.json below.
+    </p>
+    <p class="note">
+      <strong>Untested</strong> mutants sit in code no selected test reaches. They
+      are kept out of the score, so a module can read 100 % while most of it is
+      never exercised: read the untested count before the score.
+    </p>
+    <ul class="legend">
+      <li><span class="mut-mark before">○</span><span class="name">before</span> — killed ÷ (killed + survived) with the original tests</li>
+      <li><span class="mut-mark after">●</span><span class="name">after</span> — the same ratio with the proven new tests</li>
+      <li><span class="glyph">◌</span><span class="name">untested</span> — counted beside the score, never inside it; amber while any remain</li>
+    </ul>
+    <div id="mutationRows"></div>
+  </div>
+  <div class="panel" id="mutationEquivalents"><h2>Equivalent mutants — read every reason</h2></div>
+  <div class="panel" id="mutationRejected"><h2>Rejected kill claims</h2></div>
 </div>
 
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
@@ -177,11 +284,13 @@ const BURNDOWN_DATA_RAW = /*__BURNDOWN_DATA__*/ null;
 
 if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
   const err = document.getElementById('err');
-  err.querySelector('p').innerHTML =
-    'No burndown data found in this file.<br>Re-run <code>zeugnis-status</code> (with a zeugnis-cycle ledger present) to regenerate it.';
+  const msg = err.querySelector('p');
+  msg.textContent = 'No burndown data found in this file. Re-run ';
+  msg.appendChild(textEl('code', null, 'zeugnis-status'));
+  msg.appendChild(document.createTextNode(' (with a zeugnis-cycle ledger present) to regenerate it.'));
   err.style.display = 'grid';
   document.querySelector('.tabs').style.display = 'none';
-  ['statRow', 'verdictBlock', 'view-trend', 'view-breakdown'].forEach(id => {
+  ['statRow', 'verdictBlock', 'view-trend', 'view-breakdown', 'view-mutation'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
   throw new Error('no data');
@@ -195,51 +304,121 @@ const d3 = window.d3;
 document.getElementById('subtitle').textContent =
   'zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json';
 
-function el(tag, cls, html) {
+// Every string reaches the page through textContent (S3's second barrier),
+// never innerHTML. Function declarations hoist, so the no-data path above can
+// use this too.
+function textEl(tag, cls, text) {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
-  if (html !== undefined) e.innerHTML = html;
+  if (text !== undefined) e.textContent = String(text);
   return e;
 }
-function escapeHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-
-function showFindingsInSidebar(title, findings) {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.innerHTML = '';
-  sidebar.appendChild(el('h2', null, title + ' (' + findings.length + ')'));
-  if (!findings.length) {
-    sidebar.appendChild(el('div', 'placeholder', 'No findings in this bucket.'));
-    return;
-  }
-  for (const f of findings) {
-    const item = el('div', 'finding-item');
-    item.appendChild(el('div', 'id', escapeHtml(f.id) + (f.severity ? ' · ' + f.severity : '')));
-    item.appendChild(el('div', 'meta',
-      'domain: ' + escapeHtml(f.domain) + ' · category: ' + escapeHtml(f.category || '?') +
-      (f.reopenCount ? ' · reopened ' + f.reopenCount + 'x' : '')));
-    if (f.evidence) item.appendChild(el('div', 'evidence', escapeHtml(f.evidence)));
-    sidebar.appendChild(item);
-  }
+function button(cls, text) {
+  const b = textEl('button', cls, text);
+  b.type = 'button';
+  return b;
 }
 
-function renderBarPanel(title, parent, counts, colorMap, findingField) {
-  const panel = el('div', 'panel');
-  panel.appendChild(el('h2', null, title));
+// ---- Breakdown: a bar is a toggle button; the sidebar lists its findings
+// behind a visible filter chip with a Clear control.
+let activeFilter = null;  // {field, key}
+let findingSeq = 0;
+
+function findingItem(f) {
+  const li = textEl('li', 'finding-item');
+  const toggle = button('finding-toggle');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.appendChild(textEl('span', 'chev', '▸'));
+  toggle.appendChild(textEl('span', 'id', f.id));
+  if (f.severity) toggle.appendChild(textEl('span', 'sev', f.severity));
+  const detail = textEl('div', 'finding-detail');
+  detail.id = 'finding-detail-' + (++findingSeq);
+  detail.hidden = true;
+  toggle.setAttribute('aria-controls', detail.id);
+  detail.appendChild(textEl('div', 'meta',
+    'domain: ' + f.domain + ' · category: ' + (f.category || '?') + ' · status: ' + f.status
+    + (f.reopenCount ? ' · reopened ' + f.reopenCount + '×' : '')));
+  detail.appendChild(textEl('div', 'evidence', f.evidence || 'no evidence recorded'));
+  toggle.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.querySelector('.chev').textContent = open ? '▾' : '▸';
+    detail.hidden = !open;
+  });
+  li.appendChild(toggle);
+  li.appendChild(detail);
+  return li;
+}
+
+function renderSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  sidebar.textContent = '';
+  if (!activeFilter) {
+    sidebar.appendChild(textEl('div', 'placeholder',
+      'Click a "by status" or "by domain" bar, or focus it and press Enter, to list the findings behind that count.'));
+    return;
+  }
+  const head = textEl('div', 'filter-head');
+  head.appendChild(textEl('span', 'filter-chip', activeFilter.field + ': ' + activeFilter.key));
+  const clear = button('small-btn', 'Clear');
+  clear.setAttribute('aria-label', 'Clear the ' + activeFilter.field + ' filter');
+  clear.addEventListener('click', clearFilter);
+  head.appendChild(clear);
+  sidebar.appendChild(head);
+  const findings = (DATA.findings || []).filter(f => f[activeFilter.field] === activeFilter.key);
+  if (!findings.length) {
+    sidebar.appendChild(textEl('div', 'placeholder', 'No findings in this bucket.'));
+    return;
+  }
+  const list = textEl('ul', 'finding-list');
+  for (const f of findings) list.appendChild(findingItem(f));
+  sidebar.appendChild(list);
+}
+
+function syncBarRows() {
+  for (const row of document.querySelectorAll('.bar-row')) {
+    const on = !!activeFilter && row.dataset.field === activeFilter.field && row.dataset.key === activeFilter.key;
+    row.setAttribute('aria-pressed', String(on));
+  }
+}
+function toggleFilter(field, key) {
+  const same = activeFilter && activeFilter.field === field && activeFilter.key === key;
+  activeFilter = same ? null : { field, key };
+  syncBarRows();
+  renderSidebar();
+}
+function clearFilter() {
+  activeFilter = null;
+  syncBarRows();
+  renderSidebar();
+}
+
+// The status glyphs repeat the legend's, so a bar's state is named by shape as
+// well as by its fill colour (R4).
+const STATUS_GLYPH = { closed: '✓ ', open: '● ', escalated: '▲ ' };
+
+function renderBarPanel(title, parent, counts, colorMap, field) {
+  const panel = textEl('div', 'panel');
+  panel.appendChild(textEl('h2', null, title));
   const keys = Object.keys(counts);
   const max = Math.max(1, ...keys.map(k => counts[k] || 0));
-  const allFindings = DATA.findings || [];
   for (const k of keys) {
     const n = counts[k] || 0;
-    const row = el('div', 'bar-row');
-    row.appendChild(el('div', 'label', escapeHtml(k)));
-    const track = el('div', 'track');
-    const fill = el('div', 'fill');
+    const row = button('bar-row');
+    row.dataset.field = field;
+    row.dataset.key = k;
+    row.setAttribute('aria-pressed', 'false');
+    row.setAttribute('aria-label', title + ': ' + k + ', ' + n + '. Toggle to list these findings.');
+    row.appendChild(textEl('span', 'label', (field === 'status' ? STATUS_GLYPH[k] || '' : '') + k));
+    const track = textEl('span', 'track');
+    const fill = textEl('span', 'fill');
+    fill.style.display = 'block';
     fill.style.width = (n / max * 100) + '%';
     fill.style.background = (colorMap && colorMap[k]) || 'var(--accent)';
     track.appendChild(fill);
     row.appendChild(track);
-    row.appendChild(el('div', 'count', String(n)));
-    row.onclick = () => showFindingsInSidebar(title + ': ' + k, allFindings.filter(f => f[findingField] === k));
+    row.appendChild(textEl('span', 'count', n));
+    row.addEventListener('click', () => toggleFilter(field, k));
     panel.appendChild(row);
   }
   parent.appendChild(panel);
@@ -253,8 +432,8 @@ function renderBarPanel(title, parent, counts, colorMap, findingField) {
 // (closed / fixOrDraftOutcomes) is still available, but only as a
 // per-point tooltip -- metadata, never a second competing mark.
 function renderTrendChart(parent) {
-  const panel = el('div', 'panel wide');
-  panel.appendChild(el('h2', null, 'Cumulative findings closed, by pass'));
+  const panel = textEl('div', 'panel wide');
+  panel.appendChild(textEl('h2', null, 'Cumulative findings closed, by pass'));
 
   const passes = DATA.passes;
   const W = 900, padL = 44, padR = 20, padT = 16, padB = 34;
@@ -321,19 +500,77 @@ function renderTrendChart(parent) {
     .attr('d', pathD).attr('fill', 'none')
     .attr('stroke', 'var(--accent-2)').attr('stroke-width', 2);
 
-  svg.selectAll('circle').data(passes).join('circle')
-    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
-    .attr('r', 3.5).attr('fill', 'var(--accent-2)')
-    .append('title')
-    .text(p => 'pass ' + p.passNumber + ' (' + p.domain + '): cumulative closed ' + p.cumulativeClosed +
-               ' (closed this pass ' + p.closed + ', fix/draft outcomes ' + p.fixOrDraftOutcomes + ')');
+  // Hover or focus a pass to read it; click, Enter or Space pins it; Esc or a
+  // second click unpins. The per-pass numbers live in this one readout -- a
+  // tooltip copy of them would be a second surface for the same numbers (R2).
+  const crosshair = svg.append('line').attr('class', 'crosshair')
+    .attr('y1', padT).attr('y2', padT + plotH).attr('visibility', 'hidden');
+  const readout = textEl('div', 'readout');
+  readout.setAttribute('aria-live', 'polite');
+  const describe = p => 'pass #' + p.passNumber + ' (' + p.domain + '): closed ' + p.closed + ' this pass, '
+    + p.cumulativeClosed + ' closed in total, ' + p.fixOrDraftOutcomes + ' fix/draft outcomes';
+  let pinned = null;
 
+  function show(p) {
+    readout.textContent = '';
+    readout.classList.toggle('pinned', !!pinned);
+    if (!p) {
+      crosshair.attr('visibility', 'hidden');
+      readout.textContent = 'Hover or focus a pass to read it; click it, or press Enter, to pin it. Esc unpins.';
+      return;
+    }
+    crosshair.attr('x1', x(p.passNumber)).attr('x2', x(p.passNumber)).attr('visibility', 'visible');
+    readout.appendChild(textEl('span', null, (pinned === p ? 'Pinned — ' : '') + describe(p) + '.'));
+    if (pinned === p) {
+      const unpin = button('small-btn', 'Unpin');
+      unpin.addEventListener('click', () => setPinned(null));
+      readout.appendChild(unpin);
+    }
+  }
+  function setPinned(p) {
+    pinned = p;
+    points.attr('aria-pressed', d => String(d === pinned));
+    show(pinned);
+  }
+  unpinPass = () => { if (pinned) setPinned(null); };
+
+  const points = svg.selectAll('g.pass-point').data(passes).join('g')
+    .attr('class', 'pass-point')
+    .attr('tabindex', 0)
+    .attr('role', 'button')
+    .attr('aria-pressed', 'false')
+    .attr('aria-label', p => describe(p) + '. Press Enter to pin.')
+    .on('mouseenter', (_, p) => show(p))
+    .on('focus', (_, p) => show(p))
+    .on('mouseleave', () => show(pinned))
+    .on('blur', () => show(pinned))
+    .on('click', (_, p) => setPinned(pinned === p ? null : p))
+    .on('keydown', (event, p) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        setPinned(pinned === p ? null : p);
+      }
+    });
+  points.append('circle').attr('class', 'hit')
+    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
+    .attr('r', 14).attr('fill', 'transparent');
+  points.append('circle').attr('class', 'ring')
+    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed)).attr('r', 8);
+  points.append('circle').attr('class', 'dot')
+    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
+    .attr('r', 3.5).attr('fill', 'var(--accent-2)');
+
+  panel.appendChild(readout);
+  show(null);
   parent.appendChild(panel);
 }
 
+// Set by renderTrendChart once the chart exists; Esc calls it.
+let unpinPass = () => {};
+
 function renderTrendView() {
   const view = document.getElementById('view-trend');
-  view.innerHTML = '';
+  view.textContent = '';
   renderTrendChart(view);
 }
 
@@ -344,10 +581,11 @@ function renderTrendView() {
 // original single-view file.
 function renderBreakdownView() {
   const content = document.getElementById('breakdownContent');
-  content.innerHTML = '';
+  content.textContent = '';
   renderBarPanel('Findings by status', content, DATA.byStatus,
     { open: 'var(--status-warn)', closed: 'var(--status-good)', escalated: 'var(--status-bad)' }, 'status');
   renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
+  renderSidebar();
 }
 
 // R1: the report's own conclusion, in words. The element and a truthful
@@ -395,7 +633,7 @@ function renderVerdict() {
 // .stat.alarm in the stylesheet.
 function renderStatRow() {
   const statRow = document.getElementById('statRow');
-  statRow.innerHTML = '';
+  statRow.textContent = '';
   const stats = [
     ['Total passes', DATA.totalPasses, '', ''],
     ['Findings tracked', DATA.totalFindingsEver, '', ''],
@@ -405,28 +643,189 @@ function renderStatRow() {
   ];
   for (const [k, v, tone, need] of stats) {
     const cls = 'stat' + (tone ? ' ' + tone : '') + (tone && v > 0 ? ' hot' : '');
-    const stat = el('div', cls);
-    stat.appendChild(el('div', 'v', escapeHtml(v)));
-    stat.appendChild(el('div', 'k', k));
-    if (need) stat.appendChild(el('div', 'need', need));
+    const stat = textEl('div', cls);
+    stat.appendChild(textEl('div', 'v', v));
+    stat.appendChild(textEl('div', 'k', k));
+    if (need) stat.appendChild(textEl('div', 'need', need));
     statRow.appendChild(stat);
   }
 }
 
+// The Mutation tab (issue #142) answers a different question from the
+// ledger -- "did the new tests kill what survived?" -- so it gets its own view,
+// and every string in it goes in through textContent, never innerHTML.
+function pct(v) { return v === null || v === undefined ? 'n/a' : (v * 100).toFixed(1) + ' %'; }
+
+function fillMutationList(id, items, describe, empty) {
+  const panel = document.getElementById(id);
+  const list = textEl('ul', 'mut-list');
+  if (!items.length) list.appendChild(textEl('li', null, empty));
+  for (const item of items) {
+    const [head, reason] = describe(item);
+    const li = textEl('li');
+    li.appendChild(textEl('span', 'id', head));
+    li.appendChild(textEl('span', null, ' — ' + reason));
+    list.appendChild(li);
+  }
+  panel.appendChild(list);
+}
+
+const DETAIL_CAP = 8;
+
+// One module's mutants, opened from its row: what the proven tests killed,
+// what is still alive, and what was judged equivalent.
+function moduleDetail(M, m) {
+  const detail = textEl('div', 'mut-detail');
+  const sections = [
+    ['Killed', (M.kills || []).filter(k => k.module === m.module),
+      k => [k.mutantId, k.test || 'killed in the re-measure (no proof recorded)']],
+    ['Still alive', (M.alive || []).filter(a => a.module === m.module),
+      a => [a.mutantId, a.evidence + ' · ' + (a.state || a.category)]],
+    ['Equivalent (model judgement)', M.equivalents.filter(e => e.module === m.module),
+      e => [e.mutantId, e.reason]],
+  ];
+  for (const [title, items, describe] of sections) {
+    const col = textEl('div');
+    col.appendChild(textEl('h3', null, title));
+    const list = textEl('ul', 'mut-list');
+    if (!items.length) list.appendChild(textEl('li', 'more', 'none'));
+    for (const item of items.slice(0, DETAIL_CAP)) {
+      const [head, reason] = describe(item);
+      const li = textEl('li');
+      li.appendChild(textEl('span', 'id', head));
+      li.appendChild(textEl('span', null, ' — ' + reason));
+      list.appendChild(li);
+    }
+    if (items.length > DETAIL_CAP) {
+      list.appendChild(textEl('li', 'more',
+        '+' + (items.length - DETAIL_CAP) + ' more in analysis/zeugnis/mutation_harden_summary.json'));
+    }
+    col.appendChild(list);
+    detail.appendChild(col);
+  }
+  return detail;
+}
+
+function mutationSentence(M) {
+  const cut = M.shards.filter(s => !s.baselineComplete || s.remeasureComplete === false).map(s => s.shard);
+  const untested = M.modules.filter(m => (m.after.noTests || 0) > 0).map(m => m.module);
+  const alive = M.modules.filter(m => (m.after.survived || 0) > 0);
+  const scored = M.modules.filter(m => m.after.score !== null && m.after.score !== undefined);
+  const worst = scored.sort((a, b) => a.after.score - b.after.score)[0];
+  let s = cut.length
+    ? 'This run is INCOMPLETE: shard ' + cut.join(', ') + ' timed out or left mutants unchecked, so the '
+      + 'scores below cover only what the tool finished. '
+    : '';
+  if (!alive.length && !untested.length) {
+    s += 'Every mutant the tool generated here is now killed or judged equivalent, and every kill '
+      + 'counted was proven by applying its mutant.';
+  } else {
+    s += 'Mutants are still alive after hardening'
+      + (worst ? ', and ' + worst.module + ' has the lowest score' : '')
+      + (untested.length
+        ? '; ' + untested.join(', ') + (untested.length === 1 ? ' still has' : ' still have')
+          + ' code no selected test reaches, which its score leaves out.'
+        : '.');
+  }
+  if (M.equivalents.length) {
+    s += ' Equivalence is a model judgement no command checked: read every reason below before '
+      + 'accepting the mutants it leaves alive.';
+  }
+  if (M.rejected.length) s += ' Some kill claims were rejected and are not counted.';
+  return s;
+}
+
+function renderMutationView() {
+  const M = DATA.mutation;
+  if (!M) return;
+  document.getElementById('tabMutationBtn').hidden = false;
+  const verdict = document.getElementById('mutationVerdict');
+  if (M.error) {
+    verdict.textContent = M.error + ' Re-run mutation_harden.py report to regenerate it.';
+    document.getElementById('mutationEquivalents').hidden = true;
+    document.getElementById('mutationRejected').hidden = true;
+    return;
+  }
+  const rows = document.getElementById('mutationRows');
+  rows.textContent = '';
+  M.modules.forEach((m, index) => {
+    const item = textEl('div', 'mut-item');
+    const row = button('mut-row');
+    row.setAttribute('aria-expanded', 'false');
+    const name = textEl('span', 'module');
+    name.appendChild(textEl('span', 'chev', '▸'));
+    name.appendChild(document.createTextNode(m.module));
+    row.appendChild(name);
+    const track = textEl('span', 'mut-track');
+    // The ring is drawn last, so an unchanged score still shows both marks.
+    for (const [cls, glyph, score] of [['after', '●', m.after.score], ['before', '○', m.before.score]]) {
+      if (score === null || score === undefined) continue;
+      const mark = textEl('span', 'mut-mark ' + cls, glyph);
+      mark.style.left = (score * 100) + '%';
+      mark.setAttribute('aria-label', 'score ' + cls);
+      track.appendChild(mark);
+    }
+    row.appendChild(track);
+    const figures = textEl('span', 'figures');
+    figures.appendChild(textEl('span', null, pct(m.before.score) + ' → ' + pct(m.after.score)));
+    figures.appendChild(textEl('span', 'untested' + ((m.after.noTests || 0) > 0 ? ' hot' : ''),
+      ' · ◌ untested ' + (m.before.noTests || 0) + ' → ' + (m.after.noTests || 0)));
+    figures.appendChild(textEl('span', null,
+      ' · equivalent ' + (m.after.equivalent || 0) + ' · unreached ' + (m.unreached || 0)));
+    row.appendChild(figures);
+    const detail = moduleDetail(M, m);
+    detail.id = 'module-detail-' + index;
+    detail.hidden = true;
+    row.setAttribute('aria-controls', detail.id);
+    row.addEventListener('click', () => {
+      const open = row.getAttribute('aria-expanded') !== 'true';
+      row.setAttribute('aria-expanded', String(open));
+      row.querySelector('.chev').textContent = open ? '▾' : '▸';
+      detail.hidden = !open;
+    });
+    item.appendChild(row);
+    item.appendChild(detail);
+    rows.appendChild(item);
+  });
+  fillMutationList('mutationEquivalents', M.equivalents, e => [e.mutantId, e.reason], 'None judged equivalent.');
+  fillMutationList('mutationRejected', M.rejected, r => [r.mutantId + ' (' + r.state + ')', r.reason],
+    'No kill claim was rejected.');
+  verdict.textContent = mutationSentence(M);
+}
+
 function setActiveTab(view) {
-  document.getElementById('tabTrendBtn').classList.toggle('active', view === 'trend');
-  document.getElementById('tabBreakdownBtn').classList.toggle('active', view === 'breakdown');
+  for (const [id, name] of [['tabTrendBtn', 'trend'], ['tabBreakdownBtn', 'breakdown'], ['tabMutationBtn', 'mutation']]) {
+    const tab = document.getElementById(id);
+    tab.classList.toggle('active', view === name);
+    tab.setAttribute('aria-pressed', String(view === name));
+  }
   document.getElementById('view-trend').hidden = view !== 'trend';
   document.getElementById('view-breakdown').hidden = view !== 'breakdown';
+  document.getElementById('view-mutation').hidden = view !== 'mutation';
+  // The ledger's convergence verdict and tiles answer the other tabs' question.
+  document.getElementById('verdictBlock').hidden = view === 'mutation';
+  document.getElementById('statRow').hidden = view === 'mutation';
+  document.getElementById('subtitle').textContent = view === 'mutation'
+    ? 'zeugnis-mutation-harden run ' + DATA.mutation.runId + ' · generated from analysis/zeugnis/mutation_harden_summary.json'
+    : 'zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json';
 }
 
 document.getElementById('tabTrendBtn').addEventListener('click', () => setActiveTab('trend'));
 document.getElementById('tabBreakdownBtn').addEventListener('click', () => setActiveTab('breakdown'));
+document.getElementById('tabMutationBtn').addEventListener('click', () => setActiveTab('mutation'));
+// Esc lets go of whatever is pinned or filtered.
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape') return;
+  unpinPass();
+  if (activeFilter) clearFilter();
+});
 
 renderVerdict();
 renderStatRow();
 renderTrendView();
 renderBreakdownView();
+renderMutationView();
+if (DATA.mutation && new URLSearchParams(location.search).get('view') === 'mutation') setActiveTab('mutation');
 </script>
 </body>
 </html>

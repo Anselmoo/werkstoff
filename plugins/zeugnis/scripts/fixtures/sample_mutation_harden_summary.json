@@ -1,0 +1,1427 @@
+{
+  "schema": "zeugnis/mutation-harden-summary/1",
+  "domain": "mutation_harden",
+  "runId": "2026-10-30-demo",
+  "tool": "mutmut",
+  "complete": false,
+  "shards": [
+    {
+      "shard": "scoring",
+      "sources": [
+        "src/scoring"
+      ],
+      "tests": [
+        "tests/unit/scoring"
+      ],
+      "exclusions": [],
+      "baselineComplete": true,
+      "baselineState": "finished",
+      "remeasured": true,
+      "remeasureComplete": true
+    },
+    {
+      "shard": "runner",
+      "sources": [
+        "src/runner"
+      ],
+      "tests": [
+        "tests/unit/runner"
+      ],
+      "exclusions": [
+        {
+          "glob": "src/runner/_generated.py",
+          "reason": "generator output pinned by committed hashes"
+        }
+      ],
+      "baselineComplete": true,
+      "baselineState": "finished",
+      "remeasured": true,
+      "remeasureComplete": true
+    },
+    {
+      "shard": "stats",
+      "sources": [
+        "src/stats"
+      ],
+      "tests": [
+        "tests/unit/stats"
+      ],
+      "exclusions": [],
+      "baselineComplete": false,
+      "baselineState": "timed-out",
+      "remeasured": true,
+      "remeasureComplete": true
+    }
+  ],
+  "modules": [
+    {
+      "shard": "scoring",
+      "module": "src/scoring/rank.py",
+      "before": {
+        "killed": 61,
+        "survived": 19,
+        "noTests": 4,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.7625
+      },
+      "after": {
+        "killed": 76,
+        "survived": 4,
+        "noTests": 0,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.95,
+        "equivalent": 2,
+        "scoreExcludingEquivalent": 0.9744
+      },
+      "unreached": 2
+    },
+    {
+      "shard": "runner",
+      "module": "src/runner/conditions.py",
+      "before": {
+        "killed": 38,
+        "survived": 0,
+        "noTests": 86,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 1.0
+      },
+      "after": {
+        "killed": 52,
+        "survived": 0,
+        "noTests": 72,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 1.0,
+        "equivalent": 0,
+        "scoreExcludingEquivalent": 1.0
+      },
+      "unreached": 72
+    },
+    {
+      "shard": "stats",
+      "module": "src/stats/bootstrap.py",
+      "before": {
+        "killed": 40,
+        "survived": 12,
+        "noTests": 3,
+        "notChecked": 25,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.7692
+      },
+      "after": {
+        "killed": 47,
+        "survived": 5,
+        "noTests": 3,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.9038,
+        "equivalent": 0,
+        "scoreExcludingEquivalent": 0.9038
+      },
+      "unreached": 7
+    }
+  ],
+  "lanes": [],
+  "kills": [
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_100",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_breaks_ties_by_recency",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_100.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_101",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_score_at_cutoff_is_included",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_101.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_102",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_normalise_empty_returns_zero",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_102.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_103",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_breaks_ties_by_recency",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_103.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_104",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_score_at_cutoff_is_included",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_104.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_105",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_normalise_empty_returns_zero",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_105.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_106",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_breaks_ties_by_recency",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_106.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_107",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_score_at_cutoff_is_included",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_107.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_108",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_normalise_empty_returns_zero",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_108.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_109",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_breaks_ties_by_recency",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_109.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_110",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_score_at_cutoff_is_included",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_110.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_111",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_normalise_empty_returns_zero",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_111.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_112",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_breaks_ties_by_recency",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_112.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_113",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_rank_score_at_cutoff_is_included",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_113.json"
+    },
+    {
+      "mutantId": "scoring.rank.x_rank_score__mutmut_114",
+      "module": "src/scoring/rank.py",
+      "state": "killed",
+      "test": "tests/unit/scoring/test_rank_hardening.py::test_normalise_empty_returns_zero",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-scoring.rank.x_rank_score__mutmut_114.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_100",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_100.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_101",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_101.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_102",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_102.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_103",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_103.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_104",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_104.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_105",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_105.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_106",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_106.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_107",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_107.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_108",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_108.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_109",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_109.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_110",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_110.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_111",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_111.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_112",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_all_true",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_112.json"
+    },
+    {
+      "mutantId": "runner.conditions.x_evaluate__mutmut_113",
+      "module": "src/runner/conditions.py",
+      "state": "killed",
+      "test": "tests/unit/runner/test_conditions_hardening.py::test_evaluate_short_circuits_on_false",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-runner.conditions.x_evaluate__mutmut_113.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_100",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_resample_keeps_sample_size",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_100.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_101",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_interval_is_ordered",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_101.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_102",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_resample_keeps_sample_size",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_102.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_103",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_interval_is_ordered",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_103.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_104",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_resample_keeps_sample_size",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_104.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_105",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_interval_is_ordered",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_105.json"
+    },
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_106",
+      "module": "src/stats/bootstrap.py",
+      "state": "killed",
+      "test": "tests/unit/stats/test_bootstrap_hardening.py::test_resample_keeps_sample_size",
+      "proof": "analysis/zeugnis/mutation/2026-10-30-demo/records/proof-stats.bootstrap.x_resample__mutmut_106.json"
+    }
+  ],
+  "equivalents": [
+    {
+      "mutantId": "scoring.rank.x_clamp_rank__mutmut_4",
+      "module": "src/scoring/rank.py",
+      "reason": "rank < 0 vs rank <= 0 differ only at rank == 0, where both branches return 0",
+      "state": "equivalent",
+      "basis": "model-judgement"
+    },
+    {
+      "mutantId": "scoring.rank.x_normalise__mutmut_11",
+      "module": "src/scoring/rank.py",
+      "reason": "the divisor is checked non-zero two lines earlier, so `or 1` and `or 2` never apply",
+      "state": "equivalent",
+      "basis": "model-judgement"
+    }
+  ],
+  "rejected": [
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_7",
+      "module": "src/stats/bootstrap.py",
+      "state": "contradicted",
+      "reason": "proof says killed, the remeasure says 'survived'"
+    }
+  ],
+  "unreached": 81,
+  "strayTriageEntries": [],
+  "findings": [
+    {
+      "severity": "Medium",
+      "title": "mutant scoring.rank.x_rank_score__mutmut_22",
+      "evidence": "src/scoring/rank.py:41",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "scoring.rank.x_rank_score__mutmut_22",
+      "module": "src/scoring/rank.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant scoring.rank.x_rank_score__mutmut_31",
+      "evidence": "src/scoring/rank.py:47",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "scoring.rank.x_rank_score__mutmut_31",
+      "module": "src/scoring/rank.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_1",
+      "evidence": "src/runner/conditions.py:23",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_1",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_2",
+      "evidence": "src/runner/conditions.py:26",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_2",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_3",
+      "evidence": "src/runner/conditions.py:29",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_3",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_4",
+      "evidence": "src/runner/conditions.py:32",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_4",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_5",
+      "evidence": "src/runner/conditions.py:35",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_5",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_6",
+      "evidence": "src/runner/conditions.py:38",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_6",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_7",
+      "evidence": "src/runner/conditions.py:41",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_7",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_8",
+      "evidence": "src/runner/conditions.py:44",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_8",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_9",
+      "evidence": "src/runner/conditions.py:47",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_9",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_10",
+      "evidence": "src/runner/conditions.py:50",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_10",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_11",
+      "evidence": "src/runner/conditions.py:53",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_11",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_12",
+      "evidence": "src/runner/conditions.py:56",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_12",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_13",
+      "evidence": "src/runner/conditions.py:59",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_13",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_14",
+      "evidence": "src/runner/conditions.py:62",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_14",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_15",
+      "evidence": "src/runner/conditions.py:65",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_15",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_16",
+      "evidence": "src/runner/conditions.py:68",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_16",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_17",
+      "evidence": "src/runner/conditions.py:71",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_17",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_18",
+      "evidence": "src/runner/conditions.py:74",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_18",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_19",
+      "evidence": "src/runner/conditions.py:77",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_19",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_20",
+      "evidence": "src/runner/conditions.py:80",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_20",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_21",
+      "evidence": "src/runner/conditions.py:83",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_21",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_22",
+      "evidence": "src/runner/conditions.py:86",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_22",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_23",
+      "evidence": "src/runner/conditions.py:89",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_23",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_24",
+      "evidence": "src/runner/conditions.py:92",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_24",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_25",
+      "evidence": "src/runner/conditions.py:95",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_25",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_26",
+      "evidence": "src/runner/conditions.py:98",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_26",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_27",
+      "evidence": "src/runner/conditions.py:101",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_27",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_28",
+      "evidence": "src/runner/conditions.py:104",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_28",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_29",
+      "evidence": "src/runner/conditions.py:107",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_29",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_30",
+      "evidence": "src/runner/conditions.py:110",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_30",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_31",
+      "evidence": "src/runner/conditions.py:113",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_31",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_32",
+      "evidence": "src/runner/conditions.py:116",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_32",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_33",
+      "evidence": "src/runner/conditions.py:119",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_33",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_34",
+      "evidence": "src/runner/conditions.py:122",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_34",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_35",
+      "evidence": "src/runner/conditions.py:125",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_35",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_36",
+      "evidence": "src/runner/conditions.py:128",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_36",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_37",
+      "evidence": "src/runner/conditions.py:131",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_37",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_38",
+      "evidence": "src/runner/conditions.py:134",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_38",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_39",
+      "evidence": "src/runner/conditions.py:137",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_39",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_40",
+      "evidence": "src/runner/conditions.py:140",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_40",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_41",
+      "evidence": "src/runner/conditions.py:143",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_41",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_42",
+      "evidence": "src/runner/conditions.py:146",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_42",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_43",
+      "evidence": "src/runner/conditions.py:149",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_43",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_44",
+      "evidence": "src/runner/conditions.py:152",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_44",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_45",
+      "evidence": "src/runner/conditions.py:155",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_45",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_46",
+      "evidence": "src/runner/conditions.py:158",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_46",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_47",
+      "evidence": "src/runner/conditions.py:161",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_47",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_48",
+      "evidence": "src/runner/conditions.py:164",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_48",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_49",
+      "evidence": "src/runner/conditions.py:167",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_49",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_50",
+      "evidence": "src/runner/conditions.py:170",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_50",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_51",
+      "evidence": "src/runner/conditions.py:173",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_51",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_52",
+      "evidence": "src/runner/conditions.py:176",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_52",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_53",
+      "evidence": "src/runner/conditions.py:179",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_53",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_54",
+      "evidence": "src/runner/conditions.py:182",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_54",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_55",
+      "evidence": "src/runner/conditions.py:185",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_55",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_56",
+      "evidence": "src/runner/conditions.py:188",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_56",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_57",
+      "evidence": "src/runner/conditions.py:191",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_57",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_58",
+      "evidence": "src/runner/conditions.py:194",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_58",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_59",
+      "evidence": "src/runner/conditions.py:197",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_59",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_60",
+      "evidence": "src/runner/conditions.py:200",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_60",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_61",
+      "evidence": "src/runner/conditions.py:203",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_61",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_62",
+      "evidence": "src/runner/conditions.py:206",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_62",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_63",
+      "evidence": "src/runner/conditions.py:209",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_63",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_64",
+      "evidence": "src/runner/conditions.py:212",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_64",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_65",
+      "evidence": "src/runner/conditions.py:215",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_65",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_66",
+      "evidence": "src/runner/conditions.py:218",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_66",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_67",
+      "evidence": "src/runner/conditions.py:221",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_67",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_68",
+      "evidence": "src/runner/conditions.py:224",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_68",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_timeout__mutmut_69",
+      "evidence": "src/runner/conditions.py:227",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_timeout__mutmut_69",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_retry__mutmut_70",
+      "evidence": "src/runner/conditions.py:230",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_retry__mutmut_70",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_budget__mutmut_71",
+      "evidence": "src/runner/conditions.py:233",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_budget__mutmut_71",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant runner.conditions.x_check_quota__mutmut_72",
+      "evidence": "src/runner/conditions.py:236",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "runner.conditions.x_check_quota__mutmut_72",
+      "module": "src/runner/conditions.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_resample__mutmut_7",
+      "evidence": "src/stats/bootstrap.py:18",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_resample__mutmut_7",
+      "module": "src/stats/bootstrap.py",
+      "state": "contradicted"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_interval__mutmut_2",
+      "evidence": "src/stats/bootstrap.py:32",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_interval__mutmut_2",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_interval__mutmut_5",
+      "evidence": "src/stats/bootstrap.py:35",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_interval__mutmut_5",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_interval__mutmut_9",
+      "evidence": "src/stats/bootstrap.py:39",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_interval__mutmut_9",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_interval__mutmut_12",
+      "evidence": "src/stats/bootstrap.py:42",
+      "category": "surviving-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_interval__mutmut_12",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_seed_from_env__mutmut_1",
+      "evidence": "src/stats/bootstrap.py:61",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_seed_from_env__mutmut_1",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_seed_from_env__mutmut_2",
+      "evidence": "src/stats/bootstrap.py:61",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_seed_from_env__mutmut_2",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    },
+    {
+      "severity": "Medium",
+      "title": "mutant stats.bootstrap.x_seed_from_env__mutmut_3",
+      "evidence": "src/stats/bootstrap.py:61",
+      "category": "untested-mutant",
+      "fixability": "fixable",
+      "toolSource": "real-tool",
+      "resultsFile": "analysis/zeugnis/mutation/2026-10-30-demo/records/shards-x.results.json",
+      "mutantId": "stats.bootstrap.x_seed_from_env__mutmut_3",
+      "module": "src/stats/bootstrap.py",
+      "state": "unreached"
+    }
+  ],
+  "unverifiedCount": 0,
+  "unverified": [],
+  "generatedAt": "2026-10-30T18:00:00+00:00"
+}

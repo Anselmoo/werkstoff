@@ -128,6 +128,17 @@ by intent.
 > Triggers `zeugnis-assertion-audit` — mutation-testing pass checking whether tests
 > assert anything meaningful, not just execute the code.
 
+##### Kill the survivors with a real mutation tool
+
+````prompt
+"run mutmut on src/shop/pricing.py and write the tests that kill what survives"
+````
+
+> Triggers `zeugnis-mutation-harden` — runs the real tool on a fresh `git archive`
+> copy as a background script, proves every new test by applying its mutant, and
+> reports the score per module before and after, with untested mutants, equivalents
+> and unreached survivors listed apart.
+
 ##### Run the full cycle
 
 ````prompt
@@ -190,27 +201,30 @@ this repo — it's read-only and never blocks the other four.
 
 ## Components
 
-### Skills (8)
+### Skills (9)
 
 | Skill | What it does |
 |---|---|
 | `zeugnis-preflight` | Five independent readiness checks; four per-domain readiness verdicts. |
 | `zeugnis-dependency-audit` | Flags hallucinated / typosquat-adjacent manifest dependencies via bounded, read-only registry lookups. |
-| `zeugnis-assertion-audit` | Mutation-testing pass (real tool if available, else LLM-reasoned) to check whether tests would actually catch bugs. |
+| `zeugnis-assertion-audit` | Mutation-testing pass (cites a mutation-harness results file when given one, else LLM-reasoned) to check whether tests would actually catch bugs. |
+| `zeugnis-mutation-harden` | Runs a real mutation tool (mutmut 3) on fresh archive copies, writes the tests that kill the survivors, proves each kill, and reports score per module before and after. |
 | `zeugnis-contract-drift` | Flags drift between type hints/signatures/docstrings/schemas and actual usage. |
 | `zeugnis-agentic-reliability` | Audits this repo's own skill/agent/workflow files for four reliability defect categories. |
 | `zeugnis-code-change` | Fast, changed-files-scoped advisory pass, for a pre-commit sanity check. |
 | `zeugnis-cycle` | Bounded self-optimization loop: re-runs audits pass by pass, optionally applying fixes, until convergence or a pass cap. |
 | `zeugnis-status` | Read-only dashboard: what's run, what's stale, what to run next. |
 
-### Agents (5)
+### Agents (6)
 
 `dependency-auditor`, `assertion-auditor`, `contract-auditor`,
 `agentic-reliability-auditor` each do the Find/Verify judgment work for
 their domain and cannot write or modify files (enforced by their `tools:`
-frontmatter — none of them has `Write` or `Edit`). `zeugnis-remediator` is
-the only agent with `Edit`, and only ever receives one already-located,
-already-scoped finding at a time.
+frontmatter — none of them has `Write` or `Edit`). `zeugnis-remediator` has
+`Edit` and only ever receives one already-located, already-scoped finding at
+a time. `mutation-killer` has `Write` and `Edit` for one lane of surviving
+mutants; the test-scope lock lets it write only under that lane's test roots,
+up to its budget, and never into source.
 
 ## What is enforced, and what is not
 
@@ -239,13 +253,23 @@ reads and might still violate:
   affirmative "hallucinated" or "exists" verdict.
 - **`hooks/hooks.json`** — two `PreToolUse` command hooks
   (`scripts/hooks/guard_edit_scope.py`, `scripts/hooks/guard_bash_scope.py`)
-  enforce `zeugnis-remediator`'s one-fix-per-finding scope and the
-  fixable/draft-only domain split, and refuse install/publish/patch-mode
-  Bash commands from the audit agents — regardless of whether the agent's
-  own system prompt is followed. Both hooks are inert (exit 0) unless the
-  target repository already has a `analysis/zeugnis/` directory, and both fail
-  closed on any internal error, naming an explicit escape hatch in the
-  denial message.
+  enforce `zeugnis-remediator`'s one-fix-per-finding scope, the
+  `mutation-killer`'s test-path scope and the fixable/draft-only domain split,
+  refuse install/publish Bash commands from the audit agents, and allow a
+  mutation tool's mutating verbs only inside a harness copy — regardless of
+  whether the agent's own system prompt is followed. Both hooks are inert
+  (exit 0) unless the working directory or one of its ancestors has an
+  `analysis/zeugnis/` directory, and both fail closed on any internal error,
+  naming an explicit escape hatch in the denial message.
+- **`scripts/lib/mutation_scope.py`** — the one lexical question the Bash
+  guard, the edit guard and `mutation_harden.py` all ask: is this path inside a
+  marker-bearing `git archive` copy under `analysis/zeugnis/mutation/<runId>/`,
+  with no symlink below the repository root? `os.path.normpath`, never
+  `Path.resolve()`, for the reason its docstring gives.
+- **`scripts/lib/mutation_results.py`** — a `real-tool` finding must cite the
+  tool's output, and a mutation_harden kill must have a proof. The citation is
+  re-derived from mutmut's own `.meta` sidecar (hash and status); the proof must
+  show the new test passing unmutated and failing with the mutant applied.
 
 ## The report
 
@@ -256,7 +280,7 @@ default view — a single honest D3 line chart of cumulative closed
 findings, since `ledger.json`'s `passes` array is the only place
 pass-over-pass history actually exists:
 
-![Zeugnis burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last](assets/burndown-viewer-screenshot.jpg)
+![Zeugnis burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last, where pass #5 is pinned: a ring around its point, a dashed crosshair, and a readout below the chart naming pass #5 (code_change_review), closed 0 this pass, 8 closed in total, with an Unpin button](assets/burndown-viewer-screenshot.jpg)
 
 The Breakdown tab adds by-status and by-domain bars plus a findings
 sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
@@ -278,12 +302,83 @@ python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
     --tokens plugins/zeugnis/assets/tokens.css
 ```
 
+When `zeugnis-mutation-harden` has written `analysis/zeugnis/mutation_harden_summary.json`,
+a third **Mutation** tab appears. It answers a different question, "did the new tests
+kill what survived?", so it hides the ledger's convergence verdict and tiles while open:
+
+![Zeugnis burndown viewer, Mutation tab: a "Did the new tests kill what survived?" panel whose verdict reads that the run is INCOMPLETE because shard stats timed out, that mutants are still alive with src/stats/bootstrap.py lowest, and that two modules still have code no selected test reaches; a legend naming a hollow ring for the score before, a filled dot for the score after, and an untested glyph; three module rows each with a 0-100 % track and its figures — src/scoring/rank.py 76.3 % to 95.0 %, src/runner/conditions.py 100.0 % to 100.0 % with untested 86 to 72 in amber, src/stats/bootstrap.py 76.9 % to 90.4 %. The conditions.py row is expanded and outlined, listing in three columns the mutants killed with the test that killed each, the mutants still alive with their file:line and "unreached", and no equivalents, each list capped with a count of the rest; below, two equivalent mutants with their one-line reasons and a rejected kill claim contradicted by the re-measure](assets/burndown-viewer-mutation-screenshot.jpg)
+
+Its demo data is committed at `scripts/fixtures/sample_mutation_harden_summary.json`. It is
+chosen so that one module scores 100 % before and after while 72 of its mutants are still
+untested, the trap the score alone hides. One shard timed out, and one kill claim was
+contradicted by the re-measure. Its kill and still-alive lists match its counts. To rebuild
+it, add the fixture to the demo repo above, open the report with `?view=mutation`, and
+expand `src/runner/conditions.py`:
+
+```bash
+cp plugins/zeugnis/scripts/fixtures/sample_mutation_harden_summary.json \
+    /tmp/zeugnis-demo/analysis/zeugnis/mutation_harden_summary.json
+python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
+    --template plugins/zeugnis/assets/burndown-viewer.html \
+    --d3 plugins/zeugnis/assets/inline-d3.html \
+    --tokens plugins/zeugnis/assets/tokens.css
+```
+
+Every number has a control behind it, and every control is a real button
+you can reach with Tab:
+
+- **Trend:** hovering or focusing a pass point shows a crosshair and a
+  readout of that pass's numbers. Click it, or press Enter or Space, to pin
+  it; click again, press Esc, or use Unpin to let go.
+- **Breakdown:** a status or domain bar toggles a filter. The sidebar then
+  shows a chip naming it, a Clear button, and the matching findings, each of
+  which expands to its evidence.
+- **Mutation:** a module row expands to the mutants the proven tests killed,
+  the ones still alive, and the ones judged equivalent.
+
+A selection is marked by an outline and bold text, never by colour alone.
+Transitions use the token durations and switch off under
+`prefers-reduced-motion`.
+
 The report states its own verdict in words before any chart: whether the
 cleanup converged, stalled, or is still closing findings, and what an
 escalated finding means. Every status colour is named in a legend that is
 visible without clicking anything, because `--status-good`/`--status-bad`
 are not separable under deuteranopia — see the mandate at the top of
 `tools/design-tokens/tokens.css`.
+
+## Mutation hardening
+
+`zeugnis-mutation-harden` drives `scripts/mutation_harden.py`, and every
+step leaves a file under `analysis/zeugnis/mutation/<runId>/`:
+
+| subcommand | writes | refuses |
+|---|---|---|
+| `prepare` | `shards/<shard>/`, a fresh `git archive HEAD` copy whose `[tool.mutmut]` names only that shard | a copy or shard that already exists; uncommitted changes under the sources; an exclusion without a reason |
+| `run-shard` | `records/<kind>-<shard>.run.json` and `.log`, time-boxed, meant to run in the background | a directory that is not a marker-bearing copy; a copy that already holds `mutants/` |
+| `collect` | `records/<kind>-<shard>.results.json`: every mutmut status counted, `no tests` beside the score and never in it, each mutant's diff, line and heuristic kind | collecting while the run is still `running` |
+| `prove` | `records/proof-<mutant>.json` | anything but a surviving or untested mutant; a test file outside the shard's test paths; a kill unless the test exits 0 unmutated and 1 with the mutant applied |
+| `report` | `analysis/zeugnis/mutation_harden_summary.json`, `reports/MUTATION_HARDEN.md`, `records/pass.json` | a kill whose proof fails or that the re-measure contradicts; an equivalent without a one-line reason |
+
+The issue that asked for this (#142) listed what a 17,000-statement cleanup
+taught. Each item is a mechanism here, not advice:
+
+- **Long runs are scripts.** `run-shard` is a background script, and agents read
+  its files.
+- **Shard and time-box.** One shard per module or package, each with `--time-box`.
+  A cut-off shard reports `notChecked` and `complete: false`.
+- **"No test" is reported apart from the score.** It gets its own column.
+- **Fast tests only.** `--test` selects the tests per shard, and the skill keeps
+  integration tests out.
+- **Exclusions carry their reason.** `--exclude GLOB=reason`.
+- **A fresh copy per run.** The harness refuses to reuse one.
+- **The kill phase is budgeted.** Lanes carry a budget, and the report counts
+  unreached survivors.
+
+Only mutmut 3 is driven. `references/mutation-tools.md` records what was checked
+for cosmic-ray, cargo-mutants and StrykerJS: their in-place modes are guarded,
+but no adapter drives them. A repository-wide workflow mode, and a CI
+matrix template for scheduled shard runs, are follow-ups.
 
 ## Design decisions
 
@@ -331,12 +426,19 @@ it didn't specify something, these are the choices made and why:
   `zeugnis-cycle` is the one that iterates the batch across separate
   dispatches. This is what makes the `PreToolUse` scope hook viable: it
   only ever has to reason about one active scope at a time.
+- **`mutation_harden` shares the ledger but not the cycle**: its proven kills
+  are recorded through `cycle_engine.py record-pass-result` (so
+  `zeugnis-status` and the burndown see them), but `plan-next-pass` only ever
+  picks one of the four cycle domains, because `zeugnis-cycle` has no step that
+  runs a mutation tool. `assertion_audit` stays draft-only: it judges tests
+  and has no proof step.
 
 ## Verifying a change to this plugin
 
 ```bash
-python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py   # the edit-scope hook denies AND allows (8 cases)
-python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py   # the bash-scope hook denies AND allows (26 cases)
+python3 plugins/zeugnis/scripts/hooks/test_guard_edit_scope.py   # the edit-scope hook denies AND allows, incl. the mutation_harden test scope
+python3 plugins/zeugnis/scripts/hooks/test_guard_bash_scope.py   # the bash-scope hook denies AND allows, incl. mutation tools outside a copy
+python3 plugins/zeugnis/scripts/test_mutation_harden.py          # citations, kill proofs, the cycle gate (ZEUGNIS_MUTMUT=<mutmut> adds a real e2e)
 python3 plugins/zeugnis/scripts/test_build_burndown_html.py      # burndown HTML renderer, known fixtures
 python3 plugins/zeugnis/scripts/test_cycle_engine.py             # pass cap / reopen thrash-guard raise correctly
 python3 test/plugins/lint-frontmatter.py plugins/zeugnis         # YAML that would load with EMPTY metadata
@@ -348,7 +450,7 @@ python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/zeugnis --docs-roo
 
 `guard_bash_scope.py` matches mutating commands by tokenising with `shlex.split`
 and checking `argv[0]`/`argv[1]` of each shell segment (split on `&&`, `||`, `;`,
-`|`), not by searching the raw command string — a read-only command that merely
+`|`, `&`), not by searching the raw command string — a read-only command that merely
 *mentions* an install phrase (a `grep` pattern, a filename, quoted text) is no
 longer refused (issue #73). Before that check, a short named list of wrapper
 commands (`sudo`, `env`, `command`, `nohup`, `nice`, `time`, `xargs`, plus bare
@@ -360,6 +462,14 @@ silently regressed coverage the old raw-string search had for free.
 class, real mutating invocations (including a qualified-path binary, wrapped
 and stacked-wrapper forms, and a later pipeline segment), the wrapper skip not
 becoming a bypass itself, unbalanced-quote handling, and the escape hatch.
+
+Mutation tools get a second check. A copy-only verb (`mutmut run`/`apply`/
+`browse`, `cosmic-ray exec`/`apply`, `cargo mutants --in-place`,
+`stryker run --inPlace`, also behind `python -m`, `uv run`, `npx` and the like)
+is allowed only where the command's effective cwd is a harness copy. The guard
+follows `cd` across `&&`, `;`, newlines and subshells, lexically. After `|`,
+`||`, `&`, a heredoc or `env -C` the cwd is unknown, and an unknown cwd is
+never a copy.
 
 ### Behavioural cases
 

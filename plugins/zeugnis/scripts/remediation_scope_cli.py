@@ -6,7 +6,14 @@ zeugnis-remediator for one finding.
 Usage:
     python3 remediation_scope_cli.py open <repo_root> --finding-id ID
         --domain DOMAIN --category CATEGORY --target-file FILE
+    python3 remediation_scope_cli.py open-tests <repo_root> --lane-id ID
+        --test-root DIR [--test-root DIR ...] --source-path PATH [...]
+        --edit-budget N
     python3 remediation_scope_cli.py close <repo_root>
+
+`open-tests` is the mutation_harden lock (zeugnis-mutation-harden): up to N
+writes, each under a --test-root and none under a --source-path. `open`
+refuses that domain, so a killing test can never be a single-file source edit.
 
 Exit code 3 means "this finding is not auto-fixable" — the calling skill
 must treat that as a hard stop for this finding (route it to advisory
@@ -20,8 +27,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from lib.mutation_scope import MutationScopeError  # noqa: E402
 from lib.paths import UnsafeWritePathError  # noqa: E402
-from lib.remediation_scope import RemediationNotFixableError, close_scope, open_scope  # noqa: E402
+from lib.remediation_scope import (  # noqa: E402
+    RemediationNotFixableError,
+    close_scope,
+    open_scope,
+    open_test_scope,
+)
 
 
 def main() -> int:
@@ -34,6 +47,13 @@ def main() -> int:
     p_open.add_argument("--domain", required=True)
     p_open.add_argument("--category", required=True)
     p_open.add_argument("--target-file", required=True)
+
+    p_tests = sub.add_parser("open-tests")
+    p_tests.add_argument("repo_root")
+    p_tests.add_argument("--lane-id", required=True)
+    p_tests.add_argument("--test-root", action="append", required=True)
+    p_tests.add_argument("--source-path", action="append", required=True)
+    p_tests.add_argument("--edit-budget", type=int, required=True)
 
     p_close = sub.add_parser("close")
     p_close.add_argument("repo_root")
@@ -54,6 +74,24 @@ def main() -> int:
             print(json.dumps({"error": str(exc)}), file=sys.stderr)
             return 3
         except UnsafeWritePathError as exc:
+            print(json.dumps({"error": str(exc)}), file=sys.stderr)
+            return 4
+        print(json.dumps({"scopePath": path}))
+        return 0
+
+    if args.command == "open-tests":
+        try:
+            path = open_test_scope(
+                repo_root,
+                lane_id=args.lane_id,
+                test_roots=args.test_root,
+                source_paths=args.source_path,
+                edit_budget=args.edit_budget,
+            )
+        except RemediationNotFixableError as exc:
+            print(json.dumps({"error": str(exc)}), file=sys.stderr)
+            return 3
+        except MutationScopeError as exc:
             print(json.dumps({"error": str(exc)}), file=sys.stderr)
             return 4
         print(json.dumps({"scopePath": path}))

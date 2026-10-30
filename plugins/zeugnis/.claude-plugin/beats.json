@@ -12,6 +12,17 @@
         "relativeTo": "repo",
         "writtenBy": "plugins/zeugnis/scripts/contract_drift.py"
       }
+    },
+    {
+      "marker": "mutation-hardened",
+      "after": "zeugnis-mutation-harden",
+      "meaning": "a real mutation tool ran on a fresh archive copy, and every kill the report counts was proven by applying its mutant",
+      "evidence": {
+        "kind": "artifact",
+        "path": "analysis/zeugnis/mutation_harden_summary.json",
+        "relativeTo": "repo",
+        "writtenBy": "plugins/zeugnis/scripts/mutation_harden.py"
+      }
     }
   ],
   "requires": []

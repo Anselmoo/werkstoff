@@ -594,6 +594,11 @@ description = "docs copy of plugins/zeugnis/assets/burndown-viewer-screenshot.jp
 command = ["cp", "plugins/zeugnis/assets/burndown-viewer-screenshot.jpg", "docs/plugins/assets/burndown-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/burndown-viewer-mutation-screenshot.jpg"
+description = "docs copy of plugins/zeugnis/assets/burndown-viewer-mutation-screenshot.jpg"
+command = ["cp", "plugins/zeugnis/assets/burndown-viewer-mutation-screenshot.jpg", "docs/plugins/assets/burndown-viewer-mutation-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/derivation-viewer-screenshot.jpg"
 description = "docs copy of plugins/matrize/assets/derivation-viewer-screenshot.jpg"
 command = ["cp", "plugins/matrize/assets/derivation-viewer-screenshot.jpg", "docs/plugins/assets/derivation-viewer-screenshot.jpg"]

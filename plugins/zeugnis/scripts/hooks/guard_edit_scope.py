@@ -38,6 +38,15 @@ single stderr warning + allow, not a deny -- see the try/except around the
 violates a rule, and every future edit in every repo being blocked is a
 strictly worse failure than one missed enforcement check (issue #24).
 
+MUTATION_HARDEN (issue #142): a lock whose domain is mutation_harden is a
+test-path scope, not a single allowedFile -- up to editBudget writes, each
+under a testRoot and none under a sourcePath, a test-collection config file
+(conftest.py, pyproject.toml, ...) or analysis/. The branch keys off the
+DOMAIN, so a lock for that domain missing its testRoots is denied rather than
+falling through to the single-file check. The scope file is read from the
+nearest ancestor holding analysis/zeugnis/, so a cwd inside a mutation copy
+does not make this hook inert.
+
 PYTHON FLOOR (#123): MIN_PYTHON, checked past the inert test. A hook runs under
 whatever python3 is on PATH; one that cannot import exits 1, which Claude Code
 treats as non-blocking, so it ALLOWS the call. This module therefore stays
@@ -81,6 +90,43 @@ def allow() -> int:
     return 0
 
 
+def _find_zeugnis_root(cwd: str) -> str | None:
+    here = os.path.normpath(os.path.abspath(cwd))
+    while True:
+        if os.path.isdir(os.path.join(here, "analysis", "zeugnis")):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            return None
+        here = parent
+
+
+def _test_scope_decision(root, cwd, scope, target, scope_write_violation,
+                         lexical_path, is_fixable, record_test_edit) -> int:
+    """The mutation_harden branch (issue #142): a budget of writes, each under
+    a testRoot and none under a sourcePath, a protected config file, or
+    analysis/. Taken whenever the lock's DOMAIN says so -- never inferred from
+    which fields the lock happens to carry, so a lock missing testRoots is a
+    deny, not a fall-through to the single-file branch below."""
+    if not target:
+        return deny(f"guard_edit_scope: tool_input.file_path missing; failing closed. {ESCAPE_HATCH}")
+    target_path = lexical_path(cwd, target)
+    reason = scope_write_violation(lexical_path(root, "."), scope, target_path)
+    if reason:
+        return deny(
+            f"Edit target {target!r} refused under the mutation_harden test-scope lock for lane "
+            f"{scope.get('findingId')!r}: {reason}. A surviving mutant is killed by a new test, "
+            f"never by editing the code it survived in. {ESCAPE_HATCH}"
+        )
+    if not is_fixable(scope.get("domain"), scope.get("category")):
+        return deny(
+            f"Remediation scope for lane {scope.get('findingId')!r} has domain={scope.get('domain')!r}, "
+            f"which is not in zeugnis's auto-fixable set. {ESCAPE_HATCH}"
+        )
+    record_test_edit(root)
+    return allow()
+
+
 def run() -> int:
     # Checked first, before stdin is read and before anything touches the
     # filesystem, so a stuck or wrong denial always has an escape that costs
@@ -113,11 +159,15 @@ def run() -> int:
     target = tool_input.get("file_path")
 
     # Inert unless this repo shows evidence of using zeugnis (analysis/zeugnis/
-    # exists). Computed with stdlib only, BEFORE importing lib, so a
-    # missing/broken lib package can never turn "this repo doesn't even use
-    # zeugnis" into a deny -- req #6 bullet: inert when this repo doesn't use
-    # the plugin.
-    if not os.path.isdir(os.path.join(cwd, "analysis", "zeugnis")):
+    # exists at cwd or an ancestor). Computed with stdlib only, BEFORE
+    # importing lib, so a missing/broken lib package can never turn "this repo
+    # doesn't even use zeugnis" into a deny -- req #6 bullet: inert when this
+    # repo doesn't use the plugin. Walking UP (issue #142) keeps the guard
+    # active when the session's cwd sits inside a mutation copy, which has no
+    # analysis/zeugnis/ of its own; lib.mutation_scope.find_zeugnis_root is
+    # the same walk, unavailable here because lib is not imported yet.
+    root = _find_zeugnis_root(cwd)
+    if root is None:
         return allow()
 
     if sys.version_info < MIN_PYTHON:
@@ -128,8 +178,10 @@ def run() -> int:
         )
 
     try:
+        from lib.constants import TEST_SCOPE_DOMAINS  # noqa: E402
+        from lib.mutation_scope import lexical_path, scope_write_violation  # noqa: E402
         from lib.paths import UnsafeWritePathError, safe_repo_path  # noqa: E402
-        from lib.remediation_scope import read_scope, mark_consumed, is_fixable  # noqa: E402
+        from lib.remediation_scope import is_fixable, mark_consumed, read_scope, record_test_edit  # noqa: E402
     except (ImportError, ModuleNotFoundError) as exc:
         print(
             f"guard_edit_scope: internal error ({type(exc).__name__}: {exc}); "
@@ -140,10 +192,14 @@ def run() -> int:
         )
         return allow()
 
-    scope = read_scope(cwd)
+    scope = read_scope(root)
     if scope is None:
         # No remediation in flight; this rule set has nothing to enforce.
         return allow()
+
+    if scope.get("domain") in TEST_SCOPE_DOMAINS:
+        return _test_scope_decision(root, cwd, scope, target, scope_write_violation,
+                                    lexical_path, is_fixable, record_test_edit)
 
     if scope.get("consumed"):
         return deny(
@@ -156,8 +212,8 @@ def run() -> int:
         return deny(f"guard_edit_scope: tool_input.file_path missing; failing closed. {ESCAPE_HATCH}")
 
     try:
-        resolved_target = safe_repo_path(cwd, target) if not os.path.isabs(target) else target
-        allowed_resolved = safe_repo_path(cwd, scope["allowedFile"])
+        resolved_target = target if os.path.isabs(target) else os.path.join(cwd, target)
+        allowed_resolved = safe_repo_path(root, scope["allowedFile"])
     except UnsafeWritePathError as exc:
         return deny(f"guard_edit_scope: {exc}. {ESCAPE_HATCH}")
 

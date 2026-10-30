@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 13 plugin READMEs, 104 in
+Every example prompt shipped by the 13 plugin READMEs, 105 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -711,7 +711,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## zeugnis
 
-[`plugins/zeugnis/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/zeugnis/README.md) — 8 prompts.
+[`plugins/zeugnis/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/zeugnis/README.md) — 9 prompts.
 
 ### Check for hallucinated dependencies
 
@@ -728,6 +728,14 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `zeugnis-assertion-audit` — mutation-testing pass checking whether tests assert anything meaningful, not just execute the code.
+
+### Kill the survivors with a real mutation tool
+
+````prompt
+"run mutmut on src/shop/pricing.py and write the tests that kill what survives"
+````
+
+> Triggers `zeugnis-mutation-harden` — runs the real tool on a fresh `git archive` copy as a background script, proves every new test by applying its mutant, and reports the score per module before and after, with untested mutants, equivalents and unreached survivors listed apart.
 
 ### Run the full cycle
 

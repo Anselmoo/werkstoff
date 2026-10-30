@@ -1209,6 +1209,11 @@
           "description": "Use when the user asks to audit declared dependencies for hallucinated, nonexistent, or typosquat-adjacent packages, wants zeugnis's dependency audit run, or asks whether package.json/requirements.txt/pyproject.toml/Cargo.toml/go.mod/Gemfile entries actually exist. Performs bounded, read-only registry lookups with a mandatory-unless-flagged independent verification pass."
         },
         {
+          "id": "zeugnis:zeugnis-mutation-harden",
+          "name": "zeugnis-mutation-harden",
+          "description": "Use when the user wants a REAL mutation tool run over one module or package, the surviving mutants triaged, and tests written that kill them -- 'harden these tests with mutmut', 'raise the mutation score of this module', 'run mutation testing and kill the survivors'. Runs the tool on fresh git-archive copies as background scripts, proves every kill by applying the mutant, and reports score per module before and after with untested mutants, equivalents and unreached survivors listed apart. Not for estimating assertion strength without running a tool -- use zeugnis:zeugnis-assertion-audit; not for proving that a change is correct -- use andon:andon-verify."
+        },
+        {
           "id": "zeugnis:zeugnis-preflight",
           "name": "zeugnis-preflight",
           "description": "Use when the user asks whether this repository is ready for zeugnis audits to run successfully, wants a pre-flight/readiness check before running zeugnis-dependency-audit, zeugnis-assertion-audit, zeugnis-contract-drift, or zeugnis-agentic-reliability, or asks 'is zeugnis set up correctly here'. Runs five independent checks and reports one readiness verdict per domain skill."
@@ -1233,7 +1238,7 @@
         {
           "id": "zeugnis:assertion-auditor",
           "name": "assertion-auditor",
-          "description": "Use this agent to check whether a test suite would actually catch bugs, by proposing plausible small mutations to target source (off-by-one, boundary flip, condition negation) and judging whether existing tests would catch each one. Operates in Find, Verify, or Suggest mode depending on the dispatch prompt. May run a real mutation tool read-only via Bash if one is named and available, and always falls back to llm-reasoned analysis with an explicit note when it isn't. Never modifies source or test files and never installs, uninstalls, or writes via Bash.",
+          "description": "Use this agent to check whether a test suite would actually catch bugs, by proposing plausible small mutations to target source (off-by-one, boundary flip, condition negation) and judging whether existing tests would catch each one. Operates in Find, Verify, or Suggest mode depending on the dispatch prompt. Cites a real mutation tool's results only when the dispatch prompt hands it a results file from zeugnis's mutation harness, and otherwise falls back to llm-reasoned analysis with an explicit note. Never runs a mutation tool itself, never modifies source or test files, and never installs, uninstalls, or writes via Bash.",
           "tools": [
             "Read",
             "Glob",
@@ -1260,6 +1265,18 @@
             "Glob",
             "Grep",
             "Bash"
+          ]
+        },
+        {
+          "id": "zeugnis:mutation-killer",
+          "name": "mutation-killer",
+          "description": "Use this agent when zeugnis-mutation-harden dispatches one lane -- one module, one budget -- of surviving or untested mutants that a real mutation tool reported, to write tests that assert real values so each mutant would fail them, or to classify a mutant as equivalent with a one-line reason. Writes test files only, under the test roots the lane's lock names; source code stays untouched. It never runs the mutation tool and never claims a kill: the harness proves each one by applying the mutant. Not for estimating assertion strength without a tool run (assertion-auditor) and not for any finding outside a mutation_harden lane.",
+          "tools": [
+            "Read",
+            "Glob",
+            "Grep",
+            "Write",
+            "Edit"
           ]
         },
         {
@@ -1489,6 +1506,7 @@
     "zeugnis:zeugnis-contract-drift",
     "zeugnis:zeugnis-cycle",
     "zeugnis:zeugnis-dependency-audit",
+    "zeugnis:zeugnis-mutation-harden",
     "zeugnis:zeugnis-preflight",
     "zeugnis:zeugnis-status",
     "zirkel:zirkel-calibrate-format",
@@ -1565,6 +1583,7 @@
     "zeugnis:assertion-auditor",
     "zeugnis:contract-auditor",
     "zeugnis:dependency-auditor",
+    "zeugnis:mutation-killer",
     "zeugnis:zeugnis-remediator",
     "zirkel:branch-proposer",
     "zirkel:instruction-candidate",

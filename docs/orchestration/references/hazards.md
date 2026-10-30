@@ -26,14 +26,14 @@ card, rather than buried in the third column of a five-column table.
 <div class="hz-card">
 <div class="hz-head"><code>zeugnis</code><span class="hz-chip">Edit|Write</span></div>
 <p class="hz-script"><code>scripts/hooks/guard_edit_scope.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span>a remediation-scope lock is open at <code>analysis/zeugnis/remediation_scope.json</code></p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span>a remediation-scope lock is open at <code>analysis/zeugnis/remediation_scope.json</code> (found from the cwd or any ancestor); a <code>mutation_harden</code> lock allows test-path writes only</p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span>delete the lock file, or run without <code>--fix</code></p>
 </div>
 
 <div class="hz-card">
 <div class="hz-head"><code>zeugnis</code><span class="hz-chip">Bash</span></div>
 <p class="hz-script"><code>scripts/hooks/guard_bash_scope.py</code></p>
-<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/zeugnis/</code> does not exist in the repo</p>
+<p class="hz-row"><span class="hz-row-label">Inert unless</span><code>analysis/zeugnis/</code> exists in the cwd or an ancestor; then <code>mutmut run</code>/<code>apply</code>, <code>cosmic-ray exec</code> and the in-place modes of cargo-mutants and Stryker are denied everywhere but a harness copy</p>
 <p class="hz-row"><span class="hz-row-label">Escape hatch</span>run the command outside a zeugnis-managed session, or remove <code>analysis/zeugnis/</code></p>
 </div>
 

@@ -12,21 +12,25 @@ this run faster by skipping it; the capability does not exist.
 
 ## Steps
 
-1. Determine `repo_root`, the target source files, the test files, and
-   (optionally) a named real mutation tool (e.g. `mutmut`) the user wants
-   used. If the user didn't name one, still ask the agent to check
-   whether one is available on PATH before falling back.
+1. Determine `repo_root`, the target source files and the test files. If
+   the user wants a real mutation tool (e.g. `mutmut`), run it through the
+   harness first. The agent cannot run it: the tool writes mutants into
+   its working directory, and the Bash hook denies it outside a harness
+   copy. Run `scripts/mutation_harden.py prepare`, `run-shard` and
+   `collect`, exactly as steps 2-4 of `zeugnis-mutation-harden` describe,
+   or reuse a results file a run already produced. With no real tool, the
+   agent falls back to llm-reasoned findings with a `fallbackReason`.
 2. Optionally build (or reuse, if `zeugnis-cycle` already built one this
    invocation — see "Shared symbol index" below) a symbol index of the
    target files for the agent to use as evidence.
 3. Dispatch the `assertion-auditor` agent in **Find mode**: give it the
-   target files, test files, the named tool (if any), and the symbol
-   index (if built) — if step 2 was skipped, tell the agent no symbol
-   index exists and it should read the target files directly instead.
-   Ask for `{"findings": [...]}` where each finding has
-   `toolSource` set (`"real-tool"` if the named tool actually ran and
-   covered that finding, `"llm-reasoned"` with an explicit
-   `fallbackReason` otherwise). Write its output to a scratch JSON file.
+   target files, test files, the harness results file (if step 1 produced
+   one), and the symbol index (if built) — if step 2 was skipped, tell the
+   agent no symbol index exists and it should read the target files
+   directly instead. Ask for `{"findings": [...]}` where each finding has
+   `toolSource` set: `"real-tool"` with `resultsFile` and `mutantId` for a
+   mutant read from that results file, `"llm-reasoned"` with an explicit
+   `fallbackReason` otherwise. Write its output to a scratch JSON file.
 4. Dispatch the `assertion-auditor` agent AGAIN, in **Verify mode**, once
    per Find-phase finding (or as a batch if your dispatch prompt makes the
    per-finding independence explicit) — a fresh, independent read of the
@@ -44,7 +48,9 @@ this run faster by skipping it; the capability does not exist.
    survives, `confirmed: false` is dropped as refuted, and anything else
    (key missing, non-boolean, no record for a finding) is an abstain that is
    kept as `verification: "unverified"`, warned about on stderr and counted
-   in the summary's `unverifiedCount` (an abstain is never a pass),
+   in the summary's `unverifiedCount` (an abstain is never a pass), drops
+   every real-tool finding whose `resultsFile`/`mutantId` citation does not
+   re-derive from the tool's own sidecar,
    forces every surviving finding's `fixability` to `"advisory"`, and
    writes `analysis/zeugnis/reports/ASSERTION_AUDIT.md` (real-tool and llm-reasoned
    findings in clearly separate sections — never blended) and
@@ -69,6 +75,10 @@ single-flight rule the rest of the plugin relies on.
   always use `"advisory"`; the writer script forces it regardless, but a
   request that already respects the rule wastes less of the agent's
   effort correcting itself.
+- Do not run `mutmut run` or `mutmut apply` in the working tree to get a
+  real-tool label: the hook denies it, and a real-tool finding is only
+  accepted with a harness citation anyway. To also write the tests that
+  kill the survivors, use `zeugnis-mutation-harden` instead.
 - Do not silently merge real-tool and llm-reasoned findings into one
   table when reporting to the user — keep the same separation the
   Markdown report uses.
