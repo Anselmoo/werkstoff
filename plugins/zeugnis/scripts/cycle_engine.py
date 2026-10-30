@@ -15,6 +15,11 @@ Rules enforced here:
     rejects (raises, exit 2) any "fixed" outcome for a finding that
     lib.ledger.is_fixable() says is not fixable, and any "fixed" outcome
     at all when mode == "propose".
+  * mutation-harden-kill-proof (issue #142) -- a "fixed" outcome for the
+    mutation_harden domain additionally needs `mutantId` (naming the finding
+    `mutant:<id>`) and a `proofFile` that lib.mutation_results.load_proof
+    accepts: the new test passed unmutated and failed with the mutant applied.
+    plan-next-pass never picks that domain; zeugnis-mutation-harden works it.
   * cycle-convergence-stop — record-pass-result reports converged=true and
     the CLI's exit code signals "stop" so the calling session's loop
     cannot mistake "converged" for "keep going."
@@ -72,6 +77,8 @@ from lib.ledger import (  # noqa: E402
     save_ledger,
     upsert_finding,
 )
+from lib.constants import TEST_SCOPE_DOMAINS  # noqa: E402
+from lib.mutation_results import MutationResultsError, load_proof  # noqa: E402
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
 from lib.verification import unverified_blockers
 
@@ -134,6 +141,11 @@ def _pick_constraint_domain(ledger: dict, repo_root: str) -> str:
 
     by_domain = {}
     for record in findings.values():
+        # Only domains this cycle can run a pass for. mutation_harden findings
+        # live in the same ledger but are worked by zeugnis-mutation-harden;
+        # picking that domain here would plan a pass nothing executes.
+        if record["domain"] not in DOMAIN_ORDER_FALLBACK:
+            continue
         by_domain.setdefault(record["domain"], {"escalated": 0, "open_high": 0, "open_total": 0})
         bucket = by_domain[record["domain"]]
         if record["status"] == "escalated":
@@ -244,6 +256,23 @@ def cmd_record_pass_result(args) -> int:
                     file=sys.stderr,
                 )
                 return 2
+            # mutation_harden (issue #142): a surviving mutant is "fixed" only
+            # by a test PROVEN to kill it -- passes on the unmutated copy,
+            # fails with the mutant applied. The proof is the harness's own
+            # record; a missing or non-killing one is a refusal, not a pass.
+            if domain in TEST_SCOPE_DOMAINS:
+                try:
+                    if f"mutant:{entry.get('mutantId')}" != finding_id:
+                        raise MutationResultsError(
+                            f"mutantId {entry.get('mutantId')!r} does not name finding {finding_id!r}"
+                        )
+                    load_proof(repo_root, entry.get("proofFile") or "", entry.get("mutantId") or "")
+                except MutationResultsError as exc:
+                    print(
+                        f"refusing outcome=fixed for finding {finding_id!r}: no kill proof ({exc})",
+                        file=sys.stderr,
+                    )
+                    return 2
 
         upsert_finding(
             ledger,

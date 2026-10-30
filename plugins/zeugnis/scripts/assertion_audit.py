@@ -19,6 +19,12 @@ attempt. This script is the enforcement layer around that judgment:
   * rule tool-source-labeling: every finding must carry toolSource, and
     the Markdown report renders real-tool and llm-reasoned findings in
     two clearly separated sections — never one blended table.
+  * rule real-tool-cites-results (issue #142): "real-tool" is no longer a
+    label a finding can simply claim. It must cite `resultsFile` (written by
+    mutation_harden.py collect) and `mutantId`; lib.mutation_results.
+    verify_citation re-opens the tool's own sidecar, checks its hash, and
+    re-derives the mutant's status. A citation that fails is dropped, the
+    same as a finding with no toolSource.
 
 Usage:
     python3 assertion_audit.py <repo_root> --find-json <path> --verify-json <path>
@@ -39,6 +45,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.constants import TOOL_SOURCE_LLM, VALID_TOOL_SOURCES  # noqa: E402
+from lib.mutation_results import MutationResultsError, verify_citation  # noqa: E402
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
 from lib.schema import InvalidFindingError, validate_finding  # noqa: E402
 from lib.verification import begin_run, is_unverified, reconcile_requested, unverified_evidence, write_summary
@@ -97,6 +104,13 @@ def main() -> int:
         if f["toolSource"] not in VALID_TOOL_SOURCES:
             print(f"WARNING: dropping finding with invalid toolSource={f['toolSource']!r}", file=sys.stderr)
             continue
+        if f["toolSource"] == "real-tool":
+            try:
+                verify_citation(repo_root, f)
+            except MutationResultsError as exc:
+                print(f"WARNING: dropping real-tool finding whose citation does not hold ({exc}): {f}",
+                      file=sys.stderr)
+                continue
         if args.requested_tool and f["toolSource"] == TOOL_SOURCE_LLM and not f.get("fallbackReason"):
             print(
                 f"WARNING: dropping finding: requested-tool={args.requested_tool!r} was named but "
