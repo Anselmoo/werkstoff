@@ -5,6 +5,8 @@ Releases before the rename were published as `codebase-consistency`; tags under 
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [1.3.0] - 2026-10-30
 ### Changed
 - **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
   `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`
