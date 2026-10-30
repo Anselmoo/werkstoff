@@ -326,6 +326,38 @@ class TestHarnessRefusals(unittest.TestCase):
                     mh.require_copy(path)
 
 
+class TestProofImportsTheCopy(unittest.TestCase):
+    """A project installed editable imports the WORKING TREE's package from
+    inside a proof copy; applying the mutant there would then prove nothing.
+    prove() pins the copy's import root first and refuses (verdict invalid)
+    when the module still resolves outside the copy."""
+
+    def test_dotted_module_and_import_root(self):
+        self.assertEqual(mh.dotted_module("shop.pricing.x_discount__mutmut_3"), "shop.pricing")
+        self.assertEqual(mh.dotted_module("shop.cart.xǁCartǁtotal__mutmut_1"), "shop.cart")
+        copy = Path("/c")
+        self.assertEqual(mh.import_root(copy, "src/shop/pricing.py", "shop.pricing"), copy / "src")
+        self.assertEqual(mh.import_root(copy, "shop/pricing.py", "shop.pricing"), copy)
+        self.assertEqual(mh.import_root(copy, "src/shop/__init__.py", "shop"), copy / "src")
+        self.assertEqual(mh.import_root(copy, "odd/place.py", "shop.pricing"), copy)
+
+    def test_pinned_root_wins_and_outside_origin_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tree, copy = Path(tmp) / "tree", Path(tmp) / "copy"
+            for root in (tree, copy):
+                (root / "src" / "zshopx").mkdir(parents=True)
+                (root / "src" / "zshopx" / "__init__.py").write_text("")
+                (root / "src" / "zshopx" / "pricing.py").write_text("X = 1\n")
+            # The editable-install stand-in: the working tree is already on the path.
+            stale = {**os.environ, "PYTHONPATH": str(tree / "src")}
+            outside = mh.module_origin(sys.executable, "zshopx.pricing", copy, stale)
+            self.assertFalse(mh.imports_from_copy(outside, copy))
+            pinned = mh.test_env(mh.import_root(copy, "src/zshopx/pricing.py", "zshopx.pricing"))
+            pinned["PYTHONPATH"] += os.pathsep + str(tree / "src")
+            self.assertTrue(mh.imports_from_copy(mh.module_origin(sys.executable, "zshopx.pricing", copy, pinned), copy))
+            self.assertFalse(mh.imports_from_copy(None, copy))
+
+
 @unittest.skipUnless(os.environ.get("ZEUGNIS_MUTMUT"), "set ZEUGNIS_MUTMUT to a mutmut 3 binary to run")
 class TestEndToEnd(unittest.TestCase):
     """prepare -> run-shard -> collect -> prove -> remeasure -> report on a

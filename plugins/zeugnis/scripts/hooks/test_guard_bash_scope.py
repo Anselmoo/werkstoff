@@ -437,6 +437,16 @@ class TestMutationToolsDeniedOutsideCopy(unittest.TestCase):
         with Repo() as repo:
             self.assertEqual(decision(run(repo, f"echo start\n{MUTMUT_RUN}")), "deny")
 
+    def test_unterminated_heredoc_body_still_scanned(self):
+        """No terminator: nothing is stripped, so the body can only deny more."""
+        with Repo() as repo:
+            self.assertEqual(decision(run(repo, f"cat > n.md <<'EOF'\n{MUTMUT_RUN}\n")), "deny")
+
+    def test_quoted_heredoc_marker_hides_nothing(self):
+        with Repo() as repo:
+            cmd = f'echo "x <<EOF"\n{MUTMUT_RUN}\nEOF'
+            self.assertEqual(decision(run(repo, cmd)), "deny")
+
     def test_after_heredoc_denied(self):
         with Repo() as repo:
             copy = make_copy(repo)
@@ -481,6 +491,16 @@ class TestMutationSegmentation(unittest.TestCase):
             r = subprocess.run([sys.executable, str(scripts / "hooks" / HOOK.name)], input=payload,
                                capture_output=True, text=True, timeout=30, env=env)
             self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class TestHeredocBodyIsText(unittest.TestCase):
+    """The #73 false-positive class: a heredoc body is text a command reads."""
+
+    def test_readme_heredoc_mentioning_mutmut_allowed(self):
+        with Repo() as repo:
+            for cmd in (f"cat > README.md <<'EOF'\nRun it:\n\n    {MUTMUT_RUN}\nEOF",
+                        f"cat > README.md <<-EOF\n\t{MUTMUT_APPLY} {MUTANT}\n\tEOF\necho done"):
+                self.assertEqual(decision(run(repo, cmd)), "allow", cmd)
 
 
 class TestMutationToolsAllowedInsideCopy(unittest.TestCase):

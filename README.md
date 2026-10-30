@@ -25,7 +25,8 @@ Prompts** section showing what to actually say to Claude Code to trigger it.
   code *confabulates* (**confabulation** — an LLM confidently filling a
   gap with plausible-but-false content):
   declared dependencies that don't exist (hallucination detection), tests
-  that assert nothing (LLM-reasoned assertion/mutation strength), contracts
+  that assert nothing (LLM-reasoned assertion/mutation strength, or a real
+  mutmut run whose survivors it kills with proven tests), contracts
   drifted from their call-sites (machine-checkable contract-drift), and
   unreliable agentic-loop definitions — plus a bounded autonomous
   self-optimization cycle (`zeugnis-cycle`) with an opt-in propose/fix mode.

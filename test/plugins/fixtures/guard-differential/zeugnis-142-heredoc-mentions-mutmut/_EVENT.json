@@ -1,0 +1,6 @@
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "cat > notes.md <<'EOF'\nRun the shard with:\n\n    mutmut run\nEOF"
+  }
+}

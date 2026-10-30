@@ -503,10 +503,57 @@ def proof_name(records: Path, mutant_id: str) -> str:
     return name
 
 
-def run_test(python: str, test_id: str, cwd: Path, timeout: int) -> tuple[int, str]:
+def dotted_module(mutant_id: str) -> str:
+    """`shop.pricing` from mutmut 3's `shop.pricing.x_discount__mutmut_3` (or
+    `shop.pricing.xǁCartǁtotal__mutmut_1` for a method)."""
+    parts = mutant_id.split(".")
+    for i, part in enumerate(parts):
+        if part.startswith(("x_", "xǁ")):
+            return ".".join(parts[:i])
+    return ".".join(parts[:-1])
+
+
+def import_root(copy: Path, module_file: str, dotted: str) -> Path:
+    """The directory the copy's module is imported from: `src/shop/pricing.py`
+    as `shop.pricing` -> `<copy>/src`. Falls back to the copy root when the
+    file path does not end in the dotted name (a flat layout)."""
+    path = Path(module_file)
+    names = dotted.split(".")
+    tail = [*names[:-1], names[-1] + ".py"] if path.name != "__init__.py" else [*names, "__init__.py"]
+    if len(path.parts) >= len(tail) and list(path.parts[-len(tail):]) == tail:
+        return copy.joinpath(*path.parts[: -len(tail)])
+    return copy
+
+
+def test_env(root: Path) -> dict:
+    """PYTHONPATH with the copy's import root first. Without it a project
+    installed editable (`pip install -e .`) imports the WORKING TREE's package
+    from inside the copy, `mutmut apply` mutates a file the test never loads,
+    and every real kill reads as 'survives'."""
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(p for p in (str(root), env.get("PYTHONPATH", "")) if p)
+    return env
+
+
+def module_origin(python: str, dotted: str, cwd: Path, env: dict) -> Path | None:
+    """Where `dotted` really imports from for the interpreter the test uses."""
+    code = f"import importlib.util as u; s = u.find_spec({dotted!r}); print(s.origin if s else '')"
+    out = subprocess.run([python, "-c", code], cwd=cwd, env=env, capture_output=True, text=True, check=False)
+    origin = out.stdout.strip()
+    return Path(origin) if out.returncode == 0 and origin else None
+
+
+def imports_from_copy(origin: Path | None, copy: Path) -> bool:
+    # resolve() is right HERE, unlike in lib.mutation_scope: this asks where
+    # Python actually loads the file from (macOS /tmp is /private/tmp), not
+    # whether a path is lexically inside a boundary.
+    return origin is not None and origin.resolve().is_relative_to(copy.resolve())
+
+
+def run_test(python: str, test_id: str, cwd: Path, timeout: int, env: dict | None = None) -> tuple[int, str]:
     try:
         out = subprocess.run([python, "-m", "pytest", "-q", "-p", "no:cacheprovider", test_id], cwd=cwd,
-                             capture_output=True, text=True, timeout=timeout, check=False)
+                             env=env, capture_output=True, text=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
         return -1, f"timed out after {timeout}s"
     return out.returncode, tail(out.stdout + out.stderr)
@@ -539,13 +586,19 @@ def cmd_prove(args, repo: Path) -> dict:
     mutmut = find_mutmut(args.mutmut)
     python = find_python(args.python, mutmut)
     module = proof_copy / mutant["module"]
+    dotted = dotted_module(args.mutant)
+    env = test_env(import_root(proof_copy, mutant["module"], dotted))
+    origin = module_origin(python, dotted, proof_copy, env)
     original = sha256_file(module)
-    clean_exit, clean_tail = run_test(python, args.test_id, proof_copy, args.timeout)
+    clean_exit, clean_tail = run_test(python, args.test_id, proof_copy, args.timeout, env)
     applied = subprocess.run([mutmut, "apply", args.mutant], cwd=proof_copy, capture_output=True, text=True,
                              check=False)
     mutated = sha256_file(module)
-    mutant_exit, mutant_tail = run_test(python, args.test_id, proof_copy, args.timeout)
-    if clean_exit == 0 and mutant_exit == 1 and applied.returncode == 0 and mutated != original:
+    mutant_exit, mutant_tail = run_test(python, args.test_id, proof_copy, args.timeout, env)
+    # A verdict is only about the mutant if the test imports the copy's module.
+    if not imports_from_copy(origin, proof_copy):
+        verdict = "invalid"
+    elif clean_exit == 0 and mutant_exit == 1 and applied.returncode == 0 and mutated != original:
         verdict = "killed"
     elif clean_exit == 0 and mutant_exit == 0:
         verdict = "survives"
@@ -555,7 +608,8 @@ def cmd_prove(args, repo: Path) -> dict:
              "sourceFile": mutant["module"], "testFile": args.test_file, "testId": args.test_id,
              "testFileSha256": sha256_file(test_path), "cleanExit": clean_exit, "mutantExit": mutant_exit,
              "applyExit": applied.returncode, "originalSourceSha256": original, "mutatedSourceSha256": mutated,
-             "verdict": verdict, "cleanTail": clean_tail, "mutantTail": mutant_tail, "python": python,
+             "verdict": verdict, "module": dotted, "importedFrom": str(origin) if origin else None,
+             "importsFromCopy": imports_from_copy(origin, proof_copy), "cleanTail": clean_tail, "mutantTail": mutant_tail, "python": python,
              "createdAt": now_iso()}
     proof_path = records / f"proof-{name}.json"
     write_json(proof_path, proof)

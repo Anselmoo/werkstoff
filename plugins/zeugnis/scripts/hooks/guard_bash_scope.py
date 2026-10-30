@@ -23,7 +23,9 @@ scripts/mutation_harden.py prepared -- `lib.mutation_scope.copy_root_for`,
 a lexical check, decides. Everywhere else, the working tree included, they
 are denied. The effective cwd starts at the event's cwd and follows `cd`
 through `&&`, `;` and newlines; after `|`, `||`, `&`, a heredoc, `pushd` or
-`env -C` it is unknown, and an unknown cwd is never a copy.
+`env -C` it is unknown, and an unknown cwd is never a copy. Heredoc body
+lines are text, not commands, and are skipped (_strip_heredoc_bodies), so a
+README written through `cat <<'EOF'` may mention `mutmut run`.
 
 Same fail-closed / inert-when-absent / escape-hatch contract as
 guard_edit_scope.py — see that file's docstring for the full protocol
@@ -303,6 +305,57 @@ def _find_zeugnis_root(cwd: str) -> str | None:
         here = parent
 
 
+RE_HEREDOC = re.compile(r"<<(-?)\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\2")
+
+
+def _unquoted_heredocs(line: str) -> list[tuple[bool, str]]:
+    """(strip_tabs, delimiter) for each `<<WORD` operator on `line` that sits
+    outside quotes -- `echo "a <<EOF"` opens no heredoc."""
+    found: list[tuple[bool, str]] = []
+    quote = ""
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if ch == "\\" and quote != "'":
+            i += 2
+            continue
+        if quote:
+            quote = "" if ch == quote else quote
+        elif ch in ("'", '"'):
+            quote = ch
+        elif line.startswith("<<", i) and not line.startswith("<<<", i):
+            match = RE_HEREDOC.match(line, i)
+            if match:
+                found.append((match.group(1) == "-", match.group(3)))
+                i = match.end()
+                continue
+        i += 1
+    return found
+
+
+def _strip_heredoc_bodies(command: str) -> str:
+    """Drop heredoc BODY lines, which are text a command reads, not commands
+    the shell runs -- a README written with `cat > f <<'EOF'` may well say
+    `mutmut run` (the #73 false-positive class). The `<<WORD` operator line
+    itself stays, so the copy-only check still marks the cwd unknown after it.
+    A heredoc whose terminator never appears strips NOTHING: the body lines
+    are then scanned as commands, which can only deny more, never less."""
+    lines = command.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        out.append(lines[i])
+        pending = _unquoted_heredocs(lines[i])
+        i += 1
+        for strip_tabs, delimiter in pending:
+            end = next((j for j in range(i, len(lines))
+                        if (lines[j].lstrip("\t") if strip_tabs else lines[j]) == delimiter), None)
+            if end is None:
+                return command
+            i = end + 1
+    return "\n".join(out)
+
+
 def _newlines_as_separators(command: str) -> str:
     """Turn every unquoted newline into ` ; `, so a multi-line command is
     segmented line by line for the copy-only check. shlex.split treats a bare
@@ -342,7 +395,8 @@ COPY_CHECK_SEPARATORS = ("&&", "||", ";", "|", "&", "|&", ";;", "(", ")")
 
 
 def _copy_check_tokens(command: str) -> list[str]:
-    lexer = shlex.shlex(_newlines_as_separators(command), posix=True, punctuation_chars=True)
+    lexer = shlex.shlex(_newlines_as_separators(_strip_heredoc_bodies(command)), posix=True,
+                        punctuation_chars=True)
     lexer.whitespace_split = True
     return list(lexer)
 
@@ -432,8 +486,9 @@ def _copy_only_denial(command: str, cwd: str) -> str | None:
         if not segment:
             continue
         argv = _skip_wrappers(segment)
-        # A heredoc body's lines are text, not commands: a `cd` among them
-        # must not be followed. Sticky, so a later absolute `cd` cannot revive it.
+        # After a heredoc the cwd is unknown (its body was stripped above, but a
+        # body whose terminator was missing is still here as text). Sticky, so a
+        # later absolute `cd` cannot revive it.
         heredoc = heredoc or any(tok.startswith("<<") for tok in segment)
         if heredoc:
             current = None

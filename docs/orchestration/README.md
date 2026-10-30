@@ -85,6 +85,7 @@ into another workflow's beats and gates.
 |---|---|
 |`andon-loop`|Owns and persists the OKF ledger; a pass is a traversal of the whole stream|
 |`zeugnis-cycle`|Re-runs audits to convergence under a pass cap enforced by `scripts/cycle_engine.py`|
+|`zeugnis-mutation-harden`|Prepares a fresh archive copy, runs the mutation tool as a background script, then proves, re-measures and reports; every step reads the files the previous one wrote under `analysis/zeugnis/mutation/<runId>/`|
 |`befund-autopilot`|CHECK -> PLAN -> approval gate -> FIX+VALIDATE, each phase consuming the last|
 |`befund-transform-brief`|Gated on `stage_graph.json`; degrades to "Ready-with-gaps" without it|
 |`befund-transform-execute`|Applies exactly one human-authorized phase of `MODERNIZATION_BRIEF.md`|
