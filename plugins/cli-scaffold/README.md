@@ -1,9 +1,49 @@
 # cli-scaffold
 
-**Generates production-grade command-line applications in 12 languages, each
-built against one unified five-pillar architecture doctrine and each
-ecosystem's real idioms, then verified against that doctrine before it is
-shown to you.**
+**Generates a production-grade command-line application in one of 12 languages, built
+against one five-pillar architecture doctrine and checked against it before you see it.**
+
+**The name.** A *scaffold* is the temporary frame a building goes up on. Here it is the
+first working skeleton of a CLI — layout, help text, exit codes, tests, distribution —
+which you then own and grow.
+
+- **Use when** you are starting a new CLI and want its structure, `--help`, exit codes and
+  packaging to follow the language's real idioms from the first commit.
+- **Not when** the code is already written and you want it audited for drift or weak
+  assertions — use `zeugnis`; to check it against a doctrine you wrote, use `lehre`.
+
+## Use case
+
+**Situation.** You need a small inventory tool for widgets that composes in a pipeline
+(`--json` on stdout, diagnostics on stderr) and ships as a Python package. No code
+exists yet.
+**Call.** `/cli-scaffold python called widgetctl inspect and list widgets`
+**Writes.** `generated-clis/widgetctl/` under the current directory: source package,
+`pyproject.toml`, `tests/`, `docs/`, `README.md`, `LICENSE`. The path is validated by
+`scripts/write_scope.py` before anything is written.
+**Next.** Read the verification result; fixable gaps are repaired inside a bounded loop,
+the rest are listed for you. Then build and run the CLI yourself, since the verifier
+never does.
+
+```
+Usage: widgetctl [OPTIONS] [WIDGET_ID]
+
+  Inspect and list widgets.
+
+Options:
+  --json        Emit machine-readable output on stdout.
+  --no-input    Never prompt; fail with exit code 2 instead.
+  --verbose     Write diagnostics to stderr.
+  --help        Show this message and exit.
+
+Exit codes:
+  0  success
+  1  runtime error
+  2  usage error
+```
+
+Excerpt from `plugins/cli-scaffold/scripts/fixtures/widgetctl/docs/help.golden.txt`, the
+reference scaffold the plugin's tests check against.
 
 ## Why this exists
 

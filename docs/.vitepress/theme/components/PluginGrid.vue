@@ -11,67 +11,73 @@ const PLUGINS = [
     name: 'befund',
     url: '/plugins/befund',
     summary:
-      'Codebase self-assessment: stage/wire mapping, docs-vs-code drift, CI/CD topology, house-rules enforcement, multi-repo dashboard.',
+      'Makes a codebase describe its own health, with every finding tied to file:line evidence, and edits source only behind an authorization recorded on disk.',
   },
   {
     name: 'zeugnis',
     url: '/plugins/zeugnis',
     summary:
-      'Catches AI confabulation: hallucinated dependencies, assertion-less tests, contract drift, unreliable agentic loops.',
+      'Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it.',
   },
   {
     name: 'zirkel',
     url: '/plugins/zirkel',
     summary:
-      'A prompt-engineering technique library composed by zirkel-solve into a clarify → explore → decompose → execute → revise pipeline.',
+      'Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone starts executing it.',
   },
   {
     name: 'cupertino',
     url: '/plugins/cupertino',
-    summary: 'A Steve-Jobs-grounded design and craft discipline for a project’s whole lifecycle.',
+    summary:
+      'A design and craft discipline rooted in Steve Jobs\' documented decisions, run as a fixed lifecycle of stages from experience to ship, not a menu of design techniques.',
   },
   {
     name: 'arbeitsplan',
     url: '/plugins/arbeitsplan',
     summary:
-      'Compiles a problem into an executable, budgeted workflow and runs it as a redundant swarm — N candidates over the same scope in their own worktrees, judged blind, exactly one landed and the rest deleted, so nothing is ever merged.',
+      'Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result.',
   },
   {
     name: 'andon',
     url: '/plugins/andon',
     summary:
-      'An evidence-grounded harden-and-advance loop: propose maximally, verify adversarially, never advance past an unproven wire.',
+      'Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.',
   },
   {
     name: 'cli-scaffold',
     url: '/plugins/cli-scaffold',
-    summary: 'Scaffolds production-grade CLIs across 12 languages against a frozen five-pillar doctrine.',
+    summary:
+      'Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it.',
   },
   {
     name: 'passung',
     url: '/plugins/passung',
-    summary: 'Harmonizes undocumented pattern variants in an already-modern, live codebase.',
+    summary:
+      'Finds a convention your codebase follows two or more valid ways, picks the one that should become canon, and aligns every divergent site to it with a provable equivalence check.',
   },
   {
     name: 'takt',
     url: '/plugins/takt',
-    summary: 'Enforces declared beat order at the tool-call layer; inert until a repo declares its beats.',
+    summary:
+      'Refuses an edit or dispatch that runs ahead of a step the repository said must come first.',
   },
   {
     name: 'lehre',
     url: '/plugins/lehre',
-    summary: 'Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.',
+    summary:
+      'Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.',
   },
   {
     name: 'nacharbeit',
     url: '/plugins/nacharbeit',
-    summary: 'Reworks a Claude Code plugin to the Anthropic standard: a calibrated review of seven surfaces, then a locked, blind-verified fix pass.',
+    summary:
+      'Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short.',
   },
   {
     name: 'matrize',
     url: '/plugins/matrize',
     summary:
-      'Derives a named, platform-neutral design system from reference exemplars \u2014 measured, graded for trust and rights, then emitted to any target.',
+      'Derives a design system once from reference exemplars you admire, names every element, and emits it to any target.',
   },
 ]
 </script>

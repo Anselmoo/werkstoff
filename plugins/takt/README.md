@@ -1,12 +1,35 @@
 # takt
 
-**Enforces declared beat order at the tool-call layer, so sequencing is a gate rather
-than a sentence.**
+**Refuses an edit or dispatch that runs ahead of a step the repository said must come first.**
 
-*Takt* is the beat: in music the measure that paces a piece, and on a line the
+**The name.** *Takt* is the beat: in music the measure that paces a piece, and on a line the
 *Taktzeit* that paces production — the interval every station is built around, so a
 station cannot run ahead of the one feeding it. This plugin is the shop-floor half.
 It holds no opinion about what the work is, only about what may not begin yet.
+
+- **Use when** one step must precede another (the design council before UI code) and a
+  sentence in a SKILL.md has not been enough to make it happen.
+- **Not when** you want the beats authored for you — use `arbeitsplan`, which compiles them
+  and leaves takt to enforce — or want a handoff proven rather than ordered — use `andon`.
+
+## Use case
+
+**Situation.** The repo declares that UI code comes after `cupertino-council`. Claude goes to
+edit a component before the council has run.
+**Call.** The `ui-before-council` beat from "Declaring beats" in `.claude/takt.local.md`, and
+the call it denies: `Edit src/ui/Button.tsx`.
+**Writes.** Nothing. takt only reads and refuses; you write the declaration, and whatever
+performs the beat creates `.takt/council-done`.
+**Next.** Run the beat, create its marker, retry the edit. If the order genuinely does not
+apply, `TAKT_DISABLE_GUARD=1` bypasses the guard.
+
+```
+takt: 'src/ui/Button.tsx' runs ahead of beat 'ui-before-council'. cupertino-council runs
+before UI code, never after. Required marker '.takt/council-done' does not exist. ...
+```
+
+stderr of `plugins/takt/hooks/takt_guard.py` (exit code 2), run on the README's own
+`ui-before-council` declaration below; wrapped here and the escape-hatch tail elided.
 
 ## Why this exists
 
