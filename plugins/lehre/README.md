@@ -1,10 +1,40 @@
 # lehre
 
-**Researches a code style, pattern and architecture doctrine — then denies the write
-that would violate it.**
+**Researches a code style, pattern and architecture doctrine, then denies the write that would
+violate it.**
 
-A *Lehre* is a go/no-go gauge: a fixture a part either passes through or is rejected by.
-It also means doctrine. This plugin is both halves.
+**The name.** A *Lehre* is a go/no-go gauge: a fixture a part either passes through or is
+rejected by. It also means doctrine. This plugin is both halves.
+
+- **Use when** you want architecture or style rules that hold at write time, with an authority
+  and a rationale on each, instead of rules a model may skip under load.
+- **Not when** the rules are already written and you only want the code audited against them —
+  use `befund`. Not when the variants are undocumented and the canon has to be derived from the
+  code — use `passung`.
+
+## Use case
+
+**Situation.** A CSV-to-Parquet normaliser has three vendor adapters, and you want adapters to
+stay ignorant of the Parquet writer and the domain to stay ignorant of the ORM. Today that
+lives in a review comment.
+**Call.** `lehre-codify` (after `lehre-preflight`): "establish our code standards for this repo".
+**Writes.** `.lehre/ruleset.json`. Later steps add `.lehre/units/*.done` and
+`.lehre/DOCTRINE_MAP.html`.
+**Next.** Read the blocking rules, run `lehre-gauge` to see what already violates them, then
+`lehre-brief` for the approval gate before `lehre-conform` fixes anything.
+
+```json
+  "rules": [
+    {"id": "adapters-know-no-writer", "title": "Adapters must not import the writer",
+     "severity": "blocking", "sourceMode": "evidence-backed",
+     "authority": {"source": "Clean Architecture (Martin), the Dependency Rule"},
+     "evidence": ["src/adapters/vendor_a.py:14"],
+     "rationale": "An adapter that knows the output format cannot be reused for another one.",
+     "check": {"kind": "python-import", "paths": ["src/adapters/*"], "forbid": ["src.writer.*"]}},
+    {"id": "domain-knows-no-orm", "title": "The domain must not import the ORM",
+```
+
+Excerpt from `plugins/lehre/scripts/fixtures/sample_doctrine_ruleset.json`.
 
 ## Why this exists
 

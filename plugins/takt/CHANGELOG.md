@@ -3,6 +3,12 @@
 All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
+### Changed
+- **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
+  `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`
+  with a real call and a verbatim excerpt of committed output.
+- **`plugin.json` description**: now the README thesis, word for word, and synced to
+  `marketplace.json`.
 
 ## [1.0.3] - 2026-10-20
 ### Changed

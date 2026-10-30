@@ -11,86 +11,32 @@ uses.
 
 ## Plugins
 
-Each plugin exists to catch or enforce one distinct thing — pick by problem,
-not by feature list. Every plugin README opens with a **Why this exists**
-section explaining the specific failure mode it targets, and an **Example
-Prompts** section showing what to actually say to Claude Code to trigger it.
+Each plugin catches or enforces one distinct thing — pick by problem, not by
+feature list. Every plugin README opens with the same block: one sentence on
+what it is for, what its (mostly German) name means, **Use when / Not when**
+naming the neighbour to use instead, and one worked **Use case** with a real call
+and a real excerpt of its output.
 
-- **[`befund`](plugins/befund/README.md)** — codebase
-  self-assessment for live, actively-maintained repos: import-graph-based
-  stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit,
-  house-rules convention enforcement, and a multi-repo portfolio
-  dashboard.
-- **[`zeugnis`](plugins/zeugnis/README.md)** — catches where AI-authored
-  code *confabulates* (**confabulation** — an LLM confidently filling a
-  gap with plausible-but-false content):
-  declared dependencies that don't exist (hallucination detection), tests
-  that assert nothing (LLM-reasoned assertion/mutation strength, or a real
-  mutmut run whose survivors it kills with proven tests), contracts
-  drifted from their call-sites (machine-checkable contract-drift), and
-  unreliable agentic-loop definitions — plus a bounded autonomous
-  self-optimization cycle (`zeugnis-cycle`) with an opt-in propose/fix mode.
-- **[`zirkel`](plugins/zirkel/README.md)** — a prompt-engineering
-  technique library for complex/vague tasks, composed by `zirkel-solve`
-  into an actual workflow (clarify-scope, explore-branches,
-  decompose-chain, reason-verify, and more) rather than exposed as a
-  raw technique picker.
-- **[`cupertino`](plugins/cupertino/README.md)** — a Steve-Jobs-grounded
-  design and craft discipline for a project's whole lifecycle, 10 skills
-  each grounded in a specific, real Jobs/Apple decision, composed by
-  `cupertino-review` into one fixed lifecycle pipeline.
-- **[`arbeitsplan`](plugins/arbeitsplan/README.md)** — compiles a stated
-  problem into an executable, budgeted agentic workflow and runs it as a
-  redundant swarm: N candidates over the *same* scope in their own git
-  worktrees, judged blind, exactly one landed and the rest deleted — so
-  nothing is ever merged and a merge conflict cannot occur. Converges by
-  widening, never by retrying; generates the `takt` beats that enforce its
-  order rather than enforcing ordering twice.
-- **[`andon`](plugins/andon/README.md)** — an evidence-grounded
-  harden-and-advance loop for live, actively-maintained codebases:
-  propose maximally, verify adversarially across seven proof strategies,
-  and advance only past a proven wire — never past a broken or unproven
-  one.
-- **[`cli-scaffold`](plugins/cli-scaffold/README.md)** — scaffolds
-  production-grade CLI apps across 12 languages (Python, TypeScript/
-  JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell,
-  POSIX sh), freeform-generated every time against a frozen five-pillar
-  doctrine (UX, backend/core separation, stability, idiomatic
-  distribution, Unix composability) rather than stored boilerplate.
-- **[`passung`](plugins/passung/README.md)** —
-  harmonizes an already-modern, live codebase that grew inconsistent:
-  derives the canonical form for undocumented, non-deprecated pattern
-  variants (documented conventions and version-deprecated idioms are
-  out of scope — see `befund`) via a structured preflight / scan /
-  map / canonize / brief / align / verify / status workflow, with a
-  navigable consistency matrix and an equivalence-verified alignment
-  pass.
+| plugin | what it is for | pick it when | neighbours |
+|---|---|---|---|
+| [`befund`](plugins/befund/README.md) | Makes a codebase describe its own health, with every finding tied to file:line evidence, and edits source only behind an authorization recorded on disk. | you need a diagnosis of the whole codebase before deciding what to change | `passung`, `zeugnis`, `andon` |
+| [`zeugnis`](plugins/zeugnis/README.md) | Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it. | tests pass, signatures match, manifests resolve — and you do not believe it | `befund`, `andon` |
+| [`andon`](plugins/andon/README.md) | Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove. | you want gaps fixed in order, each fix proven before the next | `befund`, `zeugnis` |
+| [`passung`](plugins/passung/README.md) | Finds a convention your codebase follows two or more valid ways, picks the one that should become canon, and aligns every divergent site to it with a provable equivalence check. | the code is modern but every module does the same thing differently | `befund`, `lehre` |
+| [`lehre`](plugins/lehre/README.md) | Researches a code style, pattern and architecture doctrine, then denies the write that would violate it. | the rules should hold while the code is being written, not be found afterwards | `passung`, `befund` |
+| [`zirkel`](plugins/zirkel/README.md) | Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone starts executing it. | the task is vague or has several viable approaches | `arbeitsplan` |
+| [`cupertino`](plugins/cupertino/README.md) | A design and craft discipline rooted in Steve Jobs' documented decisions, run as a fixed lifecycle of stages from experience to ship, not a menu of design techniques. | you are about to design a screen, feature or product line | `matrize` |
+| [`matrize`](plugins/matrize/README.md) | Derives a design system once from reference exemplars you admire, names every element, and emits it to any target. | every project re-guesses its colours, type and spacing | `cupertino` |
+| [`cli-scaffold`](plugins/cli-scaffold/README.md) | Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it. | you are starting a command-line tool | — |
+| [`arbeitsplan`](plugins/arbeitsplan/README.md) | Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result. | a change is big enough to orchestrate rather than do serially | `takt`, `zirkel` |
+| [`takt`](plugins/takt/README.md) | Refuses an edit or dispatch that runs ahead of a step the repository said must come first. | an order between skills or plugins must hold, not just be written down | `arbeitsplan` |
+| [`nacharbeit`](plugins/nacharbeit/README.md) | Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short. | the thing under review is a plugin, not an application | `befund` |
 
-- **[`takt`](plugins/takt/README.md)** — enforces declared beat
-  order at the tool-call layer: denies an edit or a dispatch that runs
-  ahead of the step it depends on, so cross-plugin sequencing is a
-  runtime gate rather than a sentence a model may skip. Inert until a
-  repository declares its beats.
-- **[`lehre`](plugins/lehre/README.md)** — researches a code style,
-  pattern and architecture doctrine from external authority plus real
-  repository evidence, then enforces it at the tool-call layer: a
-  blocking rule denies the write that would violate it. Works from a
-  blank page as well as over an existing tree. Inert until a repository
-  declares a doctrine.
-- **[`nacharbeit`](plugins/nacharbeit/README.md)** — reworks a Claude
-  Code plugin to the official Anthropic standard: a calibrated review of
-  its skills, agents, hooks, scripts, viewers, manifest, README and docs
-  wiring (a sabotage-tested linter plus a finder that must pass a sealed
-  hold-out per rule family), then a tier-gated fix pass under a
-  PreToolUse hook that denies every edit outside the fix lock. Opus- and
-  human-tier findings are surfaced, never auto-applied.
-- **[`matrize`](plugins/matrize/README.md)** — derives a named,
-  platform-neutral design system from reference exemplars: measurement and
-  interpretation stay separate artefacts, every reference is graded both for
-  how far its values can be trusted and for what may be reproduced from it,
-  every named element carries a purpose, a rule and an **anti-rule**, and the
-  DTCG token file — never CSS — is the source every other target is emitted
-  from. References are read-only, enforced by a hook.
+`befund`, `zeugnis`, `andon` and `passung` all work on a live codebase, and they
+are the four most often confused. `befund` diagnoses; `zeugnis` distrusts what
+looks verified; `andon` fixes in order and proves each fix; `passung` resolves
+variants nobody wrote down. Each README's **Not when** line says which one to
+use instead.
 
 ## Install
 

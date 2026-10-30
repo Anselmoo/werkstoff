@@ -1,12 +1,44 @@
 # zirkel
 
-**Staged reasoning-composition for complex, ambiguous, or multi-faceted tasks.**
+**Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone
+starts executing it.**
 
-A *Zirkel* is the pair of dividers used in *Anreissen* — scribing the layout onto a
+**The name.** A *Zirkel* is the pair of dividers used in *Anreissen* — scribing the layout onto a
 workpiece before a single cut is made. It does not remove material; it decides where
 the material will be removed, and everything downstream follows the line it scribed.
 That is this plugin's job: clarify, explore and decompose are the layout, and
 execution follows a line that was drawn deliberately rather than found by cutting.
+
+- **Use when** the task is complex or ambiguous enough that the first idea should not be
+  trusted: scope is unclear, or more than one approach is viable and nobody has weighed them.
+- **Not when** you want the repo's real module and import map — use `befund`
+  (`befund-stage-map`) — or a change built and landed rather than a question reasoned out —
+  use `arbeitsplan`. A simple, well-specified, single-step task needs neither.
+
+## Use case
+
+**Situation.** A feature has four plausible designs and the cheapest one is also the one
+everybody reaches for first. You want the alternatives scored against each other before
+anyone commits to code.
+**Call.** `/zirkel:zirkel-explore-branches How should zirkel persist and surface
+branch-comparison results to the user?`
+**Writes.** `.zirkel/runs/<run-id>/state.json` and
+`.zirkel/runs/<run-id>/branch-comparison.html`.
+**Next.** Take the selected branch (highest total, ties broken by lower risk) into
+`zirkel-decompose-chain`, or let `zirkel-solve` reuse the persisted run for the same task text.
+
+```json
+{"ok": true, "check": "branch-scores", "result": {"scored": [
+  {"name": "Inline guard-only summary", "feasibility": 9, "impact": 3, "risk": 2, "total": 14, ...},
+  {"name": "Standalone D3 branch-comparison viewer", "feasibility": 6, "impact": 9, "risk": 4, "total": 19, ...},
+  {"name": "Radar chart for N-axis comparison", "feasibility": 7, "impact": 4, "risk": 7, "total": 18, ...},
+  {"name": "Defer to a future cross-plugin dashboard", "feasibility": 8, "impact": 2, "risk": 3, "total": 13, ...}],
+ "selected": "Standalone D3 branch-comparison viewer", ...}}
+```
+
+Output of `python3 -B plugins/zirkel/scripts/zirkel.py branch-scores -` on the
+`explore.branches` of `plugins/zirkel/scripts/fixtures/sample_explore_state.json`, reflowed to
+one branch per line with `biggest_blocker` text elided.
 
 ## Why this exists
 

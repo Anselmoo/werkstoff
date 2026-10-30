@@ -1,21 +1,46 @@
 # passung
 
-**Derives which of two or more valid, undocumented patterns already competing in a live
-codebase should become the canon, then aligns every divergent site to it with a
-provable equivalence check.**
+**Finds a convention your codebase follows two or more valid ways, picks the one that should
+become canon, and aligns every divergent site to it with a provable equivalence check.**
 
-A *Passung* is the fit: the tolerance class — H7/g6 and its siblings — that decides
+**The name.** A *Passung* is the fit: the tolerance class — H7/g6 and its siblings — that decides
 whether two mating parts go together, and how. Two parts can each be within spec and
 still not mate, because a fit is a property of the pair, not of either one alone.
 That is the failure this plugin exists for: several variants of one convention, each
 defensible on its own, that do not sit together. It picks the fit and works to it.
 
-Point Claude at a live, already-modern area of your codebase that grew
-inconsistent — divergent architecture, docs, code patterns, and style
-across modules — and get back: a divergence inventory, a navigable
-consistency matrix, a provenance-tracked canon for every undocumented
-pattern, a maintainer-ready alignment brief, and an in-place alignment
-pass with an equivalence check so you can prove nothing drifted.
+- **Use when** one area has grown several undocumented ways of doing the same thing (error
+  handling, logging, test layout, config loading) and nobody has said which one wins.
+- **Not when** the convention is already written down in `CLAUDE.md`, a linter config or an ADR —
+  use `befund` to audit against it. Not when the old way is merely out of date for your language
+  version — `befund` handles that too.
+
+## Use case
+
+**Situation.** `billing` returns `Result` values, `shipping` raises and catches at the boundary,
+and `search` swallows errors with a bare `except`. All three work and none is documented as the
+standard. You want one answer and a map of who deviates.
+**Call.** `/passung-scan billing`, then `/passung-map billing` (`/passung-canonize billing` fills
+in the conformance column).
+**Writes.** `analysis/billing/consistency.json`, `analysis/billing/matrix.json`,
+`analysis/billing/CONSISTENCY_MATRIX.html`.
+**Next.** Sort the matrix by conformance, read the Pattern Card behind each dimension in
+`/passung-brief`, then approve the canon and run `/passung-align billing`.
+
+```json
+{
+  "area": "billing",
+  "modules": ["billing", "shipping", "auth", "notifications", "search", "inventory"],
+  "dimensions": ["error-handling-style", "logging-style", "test-structure", "config-loading"],
+  "cells": [
+    { "module": "billing", "dimension": "error-handling-style", "variant": "return Result<T,E>", "sites": 41, "conformance": 1.0, "example": "src/billing/charge.py:88" },
+    { "module": "shipping", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 17, "conformance": 0.0, "example": "src/shipping/label.py:22" },
+    { "module": "auth", "dimension": "error-handling-style", "variant": "raise + catch at boundary", "sites": 9, "conformance": 0.35, "example": "src/auth/session.py:14" },
+    ...
+```
+
+Excerpt from `plugins/passung/scripts/testdata/sample_matrix.json`, the committed fixture for
+the `matrix.json` shape `/passung-map` writes.
 
 ## Why this exists
 

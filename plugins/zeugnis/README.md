@@ -1,17 +1,49 @@
 # zeugnis
 
-**Audits AI-generated code quality across four independent domains —
-hallucinated dependencies, weak test assertions, contract drift, and
-agentic-loop reliability — with independent verification, and an
-optional bounded self-optimization cycle that can apply fixes in a
-constrained, auto-fixable subset of findings.**
+**Audits code that looks right and is not, and counts a finding only after an independent pass
+has re-checked it.**
 
-A *Zeugnis* is the mill certificate — the EN 10204 *Werkszeugnis* or
+**The name.** A *Zeugnis* is the mill certificate — the EN 10204 *Werkszeugnis* or
 *Abnahmepruefzeugnis* in which a supplier declares what a material actually is. Its
 grades are the point: 2.1 is the supplier's own word, 3.1 is their own inspector, and
 3.2 requires an independent one. A claim is worth what the party behind it is worth.
 That is this plugin's rule — no finding counts until a pass that did not produce it
 re-checks it, which is why every audit here has a separate Verify phase.
+
+- **Use when** AI-written code passes review and CI but you doubt it: tests that run a path
+  without asserting anything meaningful, docstrings or schemas that drifted, dependency names
+  that may not exist, agent loops with no bound.
+- **Not when** a README or ADR no longer matches the code — use `befund`; or you need proof
+  that one specific change or wire is correct — use `andon`.
+
+## Use case
+
+**Situation.** An agent wrote a pricing module and its tests, and CI is green. You want to know
+whether the tests would notice a broken discount, whether its docstrings still say what the
+code does, and whether the retry loop it left behind can run away.
+**Call.** `/zeugnis:zeugnis-cycle`
+**Writes.** `analysis/zeugnis/ledger.json` (pass-by-pass state), one line per pass in
+`analysis/zeugnis/reports/ZEUGNIS_CYCLE.md`, and each audited domain's report and
+`<domain>_summary.json` beside it.
+**Next.** An `escalated` finding was reopened past `max_reopens` and needs a human; the cycle
+will not close it by itself. For `open` findings, start a new `zeugnis-cycle` invocation, which
+gets a fresh pass cap.
+
+```json
+"passes": [
+  ...
+  {"passNumber": 4, "domain": "agentic_reliability", "closed": 1, "fixOrDraftOutcomes": 1},
+  {"passNumber": 5, "domain": "code_change_review", "closed": 0, "fixOrDraftOutcomes": 0}
+],
+"findings": {
+  ...
+  "agentic-2": {"status": "open", "domain": "agentic_reliability", "category": "missing-escalation", "severity": "Medium", "evidence": "src/loop/runner.py:60", "reopenCount": 0},
+  "code-1": {"status": "escalated", "domain": "code_change_review", "category": "silent-fallback", "severity": "High", "evidence": "src/ingest/parser.py:130", "reopenCount": 4}
+}
+```
+
+Excerpt from `plugins/zeugnis/scripts/fixtures/sample_burndown_ledger.json`, the shape
+`analysis/zeugnis/ledger.json` takes.
 
 ## Why this exists
 

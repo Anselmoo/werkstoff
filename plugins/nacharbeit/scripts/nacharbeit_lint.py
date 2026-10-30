@@ -199,6 +199,7 @@ META: dict[str, tuple[str, str]] = {
     "P-README-H1": ("minor", "meaning"),
     "P-README-THESIS": ("nit", "meaning"),
     "P-README-WHY-NOT": ("minor", "cannibalization"),
+    "P-README-PURPOSE-BLOCK": ("minor", "cannibalization"),
     "P-README-INSTALL": ("minor", "procedure"),
     "P-README-PROMPTS-BLOCK": ("minor", "procedure"),
     "P-README-PROMPT-TRIPLE": ("minor", "procedure"),
@@ -1809,7 +1810,8 @@ def r_p_readme_thesis(u: Unit, ctx: list[Unit]) -> list[dict]:
         return []
     i = hs[0][0]
     nxt = next((ln for ln in u.lines[i:] if ln.strip()), "")
-    if nxt.startswith("**"):
+    # The purpose block's `**The name.**` paragraph is bold too; it must not pass as the thesis.
+    if nxt.startswith("**") and not nxt.startswith("**The name.**"):
         return []
     return [_finding(u, "P-README-THESIS", "no bold one-line thesis directly under the H1", "state what the plugin does in one bold sentence under the title", line=i + 1, quote=nxt[:120])]
 
@@ -1822,6 +1824,66 @@ def r_p_readme_why_not(u: Unit, ctx: list[Unit]) -> list[dict]:
     if not missing:
         return []
     return [_finding(u, "P-README-WHY-NOT", f"README lacks {missing}; a reader cannot tell the problem it owns from the siblings it defers to", "add both sections, naming the sibling plugins with adjacent jobs", line=None, quote=", ".join(missing))]
+
+
+USE_CASE_LABELS = ("**Situation.**", "**Call.**", "**Writes.**", "**Next.**")
+
+
+def r_p_readme_purpose_block(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """The purpose block (#144): a reader picks the plugin from its first screen.
+
+    Above the first `##`: the thesis (P-README-THESIS), a `**The name.**` paragraph,
+    and a `- **Use when**` / `- **Not when**` pair whose not-when line names a sibling
+    plugin. Then a `## Use case` section walking situation, call, writes and next step,
+    with a fenced excerpt of real output. Content quality stays with PQ-THESIS and
+    PQ-NOT-SECTION; this rule only proves the block exists in the fixed shape.
+    """
+    if not _readme(u) or not u.exists:
+        return []
+    heads = _headings(u)
+    first_h2 = next((i for i, h in heads if h.startswith("## ")), len(u.lines) + 1)
+    intro = u.lines[: first_h2 - 1]
+    problems: list[str] = []
+    if not any(ln.startswith("**The name.**") for ln in intro):
+        problems.append("no `**The name.**` paragraph above the first section")
+    use = next((ln for ln in intro if ln.startswith("- **Use when**")), None)
+    nw_at = next((i for i, ln in enumerate(intro) if ln.startswith("- **Not when**")), None)
+    not_when = None
+    if nw_at is not None:
+        # A wrapped bullet continues on indented lines; the sibling may sit on any of them.
+        bullet = [intro[nw_at]]
+        for ln in intro[nw_at + 1:]:
+            if not ln.strip() or ln.lstrip().startswith("- ") or not ln.startswith(" "):
+                break
+            bullet.append(ln)
+        not_when = " ".join(bullet)
+    if use is None or not_when is None:
+        problems.append("no `- **Use when**` / `- **Not when**` pair above the first section")
+    else:
+        root = u.plugin_dir.parent
+        siblings = {d.name for d in root.iterdir() if d.is_dir() and d.name != u.plugin and (d / ".claude-plugin" / "plugin.json").is_file()} if root.is_dir() else set()
+        named = set(re.findall(r"`([a-z][a-z0-9-]*)`", not_when))
+        if siblings and not named & siblings:
+            problems.append("the `Not when` line names no sibling plugin in backticks")
+    start = next((i for i, h in heads if h == "## Use case"), None)
+    if start is None:
+        problems.append("no `## Use case` section")
+    else:
+        end = next((i for i, h in heads if i > start and h.startswith("## ")), len(u.lines) + 1)
+        section = u.lines[start: end - 1]
+        missing = [lab for lab in USE_CASE_LABELS if not any(ln.startswith(lab) for ln in section)]
+        if missing:
+            problems.append(f"`## Use case` lacks {', '.join(missing)}")
+        if not any(ln.startswith("```") for ln in section):
+            problems.append("`## Use case` shows no fenced output excerpt")
+    if not problems:
+        return []
+    return [_finding(
+        u, "P-README-PURPOSE-BLOCK",
+        "the README does not say on its first screen what the plugin is for: " + "; ".join(problems),
+        "under the thesis add `**The name.**`, a `- **Use when**` / `- **Not when**` pair naming the sibling to use "
+        "instead, and a `## Use case` with Situation / Call / Writes / Next and a fenced excerpt of real output",
+        line=None, quote=problems[0][:120])]
 
 
 def r_p_readme_install(u: Unit, ctx: list[Unit]) -> list[dict]:
@@ -2214,6 +2276,7 @@ RULES = {
     "P-README-H1": r_p_readme_h1,
     "P-README-THESIS": r_p_readme_thesis,
     "P-README-WHY-NOT": r_p_readme_why_not,
+    "P-README-PURPOSE-BLOCK": r_p_readme_purpose_block,
     "P-README-INSTALL": r_p_readme_install,
     "P-README-PROMPTS-BLOCK": r_p_readme_prompts_block,
     "P-README-PROMPT-TRIPLE": r_p_readme_prompt_triple,

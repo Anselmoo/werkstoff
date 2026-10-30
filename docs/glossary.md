@@ -299,8 +299,8 @@ Renamed from `codebase-consistency`, whose published tags remain under the old n
 
 German for the beat — in music the measure that paces a piece, on a line the *Taktzeit*
 that paces production. "the interval every station is built around, so a station cannot
-run ahead of the one feeding it" ([`plugins/takt/README.md`](plugins/takt.md)). "Enforces declared beat order at the tool-call layer, so
-sequencing is a gate rather than a sentence." ([`plugins/takt/README.md`](plugins/takt.md)).
+run ahead of the one feeding it" ([`plugins/takt/README.md`](plugins/takt.md)). "Refuses an edit or dispatch that runs ahead of a step the
+repository said must come first." ([`plugins/takt/README.md`](plugins/takt.md)).
 It ships no skills or agents of its own — only the `PreToolUse` hook and declaration
 format that turns another plugin's stated ordering into a runtime denial.
 

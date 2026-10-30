@@ -1,9 +1,49 @@
 # andon
 
-**Walks a repository's value stream stage-by-stage, proposing fixes for
-discovered gaps, proving each wire before advancing via seven
-evidence-grounded strategies, and halting rather than passing broken or
-unproven handoffs -- the andon rule.**
+**Hardens a repository stage by stage, proving each handoff between stages and halting rather
+than advancing past one it cannot prove.**
+
+**The name.** *Andon* is the Toyota Production System's signal: the cord a worker pulls to stop
+the line when a defect appears, so it is fixed where it happened instead of being passed
+downstream. This plugin applies the rule to a hardening loop. A wire it cannot prove stops the
+pass, and the halt is the intended outcome, not a failure.
+
+- **Use when** a multi-stage repo (ingest, transform, publish) has handoffs nobody has proven,
+  and you want gaps closed one stage at a time with each fix verified before the next begins.
+- **Not when** you only want to know whether a test suite's assertions would catch a bug —
+  use `zeugnis`; or you want a planned modernization phase applied — use `befund`.
+
+## Use case
+
+**Situation.** A five-stage feature pipeline (ingest, normalize, enrich, score, publish) ships
+wrong numbers and nobody knows which handoff corrupts them. You want it walked in order, with
+every wire proven before the loop moves on.
+**Call.** `/andon:andon-loop`
+**Writes.** The OKF ledger under `analysis/andon/ledger/` (`log.md`, `stages/`, `gaps/`,
+`evidence/`) and the detected topology in `analysis/andon/current.json`.
+**Next.** A wire reopened three times is marked `escalated: true`: the loop stops sub-cycling it
+and records the escalation in `log.md`. Fix its cause or decide it yourself, then run
+`/andon:andon-loop` again to resume from the cursor; `/andon:andon-status` shows the board.
+
+```markdown
+### Pass 7 (cycle 2)
+- stage: enrich
+- wire: enrich->score
+- gap: enrich-missing-provenance-check
+- strategy: e
+- verdict: red
+- next_cursor: enrich::enrich-missing-provenance-check
+- cycle: 2
+- pass_number: 7
+
+### Sub-cycle: enrich->score reopened (count 3)
+- wire: enrich->score
+- depth: 2
+- reopen_count: 3
+- escalated: true
+```
+
+Excerpt from `plugins/andon/scripts/fixtures/sample_ledger/log.md`.
 
 ## Why this exists
 
