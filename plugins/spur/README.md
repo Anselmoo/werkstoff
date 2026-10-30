@@ -49,8 +49,8 @@ a check that each input is the bytes its producer wrote.
 
 The session that proposed this plugin (#143) measured two existing tracers on a ten-step
 Python pipeline. noWorkflow 2.1.3 finished 4 of 10 steps: its AST rewriter crashed on
-ordinary Python 3.12 code, and it returned exit 0 after the failures. VizTracer with an
-audit hook finished all 10 at about 1.2–1.4× overhead with outputs identical to an
+ordinary Python 3.12 code, and it returned exit 0 after the failures. VizTracer 1.1.1 with
+an audit hook finished all 10 at about 1.2–1.4× overhead with outputs identical to an
 untraced run, but its HTML loads scripts from a CDN. spur takes the second route and
 keeps its lessons as rules: never rewrite the traced code, trace children through an
 environment variable, record no environment values and no file contents, redact home

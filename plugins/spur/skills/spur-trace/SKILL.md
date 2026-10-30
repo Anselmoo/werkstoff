@@ -15,7 +15,7 @@ do not work around it by editing the project.
 1. **Detect the stack.**
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" detect
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" detect
    ```
 
    Exit `0` names each stack found and the adapter it gets; exit `4` found none. Python is
@@ -31,7 +31,7 @@ do not work around it by editing the project.
 3. **Run it under the tracer** from the project root.
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" run -- <command> [args...]
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" run -- <command> [args...]
    ```
 
    Exit codes, which decide the next step:
@@ -67,7 +67,7 @@ do not work around it by editing the project.
 5. **Only if the user asks whether the outputs are still the ones the run produced**, run
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" verify analysis/spur/<runId>
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/spur_trace.py" verify analysis/spur/<runId>
    ```
 
    Exit `0` every final output matches its recorded hash; `3` names each `DRIFT` file. Drift

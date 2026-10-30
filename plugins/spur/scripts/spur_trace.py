@@ -541,16 +541,25 @@ def cmd_run(args) -> int:
     env = os.environ.copy()
     env["SPUR_TRACE_DIR"] = str(frag_dir)
     env["SPUR_ROOT"] = str(root)
-    env["PYTHONPATH"] = str(BOOT) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    # Every traced interpreter imports sitecustomize, and an import writes __pycache__
+    # beside its source. Loaded from BOOT that would be the installed plugin copy (#88),
+    # so each run loads a copy inside its own run directory and deletes it afterwards.
+    # PYTHONDONTWRITEBYTECODE would also do it, but it changes the traced program.
+    boot = run_dir / ".boot"
+    boot.mkdir()
+    shutil.copyfile(BOOT / "sitecustomize.py", boot / "sitecustomize.py")
+    env["PYTHONPATH"] = str(boot) + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
 
     started = time.time_ns()
     try:
         proc = subprocess.Popen(command, env=env)
     except OSError as exc:
         print(f"spur_trace.py run: cannot start {command[0]}: {exc}", file=sys.stderr)
+        shutil.rmtree(boot, ignore_errors=True)
         return EXIT_USAGE
     rc = proc.wait()
     ended = time.time_ns()
+    shutil.rmtree(boot, ignore_errors=True)
 
     frags = []
     for f in sorted(frag_dir.glob("proc-*.json")):

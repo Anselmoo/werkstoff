@@ -1363,7 +1363,10 @@ def r_s_docstring_usage(u: Unit, ctx: list[Unit]) -> list[dict]:
 
 
 def r_s_argparse(u: Unit, ctx: list[Unit]) -> list[dict]:
-    if not _is_script(u) or u.path.suffix != ".py":
+    # Gated like S-SHEBANG and S-DOCSTRING-USAGE: "has no --help" is a defect only in a
+    # script someone runs. A module imported for its side effects (spur's sitecustomize
+    # records sys.argv[0]; it parses nothing) has no command line to give a --help to.
+    if not _is_script(u) or u.path.suffix != ".py" or not _is_entry_point(u):
         return []
     if "sys.argv" not in u.text or re.search(r"^\s*(import argparse|from argparse import)", u.text, re.M):
         return []

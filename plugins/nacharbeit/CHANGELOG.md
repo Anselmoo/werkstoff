@@ -8,6 +8,9 @@ All notable changes to the `nacharbeit` plugin are documented here.
   purpose block above its first section. `P-README-THESIS` no longer accepts the
   `**The name.**` paragraph as the thesis.
 ### Changed
+- **`S-ARGPARSE`** now applies only to entry-point scripts, like `S-SHEBANG` and
+  `S-DOCSTRING-USAGE` beside it. A module that is imported, never run, has no command line,
+  so "has no `--help`" is not a defect there. Found on spur's `sitecustomize.py` (#143).
 - **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
   `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`
   with a real call and a verbatim excerpt of committed output.

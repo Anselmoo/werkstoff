@@ -16,6 +16,8 @@ output feeding the next, one in-place rewrite) in throwaway copies:
   DRIFT      `verify` re-hashes final outputs on disk and names a file edited after.
   EXIT       a failing step's exit code reaches the runner's own exit code and the page.
   PRIVACY    no environment value and no home path lands in any output.
+  BYTECODE   a run started as the skill starts it (`python3 -B`) leaves no .pyc in
+             the installed plugin copy, though every traced child imports the adapter.
   ADAPTERS   the Chrome-trace importer reads REAL tracing-chrome 0.7.2 output; the
              cpuprofile importer reads a REAL `node --cpu-prof` run (skipped by name
              when node is absent, failed instead under REQUIRE_NODE=1).
@@ -227,6 +229,21 @@ def main() -> int:
               and [o["path"] for o in root["outputs"]] == ["work/copy.csv"], json.dumps(root))
         check("no link to check is EMPTY, which is not a pass (exit 4)",
               t["chain"]["verdict"] == "empty" and r.returncode == 4, f"{t['chain']} rc={r.returncode}")
+
+        print("BYTECODE -- a run writes nothing into the installed plugin copy (#88)")
+        installed = tmp / "installed" / "spur"
+        shutil.copytree(HERE.parent, installed, ignore=shutil.ignore_patterns("__pycache__", "fixtures"))
+        bc = copy_pipeline(tmp, "bytecode")
+        # As the skill types it (-B), and without PYTHONDONTWRITEBYTECODE, which CI sets:
+        # with it inherited, every child would skip bytecode and the check would pass vacuously.
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        r = subprocess.run([sys.executable, "-B", str(installed / "scripts" / "spur_trace.py"), "run", "--run-id", "bc",
+                            "--", sys.executable, "run_pipeline.py"], cwd=bc, capture_output=True, text=True, env=env)
+        check("the run traced (the copied adapter loaded)", r.returncode == 0
+              and load(bc / "analysis" / "spur" / "bc")["chain"]["verdict"] == "verified", r.stderr)
+        stray = [p.relative_to(installed).as_posix() for p in installed.rglob("*.pyc")]
+        check("no bytecode in the installed copy", not stray, str(stray))
+        check("the per-run adapter copy is removed", not (bc / "analysis" / "spur" / "bc" / ".boot").exists())
 
     print("ADAPTERS -- importers read real output of the other stacks' tracers")
     sys.path.insert(0, str(HERE))
