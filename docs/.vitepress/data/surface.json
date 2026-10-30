@@ -3,7 +3,7 @@
   "plugins": [
     {
       "name": "andon",
-      "version": "1.0.7",
+      "version": "1.1.0",
       "description": "Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.",
       "skills": [
         {
