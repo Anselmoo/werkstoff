@@ -255,5 +255,124 @@ class TestPythonFloor(unittest.TestCase):
                     self.assertNotEqual(r.returncode, 2, f"{py}: {r.stderr}")
 
 
+TEST_SCOPE = {
+    "category": "surviving-mutant",
+    "consumed": False,
+    "domain": "mutation_harden",
+    "editBudget": 2,
+    "editsUsed": 0,
+    "findingId": "lane-pricing",
+    "openedAt": 1785183063.0,
+    "sourcePaths": ["src"],
+    "testRoots": ["tests"],
+}
+CLI = Path(__file__).parent.parent / "remediation_scope_cli.py"
+
+
+def scope_on_disk(repo: Repo) -> dict:
+    return json.loads((repo.root / "analysis" / "zeugnis" / "remediation_scope.json").read_text())
+
+
+class TestMutationHardenTestScope(unittest.TestCase):
+    """Issue #142: a killing test may be a NEW test file, so this domain's
+    lock is a test-path scope -- and it must still deny every source write."""
+
+    def test_new_test_file_allowed_and_spends_budget(self):
+        with Repo(TEST_SCOPE) as repo:
+            self.assertEqual(decision(run(repo, "tests/test_pricing_boundary.py", tool="Write")), "allow")
+            self.assertEqual(scope_on_disk(repo)["editsUsed"], 1)
+            self.assertEqual(decision(run(repo, str(repo.root / "tests" / "unit" / "test_x.py"))), "allow")
+
+    def test_source_file_denied(self):
+        with Repo(TEST_SCOPE) as repo:
+            r = run(repo, "src/correct_file.py")
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("never by editing the code it survived in", r.stderr)
+            self.assertEqual(scope_on_disk(repo)["editsUsed"], 0, "a denied write must not spend budget")
+
+    def test_test_named_file_under_source_denied(self):
+        with Repo(TEST_SCOPE) as repo:
+            self.assertEqual(decision(run(repo, "src/test_sneaky.py", tool="Write")), "deny")
+
+    def test_collection_config_denied_even_under_test_root(self):
+        with Repo(TEST_SCOPE) as repo:
+            for target in ("tests/conftest.py", "tests/pytest.ini", "pyproject.toml", "setup.cfg"):
+                self.assertEqual(decision(run(repo, target, tool="Write")), "deny", target)
+
+    def test_outside_test_roots_denied(self):
+        with Repo(TEST_SCOPE) as repo:
+            for target in ("docs/test_x.py", "analysis/zeugnis/mutation/r1/records/x.json",
+                           "tests/../src/api.py", "../elsewhere/tests/test_x.py"):
+                self.assertEqual(decision(run(repo, target, tool="Write")), "deny", target)
+
+    def test_budget_exhausted_denies(self):
+        with Repo({**TEST_SCOPE, "editsUsed": 2}) as repo:
+            r = run(repo, "tests/test_more.py", tool="Write")
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("budget is spent", r.stderr)
+
+    def test_lock_missing_test_roots_denies_not_falls_through(self):
+        """Branch on DOMAIN: a mutation_harden lock shaped like the old
+        single-file lock must not authorise its allowedFile (a source file)."""
+        legacy = {**FIXABLE_SCOPE, "domain": "mutation_harden", "allowedFile": "src/correct_file.py"}
+        with Repo(legacy) as repo:
+            self.assertEqual(decision(run(repo, "src/correct_file.py")), "deny")
+            self.assertEqual(decision(run(repo, "tests/test_x.py", tool="Write")), "deny")
+
+    def test_symlinked_test_root_denied(self):
+        with Repo(TEST_SCOPE) as repo:
+            (repo.root / "tests").symlink_to(repo.root / "src", target_is_directory=True)
+            self.assertEqual(decision(run(repo, "tests/correct_file.py")), "deny")
+
+    def test_cwd_inside_mutation_copy_stays_guarded(self):
+        """The copy has no analysis/zeugnis/; the guard walks up to the repo."""
+        import os
+
+        with Repo(TEST_SCOPE) as repo:
+            copy = repo.root / "analysis" / "zeugnis" / "mutation" / "r1" / "shards" / "core"
+            copy.mkdir(parents=True)
+            payload = json.dumps({"cwd": str(copy), "tool_name": "Edit",
+                                  "tool_input": {"file_path": str(repo.root / "src" / "api.py")}})
+            env = {k: v for k, v in os.environ.items() if k != "ZEUGNIS_DISABLE_GUARD"}
+            r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                               capture_output=True, text=True, timeout=30, env=env)
+            self.assertEqual(decision(r), "deny")
+
+
+class TestOpenTestsCli(unittest.TestCase):
+    def _cli(self, repo: Repo, *args: str) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, str(CLI), *args], capture_output=True, text=True, timeout=30)
+
+    def test_single_file_open_refuses_mutation_harden(self):
+        with Repo() as repo:
+            r = self._cli(repo, "open", str(repo.root), "--finding-id", "m1", "--domain", "mutation_harden",
+                          "--category", "surviving-mutant", "--target-file", "src/correct_file.py")
+            self.assertEqual(r.returncode, 3, r.stderr)
+            self.assertIn("open-tests", r.stderr)
+
+    def test_open_tests_writes_the_test_scope(self):
+        with Repo() as repo:
+            r = self._cli(repo, "open-tests", str(repo.root), "--lane-id", "lane-1", "--test-root", "tests",
+                          "--source-path", "src", "--edit-budget", "3")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            scope = scope_on_disk(repo)
+            self.assertEqual((scope["domain"], scope["testRoots"], scope["sourcePaths"], scope["editBudget"]),
+                             ("mutation_harden", ["tests"], ["src"], 3))
+
+    def test_open_tests_refuses_overlap_and_escape(self):
+        with Repo() as repo:
+            for test_root, source in (("src/tests", "src"), ("tests", "tests/fixtures"), ("../x", "src"),
+                                      ("analysis/zeugnis", "src")):
+                r = self._cli(repo, "open-tests", str(repo.root), "--lane-id", "l", "--test-root", test_root,
+                              "--source-path", source, "--edit-budget", "1")
+                self.assertEqual(r.returncode, 4, f"{test_root} vs {source}: {r.stderr}")
+
+    def test_open_tests_refuses_zero_budget(self):
+        with Repo() as repo:
+            r = self._cli(repo, "open-tests", str(repo.root), "--lane-id", "l", "--test-root", "tests",
+                          "--source-path", "src", "--edit-budget", "0")
+            self.assertEqual(r.returncode, 4, r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -318,5 +318,199 @@ class TestPythonFloor(unittest.TestCase):
                 self.assertNotEqual(r.returncode, 2, f"{py}: {r.stderr}")
 
 
+MUTMUT_RUN = _phrase("mutmut", "r" + "un")
+MUTMUT_APPLY = _phrase("mutmut", "ap" + "ply")
+MUTMUT_BROWSE = _phrase("mutmut", "brow" + "se")
+MUTANT = "shop.pricing.x_discount__mutmut_3"
+
+
+def make_copy(repo: Repo, run_id: str = "r1", kind: str = "shards", name: str = "core",
+              marker: dict | None = None) -> Path:
+    """A mutation copy the way scripts/mutation_harden.py prepares one:
+    analysis/zeugnis/mutation/<runId>/<kind>/<name>/ with the marker file."""
+    copy = repo.root / "analysis" / "zeugnis" / "mutation" / run_id / kind / name
+    (copy / "src").mkdir(parents=True)
+    body = {"runId": run_id, "kind": kind, "name": name} if marker is None else marker
+    (copy / ".zeugnis-mutation-copy.json").write_text(json.dumps(body))
+    return copy
+
+
+def run_at(cwd: Path, command: str) -> subprocess.CompletedProcess:
+    import os
+
+    payload = json.dumps({"cwd": str(cwd), "tool_name": "Bash", "tool_input": {"command": command}})
+    env = {k: v for k, v in os.environ.items() if k != "ZEUGNIS_DISABLE_GUARD"}
+    r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                       capture_output=True, text=True, timeout=30, env=env)
+    assert r.returncode in (0, 2), f"hook must exit 0 (allow) or 2 (deny), got {r.returncode}: {r.stderr}"
+    return r
+
+
+class TestMutationToolsDeniedOutsideCopy(unittest.TestCase):
+    """Issue #142: mutmut 3 `run` writes ./mutants/ and resumes leftover state,
+    `apply` rewrites the source file. In the working tree both are denied."""
+
+    def test_mutmut_run_in_working_tree_denied(self):
+        with Repo() as repo:
+            r = run(repo, MUTMUT_RUN)
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("not inside a mutation copy", r.stderr)
+
+    def test_mutmut_apply_in_working_tree_denied(self):
+        with Repo() as repo:
+            self.assertEqual(decision(run(repo, f"{MUTMUT_APPLY} {MUTANT}")), "deny")
+
+    def test_mutmut_browse_in_working_tree_denied(self):
+        with Repo() as repo:
+            self.assertEqual(decision(run(repo, MUTMUT_BROWSE)), "deny")
+
+    def test_launcher_forms_denied(self):
+        with Repo() as repo:
+            for cmd in (f"python3 -m {MUTMUT_RUN}", f"uv run {MUTMUT_RUN}",
+                        f"uv run --with mutmut {MUTMUT_RUN}", f"poetry run {MUTMUT_APPLY} {MUTANT}",
+                        f"/opt/venv/bin/{MUTMUT_RUN}", f"sudo {MUTMUT_RUN}"):
+                self.assertEqual(decision(run(repo, cmd)), "deny", cmd)
+
+    def test_other_tools_in_place_modes_denied(self):
+        with Repo() as repo:
+            for cmd in ("cosmic-ray " + "ex" + "ec cfg.toml s.sqlite", "cosmic-ray " + "ap" + "ply s.sqlite 3",
+                        "cargo mutants --in-place", "npx stryker run --inPlace",
+                        f"{MUTMUT_RUN} --patch"):
+                self.assertEqual(decision(run(repo, cmd)), "deny", cmd)
+
+    def test_subdirectory_cwd_still_active(self):
+        """Inertness walks up: a cwd below the repo root is still guarded."""
+        with Repo() as repo:
+            (repo.root / "src").mkdir()
+            self.assertEqual(decision(run_at(repo.root / "src", MUTMUT_RUN)), "deny")
+
+    def test_cwd_inside_copy_cd_back_to_repo_denied(self):
+        """The copy has no analysis/zeugnis/ of its own; the walk-up keeps the
+        guard active, and the cd back out is followed lexically."""
+        with Repo() as repo:
+            copy = make_copy(repo)
+            r = run_at(copy, f"cd {repo.root} && {MUTMUT_RUN}")
+            self.assertEqual(decision(r), "deny")
+
+    def test_dotdot_back_out_of_copy_denied(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            cmd = f"cd {copy} && cd ../../../../../.. && {MUTMUT_RUN}"
+            self.assertEqual(decision(run(repo, cmd)), "deny")
+
+    def test_cd_that_may_have_failed_denied(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            for cmd in (f"cd {copy} || {MUTMUT_RUN}", f"cd {copy} | cat; {MUTMUT_RUN}",
+                        f"cd {copy} & {MUTMUT_RUN}"):
+                self.assertEqual(decision(run(repo, cmd)), "deny", cmd)
+
+    def test_copy_without_marker_denied(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            (copy / ".zeugnis-mutation-copy.json").unlink()
+            self.assertEqual(decision(run(repo, f"cd {copy} && {MUTMUT_RUN}")), "deny")
+
+    def test_marker_naming_another_copy_denied(self):
+        with Repo() as repo:
+            copy = make_copy(repo, marker={"runId": "r1", "kind": "shards", "name": "other"})
+            self.assertEqual(decision(run(repo, f"cd {copy} && {MUTMUT_RUN}")), "deny")
+
+    def test_symlinked_copy_pointing_at_repo_denied(self):
+        """A symlink named like a copy, pointing back at the working tree, with
+        a marker planted there: lexically inside, really the working tree."""
+        with Repo() as repo:
+            shards = repo.root / "analysis" / "zeugnis" / "mutation" / "r1" / "shards"
+            shards.mkdir(parents=True)
+            (shards / "evil").symlink_to(repo.root, target_is_directory=True)
+            (repo.root / ".zeugnis-mutation-copy.json").write_text(
+                json.dumps({"runId": "r1", "kind": "shards", "name": "evil"}))
+            cmd = f"cd {shards / 'evil'} && {MUTMUT_APPLY} {MUTANT}"
+            self.assertEqual(decision(run(repo, cmd)), "deny")
+
+    def test_env_chdir_is_an_unknown_cwd(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            self.assertEqual(decision(run(repo, f"env -C {copy} {MUTMUT_RUN}")), "deny")
+
+    def test_second_line_of_multiline_command_denied(self):
+        with Repo() as repo:
+            self.assertEqual(decision(run(repo, f"echo start\n{MUTMUT_RUN}")), "deny")
+
+    def test_after_heredoc_denied(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            cmd = f"cat > notes.txt <<'EOF'\ncd {copy}\nEOF\n{MUTMUT_RUN}"
+            self.assertEqual(decision(run(repo, cmd)), "deny")
+
+
+class TestMutationSegmentation(unittest.TestCase):
+    def test_glued_semicolon_denied(self):
+        with Repo() as repo:
+            self.assertEqual(decision(run(repo, f"true;{MUTMUT_RUN}")), "deny")
+
+    def test_subshell_cd_does_not_leak_out(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            cmd = f"(cd {copy} && {MUTMUT_RUN}) && {MUTMUT_RUN}"
+            self.assertEqual(decision(run(repo, cmd)), "deny")
+
+    def test_subshell_cd_inside_allowed(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            self.assertEqual(decision(run(repo, f"(cd {copy} && {MUTMUT_RUN})")), "allow")
+
+    def test_sabotage_copy_check_is_what_denies(self):
+        """Blank out copy_root_for (always 'inside a copy') in a copy of
+        scripts/: the working-tree run must then be allowed. Proves the lexical
+        copy check, not some other branch, produces the deny above."""
+        import os
+        import shutil
+
+        with Repo() as repo, tempfile.TemporaryDirectory() as tmp:
+            scripts = Path(tmp) / "scripts"
+            shutil.copytree(HOOK.parent.parent, scripts, ignore=shutil.ignore_patterns("__pycache__"))
+            lib = scripts / "lib" / "mutation_scope.py"
+            text = lib.read_text()
+            self.assertIn("def copy_root_for(path) -> Path | None:\n", text)
+            lib.write_text(text.replace("def copy_root_for(path) -> Path | None:\n",
+                                        "def copy_root_for(path) -> Path | None:\n    return Path(path)\n"))
+            payload = json.dumps({"cwd": str(repo.root), "tool_name": "Bash",
+                                  "tool_input": {"command": MUTMUT_RUN}})
+            env = {k: v for k, v in os.environ.items() if k != "ZEUGNIS_DISABLE_GUARD"}
+            r = subprocess.run([sys.executable, str(scripts / "hooks" / HOOK.name)], input=payload,
+                               capture_output=True, text=True, timeout=30, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class TestMutationToolsAllowedInsideCopy(unittest.TestCase):
+    def test_cd_into_copy_then_run_allowed(self):
+        with Repo() as repo:
+            copy = make_copy(repo)
+            for cmd in (f"cd {copy} && {MUTMUT_RUN}", f"cd {copy}; {MUTMUT_RUN} --max-children 2",
+                        f"cd {copy}\n{MUTMUT_RUN}", f"cd {copy} && {MUTMUT_APPLY} {MUTANT}"):
+                self.assertEqual(decision(run(repo, cmd)), "allow", cmd)
+
+    def test_relative_cd_into_copy_allowed(self):
+        with Repo() as repo:
+            make_copy(repo, kind="proofs", name="m3")
+            cmd = f"cd analysis/zeugnis/mutation/r1/proofs/m3 && {MUTMUT_APPLY} {MUTANT}"
+            self.assertEqual(decision(run(repo, cmd)), "allow")
+
+    def test_event_cwd_inside_copy_allowed(self):
+        with Repo() as repo:
+            copy = make_copy(repo, kind="remeasure", name="core")
+            self.assertEqual(decision(run_at(copy / "src", MUTMUT_RUN)), "allow")
+
+
+class TestMutationReadOnlyAllowed(unittest.TestCase):
+    def test_read_only_verbs_and_mentions_allowed(self):
+        with Repo() as repo:
+            for cmd in ("mutmut results", f"mutmut show {MUTANT}", "mutmut --version",
+                        "cargo mutants --list", "npx stryker run", f"echo {MUTMUT_RUN}",
+                        f'grep -rn "{MUTMUT_RUN}" docs', "uv run pytest -q"):
+                self.assertEqual(decision(run(repo, cmd)), "allow", cmd)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
