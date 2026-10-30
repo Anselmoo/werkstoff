@@ -4,6 +4,7 @@ All notable changes to the `spur` plugin are documented here.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-30
 ### Added
 - **`spur-trace` skill and `scripts/spur_trace.py`** (#143): run a project's pipeline once
   under a tracer. Each process is a step; per step the run record holds the command, a

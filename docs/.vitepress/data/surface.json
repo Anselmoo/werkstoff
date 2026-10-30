@@ -1141,7 +1141,7 @@
     },
     {
       "name": "spur",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Runs a pipeline once under a tracer and records, for each step, the functions it called, every file it read and wrote with its sha256, and whether it read exactly what the step before it wrote.",
       "skills": [
         {
