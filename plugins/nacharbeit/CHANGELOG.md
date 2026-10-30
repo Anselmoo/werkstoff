@@ -3,6 +3,8 @@
 All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.2.0] - 2026-10-30
 ### Added
 - **`P-README-PURPOSE-BLOCK`**: a mechanical rule that a plugin README carries the #144
   purpose block above its first section. `P-README-THESIS` no longer accepts the
