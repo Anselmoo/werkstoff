@@ -684,7 +684,7 @@ def finding_for(repo: Path, results_file: str, o: dict, severity: str) -> dict |
                "evidence": f"{o['module']}:{o['line']}" if o.get("line") else o["module"],
                "category": "surviving-mutant" if o["before"] == "survived" else "untested-mutant",
                "fixability": "fixable", "toolSource": "real-tool", "resultsFile": results_file,
-               "mutantId": o["mutantId"], "state": o["state"]}
+               "mutantId": o["mutantId"], "module": o["module"], "state": o["state"]}
     try:
         verify_citation(repo, finding)
     except MutationResultsError as exc:

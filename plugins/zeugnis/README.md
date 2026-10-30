@@ -248,7 +248,7 @@ default view — a single honest D3 line chart of cumulative closed
 findings, since `ledger.json`'s `passes` array is the only place
 pass-over-pass history actually exists:
 
-![Zeugnis burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last](assets/burndown-viewer-screenshot.jpg)
+![Zeugnis burndown viewer: a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — above a four-item legend naming closed, open, escalated and the cumulative-closed trend line with a swatch and a glyph each; a tile row reading 5 total passes, 10 findings tracked, 1 open (amber-outlined), 8 closed and 1 escalated (red-outlined, "needs a human"); and the Trend tab's single D3 line of cumulative closed findings climbing across five passes and flattening at the last, where pass #5 is pinned: a ring around its point, a dashed crosshair, and a readout below the chart naming pass #5 (code_change_review), closed 0 this pass, 8 closed in total, with an Unpin button](assets/burndown-viewer-screenshot.jpg)
 
 The Breakdown tab adds by-status and by-domain bars plus a findings
 sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
@@ -274,13 +274,14 @@ When `zeugnis-mutation-harden` has written `analysis/zeugnis/mutation_harden_sum
 a third **Mutation** tab appears. It answers a different question, "did the new tests
 kill what survived?", so it hides the ledger's convergence verdict and tiles while open:
 
-![Zeugnis burndown viewer, Mutation tab: a "Did the new tests kill what survived?" panel whose verdict reads that the run is INCOMPLETE because shard stats timed out, that mutants are still alive with src/stats/bootstrap.py lowest, and that two modules still have code no selected test reaches; a legend naming a hollow ring for the score before, a filled dot for the score after, and an untested glyph; three module rows each with a 0-100 % track holding both marks and the figures beside it — src/scoring/rank.py 76.3 % to 95.0 %, src/runner/conditions.py 100.0 % to 100.0 % with untested 86 to 72 in amber, src/stats/bootstrap.py 76.9 % to 90.4 %; below, a list of two equivalent mutants with their one-line reasons and a rejected kill claim contradicted by the re-measure](assets/burndown-viewer-mutation-screenshot.jpg)
+![Zeugnis burndown viewer, Mutation tab: a "Did the new tests kill what survived?" panel whose verdict reads that the run is INCOMPLETE because shard stats timed out, that mutants are still alive with src/stats/bootstrap.py lowest, and that two modules still have code no selected test reaches; a legend naming a hollow ring for the score before, a filled dot for the score after, and an untested glyph; three module rows each with a 0-100 % track and its figures — src/scoring/rank.py 76.3 % to 95.0 %, src/runner/conditions.py 100.0 % to 100.0 % with untested 86 to 72 in amber, src/stats/bootstrap.py 76.9 % to 90.4 %. The conditions.py row is expanded and outlined, listing in three columns the mutants killed with the test that killed each, the mutants still alive with their file:line and "unreached", and no equivalents, each list capped with a count of the rest; below, two equivalent mutants with their one-line reasons and a rejected kill claim contradicted by the re-measure](assets/burndown-viewer-mutation-screenshot.jpg)
 
 Its demo data is committed at `scripts/fixtures/sample_mutation_harden_summary.json`. It is
 chosen so that one module scores 100 % before and after while 72 of its mutants are still
 untested, the trap the score alone hides. One shard timed out, and one kill claim was
-contradicted by the re-measure. To rebuild it, add the fixture to the demo repo above and
-open the report with `?view=mutation`:
+contradicted by the re-measure. Its kill and still-alive lists match its counts. To rebuild
+it, add the fixture to the demo repo above, open the report with `?view=mutation`, and
+expand `src/runner/conditions.py`:
 
 ```bash
 cp plugins/zeugnis/scripts/fixtures/sample_mutation_harden_summary.json \
@@ -290,6 +291,22 @@ python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
     --d3 plugins/zeugnis/assets/inline-d3.html \
     --tokens plugins/zeugnis/assets/tokens.css
 ```
+
+Every number has a control behind it, and every control is a real button
+you can reach with Tab:
+
+- **Trend:** hovering or focusing a pass point shows a crosshair and a
+  readout of that pass's numbers. Click it, or press Enter or Space, to pin
+  it; click again, press Esc, or use Unpin to let go.
+- **Breakdown:** a status or domain bar toggles a filter. The sidebar then
+  shows a chip naming it, a Clear button, and the matching findings, each of
+  which expands to its evidence.
+- **Mutation:** a module row expands to the mutants the proven tests killed,
+  the ones still alive, and the ones judged equivalent.
+
+A selection is marked by an outline and bold text, never by colour alone.
+Transitions use the token durations and switch off under
+`prefers-reduced-motion`.
 
 The report states its own verdict in words before any chart: whether the
 cleanup converged, stalled, or is still closing findings, and what an

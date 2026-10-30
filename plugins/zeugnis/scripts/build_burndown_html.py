@@ -84,7 +84,8 @@ def build_mutation(repo_root):
     not shown at all, so a ledger-only report renders exactly as before.
 
     Only what the tab draws is copied: per-module scores before and after,
-    the equivalents with their reasons, and the rejected claims. A summary
+    each module's kills and still-alive mutants (shown when its row is
+    opened), the equivalents with their reasons, and the rejected claims. A summary
     that exists but cannot be read is not silently treated as "no run": it
     becomes {"error": ...} and the tab says so (report-viewer-standard S4).
     """
@@ -105,6 +106,13 @@ def build_mutation(repo_root):
                          "before": {k: m["before"].get(k) for k in keep if k in m["before"]},
                          "after": {k: m["after"].get(k) for k in keep if k in m["after"]},
                          "unreached": m.get("unreached", 0)} for m in summary["modules"]],
+            # A module row opens to these: what the proven tests killed, and
+            # what the tool still reports alive.
+            "kills": [{"mutantId": k["mutantId"], "module": k["module"], "test": k.get("test")}
+                      for k in summary.get("kills", [])],
+            "alive": [{"mutantId": f["mutantId"], "module": f.get("module") or f["evidence"].split(":")[0],
+                       "evidence": f["evidence"], "category": f.get("category"), "state": f.get("state")}
+                      for f in summary.get("findings", [])],
             "equivalents": [{"mutantId": e["mutantId"], "module": e["module"], "reason": e["reason"]}
                             for e in summary.get("equivalents", [])],
             "rejected": [{"mutantId": r["mutantId"], "state": r["state"], "reason": r.get("reason", "")}
