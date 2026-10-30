@@ -270,6 +270,27 @@ python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
     --tokens plugins/zeugnis/assets/tokens.css
 ```
 
+When `zeugnis-mutation-harden` has written `analysis/zeugnis/mutation_harden_summary.json`,
+a third **Mutation** tab appears. It answers a different question, "did the new tests
+kill what survived?", so it hides the ledger's convergence verdict and tiles while open:
+
+![Zeugnis burndown viewer, Mutation tab: a "Did the new tests kill what survived?" panel whose verdict reads that the run is INCOMPLETE because shard stats timed out, that mutants are still alive with src/stats/bootstrap.py lowest, and that two modules still have code no selected test reaches; a legend naming a hollow ring for the score before, a filled dot for the score after, and an untested glyph; three module rows each with a 0-100 % track holding both marks and the figures beside it — src/scoring/rank.py 76.3 % to 95.0 %, src/runner/conditions.py 100.0 % to 100.0 % with untested 86 to 72 in amber, src/stats/bootstrap.py 76.9 % to 90.4 %; below, a list of two equivalent mutants with their one-line reasons and a rejected kill claim contradicted by the re-measure](assets/burndown-viewer-mutation-screenshot.jpg)
+
+Its demo data is committed at `scripts/fixtures/sample_mutation_harden_summary.json`. It is
+chosen so that one module scores 100 % before and after while 72 of its mutants are still
+untested, the trap the score alone hides. One shard timed out, and one kill claim was
+contradicted by the re-measure. To rebuild it, add the fixture to the demo repo above and
+open the report with `?view=mutation`:
+
+```bash
+cp plugins/zeugnis/scripts/fixtures/sample_mutation_harden_summary.json \
+    /tmp/zeugnis-demo/analysis/zeugnis/mutation_harden_summary.json
+python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
+    --template plugins/zeugnis/assets/burndown-viewer.html \
+    --d3 plugins/zeugnis/assets/inline-d3.html \
+    --tokens plugins/zeugnis/assets/tokens.css
+```
+
 The report states its own verdict in words before any chart: whether the
 cleanup converged, stalled, or is still closing findings, and what an
 escalated finding means. Every status colour is named in a legend that is

@@ -1,0 +1,189 @@
+{
+  "schema": "zeugnis/mutation-harden-summary/1",
+  "domain": "mutation_harden",
+  "runId": "2026-10-30-demo",
+  "tool": "mutmut",
+  "complete": false,
+  "shards": [
+    {
+      "shard": "scoring",
+      "sources": [
+        "src/scoring"
+      ],
+      "tests": [
+        "tests/unit/scoring"
+      ],
+      "exclusions": [],
+      "baselineComplete": true,
+      "baselineState": "finished",
+      "remeasured": true,
+      "remeasureComplete": true
+    },
+    {
+      "shard": "runner",
+      "sources": [
+        "src/runner"
+      ],
+      "tests": [
+        "tests/unit/runner"
+      ],
+      "exclusions": [
+        {
+          "glob": "src/runner/_generated.py",
+          "reason": "generator output pinned by committed hashes"
+        }
+      ],
+      "baselineComplete": true,
+      "baselineState": "finished",
+      "remeasured": true,
+      "remeasureComplete": true
+    },
+    {
+      "shard": "stats",
+      "sources": [
+        "src/stats"
+      ],
+      "tests": [
+        "tests/unit/stats"
+      ],
+      "exclusions": [],
+      "baselineComplete": false,
+      "baselineState": "timed-out",
+      "remeasured": true,
+      "remeasureComplete": true
+    }
+  ],
+  "modules": [
+    {
+      "shard": "scoring",
+      "module": "src/scoring/rank.py",
+      "before": {
+        "killed": 61,
+        "survived": 19,
+        "noTests": 4,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.7625
+      },
+      "after": {
+        "killed": 76,
+        "survived": 4,
+        "noTests": 0,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.95,
+        "equivalent": 2,
+        "scoreExcludingEquivalent": 0.9744
+      },
+      "unreached": 2
+    },
+    {
+      "shard": "runner",
+      "module": "src/runner/conditions.py",
+      "before": {
+        "killed": 38,
+        "survived": 0,
+        "noTests": 86,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 1.0
+      },
+      "after": {
+        "killed": 52,
+        "survived": 0,
+        "noTests": 72,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 1.0,
+        "equivalent": 0,
+        "scoreExcludingEquivalent": 1.0
+      },
+      "unreached": 72
+    },
+    {
+      "shard": "stats",
+      "module": "src/stats/bootstrap.py",
+      "before": {
+        "killed": 40,
+        "survived": 12,
+        "noTests": 3,
+        "notChecked": 25,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.7692
+      },
+      "after": {
+        "killed": 47,
+        "survived": 5,
+        "noTests": 3,
+        "notChecked": 0,
+        "timeout": 0,
+        "suspicious": 0,
+        "skipped": 0,
+        "segfault": 0,
+        "caughtByTypeCheck": 0,
+        "interrupted": 0,
+        "score": 0.9038,
+        "equivalent": 0,
+        "scoreExcludingEquivalent": 0.9038
+      },
+      "unreached": 7
+    }
+  ],
+  "lanes": [],
+  "kills": [],
+  "equivalents": [
+    {
+      "mutantId": "scoring.rank.x_clamp_rank__mutmut_4",
+      "module": "src/scoring/rank.py",
+      "reason": "rank < 0 vs rank <= 0 differ only at rank == 0, where both branches return 0",
+      "state": "equivalent",
+      "basis": "model-judgement"
+    },
+    {
+      "mutantId": "scoring.rank.x_normalise__mutmut_11",
+      "module": "src/scoring/rank.py",
+      "reason": "the divisor is checked non-zero two lines earlier, so `or 1` and `or 2` never apply",
+      "state": "equivalent",
+      "basis": "model-judgement"
+    }
+  ],
+  "rejected": [
+    {
+      "mutantId": "stats.bootstrap.x_resample__mutmut_7",
+      "module": "src/stats/bootstrap.py",
+      "state": "contradicted",
+      "reason": "proof says killed, the remeasure says 'survived'"
+    }
+  ],
+  "unreached": 81,
+  "strayTriageEntries": [],
+  "findings": [],
+  "unverifiedCount": 0,
+  "unverified": [],
+  "generatedAt": "2026-10-30T18:00:00+00:00"
+}

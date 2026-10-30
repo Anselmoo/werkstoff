@@ -119,6 +119,26 @@
     padding: var(--space-1) var(--space-2); font-family: var(--font-mono); font-size: 11px;
     word-break: break-word;
   }
+  /* Mutation tab (issue #142). The track runs 0-100 %; the hollow ring is the
+     score before, the filled dot the score after, so shape -- not hue alone --
+     tells them apart (R4). Rows are DOM, so the panel grows with the module
+     count instead of a constant height (R5). */
+  .mut-row {
+    display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(160px, 2fr) minmax(240px, 1.7fr);
+    gap: var(--space-3); align-items: center; padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border); font-size: 12px;
+  }
+  .mut-row .module { font-family: var(--font-mono); font-size: 11px; word-break: break-all; }
+  .mut-track { position: relative; height: 16px; background: var(--panel-2); border-radius: var(--radius-sm); }
+  .mut-track .mut-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); }
+  .mut-mark { font-size: 13px; line-height: 1; }
+  .mut-mark.before { color: var(--muted); }
+  .mut-mark.after { color: var(--accent); }
+  .mut-row .figures { color: var(--muted); }
+  .mut-row .figures .untested.hot { color: var(--status-warn); }
+  .mut-list { margin: 0; padding-left: var(--space-4); font-size: 12px; }
+  .mut-list li { margin: var(--space-2) 0; }
+  .mut-list .id { font-family: var(--font-mono); font-size: 11px; color: var(--smoke); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -130,6 +150,7 @@
   <div class="tabs">
     <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend">Trend</button>
     <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown">Breakdown</button>
+    <button type="button" class="tab-btn" id="tabMutationBtn" data-view="mutation" hidden>Mutation</button>
   </div>
 </header>
 
@@ -167,6 +188,31 @@
   </div>
 </div>
 
+<div id="view-mutation" class="content" hidden>
+  <div class="panel wide">
+    <h2>Did the new tests kill what survived?</h2>
+    <p class="verdict" id="mutationVerdict">
+      A mutant counts as killed only when a real mutation tool saw a test fail on
+      it, or when a new test was proven to pass on the original code and to fail
+      with that mutant applied. The modules and their scores are filled in from
+      analysis/zeugnis/mutation_harden_summary.json below.
+    </p>
+    <p class="note">
+      <strong>Untested</strong> mutants sit in code no selected test reaches. They
+      are kept out of the score, so a module can read 100 % while most of it is
+      never exercised: read the untested count before the score.
+    </p>
+    <ul class="legend">
+      <li><span class="mut-mark before">○</span><span class="name">before</span> — killed ÷ (killed + survived) with the original tests</li>
+      <li><span class="mut-mark after">●</span><span class="name">after</span> — the same ratio with the proven new tests</li>
+      <li><span class="glyph">◌</span><span class="name">untested</span> — counted beside the score, never inside it; amber while any remain</li>
+    </ul>
+    <div id="mutationRows"></div>
+  </div>
+  <div class="panel" id="mutationEquivalents"><h2>Equivalent mutants — read every reason</h2></div>
+  <div class="panel" id="mutationRejected"><h2>Rejected kill claims</h2></div>
+</div>
+
 <div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
 
 <!--__D3_SUBSET__-->
@@ -181,7 +227,7 @@ if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
     'No burndown data found in this file.<br>Re-run <code>zeugnis-status</code> (with a zeugnis-cycle ledger present) to regenerate it.';
   err.style.display = 'grid';
   document.querySelector('.tabs').style.display = 'none';
-  ['statRow', 'verdictBlock', 'view-trend', 'view-breakdown'].forEach(id => {
+  ['statRow', 'verdictBlock', 'view-trend', 'view-breakdown', 'view-mutation'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
   throw new Error('no data');
@@ -413,20 +459,126 @@ function renderStatRow() {
   }
 }
 
+// The Mutation tab (issue #142) answers a different question from the
+// ledger -- "did the new tests kill what survived?" -- so it gets its own view,
+// and every string in it goes in through textContent, never innerHTML.
+function textEl(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = String(text);
+  return e;
+}
+function pct(v) { return v === null || v === undefined ? 'n/a' : (v * 100).toFixed(1) + ' %'; }
+
+function fillMutationList(id, items, describe, empty) {
+  const panel = document.getElementById(id);
+  const list = textEl('ul', 'mut-list');
+  if (!items.length) list.appendChild(textEl('li', null, empty));
+  for (const item of items) {
+    const [head, reason] = describe(item);
+    const li = textEl('li');
+    li.appendChild(textEl('span', 'id', head));
+    li.appendChild(textEl('span', null, ' — ' + reason));
+    list.appendChild(li);
+  }
+  panel.appendChild(list);
+}
+
+function mutationSentence(M) {
+  const cut = M.shards.filter(s => !s.baselineComplete || s.remeasureComplete === false).map(s => s.shard);
+  const untested = M.modules.filter(m => (m.after.noTests || 0) > 0).map(m => m.module);
+  const alive = M.modules.filter(m => (m.after.survived || 0) > 0);
+  const scored = M.modules.filter(m => m.after.score !== null && m.after.score !== undefined);
+  const worst = scored.sort((a, b) => a.after.score - b.after.score)[0];
+  let s = cut.length
+    ? 'This run is INCOMPLETE: shard ' + cut.join(', ') + ' timed out or left mutants unchecked, so the '
+      + 'scores below cover only what the tool finished. '
+    : '';
+  if (!alive.length && !untested.length) {
+    s += 'Every mutant the tool generated here is now killed or judged equivalent, and every kill '
+      + 'counted was proven by applying its mutant.';
+  } else {
+    s += 'Mutants are still alive after hardening'
+      + (worst ? ', and ' + worst.module + ' has the lowest score' : '')
+      + (untested.length
+        ? '; ' + untested.join(', ') + (untested.length === 1 ? ' still has' : ' still have')
+          + ' code no selected test reaches, which its score leaves out.'
+        : '.');
+  }
+  if (M.equivalents.length) {
+    s += ' Equivalence is a model judgement no command checked: read every reason below before '
+      + 'accepting the mutants it leaves alive.';
+  }
+  if (M.rejected.length) s += ' Some kill claims were rejected and are not counted.';
+  return s;
+}
+
+function renderMutationView() {
+  const M = DATA.mutation;
+  if (!M) return;
+  document.getElementById('tabMutationBtn').hidden = false;
+  const verdict = document.getElementById('mutationVerdict');
+  if (M.error) {
+    verdict.textContent = M.error + ' Re-run mutation_harden.py report to regenerate it.';
+    document.getElementById('mutationEquivalents').hidden = true;
+    document.getElementById('mutationRejected').hidden = true;
+    return;
+  }
+  const rows = document.getElementById('mutationRows');
+  rows.textContent = '';
+  for (const m of M.modules) {
+    const row = textEl('div', 'mut-row');
+    row.appendChild(textEl('div', 'module', m.module));
+    const track = textEl('div', 'mut-track');
+    // The ring is drawn last, so an unchanged score still shows both marks.
+    for (const [cls, glyph, score] of [['after', '●', m.after.score], ['before', '○', m.before.score]]) {
+      if (score === null || score === undefined) continue;
+      const mark = textEl('span', 'mut-mark ' + cls, glyph);
+      mark.style.left = (score * 100) + '%';
+      mark.setAttribute('aria-label', 'score ' + cls);
+      track.appendChild(mark);
+    }
+    row.appendChild(track);
+    const figures = textEl('div', 'figures');
+    figures.appendChild(textEl('span', null, pct(m.before.score) + ' → ' + pct(m.after.score)));
+    figures.appendChild(textEl('span', 'untested' + ((m.after.noTests || 0) > 0 ? ' hot' : ''),
+      ' · ◌ untested ' + (m.before.noTests || 0) + ' → ' + (m.after.noTests || 0)));
+    figures.appendChild(textEl('span', null,
+      ' · equivalent ' + (m.after.equivalent || 0) + ' · unreached ' + (m.unreached || 0)));
+    row.appendChild(figures);
+    rows.appendChild(row);
+  }
+  fillMutationList('mutationEquivalents', M.equivalents, e => [e.mutantId, e.reason], 'None judged equivalent.');
+  fillMutationList('mutationRejected', M.rejected, r => [r.mutantId + ' (' + r.state + ')', r.reason],
+    'No kill claim was rejected.');
+  verdict.textContent = mutationSentence(M);
+}
+
 function setActiveTab(view) {
   document.getElementById('tabTrendBtn').classList.toggle('active', view === 'trend');
   document.getElementById('tabBreakdownBtn').classList.toggle('active', view === 'breakdown');
+  document.getElementById('tabMutationBtn').classList.toggle('active', view === 'mutation');
   document.getElementById('view-trend').hidden = view !== 'trend';
   document.getElementById('view-breakdown').hidden = view !== 'breakdown';
+  document.getElementById('view-mutation').hidden = view !== 'mutation';
+  // The ledger's convergence verdict and tiles answer the other tabs' question.
+  document.getElementById('verdictBlock').hidden = view === 'mutation';
+  document.getElementById('statRow').hidden = view === 'mutation';
+  document.getElementById('subtitle').textContent = view === 'mutation'
+    ? 'zeugnis-mutation-harden run ' + DATA.mutation.runId + ' · generated from analysis/zeugnis/mutation_harden_summary.json'
+    : 'zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json';
 }
 
 document.getElementById('tabTrendBtn').addEventListener('click', () => setActiveTab('trend'));
 document.getElementById('tabBreakdownBtn').addEventListener('click', () => setActiveTab('breakdown'));
+document.getElementById('tabMutationBtn').addEventListener('click', () => setActiveTab('mutation'));
 
 renderVerdict();
 renderStatRow();
 renderTrendView();
 renderBreakdownView();
+renderMutationView();
+if (DATA.mutation && new URLSearchParams(location.search).get('view') === 'mutation') setActiveTab('mutation');
 </script>
 </body>
 </html>

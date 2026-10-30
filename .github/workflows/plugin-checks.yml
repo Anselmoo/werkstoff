@@ -318,10 +318,13 @@ jobs:
         # red. befund's P0 panel and zeugnis's reconcile and cupertino's
         # check-summary/fix gate must never read a missing verdict as a pass;
         # passung's verify mapping must keep a failed no-behavior-change a FAIL and
-        # an abstain a PASS-WITH-GAPS. The .js suites need node (set up above).
+        # an abstain a PASS-WITH-GAPS. zeugnis's mutation_harden suite (#142) must never
+        # count a kill without a proof, or a real-tool finding whose citation no longer
+        # re-derives from the tool's own output. The .js suites need node (set up above).
         run: |
           python3 plugins/befund/scripts/lib/test_p0_panel.py
           python3 plugins/zeugnis/scripts/test_reconcile_fail_closed.py
+          python3 plugins/zeugnis/scripts/test_mutation_harden.py
           node plugins/cupertino/scripts/test_fail_closed.js
           python3 plugins/cupertino/scripts/test_check_summary_verification.py
           node plugins/passung/scripts/test_verify_mapping.js
