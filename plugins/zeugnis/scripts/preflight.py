@@ -81,7 +81,8 @@ def check_mutation_tools(repo_root: str) -> dict:
         "detail": (
             f"found real mutation tools on PATH: {found}"
             if found
-            else "no real mutation tool on PATH; assertion-audit will fall back to llm-reasoned findings"
+            else "no real mutation tool on PATH; assertion-audit will fall back to llm-reasoned findings "
+            "and mutation-harden cannot run (it drives mutmut 3 only; check the project's own venv too)"
         ),
         "readiness_verdicts_supported": ["assertion-audit"],
     }

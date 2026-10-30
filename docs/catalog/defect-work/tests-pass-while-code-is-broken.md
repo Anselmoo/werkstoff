@@ -8,6 +8,9 @@ beats:
   - skill: "zeugnis:zeugnis-assertion-audit"
     why: "Proposes off-by-one, boundary-flip, and condition-negation mutations and judges whether any existing test catches them."
     prompt: "mutate this module — flip a boundary, negate a condition, shift an index — and tell me which mutations the tests would not catch"
+  - skill: "zeugnis:zeugnis-mutation-harden"
+    why: "Runs a real mutation tool on the module the audit flagged and writes the tests that kill what survives, each kill proven by applying its mutant."
+    prompt: "run mutmut on this module and write the tests that kill the mutants that survive"
   - skill: "pr-review-toolkit:pr-test-analyzer"
     why: "Coverage percentages are compatible with assertions that assert nothing."
     prompt: "review the tests on this branch for behavioral coverage, not line coverage — where are the real gaps?"
@@ -19,10 +22,12 @@ dos:
   - "Mutate the source with off-by-one, boundary-flip, and condition-negation changes, and check which ones the suite would miss."
   - "Review for behavioral coverage, not line coverage -- a high percentage is compatible with assertions that assert nothing."
   - "Verify the verifier itself when the suite, not the code, is what's actually suspect."
+  - "When an estimate is not enough, run a real mutation tool on a fresh copy and report the untested mutants apart from the score."
 donts:
   - "Don't trust a green suite as proof the tests would notice a regression -- it only proves the tests ran."
   - "Don't treat a high coverage percentage as evidence of real assertions -- it's compatible with tests that assert nothing meaningful."
   - "Don't write an assertion whose expected value is the same hardcoded default the code falls back to -- it passes whether or not the real path ever executes."
+  - "Don't run a mutation tool in the working tree -- mutmut 3 writes mutants/ there and its apply rewrites the source file."
 ---
 
 <RecipeHeader />

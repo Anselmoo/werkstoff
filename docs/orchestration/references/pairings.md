@@ -237,6 +237,24 @@ pairings:
     recipeTask: "Investigate a job that reports success but changed nothing"
     recipeUrl: "/catalog/ci-release/job-reports-success-but-changed-nothing"
 
+  - id: "zeugnis-mutation-harden-pr-test-analyzer"
+    skillA: "zeugnis:zeugnis-mutation-harden"
+    skillB: "pr-review-toolkit:pr-test-analyzer"
+    source: "claude-plugins-official"
+    beat: "verify"
+    why: "A real mutation tool says which changes the suite lets through, but only for the code it mutated and the tests it selected; a diff review sees behaviour the shard never reached. Each catches what the other is structurally blind to."
+    how: "zeugnis-mutation-harden runs mutmut on a fresh archive copy of one module, writes the tests that kill the survivors, and proves each kill by applying its mutant. pr-test-analyzer then reviews the resulting test diff for behavioural gaps outside that module -- run it second, so it reviews tests that already assert real values."
+    prompt: "run mutmut on src/shop/pricing.py and write the tests that kill what survives"
+    dos:
+      - "Read the untested-mutant count beside the score -- a shard of mostly untested code can show a high score."
+      - "Read every equivalent mutant's one-line reason yourself; it is the one model judgement in the run and never counts as a kill."
+    donts:
+      - "Don't count a kill that has no proof, or one the re-measure contradicts -- the report lists those as rejected claims."
+      - "Don't put integration tests in a mutation shard -- every mutant reruns every selected test that covers it."
+    grounding: "plugins/zeugnis/scripts/test_mutation_harden.py's end-to-end case: the boundary mutant `total >= 100 -> total >= 101` survives the original `discount(200, True) < 200` assertion and is a proven kill after `discount(100, True) == 90.0`."
+    recipeTask: "Investigate tests that pass while the code is broken"
+    recipeUrl: "/catalog/defect-work/tests-pass-while-code-is-broken"
+
   - id: "zeugnis-assertion-audit-pr-test-analyzer"
     skillA: "zeugnis:zeugnis-assertion-audit"
     skillB: "pr-review-toolkit:pr-test-analyzer"

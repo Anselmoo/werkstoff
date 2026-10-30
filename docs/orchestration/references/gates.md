@@ -33,7 +33,7 @@ relevant, their test files — and needs nothing else read or computed first.
 
 |Reviewer|What it catches|What it needs|
 |---|---|---|
-|`zeugnis-assertion-audit`|Whether the tests just written would actually catch a plausible mutation (off-by-one, boundary flip, condition negation) to the target source|Target source files + their test files — exactly the two halves of a diff that touched both|
+|`zeugnis-assertion-audit`|Whether the tests just written would actually catch a plausible mutation (off-by-one, boundary flip, condition negation) to the target source. Its findings are model-reasoned unless it is handed a results file from a real mutmut run, which it then cites|Target source files + their test files — exactly the two halves of a diff that touched both|
 |`zeugnis-contract-drift`|Drift between type hints, signatures, docstrings, or API/OpenAPI/GraphQL schemas and how the code actually calls or handles them, "after a refactor" per its own description|Contract source files (typed source, schema files); no test files required|
 |`pr-review-toolkit` `code-reviewer`|CLAUDE.md compliance, style violations, bugs, code quality|"Also the agent needs to know which files to focus on for the review" — defaults to `git diff` of unstaged work if not told otherwise|
 |`pr-review-toolkit` `comment-analyzer`|Comment accuracy against the code, comment rot, misleading or outdated comments|The changed files carrying the comments|
@@ -47,6 +47,12 @@ fetches a pull request on its own; all six read whatever files the dispatch prom
 names. That is what makes them diff-shaped rather than PR-shaped, and why they
 substitute cleanly for the `code-reviewer.md` template's own read of
 `BASE_SHA..HEAD_SHA`.
+
+`zeugnis-mutation-harden` is deliberately not in that table. It runs a real
+mutation tool, so it needs the project's own test environment with mutmut
+installed. It runs for minutes to hours as a background script, and it ends by
+writing tests rather than a verdict. Run it before the gate, on the one module
+`zeugnis-assertion-audit` flagged, not as the gate itself.
 
 ## Reviewers that need one more input
 
