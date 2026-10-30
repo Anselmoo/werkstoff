@@ -845,7 +845,7 @@
     },
     {
       "name": "matrize",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Derives a design system once from reference exemplars you admire, names every element, and emits it to any target.",
       "skills": [
         {
