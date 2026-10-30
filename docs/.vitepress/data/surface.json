@@ -503,7 +503,7 @@
     },
     {
       "name": "cli-scaffold",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it.",
       "skills": [
         {
