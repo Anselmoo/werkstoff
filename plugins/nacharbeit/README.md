@@ -1,15 +1,45 @@
 # nacharbeit
 
-**Reworks a Claude Code plugin to the official Anthropic standard — the way a part
-that failed inspection is reworked to spec, then measured again before it leaves the
-bench.**
+**Reviews a Claude Code plugin against the official Anthropic standard, then reworks the
+mechanical and local-rewrite share of what falls short.**
 
-*Nacharbeit* is the manufacturing word for exactly that: rework of a part that did not
+**The name.** *Nacharbeit* is the manufacturing word for exactly that: rework of a part that did not
 pass, back to the drawing. This plugin is the review that finds where a plugin's
 skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest,
 README and developer docs fall short of the standard, and the fix pass that reworks the
 mechanical and local-rewrite share of that — under a lock, blind-verified, and never
 past the tier a model can apply without judgement it lacks.
+
+- **Use when** you have written or inherited a plugin and want to know where it falls
+  short of the Anthropic standard, and to have the safe share of that fixed.
+- **Not when** the thing under review is the application a plugin is pointed at — use
+  `befund` for documented conventions, `lehre` for an enforced doctrine or `passung` for
+  undocumented variants.
+
+## Use case
+
+**Situation.** You added a skill and a hook to `andon` and want to know whether either
+would load with empty metadata or silently discard its deny, before it ships.
+**Call.** `/nacharbeit:nacharbeit-review review the andon plugin`
+**Writes.** `analysis/nacharbeit/` (baked args, `run.js`, `return.json`, results) and,
+inside werkstoff, `docs/prompt-quality-findings.md`. It never edits the plugin; that is
+`nacharbeit-fix`.
+**Next.** Read the calibration line first, then the per-plugin verdicts. Run
+`/nacharbeit:nacharbeit-fix` for the haiku and sonnet tiers and decide the opus- and
+human-tier entries yourself.
+
+```
+nacharbeit review 2026-09-09T06:12:04Z · rubric 3f9c1a2b7d0e · 3 plugins, 19 batches, 20 fixtures (kinds: assets, docs, hooks, manifest, scripts, skills)
+calibration: r1 recall 0.76 (min angle 0.40, min family 0.50) → rewrite → r2 recall 0.83 (min angle 0.60, min family 0.67)
+sealed hold-out: 0.79 overall; Q 0.81, HQ 0.75, SQ 0.67, AQ 0.75, PQ 0.80, DQ 1.00 — every family above its floor, finder frozen
+...
+backlog: haiku 31 · sonnet 96 · opus 2 · human 4
+held for a person (never auto-applied):
+  [opus ] zirkel: plugins/zirkel/workflows/solve.js — design a real gate for each stage's output_contract …
+  [human] andon:   plugins/andon/skills/andon-loop/SKILL.md — decide whether andon-loop supports scoped runs …
+```
+
+Excerpt from the `## Output format` block of `plugins/nacharbeit/skills/nacharbeit-review/SKILL.md`.
 
 ## Why this exists
 

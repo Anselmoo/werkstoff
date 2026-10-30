@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "befund",
-      "description": "Self-assessment for live, actively-maintained codebases: import-graph-based stage/wire mapping, docs-vs-code drift detection, CI/CD topology audit, house-rules convention enforcement, code-idiom/architecture-deficiency detection, and a multi-repo portfolio dashboard \u2014 almost entirely read-only, writes only to a scoped output directory (default analysis/befund/**, configurable), with two narrowly-gated, off-by-default Edit exceptions (befund-transform-execute, befund-idiom-fix) for applying already-authorized findings.",
+      "description": "Makes a codebase describe its own health, with every finding tied to file:line evidence, and edits source only behind an authorization recorded on disk.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -19,7 +19,7 @@
     },
     {
       "name": "zeugnis",
-      "description": "AI-generated-code quality auditing for live, actively-maintained codebases: dependency-hallucination detection, LLM-reasoned assertion/mutation strength auditing, machine-checkable contract-drift detection, self-referential agentic-loop reliability auditing, plus preflight and status meta-skills, a diff-scoped pre-commit variant (zeugnis-code-change), and a bounded autonomous self-optimization cycle (zeugnis-cycle) with a persistent ledger and an opt-in propose/fix mode \u2014 read-only except a scoped output directory, one skill (zeugnis-dependency-audit) with read-only network egress to public package registries, and one skill (zeugnis-cycle, fix mode only) with narrowly-scoped Edit access to apply and re-verify dependency/contract-drift/agentic-reliability fixes.",
+      "description": "Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -29,7 +29,7 @@
     },
     {
       "name": "zirkel",
-      "description": "A Claude-Code-native reasoning-composition plugin for complex/vague tasks: 13 skills grounded in prompt-engineering techniques from universal-creator (clarify-scope, explore-branches, decompose-chain, reason-verify, ground-evidence, draft-revise, calibrate-format, optimize-instruction, investigate-dynamically, map-relationships, negotiate-tradeoffs, verify-assumptions, summarize-trace), composed by zirkel-solve into an actual workflow rather than exposed as a technique picker.",
+      "description": "Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone starts executing it.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -39,7 +39,7 @@
     },
     {
       "name": "cupertino",
-      "description": "A Steve-Jobs-grounded design and craft discipline for a project's whole lifecycle, not just UI polish: 10 skills, each grounded in a specific, real Jobs/Apple decision (the 1997 return-to-Apple product-line cut, NeXTSTEP-to-Apple-Silicon's unbroken lineage, Alan Kay's whole-widget line, iPhone/iPod foam-core prototyping, Time Machine's transfiguration of backup, iPhone/iPad unboxing-as-theater, the iPhone cannibalizing the iPod), composed by cupertino-review into one fixed lifecycle pipeline rather than exposed as a technique picker. A second, self-contained handbook lifecycle (draft/apply/check/fix, domain-parameterized across design/code/testing/documentation) persists a project's actual conventions into a durable artifact and re-checks new work against it, with no dependency on other plugins.",
+      "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, run as a fixed lifecycle of stages from experience to ship, not a menu of design techniques.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -49,7 +49,7 @@
     },
     {
       "name": "andon",
-      "description": "Evidence-grounded harden-and-advance loop for live, actively-maintained codebases: propose maximally from the code/artifacts/best-practice, verify adversarially against evidence rather than authority across seven proof strategies chosen by wire type, and advance only past a proven wire (the andon rule) \u2014 never past a broken or unproven one. Composable skill family (preflight, propose, verify, loop, status) over a native OKF ledger, read-only except a scoped output directory.",
+      "description": "Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -59,7 +59,7 @@
     },
     {
       "name": "cli-scaffold",
-      "description": "Scaffolds production-grade CLI apps across 12 languages (Python, TypeScript/JavaScript, Ruby, PHP, Perl, .NET, Rust, Go, Bash, Zsh, PowerShell, POSIX sh), grouped into three paradigm skills (compiled, interpreted, shell) plus a shared architecture doctrine and a front-door orchestrator. Generation is freeform every time \u2014 no stored boilerplate \u2014 guided strictly by five pillars: UX/discoverability, backend/core separation, stability (frozen exit-code contract, snapshot-tested --help), idiomatic per-ecosystem distribution, and Unix composability. A read-only verifier agent checks generated output against the doctrine before it's presented.",
+      "description": "Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -69,7 +69,7 @@
     },
     {
       "name": "passung",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent \u2014 divergent architecture, docs, code patterns, and style across modules \u2014 with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope \u2014 see befund); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "description": "Finds a convention your codebase follows two or more valid ways, picks the one that should become canon, and aligns every divergent site to it with a provable equivalence check.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -79,7 +79,7 @@
     },
     {
       "name": "takt",
-      "description": "Enforces declared beat order at the tool-call layer: denies an edit or a dispatch that runs ahead of the step it depends on, so cross-plugin sequencing is a runtime gate rather than a sentence a model may skip. Inert until a repository declares its beats.",
+      "description": "Refuses an edit or dispatch that runs ahead of a step the repository said must come first.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -89,7 +89,7 @@
     },
     {
       "name": "lehre",
-      "description": "Researches a code style, pattern and architecture doctrine from external authority plus real repository evidence, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, quoting its own rationale, rather than describing the violation after the fact. Works from a blank page as well as over an existing tree \u2014 greenfield project initialization is decomposed into units and seams, and a write into a unit whose dependencies are not yet validated is denied just as a rule violation is. Nine skills spanning evaluate / research / investigate / suggest / implement / validate / test, eight agents, one PreToolUse hook, and a closed deterministic check vocabulary (fnmatch and Python ast, never regex) whose enforcement tier is derived from the check kind rather than declared \u2014 so a rule cannot claim to block and silently fail to. Inert until a repository declares a doctrine.",
+      "description": "Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -99,7 +99,7 @@
     },
     {
       "name": "nacharbeit",
-      "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
+      "description": "Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -109,7 +109,7 @@
     },
     {
       "name": "matrize",
-      "description": "Derives a named, platform-neutral design system from reference exemplars and emits it to any target. Measurement and interpretation stay separate artefacts rather than separate sections: decode records what each reference actually shows, graded for how far its values can be trusted and what rights its source carries, while name interprets \u2014 every recurring element gets a purpose, a rule and an anti-rule, and a rule with no stated failure case is not emitted at all. The source of truth is a DTCG token file, never CSS; CSS, a VitePress theme layer and the landscape sketchbook are formatter output run by committed scripts, so the same tokens regenerate byte-stable. References are read-only, enforced by a PreToolUse hook rather than by convention, so values and rules may be extracted while assets are never copied. Every fan-out agent is read-only; writes are confined to the configured design root's system/ and out/ directories.",
+      "description": "Derives a design system once from reference exemplars you admire, names every element, and emits it to any target.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"
@@ -119,7 +119,7 @@
     },
     {
       "name": "arbeitsplan",
-      "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm \u2014 N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted \u2014 and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and \u2014 only behind an explicit approval gate \u2014 to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
+      "description": "Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result.",
       "author": {
         "name": "Anselm Hahn",
         "email": "anselm.hahn@gmail.com"

@@ -4,7 +4,7 @@
     {
       "name": "andon",
       "version": "1.0.7",
-      "description": "Walks a repository's value stream stage-by-stage, proposing fixes for discovered gaps, proving each wire before advancing via seven evidence-grounded strategies, and halting rather than passing broken or unproven handoffs.",
+      "description": "Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.",
       "skills": [
         {
           "id": "andon:andon-loop",
@@ -87,7 +87,7 @@
     {
       "name": "arbeitsplan",
       "version": "1.2.1",
-      "description": "Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a redundant swarm — N candidates over the SAME scope in their own git worktrees, judged blind, exactly one landed and the rest deleted — and refuses to converge by retrying. Ordering is delegated to takt via a generated beat declaration rather than enforced twice. Writes to a scoped output directory (analysis/arbeitsplan/**), to candidate worktrees under .arbeitsplan/**, and — only behind an explicit approval gate — to .claude/takt.local.md; the single landing step is the one place it touches the working tree. A PreToolUse hook denies an identical re-dispatch, an out-of-scope write, a shared-tree write during a fan-out, and a dispatch past the declared budget. Ships a headless `claude -p` matrix runner for sweeps that need a fresh process and a real per-cell --model.",
+      "description": "Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result.",
       "skills": [
         {
           "id": "arbeitsplan:arbeitsplan-backend",
@@ -293,7 +293,7 @@
     {
       "name": "befund",
       "version": "1.2.0",
-      "description": "Comprehensive self-assessment of live codebases: architecture, docs drift, CI/CD topology, conventions, code idioms, business rules, and UI/accessibility, synthesized into a prioritized, gated transformation plan.",
+      "description": "Makes a codebase describe its own health, with every finding tied to file:line evidence, and edits source only behind an authorization recorded on disk.",
       "skills": [
         {
           "id": "befund:befund-arch-health",
@@ -504,7 +504,7 @@
     {
       "name": "cli-scaffold",
       "version": "1.0.1",
-      "description": "Generate production-grade command-line applications in 12 languages, each following a unified five-pillar architecture doctrine and ecosystem-specific idioms, verified against that doctrine before presentation.",
+      "description": "Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it.",
       "skills": [
         {
           "id": "cli-scaffold:cli-architecture",
@@ -556,7 +556,7 @@
     {
       "name": "cupertino",
       "version": "1.1.0",
-      "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, applied through a fixed, sequenced lifecycle pipeline rather than a menu of individually-selectable design techniques.",
+      "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, run as a fixed lifecycle of stages from experience to ship, not a menu of design techniques.",
       "skills": [
         {
           "id": "cupertino:cupertino-backwards",
@@ -692,7 +692,7 @@
     {
       "name": "lehre",
       "version": "1.0.3",
-      "description": "Researches a code style, pattern and architecture doctrine, then enforces it at the tool-call layer: a blocking rule denies the write that would violate it, rather than describing the violation afterwards. Works from a blank page (greenfield project initialization, decomposed into units and seams whose build order is itself enforced) as well as over an existing codebase.",
+      "description": "Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.",
       "skills": [
         {
           "id": "lehre:lehre-brief",
@@ -846,7 +846,7 @@
     {
       "name": "matrize",
       "version": "1.1.0",
-      "description": "Derives a named, platform-neutral design system from reference exemplars and emits it to any target. Measurement and interpretation stay separate artefacts rather than separate sections: decode records what each reference actually shows, graded for how far its values can be trusted and what rights its source carries, while name interprets — every recurring element gets a purpose, a rule and an anti-rule, and a rule with no stated failure case is not emitted at all. The source of truth is a DTCG token file, never CSS; CSS, a VitePress theme layer and the landscape sketchbook are formatter output run by committed scripts, so the same tokens regenerate byte-stable. References are read-only, enforced by a PreToolUse hook rather than by convention, so values and rules may be extracted while assets are never copied. Every fan-out agent is read-only; writes are confined to the configured design root's system/ and out/ directories.",
+      "description": "Derives a design system once from reference exemplars you admire, names every element, and emits it to any target.",
       "skills": [
         {
           "id": "matrize:matrize-brief",
@@ -986,7 +986,7 @@
     {
       "name": "nacharbeit",
       "version": "1.1.0",
-      "description": "Reworks a Claude Code plugin to the official Anthropic standard the way a failed part is reworked to spec: a calibrated review of its skills, agents, commands, workflow prompts, hooks, scripts, report viewers, manifest, README and the developer docs that wire it in, then a tier-gated fix pass that applies only what a haiku or sonnet remediator can do without judgement, blind-verified, under a PreToolUse hook that denies every edit outside the fix lock. Nothing is graded until the finder passes a sealed hold-out; opus- and human-tier findings are surfaced, never auto-applied. Read-only except analysis/nacharbeit/ and, during a fix pass, the files its lock names.",
+      "description": "Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short.",
       "skills": [
         {
           "id": "nacharbeit:nacharbeit-fix",
@@ -1057,7 +1057,7 @@
     {
       "name": "passung",
       "version": "1.2.0",
-      "description": "Harmonize an already-modern, live codebase that grew inconsistent — divergent architecture, docs, code patterns, and style across modules — with a structured preflight / scan / map / canonize / brief / align / verify / status workflow. Derives the canonical form for undocumented, non-deprecated pattern variants (documented conventions and version-deprecated idioms are out of scope — see befund); an interactive consistency matrix; specialist agents; and optional dynamic-workflow orchestration with adversarial verification.",
+      "description": "Finds a convention your codebase follows two or more valid ways, picks the one that should become canon, and aligns every divergent site to it with a provable equivalence check.",
       "skills": [],
       "agents": [
         {
@@ -1142,7 +1142,7 @@
     {
       "name": "takt",
       "version": "1.0.3",
-      "description": "Enforces declared beat order at the tool-call layer: denies an edit or a dispatch that runs ahead of the step it depends on, so cross-plugin sequencing is a runtime gate rather than a sentence a model may skip. Inert until a repository declares its beats.",
+      "description": "Refuses an edit or dispatch that runs ahead of a step the repository said must come first.",
       "skills": [],
       "agents": [],
       "commands": [],
@@ -1157,7 +1157,7 @@
     {
       "name": "zeugnis",
       "version": "1.1.0",
-      "description": "Audit AI-generated code quality across four independent domains — hallucinated dependencies, weak test assertions, contract drift, and agentic-loop reliability — with independent verification and a bounded self-optimization fix cycle.",
+      "description": "Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it.",
       "skills": [
         {
           "id": "zeugnis:zeugnis-agentic-reliability",
@@ -1265,7 +1265,7 @@
     {
       "name": "zirkel",
       "version": "1.1.0",
-      "description": "Staged reasoning-composition techniques from prompt-engineering theory for complex, ambiguous, or multi-faceted tasks: a Clarify -> Explore -> Decompose -> Execute -> Revise pipeline with code-enforced guarantees.",
+      "description": "Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone starts executing it.",
       "skills": [
         {
           "id": "zirkel:zirkel-calibrate-format",

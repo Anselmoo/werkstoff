@@ -1,11 +1,47 @@
 # arbeitsplan
 
-**Compiles a stated problem into an executable, budgeted agentic workflow, runs it as a
-redundant swarm, and lands exactly one adjudicated result.**
+**Turns a described change into a budgeted workflow, builds it several independent ways at
+once, and lands exactly one result.**
 
-An *Arbeitsplan* is the routing sheet that turns a part drawing into a concrete sequence of
+**The name.** An *Arbeitsplan* is the routing sheet that turns a part drawing into a concrete sequence of
 operations — which machine, which tooling, how long. That is this plugin's job: problem
 drawing in, operation sequence out.
+
+- **Use when** you can state a change and check it with commands, and want N independent
+  attempts at it with one adjudicated winner applied and the rest deleted.
+- **Not when** the problem is a question to reason through rather than a change to make —
+  use `zirkel` — or you only need an existing order enforced — use `takt` — or you want a
+  named handoff proven — use `andon`.
+
+## Use case
+
+**Situation.** You need a per-key rate limit on the search endpoint and do not know which
+design will hold. "Use an agentic workflow" is the advice you have; it carries no agent count,
+no model tier and no stop rule.
+**Call.** `/arbeitsplan:arbeitsplan-compile add a per-key rate limit to the search endpoint,
+covered by tests/test_ratelimit.py`
+**Writes.** `analysis/arbeitsplan/<runId>/workflow.json`; `.claude/takt.local.md` only after
+you approve it, because that makes takt live and fail-closed in the repo.
+**Next.** Say whether the beats may be written, then `arbeitsplan-run` fans the candidates
+out into worktrees, referees them blind and lands one diff.
+
+```
+arbeitsplan compile — run ap-2026-09-12-a3f1
+  shape        change
+  scope        src/api/search.py, src/api/limits/**, tests/test_ratelimit.py
+  acceptance   3 criteria, 3 with runnable checks
+  budget       9 dispatches / 25 min
+  phases       build (best-of-n, fanOut 3, sonnet, auto, writes worktree)
+               -> referee (blind-referee, 3, sonnet, auto, writes none)
+               -> land (select-then-synthesize, 1, sonnet, auto, writes shared)
+
+wrote analysis/arbeitsplan/ap-2026-09-12-a3f1/workflow.json
+takt beats NOT written — approval required. ...
+```
+
+Excerpt from the "Output format" block of
+`plugins/arbeitsplan/skills/arbeitsplan-compile/SKILL.md` (the `delegates` and `backend`
+lines are elided).
 
 ## Why this exists
 
