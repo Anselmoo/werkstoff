@@ -30,6 +30,7 @@ and a real excerpt of its output.
 | [`cli-scaffold`](plugins/cli-scaffold/README.md) | Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it. | you are starting a command-line tool | — |
 | [`arbeitsplan`](plugins/arbeitsplan/README.md) | Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result. | a change is big enough to orchestrate rather than do serially | `takt`, `zirkel` |
 | [`takt`](plugins/takt/README.md) | Refuses an edit or dispatch that runs ahead of a step the repository said must come first. | an order between skills or plugins must hold, not just be written down | `arbeitsplan` |
+| [`spur`](plugins/spur/README.md) | Runs a pipeline once under a tracer and records, for each step, the functions it called, every file it read and wrote with its sha256, and whether it read exactly what the step before it wrote. | someone asks how a result was produced, step by step and file by file | `zeugnis`, `andon` |
 | [`nacharbeit`](plugins/nacharbeit/README.md) | Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short. | the thing under review is a plugin, not an application | `befund` |
 
 `befund`, `zeugnis`, `andon` and `passung` all work on a live codebase, and they
@@ -47,7 +48,7 @@ use instead.
 
 Swap `befund` for any plugin name above (`zeugnis`, `zirkel`,
 `cupertino`, `andon`, `arbeitsplan`, `cli-scaffold`, `passung`,
-`takt`, `lehre`, `nacharbeit`, `matrize`) to install
+`takt`, `lehre`, `nacharbeit`, `matrize`, `spur`) to install
 a different one — each is independent and can be installed on its own.
 
 Or for local development, point Claude Code straight at a plugin

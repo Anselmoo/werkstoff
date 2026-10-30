@@ -3,7 +3,7 @@
 Read this before writing or editing any `plugins/*/assets/*-viewer.html` or its
 `plugins/*/scripts/build_*_html.py`.
 
-All 12 plugins ship a self-contained HTML report — 14 files, since `matrize` ships two
+All 13 plugins ship a self-contained HTML report — 15 files, since `matrize` ships two
 (`derivation-viewer.html`, `provenance-viewer.html`) and so does `arbeitsplan`
 (`run-viewer.html`, `design-viewer.html`). They were built independently, share
 exactly one thing — `tools/design-tokens/tokens.css`, vendored per plugin by

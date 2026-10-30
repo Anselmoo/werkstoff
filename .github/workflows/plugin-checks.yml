@@ -46,6 +46,7 @@ jobs:
       pre_commit: ${{ steps.pre_commit.outcome }}
       arbeitsplan_selftests: ${{ steps.arbeitsplan_selftests.outcome }}
       nacharbeit_selftests: ${{ steps.nacharbeit_selftests.outcome }}
+      spur_tests: ${{ steps.spur_tests.outcome }}
       python_floor: ${{ steps.python_floor.outcome }}
     steps:
       - uses: actions/checkout@v4
@@ -535,6 +536,22 @@ jobs:
           python3 plugins/nacharbeit/scripts/subrun.py --selftest
           python3 plugins/nacharbeit/scripts/build_review_html.py --selftest
 
+      - name: Run spur acceptance test
+        id: spur_tests
+        continue-on-error: true
+        # The fixture pipeline traced and untraced: outputs byte-identical, the chain verified,
+        # then broken on tamper, PROV well-formed, no home path or env value in the record.
+        # REQUIRE_SPUR_MONITORING=1 turns the below-3.12 skip into a failure: this runner is
+        # 3.12, so a skip here would mean sys.monitoring vanished, not that it was absent.
+        # REQUIRE_NODE=1 does the same for the cpuprofile importer's live node run.
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          REQUIRE_SPUR_MONITORING: "1"
+          REQUIRE_NODE: "1"
+        run: |
+          python3 plugins/spur/scripts/test_spur_trace.py
+          python3 plugins/spur/scripts/build_spur_html.py --selftest
+
       - name: Fail the job if any check failed
         if: |
           steps.manifests.outcome == 'failure' ||
@@ -567,6 +584,7 @@ jobs:
           steps.pre_commit.outcome == 'failure' ||
           steps.arbeitsplan_selftests.outcome == 'failure' ||
           steps.nacharbeit_selftests.outcome == 'failure' ||
+          steps.spur_tests.outcome == 'failure' ||
           steps.python_floor.outcome == 'failure'
         run: exit 1
 
@@ -633,6 +651,7 @@ jobs:
             row "README shared blocks (rrt docs inject --check)" "${{ needs.checks.outputs.docs_inject_check }}"
             row "arbeitsplan selftests (compiler, landing, pool, runner, reconcile, sweep, record, rounds)" "${{ needs.checks.outputs.arbeitsplan_selftests }}"
             row "nacharbeit selftests (linter, shipped fixtures, fix-pass guard, hook post-check skip, review routing, trigger probe, fix-scope hook)" "${{ needs.checks.outputs.nacharbeit_selftests }}"
+            row "spur acceptance test (traced = untraced, chain verified then broken on tamper, viewer selftest)" "${{ needs.checks.outputs.spur_tests }}"
             row "Python floor 3.11 (lint-python-floor.py + rrt eol)" "${{ needs.checks.outputs.python_floor }}"
             echo "</tbody></table>"
             echo

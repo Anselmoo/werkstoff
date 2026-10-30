@@ -1,6 +1,6 @@
 # Orchestrating werkstoff with superpowers and the official plugins
 
-werkstoff's twelve plugins, `obra/superpowers`, and Anthropic's official plugin set were
+werkstoff's thirteen plugins, `obra/superpowers`, and Anthropic's official plugin set were
 built independently, and they overlap far less than their descriptions suggest. This
 catalog records how they compose in one session: which pieces own a whole task, which
 drop into somebody else's workflow, and which handoffs are already wired so nobody
@@ -13,7 +13,7 @@ Three different things are installed, and they stack rather than compete. New he
 
 | layer | what it supplies | how to install |
 |---|---|---|
-| **werkstoff** — twelve plugins | specialised inspectors and enforcers, each refusing to speak outside one failure mode | `/plugin marketplace add Anselmoo/werkstoff` then `/plugin install <name>@werkstoff` |
+| **werkstoff** — thirteen plugins | specialised inspectors and enforcers, each refusing to speak outside one failure mode | `/plugin marketplace add Anselmoo/werkstoff` then `/plugin install <name>@werkstoff` |
 | **superpowers** — 14 skills, no agents, no commands | the loop shape: brainstorm, plan, TDD, request review, verify before completion. Never the domain judgement | `/plugin install superpowers@claude-plugins-official` |
 | **the official Anthropic plugins** | named, tool-scoped reviewer agents that a command orchestrates | `/plugin install pr-review-toolkit@claude-plugins-official` (and siblings) |
 
@@ -22,7 +22,7 @@ Two things that catch people out. `superpowers` ships one `SessionStart` hook an
 one is wrong. And `claude-security` sets `disable-model-invocation: true`, so the model
 can never reach for it on its own.
 
-Within werkstoff, eight of the twelve target one distinct failure mode each — `andon` on
+Within werkstoff, eight of the thirteen target one distinct failure mode each — `andon` on
 handoffs between stages that were never proven, `befund` on a repo that cannot
 describe its own health, `zeugnis` on assertions, contracts and dependency manifests
 that look right and are not, `zirkel` on reasoning stages silently skipped under
@@ -45,7 +45,9 @@ the compiler for a beat declaration: it turns a stated problem into a workflow s
 **and** the takt beats that order it, then runs the spec as a redundant swarm — N
 candidates over one scope, exactly one landed. The pairing with takt is the point.
 takt could not be used because nothing authored its declaration; nothing authored it
-because the format is a thing you write by hand, and nobody did.
+because the format is a thing you write by hand, and nobody did. The thirteenth, `spur`,
+targets a result nobody can trace back: one traced run records what each step called,
+read and wrote, and whether it read what the step before it wrote.
 
 **superpowers is process discipline.** It ships 14 skills, zero agents, zero commands,
 and one `SessionStart` hook — so any agent, in any plugin's workflow, can execute it.
@@ -105,9 +107,10 @@ into another workflow's beats and gates.
 Everything else in werkstoff is a leaf. That covers all of `zirkel`'s reasoning
 skills, all of `zeugnis`'s auditors, `cupertino`'s technique skills, `cli-scaffold`'s
 paradigm and doctrine skills, `befund`'s finding skills, `lehre`'s gauge and
-validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `matrize`'s `collect`, `name`,
+validate skills, `nacharbeit-lint` (the mechanical rubric, no tokens), `spur-trace` (one
+run traced, nothing read from an earlier step), `matrize`'s `collect`, `name`,
 `retrofit` and `dolmetsch`, every
-`*-preflight`, and every named agent across all twelve plugins — including nacharbeit's
+`*-preflight`, and every named agent across all thirteen plugins — including nacharbeit's
 `component-finder` and `fix-verifier`, which exist precisely so a session without the
 Workflow tool can still dispatch one batch or verify one file from a scoped prompt.
 

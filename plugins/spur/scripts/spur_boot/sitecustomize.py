@@ -1,7 +1,7 @@
 """spur's in-process Python adapter, loaded as `sitecustomize` by every traced interpreter.
 
 Not run by hand. `spur_trace.py run` prepends this directory to PYTHONPATH and sets
-SPUR_TRACE_DIR; `site` then imports this module before `__main__`, in the root process
+SPUR_TRACE_DIR; `site` then imports this module before the main script, in the root process
 and in every Python child that inherits the environment. That inheritance is the whole
 child-process mechanism: nothing is patched, wrapped or rewritten.
 

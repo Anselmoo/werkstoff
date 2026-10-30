@@ -1,7 +1,7 @@
 /* werkstoff identity for the docs site.
  *
  * The palette is not invented here. tools/design-tokens/tokens.css is the single
- * source of truth -- vendored into all 12 plugins' assets/tokens.css, and into
+ * source of truth -- vendored into all 13 plugins' assets/tokens.css, and into
  * docs/.vitepress/theme/tokens.css, all via .rrt.toml's artifact_targets --
  * and its comments record the brand rule: the identity material is silica
  * aerogel, and each categorical slot is one aerogel chemistry. Change a colour
@@ -951,7 +951,7 @@ div[class*='language-prompt'] {
     animation: wk-rise-in 0.5s ease-out forwards;
   }
   /* Staggered per card, capped at 8 steps -- a 9th-and-beyond card (this
-     page has exactly 4 features and 12 plugins, per PluginGrid.vue's PLUGINS
+     page has exactly 4 features and 13 plugins, per PluginGrid.vue's PLUGINS
      list) shares the last step rather than the stagger growing unbounded
      with the grid size. */
   .VPFeatures .item:nth-child(1),

@@ -200,6 +200,7 @@ function stepCard(s, byId) {
     : "exit " + s.exit.code + " (" + s.exit.how + ")");
   if (s.python) bits.push("Python " + s.python);
   if (s.why) bits.push(s.why);
+  if (s.io === "declared") bits.push("file I/O declared with --reads/--writes, not observed");
   if (s.dropped) bits.push("tracer dropped " + s.dropped + " event(s): " + Object.keys(s.droppedWhy || {}).join(", "));
   card.appendChild(make("p", "meta", bits.join(" · ")));
 

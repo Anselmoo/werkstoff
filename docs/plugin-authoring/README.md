@@ -31,7 +31,7 @@ structure" pattern the craft rules below argue against.
 - [`references/craft-standards.md`](references/craft-standards.md) — the universal rules
   (skill types, anatomy, frontmatter spec, progressive disclosure, writing voice,
   no-duplication, structure-implies-a-maintainer, wiring references, portability), each
-  checked against what werkstoff's twelve plugins actually do today, not assumed. Read this
+  checked against what werkstoff's thirteen plugins actually do today, not assumed. Read this
   before starting any new skill/agent, or when something about an existing one feels off
   and you're not sure why.
 - [`references/output-shape-findings.md`](references/output-shape-findings.md) — the
@@ -50,7 +50,7 @@ structure" pattern the craft rules below argue against.
   this before arguing about a finding in `docs/prompt-quality-findings.md`, and change it
   (not the finder) when a rule is wrong.
 - [`references/report-viewer-standard.md`](references/report-viewer-standard.md) — the
-  rules for the 14 self-contained HTML reports (one per plugin, two for `matrize` and `arbeitsplan`)
+  rules for the 15 self-contained HTML reports (one per plugin, two for `matrize` and `arbeitsplan`)
   under
   `plugins/*/assets/*-viewer.html`: state the verdict in words, never print a number
   twice, an actionable number must not look inert, colour is never the only channel,
@@ -86,4 +86,4 @@ schema in a sentence instead of showing a worked, fenced instance. That gap is n
 for every befund and zeugnis auditor agent (see `output-shape-findings.md` §4.2) and
 partially closed structurally for `befund-extract-rules` (a three-file
 schema/example/report split, §4.6). What's still open, and the general rules to apply
-when extending any of the twelve plugins, live in `craft-standards.md`.
+when extending any of the thirteen plugins, live in `craft-standards.md`.

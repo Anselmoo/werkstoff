@@ -4,9 +4,9 @@ Personal Claude Code plugin workshop. `.claude-plugin/marketplace.json` at root.
 
 ## Layout
 
-`plugins/<name>/` — twelve plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
+`plugins/<name>/` — thirteen plugins: `andon`, `arbeitsplan`, `cli-scaffold`,
 `passung`, `zirkel`, `zeugnis`, `cupertino`, `lehre`, `matrize`,
-`nacharbeit`, `befund`, `takt`. Each is independently versioned;
+`nacharbeit`, `befund`, `takt`, `spur`. Each is independently versioned;
 `marketplace.json` and `.rrt.toml` both point here.
 
 `arbeitsplan` is the twelfth and pairs with `takt`: it **compiles** a stated problem into
@@ -19,6 +19,12 @@ fan-out, a write outside `writeScope`, a dispatch past budget). It parallelises 
 and the rest deleted — so no merge ever happens; and it converges by **widening**, never by
 retrying. `takt` gained an optional `runId` in the same change, namespacing markers under
 `.takt/<runId>/`; a declaration without one behaves exactly as before.
+
+`spur` is the thirteenth: it runs a pipeline once under a tracer (`sys.monitoring` plus
+`sys.addaudithook`, loaded as a `sitecustomize` through `PYTHONPATH`, never by rewriting the
+traced code) and records per step the calls, every file read and written with its sha256, and
+whether each step read exactly the bytes the step before it wrote. It ships no hook: it gates
+no action, so there is no rule for one to enforce.
 
 ## Every plugin ships an HTML report viewer
 
@@ -34,7 +40,7 @@ one.
 `plugins/<name>/.claude-plugin/beats.json` declares what a plugin **produces** (markers its
 completion proves) and **requires** (markers that must precede it).
 `python3 plugins/arbeitsplan/scripts/emit_beats.py --repo-only --write` compiles the union of
-all twelve into one `.claude/takt.local.md`, which `takt` enforces — so cross-plugin order is a
+all thirteen into one `.claude/takt.local.md`, which `takt` enforces — so cross-plugin order is a
 `PreToolUse` denial instead of a sentence.
 
 It sits beside `plugin.json` rather than in `references/` because `M-REF-UNWIRED` requires every
@@ -80,7 +86,7 @@ are strong on enforcement prose but were weak on showing output shape —
 `plugins/cupertino/agents/handbook-dimension-analyst.md` and
 `plugins/befund/agents/business-rules-miner.md` are the two files in
 this repo that already do it right). The third reference,
-`docs/plugin-authoring/references/report-viewer-standard.md`, covers the twelve plugins'
+`docs/plugin-authoring/references/report-viewer-standard.md`, covers the thirteen plugins'
 HTML report viewers — and records the cupertino-council verdict that until now survived
 only in commit `821a14a`'s message, alongside the design rationale buried at the top
 of `tools/design-tokens/tokens.css` and linked from nothing.
@@ -143,7 +149,7 @@ the question is about code structure:
 `vulture-scan`. Free static verification of the Python tooling under `tools/`.
 
 **rrt** (global) — `rrt_version_overview`,
-`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the thirteen-version-group
+`rrt_doctor_dashboard`, `rrt_locks_overview`. Useful for the fourteen-version-group
 setup below. Note the binary is `rrt-mcp`; there is no `rrt mcp` subcommand, so
 `rrt --help` will not mention MCP.
 
@@ -374,7 +380,7 @@ column), not in anything the rebuild pipeline itself added.
 Prefer `rrt` over raw git for repo-level operations; check context7
 (`/anselmoo/repo-release-tools`) for its current surface rather than memory.
 
-Thirteen independent version groups in `.rrt.toml` (12 plugins + `tools/werkstoff-cli`).
+Fourteen independent version groups in `.rrt.toml` (13 plugins + `tools/werkstoff-cli`).
 There is **no aggregate werkstoff version** — this is deliberate.
 
 ```bash

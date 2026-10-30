@@ -1140,6 +1140,25 @@
       ]
     },
     {
+      "name": "spur",
+      "version": "0.1.0",
+      "description": "Runs a pipeline once under a tracer and records, for each step, the functions it called, every file it read and wrote with its sha256, and whether it read exactly what the step before it wrote.",
+      "skills": [
+        {
+          "id": "spur:spur-trace",
+          "name": "spur-trace",
+          "description": "Runs a project's pipeline or test suite once under a tracer and renders one static HTML page per run: per step the command, a call tree of the project's own functions, every file read and written with its sha256, which step's output fed which, and a hash-chain check; also exports W3C PROV-JSON. Use when a reviewer asks how a result was produced, which files a step read, or whether one step's output is really the next step's input — 'trace this pipeline', 'show provenance for this run', 'which step wrote this file', 'prove the outputs chain'. Writes only under analysis/spur/ (one directory per run) and never edits the traced code. Not for whether tests would catch a bug (zeugnis-assertion-audit) or for proving and fixing a handoff between stages (andon-verify)."
+        }
+      ],
+      "agents": [],
+      "commands": [],
+      "hooks": {
+        "present": false,
+        "events": []
+      },
+      "workflows": []
+    },
+    {
       "name": "takt",
       "version": "1.0.3",
       "description": "Refuses an edit or dispatch that runs ahead of a step the repository said must come first.",
@@ -1463,6 +1482,7 @@
     "nacharbeit:nacharbeit-probe",
     "nacharbeit:nacharbeit-review",
     "nacharbeit:nacharbeit-status",
+    "spur:spur-trace",
     "zeugnis:zeugnis-agentic-reliability",
     "zeugnis:zeugnis-assertion-audit",
     "zeugnis:zeugnis-code-change",

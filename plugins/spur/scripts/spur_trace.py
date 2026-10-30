@@ -323,6 +323,11 @@ def merge(frags: list[dict], *, root: Path, command: list, root_pid: int, root_r
             "threads": [_relink_tree(t, red) for t in trees],
         }
 
+    for s in steps:
+        s["io"] = "observed" if s["traced"] else "none"
+    if not root_step["traced"] and (declared.get("writes") or declared.get("readHashes")):
+        root_step["io"] = "declared"
+
     steps.sort(key=lambda s: s["startNs"])
     for n, s in enumerate(steps, 1):
         s["id"] = f"s{n}"

@@ -8,8 +8,8 @@
     "--tamper"
   ],
   "root": "/private/tmp/claude-502/-Users-hahn-LocalDocuments-GitHub-Forks-werkstoff--claude-worktrees-spur-trace-plugin-7468b2/c73e18f4-5bd9-48fe-ae05-3c9be122ceb7/scratchpad/demo/pipeline",
-  "started": "2026-10-30T18:30:37.780+00:00",
-  "finished": "2026-10-30T18:30:38.139+00:00",
+  "started": "2026-10-30T18:34:26.927+00:00",
+  "finished": "2026-10-30T18:34:27.191+00:00",
   "exit": 0,
   "chain": {
     "verdict": "broken",
@@ -23,8 +23,8 @@
     {
       "id": "s1",
       "traced": true,
-      "pid": 13426,
-      "ppid": 13425,
+      "pid": 16355,
+      "ppid": 16353,
       "command": [
         "python3.15",
         "run_pipeline.py",
@@ -48,14 +48,14 @@
               "file": "run_pipeline.py",
               "line": 1,
               "calls": 1,
-              "ns": 304038291,
+              "ns": 216360083,
               "children": [
                 {
                   "fn": "main",
                   "file": "run_pipeline.py",
                   "line": 35,
                   "calls": 1,
-                  "ns": 255683042,
+                  "ns": 200201958,
                   "children": []
                 }
               ]
@@ -65,6 +65,7 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "observed",
       "inputs": [],
       "outputs": [],
       "code": [
@@ -75,14 +76,14 @@
       ],
       "removed": [],
       "parent": null,
-      "started": "2026-10-30T18:30:37.827+00:00",
-      "durationMs": 312.42
+      "started": "2026-10-30T18:34:26.966+00:00",
+      "durationMs": 225.42
     },
     {
       "id": "s2",
       "traced": true,
-      "pid": 13427,
-      "ppid": 13426,
+      "pid": 16356,
+      "ppid": 16355,
       "command": [
         "python3.15",
         "ingest.py",
@@ -107,21 +108,21 @@
               "file": "ingest.py",
               "line": 1,
               "calls": 1,
-              "ns": 5924167,
+              "ns": 4712375,
               "children": [
                 {
                   "fn": "main",
                   "file": "ingest.py",
                   "line": 26,
                   "calls": 1,
-                  "ns": 880458,
+                  "ns": 690334,
                   "children": [
                     {
                       "fn": "read_rows",
                       "file": "ingest.py",
                       "line": 17,
                       "calls": 1,
-                      "ns": 470875,
+                      "ns": 357418,
                       "children": []
                     },
                     {
@@ -129,14 +130,14 @@
                       "file": "ingest.py",
                       "line": 22,
                       "calls": 7,
-                      "ns": 30458,
+                      "ns": 27418,
                       "children": [
                         {
                           "fn": "parse_amount",
                           "file": "ingest.py",
                           "line": 10,
                           "calls": 7,
-                          "ns": 8293,
+                          "ns": 7751,
                           "children": []
                         }
                       ]
@@ -146,7 +147,7 @@
                       "file": "ingest.py",
                       "line": 10,
                       "calls": 5,
-                      "ns": 4251,
+                      "ns": 2624,
                       "children": []
                     }
                   ]
@@ -158,6 +159,7 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "observed",
       "inputs": [
         {
           "path": "data/raw.csv",
@@ -184,14 +186,14 @@
       ],
       "removed": [],
       "parent": "s1",
-      "started": "2026-10-30T18:30:37.959+00:00",
-      "durationMs": 9.27
+      "started": "2026-10-30T18:34:27.028+00:00",
+      "durationMs": 7.24
     },
     {
       "id": "s3",
       "traced": true,
-      "pid": 13428,
-      "ppid": 13426,
+      "pid": 16357,
+      "ppid": 16355,
       "command": [
         "python3.15",
         "normalize.py",
@@ -215,35 +217,35 @@
               "file": "normalize.py",
               "line": 1,
               "calls": 1,
-              "ns": 3365208,
+              "ns": 3488334,
               "children": [
                 {
                   "fn": "main",
                   "file": "normalize.py",
                   "line": 19,
                   "calls": 1,
-                  "ns": 395292,
+                  "ns": 485542,
                   "children": [
                     {
                       "fn": "clean_row",
                       "file": "normalize.py",
                       "line": 14,
                       "calls": 5,
-                      "ns": 58625,
+                      "ns": 60250,
                       "children": [
                         {
                           "fn": "clean_name",
                           "file": "normalize.py",
                           "line": 10,
                           "calls": 5,
-                          "ns": 43334,
+                          "ns": 44750,
                           "children": [
                             {
                               "fn": "clean_name.<locals>.<genexpr>",
                               "file": "normalize.py",
                               "line": 11,
                               "calls": 5,
-                              "ns": 9125,
+                              "ns": 9625,
                               "children": []
                             }
                           ]
@@ -259,6 +261,7 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "observed",
       "inputs": [
         {
           "path": "work/records.csv",
@@ -287,14 +290,14 @@
       ],
       "removed": [],
       "parent": "s1",
-      "started": "2026-10-30T18:30:38.013+00:00",
+      "started": "2026-10-30T18:34:27.078+00:00",
       "durationMs": 5.47
     },
     {
       "id": "s4",
       "traced": false,
       "pid": null,
-      "ppid": 13426,
+      "ppid": 16355,
       "command": [
         "sh",
         "-c",
@@ -316,19 +319,20 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "none",
       "inputs": [],
       "outputs": [],
       "code": [],
       "removed": [],
       "parent": "s1",
-      "started": "2026-10-30T18:30:38.023+00:00",
+      "started": "2026-10-30T18:34:27.088+00:00",
       "durationMs": null
     },
     {
       "id": "s5",
       "traced": true,
-      "pid": 13430,
-      "ppid": 13426,
+      "pid": 16359,
+      "ppid": 16355,
       "command": [
         "python3.15",
         "summarize.py",
@@ -353,21 +357,21 @@
               "file": "summarize.py",
               "line": 1,
               "calls": 1,
-              "ns": 5147250,
+              "ns": 3542333,
               "children": [
                 {
                   "fn": "main",
                   "file": "summarize.py",
                   "line": 38,
                   "calls": 1,
-                  "ns": 819916,
+                  "ns": 687875,
                   "children": [
                     {
                       "fn": "currency",
                       "file": "summarize.py",
                       "line": 31,
                       "calls": 1,
-                      "ns": 276125,
+                      "ns": 199084,
                       "children": []
                     },
                     {
@@ -375,7 +379,7 @@
                       "file": "summarize.py",
                       "line": 14,
                       "calls": 1,
-                      "ns": 134833,
+                      "ns": 136083,
                       "children": []
                     },
                     {
@@ -383,14 +387,14 @@
                       "file": "summarize.py",
                       "line": 23,
                       "calls": 1,
-                      "ns": 31833,
+                      "ns": 29583,
                       "children": [
                         {
                           "fn": "mean",
                           "file": "summarize.py",
                           "line": 19,
                           "calls": 3,
-                          "ns": 2959,
+                          "ns": 2750,
                           "children": []
                         }
                       ]
@@ -404,6 +408,7 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "observed",
       "inputs": [
         {
           "path": "work/override.txt",
@@ -440,14 +445,14 @@
       ],
       "removed": [],
       "parent": "s1",
-      "started": "2026-10-30T18:30:38.073+00:00",
-      "durationMs": 7.45
+      "started": "2026-10-30T18:34:27.131+00:00",
+      "durationMs": 5.59
     },
     {
       "id": "s6",
       "traced": true,
-      "pid": 13431,
-      "ppid": 13426,
+      "pid": 16360,
+      "ppid": 16355,
       "command": [
         "python3.15",
         "report.py",
@@ -472,21 +477,21 @@
               "file": "report.py",
               "line": 1,
               "calls": 1,
-              "ns": 579042,
+              "ns": 484333,
               "children": [
                 {
                   "fn": "main",
                   "file": "report.py",
                   "line": 14,
                   "calls": 1,
-                  "ns": 547959,
+                  "ns": 460666,
                   "children": [
                     {
                       "fn": "line",
                       "file": "report.py",
                       "line": 10,
                       "calls": 3,
-                      "ns": 12584,
+                      "ns": 12250,
                       "children": []
                     }
                   ]
@@ -498,6 +503,7 @@
       },
       "dropped": 0,
       "droppedWhy": {},
+      "io": "observed",
       "inputs": [
         {
           "path": "out/summary.json",
@@ -524,8 +530,8 @@
       ],
       "removed": [],
       "parent": "s1",
-      "started": "2026-10-30T18:30:38.126+00:00",
-      "durationMs": 2.58
+      "started": "2026-10-30T18:34:27.177+00:00",
+      "durationMs": 2.34
     }
   ]
 }
