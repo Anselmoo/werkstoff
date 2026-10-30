@@ -441,8 +441,12 @@ def selftest() -> int:
     if decls:
         beats, _dropped, refused, malformed = repo_beats(decls, root)
         refused_markers = {m for _, m, _, _ in refused}
+        # Counted from disk, not written down: a literal broke the day a thirteenth
+        # plugin landed, and would have passed had one quietly lost its beats.json.
+        on_disk = sum(1 for p in root.iterdir()
+                      if (p / ".claude-plugin" / "plugin.json").is_file())
         for name, ok_ in [
-            ("ACCEPTANCE all 12 plugins declare", len(decls) == 12),
+            (f"ACCEPTANCE all {on_disk} plugins on disk declare", len(decls) == on_disk),
             ("ACCEPTANCE every declaration is well-formed", not malformed),
             ("ACCEPTANCE ZERO beats compile today", len(beats) == 0),
             ("ACCEPTANCE the andon requirement is refused, not compiled",

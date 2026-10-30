@@ -1,0 +1,537 @@
+{
+  "_note": "REAL output, not hand-written: plugins/spur/scripts/fixtures/pipeline/ copied to a scratch directory and run as `python3 spur_trace.py run --run-id demo -- python3 run_pipeline.py --tamper` (Python 3.15.2, macOS). Only this _note key was added. Regenerate the same way and diff.",
+  "schema": "spur/trace/1",
+  "runId": "demo",
+  "command": [
+    "python3",
+    "run_pipeline.py",
+    "--tamper"
+  ],
+  "root": "/private/tmp/claude-502/-Users-hahn-LocalDocuments-GitHub-Forks-werkstoff--claude-worktrees-spur-trace-plugin-7468b2/c73e18f4-5bd9-48fe-ae05-3c9be122ceb7/scratchpad/demo/pipeline",
+  "started": "2026-10-30T18:34:26.927+00:00",
+  "finished": "2026-10-30T18:34:27.191+00:00",
+  "exit": 0,
+  "chain": {
+    "verdict": "broken",
+    "verified": 2,
+    "broken": 1,
+    "unverified": 1,
+    "source": 1
+  },
+  "dropped": 0,
+  "steps": [
+    {
+      "id": "s1",
+      "traced": true,
+      "pid": 16355,
+      "ppid": 16353,
+      "command": [
+        "python3.15",
+        "run_pipeline.py",
+        "--tamper"
+      ],
+      "cwd": ".",
+      "python": "3.15.2",
+      "exit": {
+        "code": 0,
+        "how": "observed by the runner"
+      },
+      "why": "",
+      "calls": {
+        "source": "sys.monitoring",
+        "available": true,
+        "unit": "calls",
+        "threads": [
+          [
+            {
+              "fn": "<module>",
+              "file": "run_pipeline.py",
+              "line": 1,
+              "calls": 1,
+              "ns": 216360083,
+              "children": [
+                {
+                  "fn": "main",
+                  "file": "run_pipeline.py",
+                  "line": 35,
+                  "calls": 1,
+                  "ns": 200201958,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "observed",
+      "inputs": [],
+      "outputs": [],
+      "code": [
+        {
+          "path": "run_pipeline.py",
+          "sha256": "091f5a91349b9232af4eb9e9920eb109d737b9e8346b8c3dadbad7ec4fd373d9"
+        }
+      ],
+      "removed": [],
+      "parent": null,
+      "started": "2026-10-30T18:34:26.966+00:00",
+      "durationMs": 225.42
+    },
+    {
+      "id": "s2",
+      "traced": true,
+      "pid": 16356,
+      "ppid": 16355,
+      "command": [
+        "python3.15",
+        "ingest.py",
+        "data/raw.csv",
+        "work/records.csv"
+      ],
+      "cwd": ".",
+      "python": "3.15.2",
+      "exit": {
+        "code": 0,
+        "how": "sys.exit"
+      },
+      "why": "",
+      "calls": {
+        "source": "sys.monitoring",
+        "available": true,
+        "unit": "calls",
+        "threads": [
+          [
+            {
+              "fn": "<module>",
+              "file": "ingest.py",
+              "line": 1,
+              "calls": 1,
+              "ns": 4712375,
+              "children": [
+                {
+                  "fn": "main",
+                  "file": "ingest.py",
+                  "line": 26,
+                  "calls": 1,
+                  "ns": 690334,
+                  "children": [
+                    {
+                      "fn": "read_rows",
+                      "file": "ingest.py",
+                      "line": 17,
+                      "calls": 1,
+                      "ns": 357418,
+                      "children": []
+                    },
+                    {
+                      "fn": "keep",
+                      "file": "ingest.py",
+                      "line": 22,
+                      "calls": 7,
+                      "ns": 27418,
+                      "children": [
+                        {
+                          "fn": "parse_amount",
+                          "file": "ingest.py",
+                          "line": 10,
+                          "calls": 7,
+                          "ns": 7751,
+                          "children": []
+                        }
+                      ]
+                    },
+                    {
+                      "fn": "parse_amount",
+                      "file": "ingest.py",
+                      "line": 10,
+                      "calls": 5,
+                      "ns": 2624,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "observed",
+      "inputs": [
+        {
+          "path": "data/raw.csv",
+          "sha256": "b9279639e0d3d89d91886baec1d8f2f8906a9797a1b91ced515ebdf4c5259124",
+          "status": "source"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "work/records.csv",
+          "version": 1,
+          "sha256": "0513ce27cab7d8ef77eaf02f8f9a6f1dbba26ad3ad705934ccb6753961ba91b2",
+          "latest": false,
+          "feeds": [
+            "s3"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "path": "ingest.py",
+          "sha256": "e39dafcf054247556df758aa307bc57bd86f8c493b0ff910030c01d754d585d4"
+        }
+      ],
+      "removed": [],
+      "parent": "s1",
+      "started": "2026-10-30T18:34:27.028+00:00",
+      "durationMs": 7.24
+    },
+    {
+      "id": "s3",
+      "traced": true,
+      "pid": 16357,
+      "ppid": 16355,
+      "command": [
+        "python3.15",
+        "normalize.py",
+        "work/records.csv"
+      ],
+      "cwd": ".",
+      "python": "3.15.2",
+      "exit": {
+        "code": 0,
+        "how": "sys.exit"
+      },
+      "why": "",
+      "calls": {
+        "source": "sys.monitoring",
+        "available": true,
+        "unit": "calls",
+        "threads": [
+          [
+            {
+              "fn": "<module>",
+              "file": "normalize.py",
+              "line": 1,
+              "calls": 1,
+              "ns": 3488334,
+              "children": [
+                {
+                  "fn": "main",
+                  "file": "normalize.py",
+                  "line": 19,
+                  "calls": 1,
+                  "ns": 485542,
+                  "children": [
+                    {
+                      "fn": "clean_row",
+                      "file": "normalize.py",
+                      "line": 14,
+                      "calls": 5,
+                      "ns": 60250,
+                      "children": [
+                        {
+                          "fn": "clean_name",
+                          "file": "normalize.py",
+                          "line": 10,
+                          "calls": 5,
+                          "ns": 44750,
+                          "children": [
+                            {
+                              "fn": "clean_name.<locals>.<genexpr>",
+                              "file": "normalize.py",
+                              "line": 11,
+                              "calls": 5,
+                              "ns": 9625,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "observed",
+      "inputs": [
+        {
+          "path": "work/records.csv",
+          "sha256": "0513ce27cab7d8ef77eaf02f8f9a6f1dbba26ad3ad705934ccb6753961ba91b2",
+          "producer": "s2",
+          "version": 1,
+          "status": "verified"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "work/records.csv",
+          "version": 2,
+          "sha256": "f20e8478c8b21dbf1f69b4bbbc9cb3bc5b37f0f9f458be6382b46b31b1ff349b",
+          "latest": true,
+          "feeds": [
+            "s5"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "path": "normalize.py",
+          "sha256": "01522a88c34f76f050f4fcbeb2f24abe7ffe20a59c6e2d8aa29f6f558ed16f75"
+        }
+      ],
+      "removed": [],
+      "parent": "s1",
+      "started": "2026-10-30T18:34:27.078+00:00",
+      "durationMs": 5.47
+    },
+    {
+      "id": "s4",
+      "traced": false,
+      "pid": null,
+      "ppid": 16355,
+      "command": [
+        "sh",
+        "-c",
+        "printf 'mallory,north,999.00\\n' >> work/records.csv && printf 'currency=EUR\\n' > work/override.txt"
+      ],
+      "cwd": ".",
+      "python": null,
+      "exit": {
+        "code": null,
+        "how": "not observed"
+      },
+      "why": "no in-process adapter for this program; its file I/O is not observed",
+      "calls": {
+        "source": null,
+        "available": false,
+        "unit": "calls",
+        "threads": [],
+        "why": "untraced"
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "none",
+      "inputs": [],
+      "outputs": [],
+      "code": [],
+      "removed": [],
+      "parent": "s1",
+      "started": "2026-10-30T18:34:27.088+00:00",
+      "durationMs": null
+    },
+    {
+      "id": "s5",
+      "traced": true,
+      "pid": 16359,
+      "ppid": 16355,
+      "command": [
+        "python3.15",
+        "summarize.py",
+        "work/records.csv",
+        "out/summary.json"
+      ],
+      "cwd": ".",
+      "python": "3.15.2",
+      "exit": {
+        "code": 0,
+        "how": "sys.exit"
+      },
+      "why": "",
+      "calls": {
+        "source": "sys.monitoring",
+        "available": true,
+        "unit": "calls",
+        "threads": [
+          [
+            {
+              "fn": "<module>",
+              "file": "summarize.py",
+              "line": 1,
+              "calls": 1,
+              "ns": 3542333,
+              "children": [
+                {
+                  "fn": "main",
+                  "file": "summarize.py",
+                  "line": 38,
+                  "calls": 1,
+                  "ns": 687875,
+                  "children": [
+                    {
+                      "fn": "currency",
+                      "file": "summarize.py",
+                      "line": 31,
+                      "calls": 1,
+                      "ns": 199084,
+                      "children": []
+                    },
+                    {
+                      "fn": "load",
+                      "file": "summarize.py",
+                      "line": 14,
+                      "calls": 1,
+                      "ns": 136083,
+                      "children": []
+                    },
+                    {
+                      "fn": "aggregate",
+                      "file": "summarize.py",
+                      "line": 23,
+                      "calls": 1,
+                      "ns": 29583,
+                      "children": [
+                        {
+                          "fn": "mean",
+                          "file": "summarize.py",
+                          "line": 19,
+                          "calls": 3,
+                          "ns": 2750,
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "observed",
+      "inputs": [
+        {
+          "path": "work/override.txt",
+          "sha256": "fd78d7f89661b1120bb0ce4f028b21bd85a992d03f35ca2b44006e019338b8ad",
+          "status": "unverified",
+          "note": "written during this run, but by no traced step (untraced: s4)"
+        },
+        {
+          "path": "work/records.csv",
+          "sha256": "0fe98bb1d9ad159992bb9a1ce5c61e935233bb52d5ab1abdd4bd0b10138c5248",
+          "producer": "s3",
+          "version": 2,
+          "status": "broken",
+          "expected": "f20e8478c8b21dbf1f69b4bbbc9cb3bc5b37f0f9f458be6382b46b31b1ff349b",
+          "note": "changed after s3 wrote it -- untraced step(s) ran in between: s4"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "out/summary.json",
+          "version": 1,
+          "sha256": "ebbbaf2b938be68d41884729973923a767dcea089e048b2496e90df0434007e5",
+          "latest": true,
+          "feeds": [
+            "s6"
+          ]
+        }
+      ],
+      "code": [
+        {
+          "path": "summarize.py",
+          "sha256": "394a30e319d9391a1bc1b7dd230b7ea342709ee005d03b6e3155d7747b4f8da1"
+        }
+      ],
+      "removed": [],
+      "parent": "s1",
+      "started": "2026-10-30T18:34:27.131+00:00",
+      "durationMs": 5.59
+    },
+    {
+      "id": "s6",
+      "traced": true,
+      "pid": 16360,
+      "ppid": 16355,
+      "command": [
+        "python3.15",
+        "report.py",
+        "out/summary.json",
+        "out/report.txt"
+      ],
+      "cwd": ".",
+      "python": "3.15.2",
+      "exit": {
+        "code": 0,
+        "how": "sys.exit"
+      },
+      "why": "",
+      "calls": {
+        "source": "sys.monitoring",
+        "available": true,
+        "unit": "calls",
+        "threads": [
+          [
+            {
+              "fn": "<module>",
+              "file": "report.py",
+              "line": 1,
+              "calls": 1,
+              "ns": 484333,
+              "children": [
+                {
+                  "fn": "main",
+                  "file": "report.py",
+                  "line": 14,
+                  "calls": 1,
+                  "ns": 460666,
+                  "children": [
+                    {
+                      "fn": "line",
+                      "file": "report.py",
+                      "line": 10,
+                      "calls": 3,
+                      "ns": 12250,
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      "dropped": 0,
+      "droppedWhy": {},
+      "io": "observed",
+      "inputs": [
+        {
+          "path": "out/summary.json",
+          "sha256": "ebbbaf2b938be68d41884729973923a767dcea089e048b2496e90df0434007e5",
+          "producer": "s5",
+          "version": 1,
+          "status": "verified"
+        }
+      ],
+      "outputs": [
+        {
+          "path": "out/report.txt",
+          "version": 1,
+          "sha256": "8e468f3df7f05b9883ab0313b70c625455ef9ecf8677777178d153ec848b9cb3",
+          "latest": true,
+          "feeds": []
+        }
+      ],
+      "code": [
+        {
+          "path": "report.py",
+          "sha256": "5e99885c7d0f77101b8704089129f2ea5844a3d0d4fb3d285b70259df1d72606"
+        }
+      ],
+      "removed": [],
+      "parent": "s1",
+      "started": "2026-10-30T18:34:27.177+00:00",
+      "durationMs": 2.34
+    }
+  ]
+}

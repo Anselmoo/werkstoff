@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<title>spur — execution trace</title>
+<!--__DESIGN_TOKENS__-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--font-sans); font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
+  header { margin-bottom: var(--space-3); }
+  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
+  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
+  h3 { font-size: 0.92rem; margin: 0; font-weight: 600; }
+  code, .mono { font-family: var(--font-mono); font-size: 0.82rem; }
+  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; overflow-wrap: anywhere; }
+  .verdict {
+    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius-panel);
+  }
+  .verdict.bad { border-color: var(--status-bad); }
+  .verdict.warn { border-color: var(--status-warn); }
+  .verdict.good { border-color: var(--status-good); }
+  /* Tiles. The broken count is the number a reader must act on, so it alone gets
+     the status colour and a heavier frame; the others are context (standard R3). */
+  .tiles { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
+  .tile {
+    min-width: 132px; padding: var(--space-2) var(--space-3);
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  .tile .v { font-size: 1.35rem; font-weight: 600; color: var(--muted); }
+  .tile .k { font-size: 0.78rem; color: var(--muted); }
+  .tile.alarm { border: 2px solid var(--status-bad); }
+  .tile.alarm .v { color: var(--status-bad); }
+  .tile.caution .v { color: var(--status-warn); }
+  .legend {
+    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
+  }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dd { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th, td { text-align: left; padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--smoke); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  /* State is carried by the word and the glyph; colour is a third channel. */
+  .state { white-space: nowrap; font-weight: 600; }
+  .state .glyph { display: inline-block; width: 1.1em; }
+  .st-verified { color: var(--status-good); }
+  .st-broken { color: var(--status-bad); }
+  .st-unverified { color: var(--status-warn); }
+  .st-source { color: var(--muted); }
+  .note { color: var(--muted); font-size: 0.8rem; }
+  .step {
+    margin: var(--space-3) 0; padding: var(--space-3);
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
+  }
+  .step.untraced { background: var(--bg); border-style: dashed; }
+  .step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
+  .step-head .cmd { overflow-wrap: anywhere; }
+  .badge {
+    font-size: 0.72rem; padding: 0 var(--space-1); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--muted); white-space: nowrap;
+  }
+  .badge.fail { border-color: var(--status-bad); color: var(--status-bad); }
+  .meta { color: var(--muted); font-size: 0.8rem; margin: var(--space-1) 0 var(--space-2); }
+  .block { margin-top: var(--space-2); }
+  .block > .label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--smoke); }
+  details.call { margin-left: var(--space-3); }
+  details.call > summary { cursor: pointer; padding: 1px 0; }
+  details.call.leaf > summary { list-style: none; cursor: default; }
+  details.call.leaf > summary::before { content: "· "; color: var(--muted); }
+  .fn { font-family: var(--font-mono); font-size: 0.82rem; color: var(--text); }
+  .where, .cnt { color: var(--muted); font-size: 0.78rem; }
+  .links li { margin-bottom: var(--space-1); }
+  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+  #empty {
+    margin: var(--space-4) 0; padding: var(--space-3);
+    background: var(--panel); border: 1px solid var(--status-bad); border-radius: var(--radius-panel);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>spur — execution trace</h1>
+    <p class="sub" id="sub">One run of the project's pipeline: every step, the calls it made, and every file it read and wrote.</p>
+    <p class="verdict" id="verdict">Loading the run record…</p>
+    <div class="tiles" id="tiles"></div>
+  </header>
+
+  <div class="legend">
+    <dl>
+      <dt>✓ verified</dt><dd>the step read exactly the bytes its producer wrote (sha256 equal).</dd>
+      <dt>✗ broken</dt><dd>the bytes changed between the producer's write and this read. Something outside the traced steps touched the file.</dd>
+      <dt>? unverified</dt><dd>the file changed during the run, but no traced step wrote it, or it could not be hashed. Never a pass.</dd>
+      <dt>○ source</dt><dd>an input that predates the run: nothing in it was produced here, so there is nothing to chain to.</dd>
+      <dt>path@n</dt><dd>the n-th version of a file in this run. A file rewritten in place gets a new version, and a consumer is checked against the latest version written before it read the file.</dd>
+      <dt>untraced step</dt><dd>a process the run spawned that left no record (a shell, a non-Python program). Its command is known; its calls and file I/O are not.</dd>
+    </dl>
+  </div>
+
+  <div id="empty" hidden>
+    <strong>This report could not be read.</strong>
+    <p>Re-run <code>spur_trace.py run -- &lt;command&gt;</code>, or rebuild the page from a run record with
+      <code>build_spur_html.py --trace analysis/spur/&lt;runId&gt;/trace.json</code>.</p>
+  </div>
+
+  <h2>Where one step's output feeds the next</h2>
+  <ul class="links" id="links"></ul>
+
+  <h2>Steps, in the order they started</h2>
+  <div id="steps"></div>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+/*__SPUR_DATA__*/
+const DATA = (typeof SPUR !== "undefined") ? SPUR : null;
+const GLYPH = { verified: "✓", broken: "✗", unverified: "?", source: "○" };
+
+function el(id) { return document.getElementById(id); }
+function make(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = text;
+  return n;
+}
+function short(sha) { return sha ? sha.slice(0, 12) + "…" : "—"; }
+function stateCell(status) {
+  const td = make("td", "state st-" + status);
+  td.appendChild(make("span", "glyph", GLYPH[status] || "?"));
+  td.appendChild(document.createTextNode(status));
+  return td;
+}
+function shaCell(sha) {
+  const td = make("td", "mono", short(sha));
+  if (sha) td.title = sha;
+  return td;
+}
+function ms(ns) {
+  const v = ns / 1e6;
+  return v >= 10 ? v.toFixed(0) + " ms" : v.toFixed(2) + " ms";
+}
+
+function tree(nodes, unit, parent, depth) {
+  for (const n of nodes) {
+    const d = make("details", "call" + (n.children.length ? "" : " leaf"));
+    // The first levels open: a collapsed tree hides the one thing the section is for.
+    d.open = depth < 3;
+    const s = make("summary");
+    s.appendChild(make("span", "fn", n.fn));
+    s.appendChild(document.createTextNode(" "));
+    s.appendChild(make("span", "where", n.file + (n.line ? ":" + n.line : "")));
+    s.appendChild(document.createTextNode(" "));
+    s.appendChild(make("span", "cnt", "×" + n.calls + (unit === "samples" ? " samples" : "") + " · " + ms(n.ns)));
+    d.appendChild(s);
+    tree(n.children, unit, d, depth + 1);
+    parent.appendChild(d);
+  }
+}
+
+function table(headers, rows) {
+  const t = make("table");
+  const thead = make("thead");
+  const hr = make("tr");
+  for (const h of headers) hr.appendChild(make("th", null, h));
+  thead.appendChild(hr);
+  t.appendChild(thead);
+  const tb = make("tbody");
+  for (const r of rows) tb.appendChild(r);
+  t.appendChild(tb);
+  return t;
+}
+
+function stepCard(s, byId) {
+  const card = make("section", "step" + (s.traced ? "" : " untraced"));
+  card.id = s.id;
+  const head = make("div", "step-head");
+  head.appendChild(make("h3", null, s.id));
+  head.appendChild(make("code", "cmd", s.command.join(" ")));
+  head.appendChild(make("span", "badge", s.traced ? "traced" : "untraced"));
+  const code = s.exit && s.exit.code;
+  if (code !== null && code !== undefined && code !== 0) head.appendChild(make("span", "badge fail", "exit " + code));
+  card.appendChild(head);
+
+  const bits = [];
+  if (s.parent) bits.push("spawned by " + s.parent);
+  if (s.durationMs !== null && s.durationMs !== undefined) bits.push(s.durationMs + " ms");
+  if (s.exit) bits.push(s.exit.code === null ? "exit " + s.exit.how
+    : "exit " + s.exit.code + " (" + s.exit.how + ")");
+  if (s.python) bits.push("Python " + s.python);
+  if (s.why) bits.push(s.why);
+  if (s.io === "declared") bits.push("file I/O declared with --reads/--writes, not observed");
+  if (s.dropped) bits.push("tracer dropped " + s.dropped + " event(s): " + Object.keys(s.droppedWhy || {}).join(", "));
+  card.appendChild(make("p", "meta", bits.join(" · ")));
+
+  if (s.inputs.length) {
+    const b = make("div", "block");
+    b.appendChild(make("div", "label", "reads"));
+    b.appendChild(table(["state", "file", "sha256", "from"], s.inputs.map((i) => {
+      const tr = make("tr");
+      tr.appendChild(stateCell(i.status));
+      // A broken read did NOT read @n; @n is what it should have read.
+      tr.appendChild(make("td", "mono", i.path + (!i.version ? "" :
+        i.status === "verified" ? "@" + i.version : " (expected @" + i.version + ")")));
+      tr.appendChild(shaCell(i.sha256));
+      const from = make("td");
+      if (i.producer) from.appendChild(make("span", null, i.producer + (i.status === "broken" ? " wrote " + short(i.expected) : "")));
+      else from.appendChild(make("span", "note", i.status === "source" ? "predates the run" : "no traced producer"));
+      if (i.note) { from.appendChild(document.createElement("br")); from.appendChild(make("span", "note", i.note)); }
+      tr.appendChild(from);
+      return tr;
+    })));
+    card.appendChild(b);
+  }
+  if (s.outputs.length) {
+    const b = make("div", "block");
+    b.appendChild(make("div", "label", "writes"));
+    b.appendChild(table(["file", "sha256", "read next by"], s.outputs.map((o) => {
+      const tr = make("tr");
+      tr.appendChild(make("td", "mono", o.path + "@" + o.version));
+      tr.appendChild(shaCell(o.sha256));
+      tr.appendChild(make("td", null, (o.feeds || []).length ? o.feeds.join(", ") : "—"));
+      return tr;
+    })));
+    card.appendChild(b);
+  }
+  if ((s.removed || []).length) {
+    card.appendChild(make("p", "note", "removed: " + s.removed.join(", ")));
+  }
+
+  const calls = s.calls || {};
+  const b = make("div", "block");
+  if (calls.available && (calls.threads || []).some((t) => t.length)) {
+    b.appendChild(make("div", "label", "calls of the project's own functions (" + calls.source + ")"));
+    for (const t of calls.threads) tree(t, calls.unit, b, 0);
+  } else {
+    b.appendChild(make("div", "label", "calls"));
+    b.appendChild(make("p", "note", calls.why || "no call of the project's own code was observed"));
+  }
+  card.appendChild(b);
+
+  if ((s.code || []).length) {
+    const d = make("details", "block");
+    d.appendChild(make("summary", "label", "code it loaded from the project (" + s.code.length + " file(s), hashed, not part of the chain)"));
+    d.appendChild(table(["file", "sha256"], s.code.map((c) => {
+      const tr = make("tr");
+      tr.appendChild(make("td", "mono", c.path));
+      tr.appendChild(shaCell(c.sha256));
+      return tr;
+    })));
+    card.appendChild(d);
+  }
+  return card;
+}
+
+function render() {
+  if (!DATA || !Array.isArray(DATA.steps) || !DATA.chain) {
+    el("verdict").textContent =
+      "This report could not be read. Re-run spur_trace.py run, or rebuild it with build_spur_html.py.";
+    el("empty").hidden = false;
+    return;
+  }
+  const steps = DATA.steps;
+  const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
+  const c = DATA.chain;
+  // Only the root's last segment: an absolute path is machine noise in a shared report
+  // (trace.json keeps the full, home-redacted root).
+  const rootName = String(DATA.root).split("/").filter(Boolean).pop() || DATA.root;
+  el("sub").textContent = DATA.command.join(" ") + " · in " + rootName + "/ · run " + DATA.runId +
+    " · started " + DATA.started;
+
+  const inputs = steps.flatMap((s) => s.inputs.map((i) => Object.assign({ consumer: s.id }, i)));
+  const broken = inputs.filter((i) => i.status === "broken");
+  const unver = inputs.filter((i) => i.status === "unverified");
+  const v = el("verdict");
+  if (DATA.exit !== 0) {
+    v.className = "verdict bad";
+    v.textContent = "The command failed (exit " + DATA.exit + "), so this run produced no result to vouch for. " +
+      "The steps below show how far it got.";
+  } else if (c.verdict === "broken") {
+    v.className = "verdict bad";
+    const b = broken[0];
+    v.textContent = "The hash chain is broken: " + b.path + " changed after " + b.producer +
+      " wrote it and before " + b.consumer + " read it. A result downstream of that link was not computed " +
+      "from what the pipeline produced.";
+  } else if (c.verdict === "incomplete") {
+    v.className = "verdict warn";
+    v.textContent = "No link is broken, but the chain is incomplete: " + unver.map((i) => i.path).join(", ") +
+      " changed during the run without a traced producer. Those inputs are unverified, not passed.";
+  } else if (c.verdict === "verified") {
+    v.className = "verdict good";
+    v.textContent = "Every input a step read is either an untouched source or exactly what an earlier step " +
+      "wrote. The chain from the sources to the final outputs holds.";
+  } else {
+    v.className = "verdict warn";
+    v.textContent = "Nothing to check: no step read a file another step wrote, so this run has no chain " +
+      "to verify. That is not a pass.";
+  }
+
+  const tiles = el("tiles");
+  const tile = (n, k, cls) => {
+    const t = make("div", "tile" + (cls ? " " + cls : ""));
+    t.appendChild(make("div", "v", String(n)));
+    t.appendChild(make("div", "k", k));
+    tiles.appendChild(t);
+  };
+  tile(c.broken, "broken links", c.broken ? "alarm" : "");
+  tile(c.unverified, "unverified inputs", c.unverified ? "caution" : "");
+  tile(c.verified, "verified links");
+  tile(c.source, "sources");
+  tile(steps.filter((s) => !s.traced).length, "untraced steps");
+
+  const ul = el("links");
+  const linked = inputs.filter((i) => i.producer);
+  for (const i of linked) {
+    const li = make("li");
+    li.appendChild(make("span", "state st-" + i.status, GLYPH[i.status] + " "));
+    li.appendChild(make("code", null, i.producer + " → " + i.path + "@" + i.version + " → " + i.consumer));
+    li.appendChild(make("span", "note", " " + i.status + (i.note ? ": " + i.note : "")));
+    ul.appendChild(li);
+  }
+  if (!linked.length) ul.appendChild(make("li", "note", "no step read a file an earlier step wrote"));
+
+  const host = el("steps");
+  for (const s of steps) host.appendChild(stepCard(s, byId));
+
+  el("footer").textContent = "Run record " + DATA.schema + ", finished " + DATA.finished +
+    ". The same run as W3C PROV-JSON is prov.json beside trace.json. Rebuild this page with " +
+    "build_spur_html.py --trace trace.json.";
+}
+
+render();
+</script>
+</body>
+</html>

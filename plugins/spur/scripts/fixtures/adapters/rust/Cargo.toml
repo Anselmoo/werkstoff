@@ -1,0 +1,9 @@
+[package]
+name = "rustprobe"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tracing-chrome = "0.7.2"

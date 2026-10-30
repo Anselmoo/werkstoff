@@ -230,7 +230,7 @@ and `testdata/` included. `S-JS-SYNTAX`, `S-WF-SHAPE`, `S-WF-MODEL` and `S-WF-RE
 | `S-WF-RELAY` | A workflow that dispatches carries the canonical relayed-request briefing (`RELAY_TEXT`) verbatim, so a user's "merge it" reaching a subagent is noted and left to the orchestrating session. A paraphrase fails. Presence per file, not per prompt. | workflow | minor | same checker; `delegation.md` "Writing the dispatch prompt"; issue #90 |
 | `S-SHEBANG` | An entry-point script starts with `#!/usr/bin/env python3` (or bash). | script | nit | repo convention |
 | `S-DOCSTRING-USAGE` | An entry-point `.py` has a module docstring stating its usage, or an argparse `--help`; test files are exempt. | script | minor | platform best-practices "Make execution intent clear" |
-| `S-ARGPARSE` | A script reading `sys.argv` imports `argparse`. | script (.py) | minor | same; `--help` must exist |
+| `S-ARGPARSE` | An entry-point script reading `sys.argv` imports `argparse`. | script (.py) | minor | same; `--help` must exist |
 | `S-SILENT-REGEX` | Where a regex is used, no `\b!==`, `\b===`, `[^.]{0,N≥50}`, or (in shell) `[^\n]`. | script, workflow | major | CLAUDE.md silent-defect table; `test/plugins/lint-oracles.sh` |
 | `S-EXCEPT-SWALLOW` | No bare or `Exception` handler whose body is only `pass`. | script (.py) | major | CLAUDE.md "looks correct and silently does nothing" |
 | `S-SHELL-TRUE` | No `subprocess` call with `shell=True` (AST). | script (.py) | minor | plugin-validator |

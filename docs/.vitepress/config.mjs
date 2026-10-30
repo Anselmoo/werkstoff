@@ -304,6 +304,14 @@ export default defineConfig({
           },
           { text: 'befund', link: '/plugins/befund' },
           { text: 'takt', link: '/plugins/takt' },
+          {
+            text: 'spur',
+            link: '/plugins/spur',
+            items: [
+              { text: 'Trace format', link: '/plugins/references/trace-format' },
+              { text: 'Adapters', link: '/plugins/references/adapters' },
+            ],
+          },
         ],
       },
       {
