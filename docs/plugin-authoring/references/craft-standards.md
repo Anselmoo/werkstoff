@@ -9,7 +9,7 @@ stays the author's per-plugin call, graded against real evidence, the way
 Adapted from `Wirasm/prp`'s `.agents/skills/prp-meta-skill/references/skill-standards.md`
 (commit `11427384c7609227f20c1d57e6c39de47ccf73c5` — the same commit as this session's
 installed `prp-core` plugin; see `output-shape-findings.md` §2e for how that identity was
-established). Every rule below is checked against what werkstoff's twelve plugins actually
+established). Every rule below is checked against what werkstoff's thirteen plugins actually
 do, not copied blind — where werkstoff already follows a rule, that's stated as
 confirmed; where it doesn't, that's a named gap, not a silent assumption.
 
@@ -53,7 +53,7 @@ skill-name/
 **werkstoff status:** `references/` is already an established pattern (`andon`,
 `cli-scaffold`, `zeugnis`, `cupertino`, `befund` all use it, at both plugin-root and
 skill-scope — see `CLAUDE.md`'s own note on `befund-extract-rules/references/`).
-`templates/` is not used anywhere in werkstoff today; `assets/` is — all 12 plugins,
+`templates/` is not used anywhere in werkstoff today; `assets/` is — all 13 plugins,
 `takt` included, have a plugin-root `assets/` directory (`ls -d plugins/*/assets`),
 referenced from SKILL.md (or,
 for `passung`, a command file) via `${CLAUDE_PLUGIN_ROOT}/assets/...`. The

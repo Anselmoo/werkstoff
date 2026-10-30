@@ -1,6 +1,6 @@
 # Start here
 
-Twelve plugins is too many to pick from cold. This page is the shortest path from an
+Thirteen plugins is too many to pick from cold. This page is the shortest path from an
 empty session to a workflow that actually fires.
 
 ## 1. Install the three layers

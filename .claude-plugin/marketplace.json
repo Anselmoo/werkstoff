@@ -126,6 +126,16 @@
       },
       "category": "development",
       "source": "./plugins/arbeitsplan"
+    },
+    {
+      "name": "spur",
+      "description": "Runs a pipeline once under a tracer and records, for each step, the functions it called, every file it read and wrote with its sha256, and whether it read exactly what the step before it wrote.",
+      "author": {
+        "name": "Anselm Hahn",
+        "email": "anselm.hahn@gmail.com"
+      },
+      "category": "development",
+      "source": "./plugins/spur"
     }
   ]
 }

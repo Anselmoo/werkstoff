@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 12 plugin READMEs, 102 in
+Every example prompt shipped by the 13 plugin READMEs, 105 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -660,6 +660,34 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `passung-status` — read-only artifact inventory, staleness flags, and the single most useful next command.
+
+## spur
+
+[`plugins/spur/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/spur/README.md) — 3 prompts.
+
+### Trace a pipeline for a reviewer
+
+````prompt
+"a reviewer wants to know how each figure in the paper was produced — trace the pipeline and show me which step wrote what"
+````
+
+> Runs the pipeline once under the tracer and points at `spur-report.html`, leading with the chain verdict and any broken or unverified input.
+
+### Check that the steps really chain
+
+````prompt
+"does the summary step actually read the file the cleaning step wrote, or did something touch it in between?"
+````
+
+> Answers from the hash chain: `verified`, or the broken link with the untraced step that ran between producer and consumer.
+
+### Export provenance
+
+````prompt
+"give me W3C PROV for one run of make pipeline"
+````
+
+> Traces the run and hands over `prov.json`, which claims only what was observed.
 
 ## takt
 

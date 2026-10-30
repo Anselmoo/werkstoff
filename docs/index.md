@@ -4,7 +4,7 @@ layout: home
 hero:
   name: werkstoff
   text: A workshop of Claude Code plugins
-  tagline: Twelve plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
+  tagline: Thirteen plugins that each catch one distinct failure mode, and a catalog of what to say to reach them at the moment they still help.
   image:
     src: /logo.svg
     alt: werkstoff
@@ -31,7 +31,7 @@ features:
     link: /catalog/
     linkText: Open the catalog
   - title: Every prompt each plugin answers
-    details: The example prompts from all twelve plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
+    details: The example prompts from all thirteen plugin READMEs, collected on one page and generated from the READMEs themselves so the list cannot drift out of date.
     link: /prompt-index
     linkText: Browse by plugin
   - title: Which pipeline owns the task
@@ -44,4 +44,4 @@ features:
     linkText: Read the hazards
 ---
 
-Twelve plugins, one job each — see [the plugin list](/plugins/) for what each one catches.
+Thirteen plugins, one job each — see [the plugin list](/plugins/) for what each one catches.
