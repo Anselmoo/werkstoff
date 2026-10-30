@@ -1,20 +1,49 @@
 # befund
 
-**Assesses a live codebase — architecture, docs drift, CI topology, conventions,
-idioms, business rules, UI accessibility — with every finding tied to `file:line`
-evidence, and touches source only behind an explicit authorization recorded on
-disk, never a remembered "yes" earlier in the conversation.**
+**Makes a codebase describe its own health, with every finding tied to `file:line` evidence, and
+edits source only behind an authorization recorded on disk.**
 
-A *Befund* is the written finding of an inspection — what was measured, where, and
+**The name.** A *Befund* is the written finding of an inspection — what was measured, where, and
 what it showed. It records a condition; it does not pass or reject the part. That
 distinction is this plugin's whole shape: it reports, with `file:line` evidence, and
 the go/no-go gauge that actually rejects work is `lehre`. A Befund nobody acts on is
 still a Befund, which is why every transformation here waits on a recorded authorization.
 
-Comprehensive self-assessment of live codebases: architecture, documentation drift, CI/CD
-topology, conventions, code idioms, business rules, and UI/accessibility — with findings
-carrying `file:line` evidence, synthesized into a prioritized, gated transformation plan, and
-(only when explicitly authorized) one gated transformation phase applied to source.
+- **Use when** you inherit or distrust a repo and need its real structure, docs drift, idioms
+  or business rules, each with a `file:line` citation, before anyone changes it.
+- **Not when** you want new code gated against a codified doctrine — use `lehre`; or you want
+  a set of approved fixes applied and each one proven as it lands — use `andon`.
+
+## Use case
+
+**Situation.** A billing service was inherited from a team that has left. The fee and discount
+rules live only in the code and nobody trusts the wiki. You want them written down as testable
+rules before anyone refactors.
+**Call.** `/befund:befund-extract-rules` (or: "document the domain rules hidden in this code")
+**Writes.** `BUSINESS_RULES.md`, `DATA_OBJECTS.md`, `business_rules_summary.json` and
+`business_rules.json` under `analysis/befund/` (the `output_dir` setting).
+**Next.** Turn each confirmed rule into a test. Fix the citation of each unconfirmed rule and
+re-run its judge step, or drop it; do not rely on it as written.
+
+```markdown
+## Confirmed rules (2)
+
+...
+### RULE-003: Overdraft fee waiver on payroll accounts
+**Priority:** P0
+**Confidence:** High
+**Citation:** `src/billing/overdraft.py:58`
+**Specification:**
+  Given an account flagged is_payroll = true with a negative balance
+  When  the nightly overdraft-fee batch runs
+  Then  no overdraft fee is charged (payroll accounts are fee-exempt by statute)
+**Status:** confirmed
+  Judge verdict pass (befund-p0-rule@1, score 0.85, uncalibrated): the judge
+  re-read src/billing/overdraft.py:58 and verified the is_payroll exemption.
+```
+
+Excerpt from the rendered sample in
+`plugins/befund/skills/befund-extract-rules/references/business-rules-report-sample.md`.
 
 ## Why this exists
 

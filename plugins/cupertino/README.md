@@ -1,8 +1,43 @@
 # cupertino
 
-**A design and craft discipline rooted in Steve Jobs' documented decisions,
-applied through a fixed, sequenced lifecycle pipeline — not a menu of
-individually-selectable design techniques.**
+**A design and craft discipline rooted in Steve Jobs' documented decisions, run as a fixed
+lifecycle of stages from experience to ship, not a menu of design techniques.**
+
+**The name.** Cupertino is where Apple is headquartered. The name stands for the decision
+discipline behind the products, not for the look of them.
+
+- **Use when** you are designing a new user-facing feature or screen and want the experience
+  settled before anyone names a framework or draws a component.
+- **Not when** the interface already exists and you want its shipped source checked for
+  accessibility or hardcoded design values — use `befund` (`befund-ui-audit`). Not when you
+  want a machine-checked rule that blocks a write — use `lehre`.
+
+## Use case
+
+**Situation.** A studio wants to let clients review finished work. The request arrives as
+"add a share link with a password", which names the mechanism before the experience.
+**Call.** `cupertino-backwards`: "design a way for a studio to share finished work with a client
+for review".
+**Writes.** `.cupertino/flags/backwards-done`, which opens the gate for `cupertino-focus`,
+`cupertino-longevity`, `cupertino-integrate` and `cupertino-council`.
+**Next.** Check the experience statement against what the client should feel, then run
+`cupertino-focus` to cut scope. `cupertino-review` runs all eight stages in one pass.
+
+```json
+{
+  "scope": "let a studio share finished work with a client for review",
+  "experienceStatement": "A client opens one link and sees exactly the work they were promised, with no sign-up, no password, and no guessing about which version they are looking at.",
+  "customerBenefit": "The client's first five minutes are spent looking at the work, not proving who they are.",
+  "technologyDirection": "Whatever gets built has to make revoking one client's access instant and total, because the relationship ending is the moment this matters most.",
+  "driftRisks": [
+    "Starting from 'which auth provider' rather than from the client's first five minutes.",
+    "Treating revocation as an admin chore instead of part of the promised experience."
+  ]
+}
+```
+
+Excerpt from `plugins/cupertino/scripts/fixtures/sample_review_flags/backwards-done`, the
+committed sample of the flag file a run leaves.
 
 ## Why this exists
 

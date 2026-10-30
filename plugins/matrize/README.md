@@ -1,27 +1,56 @@
 # matrize
 
-**Derives a design system from reference exemplars, names every element, and emits it
-to any target — so the decision that was skipped gets made once, in writing, instead of
-re-guessed per project.**
+**Derives a design system once from reference exemplars you admire, names every element,
+and emits it to any target.**
 
-A *Matrize* is the die: in stamping, the form that gives material its shape; in
+**The name.** A *Matrize* is the die: in stamping, the form that gives material its shape; in
 typefounding, the matrix from which every piece of type is cast. One master, many
-castings — which is exactly what this plugin is for. It takes the references someone
-actually admires, measures what they do, names what recurs, and cuts a single neutral
-master from which every target is struck: a DTCG token file, a stylesheet, a Tailwind
-config, and a landscape sketchbook a non-technical decision-maker can approve.
+castings — which is exactly what this plugin is for. It measures the references someone
+actually admires, names what recurs, and cuts a single neutral master from which a DTCG
+token file, a stylesheet and a sketchbook are struck. A Matrize is itself struck by a
+*Patrize*: it is derived from a reference before it becomes the thing others are made from,
+the same two-step this pipeline runs.
 
-The metaphor holds at both ends. A Matrize is itself struck by a *Patrize* — it is
-derived from a reference before it becomes the thing others are made from, which is the
-same two-step this pipeline runs.
+- **Use when** a project is about to be styled ad hoc and you have references someone
+  actually admires, and you want the decision made once, in writing, with its reasons.
+- **Not when** you want to check whether code still matches a system, or to find which of
+  the repo's own divergent variants should win — use `passung`; to design one screen from
+  taste principles before code, use `cupertino`.
+
+## Use case
+
+**Situation.** You have collected eleven references (a house token file, a competitor
+app, a print brochure) and need to know what they actually do before anyone picks a red
+or a card radius. Some of them only exist as screenshots.
+**Call.** `/matrize:matrize-decode decode these references`
+**Writes.** `<design root>/system/DECODE.md` (default root `.design/`): a summary table,
+the Design Cards grouped by dimension, and a closing "Findings that cannot set a token"
+section. A decode-referee re-derives every card from its cited source first; the
+fan-out agents hold no `Write`.
+**Next.** Answer each question in the "cannot set a token" section (measure the radius
+from declared CSS, or drop it), then run `/matrize:matrize-name`.
+
+```json
+"scope": "11 references, 34 cards, 4 dimensions — decoded 2026-09-11, refereed by decode-referee",
+"gradeCOnly": [
+  { "token": "radius.card", "reference": "competitor-app",
+    "wouldSet": "6px, read off a 2x screenshot (±2px unresolvable)" },
+  { "token": "space.gutter", "reference": "competitor-app",
+    "wouldSet": "24px, estimated from a single view" },
+  ...
+]
+```
+
+Excerpt from `plugins/matrize/scripts/fixtures/derivation-demo.json`, the demo data the
+derivation viewer renders; trimmed and reflowed.
+
+## Why this exists
 
 One sentence is the whole scope, and it is also the refusal test:
 
 > Derive a design system from exemplars, name every element, and emit it to any target.
 
 Anything that is not *derive*, *name*, or *emit* does not belong here.
-
-## Why this exists
 
 The failure this plugin prevents is not bad taste. It is a **skipped decision phase**:
 developers style before they decide, so every project ends up styled ad hoc with

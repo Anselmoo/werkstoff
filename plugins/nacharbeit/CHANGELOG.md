@@ -3,6 +3,16 @@
 All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **`P-README-PURPOSE-BLOCK`**: a mechanical rule that a plugin README carries the #144
+  purpose block above its first section. `P-README-THESIS` no longer accepts the
+  `**The name.**` paragraph as the thesis.
+### Changed
+- **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
+  `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`
+  with a real call and a verbatim excerpt of committed output.
+- **`plugin.json` description**: now the README thesis, word for word, and synced to
+  `marketplace.json`.
 
 ## [1.1.0] - 2026-10-21
 

@@ -1,7 +1,7 @@
 {
   "name": "andon",
   "version": "1.0.7",
-  "description": "Walks a repository's value stream stage-by-stage, proposing fixes for discovered gaps, proving each wire before advancing via seven evidence-grounded strategies, and halting rather than passing broken or unproven handoffs.",
+  "description": "Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.",
   "author": {
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
