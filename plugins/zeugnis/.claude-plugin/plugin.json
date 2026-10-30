@@ -1,6 +1,6 @@
 {
   "name": "zeugnis",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it.",
   "author": {
     "name": "Anselm Hahn",

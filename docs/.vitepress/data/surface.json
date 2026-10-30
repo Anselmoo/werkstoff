@@ -3,7 +3,7 @@
   "plugins": [
     {
       "name": "andon",
-      "version": "1.0.7",
+      "version": "1.1.0",
       "description": "Hardens a repository stage by stage, proving each handoff between stages and halting rather than advancing past one it cannot prove.",
       "skills": [
         {
@@ -86,7 +86,7 @@
     },
     {
       "name": "arbeitsplan",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "description": "Turns a described change into a budgeted workflow, builds it several independent ways at once, and lands exactly one result.",
       "skills": [
         {
@@ -292,7 +292,7 @@
     },
     {
       "name": "befund",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "Makes a codebase describe its own health, with every finding tied to file:line evidence, and edits source only behind an authorization recorded on disk.",
       "skills": [
         {
@@ -503,7 +503,7 @@
     },
     {
       "name": "cli-scaffold",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Generates a production-grade command-line application in one of 12 languages, built against one five-pillar architecture doctrine and checked against it before you see it.",
       "skills": [
         {
@@ -555,7 +555,7 @@
     },
     {
       "name": "cupertino",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "A design and craft discipline rooted in Steve Jobs' documented decisions, run as a fixed lifecycle of stages from experience to ship, not a menu of design techniques.",
       "skills": [
         {
@@ -691,7 +691,7 @@
     },
     {
       "name": "lehre",
-      "version": "1.0.3",
+      "version": "1.1.0",
       "description": "Researches a code style, pattern and architecture doctrine, then denies the write that would violate it.",
       "skills": [
         {
@@ -845,7 +845,7 @@
     },
     {
       "name": "matrize",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Derives a design system once from reference exemplars you admire, names every element, and emits it to any target.",
       "skills": [
         {
@@ -985,7 +985,7 @@
     },
     {
       "name": "nacharbeit",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short.",
       "skills": [
         {
@@ -1056,7 +1056,7 @@
     },
     {
       "name": "passung",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "Finds a convention your codebase follows two or more valid ways, picks the one that should become canon, and aligns every divergent site to it with a provable equivalence check.",
       "skills": [],
       "agents": [
@@ -1141,7 +1141,7 @@
     },
     {
       "name": "spur",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Runs a pipeline once under a tracer and records, for each step, the functions it called, every file it read and wrote with its sha256, and whether it read exactly what the step before it wrote.",
       "skills": [
         {
@@ -1160,7 +1160,7 @@
     },
     {
       "name": "takt",
-      "version": "1.0.3",
+      "version": "1.1.0",
       "description": "Refuses an edit or dispatch that runs ahead of a step the repository said must come first.",
       "skills": [],
       "agents": [],
@@ -1175,7 +1175,7 @@
     },
     {
       "name": "zeugnis",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Audits code that looks right and is not, and counts a finding only after an independent pass has re-checked it.",
       "skills": [
         {
@@ -1300,7 +1300,7 @@
     },
     {
       "name": "zirkel",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Makes sure a complex or ambiguous task is clarified, explored and decomposed before anyone starts executing it.",
       "skills": [
         {

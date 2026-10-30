@@ -3,6 +3,8 @@
 All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
+
+## [1.1.0] - 2026-10-30
 ### Changed
 - **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
   `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`

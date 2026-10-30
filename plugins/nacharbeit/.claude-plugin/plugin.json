@@ -1,6 +1,6 @@
 {
   "name": "nacharbeit",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Reviews a Claude Code plugin against the official Anthropic standard, then reworks the mechanical and local-rewrite share of what falls short.",
   "author": {
     "name": "Anselm Hahn",

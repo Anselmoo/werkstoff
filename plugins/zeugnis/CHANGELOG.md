@@ -12,6 +12,7 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
   `mutation-killer` agent, `mutation_harden` domain with a test-path lock, and a Mutation tab
   with hover, click and keyboard interactions in the burndown viewer.
 
+## [1.2.0] - 2026-10-30
 ### Changed
 - **README**: opens with the purpose block (#144) -- a one-sentence thesis, `**The name.**`, a
   `Use when` / `Not when` pair naming the sibling plugin to use instead, and a `## Use case`
