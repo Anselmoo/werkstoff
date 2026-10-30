@@ -1160,7 +1160,7 @@
     },
     {
       "name": "takt",
-      "version": "1.0.3",
+      "version": "1.1.0",
       "description": "Refuses an edit or dispatch that runs ahead of a step the repository said must come first.",
       "skills": [],
       "agents": [],
