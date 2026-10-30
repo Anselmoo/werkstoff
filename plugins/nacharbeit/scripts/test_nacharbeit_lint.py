@@ -394,6 +394,7 @@ if __name__ == "__main__":
         exp[rid] = f"{P}/README.md"
     w(root, "plugins/bad2/README.md", "# bad2\n\n**Thesis.**\n")
     exp["P-README-SCREENSHOT"] = "plugins/bad2/README.md"
+    exp["P-README-PURPOSE-BLOCK"] = "plugins/bad2/README.md"
     w(root, f"{P}/CHANGELOG.md", "# Changelog\n\n## [0.1.0]\n- first\n")
     exp["P-CHANGELOG-UNRELEASED"] = f"{P}/CHANGELOG.md"
 
@@ -585,6 +586,23 @@ if __name__ == "__main__":
     w(root, f"{P}/README.md", f"""# clean
 
 **Audits widgets and reports every failing one.**
+
+**The name.** *Clean* is what a widget is once audited.
+
+- **Use when** a widget may be failing silently.
+- **Not when** you want to build one —
+  use `other`.
+
+## Use case
+
+**Situation.** A widget stopped reporting.
+**Call.** `/clean:audit-widgets`
+**Writes.** `analysis/clean/report.md`
+**Next.** Fix the widget it names.
+
+```text
+1 failing widget: gear-7
+```
 
 ## Why this exists
 

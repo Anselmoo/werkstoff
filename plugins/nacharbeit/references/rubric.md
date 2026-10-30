@@ -301,6 +301,7 @@ marketplace entry lives outside the plugin.
 | `P-README-H1` | `README.md` exists and its first heading is `# <name>`. | readme | minor | lehre/takt |
 | `P-README-THESIS` | A bold one-line thesis sits directly under the H1. | readme | nit | lehre/takt |
 | `P-README-WHY-NOT` | `## Why this exists` and `## What it is not` are present. | readme | minor | lehre |
+| `P-README-PURPOSE-BLOCK` | Above the first `##`: a `**The name.**` paragraph and a `- **Use when**` / `- **Not when**` pair whose not-when line names a sibling plugin in backticks; then a `## Use case` with `**Situation.**`, `**Call.**`, `**Writes.**`, `**Next.**` and a fenced output excerpt. | readme | minor | issue #144 |
 | `P-README-INSTALL` | An `## Install` section carries `/plugin install <name>@…` or a `--plugin-dir` line. | readme | minor | lehre/takt |
 | `P-README-PROMPTS-BLOCK` | (with `--readme-markers`) the rrt `example-prompts-intro` marker pair is present. | readme | minor | `.rrt.toml` shared_blocks; `rrt docs inject --check` |
 | `P-README-PROMPT-TRIPLE` | Under `## Example Prompts`, every `#####` label is followed by a ````prompt fence, and ≥1 exists (mirrors `build_prompt_index.py`'s scan). | readme | minor | `tools/prompt-index/build_prompt_index.py` |
