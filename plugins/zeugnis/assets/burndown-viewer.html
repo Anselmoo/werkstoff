@@ -411,10 +411,13 @@
     const k = Math.max(1, Math.min(1.7, rowH / 120));
     const px = (n) => Math.round(n * k) + "px";
     const labelW = Math.min(Math.max(150, Math.ceil(Math.max(...mods.map((m) => m.module.length)) * 7.9 * k) + 16), Math.round(W * 0.3), 420);
-    const figW = Math.min(Math.max(210, Math.round(W * 0.2 * k)), 380);
+    // the score column is text, not figure: keep it narrow so the track gets the width
+    const figW = Math.min(Math.max(190, Math.round(W * 0.15 * k)), 270);
     const rowsY = inset.top + axisH;
     const trackH = Math.max(18, Math.min(120, Math.round(rowH * 0.42)));
-    const rad = Math.max(8, Math.min(44, Math.round(trackH * 0.55)));
+    // Marks stay small relative to the track: at 44px (the old cap) a 76 % -> 95 % move put the
+    // two centres closer than two radii, and an unchanged score hid the dot under the ring.
+    const rad = Math.max(7, Math.min(15, Math.round(trackH * 0.3)));
     // a mark at 0 % or 100 % overhangs the track by its radius, so the track keeps clear of the text on both sides
     const tx0 = padX + labelW + 14 + rad, tx1 = Math.max(tx0 + 120, W - padX - figW - 14 - rad);
     const sx = (v) => tx0 + Math.max(0, Math.min(1, v)) * (tx1 - tx0);
@@ -434,10 +437,15 @@
       fitText(name, m.module, labelW);
       svgEl("rect", { class: "track", x: tx0, y: cy - trackH / 2, width: tx1 - tx0, height: trackH, rx: 4 }, svg);
       const b = m.before.score, a = m.after.score;
-      if (b !== null && b !== undefined && a !== null && a !== undefined && b !== a) svgEl("line", { class: "link-seg", x1: sx(b), x2: sx(a), y1: cy, y2: cy }, svg);
-      // The ring is drawn last, so an unchanged score still shows both marks.
-      if (a !== null && a !== undefined) svgEl("circle", { class: "m-after", cx: sx(a), cy, r: rad }, svg);
-      if (b !== null && b !== undefined) svgEl("circle", { class: "m-before", cx: sx(b), cy, r: rad }, svg);
+      const hasB = b !== null && b !== undefined, hasA = a !== null && a !== undefined;
+      // Two marks closer than two radii (or an unchanged score) would overlap and hide each other:
+      // then the ring sits on the track's upper edge and the dot on its lower edge, so both read.
+      const close = hasB && hasA && Math.abs(sx(a) - sx(b)) < 2 * rad + 4;
+      const off = close ? Math.min(trackH / 2, rad + 2) : 0;
+      const yb = cy - off, ya = cy + off;
+      if (hasB && hasA && b !== a) svgEl("line", { class: "link-seg", x1: sx(b), x2: sx(a), y1: yb, y2: ya }, svg);
+      if (hasA) svgEl("circle", { class: "m-after", cx: sx(a), cy: ya, r: rad }, svg);
+      if (hasB) svgEl("circle", { class: "m-before", cx: sx(b), cy: yb, r: rad }, svg);
       const fx = W - padX;
       svgText(svg, { class: "t-score", x: fx, "text-anchor": "end", y: cy - 8 * k, style: "font-size:" + px(15) }, moduleFigures(m));
       svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, "text-anchor": "end", y: cy + 10 * k, style: "font-size:" + px(12) }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
