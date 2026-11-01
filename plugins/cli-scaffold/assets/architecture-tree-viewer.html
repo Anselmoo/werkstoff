@@ -117,6 +117,9 @@ if (DATA && !DATA.tree) {
   RK.fail("The architecture payload has no tree, so there is nothing to draw.", RERUN_COMMAND);
 } else if (DATA) {
 
+const { h } = RK;
+const S = RK.stage();
+
 // ── Layout: indented tree (directories genuinely nest, but at 5-15 files
 // and 1-3 levels a circle-pack buries the one thing that matters -- role
 // badges -- behind a click; a plain indented list shows it inline). ─────
@@ -136,7 +139,10 @@ function fullPath(d) {
 
 // Row 0 is DATA.tree's own top-level children -- the scaffold root itself
 // is already named in the title panel above, so it is not its own row.
-const ROW_H = 22, INDENT = 20, LEFT_PAD = 10;
+// ROW_H and INDENT are only starting values: draw() re-derives them from the
+// figure's height and width, so the tree fills the stage instead of hugging a corner.
+let ROW_H = 22, INDENT = 26;
+const LEFT_PAD = 10;
 const rows = [];
 root.eachBefore(d => { if (d.depth > 0) rows.push(d); });
 rows.forEach((d, i) => { d.rowIndex = i; });
@@ -156,6 +162,7 @@ document.getElementById("subtitle").textContent =
 
 const roleOrder = Object.keys(DATA.roleLabels || {});
 const rolePillars = DATA.rolePillars || {};
+const roleKeys = DATA.roleKeys || {};
 
 const presentRoles = new Set();
 root.each(d => { for (const r of (d.data.roles || [])) presentRoles.add(r); });
@@ -202,54 +209,98 @@ if (missingRoles.length === 0) {
 }
 verdictEl.textContent = verdict;
 
-// ── Guide rails ─────────────────────────────────────────────────────────
-// One vertical rail per directory (parent row down to its last child row)
-// plus one horizontal tick per child, computed from d3.hierarchy()'s own
-// parent/children links -- real SVG lines, not CSS border tricks, so they
-// stay crisp. (d3.max is NOT used here -- d3-array is not in the vendored
-// bundle -- maxDepth below is a plain reduce.)
-const guideLines = [];
-for (const d of rows) {
-  if (!d.children || !d.children.length) continue;
-  const railX = colX(d.depth);
-  guideLines.push({
-    type: "v", x: railX, y1: rowMidY(d), y2: rowMidY(d.children[d.children.length - 1]),
-  });
-  for (const c of d.children) {
-    guideLines.push({ type: "h", y: rowMidY(c), x1: railX, x2: colX(c.depth) });
-  }
+const findings = DATA.findings || [];
+const surface = DATA.surface || { rows: [] };
+S.stats([
+  { label: "Gaps with evidence", value: findings.length, bad: findings.some(f => f.severity === "blocker"), note: "findings below, each with the manifest line that proves it" },
+  { label: "Pillars with no file", value: barePillars.length, bad: barePillars.length > 0, note: barePillars.join(", ") || "every pillar a file can evidence is evidenced" },
+  { label: "CLI surface rows", value: surface.rows.length, note: "flags and arguments the manifest declares" },
+]);
+
+// ── Detail builders (the drawer) ────────────────────────────────────────
+const SEV_RANK = { blocker: 0, critical: 0, major: 1, minor: 2 };
+const sortedGaps = findings.slice().sort((a, b) => (SEV_RANK[a.severity] ?? 3) - (SEV_RANK[b.severity] ?? 3));
+const gapId = f => "finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-");
+
+function gapDetail(f, open) {
+  return h("details", { class: "gap " + RK.toneFor(f.severity), open: open ? true : null },
+    h("summary", {}, RK.badge(f.severity), h("strong", { text: f.claim })),
+    h("div", { class: "gb" },
+      f.file ? [h("h4", { text: "Location" }), h("p", {}, h("code", { text: f.file }))] : null,
+      f.quote ? [h("h4", { text: "Manifest line" }), h("pre", { text: f.quote })] : null,
+      f.fix ? [h("h4", { text: "Suggested fix" }), h("p", { text: f.fix })] : null,
+      (f.evidence || []).length ? [h("h4", { text: "Evidence" }),
+        h("ul", {}, f.evidence.map(e => h("li", {}, h("strong", { text: e.label }), " — " + e.detail)))] : null,
+      h("p", {}, S.link("Open the card below", () => { goToCard(f); }))));
+}
+function goToCard(f) {
+  const card = document.getElementById(gapId(f));
+  if (!card) return;
+  card.open = true;
+  history.replaceState(null, "", "#" + card.id);
+  card.scrollIntoView();
 }
 
-const maxDepth = rows.reduce((m, d) => Math.max(m, d.depth), 1);
-const svgWidth = colX(maxDepth) + 40;
-const svgHeight = rows.length * ROW_H;
+function surfaceBlock() {
+  if (!surface.rows.length && !surface.completion) return null;
+  return [h("h3", { text: "CLI surface" }),
+    surface.rows.length ? h("ul", {}, surface.rows.map(r => h("li", {}, h("code", { text: r.name }), " (" + r.kind + (r.required ? ", " + r.required : "") + ") — " + r.description))) : null,
+    h("p", { class: "rk-muted", text: surface.completion ? "Shell completion: " + surface.completion : (surface.completionSupported ? "Shell completion is declared." : "No shell completion is declared.") })];
+}
 
-const guides = document.getElementById("guides");
-guides.setAttribute("width", svgWidth);
-guides.setAttribute("height", svgHeight);
-guides.setAttribute("viewBox", `0 0 ${svgWidth} ${svgHeight}`);
+function roleBlock(role, path) {
+  const key = roleKeys[role];
+  const gaps = findings.filter(f => f.tags && f.tags.pillar === rolePillars[role]);
+  return [
+    h("h3", { text: role + " — " + (DATA.roleLabels[role] || role) }),
+    h("p", {}, "Pillar: " + (rolePillars[role] || "?")),
+    key ? h("p", {}, "Manifest key: ", h("code", { text: key })) : null,
+    gaps.length ? h("p", { class: "rk-muted", text: "Open gap on this pillar: " + gaps.map(f => f.claim).join("; ") }) : null,
+  ];
+}
 
-d3.select(guides).selectAll("line.guide")
-  .data(guideLines)
-  .join("line")
-  .attr("class", "guide")
-  .attr("x1", d => d.type === "v" ? d.x : d.x1)
-  .attr("y1", d => d.type === "v" ? d.y1 : d.y)
-  .attr("x2", d => d.type === "v" ? d.x : d.x2)
-  .attr("y2", d => d.type === "v" ? d.y2 : d.y)
-  // The stroke colour is the .guide CSS rule, so a theme switch repaints the rails.
-  .attr("stroke-width", 1);
+function openOverview() {
+  S.open("Does every pillar have a file?", DATA.appName + " · " + (DATA.language || "?"),
+    h("p", { text: "Each badge is a role the scaffold's own cli-scaffold.manifest.json declares for that file — the same gating keys verify_scaffold.py reads to decide pass/fail, not a guess made from the filename." }),
+    h("p", { text: "The fifth pillar, Unix composability, is behavioural (exit codes 0/1/2, data on stdout, diagnostics on stderr), so no file can carry its badge and it is deliberately not counted here." }),
+    h("h3", { text: "Gaps, worst first" }),
+    sortedGaps.length ? sortedGaps.map((f, i) => gapDetail(f, i === 0)) : h("p", { class: "rk-muted", text: "Every role is claimed by a file that exists." }));
+}
 
-const treeEl = document.getElementById("tree");
-treeEl.style.height = svgHeight + "px";
-
-const rowSel = d3.select(treeEl).selectAll(".tree-row")
-  .data(rows, d => fullPath(d))
-  .join("div")
-  .attr("class", "tree-row")
-  .style("top", d => (d.rowIndex * ROW_H) + "px")
-  .style("left", d => colX(d.depth) + "px")
-  .attr("title", d => fullPath(d));
+let selected = null;
+function pick(d) {
+  selected = d;
+  paint();
+  const path = fullPath(d);
+  if (d.data.type === "dir") {
+    const kids = d.children || [];
+    const under = roleOrder.filter(r => rolesUnder(d).has(r));
+    S.open(path + "/", "directory · " + countLeaves(d.data) + " files",
+      h("h3", { text: "Roles played inside" }),
+      under.length ? h("ul", {}, under.map(r => h("li", {}, h("code", { text: r }), " — " + DATA.roleLabels[r]))) : h("p", { class: "rk-muted", text: "No file in this directory plays a doctrine role." }),
+      h("h3", { text: "Contents" }),
+      h("ul", {}, kids.map(c => h("li", {}, S.link(c.data.name + (c.data.type === "dir" ? "/" : ""), () => pick(c)))))
+    );
+  } else {
+    const roles = d.data.roles || [];
+    const surfaceRoles = roles.some(r => r === "entry" || r === "help");
+    S.open(path, "file · " + (roles.length ? roles.join(", ") : "no doctrine role"),
+      roles.length ? roles.map(r => roleBlock(r, path)) : h("p", { class: "rk-muted", text: "The manifest names no role for this file; it is part of the scaffold but no doctrine pillar points at it." }),
+      surfaceRoles ? surfaceBlock() : null,
+      h("p", {}, d.parent && d.parent.depth > 0 ? ["In ", S.link(fullPath(d.parent) + "/", () => pick(d.parent))] : null));
+  }
+}
+function openRole(role) {
+  const absent = !presentRoles.has(role);
+  const files = [];
+  root.each(d => { if (d.data.type === "file" && (d.data.roles || []).includes(role)) files.push(d); });
+  const gaps = findings.filter(f => f.tags && f.tags.role === role);
+  S.open(role, absent ? "no file claims this role" : files.length + " file(s)",
+    h("p", { text: DATA.roleLabels[role] || role }),
+    h("p", {}, "Pillar: " + (rolePillars[role] || "?") + (roleKeys[role] ? " · manifest key " : ""), roleKeys[role] ? h("code", { text: roleKeys[role] }) : null),
+    files.length ? [h("h3", { text: "Files" }), h("ul", {}, files.map(d => h("li", {}, S.link(fullPath(d), () => pick(d)))))] : null,
+    gaps.length ? [h("h3", { text: "Gap" }), gaps.map(f => gapDetail(f, true))] : null);
+}
 
 function rolesUnder(d) {
   const set = new Set();
@@ -257,33 +308,121 @@ function rolesUnder(d) {
   return set;
 }
 
-rowSel.each(function (d) {
-  const row = d3.select(this);
-  row.append("span")
-    .attr("class", "row-name")
-    .text(d.data.name + (d.data.type === "dir" ? "/" : ""));
+// ── The figure ──────────────────────────────────────────────────────────
+let rowSel = null, activeRole = null, lastW = 0, lastH = 0;
+function hudBottom() {
+  const hud = RK.$(".rk-hud");
+  return hud ? hud.offsetHeight + 12 : 140;
+}
 
-  if (d.data.type === "dir") {
-    row.append("span")
-      .attr("class", "row-count")
-      .text("(" + countLeaves(d.data) + ")");
-  } else if ((d.data.roles || []).length) {
-    const badges = row.append("span").attr("class", "row-badges");
-    for (const r of d.data.roles) {
-      const badge = badges.append("span")
-        .attr("class", "badge")
-        .attr("data-role", r)
-        .attr("title", DATA.roleLabels[r] || r)
-        .text(r);
-      // completion carries no categorical hue (see the --role-* comment and
-      // the [data-role="completion"] CSS rule) -- its neutral swatch colour
-      // comes entirely from that static rule, not from an inline override.
-      if (r !== "completion") {
-        badge.style("border-left-color", "var(--role-" + r + ")");
+function tipFor(e, d) {
+  const roles = d.data.roles || [];
+  S.tip.show(e, fullPath(d) + (d.data.type === "dir" ? "/" : ""),
+    h("div", { text: d.data.type === "dir" ? countLeaves(d.data) + " files · roles inside: " + ([...rolesUnder(d)].join(", ") || "none") : (roles.length ? "roles: " + roles.join(", ") : "no doctrine role") }));
+}
+
+function draw(w, hh) {
+  if (w === undefined) { w = lastW; hh = lastH; }
+  lastW = w; lastH = hh;
+  if (!w || !hh) return;
+  S.tip.hide();
+  const fig = S.figure;
+  fig.textContent = "";
+  const legendH = (document.getElementById("legend") || {}).offsetHeight || 40;
+  const top = hudBottom(), headH = 34, bottom = legendH + 24;
+  const avail = hh - top - headH - bottom;
+  ROW_H = Math.max(30, Math.min(64, Math.floor(avail / Math.max(1, rows.length))));
+  fig.classList.toggle("rk-scroll", ROW_H * rows.length > avail);
+  const maxDepth = rows.reduce((m, d) => Math.max(m, d.depth), 1);
+  const COL_W = Math.max(88, Math.min(150, Math.floor((w * 0.5) / Math.max(1, roleOrder.length))));
+  const cellsW = COL_W * roleOrder.length + 24;
+  const nameW = Math.max(220, w - cellsW);
+  INDENT = Math.max(22, Math.min(48, Math.floor((nameW - 240) / Math.max(1, maxDepth))));
+  const canvas = h("div", { id: "tree-canvas", style: "height:" + (top + headH + ROW_H * rows.length + bottom) + "px" });
+  fig.appendChild(canvas);
+
+  // Column headers: one per role, hollow and dashed when no file plays it.
+  const head = d3.select(canvas).append("div").attr("class", "tree-head")
+    .style("top", top + "px").style("height", headH + "px");
+  head.append("div").attr("class", "row-main").style("padding-left", LEFT_PAD + "px").text("file or directory");
+  const headCells = head.append("div").style("display", "flex").style("padding-right", "24px");
+  for (const role of roleOrder) {
+    const absent = !presentRoles.has(role);
+    const b = headCells.append("div").attr("class", "row-cell").style("width", COL_W + "px")
+      .append("button").attr("type", "button").attr("class", "badge" + (absent ? " absent" : ""))
+      .attr("data-role", role).attr("aria-label", role + " role" + (absent ? ", no file claims it" : "") + ". Press Enter for details.")
+      .text(role);
+    if (!absent && role !== "completion") b.style("border-left-color", "var(--role-" + role + ")");
+    b.on("click", () => openRole(role));
+  }
+
+  // Guide rails: one vertical rail per directory (parent row down to its last
+  // child row) plus one horizontal tick per child, computed from d3.hierarchy()'s
+  // own parent/children links -- real SVG lines, not CSS border tricks.
+  // (d3.max is NOT used here -- d3-array is not in the vendored bundle.)
+  const guideLines = [];
+  for (const d of rows) {
+    if (!d.children || !d.children.length) continue;
+    const railX = colX(d.depth) + 6;
+    guideLines.push({ type: "v", x: railX, y1: rowMidY(d), y2: rowMidY(d.children[d.children.length - 1]) });
+    for (const c of d.children) guideLines.push({ type: "h", y: rowMidY(c), x1: railX, x2: colX(c.depth) });
+  }
+  const rowsTop = top + headH;
+  const svgH = rows.length * ROW_H;
+  const guides = d3.select(canvas).append("svg").attr("id", "guides").attr("aria-hidden", "true")
+    .attr("width", nameW).attr("height", svgH).attr("viewBox", `0 0 ${nameW} ${svgH}`).style("top", rowsTop + "px");
+  guides.selectAll("line.guide").data(guideLines).join("line")
+    .attr("class", "guide")
+    .attr("x1", d => d.type === "v" ? d.x : d.x1).attr("y1", d => d.type === "v" ? d.y1 : d.y)
+    .attr("x2", d => d.type === "v" ? d.x : d.x2).attr("y2", d => d.type === "v" ? d.y2 : d.y)
+    // The stroke colour is the .guide CSS rule, so a theme switch repaints the rails.
+    .attr("stroke-width", 1);
+
+  const treeEl = d3.select(canvas).append("div").attr("id", "tree").node();
+  rowSel = d3.select(treeEl).selectAll(".tree-row")
+    .data(rows, d => fullPath(d))
+    .join("div")
+    .attr("class", "tree-row")
+    .attr("tabindex", 0).attr("role", "button")
+    .attr("aria-label", d => fullPath(d) + (d.data.type === "dir" ? " directory" : " file") + ((d.data.roles || []).length ? ", roles " + d.data.roles.join(", ") : "") + ". Press Enter for details.")
+    .style("top", d => (rowsTop + d.rowIndex * ROW_H) + "px")
+    .style("height", ROW_H + "px")
+    .on("click", (e, d) => pick(d))
+    .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(d); } })
+    .on("mouseenter", (e, d) => tipFor(e, d)).on("mousemove", (e, d) => tipFor(e, d)).on("focus", (e, d) => tipFor(e, d))
+    .on("mouseleave", () => S.tip.hide()).on("blur", () => S.tip.hide());
+
+  rowSel.each(function (d) {
+    const row = d3.select(this);
+    const main = row.append("div").attr("class", "row-main").style("padding-left", colX(d.depth) + 10 + "px");
+    main.append("span").attr("class", "row-name").text(d.data.name + (d.data.type === "dir" ? "/" : ""));
+    if (d.data.type === "dir") main.append("span").attr("class", "row-count").text("(" + countLeaves(d.data) + ")");
+    const cells = row.append("div").style("display", "flex").style("padding-right", "24px");
+    const own = d.data.roles || [], under = rolesUnder(d);
+    for (const role of roleOrder) {
+      const cell = cells.append("div").attr("class", "row-cell").style("width", COL_W + "px");
+      if (own.includes(role)) {
+        const badge = cell.append("span").attr("class", "badge").attr("data-role", role).attr("title", DATA.roleLabels[role] || role).text(role);
+        // completion carries no categorical hue (see the --role-* comment and
+        // the [data-role="completion"] CSS rule) -- its neutral swatch colour
+        // comes entirely from that static rule, not from an inline override.
+        if (role !== "completion") badge.style("border-left-color", "var(--role-" + role + ")");
+      } else if (d.data.type === "dir" && under.has(role)) {
+        cell.append("span").attr("class", "row-dot").attr("aria-hidden", "true").text("•");
       }
     }
+  });
+  paint();
+}
+
+function paint() {
+  if (!rowSel) return;
+  rowSel.classed("dim", d => activeRole !== null && !rolesUnder(d).has(activeRole));
+  rowSel.classed("sel", d => d === selected);
+  for (const b of document.querySelectorAll(".legend-item")) {
+    b.setAttribute("aria-pressed", String(b.dataset.role === activeRole));
   }
-});
+}
 
 // ── Legend ──────────────────────────────────────────────────────────────
 // The legend repeats the badge VERBATIM rather than showing a colour swatch:
@@ -291,24 +430,21 @@ rowSel.each(function (d) {
 // from a badge to its long-form pillar meaning is read off the shared word,
 // not off matching two hues. tokens.css: never colour alone. Each entry is
 // also a toggle: pressing it dims every row that does not play that role.
-let activeRole = null;
 function setRole(role) {
   activeRole = activeRole === role ? null : role;
-  rowSel.classed("dim", d => activeRole !== null && !rolesUnder(d).has(activeRole));
-  for (const b of document.querySelectorAll(".legend-item")) {
-    b.setAttribute("aria-pressed", String(b.dataset.role === activeRole));
-  }
+  paint();
 }
 
 (function renderLegend() {
   const legend = document.getElementById("legend");
-  for (const [role, label] of Object.entries(DATA.roleLabels)) {
+  for (const [role] of Object.entries(DATA.roleLabels)) {
     const absent = !presentRoles.has(role);
     const item = document.createElement("button");
     item.type = "button";
     item.dataset.role = role;
     item.setAttribute("aria-pressed", "false");
     item.className = "legend-item" + (absent ? " absent" : "");
+    item.title = DATA.roleLabels[role];
     if (!absent) item.addEventListener("click", () => setRole(role));
     if (absent) item.disabled = true;
 
@@ -321,18 +457,17 @@ function setRole(role) {
     chip.textContent = role;
     item.appendChild(chip);
 
-    const text = document.createElement("span");
-    text.textContent = label + (absent ? " — no file claims this role" : "");
-    item.appendChild(text);
+    if (absent) {
+      const text = document.createElement("span");
+      text.textContent = "no file";
+      item.appendChild(text);
+    }
 
     legend.appendChild(item);
   }
 })();
 
 // ── Kit sections ────────────────────────────────────────────────────────
-const stage = document.getElementById("stage");
-const treeBlock = [document.getElementById("tree-wrap"), document.getElementById("legend")];
-const surface = DATA.surface || { rows: [] };
 const surfaceKids = [];
 if (surface.rows.length) {
   surfaceKids.push(RK.table({ caption: "the CLI surface the manifest declares", columns: [
@@ -346,11 +481,31 @@ surfaceKids.push(RK.h("p", { class: "rk-muted", text: surface.completion
 
 RK.$("#rk-content").append(
   RK.section("gaps", "Doctrine gaps and the evidence for them",
-    RK.findings(DATA.findings || [], { empty: "Every role is claimed by a file that exists." })),
-  RK.section("tree", "Architecture tree", ...treeBlock),
+    RK.h("p", { class: "note" }, "Each badge in the figure is a role the scaffold's own ", RK.h("code", { text: "cli-scaffold.manifest.json" }),
+      " declares for that file — the same gating keys ", RK.h("code", { text: "verify_scaffold.py" }),
+      " reads to decide pass/fail, not a guess made from the filename. A role with no file is drawn hollow and dashed. The fifth pillar, ",
+      RK.h("em", { text: "Unix composability" }),
+      ", is behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so no file can carry its badge and it is deliberately not counted here."),
+    RK.findings(findings, { empty: "Every role is claimed by a file that exists." })),
   RK.section("surface", "CLI surface", ...surfaceKids));
-stage.remove();
 RK.init();
+
+S.onResize((w, hh) => draw(w, hh));
+new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// A deep link to a gap opens it in the drawer too; with none, the drawer opens on
+// the overview, which lists the gaps worst first with the worst one expanded.
+function fromHash() {
+  const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  return findings.find(f => gapId(f) === id) || null;
+}
+const first = fromHash();
+if (first) S.open(first.claim, first.rule, gapDetail(first, true), h("p", {}, S.link("Back to the overview", openOverview)));
+else openOverview();
+window.addEventListener("hashchange", () => {
+  const f = fromHash();
+  if (f) S.open(f.claim, f.rule, gapDetail(f, true), h("p", {}, S.link("Back to the overview", openOverview)));
+});
 
 }
 </script>

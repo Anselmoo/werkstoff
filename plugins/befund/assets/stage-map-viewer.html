@@ -33,9 +33,9 @@
      the same way in the legend as on the map. */
   #legendpanel h3, #matchpanel h3 { font-size: 11px; text-transform: uppercase;
     letter-spacing: .05em; color: var(--rk-muted); margin: 0 0 var(--space-2); }
-  .rk-legend-float { max-width: min(760px, calc(100% - 2 * var(--space-3))); padding: var(--space-2) var(--space-3); }
+  .rk-legend-float { max-width: min(820px, calc(100% - 2 * var(--space-3))); padding: var(--space-2) var(--space-3); }
   .rk-legend-float h3 { margin: 0 0 var(--space-1); }
-  .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: var(--space-1) var(--space-4); font-size: 12px; color: var(--rk-muted); }
   .legend li { display: flex; align-items: center; gap: var(--space-2); }
   .legend canvas.swatch { flex: none; }
@@ -418,10 +418,10 @@ const simulation = d3.forceSimulation(nodes)
   .force("charge", d3.forceManyBody().strength(d => -60 - d.r * 4))
   .force("collide", d3.forceCollide().radius(d => d.r + 6))
   .force("center", d3.forceCenter())
-  // A weak pull toward the origin keeps an unconnected stage near the cluster instead of letting
-  // it drift off and shrink everything else when the map is fitted to its bounds.
-  .force("x", d3.forceX().strength(0.05))
-  .force("y", d3.forceY().strength(0.05))
+  // A pull toward the origin keeps an unconnected stage near the cluster (it has no wire to hold
+  // it there) instead of letting it drift off and shrink everything else when the map is fitted.
+  .force("x", d3.forceX().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2)))
+  .force("y", d3.forceY().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2)))
   .on("tick", requestDraw);
 // Settle the layout before the first paint (about 300 ticks to alpha-min), so the map opens
 // framed and still rather than mid-animation; dragging a stage re-heats it as before.
