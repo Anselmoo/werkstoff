@@ -25,12 +25,12 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEMPLATE = HERE.parent / "assets" / "beatgraph-viewer.html"
-TOKENS = HERE.parent / "assets" / "tokens.css"
-FIXTURE = HERE / "fixtures" / "beatgraph-demo.json"
+sys.path.insert(0, str(HERE))
+from report_kit import KIT_MARKER, TOKENS_MARKER, render as kit_render  # noqa: E402
 
-TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
-DATA_MARKER = "/*__BEATGRAPH_DATA__*/"
+ASSETS = HERE.parent / "assets"
+TEMPLATE = ASSETS / "beatgraph-viewer.html"
+FIXTURE = HERE / "fixtures" / "beatgraph-demo.json"
 
 
 def _compiler(repo: Path):
@@ -92,16 +92,21 @@ def collect(repo: Path) -> dict:
     producer = {pr["marker"]: pr["plugin"] for pr in produces}
 
     m = _compiler(repo)
-    beats, refused = [], []
+    beats, refused, dropped, malformed = [], [], [], []
     if m is not None:
-        compiled, _dropped, refusals, _malformed = m.repo_beats(decls, plugins)
+        compiled, dropped_raw, refusals, malformed = m.repo_beats(decls, plugins)
+        # The compiler also reports optional requirements it dropped and requirements it could
+        # not compile at all; both used to be thrown away here, which hid exactly the
+        # declarations a reader has to fix.
+        dropped = [{"requirer": r, "marker": mk, "producer": src} for r, mk, src in dropped_raw]
         for b in compiled:
             path = repo / b["require"]
             kind = b.get("requireKind", "any")
             sat = path.is_file() if kind == "file" else (
                 path.is_dir() if kind == "dir" else path.exists())
             beats.append({
-                "gates": b["skills"][0] if b["skills"] else "?",
+                "gates": ", ".join(b["skills"]) if b["skills"] else "?",
+                "id": b.get("id", ""),
                 "marker": b["require"], "producedBy": producer.get(b["require"]),
                 "scope": kind, "satisfied": sat, "reason": b.get("reason", ""),
             })
@@ -111,6 +116,8 @@ def collect(repo: Path) -> dict:
     return {
         "beats": beats,
         "refused": refused,
+        "dropped": dropped,
+        "malformed": list(malformed),
         "produces": sorted(produces, key=lambda p: p["marker"]),
         "declarations": len(decls),
         "compilerAvailable": m is not None,
@@ -119,13 +126,7 @@ def collect(repo: Path) -> dict:
 
 
 def render(report: dict) -> str:
-    tpl = TEMPLATE.read_text(encoding="utf-8")
-    if TOKENS.is_file():
-        tpl = tpl.replace(TOKENS_MARKER, "<style>\n" + TOKENS.read_text(encoding="utf-8") + "\n</style>")
-    payload = json.dumps(report, indent=2)
-    # Escape the three characters that could close the <script> element early.
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(DATA_MARKER, "const BEATGRAPH = " + payload + ";")
+    return kit_render(TEMPLATE.read_text(encoding="utf-8"), ASSETS, report)
 
 
 def selftest() -> int:
@@ -144,15 +145,20 @@ def selftest() -> int:
 
     html = render(demo)
     ok("tokens marker replaced", TOKENS_MARKER not in html and "--bg" in html)
-    ok("data marker replaced", DATA_MARKER not in html and "const BEATGRAPH" in html)
-    ok("no raw '<' survives inside the payload",
-       "\\u003c" in html or "<" not in json.dumps(demo))
+    ok("report-kit marker replaced and kit inlined",
+       KIT_MARKER + "\n</head>" not in html and "const RK = (" in html and "--rk-" in html)
+    ok("data island present and filled",
+       '<script type="application/json" id="report-data">' in html and "@@DATA@@" not in html)
+    start = html.index('id="report-data">') + len('id="report-data">')
+    island = html[start:html.index("</script>", start)]
+    ok("no raw '<' or '>' survives inside the data island", "<" not in island and ">" not in island)
+    ok("the island round-trips to the report", json.loads(island)["beats"] == demo["beats"])
     ok("static h1 matches the title",
        "<title>takt — beat graph</title>" in html and "<h1>takt — beat graph</h1>" in html)
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("no network fetches", "src=\"http" not in html and "href=\"http" not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
-    ok("a static legend exists", 'class="legend"' in html)
+    ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     # The check that matters: the viewer's beat list is the COMPILER's beat
     # list. If these ever disagree the page is lying about what is enforced.
@@ -165,6 +171,8 @@ def selftest() -> int:
         compiled, _, _, _ = m.repo_beats(decls, Path(__file__).resolve().parent.parent.parent / "plugins")
         ok("viewer beat count equals the compiler's", len(live["beats"]) == len(compiled),
            f"viewer {len(live['beats'])} vs compiler {len(compiled)}")
+        ok("the live report carries the compiler's dropped/malformed lists",
+           "dropped" in live and "malformed" in live)
         ok("a refusal is carried through to the page, not dropped",
            len(live["refused"]) >= 1,
            "a requirement the compiler refused must be visible, or the page implies it was never declared")
@@ -181,6 +189,9 @@ def selftest() -> int:
     ok("demo shows an evidence kind of 'none'",
        any(p.get("evidenceKind") == "none" for p in demo["produces"]),
        "the undependable case is the one a reader most needs to see named")
+    ok("demo shows a dropped and a malformed declaration",
+       bool(demo.get("dropped")) and bool(demo.get("malformed")),
+       "the compiler reports both; a page that omits them hides the declarations a reader must fix")
     ok("demo is labelled synthetic",
        "SYNTHETIC" in (demo.get("_note") or ""),
        "demo data that reads as live state misleads about what this repo currently enforces")
@@ -218,7 +229,7 @@ def main(argv: list) -> int:
     else:
         report = collect(Path(args.repo))
 
-    out = Path(args.out) if args.out else TEMPLATE.parent / "beatgraph-report.html"
+    out = Path(args.out) if args.out else ASSETS / "beatgraph-report.html"
     out.write_text(render(report), encoding="utf-8")
     blocked = sum(1 for b in report["beats"] if not b["satisfied"])
     print(f"wrote {out} — {len(report['beats'])} beat(s), {blocked} blocked")

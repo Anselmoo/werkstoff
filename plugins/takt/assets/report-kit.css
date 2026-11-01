@@ -1,7 +1,7 @@
 /* werkstoff report kit -- shared components for every plugins/<name>/assets/<name>-viewer.html.
  *
  * Source of truth. Vendored per plugin as assets/report-kit.css by .rrt.toml's
- * artifact_targets; a builder replaces the <!--__REPORT_KIT__--> marker with
+ * artifact_targets; a builder replaces the __REPORT_KIT__ marker with
  * this file and report-kit.js inlined. Never edit a vendored copy.
  *
  * Every colour comes from tools/design-tokens/tokens.css. The kit adds one
@@ -203,9 +203,11 @@ mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
 .rk-ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-2); }
 .rk-ba figure { margin: 0; background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2); }
 .rk-ba figcaption { font-size: 0.8rem; color: var(--rk-muted); margin-top: var(--space-1); }
-.rk-ba img { display: block; max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-.rk-slider { position: relative; overflow: hidden; border-radius: var(--radius-sm); }
-.rk-slider img { display: block; width: 100%; height: auto; }
+.rk-ba img { display: block; max-width: 100%; max-height: 420px; height: auto; object-fit: contain; object-position: left top; border-radius: var(--radius-sm); }
+.rk-slider { position: relative; overflow: hidden; border-radius: var(--radius-sm); width: fit-content; max-width: 100%; }
+/* A screenshot is shown at most at its own size: a 390 px phone capture blown up to
+ * panel width is a wall of pixels, not a comparison. */
+.rk-slider img { max-width: 100%; max-height: 70vh; width: auto; object-fit: contain; object-position: left top; }
 .rk-slider .rk-after { position: absolute; inset: 0; clip-path: inset(0 0 0 50%); }
 .rk-slider input[type="range"] { width: 100%; margin-top: var(--space-1); }
 
