@@ -428,16 +428,9 @@ const simulation = d3.forceSimulation(nodes)
 simulation.stop();
 for (let i = 0, n = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())); i < n; i++) simulation.tick();
 
-// fitToNodes() is wired to the simulation's "end" event, which fires again
-// after every re-heat (e.g. simulation.alphaTarget(...).restart() from the
-// node drag handlers below) -- not just the very first time the layout
-// settles. Without this guard, clicking or dragging a node would silently
-// yank the camera back to fit-all a couple seconds later, overriding
-// whatever flyTo()/pan/zoom the user just did. Only the initial auto-frame
-// should apply automatically; subsequent settles are expected to leave the
-// camera wherever the user left it.
-// The frame is refitted whenever the figure resizes (the drawer opening narrows it) until the
-// reader pans, zooms or flies somewhere themselves; after that their camera is left alone.
+// fitToNodes() frames the settled layout. It is NOT tied to the simulation's "end" event, which
+// fires again after every re-heat (a node drag) and would yank the camera back mid-gesture; it
+// runs on load and on figure resize, and only until the reader moves the camera themselves.
 let userTouched = false;
 function fitToNodes() {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

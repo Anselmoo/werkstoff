@@ -219,12 +219,6 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
     const xOf = (r) => px0 + (Math.log10(Math.max(1, Math.min(21, r))) - lo) / (hi - lo) * pw;
     const y0 = top + Math.max(0, Math.floor((H - top - bottom - n * (RH + GAP)) / 2));
     const yEnd = y0 + n * (RH + GAP);
-    [[TH.large, "3.0 UI / large", "rule-warn"], [TH.body, "4.5 AA body", "rule-pass"], [TH.aaa, "7.0 AAA", "rule-warn"]].forEach(([at, label, cls]) => {
-      const x = xOf(at);
-      mk("line", { class: "rule " + cls, x1: x, y1: y0 - 16, x2: x, y2: yEnd, "stroke-dasharray": cls === "rule-pass" ? "" : "3,4" }, svg);
-      mk("text", { class: "rule-label", x, y: y0 - 24, "text-anchor": "middle" }, svg, label);
-    });
-    mk("text", { class: "rule-label", x: xOf(1), y: y0 - 24, "text-anchor": "middle" }, svg, "1:1 floor");
     rowEls = [];
     pairs.forEach((p, i) => {
       const y = y0 + i * (RH + GAP), cy = y + RH / 2, v = verdictOf(p);
@@ -251,6 +245,12 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
       g.addEventListener("mouseenter", tip); g.addEventListener("mousemove", tip); g.addEventListener("focus", tip);
       g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
     });
+    [[TH.large, "3.0 UI / large", "rule-warn"], [TH.body, "4.5 AA body", "rule-pass"], [TH.aaa, "7.0 AAA", "rule-warn"]].forEach(([at, label, cls]) => {
+      const x = xOf(at);
+      mk("line", { class: "rule " + cls, "pointer-events": "none", x1: x, y1: y0 - 16, x2: x, y2: yEnd, "stroke-dasharray": cls === "rule-pass" ? "" : "3,4" }, svg);
+      mk("text", { class: "rule-label", x, y: y0 - 24, "text-anchor": "middle" }, svg, label);
+    });
+    mk("text", { class: "rule-label", x: xOf(1), y: y0 - 24, "text-anchor": "middle" }, svg, "1:1 floor");
     if (selI !== null && rowEls[selI]) rowEls[selI].classList.add("sel");
   }
   if (pairs.length) {
