@@ -32,6 +32,7 @@ from repair_lib import (  # noqa: E402
     active_run,
     approved_changeset,
     changeset_hash,
+    check_objective_frozen,
     project_root,
     read_json,
     repair_dir,
@@ -74,6 +75,7 @@ def cmd_approve(root: Path) -> dict:
     rdir = run_dir(root, run_id)
     if not (rdir / "baseline" / "baseline.json").is_file():
         raise RepairError("no baseline yet -- run baseline.py before planning changes, so verify.py has something to compare against")
+    check_objective_frozen(root, run_id)
     objective = read_json(rdir / "objective.json")
     validate_objective(objective)
     validate_changeset(read_json(rdir / "changeset.json"), objective)

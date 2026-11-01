@@ -43,6 +43,7 @@ from repair_lib import (  # noqa: E402
     RepairError,
     active_run,
     approved_changeset,
+    check_objective_frozen,
     project_root,
     read_json,
     run_dir,
@@ -82,6 +83,8 @@ def attribute(base_files: dict, after_files: dict, changeset: dict, trash: dict)
 
 def verify(root: Path, run_id: str) -> dict:
     rdir = run_dir(root, run_id)
+    # First: grading against an objective the baseline never measured is the worst outcome.
+    check_objective_frozen(root, run_id)
     changeset = approved_changeset(root, run_id)
     if (rdir / "active-item").is_file():
         raise RepairError(f"item {(rdir / 'active-item').read_text(encoding='utf-8').strip()} is still active -- finish-item it first")

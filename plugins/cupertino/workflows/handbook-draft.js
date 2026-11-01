@@ -190,5 +190,16 @@ if (droppedScaffolded > 0) {
   log(`${droppedScaffolded} scaffolded default(s) left out: the repo has no convention there and scaffoldDefaults was not enabled.`)
 }
 
+// No rule survived (every candidate failed re-verification, or scaffolded defaults were
+// declined). An empty handbook is not a handbook: the sidecar validator rejects
+// `dimensions: []`, and writing one would look like a domain with no conventions. Say so
+// explicitly, so the calling skill stops before writing either file.
+if (rules.length === 0) {
+  log(`No handbook produced for ${domain}: ${failedVerification} candidate(s) failed re-verification, ${droppedScaffolded} scaffolded default(s) left out.`)
+  return { domain, rules, noHandbook: true,
+           reason: 'no rule survived re-verification' + (droppedScaffolded > 0 ? ' and scaffolded defaults were not enabled' : ''),
+           droppedRevised: failedVerification, droppedScaffolded, calibrated: false }
+}
+
 // judge-contract: no sealed set has measured this judge, so its verdicts are labelled calibrated: false.
-return { domain, rules, droppedRevised: failedVerification, droppedScaffolded, calibrated: false }
+return { domain, rules, noHandbook: false, droppedRevised: failedVerification, droppedScaffolded, calibrated: false }

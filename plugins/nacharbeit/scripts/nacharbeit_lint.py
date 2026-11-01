@@ -722,7 +722,9 @@ def _vendored_paths() -> set[str]:
                 data = {}
             for target in data.get("tool", {}).get("rrt", {}).get("artifact_targets", []):
                 if isinstance(target, dict) and isinstance(target.get("path"), str):
-                    found.add(Path(target["path"]).as_posix())
+                    # Absolute, so it compares equal to a unit discovered from either a
+                    # relative or an absolute plugin path on the command line.
+                    found.add(Path(target["path"]).resolve().as_posix())
     return _VENDORED[key]
 
 
@@ -737,7 +739,7 @@ def r_dup_content(u: Unit, ctx: list[Unit]) -> list[dict]:
     # Every copy vendored from one declared source: not a duplicate, a distribution.
     # ALL of them, not any: one hand-made copy beside vendored ones can still drift.
     vendored = _vendored_paths()
-    if all(v.path.as_posix() in vendored for v in same):
+    if all(v.path.resolve().as_posix() in vendored for v in same):
         return []
     others = ", ".join(v.path.as_posix() for v in same[1:])
     return [_finding(u, "M-DUP-CONTENT", f"byte-identical to {len(same) - 1} other file(s): {others}",

@@ -113,6 +113,21 @@ def allow():
     sys.exit(0)
 
 
+def find_state_root(start, project_dir):
+    """Stdlib copy of scripts/repair_lib.find_state_root -- the hook must resolve the root
+    even when repair_lib cannot be imported. hooks/test_repair_guard.py asserts the two
+    agree on every case, so the copy cannot drift silently."""
+    here = os.path.abspath(start)
+    while True:
+        if os.path.isdir(os.path.join(here, ".cupertino")):
+            return here
+        parent = os.path.dirname(here)
+        if parent == here:
+            break
+        here = parent
+    return project_dir if project_dir else os.path.abspath(start)
+
+
 def state_dir(cwd):
     return os.path.join(cwd, ".cupertino")
 
@@ -235,6 +250,10 @@ def check_repair_write(cwd, file_path):
                      "repair_state, apply_delete, verify) -- a verification result or a gate that a model can "
                      "write is not a verification.")
             rdir = root / ".cupertino" / "repair" / run_id
+            if inner == "objective.json" and (rdir / "baseline" / "baseline.json").is_file():
+                deny("cupertino-repair: the objective is frozen once baseline.py has measured it -- verify grades "
+                     "against the objective the baseline saw, so changing it now could turn a regression into "
+                     "'done'. A different objective needs a new run: `repair_state.py end --abandon`, then preflight.")
             if inner == "changeset.json" and (rdir / "active-item").is_file():
                 deny("cupertino-repair: an item is being applied; finish-item it before changing the changeset "
                      "(and a changed changeset must be approved again).")
@@ -295,8 +314,10 @@ def edit_targets(tool_input):
     return targets
 
 
-def handle_write_or_edit(cwd, tool_input):
-    targets = edit_targets(tool_input)
+def handle_write_or_edit(cwd, tool_input, session_cwd=None):
+    # A relative path is relative to the session, not to the state root.
+    base = session_cwd or cwd
+    targets = [t if os.path.isabs(t) else os.path.join(base, t) for t in edit_targets(tool_input)]
     if not targets and _repair_run(cwd) is not None:
         deny("cupertino-repair: this edit names no path the guard can read (file_path, edits[].file_path, "
              "file_paths), so it cannot be scoped to the active item; refusing rather than letting it through.")
@@ -466,7 +487,15 @@ def main():
     except Exception as e:
         deny(f"cupertino: could not parse hook payload ({e}); failing closed. {ESCAPE_HATCH}")
 
-    cwd = payload.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    # The session's working directory (relative edit paths resolve against it) and the
+    # state root (where .cupertino/ lives) are different things; the root comes from the
+    # one rule the scripts use, so a run begun from the repo root governs a session
+    # working in a subdirectory.
+    session_cwd = payload.get("cwd") or os.getcwd()
+    try:
+        cwd = find_state_root(session_cwd, os.environ.get("CLAUDE_PROJECT_DIR"))
+    except OSError as e:
+        deny(f"cupertino: could not resolve the .cupertino/ root ({e}); failing closed. {ESCAPE_HATCH}")
 
     try:
         cupertino_active = os.path.isdir(state_dir(cwd))
@@ -509,7 +538,7 @@ def main():
             # of them.
             handle_agent_dispatch(tool_input)
         elif tool_name in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
-            handle_write_or_edit(cwd, tool_input)
+            handle_write_or_edit(cwd, tool_input, session_cwd)
         elif tool_name == "Bash":
             handle_bash(cwd, tool_input)
     except SystemExit:

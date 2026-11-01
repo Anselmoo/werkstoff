@@ -797,13 +797,17 @@ def main() -> int:
             build_positive(root)
             w(root, ".rrt.toml", "".join(f'[[tool.rrt.artifact_targets]]\npath = "{d}"\ncommand = ["cp", "tools/proto.md", "{d}"]\n\n'
                                          for d in declared))
-            fired = any(x["rule_id"] == "M-DUP-CONTENT" and x["file"] == "plugins/bad/references/proto.md"
-                        for x in run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"]))
-            if fired != want:
-                print(f"RED  dup-vendored: {len(declared)} of 2 copies declared -> M-DUP-CONTENT {'fired' if fired else 'silent'}, "
-                      f"want {'fired' if want else 'silent'}")
-                red += 1
-    print("     dup-vendored: all copies vendored -> silent; one hand-made copy -> fires")
+            for form in ("relative", "absolute"):
+                dirs = ["plugins/bad", "plugins/bad2", "plugins/bad3"]
+                if form == "absolute":
+                    dirs = [str(root / d) for d in dirs]
+                fired = any(x["rule_id"] == "M-DUP-CONTENT" and x["file"].endswith("plugins/bad/references/proto.md")
+                            for x in run(root, dirs))
+                if fired != want:
+                    print(f"RED  dup-vendored ({form} plugin paths): {len(declared)} of 2 declared -> "
+                          f"{'fired' if fired else 'silent'}, want {'fired' if want else 'silent'}")
+                    red += 1
+    print("     dup-vendored: all copies vendored -> silent; one hand-made copy -> fires (relative and absolute paths)")
 
     # 5. --fail-on: a CLI-level check, exercised through lp.main() rather than lp.lint()
     with tempfile.TemporaryDirectory() as td:

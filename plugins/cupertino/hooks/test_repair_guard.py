@@ -56,6 +56,48 @@ def script(root: Path, name: str, *args: str) -> None:
         raise SystemExit(f"setup step {name} {args} failed: {p.stderr or p.stdout}")
 
 
+def root_agreement() -> None:
+    """The guard's stdlib find_state_root and repair_lib's must agree on every case, and a
+    run begun at the repo root must govern a session working in a subdirectory."""
+    global failures
+    import importlib.util
+    sys.path.insert(0, str(SCRIPTS))
+    import repair_lib
+    spec = importlib.util.spec_from_file_location("guard_mod", GUARD)
+    guard_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard_mod)  # __name__ is not "__main__", so main() does not run
+    print("state root: scripts and guard resolve the same .cupertino/")
+    with tempfile.TemporaryDirectory() as td:
+        repo = Path(td) / "repo"
+        sub = repo / "dashboard" / "deep"
+        sub.mkdir(parents=True)
+        cases = [(sub, str(repo)), (sub, None), (repo, str(repo))]
+        for state_at in (None, repo):
+            if state_at is not None:
+                (state_at / ".cupertino").mkdir(exist_ok=True)
+            for start, proj in cases:
+                a = Path(repair_lib.find_state_root(start, proj))
+                b = Path(guard_mod.find_state_root(str(start), proj))
+                ok = a == b
+                failures += not ok
+                print(f"  {'ok  ' if ok else 'FAIL'} agree: start={start.relative_to(td)} project_dir={'set' if proj else 'unset'}"
+                      f" state={'present' if state_at else 'absent'} -> {a.relative_to(Path(td).parent) if a.is_relative_to(Path(td).parent) else a}")
+        # The reviewer's case: CLAUDE_PROJECT_DIR = repo, session cwd = a subdirectory.
+        (repo / "dashboard" / "a.css").write_text("x{}", encoding="utf-8")
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=str(repo))
+        subprocess.run([sys.executable, str(SCRIPTS / "repair_state.py"), "begin", "r1"], cwd=sub, env=env,
+                       capture_output=True, text=True, check=True)
+        ok_marker = (repo / ".cupertino" / "repair" / "ACTIVE").is_file()
+        failures += not ok_marker
+        print(f"  {'ok  ' if ok_marker else 'FAIL'} a run begun from a subdirectory lands at the repo root")
+        payload = {"cwd": str(sub), "tool_name": "Edit", "tool_input": {"file_path": "../a.css"}}
+        p = subprocess.run([sys.executable, "-B", str(GUARD)], input=json.dumps(payload), capture_output=True, text=True,
+                           env={**env, "CLAUDE_PLUGIN_ROOT": str(PLUGIN)}, check=False)
+        ok = p.returncode == DENY and "objective.json" in p.stderr
+        failures += not ok
+        print(f"  {'ok  ' if ok else 'FAIL'} a session in a subdirectory is governed by that run (relative path resolved from the session)")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
@@ -92,6 +134,11 @@ def main() -> int:
             "mustPreserve": [{"id": "P1", "criterion": "chart untouched", "check": {"kind": "file", "path": "app/chart.js", "unchanged": True}}],
         }), encoding="utf-8")
         script(root, "baseline.py")
+        print("baseline taken: the objective is frozen")
+        expect("rewriting the objective after baseline is denied", root, "Write",
+               {"file_path": str(rdir / "objective.json"), "content": "{}"}, DENY, "frozen")
+        expect("writing the changeset after baseline is still allowed", root, "Write",
+               {"file_path": str(rdir / "changeset.json"), "content": "{}"}, ALLOW)
         (rdir / "changeset.json").write_text(json.dumps({"items": [
             {"id": "I1", "op": "modify", "paths": ["app/styles.css"], "rationale": "wrap"},
             {"id": "I2", "op": "delete", "paths": ["app/legacy.js"], "rationale": "dead", "evidence": "nothing imports it"},
@@ -158,6 +205,18 @@ def main() -> int:
         expect("the guard refuses it too, even with an active-item file planted", root, "Edit", {"file_path": "app/chart.js"},
                DENY, "changed after approval")
 
+        print("objective edited around the guard")
+        objective = (rdir / "objective.json").read_text(encoding="utf-8")
+        (rdir / "objective.json").write_text(objective.replace("chart untouched", "chart may change"), encoding="utf-8")
+        env_p2 = dict(os.environ, CLAUDE_PROJECT_DIR=str(root))
+        for name, args in (("approve", ["repair_state.py", "approve"]), ("verify", ["verify.py", "--no-report"])):
+            p = subprocess.run([sys.executable, str(SCRIPTS / args[0]), *args[1:]], cwd=root, env=env_p2,
+                               capture_output=True, text=True, check=False)
+            ok = p.returncode != 0 and "objective.json changed after the baseline" in p.stderr
+            failures += not ok
+            print(f"  {'ok  ' if ok else 'FAIL'} {name} refuses an objective changed after the baseline")
+        (rdir / "objective.json").write_text(objective, encoding="utf-8")
+
         print("escape hatch")
         env_p = subprocess.run([sys.executable, "-B", str(GUARD)], capture_output=True, text=True, check=False,
                                input=json.dumps({"cwd": str(root), "tool_name": "Edit", "tool_input": {"file_path": "app/chart.js"}}),
@@ -166,6 +225,7 @@ def main() -> int:
         failures += not ok
         print(f"  {'ok  ' if ok else 'FAIL'} CUPERTINO_DISABLE_GUARD=1 allows")
 
+    root_agreement()
     print()
     print("ALL PASS" if not failures else f"{failures} FAILED")
     return 1 if failures else 0

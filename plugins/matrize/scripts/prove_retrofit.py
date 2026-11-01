@@ -223,13 +223,24 @@ def prove(src_path: Path, tokens_path: Path, workdir: Path, chrome: str) -> int:
     failed += 0 if ok else 1
 
     ok, notes = arm3_visual(src, regen, workdir, chrome)
-    print(f"arm 3 — visual       {'PASS' if ok else 'FAIL'}")
+    visual_not_run = bool(notes) and notes[0].startswith("NOT RUN")
+    print(f"arm 3 — visual       {'NOT RUN' if visual_not_run else ('PASS' if ok else 'FAIL')}")
     for n in notes:
         print(f"    {n}")
     failed += 0 if ok else 1
 
-    print(f"\n{'ZERO VISUAL DIFF, STRUCTURE PRESERVED' if not failed else 'RETROFIT NOT PROVEN'}")
+    print("\n" + verdict_line(failed, visual_not_run))
     return 1 if failed else 0
+
+
+def verdict_line(failed: int, visual_not_run: bool) -> str:
+    """The summary claims only what was measured. With the visual arm skipped
+    (--allow-no-browser), "zero visual diff" was never measured, so it is not said."""
+    if failed:
+        return "RETROFIT NOT PROVEN"
+    if visual_not_run:
+        return "STRUCTURE PRESERVED (arms 1 and 2) -- VISUAL DIFF NOT MEASURED: no browser ran arm 3"
+    return "ZERO VISUAL DIFF, STRUCTURE PRESERVED"
 
 
 def selftest() -> int:
@@ -290,6 +301,9 @@ def selftest() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         ok3, notes3 = arm3_visual(src, regen, Path(tmp), "/nonexistent/chrome")
     checks.append(("a missing browser FAILS arm 3, never a silent pass", not ok3 and "NOT RUN" in notes3[0]))
+    checks.append(("an allowed skip never claims zero visual diff",
+                   "ZERO VISUAL DIFF" not in verdict_line(0, True) and "NOT MEASURED" in verdict_line(0, True)))
+    checks.append(("a full pass still says zero visual diff", verdict_line(0, False).startswith("ZERO VISUAL DIFF")))
 
     for label, ok in checks:
         print(f"  {label:<52} {'ok' if ok else 'FAIL'}")

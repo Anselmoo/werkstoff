@@ -48,13 +48,30 @@ class RepairError(Exception):
 
 
 # ---- roots -------------------------------------------------------------------
-def project_root(payload_cwd: str | None = None) -> Path:
-    """The hook payload's cwd first, then CLAUDE_PROJECT_DIR, then the process cwd.
+def find_state_root(start: str | os.PathLike, project_dir: str | None) -> Path:
+    """The directory whose `.cupertino/` governs `start`. ONE rule, shared by the hook and
+    every script -- hooks/pretooluse_guard.py carries a stdlib copy that
+    hooks/test_repair_guard.py proves identical on every case.
 
-    The payload is how Claude Code tells a hook which session it serves; a script
-    run by that session has no payload, and its cwd is the session's.
+    1. the nearest of `start` and its ancestors that holds a `.cupertino/` directory;
+    2. else CLAUDE_PROJECT_DIR, when set;
+    3. else `start`.
+
+    Rule 1 is what makes a session working in `dashboard/` and a script run from the
+    repo root agree: both find the one `.cupertino/` above them. Preferring the payload
+    cwd (hook) over CLAUDE_PROJECT_DIR (scripts) let them disagree, and an ACTIVE marker
+    written at the root was invisible to a guard looking in the subdirectory.
     """
-    return Path(payload_cwd or os.environ.get("CLAUDE_PROJECT_DIR") or Path.cwd())
+    here = Path(os.path.abspath(start))
+    for d in (here, *here.parents):
+        if (d / STATE_DIR_NAME).is_dir():
+            return d
+    return Path(project_dir) if project_dir else here
+
+
+def project_root(payload_cwd: str | None = None) -> Path:
+    """State root for a hook (payload cwd) or a script (process cwd)."""
+    return find_state_root(payload_cwd or Path.cwd(), os.environ.get("CLAUDE_PROJECT_DIR"))
 
 
 def state_dir(root: Path) -> Path:
@@ -227,6 +244,24 @@ def validate_changeset(obj: dict, objective: dict | None = None) -> None:
         _need(item, "rationale", str, w)
         if op == "delete" and not item.get("evidence"):
             raise RepairError(f"{w}: a delete must carry evidence that nothing depends on the file")
+
+
+def check_objective_frozen(root: Path, run_id: str) -> None:
+    """The objective verify.py grades must be the one the baseline measured.
+
+    baseline.py records objective.json's sha256. An objective edited afterwards -- a
+    failing mustPreserve check deleted, an acceptance check loosened -- would let verify
+    grade the change against a different contract and call a regression done. The guard
+    also denies the edit; this is the second barrier, for an edit made around the guard.
+    """
+    rdir = run_dir(root, run_id)
+    base = read_json(rdir / "baseline" / "baseline.json")
+    recorded = base.get("objectiveSha256")
+    if not recorded:
+        raise RepairError("the baseline records no objective hash -- re-run baseline.py before planning")
+    if sha256_file(rdir / "objective.json") != recorded:
+        raise RepairError("objective.json changed after the baseline measured it. A changed objective needs a new run: "
+                          "`repair_state.py end --abandon`, then preflight again with the new objective.")
 
 
 def changeset_hash(root: Path, run_id: str) -> str:
