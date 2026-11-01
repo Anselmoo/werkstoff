@@ -12,6 +12,32 @@ werkstoff report shows **evidence** for each finding instead of a bare count.
 
 Edit here, never a vendored copy, then `rrt artifacts --regenerate`.
 
+## Figure first (R9)
+
+A viewer leads with its figure. The template carries a static stage skeleton:
+
+```html
+<section class="rk-stage" id="rk-stage" aria-label="the figure, in words">
+  <div class="rk-hud"><p class="verdict">…</p><dl class="rk-hud-stats"></dl></div>
+  <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+  <div class="legend rk-legend-float">…</div>
+  <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+</section>
+```
+
+and the page script drives it:
+
+```js
+const S = RK.stage();
+S.stats([{ label: "Diverging", value: "4", bad: true }]);
+S.onResize((w, h) => draw(w, h));                 // fill the figure; redraw on resize
+mark.addEventListener("click", () => S.open(title, subtitle, RK.value(detail)));
+mark.addEventListener("mouseenter", (e) => S.tip.show(e, title, summary));
+```
+
+`capture_viewer_screenshot.py --min-figure-share 0.6` checks the figure covers at least 60 %
+of a 1600 × 900 first screen.
+
 ## Render the example
 
 ```bash

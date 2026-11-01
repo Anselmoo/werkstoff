@@ -152,7 +152,7 @@ viewers passed R1–S4 while none of them let a reader filter a finding, see whe
 from, or open it, and two builders dropped fields their input already carried
 (nacharbeit's line, quote and suggested fix; cupertino dumped each stage as raw JSON).
 Compared side by side with `code-modernization`'s `report-template.html`, the gap was
-not polish — it was evidence. These three rules close it, and the kit makes them the
+not polish — it was evidence. These rules close it, and the kit makes them the
 default rather than extra work.
 
 ### R6 — Every finding carries its evidence, or says it has none
@@ -175,6 +175,29 @@ plugin's data is cut by); every finding and section has a deep link (`#finding-<
 `#sec-<id>`), so a PR comment can point into the report; the page has a text search with
 a live match count; light and dark both work (the kit's dual theme block over the
 `-on-light` tokens); printing opens every drill-down.
+
+### R9 — The figure leads; detail opens beside it, not below it
+
+A viewer exists for its figure: the matrix, the Sankey, the trend line, the graph. Shrinking
+it into a card above three screens of prose makes the reader scroll away from the thing the
+prose explains, and lose it. So:
+
+- **The figure fills the first screen.** It lives in the kit's stage (`#rk-stage`, with
+  `#rk-figure[data-rk-figure]`), sized to the viewport, and sized from the container rather
+  than a constant (R5). `capture_viewer_screenshot.py --min-figure-share 0.6` measures it:
+  the figure must cover at least 60 % of a 1600 × 900 first screen.
+- **The verdict and the few numbers that matter float over it** as a HUD (`.rk-hud`, the
+  static `.verdict` inside it, `stage.stats([...])`), with the static legend as a floating
+  overlay (`.legend.rk-legend-float`). That keeps R1, R3 and R4 without taking the figure's space.
+- **Per-item detail opens in place.** Clicking a mark opens the kit drawer
+  (`stage.open(title, sub, ...)`) beside the figure; hovering shows `stage.tip`. Every
+  clickable mark is also keyboard-reachable (`tabindex="0"`, Enter opens). Explanatory text
+  that used to sit above the figure moves into the drawer's default view or below the stage.
+- **Long-form sections follow the stage** (`.rk-below`): findings, tables, what is not proven.
+  They are the reference, not the reading path.
+
+A viewer whose data has no natural figure gets one from the data it already has, e.g. a
+rule-family × severity heatmap for a findings table, rather than leading with a table.
 
 ### How a viewer adopts the kit
 

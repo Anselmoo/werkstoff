@@ -232,3 +232,81 @@ mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
   .rk-layout { display: block; }
   .rk-card, .rk-finding, figure, tr { break-inside: avoid; }
 }
+
+/* ---- figure-first stage ---------------------------------------------------
+ * R9: the figure IS the report. It fills the first screen; the verdict and the
+ * few numbers that matter float over it as a HUD; per-item detail opens in a
+ * drawer on click or a tooltip on hover, beside the figure instead of below it,
+ * so the reader never scrolls away from what they are reading about. Long-form
+ * sections (findings, tables) follow below the stage.
+ * ------------------------------------------------------------------------- */
+.rk-stage {
+  position: relative;
+  height: calc(100vh - var(--header-h));
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0;
+  transition: grid-template-columns var(--transition-base);
+  border-bottom: 1px solid var(--rk-border);
+  background: var(--rk-bg);
+}
+.rk-stage.rk-drawer-open { grid-template-columns: minmax(0, 1fr) min(400px, 42vw); }
+.rk-figure { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.rk-figure > svg, .rk-figure > canvas { display: block; width: 100%; height: 100%; }
+.rk-figure.rk-scroll { overflow: auto; }
+.rk-hud {
+  position: absolute; top: var(--space-3); left: var(--space-3); z-index: 3;
+  max-width: min(560px, calc(100% - 2 * var(--space-3)));
+  display: flex; flex-direction: column; gap: var(--space-2); pointer-events: none;
+}
+.rk-hud > * { pointer-events: auto; }
+.rk-hud .verdict { margin: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px); }
+.rk-hud-stats { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
+.rk-hud-stats .rk-stat { padding: var(--space-1) var(--space-2); min-width: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); }
+.rk-hud-stats .rk-stat dd { font-size: 1.05rem; }
+.rk-legend-float {
+  position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 3; margin: 0;
+  max-width: min(640px, calc(100% - 2 * var(--space-3)));
+  background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px);
+}
+.rk-hint {
+  position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 3;
+  font-size: 0.76rem; color: var(--rk-muted);
+  background: color-mix(in srgb, var(--rk-panel) 85%, transparent);
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+}
+.rk-drawer {
+  position: relative; min-width: 0; overflow: auto; z-index: 4;
+  background: var(--rk-panel); border-left: 1px solid var(--rk-border);
+}
+.rk-drawer[hidden] { display: block !important; visibility: hidden; }
+.rk-drawer-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-3); background: var(--rk-panel); border-bottom: 1px solid var(--rk-border);
+}
+.rk-drawer-head h2 { font-size: 1rem; margin: 0; flex: 1; overflow-wrap: anywhere; }
+.rk-drawer-head .rk-sub { color: var(--rk-muted); font-size: 0.8rem; margin: var(--space-1) 0 0; }
+.rk-drawer-body { padding: var(--space-3); font-size: 0.88rem; }
+.rk-drawer-body h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rk-muted); margin: var(--space-3) 0 var(--space-1); }
+.rk-drawer-body .rk-link { all: unset; cursor: pointer; color: var(--rk-link); text-decoration: underline; }
+.rk-drawer-body .rk-link:focus-visible { outline: 2px solid var(--rk-focus); }
+.rk-tip {
+  position: fixed; z-index: 20; pointer-events: none; max-width: 340px;
+  background: var(--rk-panel); color: var(--rk-text); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-2) var(--space-3);
+  font-size: 0.82rem; box-shadow: 0 6px 24px color-mix(in srgb, var(--bg) 45%, transparent);
+}
+.rk-tip[hidden] { display: none; }
+.rk-tip strong { display: block; margin-bottom: var(--space-1); }
+.rk-below { padding-top: var(--space-5); }
+@media (max-width: 860px) {
+  .rk-stage, .rk-stage.rk-drawer-open { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 70vh; }
+  .rk-figure { height: 70vh; }
+  .rk-drawer { position: fixed; inset: auto 0 0 0; max-height: 60vh; border-left: 0; border-top: 1px solid var(--rk-border); }
+  .rk-drawer[hidden] { display: none !important; }
+}
+@media print {
+  .rk-stage { height: auto; min-height: 0; display: block; }
+  .rk-figure { height: 70vh; }
+  .rk-drawer, .rk-tip, .rk-hint { display: none !important; }
+}

@@ -478,10 +478,96 @@ const RK = (() => {
     return document.createTextNode(String(v));
   }
 
+  // ---- figure-first stage (R9) --------------------------------------------------
+  // stage() wires the static skeleton every chart viewer carries:
+  //   <section class="rk-stage" id="rk-stage">
+  //     <div class="rk-hud"><p class="verdict">...</p><dl class="rk-hud-stats"></dl></div>
+  //     <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+  //     <div class="legend rk-legend-float">...</div>
+  //     <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  //   </section>
+  // and returns { figure, size(), onResize(fn), open(title, sub, ...kids), close(),
+  // tip: { show(evt, title, ...kids), hide() }, link(text, fn), stats(list) }.
+  // The figure fills the first screen; detail opens BESIDE it, never below it.
+  let tipEl = null;
+  function tip() {
+    if (!tipEl) {
+      tipEl = h("div", { class: "rk-tip", role: "tooltip", hidden: true });
+      document.body.appendChild(tipEl);
+    }
+    return {
+      show(evt, title, ...kids) {
+        tipEl.textContent = "";
+        if (title) tipEl.appendChild(h("strong", { text: title }));
+        append(tipEl, kids);
+        tipEl.hidden = false;
+        const pad = 14, r = tipEl.getBoundingClientRect();
+        let x = (evt.clientX ?? 0) + pad, y = (evt.clientY ?? 0) + pad;
+        if (evt.clientX === undefined && evt.target && evt.target.getBoundingClientRect) {
+          const b = evt.target.getBoundingClientRect(); x = b.right + pad; y = b.top;
+        }
+        if (x + r.width > innerWidth - 8) x = Math.max(8, x - r.width - 2 * pad);
+        if (y + r.height > innerHeight - 8) y = Math.max(8, innerHeight - r.height - 8);
+        tipEl.style.left = x + "px"; tipEl.style.top = y + "px";
+      },
+      hide() { tipEl.hidden = true; },
+    };
+  }
+
+  function stage() {
+    const root = $("#rk-stage"), figure = $("#rk-figure"), drawer = $("#rk-drawer");
+    if (!root || !figure || !drawer) throw new Error("stage(): the template lacks #rk-stage, #rk-figure or #rk-drawer");
+    const head = h("div", { class: "rk-drawer-head" });
+    const body = h("div", { class: "rk-drawer-body" });
+    const closeBtn = h("button", { class: "rk-btn", type: "button", "aria-label": "Close details" }, "\u2715");
+    drawer.append(head, body);
+    let lastFocus = null;
+    const resizeFns = [];
+    const size = () => ({ width: figure.clientWidth, height: figure.clientHeight });
+    const fire = () => { const s = size(); resizeFns.forEach((fn) => fn(s.width, s.height)); };
+    const close = () => {
+      drawer.hidden = true; root.classList.remove("rk-drawer-open");
+      requestAnimationFrame(fire);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    };
+    closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawer.hidden) close(); });
+    if ("ResizeObserver" in window) new ResizeObserver(fire).observe(figure);
+    else window.addEventListener("resize", fire);
+    return {
+      figure, size,
+      onResize(fn) { resizeFns.push(fn); const s = size(); fn(s.width, s.height); },
+      open(title, sub, ...kids) {
+        lastFocus = document.activeElement;
+        head.textContent = "";
+        head.append(h("div", { style: "flex:1;min-width:0" }, h("h2", { text: title }), sub ? h("p", { class: "rk-sub", text: sub }) : null), closeBtn);
+        body.textContent = "";
+        append(body, kids);
+        const wasOpen = !drawer.hidden;
+        drawer.hidden = false; root.classList.add("rk-drawer-open");
+        drawer.scrollTop = 0;
+        if (!wasOpen) requestAnimationFrame(() => requestAnimationFrame(fire));
+        closeBtn.focus({ preventScroll: true });
+      },
+      close,
+      tip: tip(),
+      // A drawer-internal link that runs fn (e.g. select a neighbour) -- a button, so
+      // it is keyboard-reachable, styled as a link.
+      link(text, fn) { const b = h("button", { class: "rk-link", type: "button", text }); b.addEventListener("click", fn); return b; },
+      stats(list) {
+        const dl = $(".rk-hud-stats", root);
+        if (!dl) return;
+        dl.textContent = "";
+        list.forEach((s) => dl.appendChild(h("div", { class: "rk-stat" + (s.bad ? " bad" : s.tone ? " " + s.tone : ""), title: s.note || null },
+          h("dt", { text: s.label }), h("dd", { text: s.value }))));
+      },
+    };
+  }
+
   // section(id, title, ...kids) -- a nav-able, deep-linkable block.
   function section(id, title, ...kids) {
     return h("section", { class: "rk-section", id: "sec-" + id }, h("h2", { text: title }), ...kids);
   }
 
-  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, value, glance, findings, table, proof, beforeAfter, section };
+  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, value, stage, tip, glance, findings, table, proof, beforeAfter, section };
 })();

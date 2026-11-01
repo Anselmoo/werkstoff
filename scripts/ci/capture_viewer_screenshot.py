@@ -53,9 +53,19 @@ const { chromium } = require('playwright');
     await page.waitForTimeout(200);
   }
   const height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
-  await page.setViewportSize({ width: Number(width), height: Math.max(200, height) });
+  // Share of the FIRST screen the figure covers (R9). Measured before the full-page
+  // shot, at the reader's viewport; the viewport is never resized to the page height,
+  // because a figure sized in vh would then grow with the page it is measured against.
+  const figureShare = await page.evaluate(() => {
+    const f = document.querySelector('[data-rk-figure]');
+    if (!f) return null;
+    const r = f.getBoundingClientRect(), W = innerWidth, H = innerHeight;
+    const w = Math.max(0, Math.min(r.right, W) - Math.max(r.left, 0));
+    const h = Math.max(0, Math.min(r.bottom, H) - Math.max(r.top, 0));
+    return Math.round(1000 * (w * h) / (W * H)) / 1000;
+  });
   await page.screenshot({ path: png, fullPage: true });
-  console.log(JSON.stringify({ height, errors }));
+  console.log(JSON.stringify({ height, figureShare, errors }));
   await browser.close();
 })().catch((e) => { console.error(String(e)); process.exit(4); });
 """
@@ -90,6 +100,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--scheme", choices=("dark", "light"), default="dark")
     parser.add_argument("--query", default="", help="appended to the file URL, e.g. ?view=mutation")
     parser.add_argument("--click", action="append", default=[], help="CSS selector to click before capture (repeatable)")
+    parser.add_argument("--min-figure-share", type=float, default=None,
+                        help="fail (exit 1) when the [data-rk-figure] element covers less of the first screen (R9)")
     parser.add_argument("--jpeg-quality", type=int, default=82)
     parser.add_argument("--console", help="write {height, errors} JSON here")
     args = parser.parse_args(argv)
@@ -121,9 +133,14 @@ def main(argv: list[str]) -> int:
         shutil.copyfile(png, out)
     if args.console:
         Path(args.console).write_text(json.dumps(meta, indent=1), encoding="utf-8")
-    print(f"wrote {out} ({args.width}x{meta['height']}, {len(meta['errors'])} console error(s))")
+    share = meta.get("figureShare")
+    print(f"wrote {out} ({args.width}x{meta['height']}, {len(meta['errors'])} console error(s), "
+          f"figure covers {'n/a' if share is None else f'{share:.0%}'} of the first screen)")
     for e in meta["errors"]:
         print("  " + e)
+    if args.min_figure_share is not None and (share is None or share < args.min_figure_share):
+        print(f"  figure share {share} below --min-figure-share {args.min_figure_share} (R9: the figure leads)")
+        return 1
     return 1 if meta["errors"] else 0
 
 
