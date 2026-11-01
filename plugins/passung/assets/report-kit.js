@@ -1,7 +1,7 @@
 /* werkstoff report kit -- shared behaviour for every plugins/<name>/assets/<name>-viewer.html.
  *
  * Source of truth; vendored per plugin as assets/report-kit.js (.rrt.toml
- * artifact_targets) and inlined by the builder at <!--__REPORT_KIT__-->.
+ * artifact_targets) and inlined by the builder at __REPORT_KIT__.
  *
  * Safety contract (report-viewer-standard S3), stated once and kept here:
  *   - data reaches the page only through createTextNode / textContent;
@@ -89,6 +89,11 @@ const RK = (() => {
     major: "warn", medium: "warn", warning: "warn", gap: "warn", partial: "warn",
     minor: "info", low: "info", info: "info", nit: "flat", na: "flat",
     pass: "ok", ok: "ok", done: "ok", proven: "ok",
+    // Outcome words plugins already use, so a badge can keep its own word.
+    broken: "bad", rejected: "bad", refused: "bad", missing: "bad", blocked: "bad", denied: "bad",
+    unverified: "warn", contested: "warn", stale: "warn", dropped: "warn", malformed: "warn",
+    verified: "ok", landed: "ok", accepted: "ok", met: "ok", linked: "ok", named: "ok",
+    unmeasured: "flat", skipped: "flat", unknown: "flat", unrated: "flat",
   };
   const GLYPH = { ok: "✓", bad: "✗", warn: "!", info: "i", flat: "–" };
   const toneFor = (word) => SEVERITY_TONE[String(word || "").toLowerCase()] || "flat";
@@ -282,7 +287,9 @@ const RK = (() => {
       const where = f.file ? f.file + (f.line ? ":" + f.line : "") : "";
       const card = h("details", { class: "rk-finding " + toneFor(f.severity), id, "data-rk-search": true },
         h("summary", {},
-          badge(f.severity || "unrated"),
+          // f.badge = {word, tone} keeps a plugin's own outcome word ("broken",
+          // "landed") instead of forcing it into a severity.
+          f.badge ? badge(f.badge.word, f.badge.tone) : badge(f.severity || "unrated"),
           f.rule ? h("code", { text: f.rule }) : null,
           h("span", { class: "rk-claim", text: f.claim || f.message || "(no claim recorded)" }),
           where ? h("span", { class: "rk-where mono", text: where }) : null,
@@ -345,7 +352,7 @@ const RK = (() => {
 
   // table({columns:[{key, label, num}], rows:[{...}], caption}) -- sortable by header.
   function table(t) {
-    const thead = h("tr", {}, t.columns.map((c) => h("th", { scope: "col", "aria-sort": "none" }, h("button", { type: "button", text: c.label }))));
+    const thead = h("tr", {}, t.columns.map((c) => h("th", { scope: "col", "aria-sort": "none", class: c.num ? "r" : null }, h("button", { type: "button", text: c.label }))));
     const tbody = h("tbody", {});
     const render = (rows) => {
       tbody.textContent = "";
