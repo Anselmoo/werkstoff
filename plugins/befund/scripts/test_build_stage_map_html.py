@@ -113,19 +113,34 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(self.stats["stats"], {
             "stageCount": 11, "edgeCount": 16,
             "cycleCount": 2, "godModuleCount": 1,
+            "unconnectedCount": 1, "deadEndCount": 2,
         })
 
     def test_injection_markers_are_all_consumed(self):
-        for marker in ("<!--__DESIGN_TOKENS__-->", "<!--__D3_SUBSET__-->",
-                       "/*__STAGE_MAP_DATA__*/ null"):
+        for marker in ("<!--__DESIGN_TOKENS__-->", "<!--__REPORT_KIT__-->", "<!--__D3_SUBSET__-->", "@@DATA@@"):
             self.assertNotIn(marker, self.html)
         self.assertIn("window.d3", self.html)
         self.assertIn("--status-warn:", self.html)
+        self.assertIn("const RK", self.html)
+        self.assertIn('<script type="application/json" id="report-data">', self.html)
 
     def test_payload_carries_the_annotated_graph(self):
         self.assertIn('"godModuleFanIn": 6', self.html)
         self.assertIn('"inCycle": true', self.html)
         self.assertIn('"deadEnd": true', self.html)
+        self.assertIn('"files": [', self.html)  # per-stage file lists reach the page
+
+    def test_findings_carry_evidence(self):
+        """Each failure the fixture shows becomes a finding with a claim and evidence."""
+        match = re.search(r'id="report-data">(.*?)</script>', self.html, re.DOTALL)
+        data = json.loads(match.group(1))
+        kinds = sorted(f["tags"]["kind"] for f in data["findings"])
+        self.assertEqual(kinds, ["dead-end", "dependency-cycle", "dependency-cycle", "god-module", "unconnected"])
+        for f in data["findings"]:
+            self.assertTrue(f["claim"] and f["fix"] and f["evidence"], f["id"])
+        god = next(f for f in data["findings"] if f["tags"]["kind"] == "god-module")
+        self.assertIn("core", god["claim"])
+        self.assertEqual(data["godThreshold"], 5)
 
     def test_s2_head(self):
         self.assertIn("<title>befund — stage map</title>", self.html)
