@@ -22,20 +22,16 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEMPLATE = HERE.parent / "assets" / "run-viewer.html"
-TOKENS = HERE.parent / "assets" / "tokens.css"
+sys.path.insert(0, str(HERE))
+from report_kit import KIT_MARKER, TOKENS_MARKER, render as kit_render  # noqa: E402
+
+ASSETS = HERE.parent / "assets"
+TEMPLATE = ASSETS / "run-viewer.html"
 FIXTURE = HERE / "fixtures" / "run-demo.json"
-TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
-DATA_MARKER = "/*__RUN_DATA__*/"
 
 
 def render(report: dict) -> str:
-    tpl = TEMPLATE.read_text(encoding="utf-8")
-    if TOKENS.is_file():
-        tpl = tpl.replace(TOKENS_MARKER, "<style>\n" + TOKENS.read_text(encoding="utf-8") + "\n</style>")
-    payload = json.dumps(report, indent=2)
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(DATA_MARKER, "const RUN = " + payload + ";")
+    return kit_render(TEMPLATE.read_text(encoding="utf-8"), ASSETS, report)
 
 
 def _read_json(path: Path):
@@ -93,6 +89,11 @@ def collect(root: Path, run_id: str) -> dict:
             met = [x for x in (v.get("perCriterion") or []) if x.get("met")]
             outcome = "accepted"
             evidence = f"{len(met)}/{len(v.get('perCriterion') or [])} criteria met"
+        elif v.get("verdict") in ("cannot_judge", "accepted_different_approach"):
+            # Never collapsed into `rejected` (candidate-contract.md): `cannot_judge` says nothing
+            # is known, and it points at the contract rather than the candidate.
+            outcome = "cannot_judge" if v["verdict"] == "cannot_judge" else "different_approach"
+            evidence = v["verdict"] + (": " + v["note"] if v.get("note") else "")
         else:
             outcome = "rejected"
             evidence = v.get("verdict", "") + (": " + v["note"] if v.get("note") else "")
@@ -104,6 +105,16 @@ def collect(root: Path, run_id: str) -> dict:
             "checksTotal": len(c.get("checks") or []),
             "filesTouched": len(c.get("filesTouched") or []),
             "evidence": evidence,
+            # What the referee and the candidate record carry, which the page used to drop:
+            # per-criterion evidence, the checks as run, the files, and what the referee noted.
+            "criteria": [{"id": k.get("id", "?"), "met": bool(k.get("met")), "evidence": k.get("evidence", "")}
+                         for k in ((v or {}).get("perCriterion") or []) if isinstance(k, dict)],
+            "checks": [{"id": k.get("id", ""), "command": k.get("command", ""), "exit": k.get("exit")}
+                       for k in c.get("checks") or [] if isinstance(k, dict)],
+            "files": [x for x in c.get("filesTouched") or [] if isinstance(x, str)],
+            "outOfScopeWrites": [x for x in c.get("outOfScopeWrites") or [] if isinstance(x, str)],
+            "note": (v or {}).get("note", "") or "",
+            "rationaleLeaked": bool((v or {}).get("rationaleLeaked")),
         })
 
     measured = [c for c in cands if c["outcome"] != "unmeasured"]
@@ -149,17 +160,27 @@ def selftest() -> int:
         return 1
     html = render(demo)
     ok("tokens marker replaced", TOKENS_MARKER not in html and "--bg" in html)
-    ok("data marker replaced", DATA_MARKER not in html and "const RUN" in html)
+    ok("report-kit marker replaced and kit inlined",
+       KIT_MARKER + "\n</head>" not in html and "const RK = (" in html and "--rk-" in html)
+    ok("data island present and filled",
+       '<script type="application/json" id="report-data">' in html and "@@DATA@@" not in html)
+    start = html.index('id="report-data">') + len('id="report-data">')
+    island = html[start:html.index("</script>", start)]
+    ok("no raw '<' or '>' survives inside the data island", "<" not in island and ">" not in island)
+    ok("the island round-trips to the report", json.loads(island)["candidates"] == demo["candidates"])
     ok("static h1 matches the title",
        "<title>arbeitsplan — swarm run</title>" in html and "<h1>arbeitsplan — swarm run</h1>" in html)
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("no network fetches", 'src="http' not in html and 'href="http' not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
-    ok("a static legend exists", 'class="legend"' in html)
+    ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     outcomes = {c["outcome"] for c in demo["candidates"]}
     ok("the demo shows an UNMEASURED candidate", "unmeasured" in outcomes,
        "without one, the page cannot demonstrate the rule that matters most here")
+    ok("the demo carries per-criterion referee evidence",
+       any(c.get("criteria") for c in demo["candidates"]),
+       "the page is only evidence if a rejected candidate shows which criterion failed and where")
     ok("the demo shows exactly one landed candidate",
        sum(1 for c in demo["candidates"] if c["outcome"] == "landed") == 1)
     ok("the demo shows a rejected candidate", "rejected" in outcomes)
@@ -188,6 +209,10 @@ def selftest() -> int:
         w("referee/c1.json", {"candidateId": "c1", "verdict": "accepted",
                               "perCriterion": [{"id": "a", "met": True}]})
         w("referee/c2.json", {"candidateId": "c2", "verdict": "rejected", "note": "criterion a"})
+        w("candidates/c5.json", {"candidateId": "c5", "measured": True, "filesTouched": ["a.py", "b.py"],
+                                 "checks": [{"id": "k1", "command": "pytest -q", "exit": 1}]})
+        w("referee/c5.json", {"candidateId": "c5", "verdict": "cannot_judge", "note": "diff is truncated",
+                              "perCriterion": [{"id": "a1", "met": False, "evidence": "no hunk for a1"}]})
         w("landed.json", {"candidateId": "c1"})
         (run / "dispatch" / "x.json").write_text("{}", encoding="utf-8")
 
@@ -202,7 +227,14 @@ def selftest() -> int:
         ok("breaker numerator counts only accepted/landed",
            got["breaker"]["accepted"] == 1, str(got["breaker"]))
         ok("breaker denominator excludes the unmeasured",
-           got["breaker"]["measured"] == 3, str(got["breaker"]))
+           got["breaker"]["measured"] == 4, str(got["breaker"]))
+        ok("cannot_judge is not collapsed into rejected", by.get("c5") == "cannot_judge", str(by))
+        full = {c["id"]: c for c in got["candidates"]}
+        ok("collect keeps per-criterion evidence, checks, files and the referee note",
+           full["c1"]["criteria"] == [{"id": "a", "met": True, "evidence": ""}]
+           and full["c5"]["checks"] == [{"id": "k1", "command": "pytest -q", "exit": 1}]
+           and full["c5"]["files"] == ["a.py", "b.py"] and full["c5"]["note"] == "diff is truncated"
+           and full["c5"]["criteria"][0]["evidence"] == "no hunk for a1", str(full["c5"]))
         ok("breaker trips below two thirds", got["breaker"]["tripped"] is True, str(got["breaker"]))
         ok("budget total comes from workflow.json", got["budget"]["total"] == 9, str(got["budget"]))
         ok("budget used comes from the dispatch ledger", got["budget"]["used"] == 1, str(got["budget"]))
@@ -248,7 +280,7 @@ def main(argv: list) -> int:
     else:
         parser.error("one of --run or --report is required unless --selftest is given")
 
-    out = Path(args.out) if args.out else TEMPLATE.parent / "run-report.html"
+    out = Path(args.out) if args.out else ASSETS / "run-report.html"
     out.write_text(render(report), encoding="utf-8")
     print(f"wrote {out} — {len(report['candidates'])} candidate(s)")
     return 0

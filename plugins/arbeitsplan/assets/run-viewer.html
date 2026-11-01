@@ -4,189 +4,156 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>arbeitsplan — swarm run</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-sans); font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
-  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
-  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
-  .verdict {
-    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .legend {
-    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
-  }
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
-  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.85rem; }
+  .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
   .legend dd { margin: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  td.mono { font-family: var(--font-mono); }
-  /* Every outcome is a WORD plus a glyph. Colour is the third channel, never the only one. */
-  .outcome { white-space: nowrap; font-weight: 600; }
-  .outcome .glyph { display: inline-block; width: 1.1em; }
-  .o-landed { color: var(--silica); }
-  .o-accepted { color: var(--silica-light); }
-  .o-rejected { color: var(--samaria-light); }
-  .o-unmeasured { color: var(--muted); }
-  .breaker {
-    margin: var(--space-3) 0; padding: var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .breaker .maths { font-family: var(--font-mono); font-size: 0.86rem; }
-  .breaker p { margin: var(--space-1) 0 0; color: var(--muted); font-size: 0.84rem; }
-  .empty {
-    margin: var(--space-4) 0; padding: var(--space-3); background: var(--panel);
-    border: 1px solid var(--samaria-light); border-radius: var(--radius-panel);
-  }
-  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+  .maths { font-family: var(--font-mono); font-size: 0.86rem; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>arbeitsplan — swarm run</h1>
-    <p class="sub">N candidates over one scope, judged blind. Exactly one lands; the rest are deleted.</p>
-    <p class="verdict" id="verdict">Loading the run…</p>
-  </header>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>arbeitsplan — swarm run</h1>
+  <p class="rk-sub" id="sub">N candidates over one scope, judged blind. Exactly one lands; the rest are deleted.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search candidates">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
+<main class="rk-wrap">
+  <p class="verdict" id="verdict">Loading the run…</p>
 
-  <div class="legend">
+  <div class="legend rk-card rk-muted">
     <dl>
       <dt>✓ landed</dt><dd>this candidate's diff was applied to the working tree. Exactly one ever is.</dd>
-      <dt>· accepted</dt><dd>met every acceptance criterion, but lost the selection rule.</dd>
+      <dt>✓ accepted</dt><dd>met every acceptance criterion, but lost the selection rule.</dd>
       <dt>✗ rejected</dt><dd>a referee found at least one criterion demonstrably unmet.</dd>
-      <dt>— unmeasured</dt><dd>never fairly tried (no worktree, broken build). <strong>Excluded from the breaker's denominator</strong>, never counted as a rejection.</dd>
+      <dt>! cannot judge</dt><dd>the referee could not decide from the diff alone. It points at the contract, not the candidate, and is never collapsed into a rejection.</dd>
+      <dt>! different approach</dt><dd>criteria met by a route the statement did not anticipate. Surfaced for a human; it does not land.</dd>
+      <dt>! unrefereed</dt><dd>measured, but no referee record exists. Never read as accepted.</dd>
+      <dt>– unmeasured</dt><dd>never fairly tried (no worktree, broken build). <strong>Excluded from the breaker's denominator</strong>, never counted as a rejection.</dd>
     </dl>
   </div>
 
-  <div id="empty" class="empty" hidden>
-    <strong>No candidates in this report.</strong>
-    <p>Either the run never dispatched, or this page was built from an empty report. Re-run
-      <code>arbeitsplan-run</code> and rebuild; an empty run is not a clean one.</p>
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
   </div>
-
-  <h2>Candidates</h2>
-  <table>
-    <thead><tr><th>outcome</th><th>id</th><th>angle</th><th>checks</th><th>files</th><th>referee evidence</th></tr></thead>
-    <tbody id="candidates"></tbody>
-  </table>
-
-  <h2>The circuit breaker</h2>
-  <div class="breaker" id="breaker"></div>
-
-  <h2>Budget</h2>
-  <div class="breaker" id="budget"></div>
-
-  <footer id="footer"></footer>
-</div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-/*__RUN_DATA__*/
-const DATA = (typeof RUN !== "undefined") ? RUN : null;
-function el(id) { return document.getElementById(id); }
-function cell(row, text, cls) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  if (cls) td.className = cls;
-  row.appendChild(td);
-  return td;
-}
-const GLYPH = { landed: "✓", accepted: "·", rejected: "✗", unmeasured: "—" };
-
-function render() {
-  if (!DATA || !Array.isArray(DATA.candidates)) {
-    el("verdict").textContent =
-      "This run report could not be read, so nothing below is trustworthy. Regenerate it: " +
+(() => {
+  const D = RK.readData("python3 plugins/arbeitsplan/scripts/build_run_html.py --run <runId> --out /tmp/run.html");
+  const verdict = RK.$("#verdict");
+  if (!D || !Array.isArray(D.candidates)) {
+    verdict.textContent = "This run report could not be read, so nothing below is trustworthy. Regenerate it: " +
       "python3 plugins/arbeitsplan/scripts/build_run_html.py --run <runId>";
-    el("empty").hidden = false;
     return;
   }
-  const c = DATA.candidates;
+  const { h, section } = RK;
+  const c = D.candidates;
   const measured = c.filter((x) => x.outcome !== "unmeasured");
   const accepted = c.filter((x) => x.outcome === "landed" || x.outcome === "accepted");
   const landed = c.find((x) => x.outcome === "landed");
+  const count = (o) => c.filter((x) => x.outcome === o).length;
 
+  let tone = "warn";
   if (c.length === 0) {
-    el("verdict").textContent = "This run produced no candidates at all.";
-    el("empty").hidden = false;
+    tone = "bad";
+    verdict.textContent = "This run produced no candidates at all. Either it never dispatched, or this page was built " +
+      "from an empty report; an empty run is not a clean one.";
   } else if (landed) {
-    el("verdict").textContent =
-      "Candidate " + landed.id + " (" + landed.angle + ") landed. " +
-      (c.length - 1) + " other candidate(s) were deleted without being merged, which is why " +
-      "this run could not produce a merge conflict.";
+    tone = "ok";
+    verdict.textContent = "Candidate " + landed.id + " (" + landed.angle + ") landed. " + (c.length - 1) +
+      " other candidate(s) were deleted without being merged, which is why this run could not produce a merge conflict.";
   } else {
-    el("verdict").textContent =
-      "Nothing landed. " + accepted.length + " of " + measured.length +
+    tone = "bad";
+    verdict.textContent = "Nothing landed. " + accepted.length + " of " + measured.length +
       " measured candidates were accepted, so the run halted rather than re-dispatching.";
   }
+  verdict.classList.add(tone);
+  RK.$("#sub").textContent += " Run " + (D.runId || "?") + (D.generated ? " — " + D.generated : "") + ".";
 
-  const tbody = el("candidates");
-  for (const x of c) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "outcome o-" + x.outcome;
-    const g = document.createElement("span");
-    g.className = "glyph";
-    g.textContent = GLYPH[x.outcome] || "?";
-    td.appendChild(g);
-    td.appendChild(document.createTextNode(x.outcome));
-    tr.appendChild(td);
-    cell(tr, x.id, "mono");
-    cell(tr, x.angle);
-    cell(tr, x.outcome === "unmeasured" ? "not run" :
-             (x.checksPassed + "/" + x.checksTotal));
-    cell(tr, x.outcome === "unmeasured" ? "—" : String(x.filesTouched));
-    cell(tr, x.evidence || "");
-    tbody.appendChild(tr);
+  const b = D.breaker || {};
+  const bu = D.budget || {};
+  const budgetKnown = bu.total != null && bu.used != null;
+
+  const content = RK.$("#rk-content");
+  content.append(section("glance", "At a glance", RK.glance({ stats: [
+    { label: "Candidates", value: String(c.length), note: "over one scope" },
+    { label: "Landed", value: String(count("landed")), note: "exactly one ever does", bad: !landed },
+    { label: "Rejected", value: String(count("rejected")), note: "a criterion demonstrably unmet" },
+    { label: "Unmeasured", value: String(count("unmeasured")), note: "excluded from the breaker" },
+    { label: "Dispatches", value: budgetKnown ? bu.used + " / " + bu.total : "unknown", note: "used of budget" },
+  ] })));
+
+  // ---- candidates: one finding each; the referee's per-criterion evidence is the drill-down ----
+  const SEV = { landed: "pass", accepted: "pass", rejected: "fail", unmeasured: "na", unrefereed: "gap",
+    cannot_judge: "gap", different_approach: "gap" };
+  const TONE = { landed: "ok", accepted: "ok", rejected: "bad", unmeasured: "flat", unrefereed: "warn",
+    cannot_judge: "warn", different_approach: "warn" };
+  const GL = { ok: "✓", bad: "✗", warn: "!", flat: "–" };
+  const WORD = { different_approach: "different approach", cannot_judge: "cannot judge" };
+  const records = c.map((x) => {
+    const ev = [];
+    for (const k of x.criteria || []) ev.push({ label: k.id + (k.met ? " — met" : " — NOT met"), detail: k.evidence || "" });
+    for (const k of x.checks || []) ev.push({ label: "check " + (k.id || ""), detail: (k.command || "") + " → exit " + k.exit });
+    if ((x.files || []).length) ev.push({ label: "files touched (" + x.files.length + ")", detail: x.files.join(", ") });
+    if ((x.outOfScopeWrites || []).length) ev.push({ label: "OUT-OF-SCOPE writes", detail: x.outOfScopeWrites.join(", ") });
+    if (x.rationaleLeaked) ev.push({ label: "rationale leaked", detail: "the referee was shown the builder's rationale and reported it" });
+    if (x.note) ev.push({ label: "referee note", detail: x.note });
+    return {
+      id: x.id, severity: SEV[x.outcome] || "na",
+      claim: x.id + " · " + x.angle + " — " + (x.evidence || (x.outcome === "unmeasured" ? "never fairly tried" : "")) +
+        (x.outcome === "unmeasured" ? "" : " (" + x.checksPassed + "/" + x.checksTotal + " checks, " + x.filesTouched + " file(s))"),
+      evidence: ev,
+      tags: { outcome: WORD[x.outcome] || x.outcome, angle: x.angle },
+    };
+  });
+  const list = RK.findings(records, { idPrefix: "cand-", facets: ["outcome", "angle"],
+    order: { severity: ["fail", "gap", "pass", "na"] },
+    empty: "No candidates in this report. Re-run arbeitsplan-run and rebuild; an empty run is not a clean one." });
+  // The kit tones "pass"/"fail"/"gap"/"na"; show the real outcome word next to the same glyph.
+  const byCard = Object.fromEntries(c.map((x) => ["cand-" + String(x.id).replace(/[^A-Za-z0-9_.-]/g, "-"), x]));
+  for (const card of RK.$$(".rk-finding", list)) {
+    const x = byCard[card.id];
+    const badge = RK.$(".rk-badge", card);
+    if (!x || !badge) continue;
+    const t = TONE[x.outcome] || "flat";
+    badge.className = "rk-badge " + t;
+    badge.textContent = GL[t] + " " + (WORD[x.outcome] || x.outcome);
   }
+  content.append(section("candidates", "Candidates", list));
 
-  const b = DATA.breaker || {};
-  const bd = el("breaker");
-  const maths = document.createElement("div");
-  maths.className = "maths";
-  maths.textContent =
-    "accepted " + (b.accepted || 0) + " × 3 = " + ((b.accepted || 0) * 3) +
-    "   vs   measured " + (b.measured || 0) + " × 2 = " + ((b.measured || 0) * 2) +
-    "   →   " + (b.tripped ? "TRIPPED" : "held");
-  bd.appendChild(maths);
-  const note = document.createElement("p");
-  note.textContent = b.tripped
-    ? "Below two thirds. The run aborted: the correct response is a better contract, not more agents."
-    : "At or above two thirds, judged for this batch alone. " + (b.unmeasured || 0) +
-      " unmeasured candidate(s) were excluded from the denominator — counting them would make " +
-      "this breaker measure the environment instead of the work.";
-  bd.appendChild(note);
+  content.append(section("breaker", "The circuit breaker", RK.glance({
+    verdict: b.tripped ? "Breaker TRIPPED" : "Breaker held", tone: b.tripped ? "bad" : "ok",
+    detail: b.tripped
+      ? "Below two thirds. The run aborted: the correct response is a better contract, not more agents."
+      : "At or above two thirds, judged for this batch alone. " + (b.unmeasured || 0) +
+        " unmeasured candidate(s) were excluded from the denominator — counting them would make this breaker measure " +
+        "the environment instead of the work.",
+    stats: [{ label: "Accepted × 3", value: String((b.accepted || 0) * 3), note: (b.accepted || 0) + " accepted or landed" },
+      { label: "Measured × 2", value: String((b.measured || 0) * 2), note: (b.measured || 0) + " measured" },
+      { label: "Unmeasured", value: String(b.unmeasured || 0), note: "not in the denominator" }],
+  })));
 
-  const bu = DATA.budget || {};
-  const bud = el("budget");
-  const bm = document.createElement("div");
-  bm.className = "maths";
-  // null means the builder could not read the spec or the dispatch ledger. Saying
-  // so beats printing "0 of 0", which reads as a real, reassuring measurement.
-  bm.textContent = (bu.total == null || bu.used == null)
-    ? "not derivable — no workflow.json or dispatch ledger for this run"
-    : bu.used + " of " + bu.total + " dispatches used";
-  bud.appendChild(bm);
-  const bn = document.createElement("p");
-  bn.textContent = "Declared at compile time. The hook denies past it; raising it is a decision to re-compile.";
-  bud.appendChild(bn);
+  // null means the builder could not read the spec or the dispatch ledger. Saying so
+  // beats printing "0 of 0", which reads as a real, reassuring measurement.
+  content.append(section("budget", "Budget", RK.glance(budgetKnown
+    ? { verdict: bu.used + " of " + bu.total + " dispatches used", tone: bu.used > bu.total ? "bad" : "ok" }
+    : { verdict: "Not derivable — no workflow.json or dispatch ledger for this run", tone: "warn" }),
+  h("p", { class: "rk-muted", text: "Declared at compile time. The hook denies past it; raising it is a decision to re-compile." })));
 
-  el("footer").textContent =
-    "Run " + (DATA.runId || "?") + (DATA.generated ? " — " + DATA.generated : "") +
-    ". Regenerate with build_run_html.py after any further dispatch.";
-}
-render();
+  RK.init();
+})();
 </script>
 </body>
 </html>
