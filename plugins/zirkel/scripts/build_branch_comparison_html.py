@@ -23,10 +23,12 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import zirkel  # noqa: E402  -- validate_state, safe to import (no import-time side effects)
 import zirkel_lib as C  # noqa: E402
+from report_kit import render  # noqa: E402
 
 DEFAULT_OUTPUT_DIR = C.DEFAULT_OUTPUT_DIR  # ".zirkel"
 
@@ -82,9 +84,14 @@ def build_payload(state: dict) -> dict:
     scored = result["scored"]
     selected_name = result["selected"]
 
+    # Keys the guard knows. Anything else a branch carries (a rationale, a
+    # source, a note) is the author's evidence and is passed through, not
+    # dropped.
+    known = {"name", "description", "feasibility", "impact", "risk", "total", "biggest_blocker"}
     enriched = []
     for original, s in zip(branches, scored):
         enriched.append({
+            "extra": {k: v for k, v in original.items() if k not in known},
             "name": s["name"],
             "description": original.get("description", ""),
             "feasibility": s["feasibility"],
@@ -97,6 +104,7 @@ def build_payload(state: dict) -> dict:
 
     return {
         "runId": state["run_id"],
+        "phase": state.get("phase"),
         "rawTask": state["raw_task"],
         "branches": enriched,
         "selected": selected_name,
@@ -104,26 +112,15 @@ def build_payload(state: dict) -> dict:
 
 
 def render_html(template_path: str, d3_path: str, tokens_path: str, payload: dict) -> str:
-    tpl = open(template_path, encoding="utf-8").read()
-
-    d3_snippet = open(d3_path, encoding="utf-8").read()
+    template_path = Path(template_path)
+    tpl = template_path.read_text(encoding="utf-8")
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
         raise ValueError(f"D3 injection marker not found in {template_path}")
-    tpl = tpl.replace(d3_marker, d3_snippet)
-
-    tokens_css = open(tokens_path, encoding="utf-8").read()
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
-
-    data_marker = "/*__BRANCH_DATA__*/ null"
-    if data_marker not in tpl:
-        raise ValueError(f"data injection marker not found in {template_path}")
-    data = json.dumps(payload)
-    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(data_marker, "/*__BRANCH_DATA__*/ " + data)
+    tpl = tpl.replace(d3_marker, Path(d3_path).read_text(encoding="utf-8"))
+    # report_kit.render() inlines tokens + kit and escapes < > & in the JSON
+    # island (S3's first barrier; the template's textContent-only DOM is the second).
+    return render(tpl, template_path.parent, payload, tokens=Path(tokens_path))
 
 
 def main(argv=None):
