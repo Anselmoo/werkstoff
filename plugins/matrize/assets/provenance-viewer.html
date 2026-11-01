@@ -10,44 +10,42 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-.pv-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--space-4); align-items: start; }
-.pv-side {
-  position: sticky; top: calc(var(--header-h) + var(--space-3));
-  max-height: calc(100vh - var(--header-h) - var(--space-4)); overflow-y: auto;
-}
-@media (max-width: 860px) { .pv-layout { grid-template-columns: minmax(0, 1fr); } .pv-side { position: static; max-height: none; } }
-.pv-side h3 { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--rk-muted); font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
+.rk-hud { max-width: min(560px, calc(100% - 2 * var(--space-3))); }
+.rk-hud .verdict { font-size: 0.86rem; }
+.legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); margin: 0; gap: var(--space-1) var(--space-3);
+  max-width: min(820px, calc(100% - 2 * var(--space-3))); }
+.rk-hint { bottom: auto; top: var(--space-3); }
+.rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
 .note { color: var(--rk-muted); font-size: .84rem; margin: var(--space-2) 0; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--rk-muted); font-size: .82rem; margin: 0 0 var(--space-3); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .key { width: 22px; height: 0; border-top: 2px solid var(--rk-muted); display: inline-block; }
 .key.c { border-top-style: dashed; border-top-color: var(--rk-bad); }
+.key.a { border-top-color: var(--cat-3); }
 .dot { width: 10px; height: 10px; border-radius: var(--radius-sm); display: inline-block; }
 .dot.ref { background: var(--cat-1); }
 .dot.card { background: var(--cat-4); }
 .dot.token { background: var(--cat-2); }
-
-.graphwrap { overflow-x: auto; }
-svg { display: block; width: 100%; height: auto; }
 .rk-fold > summary { cursor: pointer; padding: var(--space-2) 0; font-weight: 550; }
 .node rect { cursor: pointer; }
 /* Focus must be visible, or "focusable" is a claim rather than a feature. `outline` on an
    SVG child is unreliable across engines, so the ring is drawn as a stroke. */
+.node { cursor: pointer; }
 .node:focus { outline: none; }
 .node:focus rect, .node:focus-visible rect { stroke: var(--rk-focus); stroke-width: 3; }
 @media (forced-colors: active) { .node:focus rect { stroke: Highlight; stroke-width: 3; } }
-.node text { font-size: 11px; fill: var(--rk-text); pointer-events: none; }
-.node .nsub { font-size: 9px; fill: var(--rk-muted); }
-.n-reference rect { fill: var(--rk-panel-2); stroke: var(--cat-1); }
-.n-card rect { fill: var(--rk-panel-2); stroke: var(--cat-4); }
-.n-token rect { fill: var(--rk-panel-2); stroke: var(--cat-2); }
+.node text { font-size: 12px; fill: var(--rk-text); pointer-events: none; }
+.colhead { font-size: 12px; font-weight: 700; fill: var(--rk-muted); letter-spacing: .04em; }
+.n-reference rect { fill: var(--rk-panel-2); stroke: var(--cat-1); stroke-width: 1.5; }
+.n-card rect { fill: var(--cat-4); stroke: var(--cat-4); }
+.n-token rect { fill: var(--rk-panel-2); stroke: var(--cat-2); stroke-width: 1.5; }
 .node.dim { opacity: .22; }
-.node.on rect { stroke-width: 2.5; fill: var(--rk-panel); }
-.edge { stroke: var(--rk-muted); stroke-opacity: .55; stroke-width: 1.4; fill: none; }
+.node.on rect { stroke-width: 3; stroke: var(--rk-focus); }
+.edge { stroke: var(--rk-muted); stroke-opacity: .5; stroke-width: 1.2; fill: none; }
 .edge.gC { stroke: var(--rk-bad); stroke-opacity: 1; stroke-dasharray: 4,3; }
-.edge.alias { stroke: var(--cat-3); stroke-opacity: 1; }
-.edge.dim { opacity: .12; }
-.edge.on { stroke-width: 2.4; stroke: var(--rk-link); stroke-opacity: 1; }
+.edge.alias { stroke: var(--cat-3); stroke-opacity: .9; }
+.edge.dim { opacity: .1; }
+.edge.on { stroke-width: 2.4; stroke: var(--rk-link); stroke-opacity: 1; opacity: 1; }
 .chain { margin: 0; padding: 0; list-style: none; font-size: .84rem; }
 .chain li { padding: 6px 0; border-bottom: 1px solid var(--rk-border); }
 .chain .k { color: var(--rk-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; display: block; }
@@ -56,45 +54,49 @@ svg { display: block; width: 100%; height: auto; }
 .facts dd { margin: 0; overflow-wrap: anywhere; }
 .pick { all: unset; cursor: pointer; color: var(--rk-link); text-decoration: underline; }
 .pick:focus-visible { outline: 2px solid var(--rk-focus); }
+.swatch-line { display: inline-flex; align-items: center; gap: var(--space-2); }
+.swatch-line i { width: 18px; height: 18px; border-radius: var(--radius-sm); border: 1px solid var(--rk-border); display: inline-block; }
 </style>
 </head>
 <body class="rk">
 <a class="rk-skip" href="#rk-content">Skip to the report</a>
 <header class="rk-top">
   <h1>matrize — provenance graph</h1>
-  <p class="rk-sub" id="scope">Not generated yet.</p>
+  <p class="rk-sub" id="scope-sub"></p>
   <div class="rk-tools">
     <label class="rk-sr" for="rk-q">Search tokens and findings</label>
     <input id="rk-q" class="rk-input" type="search" placeholder="Search tokens and findings">
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <p class="verdict info"><!--__VERDICT__--></p>
-  <p id="rk-found" class="rk-found" role="status" aria-live="polite"></p>
-
-  <p class="legend">
-    <span><i class="dot ref"></i> reference</span>
-    <span><i class="dot card"></i> Design Card</span>
-    <span><i class="dot token"></i> token</span>
-    <span><i class="key"></i> edge, grade A or B</span>
-    <span><i class="key c"></i> grade C — direction only, drawn dashed</span>
-    <span>click a node or a token name: ancestors and dependents both light up</span>
-  </p>
-
-  <p class="note">This is the one interactive artefact matrize emits. Everything else is
-    print-first, because an approval artefact ends as a PDF in front of someone who does
-    not get a localhost URL. A graph earns the exception: it has no readable static
-    layout, and the reader arrives with a target question — <em>why is this token this
-    value, and what breaks if I change it?</em></p>
-
-  <div class="pv-layout">
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Provenance graph: references on the left, Design Cards as small squares, tokens on the right">
+    <div class="rk-hud">
+      <p class="verdict info"><!--__VERDICT__--></p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float rk-card rk-muted">
+      <span><i class="dot ref"></i> reference</span>
+      <span><i class="dot card"></i> Design Card (small square)</span>
+      <span><i class="dot token"></i> token</span>
+      <span><i class="key"></i> edge, grade A or B</span>
+      <span><i class="key c"></i> grade C: direction only, dashed</span>
+      <span><i class="key a"></i> alias: one token set from another</span>
+    </div>
+    <span class="rk-hint">click a node: its ancestors and dependents light up, the rest dims</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <p id="rk-found" class="rk-found" role="status" aria-live="polite"></p>
+    <p class="note" id="scope">Not generated yet.</p>
+    <p class="note">This is the one interactive artefact matrize emits. Everything else is
+      print-first, because an approval artefact ends as a PDF in front of someone who does
+      not get a localhost URL. A graph earns the exception: it has no readable static
+      layout, and the reader arrives with a target question — <em>why is this token this
+      value, and what breaks if I change it?</em> Click any node and both answers light up
+      at once.</p>
     <div id="rk-content" tabindex="-1"></div>
-    <aside class="pv-side rk-card" aria-label="Selected node">
-      <h2 style="font-size:1rem;margin:0 0 var(--space-2)">Selected</h2>
-      <div id="detail"><p class="rk-muted">Click a node to trace it backwards to its
-        reference and forwards to everything that depends on it.</p></div>
-    </aside>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
