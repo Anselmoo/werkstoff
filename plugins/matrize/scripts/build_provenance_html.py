@@ -337,6 +337,11 @@ def selftest() -> int:
     checks.append(("tokens injected", "--bg:" in page and "<!--__DESIGN_TOKENS__-->" not in page.split("</head>")[1]))
     checks.append(("the report kit is inlined",
                    "const RK = (() =>" in page and ".rk-top" in page))
+    checks.append(("the figure-first stage skeleton is in the page (R9)",
+                   'id="rk-stage"' in page and "data-rk-figure" in page and 'id="rk-drawer"' in page
+                   and 'class="legend rk-legend-float' in page and 'class="rk-hud-stats"' in page))
+    checks.append(("every graph node is keyboard-reachable and opens the drawer",
+                   'tabindex: "0"' in page and 'role: "button"' in page and "S.open(" in page))
     checks.append(("verdict is in STATIC markup, not written by script",
                    VERDICT_MARKER not in static_markup(page) and "tokens trace to" in static_markup(page)))
     # This check used to read `... or True`, with its middle term sliced to [:0] as well:

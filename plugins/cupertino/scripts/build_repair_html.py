@@ -8,10 +8,13 @@ usage: build_repair_html.py [-h] (--run RUN_ID | --report FILE) [--out FILE] [--
   --report  a report already in the viewer's shape (the committed demo:
             scripts/fixtures/repair-demo.json)
 
-The page leads with the verdict in words, then the proof (PROVEN / PARTLY PROVEN /
-NOT PROVEN, checks, what this does not prove, what waits for a person), then every
-change attributed to the approved item that allowed it -- an unattributed change is
-listed as a finding, not hidden in a diff -- then before/after per web check.
+The page leads with its figure: the before/after of the most important web check, as a
+slider filling the first screen, under the verdict in words and over a strip of one chip
+per acceptance and must-preserve check. A chip switches the comparison to that check and
+opens its detail beside it. Below the stage: the proof (PROVEN / PARTLY PROVEN / NOT
+PROVEN, checks, what this does not prove, what waits for a person), every change
+attributed to the approved item that allowed it -- an unattributed change is listed as a
+finding, not hidden in a diff -- and before/after per web check as a reference.
 
 Rendered through the vendored report kit (scripts/report_kit.py). Exit: 0 written;
 1 selftest failed; 2 could not read an input.
@@ -150,6 +153,12 @@ def selftest() -> int:
        and "<h1>cupertino — repair report</h1>" in html)
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("static verdict and legend exist", 'class="verdict' in html and 'class="legend' in html)
+    ok("the figure-first stage skeleton is present (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "a viewer without the stage leads with prose, not its before/after")
+    ok("every web check in the demo can be joined to its screenshots by label",
+       all(any(c["label"] == b["label"] for c in demo["proof"]["checks"]) for b in demo["beforeAfter"]),
+       "the chips find a check's images by its proof label; a mismatch leaves the figure empty")
     ok("no innerHTML", "innerHTML" not in TEMPLATE.read_text(encoding="utf-8"))
     ok("demo shows the failure the route exists for (an out-of-scope change)",
        any(f.get("rule") == "OUT-OF-SCOPE" for f in demo["findings"]))

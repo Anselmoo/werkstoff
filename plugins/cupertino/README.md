@@ -327,7 +327,11 @@ The verdict is `done`, `partial` or `regressed`, and a run with any check that c
 is never `done`. A delete goes through `scripts/apply_delete.py` only, which refuses while
 anything still references the file and keeps the original in `trash/` so it can be restored.
 
-![Cupertino repair report with a regressed verdict. Acceptance shows 2 of 2 passing and must-preserve shows 1 of 3 preserved. The change list attributes the stylesheet edit to its approved item but flags a change to chart.js as outside the approved scope. A before and after comparison shows the dashboard chart bars drawn in the theme colour before, and black in light mode after.](assets/repair-viewer-screenshot.jpg)
+![Cupertino repair report with a regressed verdict. A large before and after slider of the failed desktop light-mode check fills the screen under the verdict and acceptance, preserved and out-of-scope counts, with one chip per check above it (A1 and A2 pass, P1 passes, P2 and P3 fail), and the side panel shows P2's criterion, its 7.349 percent pixel difference against the 0.5 percent allowed, and the blocker it raised.](assets/repair-viewer-screenshot.jpg)
+
+The comparison is the figure: click a check chip to switch it to that check's before, after and
+difference and read the check's detail in the side panel; the changes and changeset tables follow
+below.
 
 The run shown is deliberately a failure: both acceptance checks pass, yet the verdict is
 `regressed` because a must-preserve check failed (the chart bars went black in light mode,

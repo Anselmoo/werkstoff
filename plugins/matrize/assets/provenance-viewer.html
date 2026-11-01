@@ -62,7 +62,7 @@
 <a class="rk-skip" href="#rk-content">Skip to the report</a>
 <header class="rk-top">
   <h1>matrize — provenance graph</h1>
-  <p class="rk-sub" id="scope-sub"></p>
+  <p class="rk-sub" id="scope">Not generated yet.</p>
   <div class="rk-tools">
     <label class="rk-sr" for="rk-q">Search tokens and findings</label>
     <input id="rk-q" class="rk-input" type="search" placeholder="Search tokens and findings">
@@ -89,7 +89,6 @@
   </section>
   <div class="rk-wrap rk-below">
     <p id="rk-found" class="rk-found" role="status" aria-live="polite"></p>
-    <p class="note" id="scope">Not generated yet.</p>
     <p class="note">This is the one interactive artefact matrize emits. Everything else is
       print-first, because an approval artefact ends as a PDF in front of someone who does
       not get a localhost URL. A graph earns the exception: it has no readable static
@@ -112,64 +111,152 @@
   }
   const { h, section } = RK;
   document.getElementById("scope").textContent = D.scope;
-  const detail = document.getElementById("detail");
+  const S = RK.stage();
   const byId = {};
   D.nodes.forEach((n) => { byId[n.id] = n; });
+  const refs = D.nodes.filter((n) => n.kind === "reference");
+  const cards = D.nodes.filter((n) => n.kind === "card");
+  const toks = D.nodes.filter((n) => n.kind === "token");
+  const gradeC = D.edges.filter((e) => e.grade === "C").length;
+  const aliasN = D.edges.filter((e) => e.kind === "alias").length;
+  S.stats([
+    { label: "References", value: String(refs.length) },
+    { label: "Design Cards", value: String(cards.length) },
+    { label: "Tokens", value: String(toks.length) },
+    { label: "Alias edges", value: String(aliasN), note: "one token set from another" },
+    { label: "Grade-C edges", value: String(gradeC), bad: gradeC > 0, note: "direction only" },
+  ]);
 
   /* ------------------------------ graph ------------------------------ */
-  const COL = { reference: 0, card: 1, token: 2 };
-  const W = 250, H = 34, GAPX = 150, GAPY = 12, PADX = 12, PADY = 12;
-  const byCol = [[], [], []];
-  D.nodes.forEach((n) => byCol[COL[n.kind]].push(n));
-  const pos = {};
-  byCol.forEach((list, ci) => list.forEach((n, i) => { pos[n.id] = { x: PADX + ci * (W + GAPX), y: PADY + i * (H + GAPY) }; }));
-  const rows = Math.max(byCol[0].length, byCol[1].length, byCol[2].length);
-  const width = PADX * 2 + 3 * W + 2 * GAPX + 60;   // room for the alias bow
-  const height = PADY * 2 + rows * (H + GAPY);
-
+  // Three columns -- references, Design Cards (small squares: a card is named in the drawer),
+  // tokens. A long token column is split into strips side by side so the whole graph shows at
+  // a readable size; only when even that cannot fit does the figure scroll.
   const NS = "http://www.w3.org/2000/svg";
   const el = (name, attrs) => { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
-  const svg = el("svg", { viewBox: "0 0 " + width + " " + height, role: "img",
-    "aria-label": "Provenance graph: references to Design Cards to tokens" });
-  const edgeEls = [], nodeEls = {};
-
+  const svg = el("svg", { role: "group", "aria-label": "Provenance graph: references to Design Cards to tokens" });
+  S.figure.appendChild(svg);
+  const idx = {};
+  toks.forEach((n, i) => { idx[n.id] = i; });
+  const sets = {}; // card id -> token ids
+  const fromRef = {}; // card id -> ref ids
   D.edges.forEach((e) => {
-    const a = pos[e.from], b = pos[e.to];
-    if (!a || !b) return;
-    let d;
-    if (a.x === b.x) {
-      // Same column -- an alias points token->token. Left-to-right routing would draw it
-      // backwards as a stub, so bow it out to the right of the column and back.
-      const bow = a.x + W + 46;
-      d = "M" + (a.x + W) + " " + (a.y + H / 2) + " C" + bow + " " + (a.y + H / 2) + " " + bow + " " + (b.y + H / 2) + " " + (b.x + W) + " " + (b.y + H / 2);
-    } else {
-      const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mid = (x1 + x2) / 2;
-      d = "M" + x1 + " " + y1 + " C" + mid + " " + y1 + " " + mid + " " + y2 + " " + x2 + " " + y2;
-    }
-    const path = el("path", { d, class: "edge " + (e.kind === "alias" ? "alias" : "") + " g" + e.grade });
-    path.__e = e;
-    edgeEls.push(path);
-    svg.appendChild(path);
+    if (e.kind === "alias") return;
+    if (byId[e.from] && byId[e.from].kind === "card" && byId[e.to] && byId[e.to].kind === "token") (sets[e.from] = sets[e.from] || []).push(e.to);
+    if (byId[e.from] && byId[e.from].kind === "reference") (fromRef[e.to] = fromRef[e.to] || []).push(e.from);
   });
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const cardPos = (c) => (sets[c.id] ? mean(sets[c.id].map((t) => idx[t])) : Infinity);
+  const cardsOrd = cards.slice().sort((a, b) => cardPos(a) - cardPos(b));
+  const edgeEls = [], nodeEls = {};
+  let sel = null;
 
-  D.nodes.forEach((n) => {
-    const p = pos[n.id];
-    // Focusable, named and operable from the keyboard: a plain <g> with a click handler is
-    // invisible to keyboard and screen-reader users, and this viewer's only function is
-    // "select a node to trace it".
-    const g = el("g", { class: "node n-" + n.kind, transform: "translate(" + p.x + "," + p.y + ")", tabindex: "0", role: "button",
-      "aria-label": n.label + " — " + (n.sub || n.kind) + ". Trace its provenance." });
-    g.appendChild(el("rect", { width: W, height: H, rx: 6 }));
-    const t = el("text", { x: 10, y: 15 }); t.textContent = n.label; g.appendChild(t);
-    const s = el("text", { x: 10, y: 27, class: "nsub" }); s.textContent = n.sub || ""; g.appendChild(s);
-    g.addEventListener("click", () => select(n.id));
-    g.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") { ev.preventDefault(); select(n.id); }
+  function draw(w, hh) {
+    if (w < 80 || hh < 80) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    edgeEls.length = 0;
+    const fr = S.figure.getBoundingClientRect();
+    const rel = (q) => { const e = RK.$(q); return e ? e.getBoundingClientRect() : null; };
+    const hud = rel(".rk-hud"), leg = rel(".rk-legend-float");
+    const top = (hud ? Math.ceil(hud.bottom - fr.top) : 0) + 34;
+    const bottom = (leg ? Math.ceil(fr.bottom - leg.top) : 0) + 10;
+    const X0 = 16, RW = 150, RG = 56, PIP = 16, PG = 34, SG = 58, MINP = 24, MAXP = 40;
+    const R = Math.max(toks.length, 1);
+    const avail = hh - top - bottom - 12;
+    const stripW = (tw) => PIP + PG + tw;
+    const fitK = (tw) => Math.max(1, Math.floor((w - X0 - RW - RG - 40 + SG) / (stripW(tw) + SG)));
+    let TW = 160;
+    let k = Math.min(fitK(TW), Math.max(1, Math.ceil(R / Math.max(1, Math.floor(avail / MINP)))));
+    const rows = Math.ceil(R / k);
+    const P = Math.max(MINP, Math.min(MAXP, Math.floor(avail / rows)));
+    const spare = w - (X0 + RW + RG + 40 + k * stripW(TW) + (k - 1) * SG);
+    TW = Math.max(160, Math.min(230, TW + Math.floor(spare / k)));
+    const NH = P - 6;
+    const W = Math.max(w, X0 + RW + RG + 40 + k * stripW(TW) + (k - 1) * SG);
+    const H = Math.max(hh, top + rows * P + bottom);
+    svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    const y0 = top + Math.max(0, Math.floor((H - top - bottom - rows * P) / 2));
+    const stripX = (s) => X0 + RW + RG + s * (stripW(TW) + SG);
+    const pos = {};
+    toks.forEach((n, i) => { const s = Math.floor(i / rows), r = i % rows; pos[n.id] = { x: stripX(s) + PIP + PG, y: y0 + r * P, w: TW, h: NH, s }; });
+    // cards: the strip and row of the tokens they set, nudged so two never share a row
+    const lastRow = {};
+    cardsOrd.forEach((c, i) => {
+      const t = sets[c.id], mp = t ? mean(t.map((x) => idx[x])) : toks.length - 1;
+      const s = Math.min(k - 1, Math.floor(mp / rows));
+      let r = Math.round(mp - s * rows);
+      if (lastRow[s] !== undefined && r <= lastRow[s]) r = lastRow[s] + 1;
+      lastRow[s] = r;
+      pos[c.id] = { x: stripX(s), y: y0 + r * P + Math.floor((NH - PIP) / 2), w: PIP, h: PIP, s };
     });
-    nodeEls[n.id] = g;
-    svg.appendChild(g);
-  });
-  const graphWrap = h("div", { class: "graphwrap" }, svg);
+    // references: the middle of the cards they point at, kept apart
+    let prevY = -Infinity;
+    refs.map((n) => {
+      const cs = D.edges.filter((e) => e.from === n.id).map((e) => pos[e.to]).filter(Boolean);
+      return { n, y: cs.length ? mean(cs.map((c) => c.y)) : y0 };
+    }).sort((a, b) => a.y - b.y).forEach(({ n, y }) => {
+      const yy = Math.max(y, prevY + P);
+      prevY = yy;
+      pos[n.id] = { x: X0, y: Math.min(yy, y0 + rows * P - NH), w: RW, h: NH, s: -1 };
+    });
+    mk("text", { x: X0, y: top - 14, class: "colhead" }, "reference");
+    mk("text", { x: stripX(0), y: top - 14, class: "colhead" }, "card");
+    mk("text", { x: stripX(0) + PIP + PG, y: top - 14, class: "colhead" }, "token");
+
+    D.edges.forEach((e) => {
+      const a = pos[e.from], b = pos[e.to];
+      if (!a || !b) return;
+      let d;
+      if (e.kind === "alias") {
+        // token -> token: bow out to the right of both and back
+        const y1 = a.y + a.h / 2, y2 = b.y + b.h / 2;
+        if (a.s === b.s) {
+          const x1 = a.x + a.w, x2 = b.x + b.w, bow = 26;
+          d = "M" + x1 + " " + y1 + " C" + (x1 + bow) + " " + y1 + " " + (x2 + bow) + " " + y2 + " " + x2 + " " + y2;
+        } else {
+          // across strips: leave the earlier strip's token on its right, enter the later one on its left
+          const [l, r, ly, ry] = a.s < b.s ? [a, b, y1, y2] : [b, a, y2, y1];
+          const x1 = l.x + l.w, x2 = r.x, mid = (x1 + x2) / 2;
+          d = "M" + x1 + " " + ly + " C" + mid + " " + ly + " " + mid + " " + ry + " " + x2 + " " + ry;
+        }
+      } else {
+        const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, mid = (x1 + x2) / 2;
+        d = "M" + x1 + " " + y1 + " C" + mid + " " + y1 + " " + mid + " " + y2 + " " + x2 + " " + y2;
+      }
+      const path = el("path", { d, class: "edge " + (e.kind === "alias" ? "alias " : "") + "g" + e.grade });
+      path.__e = e;
+      edgeEls.push(path);
+      svg.appendChild(path);
+    });
+
+    D.nodes.forEach((n) => {
+      const p = pos[n.id];
+      if (!p) return;
+      // Focusable, named and operable from the keyboard: a plain <g> with a click handler is
+      // invisible to keyboard and screen-reader users, and this viewer's only function is
+      // "select a node to trace it".
+      const g = el("g", { class: "node n-" + n.kind, transform: "translate(" + p.x + "," + p.y + ")", tabindex: "0", role: "button",
+        "aria-label": n.label + " — " + (n.sub || n.kind) + ". Trace its provenance." });
+      g.appendChild(el("rect", { width: p.w, height: p.h, rx: n.kind === "card" ? 3 : 6 }));
+      if (n.kind !== "card") {
+        const t = el("text", { x: 9, y: p.h / 2 + 4 });
+        const room = Math.floor((p.w - 16) / 6.6);
+        t.textContent = n.label.length > room ? n.label.slice(0, room - 1) + "…" : n.label;
+        g.appendChild(t);
+      }
+      g.addEventListener("click", () => select(n.id));
+      g.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") { ev.preventDefault(); select(n.id); }
+      });
+      const tip = (ev) => S.tip.show(ev, n.label, h("div", { class: "rk-muted", text: n.kind + (n.sub ? " · " + n.sub : "") }),
+        n.detail && n.detail.value ? h("div", { text: String(n.detail.value) }) : null);
+      g.addEventListener("mouseenter", tip); g.addEventListener("mousemove", tip); g.addEventListener("focus", tip);
+      g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
+      nodeEls[n.id] = g;
+      svg.appendChild(g);
+    });
+    if (sel) applySel(sel);
+  }
+  function mk(tag, attrs, text) { const e = el(tag, attrs); e.textContent = text; svg.appendChild(e); return e; }
 
   function walk(start, dir) {
     const seen = {}, queue = [start], out = { nodes: {}, edges: [] };
@@ -186,12 +273,18 @@
     return out;
   }
 
-  function select(id) {
+  function applySel(id) {
     const back = walk(id, "back"), fwd = walk(id, "fwd");
     const live = { ...back.nodes, ...fwd.nodes };
-    const liveEdges = back.edges.concat(fwd.edges);
+    const liveEdges = new Set(back.edges.concat(fwd.edges));
     Object.keys(nodeEls).forEach((k) => { nodeEls[k].classList.toggle("dim", !live[k]); nodeEls[k].classList.toggle("on", k === id); });
-    edgeEls.forEach((p) => { const on = liveEdges.indexOf(p.__e) !== -1; p.classList.toggle("dim", !on); p.classList.toggle("on", on); });
+    edgeEls.forEach((p) => { const on = liveEdges.has(p.__e); p.classList.toggle("dim", !on); p.classList.toggle("on", on); });
+    return { back, fwd };
+  }
+
+  function select(id) {
+    sel = id;
+    const { back, fwd } = applySel(id);
     renderDetail(id, back, fwd);
   }
 
@@ -199,35 +292,54 @@
     return Object.keys(set.nodes).filter((k) => k !== self).map((k) => {
       const n = byId[k];
       const e = set.edges.filter((x) => x.from === k || x.to === k)[0];
-      return { kind: n.kind, label: n.label, grade: e ? e.grade : "" };
+      return { id: k, kind: n.kind, label: n.label, grade: e ? e.grade : "" };
     });
   }
 
+  const looksColour = (v) => /^#[0-9a-fA-F]{3,8}$/.test(String(v));
   function renderDetail(id, back, fwd) {
     const node = byId[id];
-    detail.textContent = "";
-    detail.appendChild(h("p", { style: "font-weight:600;margin:0", text: node.label }));
-    if (node.sub) detail.appendChild(h("p", { class: "note", text: node.sub }));
+    const kids = [];
     const facts = Object.entries(node.detail || {}).filter(([, v]) => v !== "" && v != null);
     if (facts.length) {
-      detail.appendChild(h("h3", { text: "What it is" }));
-      detail.appendChild(h("dl", { class: "facts" }, facts.map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })])));
+      kids.push(h("h3", { text: "What it is" }));
+      kids.push(h("dl", { class: "facts" }, facts.map(([k, v]) => {
+        let dd = h("dd", { text: v });
+        if (k === "value" && looksColour(v)) { const i = h("i"); i.style.background = String(v); dd = h("dd", {}, h("span", { class: "swatch-line" }, i, String(v))); }
+        return [h("dt", { text: k }), dd];
+      })));
     }
     const list = (title, items, empty) => {
-      detail.appendChild(h("h3", { text: title }));
-      if (!items.length) { detail.appendChild(h("p", { class: "rk-muted", text: empty })); return; }
-      detail.appendChild(h("ul", { class: "chain" }, items.map((it) => h("li", {},
-        h("span", { class: "k", text: it.kind }), it.label,
+      kids.push(h("h3", { text: title }));
+      if (!items.length) { kids.push(h("p", { class: "rk-muted", text: empty })); return; }
+      kids.push(h("ul", { class: "chain" }, items.map((it) => h("li", {},
+        h("span", { class: "k", text: it.kind }), S.link(it.label, () => select(it.id)), " ",
         it.grade ? RK.badge("grade " + it.grade, { A: "ok", B: "warn", C: "bad" }[it.grade]) : null))));
     };
     list("Came from", chain(back, id), "Nothing upstream — this is a source.");
     list("What depends on it", chain(fwd, id), "Nothing downstream. Changing it breaks nothing else.");
+    S.open(node.label, node.kind + (node.sub ? " · " + node.sub : ""), ...kids);
   }
+
+  S.onResize(draw);
+  // First view: a grade-C-reached token if there is one, else the source with the most
+  // dependents, else the first token -- the node a reader most needs to see traced.
+  const fanOut = {};
+  D.edges.forEach((e) => { if (e.kind === "alias") fanOut[e.from] = (fanOut[e.from] || 0) + 1; });
+  const cE = D.edges.find((e) => e.grade === "C" && byId[e.to] && byId[e.to].kind === "token");
+  const topFan = Object.keys(fanOut).sort((a, b) => fanOut[b] - fanOut[a])[0];
+  const fromHash = decodeURIComponent((location.hash.match(/^#node-(.+)$/) || [])[1] || "");
+  const start = byId[fromHash] ? fromHash : cE ? cE.to : topFan || (toks[0] && toks[0].id);
+  if (start) select(start);
 
   /* ------------------------------ sections ------------------------------ */
   const pick = (id, label) => {
     const b = h("button", { type: "button", class: "pick", text: label });
-    b.addEventListener("click", () => { select(id); nodeEls[id].focus({ preventScroll: true }); graphWrap.scrollIntoView({ block: "nearest" }); });
+    b.addEventListener("click", () => {
+      select(id);
+      RK.$("#rk-stage").scrollIntoView({ block: "start" });
+      if (nodeEls[id]) { nodeEls[id].scrollIntoView({ block: "nearest", inline: "nearest" }); nodeEls[id].focus({ preventScroll: true }); }
+    });
     return b;
   };
   const TONE = { A: "ok", B: "warn", C: "bad" };
@@ -238,7 +350,6 @@
     rows: D.tokens.map((t) => ({ ...t, css: pick(t.id, t.css), gradeBadge: RK.badge("grade " + t.grade, TONE[t.grade]) })) });
 
   RK.$("#rk-content").append(
-    section("graph", "Graph", graphWrap),
     section("findings", "What to check before changing a token",
       RK.findings(D.findings, { facets: ["kind"], empty: "No grade-C edge and no shared source: every token has one reference and one dependent chain." })),
     section("tokens", "Every token and where it came from",

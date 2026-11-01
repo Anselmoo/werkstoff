@@ -10,18 +10,32 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  .verdict { margin: 0 0 var(--space-3); font-size: 0.95rem; line-height: 1.55; border-left: 3px solid var(--rk-ok); padding-left: var(--space-3); }
-  .verdict.incomplete { border-left-color: var(--rk-warn); }
-  .legend { margin: 0 0 var(--space-4); }
-  .legend ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: 0.85rem; }
+  .legend ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: 0.78rem; }
+  .legend p.note { margin: 0; font-size: 0.78rem; line-height: 1.35; }
   .legend .swatch { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--rk-flat); border-radius: var(--radius-sm); margin-right: var(--space-1); vertical-align: middle; }
   .legend .sw-ran { border-color: var(--rk-ok); border-style: solid; }
   .legend .sw-skipped { border-color: var(--rk-warn); border-style: dashed; }
   .legend .sw-not-run { border-color: var(--rk-flat); border-style: dotted; opacity: 0.6; }
-  #flowChart { overflow-x: auto; }
-  #flowChart svg { width: 100%; min-width: 720px; height: auto; }
-  #flowChart g.node { cursor: pointer; }
-  #flowChart g.node:focus-visible rect { outline: 2px solid var(--rk-focus); }
+
+  /* the pipeline figure: colours are kit tokens, so a theme change needs no redraw */
+  .rf-svg text { font-family: var(--font-sans); fill: var(--rk-text); font-size: 14px; }
+  .rf-svg .mute { fill: var(--rk-muted); font-size: 12px; }
+  .rf-svg .idx { fill: var(--rk-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .rf-svg .lbl { font-weight: 650; font-size: 15px; }
+  .rf-svg .edge { fill: none; stroke: var(--rk-muted); stroke-width: 2; opacity: 0.75; }
+  .rf-svg .edge.dim { stroke-dasharray: 2 5; opacity: 0.45; }
+  .rf-svg marker path { fill: var(--rk-muted); }
+  .rf-node { cursor: pointer; }
+  .rf-node:focus-visible { outline: 2px solid var(--rk-focus); outline-offset: 3px; }
+  .rf-node rect { fill: var(--rk-panel); stroke-width: 2.5; }
+  .rf-node.ran rect { stroke: var(--rk-ok); }
+  .rf-node.skipped rect { stroke: var(--rk-warn); stroke-dasharray: 7 4; }
+  .rf-node.not-run rect { stroke: var(--rk-flat); stroke-dasharray: 2 4; opacity: 0.7; }
+  .rf-node.not-run text { opacity: 0.8; }
+  .rf-node.rf-sel rect { stroke: var(--rk-focus); stroke-width: 4; opacity: 1; }
+  .rf-lane { fill: var(--rk-muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.plain li { padding: var(--space-1) 0; }
   .stage-body h4 { margin: var(--space-3) 0 var(--space-1); font-size: 0.78rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .stage-body h4:first-child { margin-top: 0; }
   .stage-body p { margin: 0 0 var(--space-2); }
@@ -32,6 +46,8 @@
   .stage-body dd { margin: 0; }
   .stage-body dd > p:last-child, .stage-body dd > ul:last-child, .stage-body dd > dl:last-child { margin-bottom: 0; }
   .stage-body .unreached { color: var(--rk-muted); }
+  .rk-drawer-body .stage-body dl, .rk-drawer-body .stage-body .rk-dl { grid-template-columns: minmax(0, 1fr); }
+  .rk-drawer-body .stage-body pre { max-height: 40vh; }
   @media (max-width: 640px) { .stage-body dl { grid-template-columns: minmax(0, 1fr); } }
 </style>
 </head>
@@ -46,24 +62,29 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <h2 class="rk-sr">Did this review actually finish?</h2>
-  <p class="verdict" id="verdict">A stage nobody reached is not a stage somebody skipped: a skip is a recorded decision with a reason attached, an unreached stage is an unfinished review.</p>
-  <div class="legend rk-card">
-    <p class="note rk-muted">
-      The nine stages are cupertino's design techniques, run in a fixed order because each decides something the next depends on — which is why a stage nobody reached leaves a real hole rather than a missing formality.
-      A stage that ran persisted a result. A stage explicitly skipped carries its own recorded reason. A stage never reached decided nothing, so no reason exists to read.
-      Outline style says this as well as colour does, and every node also carries the state in words.
-    </p>
-    <ul aria-label="Legend">
-      <li><span class="swatch sw-ran" aria-hidden="true"></span>ran — solid green outline, result persisted</li>
-      <li><span class="swatch sw-skipped" aria-hidden="true"></span>explicitly skipped — dashed amber outline, reason recorded</li>
-      <li><span class="swatch sw-not-run" aria-hidden="true"></span>never reached — dotted muted outline, nothing decided</li>
-    </ul>
-  </div>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The nine-stage review pipeline, left to right, with longevity and integrate as a parallel fork">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">A stage nobody reached is not a stage somebody skipped: a skip is a recorded decision with a reason attached, an unreached stage is an unfinished review.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float">
+      <p class="note">Outline style says the state as well as colour does, and every node also carries it in words.</p>
+      <ul aria-label="Legend">
+        <li><span class="swatch sw-ran" aria-hidden="true"></span>ran — solid green outline, result persisted</li>
+        <li><span class="swatch sw-skipped" aria-hidden="true"></span>explicitly skipped — dashed amber outline, reason recorded</li>
+        <li><span class="swatch sw-not-run" aria-hidden="true"></span>never reached — dotted muted outline, nothing decided</li>
+      </ul>
+    </div>
+    <span class="rk-hint">click a stage for what it reported · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
