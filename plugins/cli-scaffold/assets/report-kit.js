@@ -256,7 +256,16 @@ const RK = (() => {
     if (location.hash) {
       const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
       if (target && target.tagName === "DETAILS") target.open = true;
-      if (target) target.scrollIntoView();
+      if ($("#rk-stage")) {
+        // Figure-first page: the viewer answers a deep link by selecting the item and
+        // opening the drawer beside the figure. The browser's own fragment scroll would
+        // carry the reader below the figure, so hold the top -- once now and once after
+        // load, when that scroll actually lands.
+        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+        const top = () => window.scrollTo(0, 0);
+        top();
+        window.addEventListener("load", () => { top(); requestAnimationFrame(top); }, { once: true });
+      } else if (target) target.scrollIntoView();
     }
   }
 
@@ -291,6 +300,8 @@ const RK = (() => {
   // opts.facets: tag/field names that get a filter bar when there are > 5 findings.
   // opts.order:  {field: [values in display order]} for the facet buttons and the sort.
   // opts.facetLabels: {field: "Shown label"} when the tag key is not reader-facing.
+  // opts.onFilter(active): called whenever the filter changes (bar or setFilter), so a
+  // chart can mirror it. box.setFilter(key, values) / box.getFilter() drive and read it.
   function findings(list, opts) {
     const o = opts || {};
     const prefix = o.idPrefix || "finding-";
@@ -325,6 +336,7 @@ const RK = (() => {
 
     const active = {};
     const apply = () => {
+      if (o.onFilter) o.onFilter(Object.fromEntries(Object.entries(active).map(([k, s]) => [k, Array.from(s)])));
       for (const c of cards) {
         const out = Object.entries(active).some(([k, set]) => set.size && !set.has(c.getAttribute(facetAttr(k))));
         c.toggleAttribute("data-rk-filtered", out);
@@ -338,8 +350,13 @@ const RK = (() => {
     box.setFilter = (key, values) => {
       for (const c of cards) if (!c.hasAttribute(facetAttr(key))) c.setAttribute(facetAttr(key), "");
       active[key] = new Set((values || []).map(String));
+      // Keep the bar honest: its buttons show the filter whoever set it.
+      for (const b of $$(".rk-filters .rk-btn", box)) {
+        if (b.dataset.rkFacet === key) b.setAttribute("aria-pressed", String(active[key].has(b.dataset.rkValue)));
+      }
       apply();
     };
+    box.getFilter = () => Object.fromEntries(Object.entries(active).map(([k, s]) => [k, Array.from(s)]));
     return box;
   }
 
@@ -373,7 +390,8 @@ const RK = (() => {
       bar.appendChild(h("span", { class: "rk-label", text: (o.facetLabels && o.facetLabels[key]) || key }));
       for (const v of values) {
         const n = sorted.filter((f) => String(valueOf(f, key) ?? "") === v).length;
-        const btn = h("button", { class: "rk-btn", type: "button", "aria-pressed": "false" }, `${v || "(none)"} · ${n}`);
+        const btn = h("button", { class: "rk-btn", type: "button", "aria-pressed": "false", "data-rk-facet": key, "data-rk-value": v },
+          `${v || "(none)"} · ${n}`);
         btn.addEventListener("click", () => {
           const on = btn.getAttribute("aria-pressed") !== "true";
           btn.setAttribute("aria-pressed", String(on));
@@ -496,7 +514,9 @@ const RK = (() => {
       document.body.appendChild(tipEl);
     }
     return {
+      // evt: a mouse/focus event, or an Element to anchor to (canvas/keyboard focus).
       show(evt, title, ...kids) {
+        if (evt instanceof Element) evt = { target: evt };
         tipEl.textContent = "";
         if (title) tipEl.appendChild(h("strong", { text: title }));
         append(tipEl, kids);
@@ -522,21 +542,57 @@ const RK = (() => {
     const closeBtn = h("button", { class: "rk-btn", type: "button", "aria-label": "Close details" }, "\u2715");
     drawer.append(head, body);
     let lastFocus = null;
-    const resizeFns = [];
+    let userActed = false;
+    document.addEventListener("pointerdown", () => { userActed = true; }, { capture: true });
+    document.addEventListener("keydown", () => { userActed = true; }, { capture: true });
+    const resizeFns = [], closeFns = [], themeFns = [];
     const size = () => ({ width: figure.clientWidth, height: figure.clientHeight });
-    const fire = () => { const s = size(); resizeFns.forEach((fn) => fn(s.width, s.height)); };
+    // Fire only when the figure's size actually changed: a drawer toggle that ends at
+    // the same size must not tear the chart down and redraw it.
+    let lastSize = "";
+    const fire = (force) => {
+      const s = size(), key = s.width + "x" + s.height;
+      if (!force && key === lastSize) return;
+      lastSize = key;
+      resizeFns.forEach((fn) => fn(s.width, s.height));
+    };
     const close = () => {
       drawer.hidden = true; root.classList.remove("rk-drawer-open");
-      requestAnimationFrame(fire);
-      if (lastFocus && lastFocus.focus) lastFocus.focus();
+      requestAnimationFrame(() => fire());
+      closeFns.forEach((fn) => fn());
+      if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
     };
+    // Theme: the toggle sets data-theme; the OS can switch prefers-color-scheme.
+    const fireTheme = () => themeFns.forEach((fn) => fn());
+    new MutationObserver(fireTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (window.matchMedia) {
+      const mq = matchMedia("(prefers-color-scheme: light)");
+      if (mq.addEventListener) mq.addEventListener("change", fireTheme);
+    }
     closeBtn.addEventListener("click", close);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawer.hidden) close(); });
-    if ("ResizeObserver" in window) new ResizeObserver(fire).observe(figure);
-    else window.addEventListener("resize", fire);
+    if ("ResizeObserver" in window) new ResizeObserver(() => fire()).observe(figure);
+    else window.addEventListener("resize", () => fire());
     return {
       figure, size,
-      onResize(fn) { resizeFns.push(fn); const s = size(); fn(s.width, s.height); },
+      onResize(fn) { resizeFns.push(fn); const s = size(); lastSize = s.width + "x" + s.height; fn(s.width, s.height); },
+      // Redraw on a theme switch (toggle or OS); colours read via getComputedStyle.
+      onTheme(fn) { themeFns.push(fn); },
+      onClose(fn) { closeFns.push(fn); },
+      redraw() { fire(true); },
+      // What the floating HUD and legend cover, in figure coordinates: a chart that
+      // reserves top = insets().top and bottom = insets().bottom never draws under them.
+      insets() {
+        const f = figure.getBoundingClientRect();
+        const hud = $(".rk-hud", root), leg = $(".rk-legend-float", root);
+        const hr = hud ? hud.getBoundingClientRect() : null, lr = leg ? leg.getBoundingClientRect() : null;
+        return {
+          top: hr ? Math.max(0, Math.round(hr.bottom - f.top)) : 0,
+          bottom: lr ? Math.max(0, Math.round(f.bottom - lr.top)) : 0,
+          hud: hr ? { left: hr.left - f.left, top: hr.top - f.top, right: hr.right - f.left, bottom: hr.bottom - f.top } : null,
+          legend: lr ? { left: lr.left - f.left, top: lr.top - f.top, right: lr.right - f.left, bottom: lr.bottom - f.top } : null,
+        };
+      },
       open(title, sub, ...kids) {
         lastFocus = document.activeElement;
         head.textContent = "";
@@ -546,8 +602,10 @@ const RK = (() => {
         const wasOpen = !drawer.hidden;
         drawer.hidden = false; root.classList.add("rk-drawer-open");
         drawer.scrollTop = 0;
-        if (!wasOpen) requestAnimationFrame(() => requestAnimationFrame(fire));
-        closeBtn.focus({ preventScroll: true });
+        if (!wasOpen) requestAnimationFrame(() => requestAnimationFrame(() => fire()));
+        // Move focus only when the reader asked for this (click/key). A load-time open
+        // (the default detail view) must not steal focus or scroll the page.
+        if (userActed) closeBtn.focus({ preventScroll: true });
       },
       close,
       tip: tip(),

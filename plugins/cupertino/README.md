@@ -136,9 +136,11 @@ finish?* — because a nine-node diagram cannot answer that on its own. A stage 
 never reached and a stage that was deliberately skipped both read as "not green", and they
 are not the same thing: a skip is a recorded decision carrying its own reason, an unreached
 stage is an unfinished review. Each node encodes that difference twice, in outline style as
-well as colour, and the legend at the foot of the page repeats it in words.
+well as colour, and the legend over the figure repeats it in words. Click a stage to read what it
+reported, its recorded skip reason, or that it was never reached, in a side panel; the one-card-per-stage
+list stays below as the reference.
 
-![Cupertino review flow report. A verdict line reads "This review is incomplete: prototype was explicitly skipped with a recorded reason, but elevate, unbox and reveal were never reached at all — the run got no further than prototype." Glance tiles show 5 ran, 1 explicitly skipped and 3 never reached, the last flagged as a problem. The nine-stage pipeline runs left to right — backwards, focus, a real fork into longevity above and integrate below that merges back into council, then prototype, elevate, unbox, reveal — with five nodes outlined solid green, prototype dashed amber, and the last three dotted grey, each labelled with its state in words. Below, one expandable card per stage shows what it reported as headed sections, lists and definition lists, quotes the recorded skip reason for prototype, and marks the unreached stages as never reached](assets/review-flow-viewer-screenshot.jpg)
+![Cupertino review flow report. The nine-stage pipeline fills the screen left to right: backwards and focus, a real fork into longevity above and integrate below that merges back into council, then prototype, elevate, unbox and reveal. Five nodes are outlined solid green, prototype dashed amber, and the last three dotted grey, each labelled with its state in words. A verdict over it reads that the review is incomplete, with tiles for 5 ran, 1 explicitly skipped and 3 never reached, and the side panel quotes the recorded skip reason for prototype.](assets/review-flow-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the run it shows is committed as
 a set of stage flag files at `scripts/fixtures/sample_review_flags/`, chosen so all three

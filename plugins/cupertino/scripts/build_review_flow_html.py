@@ -19,6 +19,12 @@ skip as the same thing.
 
 Usage:
     build_review_flow_html.py <cupertino_dir> --template <path> --d3 <path> [--tokens <path>] [--out <path>]
+    build_review_flow_html.py --selftest
+
+The page leads with the nine-stage flow as its figure (the longevity/integrate fork drawn
+as a fork), the verdict and counts floating over it. Clicking a stage opens what it
+reported -- structured, or its recorded skip reason, or "never reached" -- in a side
+panel; the one-card-per-stage list stays below as the reference.
 
 Rendered through the vendored report kit (scripts/report_kit.py). --tokens is
 still accepted so existing callers keep working; when given it replaces the
@@ -29,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 
@@ -95,7 +102,53 @@ def render_html(template_path, d3_path, tokens_path, flow: dict) -> str:
     return render(tpl, template.parent, flow, Path(tokens_path) if tokens_path else None)
 
 
+def selftest() -> int:
+    """Render the committed sample run and assert the page's contract."""
+    import tempfile
+
+    fails: list[str] = []
+
+    def ok(name: str, cond: bool, extra: str = "") -> None:
+        print(f"  {'ok  ' if cond else 'FAIL'} {name}{'' if cond else ': ' + extra}")
+        if not cond:
+            fails.append(name)
+
+    assets = HERE.parent / "assets"
+    flags = HERE / "fixtures" / "sample_review_flags"
+    ok("committed sample flags exist", flags.is_dir(), str(flags))
+    if not flags.is_dir():
+        print("\nSELFTEST FAILED")
+        return 1
+    with tempfile.TemporaryDirectory() as td:
+        shutil.copytree(flags, Path(td) / ".cupertino" / "flags")
+        flow = build_flow(Path(td) / ".cupertino")
+    states = {s["id"]: s["status"] for s in flow["stages"]}
+    ok("the sample run shows all three states", {"ran", "skipped", "not-run"} <= set(states.values()), str(states))
+    ok("a skip is told apart from an unreached stage", states["prototype"] == "skipped" and states["reveal"] == "not-run")
+    html = render_html(assets / "review-flow-viewer.html", assets / "inline-d3.html", None, flow)
+    ok("kit and tokens inlined", "<!--__REPORT_KIT__-->" not in html and "const RK" in html and "--bg" in html)
+    ok("data island filled", "@@DATA@@" not in html and '"stages"' in html)
+    ok("the figure-first stage skeleton is present (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "a viewer without the stage leads with prose, not its flow")
+    ok("static title and h1 agree", "<title>cupertino — review flow</title>" in html
+       and "<h1>cupertino — review flow</h1>" in html)
+    ok("CSP is default-src 'none'", "default-src 'none'" in html)
+    ok("static verdict and legend exist", 'class="verdict' in html and 'class="legend' in html)
+    ok("no innerHTML", "innerHTML" not in (assets / "review-flow-viewer.html").read_text(encoding="utf-8"))
+    print()
+    if fails:
+        print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
+        return 1
+    print("selftest passed")
+    return 0
+
+
 def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if "--selftest" in argv:
+        return selftest()
     parser = argparse.ArgumentParser()
     parser.add_argument("cupertino_dir", help="the .cupertino directory for this repo")
     parser.add_argument("--template", required=True)

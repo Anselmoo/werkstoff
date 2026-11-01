@@ -200,7 +200,7 @@
     const botRoom = Math.max(0, hgt - (leg ? leg.getBoundingClientRect().top - f0 : hgt)) + 24;
     const W = Math.max(w, ncols * 118 + 40);
     const colW = (W - 40) / ncols;
-    const nodeW = Math.min(colW - 28, 190);
+    const nodeW = Math.min(colW - 18, 190);
     const avail = Math.max(260, hgt - topRoom - botRoom);
     const nodeH = Math.max(70, Math.min(96, avail / (rows.length * 1.55)));
     const laneGap = rows.length > 1 ? Math.min(nodeH * 1.75, (avail - nodeH) / (rows.length - 1)) : 0;

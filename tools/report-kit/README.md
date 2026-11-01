@@ -33,6 +33,9 @@ S.stats([{ label: "Diverging", value: "4", bad: true }]);
 S.onResize((w, h) => draw(w, h));                 // fill the figure; redraw on resize
 mark.addEventListener("click", () => S.open(title, subtitle, RK.value(detail)));
 mark.addEventListener("mouseenter", (e) => S.tip.show(e, title, summary));
+S.onTheme(() => S.redraw());                       // colours re-read on a theme switch
+S.onClose(() => clearSelection());
+const { top, bottom } = S.insets();                // room the HUD and legend take
 ```
 
 `capture_viewer_screenshot.py --min-figure-share 0.6` checks the figure covers at least 60 %
