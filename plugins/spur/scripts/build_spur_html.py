@@ -70,6 +70,9 @@ def selftest() -> int:
     ok("no network fetches", 'src="http' not in html and 'href="http' not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
     ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
+    ok("the figure-first stage skeleton is present (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "a viewer without the stage leads with prose, not its figure")
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     statuses = {i["status"] for s in demo["steps"] for i in s["inputs"]}
     ok("demo shows a BROKEN link", "broken" in statuses,

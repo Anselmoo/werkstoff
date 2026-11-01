@@ -494,5 +494,23 @@ class LibraryFunctionsResolveFromWorktree(unittest.TestCase):
             fx.cleanup()
 
 
+class BoardViewerStageTests(unittest.TestCase):
+    """R9: the rendered board leads with the figure, in the kit's stage skeleton."""
+
+    def test_rendered_board_carries_the_stage_skeleton(self):
+        import build_board_html
+        root = SCRIPTS.parent.parent.parent
+        assets = SCRIPTS.parent / "assets"
+        ledger = "plugins/andon/scripts/fixtures/sample_ledger"
+        board = andon_core.render_board(str(root), ledger)
+        self.assertIsNotNone(board, "the committed sample ledger must render a board")
+        html = build_board_html.render_html(
+            assets / "board-viewer.html", assets / "inline-d3.html", assets / "tokens.css",
+            build_board_html.enrich(board, str(root), ledger))
+        for needle in ('id="rk-stage"', "data-rk-figure", 'id="rk-drawer"', 'class="verdict"'):
+            self.assertIn(needle, html)
+        self.assertNotIn("innerHTML", html)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

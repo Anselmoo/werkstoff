@@ -10,10 +10,55 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.85rem; }
-  .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
-  .legend dd { margin: 0; }
+  .rk-hud { max-width: min(560px, calc(100% - 2 * var(--space-3))); }
+  .rk-hud .verdict { font-size: 0.86rem; }
+  .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); max-width: min(760px, calc(100% - 2 * var(--space-3))); }
+  .legend.rk-legend-float p { margin: 0 0 var(--space-1); }
+  .legend.rk-legend-float p:last-child { margin: 0; }
+  .legend strong { color: var(--rk-text); }
+  .rk-hint { bottom: auto; top: var(--space-3); }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .howto { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.86rem; }
+  .howto dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
+  .howto dd { margin: 0; }
   .maths { font-family: var(--font-mono); font-size: 0.86rem; }
+  /* the matrix: every colour is a --rk-* role, so the light theme re-points it without a redraw */
+  .mx text { fill: var(--rk-text); }
+  .mx .muted { fill: var(--rk-muted); }
+  .mx .colhead { font-size: 12px; font-weight: 700; fill: var(--rk-muted); }
+  .mx .rowid { font-size: 13px; font-weight: 700; }
+  .mx .rowangle { font-size: 11.5px; fill: var(--rk-muted); }
+  .mx .word { font-size: 13px; font-weight: 700; }
+  .mx .ev { font-size: 11.5px; fill: var(--rk-muted); }
+  .mx .rowbg { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1; }
+  .mx .row { cursor: pointer; }
+  .mx .row:hover .rowbg { stroke: var(--rk-muted); }
+  .mx .row.landed .rowbg { stroke: var(--rk-ok); stroke-width: 3; }
+  .mx .row.sel .rowbg { stroke: var(--rk-focus); stroke-width: 3; }
+  .mx .row:focus { outline: none; }
+  .mx .row:focus-visible .rowbg { stroke: var(--rk-focus); stroke-width: 3; }
+  .mx .cell { stroke-width: 1; }
+  .mx .cell.t-ok { fill: color-mix(in srgb, var(--rk-ok) 16%, var(--rk-panel)); stroke: var(--rk-ok); }
+  .mx .cell.t-bad { fill: color-mix(in srgb, var(--rk-bad) 18%, var(--rk-panel)); stroke: var(--rk-bad); }
+  .mx .cell.t-warn { fill: color-mix(in srgb, var(--rk-warn) 18%, var(--rk-panel)); stroke: var(--rk-warn); }
+  .mx .cell.t-flat { fill: var(--rk-panel-2); stroke: var(--rk-border); stroke-dasharray: 4 3; }
+  .mx .g-ok { fill: var(--rk-ok); }
+  .mx .g-bad { fill: var(--rk-bad); }
+  .mx .g-warn { fill: var(--rk-warn); }
+  .mx .g-flat { fill: var(--rk-flat); }
+  .mx .landedtag { font-size: 11.5px; font-weight: 700; fill: var(--rk-ok); }
+  .crit { margin: 0 0 var(--space-2); }
+  .crit .w { font-weight: 700; }
+  .crit .w.ok { color: var(--rk-ok); }
+  .crit .w.bad { color: var(--rk-bad); }
+  .crit .w.warn { color: var(--rk-warn); }
+  .crit .w.flat { color: var(--rk-muted); }
+  .crit p { margin: 0; color: var(--rk-muted); overflow-wrap: anywhere; }
+  .rk-drawer-body ul.files { margin: 0; padding-left: var(--space-4); font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: anywhere; }
+  .rk-drawer-body .oos { color: var(--rk-bad); font-weight: 600; }
+  .rk-drawer-body dl.rows { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .rk-drawer-body dl.rows dt { color: var(--rk-muted); }
+  .rk-drawer-body dl.rows dd { margin: 0; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 0.8rem; }
 </style>
 </head>
 <body class="rk">
@@ -27,24 +72,25 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <p class="verdict" id="verdict">Loading the run…</p>
-
-  <div class="legend rk-card rk-muted">
-    <dl>
-      <dt>✓ landed</dt><dd>this candidate's diff was applied to the working tree. Exactly one ever is.</dd>
-      <dt>✓ accepted</dt><dd>met every acceptance criterion, but lost the selection rule.</dd>
-      <dt>✗ rejected</dt><dd>a referee found at least one criterion demonstrably unmet.</dd>
-      <dt>! cannot judge</dt><dd>the referee could not decide from the diff alone. It points at the contract, not the candidate, and is never collapsed into a rejection.</dd>
-      <dt>! different approach</dt><dd>criteria met by a route the statement did not anticipate. Surfaced for a human; it does not land.</dd>
-      <dt>! unrefereed</dt><dd>measured, but no referee record exists. Never read as accepted.</dd>
-      <dt>– unmeasured</dt><dd>never fairly tried (no worktree, broken build). <strong>Excluded from the breaker's denominator</strong>, never counted as a rejection.</dd>
-    </dl>
-  </div>
-
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Candidates against acceptance criteria: one row per candidate, one cell per criterion, the landed candidate outlined">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Loading the run…</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float rk-card rk-muted">
+      <p><strong>criterion</strong> ✓ met · ✗ not met · ! cannot judge (the referee recorded nothing for it, or could not decide) · – not measured (the candidate never ran fairly)</p>
+      <p><strong>row</strong> green outline = the landed candidate, the only one ever applied · the other outcomes are defined below the figure</p>
+    </div>
+    <span class="rk-hint">click a candidate for the referee's evidence · hover a cell for its reason</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
@@ -87,13 +133,24 @@
   const budgetKnown = bu.total != null && bu.used != null;
 
   const content = RK.$("#rk-content");
-  content.append(section("glance", "At a glance", RK.glance({ stats: [
+  const S = RK.stage();
+  S.stats([
     { label: "Candidates", value: String(c.length), note: "over one scope" },
     { label: "Landed", value: String(count("landed")), note: "exactly one ever does", bad: !landed },
     { label: "Rejected", value: String(count("rejected")), note: "a criterion demonstrably unmet" },
     { label: "Unmeasured", value: String(count("unmeasured")), note: "excluded from the breaker" },
     { label: "Dispatches", value: budgetKnown ? bu.used + " / " + bu.total : "unknown", note: "used of budget" },
-  ] })));
+  ]);
+
+  // The legend's long form: what used to sit above the table now sits below the figure.
+  content.append(section("outcomes", "What each outcome means", h("dl", { class: "howto" },
+    h("dt", { text: "✓ landed" }), h("dd", { text: "this candidate's diff was applied to the working tree. Exactly one ever is." }),
+    h("dt", { text: "✓ accepted" }), h("dd", { text: "met every acceptance criterion, but lost the selection rule." }),
+    h("dt", { text: "✗ rejected" }), h("dd", { text: "a referee found at least one criterion demonstrably unmet." }),
+    h("dt", { text: "! cannot judge" }), h("dd", { text: "the referee could not decide from the diff alone. It points at the contract, not the candidate, and is never collapsed into a rejection." }),
+    h("dt", { text: "! different approach" }), h("dd", { text: "criteria met by a route the statement did not anticipate. Surfaced for a human; it does not land." }),
+    h("dt", { text: "! unrefereed" }), h("dd", { text: "measured, but no referee record exists. Never read as accepted." }),
+    h("dt", { text: "– unmeasured" }), h("dd", {}, "never fairly tried (no worktree, broken build). ", h("strong", { text: "Excluded from the breaker's denominator" }), ", never counted as a rejection."))));
 
   // ---- candidates: one finding each; the referee's per-criterion evidence is the drill-down ----
   const SEV = { landed: "pass", accepted: "pass", rejected: "fail", unmeasured: "na", unrefereed: "gap",

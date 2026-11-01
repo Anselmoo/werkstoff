@@ -16,6 +16,7 @@
   .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
   .rk-drawer-body dl.defs dt { font-weight: 600; white-space: nowrap; }
   .rk-drawer-body dl.defs dd { margin: 0; overflow-wrap: anywhere; }
+  .rk-drawer-body code { overflow-wrap: anywhere; }
   .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; }
   .rk-drawer-body ul.plain li { padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); overflow-wrap: anywhere; }
   .rk-drawer-body ul.plain li:last-child { border-bottom: 0; }
@@ -590,9 +591,11 @@
     return false;
   };
   window.addEventListener("hashchange", fromHash);
-  window.addEventListener("load", () => { booted = true; });
-  if (fromHash()) window.scrollTo(0, 0);
-  else {
+  let linked = false;
+  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
+  window.addEventListener("load", () => { booted = true; if (linked) window.scrollTo(0, 0); });
+  linked = fromHash();
+  if (!linked) {
     // The drawer opens on the worst link, or on the overview when nothing is wrong.
     const worst = linkRecords.find((r) => r.input.status === "broken") || linkRecords.find((r) => r.input.status === "unverified");
     if (worst) select("link", worst.domId); else showOverview();

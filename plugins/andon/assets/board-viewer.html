@@ -303,7 +303,7 @@
     const evTop = nodeTop + nodeH + 64;
     // Chips grow with the figure's height (capped), so a tall screen is used, not left empty.
     const room = Hh - evTop - 150 - (maxEvRows ? 54 : 0) - (maxGapRows ? 40 : 0);
-    const chipH = Math.max(48, Math.min(64, room / Math.max(1, maxEvRows + maxGapRows) - 8)), chipGap = 8;
+    const chipH = Math.max(62, Math.min(70, room / Math.max(1, maxEvRows + maxGapRows) - 8)), chipGap = 8;
     const gapTop = evTop + (maxEvRows ? maxEvRows * (chipH + chipGap) + 46 : 0);
     const needH = gapTop + maxGapRows * (chipH + chipGap) + 110;
     const H = Math.max(Hh, needH);
@@ -375,14 +375,14 @@
       hover(g, name, [mine.length + " open gap(s)", (B.stage_docs || {})[name] && (B.stage_docs[name].description || "")].filter(Boolean));
       // gap chips under the stage
       mine.forEach((gp, k) => {
-        const y = gapTop + k * (chipH + chipGap);
+        const y = gapTop + k * (chipH + chipGap), cwid = Math.min(colW - 14, 240), gx = cx(i) - cwid / 2;
         const gg = hit(svg.append("g"), "gap:" + gp.slug, "Open gap " + (gp.title || gp.slug) + ", " + (RADIUS_LABELS[gp.blast_radius] || "radius unrecorded") + ". Show detail.", () => showGap(gp.slug));
-        gg.append("rect").attr("class", "vs-box").attr("x", x).attr("y", y).attr("width", nodeW).attr("height", chipH).attr("rx", 6)
+        gg.append("rect").attr("class", "vs-box").attr("x", gx).attr("y", y).attr("width", cwid).attr("height", chipH).attr("rx", 6)
           .attr("fill", C.panel).attr("stroke", gp.blast_radius === "shared-state-visible" ? C.bad : gp.blast_radius === "hard-to-reverse" ? C.warn : C.border).attr("stroke-width", 2);
-        gg.append("text").attr("x", x + 10).attr("y", y + chipH / 2 - 5).attr("font-size", 11).attr("font-weight", 600).attr("fill", C.muted)
+        gg.append("text").attr("x", gx + 10).attr("y", y + 16).attr("font-size", 11).attr("font-weight", 600).attr("fill", C.muted)
           .text((RADIUS_GLYPH[gp.blast_radius] || "unrated") + " · " + gp.kind);
-        gg.append("text").attr("x", x + 10).attr("y", y + chipH / 2 + 14).attr("font-size", px).attr("fill", C.text)
-          .text(wrapLabel(gp.title || gp.slug, cols(nodeW - 20), 1)[0]);
+        const tl = gg.append("text").attr("font-size", px).attr("fill", C.text);
+        wrapLabel(gp.title || gp.slug, cols(cwid - 20), 2).forEach((ln, q) => tl.append("tspan").attr("x", gx + 10).attr("y", y + 33 + q * 15).text(ln));
         hover(gg, gp.title || gp.slug, [(RADIUS_GLYPH[gp.blast_radius] || "unrated") + " · " + gp.kind, "stage " + name]);
       });
     });
