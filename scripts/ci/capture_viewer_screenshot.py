@@ -2,7 +2,14 @@
 """Render an HTML file headless and save a screenshot at its own scroll height.
 
 usage: capture_viewer_screenshot.py [-h] HTML OUT [--width 1600] [--scheme dark|light]
+                                    [--query ?view=x] [--click SELECTOR ...]
                                     [--jpeg-quality 82] [--console FILE]
+
+--query appends a query string or fragment to the file URL (a viewer with a view
+switch, e.g. zeugnis's ?view=mutation); each --click clicks the first element
+matching a CSS selector, in order, before measuring -- for a screenshot that must
+show a drill-down open. A selector that matches nothing is an error, not a skip:
+otherwise the image silently shows the closed state it was meant to replace.
 
 report-viewer-standard C1: 1600 wide, as tall as the page's own scrollHeight,
 so a committed screenshot is reproducible from its committed demo data instead
@@ -30,15 +37,21 @@ from pathlib import Path
 NODE_DRIVER = r"""
 const { chromium } = require('playwright');
 (async () => {
-  const [file, png, width, scheme] = process.argv.slice(2);
+  const [file, png, width, scheme, query, clicksJson] = process.argv.slice(2);
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: Number(width), height: 900 }, colorScheme: scheme });
   const errors = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('requestfailed', (r) => errors.push('requestfailed: ' + r.url()));
-  await page.goto('file://' + file, { waitUntil: 'load' });
+  await page.goto('file://' + file + (query || ''), { waitUntil: 'load' });
   await page.waitForTimeout(300);
+  for (const sel of JSON.parse(clicksJson || '[]')) {
+    const el = await page.$(sel);
+    if (!el) throw new Error('--click selector matched nothing: ' + sel);
+    await el.click();
+    await page.waitForTimeout(200);
+  }
   const height = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
   await page.setViewportSize({ width: Number(width), height: Math.max(200, height) });
   await page.screenshot({ path: png, fullPage: true });
@@ -48,7 +61,7 @@ const { chromium } = require('playwright');
 """
 
 
-def capture(html: Path, width: int, scheme: str) -> tuple[Path, dict]:
+def capture(html: Path, width: int, scheme: str, query: str = "", clicks: list[str] | None = None) -> tuple[Path, dict]:
     """Return (png path, {height, errors}). Raises FileNotFoundError when no driver."""
     node = shutil.which("node")
     if not node:
@@ -57,7 +70,8 @@ def capture(html: Path, width: int, scheme: str) -> tuple[Path, dict]:
     driver = work / "drive.js"
     driver.write_text(NODE_DRIVER, encoding="utf-8")
     png = work / "shot.png"
-    proc = subprocess.run([node, str(driver), str(html.resolve()), str(png), str(width), scheme],
+    proc = subprocess.run([node, str(driver), str(html.resolve()), str(png), str(width), scheme, query,
+                           json.dumps(clicks or [])],
                           capture_output=True, text=True, timeout=120, check=False)
     if proc.returncode != 0:
         if "Cannot find module 'playwright'" in proc.stderr:
@@ -74,6 +88,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("out", help=".jpg or .png")
     parser.add_argument("--width", type=int, default=1600)
     parser.add_argument("--scheme", choices=("dark", "light"), default="dark")
+    parser.add_argument("--query", default="", help="appended to the file URL, e.g. ?view=mutation")
+    parser.add_argument("--click", action="append", default=[], help="CSS selector to click before capture (repeatable)")
     parser.add_argument("--jpeg-quality", type=int, default=82)
     parser.add_argument("--console", help="write {height, errors} JSON here")
     args = parser.parse_args(argv)
@@ -83,7 +99,7 @@ def main(argv: list[str]) -> int:
         print(f"no such file: {html}", file=sys.stderr)
         return 2
     try:
-        png, meta = capture(html, args.width, args.scheme)
+        png, meta = capture(html, args.width, args.scheme, args.query, args.click)
     except FileNotFoundError as err:
         print(f"NOT RUN: {err} -- install node and playwright; no screenshot was written", file=sys.stderr)
         return 3

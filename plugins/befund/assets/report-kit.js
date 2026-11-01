@@ -212,7 +212,8 @@ const RK = (() => {
   function onSearch(fn) { searchHooks.push(fn); }
 
   function runSearch(term, found) {
-    const items = $$("[data-rk-search]");
+    // An item inside a hidden view (a tab not shown) is not a match the reader can see.
+    const items = $$("[data-rk-search]").filter((el) => !(el.parentElement && el.parentElement.closest("[hidden]")));
     const needle = term.toLowerCase();
     let shown = 0;
     for (const el of items) {
@@ -270,7 +271,9 @@ const RK = (() => {
       g.detail ? h("span", { class: "rk-muted", text: g.detail }) : null));
     if (g.stats && g.stats.length) {
       box.appendChild(h("dl", { class: "rk-stats" }, g.stats.map((s) =>
-        h("div", { class: "rk-stat" + (s.bad ? " bad" : "") },
+        // s.bad marks the number that needs action (R3); s.tone ("warn", "ok", "info")
+        // gives a softer accent for a number to watch, never instead of its note.
+        h("div", { class: "rk-stat" + (s.bad ? " bad" : s.tone ? " " + s.tone : "") },
           h("dt", { text: s.label }), h("dd", { text: s.value }),
           s.note ? h("small", { text: s.note }) : null))));
     }
@@ -298,7 +301,9 @@ const RK = (() => {
     }
     const sevOrder = (o.order && o.order.severity) || ["blocker", "critical", "high", "major", "medium", "minor", "low", "nit", "info"];
     const rank = (s) => { const i = sevOrder.indexOf(String(s).toLowerCase()); return i === -1 ? sevOrder.length : i; };
-    const sorted = list.slice().sort((a, b) => rank(a.severity) - rank(b.severity));
+    // opts.sort: a comparator, for a plugin whose order is not severity (zeugnis puts
+    // escalated findings first). Severity order stays the default.
+    const sorted = list.slice().sort(o.sort || ((a, b) => rank(a.severity) - rank(b.severity)));
     const valueOf = (f, key) => (f.tags && key in f.tags ? f.tags[key] : f[key]);
 
     const cards = sorted.map((f, i) => {
@@ -318,8 +323,23 @@ const RK = (() => {
       return card;
     });
 
-    if ((o.facets || []).length && list.length > 5) box.appendChild(filterBar(cards, sorted, o, valueOf));
+    const active = {};
+    const apply = () => {
+      for (const c of cards) {
+        const out = Object.entries(active).some(([k, set]) => set.size && !set.has(c.getAttribute(facetAttr(k))));
+        c.toggleAttribute("data-rk-filtered", out);
+        applyVisibility(c);
+      }
+    };
+    if ((o.facets || []).length && list.length > 5) box.appendChild(filterBar(sorted, o, valueOf, active, apply));
     cards.forEach((c) => box.appendChild(c));
+    // box.setFilter(key, values) lets a chart drive the same filter (a Sankey node,
+    // a matrix cell) instead of re-implementing it beside the kit's bar.
+    box.setFilter = (key, values) => {
+      for (const c of cards) if (!c.hasAttribute(facetAttr(key))) c.setAttribute(facetAttr(key), "");
+      active[key] = new Set((values || []).map(String));
+      apply();
+    };
     return box;
   }
 
@@ -343,9 +363,8 @@ const RK = (() => {
   // Any facet key (spaces included) maps to a valid attribute name.
   const facetAttr = (key) => "data-rk-facet-" + String(key).toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
 
-  function filterBar(cards, sorted, o, valueOf) {
+  function filterBar(sorted, o, valueOf, active, apply) {
     const bar = h("div", { class: "rk-filters", role: "group", "aria-label": "Filter findings" });
-    const active = {};
     for (const key of o.facets) {
       const values = Array.from(new Set(sorted.map((f) => String(valueOf(f, key) ?? ""))));
       const order = (o.order && o.order[key]) || values;
@@ -360,11 +379,7 @@ const RK = (() => {
           btn.setAttribute("aria-pressed", String(on));
           active[key] = active[key] || new Set();
           if (on) active[key].add(v); else active[key].delete(v);
-          for (const c of cards) {
-            const out = Object.entries(active).some(([k, set]) => set.size && !set.has(c.getAttribute(facetAttr(k))));
-            c.toggleAttribute("data-rk-filtered", out);
-            applyVisibility(c);
-          }
+          apply();
         });
         bar.appendChild(btn);
       }
@@ -447,10 +462,26 @@ const RK = (() => {
     return box;
   }
 
+  // value(v) -- any JSON value as readable structure: an object becomes a <dl>, an
+  // array a <ul>, a scalar text. The R7 alternative to JSON.stringify in a <pre>.
+  function value(v, depth) {
+    const d = depth || 0;
+    if (v === null || v === undefined) return h("span", { class: "rk-muted", text: "--" });
+    if (Array.isArray(v)) {
+      if (!v.length) return h("span", { class: "rk-muted", text: "none" });
+      return h("ul", {}, v.map((x) => h("li", {}, value(x, d + 1))));
+    }
+    if (typeof v === "object") {
+      if (d > 6) return h("code", { text: JSON.stringify(v) });
+      return h("dl", { class: "rk-dl" }, Object.entries(v).map(([k, x]) => [h("dt", { text: k }), h("dd", {}, value(x, d + 1))]));
+    }
+    return document.createTextNode(String(v));
+  }
+
   // section(id, title, ...kids) -- a nav-able, deep-linkable block.
   function section(id, title, ...kids) {
     return h("section", { class: "rk-section", id: "sec-" + id }, h("h2", { text: title }), ...kids);
   }
 
-  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, glance, findings, table, proof, beforeAfter, section };
+  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, value, glance, findings, table, proof, beforeAfter, section };
 })();

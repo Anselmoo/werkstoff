@@ -324,6 +324,14 @@ python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
     --tokens plugins/zeugnis/assets/tokens.css
 ```
 
+The view switch and the expanded row are part of the capture, not a hand step:
+
+```bash
+python3 scripts/ci/capture_viewer_screenshot.py /tmp/zeugnis-demo/analysis/zeugnis/reports/BURNDOWN.html \
+    plugins/zeugnis/assets/burndown-viewer-mutation-screenshot.jpg \
+    --query '?view=mutation#module-src-runner-conditions.py'
+```
+
 Every number has a control behind it, and every control is a real button
 you can reach with Tab:
 
