@@ -445,7 +445,7 @@ properties that a single model-driven loop can't reliably hold to.
 | repair: no git mutation until a verdict | commit, push, reset, checkout, merge and rebase are denied until `verify.py` has written a verdict and the run is closed |
 | repair: gate files are script-only | `preflight.json`, `approved`, `active-item`, `baseline/`, `after/`, `trash/` and `verdict.json` are written only by the repair scripts, never by Write/Edit |
 | repair: no new-build skills mid-run | `cupertino-council`, `-elevate`, `-unbox` and `-reveal` are denied while a repair run is active; add the new work to the changeset instead |
-| handbook rules from analysis only | `cupertino-handbook-fix` acts on analyzed rules by default, runs the remediator on sonnet with one location per dispatch, relocates by quoted text, and runs a before/after test command; the check summary schema requires `rule` and `quotedLine` per finding |
+| handbook rules from analysis only | `cupertino-handbook-check` enforces only rules drawn from the code (`sourceMode` analyzed/observed) unless `enforceScaffolded: true`; `cupertino-handbook-fix` runs the remediator on sonnet with one location per dispatch, relocates by quoted text, and runs a before/after test command; the check summary schema requires `rule` and `quotedLine` per finding |
 
 ## The report
 
