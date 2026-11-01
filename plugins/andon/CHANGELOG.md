@@ -3,6 +3,8 @@
 All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_board_html.py` now adds the ledger documents behind the board's counts (each open gap's body and proposal, every evidence document, each stage's prose) and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
