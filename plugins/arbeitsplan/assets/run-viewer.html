@@ -33,7 +33,7 @@
   .mx .rowbg { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1; }
   .mx .row { cursor: pointer; }
   .mx .row:hover .rowbg { stroke: var(--rk-muted); }
-  .mx .row.landed .rowbg { stroke: var(--rk-ok); stroke-width: 3; }
+  .mx .row.landed .rowbg { stroke: var(--rk-ok); stroke-width: 3; fill: color-mix(in srgb, var(--rk-ok) 9%, var(--rk-panel)); }
   .mx .row.sel .rowbg { stroke: var(--rk-focus); stroke-width: 3; }
   .mx .row:focus { outline: none; }
   .mx .row:focus-visible .rowbg { stroke: var(--rk-focus); stroke-width: 3; }
@@ -323,7 +323,7 @@
         cg.addEventListener("mouseenter", tip); cg.addEventListener("mousemove", tip);
       });
       const ck = checksOf(x);
-      mk("text", { x: tx + 8, y: y + 24, class: "word g-" + (ck.ok === null ? "flat" : ck.ok ? "ok" : "bad") }, g, (ck.ok === null ? "–" : ck.ok ? "✓" : "✗") + " " + ck.text.split(" ")[0]);
+      mk("text", { x: tx + 8, y: y + 24, class: "word g-" + (ck.ok === null ? "flat" : ck.ok ? "ok" : "bad") }, g, ck.ok === null ? "– none" : (ck.ok ? "✓ " : "✗ ") + ck.text.split(" ")[0]);
       mk("text", { x: tx + 8, y: y + 44, class: "ev" }, g, ck.ok === null ? "no checks ran" : ck.text.replace(/^\S+ /, ""));
       const oos = (x.outOfScopeWrites || []).length;
       mk("text", { x: tx + TW + GAP + 8, y: y + 24, class: "word" }, g, String(x.filesTouched) + (x.filesTouched === 1 ? " file" : " files"));

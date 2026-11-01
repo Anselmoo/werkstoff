@@ -25,7 +25,6 @@
   .rk-figure .branch { cursor: pointer; }
   .rk-figure .branch .hit { rx: var(--radius-panel); }
   .rk-figure .branch rect { rx: var(--radius-sm); }
-  .rk-figure .branch .hit { rx: var(--radius-panel); }
   .rk-figure .branch:focus { outline: none; }
   .rk-figure .branch:focus-visible .hit { stroke: var(--rk-focus); stroke-width: 2; }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: var(--space-4); align-items: start; }
@@ -45,7 +44,7 @@
   .row .why dd { margin: 0; overflow-wrap: anywhere; }
   .rk-drawer-body p { margin: var(--space-1) 0; }
   .rk-drawer-body .scores { display: grid; grid-template-columns: max-content 1fr max-content; gap: var(--space-1) var(--space-3); align-items: center; margin: var(--space-1) 0; }
-  .rk-drawer-body .scores .bar { height: 10px; border-radius: 2px; }
+  .rk-drawer-body .scores .bar { height: 10px; border-radius: var(--radius-sm); }
   .rk-drawer-body .scores .bar.feas { background: var(--rk-ok); }
   .rk-drawer-body .scores .bar.imp { background: var(--rk-link); }
   .rk-drawer-body .scores .bar.risk { background: var(--rk-bad); }

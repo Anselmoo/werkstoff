@@ -650,6 +650,9 @@
     const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
     if (t && t.tagName === "DETAILS") t.open = true;
     if (t && !/^module-/.test(t.id)) t.scrollIntoView();
+    // The browser scrolls a #module-… anchor to its row below the stage on load; the module is
+    // already selected in the drawer, so put the figure back on screen.
+    if (t && /^module-/.test(t.id)) { window.scrollTo(0, 0); window.addEventListener("load", () => window.scrollTo(0, 0)); }
   }
   // Esc lets go of the selected pass or module (the kit closes the drawer itself).
   document.addEventListener("keydown", (event) => {
