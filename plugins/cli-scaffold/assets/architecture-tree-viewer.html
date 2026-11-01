@@ -26,7 +26,7 @@
    pillar ledger on the right: one slot per doctrine role, grouped by the pillar it evidences.
    A role no file plays is an EMPTY hatched slot with no ribbon reaching it, so the verdict's
    absence is a visible gap, not a missing row. */
-.rk-hud { max-width: min(920px, calc(100% - 2 * var(--space-3))); }
+.rk-hud { max-width: min(920px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
 #fig-svg { position: absolute; inset: 0; }
 .crumbs { position: absolute; left: var(--space-2); display: flex; flex-wrap: wrap; align-items: center;
   gap: var(--space-1); font-size: 0.82rem; color: var(--rk-muted); z-index: 2; }
@@ -50,13 +50,16 @@
 .pillar-frame.bare { stroke: var(--rk-bad); stroke-width: 2; stroke-dasharray: 6 4; }
 .t-pillar { fill: var(--rk-text); font-size: 13px; font-weight: 600; }
 .t-pillar-state { font-size: 12px; fill: var(--rk-muted); }
-.t-pillar-state.bare { fill: var(--rk-bad); font-weight: 600; }
+.t-pillar-state.bare { fill: var(--rk-bad-text); font-weight: 600; }
 .slot.empty .bg { fill: url(#hatch); stroke: var(--rk-muted); stroke-dasharray: 5 4; stroke-width: 1.5; }
 .hatch-line { stroke: var(--rk-muted); stroke-opacity: 0.3; stroke-width: 2; }
 .fileless .t-role { fill: var(--rk-muted); }
 .slot.empty .t-name { fill: var(--rk-text); }
 .col-head { fill: var(--rk-muted); font-size: 12px; letter-spacing: 0.04em; }
 /* The file list below the stage: the same tree as an indented list, one column per role. */
+/* The role columns have a floor width; on a phone the list scrolls inside its own box
+   instead of pushing the whole page sideways. */
+.tree-list { overflow-x: auto; max-width: 100%; }
 #tree-canvas { position: relative; margin: var(--space-2) 0 var(--space-3); }
 .guide { stroke: var(--rk-muted); stroke-opacity: .55; }
 #guides { position: absolute; left: 0; pointer-events: none; }
@@ -468,7 +471,7 @@ function drawLedger() {
 function drawSlot(parent, r, x, y, w, hh) {
   const files = filesByRole.get(r) || [];
   const empty = files.length === 0;
-  const g = svgEl("g", { class: "mark slot" + (empty ? " empty" : ""), tabindex: 0, role: "button", "data-role": r,
+  const g = svgEl("g", { class: "mark slot" + (empty ? " empty" : ""), tabindex: 0, role: "button", "data-role": r, "data-rk-key": "role:" + r,
     "aria-label": r + " role, " + (empty ? "no file plays it" : files.length + " file" + (files.length > 1 ? "s" : "")) + ". Press Enter for details." }, parent);
   g.__role = r;
   const bg = svgEl("rect", { class: "bg", x, y, width: w, height: hh, rx: 4 }, g);
@@ -503,7 +506,7 @@ function buildCells(f) {
   f.each(d => {
     const isFile = d.data.type === "file";
     const roles = d.data.roles || [];
-    const g = svgEl("g", { class: "mark " + (isFile ? "filecell" + (roles.length ? "" : " fileless") : "dirband"), tabindex: 0, role: "button",
+    const g = svgEl("g", { class: "mark " + (isFile ? "filecell" + (roles.length ? "" : " fileless") : "dirband"), tabindex: 0, role: "button", "data-rk-key": "path:" + fullPath(d),
       "aria-label": fullPath(d) + (isFile ? " file" + (roles.length ? ", roles " + roles.join(", ") : ", no doctrine role") + ". Press Enter for details."
         : " directory, " + countLeaves(d.data) + " files. Press Enter to zoom " + (d === f && d.parent ? "out" : "in") + ".") }, gCells);
     g.__d = d;
@@ -540,7 +543,7 @@ function renderCrumbs(f) {
   const chain = f.ancestors().reverse();
   chain.forEach((d, i) => {
     if (i) crumbsEl.appendChild(h("span", { "aria-hidden": "true", text: "›" }));
-    const b = h("button", { type: "button", text: d.data.name + "/", "aria-current": d === f ? "true" : null });
+    const b = h("button", { type: "button", text: d.data.name + "/", "aria-current": d === f ? "true" : null, "data-rk-key": "crumb:" + fullPath(d) });
     if (d !== f) b.addEventListener("click", () => { zoomTo(d); pick(d); });
     crumbsEl.appendChild(b);
   });
@@ -629,7 +632,10 @@ function drawList(listEl) {
   const maxDepth = rows.reduce((m, d) => Math.max(m, d.depth), 1);
   const COL_W = Math.max(84, Math.min(120, Math.floor((w * 0.55) / Math.max(1, roleOrder.length))));
   INDENT = 24;
-  const canvas = h("div", { id: "tree-canvas", style: "height:" + (headH + ROW_H * rows.length) + "px" });
+  // min-width: the name column's floor plus every role column, so the rows (absolute,
+  // left/right 0) keep their columns and .tree-list scrolls rather than the page.
+  const minW = 160 + COL_W * roleOrder.length;
+  const canvas = h("div", { id: "tree-canvas", style: "height:" + (headH + ROW_H * rows.length) + "px;min-width:" + minW + "px" });
   listEl.appendChild(canvas);
 
   // Column headers: one per role, hollow and dashed when no file plays it.
@@ -797,12 +803,14 @@ if ("ResizeObserver" in window) new ResizeObserver(() => drawList(listEl)).obser
 
 // A deep link to a gap opens it in the drawer too; with none, the drawer opens on
 // the overview, which lists the gaps worst first with the worst one expanded.
+// A gap is an item the drawer shows beside the figure: claim the hash so the page stays at
+// the top. #sec-* goes unclaimed and the kit scrolls to that section.
 function fromHash() {
-  const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  const id = RK.hashId() || "";
   return findings.find(f => gapId(f) === id) || null;
 }
 const first = fromHash();
-if (first) S.open(first.claim, first.rule, gapDetail(first, true), h("p", {}, S.link("Back to the overview", openOverview)));
+if (first) { RK.claimHash(); S.open(first.claim, first.rule, gapDetail(first, true), h("p", {}, S.link("Back to the overview", openOverview))); }
 else openOverview();
 window.addEventListener("hashchange", () => {
   const f = fromHash();

@@ -203,7 +203,7 @@ jobs:
         # visible to any existing check.
         run: python3 scripts/ci/check_viewer_conformance.py
 
-      - name: Self-test the figure ink instrument
+      - name: Self-test the figure ink instrument; kit text contrast
         id: ink_selftest
         continue-on-error: true
         # R9 is judged by capture_viewer_screenshot.py's ink_share. Its first
@@ -214,6 +214,10 @@ jobs:
         run: |
           pip install pillow
           python3 scripts/ci/capture_viewer_screenshot.py --selftest
+          # Same step, no browser: every text role in the kit reaches 4.5:1 on bg and
+          # panel in both themes (status hues used as small text read 2.9-3.7:1 before).
+          python3 tools/report-kit/check_contrast.py --selftest
+          python3 tools/report-kit/check_contrast.py
 
       - name: Check design-token usage (docs theme + report viewers)
         id: design_tokens
@@ -648,7 +652,7 @@ jobs:
             row "Judge verdict contract (command first, one rubric judge, abstain never passes; vendored copies in sync)" "${{ needs.checks.outputs.judge_contract }}"
             row "Judge calibration (known-answer sets, precision, derived records, no stale record)" "${{ needs.checks.outputs.judge_calibration }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
-            row "Figure ink instrument (R9) selftest" "${{ needs.checks.outputs.ink_selftest }}"
+            row "Figure ink instrument (R9) selftest + kit text contrast" "${{ needs.checks.outputs.ink_selftest }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"

@@ -232,7 +232,7 @@
     }
     const groups = g.selectAll("g.branch").data(DATA.branches).join("g").attr("class", "branch")
       .attr("transform", (b) => "translate(" + x0(b.name) + ",0)")
-      .attr("tabindex", 0).attr("role", "button")
+      .attr("tabindex", 0).attr("role", "button").attr("data-rk-key", (d) => idOf(d))
       .attr("aria-label", (b) => b.name + ", rank " + rankOf(b) + ", Total " + b.total + (b.isWinner ? ", winner" : "") + ". Press Enter for why it ranks here.")
       .on("click", (e, b) => select(b))
       .on("keydown", (e, b) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(b); } })
@@ -295,10 +295,13 @@
   new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => draw());
 
+  // A branch is a bar the chart selects: select it and claim the hash, so the page stays on
+  // the chart. #sec-* is left to the kit, which scrolls to the section.
   function fromHash() {
-    const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+    const id = RK.hashId() || "";
     return DATA.branches.find((b) => idOf(b) === id) || null;
   }
+  if (fromHash()) RK.claimHash();
   select(fromHash() || winner);
   window.addEventListener("hashchange", () => { const b = fromHash(); if (b && b !== selected) select(b); });
 })();

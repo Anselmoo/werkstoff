@@ -313,7 +313,10 @@
     const q = (S.query || "").toLowerCase();
     const nodeEl = (n, tone, lines, extra) => {
       const g = el("g", { class: "bg-node" + (sel === n.id ? " sel" : "") + (extra && extra.dim ? " dim" : ""), tabindex: "0", role: "button",
-        "aria-label": lines.join(", ") + ". Open details", "data-id": n.id, "data-rk-node": "" });
+        "aria-label": lines.join(", ") + ". Open details", "data-id": n.id, "data-rk-node": "",
+        // RK.mark: the key brings focus back after a redraw; data-rk-text is the same text the
+        // search below matches on, so the kit's dimming agrees with this figure's own.
+        "data-rk-key": n.id, "data-rk-text": extra && extra.text });
       g.append(el("rect", { class: "bg-box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 8, fill: css("--rk-panel"),
         stroke: tone ? css(tonePal[tone] || tone) : css("--rk-border"), "stroke-width": tone ? 2 : 1.5,
         "stroke-dasharray": extra && extra.dashed ? "6 4" : null }));
@@ -333,11 +336,13 @@
       svg.append(g); return g;
     };
     const dimIf = (n, text) => q && !text.toLowerCase().includes(q);
+    const textOf = { marker: (n) => n.title + " " + (n.p ? n.p.plugin : ""), beat: (n) => n.title + " " + n.kind + " " + (n.b.reason || ""), gate: (n) => n.title };
     markerNodes.forEach((n) => nodeEl(n, n.p && n.p.evidenceKind === "none" ? "--rk-bad" : null,
-      [n.label, n.p ? n.p.plugin + " · " + (n.p.evidenceKind || "undeclared") : (n.by ? n.by + " · evidence not declared" : "no declared producer")], { dim: dimIf(n, n.title + (n.p ? n.p.plugin : "")) }));
+      [n.label, n.p ? n.p.plugin + " · " + (n.p.evidenceKind || "undeclared") : (n.by ? n.by + " · evidence not declared" : "no declared producer")],
+      { dim: dimIf(n, textOf.marker(n)), text: textOf.marker(n) }));
     beatNodes.forEach((n) => nodeEl(n, n.kind, [n.title, mark[n.kind]],
-      { dashed: n.kind === "refused" || n.kind === "dropped", dim: dimIf(n, n.title + n.kind + (n.b.reason || "")) }));
-    gateNodes.forEach((n) => nodeEl(n, null, [n.title, "gated call"], { dim: dimIf(n, n.title) }));
+      { dashed: n.kind === "refused" || n.kind === "dropped", dim: dimIf(n, textOf.beat(n)), text: textOf.beat(n) }));
+    gateNodes.forEach((n) => nodeEl(n, null, [n.title, "gated call"], { dim: dimIf(n, textOf.gate(n)), text: textOf.gate(n) }));
     S.figure.append(svg);
   };
 
@@ -347,7 +352,11 @@
   new MutationObserver(() => redraw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   const themeBtn = RK.$("#rk-theme"); if (themeBtn) themeBtn.addEventListener("click", () => setTimeout(redraw, 0));
   const firstBlocked = beatNodes.find((n) => n.kind === "blocked");
-  const hashed = location.hash.startsWith("#beat-") ? beatNodes[Number(location.hash.slice(6))] : null;
+  // #beat-<n> names a beat the graph selects: select it, claim the hash, stay on the graph.
+  // #problem-*, #refused-* and #sec-* are cards and sections below; the kit scrolls to them.
+  const beatNo = RK.hashId("beat-");
+  const hashed = beatNo !== null && /^\d+$/.test(beatNo) ? beatNodes[Number(beatNo)] : null;
+  if (hashed) RK.claimHash();
   if (hashed) select(hashed.id); else if (firstBlocked) select(firstBlocked.id); else overview();
 
   RK.init();

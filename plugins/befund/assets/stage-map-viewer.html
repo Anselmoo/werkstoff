@@ -22,8 +22,8 @@
   #map { position: absolute; inset: 0; cursor: grab; }
   #map.dragging { cursor: grabbing; }
   #map:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; }
-  .rk-hud { max-width: min(520px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
-  .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .rk-hud { max-width: min(520px, calc(100% - var(--rk-open-w) - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
   .panel { background: var(--rk-panel); border: 1px solid var(--rk-border);
     border-radius: var(--radius-panel); padding: var(--space-3); }
   /* R4: a legend a reader gets without clicking anything. Every swatch is a <canvas> painted
@@ -53,8 +53,6 @@
   /* Says how many cycle numbers draw() left out because no spot for their tag was clear.
      It lives in the HUD, so the note itself can never cover a stage. */
   #lodnote { border-color: var(--cycle); color: var(--rk-text); font-size: 12px; line-height: 1.45; }
-  /* Where RK.fail() puts its panel when the page has no data. */
-  #rk-content { position: relative; z-index: 9; }
   .rk-section h2 { scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
 </style>
 </head>
@@ -124,7 +122,9 @@ const d3 = window.d3;
 const DATA = RK.readData("python3 plugins/befund/scripts/build_stage_map_html.py --stage-graph <stage_graph.json> --file-stage-index <file_stage_index.json> --template plugins/befund/assets/stage-map-viewer.html --d3 plugins/befund/assets/inline-d3.html --tokens plugins/befund/assets/tokens.css --out STAGE_MAP.html");
 const S = RK.stage();
 const stageEl = S.figure;
-const hideStage = () => { document.getElementById("rk-stage").hidden = true; };
+// RK.fail() puts its panel in the HUD, on the first screen; with no data there is nothing
+// for the legend and the interaction hint to explain, so they go.
+const hideStage = () => { for (const id of ["legendpanel", "hint"]) document.getElementById(id).hidden = true; };
 
 if (!DATA || !DATA.nodes) {
   if (DATA) RK.fail("The data in this file has no stage list. Re-run befund-stage-map to regenerate it.", "befund-stage-map");
@@ -916,18 +916,24 @@ searchEl.addEventListener("input", () => {
   requestDraw();
 });
 
-// ── Deep links: #stage-<id> selects and frames a stage; #finding-<id> opens a finding ──
-function openHashFinding() {
-  const id = decodeURIComponent(location.hash.slice(1));
-  const el = document.getElementById(id);
-  if (el && el.tagName === "DETAILS") { el.open = true; el.scrollIntoView(); }
-}
+// ── Deep links. #stage-<id> selects and frames a stage. #finding-<id> names a finding the
+// map can show -- its stage -- so it selects that stage the same way and stays beside the
+// figure. Both claim the hash; anything else (#sec-*, a finding with no stage) is left to
+// the kit, which opens and scrolls to it. Returns whether the map selected something.
+const cardId = f => "finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-");
 function applyHash() {
-  const id = decodeURIComponent(location.hash.slice(1));
-  if (id.startsWith("stage-")) {
-    const n = byId.get(id.slice(6));
-    if (n) pick(n);
-  } else openHashFinding();
+  const id = RK.hashId() || "";
+  let n = null;
+  if (id.startsWith("stage-")) n = byId.get(id.slice(6)) || null;
+  else if (id.startsWith("finding-")) {
+    const f = FINDINGS.find(x => cardId(x) === id);
+    const sid = f && (f.stage || (f.stages || [])[0]);
+    n = sid ? byId.get(sid) || null : null;
+  }
+  if (!n) return false;
+  pick(n);
+  RK.claimHash();
+  return true;
 }
 addEventListener("hashchange", applyHash);
 
@@ -975,9 +981,7 @@ if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListe
 RK.init();
 // A deep link is honoured once the layout settles; otherwise the worst finding's stage is open
 // from the start, so the side panel shows its drill-down before anything is clicked.
-if (location.hash) {
-  applyHash();
-} else {
+if (!applyHash()) {
   const first = FINDINGS.find(f => f.stage && byId.has(f.stage));
   if (first) { selected = first.stage; renderDrawer(); requestDraw(); } else renderOverview();
 }

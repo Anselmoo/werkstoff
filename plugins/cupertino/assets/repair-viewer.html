@@ -11,8 +11,10 @@
 <!--__REPORT_KIT__-->
 <style>
   /* the legend floats top-right here: the bottom edge belongs to the comparison */
-  .rk-legend-float.ba-legend { left: auto; right: var(--space-3); bottom: auto; top: var(--space-3); max-width: min(440px, 36%); font-size: 0.78rem; line-height: 1.35; }
-  .rk-stage.rk-drawer-open .ba-legend { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .rk-legend-float.ba-legend { left: auto; right: var(--space-3); bottom: auto; top: var(--space-3); max-width: min(440px, calc((100% - var(--rk-open-w)) * 0.36)); font-size: 0.78rem; line-height: 1.35; }
+  /* HUD and legend share the top edge: together they never take more than the figure column. */
+  .rk-hud { max-width: min(560px, calc((100% - var(--rk-open-w)) * 0.64 - 3 * var(--space-3))); }
+  .rk-stage.rk-drawer-open .ba-legend { right: calc(var(--rk-open-w) + var(--space-3)); }
   .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
   .rk-drawer-body dl.defs dt { font-weight: 600; white-space: nowrap; }
   .rk-drawer-body dl.defs dd { margin: 0; overflow-wrap: anywhere; }
@@ -136,7 +138,7 @@
   let lastGroup = null;
   checks.forEach((x, i) => {
     if (x.group !== lastGroup) { strip.append(h("span", { class: "ba-group", text: GROUP[x.group] || x.group })); lastGroup = x.group; }
-    const chip = h("button", { class: "ba-chip " + x.tone, type: "button", "aria-pressed": "false", title: x.criterion + " — " + (x.c.detail || ""),
+    const chip = h("button", { class: "ba-chip " + x.tone, type: "button", "aria-pressed": "false", "data-rk-key": x.id, title: x.criterion + " — " + (x.c.detail || ""),
       "aria-label": (GROUP[x.group] || x.group) + " " + x.id + ": " + x.criterion + ", " + WORD[x.state] },
       GL[x.tone] + " " + x.id + " " + WORD[x.state], x.shot ? null : h("span", { class: "ba-noimg", text: " · no image" }));
     chip.addEventListener("click", () => pickCheck(i));
@@ -177,6 +179,17 @@
 
   function layout() {
     area.textContent = "";
+    // Too narrow for HUD and legend side by side (a phone): the legend drops below the HUD.
+    const hudEl = RK.$(".rk-hud"), legEl = RK.$(".ba-legend");
+    if (legEl) {
+      legEl.style.top = "";
+      if (hudEl) {
+        const a = hudEl.getBoundingClientRect(), b = legEl.getBoundingClientRect();
+        if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+          legEl.style.top = Math.round(a.bottom - RK.$("#rk-stage").getBoundingClientRect().top + 8) + "px";
+        }
+      }
+    }
     // The strip sits under whichever floating panel reaches lower: the HUD or the legend.
     const f0 = S.figure.getBoundingClientRect().top;
     let under = 0;
@@ -307,20 +320,22 @@
   S.onResize(() => layout());
   RK.init();
   paintChips();
+  // A finding the figure can show (it has a check, so a chip) is selected and the hash
+  // claimed: the page stays on the figure. A finding with no check, or #sec-*, is a card
+  // below, and the kit opens and scrolls to it.
   const fromHash = () => {
-    const id = decodeURIComponent(location.hash.slice(1));
-    if (!id.startsWith("finding-")) return false;
+    const id = RK.hashId("finding-") ? RK.hashId() : null;
+    if (!id) return false;
     const f = (D.findings || []).find((y) => fid(y) === id);
     if (!f) return false;
     const i = checks.findIndex((x) => x.findingId === f.id);
-    if (i >= 0) pickCheck(i); else { selected = -1; paintChips(); showOverview(); }
+    if (i < 0) return false;
+    pickCheck(i);
+    RK.claimHash();
     return true;
   };
   window.addEventListener("hashchange", fromHash);
-  let linked = false;
-  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
-  window.addEventListener("load", () => { if (linked) window.scrollTo(0, 0); });
-  linked = fromHash();
+  const linked = fromHash();
   if (!linked) {
     if (selected >= 0) pickCheck(selected); else showOverview();
   }

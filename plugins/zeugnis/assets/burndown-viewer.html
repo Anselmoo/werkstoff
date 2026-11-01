@@ -54,7 +54,7 @@
   .mx-row:focus-visible { stroke: var(--rk-focus); stroke-width: 3; }
   .mx-row[aria-pressed="true"] { stroke: var(--rk-text); stroke-width: 2.5; }
   .fig .t-mod { fill: var(--rk-text); font-family: var(--font-mono); font-size: 13px; pointer-events: none; }
-  .fig .t-hot { fill: var(--rk-warn); font-size: 12px; font-weight: 600; }
+  .fig .t-hot { fill: var(--rk-warn-text); font-size: 12px; font-weight: 600; }
   .fig .track { fill: var(--rk-panel-2); stroke: var(--rk-border); pointer-events: none; }
   .fig .link-seg { stroke: var(--rk-muted); stroke-width: 2; pointer-events: none; }
   .fig .m-before { fill: var(--rk-panel); stroke: var(--rk-muted); stroke-width: 3; pointer-events: none; }
@@ -68,7 +68,7 @@
   .mut-track { display: block; position: relative; height: 16px; background: var(--rk-panel-2); border-radius: var(--radius-sm); }
   .mut-track .mut-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); }
   .mut-figures { color: var(--rk-muted); font-size: 0.84rem; }
-  .mut-figures .hot { color: var(--rk-warn); font-weight: 600; }
+  .mut-figures .hot { color: var(--rk-warn-text); font-weight: 600; }
   .mut-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
   .mut-detail > div { min-width: 0; }
   .mut-detail h4 { margin: 0 0 var(--space-1); }
@@ -221,6 +221,10 @@
   const M = D.mutation;
   const pct = (v) => (v === null || v === undefined ? "n/a" : (v * 100).toFixed(1) + " %");
   const modSlug = (mod) => "module-" + String(mod).replace(/[^A-Za-z0-9_.-]/g, "-");
+  // Mutants the tool generated but never ran (a timeout, an interrupted shard). They are in
+  // neither side of the score, so a module with any is shown as "not checked", never hidden.
+  const notChecked = (m) => [m.before.notChecked || 0, m.after.notChecked || 0];
+  const notCheckedText = (m) => { const [b, a] = notChecked(m); return b || a ? "not checked " + b + " → " + a : ""; };
   const CAP = 8;
 
   // A mutant list shows CAP rows and a button that opens the rest in place.
@@ -266,7 +270,8 @@
       pct(m.before.score) + " → " + pct(m.after.score),
       m.after.scoreExcludingEquivalent !== undefined ? " (" + pct(m.after.scoreExcludingEquivalent) + " without equivalents)" : null,
       " · ", h("span", { class: untested > 0 ? "hot" : "" }, "◌ untested " + (m.before.noTests || 0) + " → " + untested),
-      " · equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+      " · equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0),
+      notCheckedText(m) ? [" · ", h("span", { class: notChecked(m)[1] > 0 ? "hot" : "" }, notCheckedText(m))] : null);
     const tone = alive.length || untested > 0 ? "warn" : "ok";
     const id = modSlug(m.module);
     return h("details", { class: "rk-finding " + tone, id, "data-rk-search": true },
@@ -377,7 +382,7 @@
     for (const p of passes) {
       const cx = x(p.passNumber), cy = y(p.cumulativeClosed);
       svgText(svg, { class: "t-val", x: cx, y: cy - 16, "text-anchor": "middle" }, p.cumulativeClosed + (p.closed ? " (+" + p.closed + ")" : " (+0)"));
-      const g = svgEl("g", { class: "pass-point" + (p.closed === 0 ? " stalled" : ""), tabindex: 0, role: "button",
+      const g = svgEl("g", { class: "pass-point" + (p.closed === 0 ? " stalled" : ""), tabindex: 0, role: "button", "data-rk-key": "pass:" + p.passNumber,
         "aria-pressed": String(p.passNumber === selectedPass),
         "aria-label": describe(p) + ". Press Enter for details." }, svg);
       svgEl("circle", { cx, cy, r: 20, fill: "transparent" }, g);
@@ -430,9 +435,10 @@
       const y0 = rowsY + i * rowH, cy = y0 + rowH / 2;
       const untested = m.after.noTests || 0;
       const sel = m.module === selectedModule;
-      const label = m.module + ": score " + moduleFigures(m) + ", untested " + (m.before.noTests || 0) + " to " + untested + ". Press Enter for its mutants.";
+      const nc = notCheckedText(m);
+      const label = m.module + ": score " + moduleFigures(m) + ", untested " + (m.before.noTests || 0) + " to " + untested + (nc ? ", " + nc.replace("→", "to") : "") + ". Press Enter for its mutants.";
       const row = svgEl("rect", { class: "mx-row", x: padX / 2, y: y0 + 3, width: W - padX, height: rowH - 6, rx: 6, tabindex: 0, role: "button",
-        "aria-pressed": String(sel), "aria-label": label }, svg);
+        "aria-pressed": String(sel), "aria-label": label, "data-rk-key": "module:" + m.module, "data-rk-text": m.module }, svg);
       const name = svgText(svg, { class: "t-mod", x: padX, y: cy, "dominant-baseline": "middle", style: "font-size:" + px(13) }, "");
       fitText(name, m.module, labelW);
       svgEl("rect", { class: "track", x: tx0, y: cy - trackH / 2, width: tx1 - tx0, height: trackH, rx: 4 }, svg);
@@ -447,9 +453,12 @@
       if (hasA) svgEl("circle", { class: "m-after", cx: sx(a), cy: ya, r: rad }, svg);
       if (hasB) svgEl("circle", { class: "m-before", cx: sx(b), cy: yb, r: rad }, svg);
       const fx = W - padX;
-      svgText(svg, { class: "t-score", x: fx, "text-anchor": "end", y: cy - 8 * k, style: "font-size:" + px(15) }, moduleFigures(m));
-      svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, "text-anchor": "end", y: cy + 10 * k, style: "font-size:" + px(12) }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
-      svgText(svg, { class: "t-sub", x: fx, "text-anchor": "end", y: cy + 27 * k, style: "font-size:" + px(12) }, "equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+      // A fourth line ("not checked") lifts the block so it stays centred in the row.
+      const lift = nc ? 9 * k : 0;
+      svgText(svg, { class: "t-score", x: fx, "text-anchor": "end", y: cy - 8 * k - lift, style: "font-size:" + px(15) }, moduleFigures(m));
+      svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, "text-anchor": "end", y: cy + 10 * k - lift, style: "font-size:" + px(12) }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
+      svgText(svg, { class: "t-sub", x: fx, "text-anchor": "end", y: cy + 27 * k - lift, style: "font-size:" + px(12) }, "equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+      if (nc) svgText(svg, { class: "t-sub" + (notChecked(m)[1] > 0 ? " t-hot" : ""), x: fx, "text-anchor": "end", y: cy + 44 * k - lift, style: "font-size:" + px(12) }, nc);
       const tipOn = (evt) => S.tip.show(evt, m.module, h("div", { text: "score " + moduleFigures(m) + " · alive " + (m.after.survived || 0) + " · untested " + untested }));
       row.addEventListener("mouseenter", tipOn); row.addEventListener("mousemove", tipOn); row.addEventListener("focus", tipOn);
       row.addEventListener("mouseleave", () => S.tip.hide()); row.addEventListener("blur", () => S.tip.hide());
@@ -521,6 +530,7 @@
       m.shard ? meta("Shard", m.shard) : null, meta("Score before → after", moduleFigures(m)),
       m.after.scoreExcludingEquivalent !== undefined ? meta("Score without equivalents", pct(m.after.scoreExcludingEquivalent)) : null,
       meta("Untested before → after", (m.before.noTests || 0) + " → " + untested), meta("Unreached", m.unreached || 0),
+      meta("Not checked before → after", notChecked(m).join(" → ")),
       h("h3", { text: "Killed (" + kills.length + ")" }),
       mutantList(kills, (k) => [k.mutantId, [k.test || "killed in the re-measure (no proof recorded)", k.proof ? h("div", {}, "proof: ", h("code", {}, k.proof)) : null]]),
       h("h3", { text: "Still alive (" + alive.length + ")" }),
@@ -636,7 +646,7 @@
   function openDefault() {
     if (view === "mutation") {
       if (MUT.error || !MUT.modules.length) { overview(); return; }
-      const hashed = MUT.modules.find((m) => "#" + modSlug(m.module) === decodeURIComponent(location.hash));
+      const hashed = hashedModule();
       const worst = MUT.modules.filter((m) => m.after.score !== null && m.after.score !== undefined).sort((a, b) => a.after.score - b.after.score)[0] || MUT.modules[0];
       selectModule((hashed || MUT.modules.find((m) => m.module === selectedModule) || worst).module);
     } else if (passes.length) selectPass(selectedPass !== null ? selectedPass : lastPassNumber);
@@ -645,28 +655,26 @@
   const switchTo = (next) => { setView(next); openDefault(); };
   RK.$("#tabLedgerBtn").addEventListener("click", () => switchTo("ledger"));
   RK.$("#tabMutationBtn").addEventListener("click", () => switchTo("mutation"));
-  const wantMutation = new URLSearchParams(location.search).get("view") === "mutation" || /^#(mut-|module-|equivalent-|rejected-)/.test(location.hash);
+  // Deep links. #module-<path> names a module the figure selects: select it in the drawer and
+  // claim the hash, so the figure stays on screen. Anything else (#finding-*, #sec-*, a
+  // rejected claim) is a card or section below: show the view that holds it and leave the
+  // scroll to the kit, which opens the card and scrolls to it.
+  function hashedModule() {
+    const id = RK.hashId("module-");
+    return id && MUT && !MUT.error ? MUT.modules.find((m) => modSlug(m.module) === "module-" + id) || null : null;
+  }
+  const hashTarget = () => { const id = RK.hashId(); return id ? document.getElementById(id) : null; };
+  const viewOf = (t) => (t && mutationGroup.contains(t) ? "mutation" : t && ledgerGroup.contains(t) ? "ledger" : null);
+  const wantMutation = new URLSearchParams(location.search).get("view") === "mutation" || !!hashedModule() || viewOf(hashTarget()) === "mutation";
   setView(wantMutation ? "mutation" : "ledger");
-  // a deep link into a finding row opens the finding it names; a #module-… link selects the module
-  // in the figure's drawer without scrolling the figure away.
   const openHash = () => {
-    const id = decodeURIComponent(location.hash.slice(1));
-    const t = document.getElementById(id);
-    if (!t) return;
-    if (t.tagName === "DETAILS") t.open = true;
-    if (/^module-/.test(id)) { openDefault(); window.scrollTo(0, 0); return; }
-    t.scrollIntoView();
+    const v = hashedModule() ? "mutation" : viewOf(hashTarget());
+    if (v && v !== view) switchTo(v);
+    if (hashedModule()) { openDefault(); RK.claimHash(); }
   };
   window.addEventListener("hashchange", openHash);
   openDefault();
-  if (location.hash) {
-    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    if (t && t.tagName === "DETAILS") t.open = true;
-    if (t && !/^module-/.test(t.id)) t.scrollIntoView();
-    // The browser scrolls a #module-… anchor to its row below the stage on load; the module is
-    // already selected in the drawer, so put the figure back on screen.
-    if (t && /^module-/.test(t.id)) { window.scrollTo(0, 0); window.addEventListener("load", () => { for (const ms of [0, 120, 260]) setTimeout(() => window.scrollTo(0, 0), ms); }); }
-  }
+  if (hashedModule()) RK.claimHash();
   // Esc lets go of the selected pass or module (the kit closes the drawer itself).
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && (selectedPass !== null || selectedModule !== null)) { selectedPass = null; selectedModule = null; draw(true); }

@@ -10,14 +10,14 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  .rk-hud { max-width: min(560px, calc(100% - 2 * var(--space-3))); }
+  .rk-hud { max-width: min(560px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .rk-hud .verdict { font-size: 0.86rem; }
-  .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); max-width: min(760px, calc(100% - 2 * var(--space-3))); }
+  .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); max-width: min(760px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .legend.rk-legend-float p { margin: 0 0 var(--space-1); }
   .legend.rk-legend-float p:last-child { margin: 0; }
   .legend strong { color: var(--rk-text); }
   .rk-hint { bottom: auto; top: var(--space-3); }
-  .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
   .howto { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.86rem; }
   .howto dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
   .howto dd { margin: 0; }
@@ -42,20 +42,20 @@
   .mx .cell.t-bad { fill: color-mix(in srgb, var(--rk-bad) 18%, var(--rk-panel)); stroke: var(--rk-bad); }
   .mx .cell.t-warn { fill: color-mix(in srgb, var(--rk-warn) 18%, var(--rk-panel)); stroke: var(--rk-warn); }
   .mx .cell.t-flat { fill: var(--rk-panel-2); stroke: var(--rk-border); stroke-dasharray: 4 3; }
-  .mx .g-ok { fill: var(--rk-ok); }
-  .mx .g-bad { fill: var(--rk-bad); }
-  .mx .g-warn { fill: var(--rk-warn); }
+  .mx .g-ok { fill: var(--rk-ok-text); }
+  .mx .g-bad { fill: var(--rk-bad-text); }
+  .mx .g-warn { fill: var(--rk-warn-text); }
   .mx .g-flat { fill: var(--rk-flat); }
-  .mx .landedtag { font-size: 11.5px; font-weight: 700; fill: var(--rk-ok); }
+  .mx .landedtag { font-size: 11.5px; font-weight: 700; fill: var(--rk-ok-text); }
   .crit { margin: 0 0 var(--space-2); }
   .crit .w { font-weight: 700; }
-  .crit .w.ok { color: var(--rk-ok); }
-  .crit .w.bad { color: var(--rk-bad); }
-  .crit .w.warn { color: var(--rk-warn); }
+  .crit .w.ok { color: var(--rk-ok-text); }
+  .crit .w.bad { color: var(--rk-bad-text); }
+  .crit .w.warn { color: var(--rk-warn-text); }
   .crit .w.flat { color: var(--rk-muted); }
   .crit p { margin: 0; color: var(--rk-muted); overflow-wrap: anywhere; }
   .rk-drawer-body ul.files { margin: 0; padding-left: var(--space-4); font-family: var(--font-mono); font-size: 0.8rem; overflow-wrap: anywhere; }
-  .rk-drawer-body .oos { color: var(--rk-bad); font-weight: 600; }
+  .rk-drawer-body .oos { color: var(--rk-bad-text); font-weight: 600; }
   .rk-drawer-body dl.rows { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
   .rk-drawer-body dl.rows dt { color: var(--rk-muted); }
   .rk-drawer-body dl.rows dd { margin: 0; overflow-wrap: anywhere; font-family: var(--font-mono); font-size: 0.8rem; }
@@ -300,7 +300,7 @@
       const y = y0 + HEAD + ri * (RH + GAP);
       const t = TONE[x.outcome] || "flat";
       const wordOut = (WORD[x.outcome] || x.outcome);
-      const g = mk("g", { class: "row" + (x.outcome === "landed" ? " landed" : ""), tabindex: "0", role: "button", "data-id": x.id,
+      const g = mk("g", { class: "row" + (x.outcome === "landed" ? " landed" : ""), tabindex: "0", role: "button", "data-id": x.id, "data-rk-key": x.id,
         "aria-label": "Candidate " + x.id + ", " + x.angle + ", " + wordOut + ". Open the referee's evidence." }, svg);
       rowEls[x.id] = g;
       mk("rect", { class: "rowbg", x: x0 - 4, y: y - 4, width: mw + 8, height: RH + 8, rx: 8 }, g);
@@ -339,9 +339,12 @@
     if (selId) markRow(selId);
   }
   S.onResize(draw);
-  const hashed = decodeURIComponent((location.hash.match(/^#cand-(.+)$/) || [])[1] || "");
+  // #cand-<id> names a candidate the matrix selects: select it, stay beside the figure.
+  const hashed = RK.hashId("cand-") || "";
   const worst = c.find((x) => x.outcome === "rejected") || c.find((x) => x.outcome === "cannot_judge" || x.outcome === "unrefereed") || c[0];
-  const start = (c.find((x) => "cand-" + String(x.id).replace(/[^A-Za-z0-9_.-]/g, "-") === "cand-" + hashed) || landed || worst);
+  const fromHash = hashed ? c.find((x) => String(x.id).replace(/[^A-Za-z0-9_.-]/g, "-") === hashed) : null;
+  if (fromHash) RK.claimHash();
+  const start = fromHash || landed || worst;
   if (start) select(start.id);
 
   content.append(section("breaker", "The circuit breaker", RK.glance({

@@ -16,7 +16,7 @@
      build-order graph is its second view, and the rules behind a node, a ribbon or
      a unit open in the drawer. */
   .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
-  .rk-hud { max-width: min(920px, calc(100% - 2 * var(--space-3))); }
+  .rk-hud { max-width: min(920px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 0.82rem;
             padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
   .legend .key { display: inline-flex; align-items: center; gap: var(--space-2); }
@@ -396,7 +396,7 @@
       const d = "M" + x0 + "," + sy + "C" + xm + "," + sy + " " + xm + "," + ty + " " + x1 + "," + ty +
                 "L" + x1 + "," + (ty + hgt) + "C" + xm + "," + (ty + hgt) + " " + xm + "," + (sy + hgt) + " " + x0 + "," + (sy + hgt) + "Z";
       const p = mk("path", { d: d, class: "slink", fill: OUTCOME_COLOR[lk.outcome] || "var(--rk-muted)",
-        tabindex: "0", role: "button" }, gLink);
+        tabindex: "0", role: "button", "data-rk-key": "link:" + lk.source + ">" + lk.target }, gLink);
       p.setAttribute("aria-label", lk.value + " rule" + (lk.value === 1 ? "" : "s") + " from " + nodeLabel[lk.source] + " to " + nodeLabel[lk.target] + ", ending " + lk.outcome + ". Press Enter for the rules.");
       p._lk = lk;
       const tip = (e) => S.tip.show(e, lk.value + " rule" + (lk.value === 1 ? "" : "s") + " → " + lk.outcome,
@@ -418,7 +418,7 @@
       lbl.appendChild(txt(st.label));
       st.nodes.forEach((n) => {
         const p = pos[n.id];
-        const g = mk("g", { class: "snode", tabindex: "0", role: "button", "data-id": n.id, "aria-pressed": "false" }, gNode);
+        const g = mk("g", { class: "snode", tabindex: "0", role: "button", "data-id": n.id, "data-rk-key": "node:" + n.id, "aria-pressed": "false" }, gNode);
         g.setAttribute("aria-label", "Filter rules by " + n.label + ", " + n.count + " rules. Press Enter for the rules.");
         const barH = Math.max(1, p.y1 - p.y0);
         const hitH = Math.max(18, barH + 4);
@@ -523,7 +523,7 @@
     };
     units.forEach((u) => {
       const p = at[u.id];
-      const g = mk("g", { class: "unode" + (selUnit === u.id ? " sel" : ""), tabindex: "0", role: "button" }, gN);
+      const g = mk("g", { class: "unode" + (selUnit === u.id ? " sel" : ""), tabindex: "0", role: "button", "data-rk-key": "unit:" + u.id }, gN);
       g.setAttribute("aria-label", "Unit " + u.id + ", " + u.state + ". Press Enter for what it owns and must not know.");
       mk("rect", { class: "box", x: p.x, y: p.y, width: BW, height: BH, fill: "var(--rk-panel-2)",
                    stroke: STATE_COLOR[u.state] || "var(--rk-border)", "stroke-width": "2" }, g);
@@ -626,12 +626,14 @@
 
   /* A deep link to a rule opens it in the drawer too; with none, the drawer opens
      on the overview, which already names the rules that leak. */
+  /* A rule opens in the drawer beside the figure (claimed: the page stays at the top);
+     #sec-* is left to the kit, which scrolls to the section. */
   function fromHash() {
-    const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+    const id = RK.hashId() || "";
     return DATA.findings.find((f) => cardId(f) === id) || null;
   }
   const first = fromHash();
-  if (first) openRule(first); else openOverview();
+  if (first) { RK.claimHash(); openRule(first); } else openOverview();
   window.addEventListener("hashchange", () => { const f = fromHash(); if (f) openRule(f); });
 })();
 </script>

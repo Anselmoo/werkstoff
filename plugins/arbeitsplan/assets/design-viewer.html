@@ -10,12 +10,12 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  .sub .synthetic { color: var(--rk-warn); font-weight: 600; }
-  .rk-hud { max-width: min(400px, calc(100% - 2 * var(--space-3))); }
+  .sub .synthetic { color: var(--rk-warn-text); font-weight: 600; }
+  .rk-hud { max-width: min(400px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .rk-hud .verdict { font-size: 0.84rem; }
-  .rk-legend-float { max-width: min(400px, calc(100% - 2 * var(--space-3))); }
+  .rk-legend-float { max-width: min(400px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .rk-hint { bottom: auto; top: var(--space-3); }
-  .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
   .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); }
   .legend.rk-legend-float p { margin: 0 0 var(--space-1); }
   .legend.rk-legend-float p:last-child { margin: 0; }
@@ -36,7 +36,7 @@
   .detail dl, .rk-drawer-body dl.rows { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
   .detail dt, .rk-drawer-body dl.rows dt { color: var(--rk-muted); white-space: nowrap; }
   .detail dd, .rk-drawer-body dl.rows dd { margin: 0; overflow-wrap: anywhere; }
-  .rej { color: var(--rk-bad); font-weight: 600; }
+  .rej { color: var(--rk-bad-text); font-weight: 600; }
   .rk-drawer-body .nbrs { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin: 0; padding: 0; list-style: none; }
   .figsvg { display: block; margin: 0 auto; }
   /* the graph: every colour is a --rk-* role, so the light theme re-points it */
@@ -61,9 +61,9 @@
   .node .l2 { font-size: 11px; fill: var(--rk-muted); }
   .node .rejtext { font-size: 11px; fill: var(--rk-text); font-weight: 600; }
   .node .st { font-size: 13px; font-weight: 700; }
-  .node .st-ok { fill: var(--rk-ok); }
-  .node .st-bad { fill: var(--rk-bad); }
-  .node .st-warn { fill: var(--rk-warn); }
+  .node .st-ok { fill: var(--rk-ok-text); }
+  .node .st-bad { fill: var(--rk-bad-text); }
+  .node .st-warn { fill: var(--rk-warn-text); }
   .node .st-flat { fill: var(--rk-flat); }
 </style>
 </head>
@@ -234,7 +234,7 @@ function drawGraph(svg, items, opts) {
     const p = at[it.id];
     const st = STATUS[it.status] || null;
     const tone = it.rejected ? "bad" : (st ? st[1] : "none");
-    const g = mk("g", { class: "node t-" + tone, tabindex: "0", role: "button", "data-id": it.id,
+    const g = mk("g", { class: "node t-" + tone, tabindex: "0", role: "button", "data-id": it.id, "data-rk-key": it.id,
                         "aria-label": it.id + (it.status ? ", " + it.status : "") + (it.rejected ? ", rejected by the validator" : "") + ". Open details." }, gN);
     const r = mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 7 }, g);
     if (it.rejected) r.setAttribute("stroke-width", "2.5");
@@ -473,7 +473,10 @@ function render() {
     S.onResize(redraw);
 
     const first = items.find((it) => it.rejected) || items.find((it) => STATUS[it.status] && STATUS[it.status][0] === "✗") || items[0];
-    const fromHash = decodeURIComponent((location.hash.match(/^#node-(.+)$/) || [])[1] || "");
+    // #node-<id> names a node the graph selects: select it and stay beside the figure.
+    // Any other hash (#sec-*, #gate-*, #rejection-*) is a card below; the kit scrolls there.
+    const fromHash = RK.hashId("node-") || "";
+    if (byId[fromHash]) RK.claimHash();
     const start = byId[fromHash] ? fromHash : (first && first.id);
     if (start) select(start);
 

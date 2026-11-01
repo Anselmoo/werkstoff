@@ -204,7 +204,7 @@
 
     sevs.forEach((s, j) => {
       const x = labelW + cw * j + cw / 2, t = RK.toneFor(s), list = colOf(s);
-      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(null, s), "aria-label": "Severity " + s + ": " + plural(list.length, "finding") });
+      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(null, s), "data-rk-key": key(null, s), "aria-label": "Severity " + s + ": " + plural(list.length, "finding") });
       g.append(sv("rect", { x: x - cw / 2 + gap / 2, y: top - 36, width: cw - gap, height: 32, fill: "transparent" }),
         tx(x, top - 20, GLYPH[t] + " " + s, "colh"), tx(x, top - 6, plural(list.length, "finding"), "mute"));
       press(g, () => pick(null, s)); tipFor(g, "Every " + s + " finding", list, "no " + s + " finding");
@@ -213,7 +213,7 @@
 
     fams.forEach((fa, i) => {
       const y = top + ch * i, row = rowOf(fa), info = famInfo[fa];
-      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(fa, null),
+      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(fa, null), "data-rk-key": key(fa, null),
         "aria-label": "Family " + fa + ", " + (FAMNAME[fa] || "") + ": " + plural(row.length, "finding") });
       g.append(sv("rect", { x: 8, y: y + gap / 2, width: labelW - 16, height: ch - gap, fill: "transparent" }),
         tx(16, y + ch / 2 - 6, fa + " · " + (FAMNAME[fa] || "other"), "colh", "start"),
@@ -223,7 +223,7 @@
       sevs.forEach((s, j) => {
         const list = cellOf(fa, s), t = RK.toneFor(s), n = list.length;
         const x = labelW + cw * j + gap / 2;
-        const cell = sv("g", { class: "hm-mark hm-cell " + (n ? t : "zero"), tabindex: "0", role: "button", "data-key": key(fa, s),
+        const cell = sv("g", { class: "hm-mark hm-cell " + (n ? t : "zero"), tabindex: "0", role: "button", "data-key": key(fa, s), "data-rk-key": key(fa, s),
           "aria-label": "Family " + fa + ", " + s + ": " + plural(n, "finding") });
         const pct = n ? Math.round(14 + 46 * n / maxCell) : 0;
         cell.append(sv("rect", { x, y: y + gap / 2, width: cw - gap, height: ch - gap, rx: 8,
@@ -329,18 +329,18 @@
   // ---- boot ------------------------------------------------------------------------------------------
   S.onResize((w, hgt) => draw(w, hgt));
   RK.init();
+  // A finding opens in the drawer beside the heatmap: claim the hash so the page stays on
+  // the figure. #sec-* is left to the kit, which scrolls to the section.
   const fromHash = () => {
-    const id = decodeURIComponent(location.hash.slice(1));
-    const x = f.find((y) => idOf.get(y) === id);
+    const id = RK.hashId();
+    const x = id ? f.find((y) => idOf.get(y) === id) : null;
     if (!x) return false;
     showFinding(x);
+    RK.claimHash();
     return true;
   };
   window.addEventListener("hashchange", fromHash);
-  let linked = false;
-  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
-  window.addEventListener("load", () => { if (linked) window.scrollTo(0, 0); });
-  linked = fromHash();
+  const linked = fromHash();
   if (!linked) {
     // Open on the worst populated cell (not filtering the list: the reader has not asked for that yet).
     let worst = null;

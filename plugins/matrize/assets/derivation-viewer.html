@@ -21,9 +21,9 @@ p.legend {
 }
 p.legend span { display: inline-flex; align-items: center; gap: 6px; }
 .swatch { width: 10px; height: 10px; border-radius: var(--radius-sm); display: inline-block; background: currentColor; }
-.grade-a { color: var(--rk-ok); }
-.grade-b { color: var(--rk-warn); }
-.grade-c { color: var(--rk-bad); }
+.grade-a { color: var(--rk-ok-text); }
+.grade-b { color: var(--rk-warn-text); }
+.grade-c { color: var(--rk-bad-text); }
 .note { color: var(--rk-muted); font-size: .84rem; margin: var(--space-2) 0 0; }
 .empty { color: var(--rk-muted); padding: var(--space-4); border: 1px dashed var(--rk-border);
          border-radius: var(--radius-panel); }
@@ -34,14 +34,14 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
 /* The contrast figure: dot with a stem from the 1:1 floor, a printed value, a verdict WORD.
    Colour is redundant to position, shape and text throughout. Drawn by the page script to
    fill the stage; the ratios it prints come from the data island, computed by contrast.py. */
-.rk-hud { max-width: min(560px, calc(100% - 2 * var(--space-3))); }
+.rk-hud { max-width: min(560px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
 .rk-hud .verdict { font-size: 0.86rem; }
-.legend.rk-legend-float { display: block; font-size: 0.78rem; padding: var(--space-2) var(--space-3); max-width: min(720px, calc(100% - 2 * var(--space-3))); margin: 0; }
+.legend.rk-legend-float { display: block; font-size: 0.78rem; padding: var(--space-2) var(--space-3); max-width: min(720px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); margin: 0; }
 .legend.rk-legend-float p { margin: 0 0 var(--space-1); }
 .legend.rk-legend-float p:last-child { margin: 0; }
 .legend strong { color: var(--rk-text); }
 .rk-hint { bottom: auto; top: var(--space-3); }
-.rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+.rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
 .chart { display: block; }
 .chart .band { fill: color-mix(in srgb, var(--rk-panel) 50%, transparent); stroke: var(--rk-border); stroke-width: 1; }
 .chart .row { cursor: pointer; }
@@ -60,9 +60,9 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
 .chart .mark-mode { font-size: 12px; fill: var(--rk-muted); font-variant: small-caps; letter-spacing: .04em; }
 .chart .mark-value { font-size: 14px; fill: var(--rk-text); font-variant-numeric: tabular-nums; font-weight: 700; }
 .chart .mark-word { font-size: 12.5px; font-weight: 700; }
-.chart .w-ok { fill: var(--rk-ok); }
-.chart .w-warn { fill: var(--rk-warn); }
-.chart .w-bad { fill: var(--rk-bad); }
+.chart .w-ok { fill: var(--rk-ok-text); }
+.chart .w-warn { fill: var(--rk-warn-text); }
+.chart .w-bad { fill: var(--rk-bad-text); }
 .chart .chip-edge { stroke: var(--rk-border); stroke-width: 1; }
 .sample { display: flex; align-items: center; justify-content: center; min-height: 64px; border-radius: var(--radius-panel);
           border: 1px solid var(--rk-border); font-size: 1.15rem; font-weight: 600; margin: 0 0 var(--space-3); }
@@ -71,9 +71,9 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
 .rk-drawer-body dl.rows { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
 .rk-drawer-body dl.rows dt { color: var(--rk-muted); }
 .rk-drawer-body dl.rows dd { margin: 0; overflow-wrap: anywhere; }
-.bad-w { color: var(--rk-bad); font-weight: 700; }
-.ok-w { color: var(--rk-ok); font-weight: 700; }
-.warn-w { color: var(--rk-warn); font-weight: 700; }
+.bad-w { color: var(--rk-bad-text); font-weight: 700; }
+.ok-w { color: var(--rk-ok-text); font-weight: 700; }
+.warn-w { color: var(--rk-warn-text); font-weight: 700; }
 </style>
 </head>
 <body class="rk">
@@ -228,7 +228,7 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
     rowEls = [];
     pairs.forEach((p, i) => {
       const y = y0 + i * (RH + GAP), cy = y + RH / 2, v = verdictOf(p);
-      const g = mk("g", { class: "row", tabindex: "0", role: "button", "data-i": i,
+      const g = mk("g", { class: "row", tabindex: "0", role: "button", "data-i": i, "data-rk-key": p.role + "-" + p.mode,
         "aria-label": p.role + ", " + p.mode + " mode, ratio " + fmt(p.ratio) + ", " + v.word + ". Open details." }, svg);
       rowEls.push(g);
       mk("rect", { class: "band", x: X0 - 6, y, width: W - 2 * X0 + 12, height: RH, rx: 8 }, g);
@@ -255,8 +255,11 @@ figure { margin: var(--space-3) 0; break-inside: avoid; }
   }
   if (pairs.length) {
     S.onResize(draw);
-    const hashed = (decodeURIComponent(location.hash).match(/^#contrast-(.+)$/) || [])[1];
+    // #contrast-<pair> names a pair the chart selects: select it and claim the hash, so the
+    // page stays on the chart. #gradec-*, #sec-* and the rest are left to the kit's scroll.
+    const hashed = RK.hashId("contrast-");
     const byHash = hashed ? pairs.findIndex((p) => (p.role + "-" + p.mode).replace(/[^A-Za-z0-9_.-]/g, "-") === hashed) : -1;
+    if (byHash >= 0) RK.claimHash();
     const worst = pairs.reduce((m, p) => (p.ratio < pairs[m].ratio ? p.i : m), 0);
     select(byHash >= 0 ? byHash : worst);
   } else {

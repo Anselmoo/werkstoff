@@ -47,6 +47,26 @@ The HUD is a caption: `.verdict` is clamped to two lines and `stage()` adds a *m
 that opens the whole sentence in the drawer; `stats()` renders one row of chips. Keep the
 floating legend to one row of short labels and put each mark's long explanation in a `title`.
 
+Deep links, focus and search are the kit's, so every viewer behaves the same way:
+
+- `RK.hashId(prefix?)` reads the fragment, decoded, or `null` when it is malformed. Never call
+  `decodeURIComponent(location.hash)` yourself, because one stray `%` throws and leaves the figure blank.
+- A hash that names an item the figure selects: the viewer selects it and calls `RK.claimHash()`,
+  and the page stays at the top with the drawer open. The kit opens and scrolls to any other hash
+  (`#sec-*`, a card below).
+- Tag every clickable mark with `data-rk-key` (or `RK.mark(el, key, text)`). The drawer hands focus
+  back to that mark after a redraw, and the header search dims marks that do not match. The kit puts
+  the match count beside the search box.
+- `RK.fail()` on a stage page replaces the HUD verdict, so the failure is on the first screen.
+- Below 860 px the drawer does not open on load. Overlays are bounded by the figure column
+  (`--rk-open-w`), and the hint moves out of the way of the legend.
+- A status word in text uses `--rk-ok-text` / `--rk-bad-text` / `--rk-warn-text`, never the
+  mark hues. `check_contrast.py` (and its `--selftest`) holds every text role at 4.5:1 or above
+  on every surface in both themes.
+- `check_viewer_behaviour.py` builds every viewer state from demo data and runs
+  `viewer_behaviour.js` under Playwright, which checks these rules at five viewport sizes in
+  both themes.
+
 ## Render the example
 
 ```bash

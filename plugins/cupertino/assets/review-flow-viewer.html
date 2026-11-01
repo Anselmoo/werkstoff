@@ -233,7 +233,7 @@
     const node = svg.selectAll("g.rf-node").data(stages, (d) => d.id).join("g")
       .attr("class", (d) => "rf-node " + d.status)
       .attr("transform", (d) => `translate(${cx(d)},${cy(d)})`)
-      .attr("tabindex", 0).attr("role", "button")
+      .attr("tabindex", 0).attr("role", "button").attr("data-rk-key", (d) => d.id)
       .attr("aria-label", (d) => shortLabel(d) + ", " + STATE_WORD[d.status] + ". Show its result.")
       .on("click", (_e, d) => selectStage(d.id))
       .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectStage(d.id); } })
@@ -335,17 +335,16 @@
 
   S.onResize((w, hgt) => renderFlow(w, hgt));
   RK.init();
+  // #stage-<id> names a stage the flow selects: select it, claim the hash, stay on the figure.
   const fromHash = () => {
-    const m = /^stage-(.+)$/.exec(decodeURIComponent(location.hash.slice(1)));
-    if (!m || idx(m[1]) < 0) return false;
-    selectStage(m[1]);
+    const id = RK.hashId("stage-");
+    if (!id || idx(id) < 0) return false;
+    selectStage(id);
+    RK.claimHash();
     return true;
   };
   window.addEventListener("hashchange", fromHash);
-  let linked = false;
-  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
-  window.addEventListener("load", () => { if (linked) window.scrollTo(0, 0); });
-  linked = fromHash();
+  const linked = fromHash();
   if (!linked) {
     // Open on the decision that matters: the first recorded skip, else the first stage nobody reached, else the last that ran.
     const first = skipped[0] || notReached[0] || ran[ran.length - 1];

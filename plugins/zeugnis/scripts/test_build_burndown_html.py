@@ -249,11 +249,36 @@ class MutationTabTests(unittest.TestCase):
             self.assertEqual(alive, m["after"]["survived"] - m["after"]["equivalent"] + m["after"]["noTests"])
 
 
+    def test_not_checked_reaches_the_payload_and_is_shown(self):
+        # The builder forwards notChecked (mutants the tool generated but never ran); a
+        # viewer that drops it shows a module with 25 unrun mutants as fully measured.
+        with Repo(THREE_PASS_LEDGER) as repo:
+            (repo.root / "analysis" / "zeugnis" / "mutation_harden_summary.json").write_text(self.FIXTURE.read_text())
+            mutation = self._payload(repo)["mutation"]
+        boot = next(m for m in mutation["modules"] if m["module"] == "src/stats/bootstrap.py")
+        self.assertEqual((boot["before"]["notChecked"], boot["after"]["notChecked"]), (25, 0))
+        html = TEMPLATE.read_text(encoding="utf-8")
+        row = html[html.index("function moduleRow"):html.index("function mutationSentence")]
+        figure = html[html.index("function drawMutation"):html.index("function selectModule")]
+        drawer = html[html.index("function selectModule"):html.index("// ---- compose")]
+        for where, body in (("the module row", row), ("the figure", figure)):
+            self.assertIn("notCheckedText(m)", body, where)
+        self.assertIn('meta("Not checked before → after", notChecked(m)', drawer)
+
+
 class InteractionTests(unittest.TestCase):
     """Every control is a keyboard-reachable button with a state attribute; a
     selection is shown by more than colour; motion respects the user."""
 
     HTML = TEMPLATE.read_text(encoding="utf-8")
+
+    def test_hash_is_never_decoded_unguarded(self):
+        # decodeURIComponent throws on "#rule-100%-done"; an uncaught throw at load left
+        # the figure blank. Every read goes through the kit's RK.hashId(), which returns
+        # null instead.
+        script = self.HTML[self.HTML.index("<script>"):]
+        self.assertNotIn("decodeURIComponent(", script)
+        self.assertIn("RK.hashId(", script)
 
     def test_no_inner_html_anywhere_in_the_script(self):
         script = self.HTML[self.HTML.index("<script>"):]

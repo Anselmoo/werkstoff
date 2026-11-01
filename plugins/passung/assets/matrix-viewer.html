@@ -507,7 +507,7 @@
     dimensions.forEach((dim, j) => {
       const cx = gridX + j * CELL_W + CELL_W / 2;
       const g = svg.append("g").attr("class", "mx-axis").attr("role", "button").attr("tabindex", "0")
-        .attr("aria-label", dim + " — sort by the worst dimension");
+        .attr("aria-label", dim + " — sort by the worst dimension").attr("data-rk-key", "dim:" + dim);
       g.append("title").text(dim + " — click to sort by this dimension");
       const lines = wrapLabel(dim, maxChars, 3);
       const t = g.append("text").attr("class", "mx-label").attr("text-anchor", "middle").attr("x", cx).attr("y", gridY - 6 - (lines.length - 1) * 15);
@@ -517,7 +517,7 @@
     });
     modules.forEach((mod, i) => {
       const g = svg.append("g").attr("class", "mx-axis").attr("role", "button").attr("tabindex", "0")
-        .attr("aria-label", mod + " — sort by the worst module");
+        .attr("aria-label", mod + " — sort by the worst module").attr("data-rk-key", "mod:" + mod);
       g.append("title").text(mod + " — click to sort by this module");
       const t = g.append("text").attr("class", "mx-label").attr("x", gridX - 10).attr("y", gridY + i * CELL_H + CELL_H / 2)
         .attr("text-anchor", "end").attr("dominant-baseline", "central");
@@ -531,6 +531,9 @@
     svg.selectAll("g.cell").data(flat, (d) => keyOf(d.mod, d.dim)).join("g").attr("class", "cell")
       .each(function (d) {
         const g = d3.select(this);
+        // RK.mark: the group carries the key (rect and text dim together on a search); the
+        // kit hands focus back to its focusable rect after a redraw.
+        if (d.c) g.attr("data-rk-key", "cell:" + d.mod + "|" + d.dim).attr("data-rk-text", d.mod + " " + d.dim + " " + (d.c.variant || ""));
         const mark = cellMark(d.c);
         const x = gridX + d.j * CELL_W + 1, y = gridY + d.i * CELL_H + 1, w = CELL_W - 2, h = CELL_H - 2;
         let label = "no data";
@@ -625,7 +628,7 @@
     const el = document.getElementById(id);
     if (el && el.tagName === "DETAILS") el.open = true;
   }
-  window.addEventListener("hashchange", () => openFinding(decodeURIComponent(location.hash.slice(1))));
+  window.addEventListener("hashchange", () => openFinding(RK.hashId() || ""));
 
   // A legend entry: a small key painted by drawCellMark() -- the grid's own painter -- beside
   // its words. It is attached to the document before it is painted: the plate is sized from
@@ -703,9 +706,11 @@
   draw(true);
   // Open a drill-down before anything is clicked: the cell a #finding-… link names, else the
   // worst cell, else (nothing divergent) how to read the cells.
-  const hashId = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  // A #finding-… names a cell the grid selects: select it, claim the hash, stay on the grid.
+  // #sec-* is left to the kit, which scrolls to the section.
+  const hashId = RK.hashId() || "";
   const hashCell = hashId ? CELLS.find((c) => findingId(c) === hashId) : null;
-  if (hashCell) { selectCell(hashCell.module, hashCell.dimension); openFinding(hashId); }
+  if (hashCell) { RK.claimHash(); selectCell(hashCell.module, hashCell.dimension); openFinding(hashId); }
   else if (FINDINGS.length) { const w = FINDINGS[0].tags; selectCell(w.module, w.dimension); }
   else overview();
 })();

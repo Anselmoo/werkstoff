@@ -20,7 +20,7 @@
   .legend .line.warn { border-top-color: var(--rk-warn); }
   .legend .line.dashed { border-top-style: dashed; }
   .legend .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rk-bad); display: inline-block; }
-  .rk-legend-float { max-width: min(1000px, calc(100% - 2 * var(--space-3))); }
+  .rk-legend-float { max-width: min(1000px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
   .vs-hit { cursor: pointer; }
   .vs-hit:focus { outline: none; }
   .vs-hit:focus-visible .vs-box, .vs-hit:hover .vs-box, .vs-hit.sel .vs-box { stroke: var(--rk-link); stroke-width: 3; }
@@ -326,6 +326,7 @@
     };
     const hit = (parent, id, aria, fn) => {
       const g = parent.append("g").attr("class", "vs-hit" + (sel === id ? " sel" : "")).attr("tabindex", 0).attr("role", "button").attr("aria-label", aria)
+        .attr("data-rk-key", id)  // RK.mark: focus returns here after a redraw; search dims non-matches
         .on("click", (ev) => { ev.stopPropagation(); fn(); })
         .on("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); fn(); } });
       return g;
@@ -444,9 +445,12 @@
 
   // Open on load: the named item if the hash names one, else what stops the line, else the overview.
   function openFromHash() {
-    const id = decodeURIComponent(location.hash.slice(1));
-    if (id.startsWith("finding-gap-")) { showGap(id.slice(12)); return true; }
-    if (id.startsWith("finding-evidence-")) { showEvidence(id.slice(17)); return true; }
+    // A gap or an evidence doc is an item the figure selects: select it, open the drawer
+    // and claim the hash so the page stays beside the figure. A #sec-* hash goes unclaimed
+    // and the kit scrolls to that section.
+    const id = RK.hashId() || "";
+    if (id.startsWith("finding-gap-")) { showGap(id.slice(12)); RK.claimHash(); return true; }
+    if (id.startsWith("finding-evidence-")) { showEvidence(id.slice(17)); RK.claimHash(); return true; }
     return false;
   }
   S.onResize(() => draw());
@@ -462,7 +466,7 @@
   if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", draw);
   // A permalink inside the page should open the finding it names, and its drawer.
   window.addEventListener("hashchange", () => {
-    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    const t = document.getElementById(RK.hashId() || "");
     if (t && t.tagName === "DETAILS") t.open = true;
     openFromHash();
   });

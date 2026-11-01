@@ -303,7 +303,7 @@
       }
       const label = GL[t] + " " + e.i.status;
       const pw = label.length * 6.6 + 14;
-      const g = sv("g", { class: "sp-edge sp-mark " + t, tabindex: "0", role: "button", "data-id": e.rec.domId,
+      const g = sv("g", { class: "sp-edge sp-mark " + t, tabindex: "0", role: "button", "data-id": e.rec.domId, "data-rk-key": e.rec.domId,
         "aria-label": "Link: " + e.rec.claim + ", " + e.i.status },
         sv("path", { class: "hit", d }), sv("path", { class: "line", d }),
         sv("rect", { class: "pill", x: mx - pw / 2, y: my - 11, width: pw, height: 22, rx: 11 }),
@@ -348,7 +348,7 @@
     // steps
     steps.forEach((s, col) => {
       const t = stepTone(s), x = cx(col);
-      const g = sv("g", { class: "sp-step sp-mark " + t + (s.traced ? "" : " untraced"), tabindex: "0", role: "button", "data-id": "step-" + s.id,
+      const g = sv("g", { class: "sp-step sp-mark " + t + (s.traced ? "" : " untraced"), tabindex: "0", role: "button", "data-id": "step-" + s.id, "data-rk-key": "step-" + s.id,
         "aria-label": "Step " + s.id + ": " + s.command.join(" ") + ", " + stepWord(s) });
       g.append(sv("rect", { class: "sp-box", x: x - bw / 2, y: stepY - bh / 2, width: bw, height: bh, rx: 8 }),
         tx(x - bw / 2 + 10, stepY - 14, s.id, "strong", "start"),
@@ -588,18 +588,18 @@
   // ---- boot --------------------------------------------------------------------------------------
   S.onResize((w, hgt) => draw(w, hgt));
   RK.init();
+  // A link or a step names a mark the figure selects: select it, claim the hash, stay on the
+  // figure. #sec-* is left to the kit, which scrolls to the section.
   const fromHash = () => {
-    const id = decodeURIComponent(location.hash.slice(1));
+    const id = RK.hashId();
     if (!id) return false;
-    if (id.startsWith("link-") && linkRecords.some((r) => r.domId === id)) { select("link", id); return true; }
-    if (id.startsWith("step-") && steps.some((s) => "step-" + s.id === id)) { select("step", id); return true; }
+    if (id.startsWith("link-") && linkRecords.some((r) => r.domId === id)) { select("link", id); RK.claimHash(); return true; }
+    if (id.startsWith("step-") && steps.some((s) => "step-" + s.id === id)) { select("step", id); RK.claimHash(); return true; }
     return false;
   };
   window.addEventListener("hashchange", fromHash);
-  let linked = false;
-  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
-  window.addEventListener("load", () => { booted = true; if (linked) window.scrollTo(0, 0); });
-  linked = fromHash();
+  window.addEventListener("load", () => { booted = true; });
+  const linked = fromHash();
   if (!linked) {
     // The drawer opens on the worst link, or on the overview when nothing is wrong.
     const worst = linkRecords.find((r) => r.input.status === "broken") || linkRecords.find((r) => r.input.status === "unverified");

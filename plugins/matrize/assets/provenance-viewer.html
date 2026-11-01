@@ -10,12 +10,12 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-.rk-hud { max-width: min(560px, calc(100% - 2 * var(--space-3))); }
+.rk-hud { max-width: min(560px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
 .rk-hud .verdict { font-size: 0.86rem; }
 .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); margin: 0; gap: var(--space-1) var(--space-3);
-  max-width: min(820px, calc(100% - 2 * var(--space-3))); }
+  max-width: min(820px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
 .rk-hint { bottom: auto; top: var(--space-3); }
-.rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
+.rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
 .note { color: var(--rk-muted); font-size: .84rem; margin: var(--space-2) 0; }
 .legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--rk-muted); font-size: .82rem; margin: 0 0 var(--space-3); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -234,7 +234,7 @@
       // Focusable, named and operable from the keyboard: a plain <g> with a click handler is
       // invisible to keyboard and screen-reader users, and this viewer's only function is
       // "select a node to trace it".
-      const g = el("g", { class: "node n-" + n.kind, transform: "translate(" + p.x + "," + p.y + ")", tabindex: "0", role: "button",
+      const g = el("g", { class: "node n-" + n.kind, transform: "translate(" + p.x + "," + p.y + ")", tabindex: "0", role: "button", "data-rk-key": n.id,
         "aria-label": n.label + " — " + (n.sub || n.kind) + ". Trace its provenance." });
       g.appendChild(el("rect", { width: p.w, height: p.h, rx: n.kind === "card" ? 3 : 6 }));
       if (n.kind !== "card") {
@@ -328,7 +328,10 @@
   D.edges.forEach((e) => { if (e.kind === "alias") fanOut[e.from] = (fanOut[e.from] || 0) + 1; });
   const cE = D.edges.find((e) => e.grade === "C" && byId[e.to] && byId[e.to].kind === "token");
   const topFan = Object.keys(fanOut).sort((a, b) => fanOut[b] - fanOut[a])[0];
-  const fromHash = decodeURIComponent((location.hash.match(/^#node-(.+)$/) || [])[1] || "");
+  // #node-<id> names a node the graph selects: select it, claim the hash, stay on the graph.
+  // #finding-* and #sec-* are cards and sections below; the kit opens and scrolls to them.
+  const fromHash = RK.hashId("node-") || "";
+  if (byId[fromHash]) RK.claimHash();
   const start = byId[fromHash] ? fromHash : cE ? cE.to : topFan || (toks[0] && toks[0].id);
   if (start) select(start);
 

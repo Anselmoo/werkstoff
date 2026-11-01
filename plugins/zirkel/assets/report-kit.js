@@ -76,11 +76,36 @@ const RK = (() => {
     }
   }
 
+  // On a figure-first page the failure goes where the verdict was: the stage fills the
+  // first screen, so a panel appended below it would leave the HUD's happy-path
+  // placeholder ("Loading...", a template sentence) as the only thing the reader sees.
   function fail(message, rerun) {
-    const target = $("#rk-content") || document.body;
-    target.appendChild(h("div", { class: "rk-fail", role: "alert" },
+    const panel = h("div", { class: "rk-fail", role: "alert" },
       h("strong", { text: message }),
-      rerun ? h("p", {}, "Re-run ", h("code", { text: rerun }), " to regenerate it.") : null));
+      rerun ? h("p", {}, "Re-run ", h("code", { text: rerun }), " to regenerate it.") : null);
+    const stageEl = $("#rk-stage");
+    if (stageEl) {
+      for (const el of $$(".rk-hud .verdict, .rk-hud-more, .rk-hud-stats", stageEl)) el.hidden = true;
+      const hud = $(".rk-hud", stageEl);
+      if (hud) hud.prepend(panel);
+      else ($("#rk-figure", stageEl) || stageEl).prepend(panel);
+      stageEl.classList.add("rk-failed");
+      return;
+    }
+    ($("#rk-content") || document.body).appendChild(panel);
+  }
+
+  // The fragment, decoded, or null. decodeURIComponent throws on a malformed escape
+  // ("#rule-100%-done"), and an uncaught throw at load leaves the figure blank, so every
+  // viewer reads the hash through here. With a prefix, returns what follows it (or null
+  // when the hash does not start with it).
+  function hashId(prefix) {
+    const raw = location.hash.slice(1);
+    if (!raw) return null;
+    let id;
+    try { id = decodeURIComponent(raw); } catch (_) { return null; }
+    if (prefix) return id.startsWith(prefix) && id.length > prefix.length ? id.slice(prefix.length) : null;
+    return id;
   }
 
   // ---- tones ------------------------------------------------------------------
@@ -166,15 +191,66 @@ const RK = (() => {
 
   // Global search over every [data-rk-search] element: non-matching items hide,
   // matches are highlighted, and an aria-live line reports the count.
+  // The count sits beside the box, in the sticky header: below a figure that fills the
+  // first screen it would report to nobody.
   function initSearch() {
     const q = $("#rk-q");
     if (!q) return;
-    const found = $("#rk-found");
+    let found = $("#rk-found");
+    if (!found) found = h("p", { id: "rk-found", class: "rk-found", role: "status", "aria-live": "polite" });
+    q.after(found);
     let timer = 0;
     q.addEventListener("input", () => {
       clearTimeout(timer);
       timer = setTimeout(() => runSearch(q.value.trim(), found), 120);
     });
+    // A viewer redraws its figure (a selection, a resize): re-dim the new marks.
+    const fig = $("#rk-figure");
+    if (fig && "MutationObserver" in window) {
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued || !searchTerm) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; dimFigure(); reportCount(found); });
+      }).observe(fig, { childList: true, subtree: true });
+    }
+  }
+
+  // Figure marks: every element a viewer tagged with data-rk-key (see mark()). A mark
+  // matches on data-rk-text, else its aria-label, else its text; a non-match is dimmed
+  // through [data-rk-dim], so the figure answers the search box too.
+  let searchTerm = "", lastCount = { shown: 0, items: 0 };
+  function dimFigure() {
+    const fig = $("#rk-figure");
+    const marks = fig ? $$("[data-rk-key]", fig) : [];
+    const needle = searchTerm.toLowerCase();
+    let hits = 0;
+    for (const el of marks) {
+      const text = (el.getAttribute("data-rk-text") || el.getAttribute("aria-label") || el.textContent || "").toLowerCase();
+      const hit = !needle || text.includes(needle);
+      if (hit) hits += 1;
+      if (!hit) { if (!el.hasAttribute("data-rk-dim")) el.setAttribute("data-rk-dim", ""); } else if (el.hasAttribute("data-rk-dim")) el.removeAttribute("data-rk-dim");
+    }
+    return { hits, marks: marks.length };
+  }
+  function reportCount(found) {
+    if (!found) return;
+    if (!searchTerm) { found.textContent = ""; return; }
+    const f = dimFigure();
+    const parts = [];
+    if (f.marks) parts.push(`${f.hits} of ${f.marks} in the figure`);
+    if (lastCount.items) parts.push(`${lastCount.shown} of ${lastCount.items} below`);
+    found.textContent = (parts.length ? parts.join(", ") : "0") + ` match "${searchTerm}"`;
+  }
+
+  // mark(el, key, text) -- tags a clickable figure mark with a stable key. The key
+  // survives a redraw, so the drawer can hand focus back to the same mark after a
+  // selection rebuilt the SVG, and the search box can dim the marks it does not match.
+  function mark(el, key, text) {
+    if (!el || key === null || key === undefined) return el;
+    el.setAttribute("data-rk-key", String(key));
+    if (text) el.setAttribute("data-rk-text", String(text));
+    return el;
   }
 
   function clearMarks(root) {
@@ -227,8 +303,10 @@ const RK = (() => {
         if (el.tagName === "DETAILS") el.open = true;
       }
     }
-    if (found) found.textContent = needle ? `${shown} of ${items.length} match "${term}"` : "";
+    searchTerm = term;
+    lastCount = { shown, items: items.length };
     for (const fn of searchHooks) fn(term);
+    reportCount(found);
   }
 
   // --header-h is a fallback constant (tokens.css says so); a sticky offset must
@@ -247,26 +325,69 @@ const RK = (() => {
     el.hidden = el.hasAttribute("data-rk-nomatch") || el.hasAttribute("data-rk-filtered");
   }
 
+  // Deep links on a figure-first page follow one rule:
+  //   - a hash naming an item the FIGURE can select: the viewer selects it, opens the
+  //     drawer and calls RK.claimHash() -- the page stays at the top, beside the figure;
+  //   - any other hash naming an element (a #sec-* section, a #finding-* card below
+  //     the stage): the kit opens it (and every <details> around it) and scrolls to it.
+  // The decision waits for load, so a viewer that claims during start-up always wins.
+  // Holding the top applies to the hash the page was OPENED with. A later claim (the
+  // reader clicked a card's permalink) leaves the scroll where the reader put it.
+  let hashClaimed = false, loadDecided = false;
+  const whenLoaded = (fn) => {
+    if (document.readyState === "complete") requestAnimationFrame(fn);
+    else window.addEventListener("load", () => requestAnimationFrame(fn), { once: true });
+  };
+  function holdTop() {
+    window.scrollTo(0, 0);
+    whenLoaded(() => window.scrollTo(0, 0));
+  }
+  function claimHash() {
+    hashClaimed = true;
+    if (!loadDecided && $("#rk-stage")) holdTop();
+  }
+  function followHash() {
+    const id = hashId();
+    const target = id ? document.getElementById(id) : null;
+    if (!target) return false;
+    for (let d = target.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) d.open = true;
+    if (target.tagName === "DETAILS") target.open = true;
+    target.scrollIntoView({ block: "start" });
+    return true;
+  }
+
   function init() {
     syncHeaderHeight();
     initTheme();
     initNav();
     initSearch();
     window.addEventListener("beforeprint", () => $$("details").forEach((d) => { d.open = true; }));
+    const staged = !!$("#rk-stage");
+    if (staged && "scrollRestoration" in history) history.scrollRestoration = "manual";
     if (location.hash) {
-      const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      const id = hashId();
+      const target = id ? document.getElementById(id) : null;
       if (target && target.tagName === "DETAILS") target.open = true;
-      if ($("#rk-stage")) {
-        // Figure-first page: the viewer answers a deep link by selecting the item and
-        // opening the drawer beside the figure. The browser's own fragment scroll would
-        // carry the reader below the figure, so hold the top -- once now and once after
-        // load, when that scroll actually lands.
-        if ("scrollRestoration" in history) history.scrollRestoration = "manual";
-        const top = () => window.scrollTo(0, 0);
-        top();
-        window.addEventListener("load", () => { top(); requestAnimationFrame(top); }, { once: true });
-      } else if (target) target.scrollIntoView();
-    }
+      if (staged) {
+        // Hold the top until load decides: the browser's own fragment scroll would
+        // otherwise carry the reader below the figure before the viewer could claim.
+        window.scrollTo(0, 0);
+        whenLoaded(() => {
+          if (hashClaimed || !followHash()) window.scrollTo(0, 0);
+          hashClaimed = false;
+          loadDecided = true;
+        });
+      } else {
+        if (target) followHash();
+        loadDecided = true;
+      }
+    } else loadDecided = true;
+    // A later hash change: the viewer's own hashchange listener runs first (it was added
+    // earlier, or it claims synchronously); the kit then follows whatever went unclaimed.
+    window.addEventListener("hashchange", () => setTimeout(() => {
+      if (!hashClaimed) followHash();
+      hashClaimed = false;
+    }, 0));
   }
 
   // ---- components -----------------------------------------------------------------
@@ -541,8 +662,18 @@ const RK = (() => {
     const body = h("div", { class: "rk-drawer-body" });
     const closeBtn = h("button", { class: "rk-btn", type: "button", "aria-label": "Close details" }, "\u2715");
     drawer.append(head, body);
-    let lastFocus = null;
+    let lastFocus = null, lastKey = null, lastLabel = null, figureKey = null, figureLabel = null;
     let userActed = false;
+    // The figure is the focus target of last resort: never hand focus to <body>.
+    if (!figure.hasAttribute("tabindex")) figure.setAttribute("tabindex", "-1");
+    // Remember the last mark focused in the figure: a viewer that rebuilds its SVG
+    // before calling open() has already detached the element that had focus.
+    figure.addEventListener("focusin", (e) => {
+      const k = e.target.closest && e.target.closest("[data-rk-key]");
+      figureKey = k ? k.getAttribute("data-rk-key") : null;
+      figureLabel = e.target.getAttribute ? e.target.getAttribute("aria-label") : null;
+    });
+    const phone = () => !!(window.matchMedia && matchMedia("(max-width: 860px)").matches);
     document.addEventListener("pointerdown", () => { userActed = true; }, { capture: true });
     document.addEventListener("keydown", () => { userActed = true; }, { capture: true });
     const resizeFns = [], closeFns = [], themeFns = [];
@@ -550,18 +681,78 @@ const RK = (() => {
     // Fire only when the figure's size actually changed: a drawer toggle that ends at
     // the same size must not tear the chart down and redraw it.
     let lastSize = "";
+    // Focus restore after close. The mark that opened the drawer may have been redrawn
+    // (a selection rebuilds the SVG, the drawer's own resize redraws it again), so the
+    // restore looks it up again by data-rk-key, then by aria-label, then falls back to
+    // the figure -- and re-runs after each redraw until the drawer's transition settles.
+    let restoreUntil = 0;
+    const lost = () => { const a = document.activeElement; return !a || a === document.body || a === document.documentElement; };
+    // Candidates, best first: the mark that opened the drawer, then the mark the figure saw
+    // focused last (a mark that redrew the figure without opening the drawer, e.g. a sort).
+    const FOCUSABLE = "[tabindex], button, a[href]";
+    const findMark = () => {
+      for (const key of [lastKey, figureKey]) {
+        if (key === null || key === undefined) continue;
+        const byKey = $$("[data-rk-key]", root).find((e) => e.getAttribute("data-rk-key") === key);
+        // The key may sit on a group whose focusable part is a child (a cell <g> around its <rect>).
+        if (byKey) return byKey.matches(FOCUSABLE) ? byKey : (byKey.querySelector(FOCUSABLE) || byKey);
+      }
+      for (const label of [lastLabel, figureLabel]) {
+        if (!label) continue;
+        const byLabel = $$("[aria-label]", figure).find((e) => e.getAttribute("aria-label") === label);
+        if (byLabel) return byLabel;
+      }
+      return null;
+    };
+    const refocus = () => {
+      if (Date.now() > restoreUntil || !lost() || !drawer.hidden) return;
+      const target = findMark() || figure;
+      target.focus({ preventScroll: true });
+    };
     const fire = (force) => {
       const s = size(), key = s.width + "x" + s.height;
       if (!force && key === lastSize) return;
       lastSize = key;
       resizeFns.forEach((fn) => fn(s.width, s.height));
+      refocus();
+      layoutOverlays();
     };
     const close = () => {
       drawer.hidden = true; root.classList.remove("rk-drawer-open");
       requestAnimationFrame(() => fire());
       closeFns.forEach((fn) => fn());
-      if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus();
+      restoreUntil = Date.now() + 1500;
+      if (lastFocus && lastFocus.focus && lastFocus !== document.body && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
+      else refocus();
+      requestAnimationFrame(() => requestAnimationFrame(refocus));
+      setTimeout(refocus, 320);
     };
+    // Overlays (HUD, legend, hint) live in the figure column. CSS bounds their width by
+    // the column; what CSS cannot do is keep the bottom-right hint off a legend that
+    // wraps wide -- so the hint stacks above the legend, or steps aside when even that
+    // would collide with the HUD.
+    const visible = (el) => el && !el.hidden && el.getClientRects().length > 0;
+    const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    function layoutOverlays() {
+      const hint = $$(".rk-hint", root).find((e) => !e.hidden);
+      if (!hint) return;
+      hint.style.bottom = ""; hint.classList.remove("rk-hint-off");
+      const legend = $$(".rk-legend-float", root).find(visible);
+      const hud = $(".rk-hud", root);
+      let hr = hint.getBoundingClientRect();
+      if (legend) {
+        const lr = legend.getBoundingClientRect();
+        if (hits(hr, lr)) {
+          const rr = root.getBoundingClientRect();
+          const fr = figure.getBoundingClientRect();
+          const bottom = Math.min(rr.bottom, fr.bottom) - lr.top + 6;
+          hint.style.bottom = bottom + "px";
+          hr = hint.getBoundingClientRect();
+        }
+        if (hits(hr, legend.getBoundingClientRect())) hint.classList.add("rk-hint-off");
+      }
+      if (visible(hud) && hits(hint.getBoundingClientRect(), hud.getBoundingClientRect())) hint.classList.add("rk-hint-off");
+    }
     // Theme: the toggle sets data-theme; the OS can switch prefers-color-scheme.
     const fireTheme = () => themeFns.forEach((fn) => fn());
     new MutationObserver(fireTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -571,22 +762,43 @@ const RK = (() => {
     }
     closeBtn.addEventListener("click", close);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawer.hidden) close(); });
-    if ("ResizeObserver" in window) new ResizeObserver(() => fire()).observe(figure);
-    else window.addEventListener("resize", () => fire());
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(() => fire()).observe(figure);
+      const ro = new ResizeObserver(() => layoutOverlays());
+      $$(".rk-hud, .rk-legend-float", root).forEach((el) => ro.observe(el));
+    } else window.addEventListener("resize", () => fire());
+    requestAnimationFrame(layoutOverlays);
     // The verdict is clamped to two lines by CSS; when the sentence is longer, a "more"
     // button opens the whole of it in the drawer. Re-checked whenever the verdict's text
     // or size changes, because viewers set the text after stage() runs.
-    const verdict = $(".rk-hud .verdict", root);
+    // Every clamped verdict gets its own button (a viewer may carry one per view), shown
+    // only while that verdict is itself shown and overflowing.
     let api = null;
-    if (verdict) {
+    const mores = [];
+    for (const verdict of $$(".rk-hud .verdict", root)) {
       const more = h("button", { class: "rk-hud-more", type: "button", text: "more", hidden: true,
         "aria-label": "Read the whole verdict" });
       verdict.after(more);
-      more.addEventListener("click", () => api && api.open("Verdict", null, h("p", { text: verdict.textContent })));
-      const check = () => { more.hidden = verdict.scrollHeight <= verdict.clientHeight + 1; };
+      more.addEventListener("click", () => api && api.open("Verdict", null, h("p", { text: verdict.textContent.replace(/\s+/g, " ").trim() })));
+      const check = () => {
+        if (root.classList.contains("rk-failed")) { more.hidden = true; return; }
+        more.hidden = !(visible(verdict) && verdict.scrollHeight > verdict.clientHeight + 1);
+      };
+      mores.push(check);
       new MutationObserver(check).observe(verdict, { childList: true, characterData: true, subtree: true });
       if ("ResizeObserver" in window) new ResizeObserver(check).observe(verdict);
-      requestAnimationFrame(check);
+    }
+    const checkMores = () => mores.forEach((fn) => fn());
+    if (mores.length) {
+      // A view switch toggles [hidden] on a verdict's container, which neither observer
+      // above sees.
+      let queued = false;
+      new MutationObserver(() => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => { queued = false; checkMores(); layoutOverlays(); });
+      }).observe(root, { attributes: true, attributeFilter: ["hidden"], subtree: true });
+      requestAnimationFrame(checkMores);
     }
     return api = {
       figure, size,
@@ -599,7 +811,7 @@ const RK = (() => {
       // reserves top = insets().top and bottom = insets().bottom never draws under them.
       insets() {
         const f = figure.getBoundingClientRect();
-        const hud = $(".rk-hud", root), leg = $(".rk-legend-float", root);
+        const hud = $(".rk-hud", root), leg = $$(".rk-legend-float", root).find(visible) || null;
         const hr = hud ? hud.getBoundingClientRect() : null, lr = leg ? leg.getBoundingClientRect() : null;
         return {
           top: hr ? Math.max(0, Math.round(hr.bottom - f.top)) : 0,
@@ -609,7 +821,20 @@ const RK = (() => {
         };
       },
       open(title, sub, ...kids) {
+        // Below 860px the drawer is a sheet over the figure: a load-time default
+        // selection must not cover the figure before the reader has touched it.
+        if (!userActed && phone()) return;
         lastFocus = document.activeElement;
+        if (lastFocus && lastFocus !== document.body && figure.contains(lastFocus)) {
+          const k = lastFocus.closest("[data-rk-key]");
+          lastKey = k ? k.getAttribute("data-rk-key") : null;
+          lastLabel = lastFocus.getAttribute("aria-label");
+        } else if (!drawer.contains(lastFocus)) {
+          // Focus already fell to <body> (the viewer redrew before opening): use the
+          // last mark the figure saw focused.
+          lastKey = figureKey; lastLabel = figureLabel;
+          if (!lastFocus || lastFocus === document.body) lastFocus = null;
+        }
         head.textContent = "";
         head.append(h("div", { style: "flex:1;min-width:0" }, h("h2", { text: title }), sub ? h("p", { class: "rk-sub", text: sub }) : null), closeBtn);
         body.textContent = "";
@@ -618,12 +843,18 @@ const RK = (() => {
         drawer.hidden = false; root.classList.add("rk-drawer-open");
         drawer.scrollTop = 0;
         if (!wasOpen) requestAnimationFrame(() => requestAnimationFrame(() => fire()));
+        requestAnimationFrame(layoutOverlays);
         // Move focus only when the reader asked for this (click/key). A load-time open
         // (the default detail view) must not steal focus or scroll the page.
         if (userActed) closeBtn.focus({ preventScroll: true });
       },
       close,
       tip: tip(),
+      // The header search box drives the figure too: fn(term) runs on every search
+      // (dim, filter or redraw); marks tagged with mark() are dimmed by the kit itself.
+      onSearch(fn) { onSearch(fn); },
+      mark,
+      layout: layoutOverlays,
       // A drawer-internal link that runs fn (e.g. select a neighbour) -- a button, so
       // it is keyboard-reachable, styled as a link.
       link(text, fn) { const b = h("button", { class: "rk-link", type: "button", text }); b.addEventListener("click", fn); return b; },
@@ -642,5 +873,5 @@ const RK = (() => {
     return h("section", { class: "rk-section", id: "sec-" + id }, h("h2", { text: title }), ...kids);
   }
 
-  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, value, stage, tip, glance, findings, table, proof, beforeAfter, section };
+  return { h, append, safeUrl, $, $$, readData, fail, hashId, claimHash, mark, toneFor, badge, copyButton, init, onSearch, value, stage, tip, glance, findings, table, proof, beforeAfter, section };
 })();
