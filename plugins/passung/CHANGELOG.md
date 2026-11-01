@@ -5,6 +5,8 @@ Releases before the rename were published as `codebase-consistency`; tags under 
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_matrix_html.py` now gives each finding its location, counts, inferred canon and suggested fix, and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 
 ## [1.3.0] - 2026-10-30
 ### Changed

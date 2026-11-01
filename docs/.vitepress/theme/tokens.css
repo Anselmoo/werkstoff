@@ -238,3 +238,27 @@
    * Contrast: n/a (not a colour). */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* ---------------------------------------------------------------------------
+ * LIGHT-GROUND ADDITIONS -- 2026-11, tools/report-kit
+ *
+ * The report kit gives every viewer a light theme (prefers-color-scheme plus
+ * a data-theme toggle). The palette above is dark-first and names light only
+ * per role (-on-light), so the surfaces a light page needs had no names.
+ * These follow the existing -on-light convention; nothing above changes.
+ * Contrast measured (WCAG 2.1 relative luminance), against #ffffff unless noted:
+ *   --text-on-light   #1b232a  15.90:1  (14.68:1 on --panel-on-light)
+ *   --muted-on-light  #55616a   6.36:1  ( 5.87:1 on --panel-on-light) -- the
+ *                                       same value as --rule, one ramp
+ *   links use --accent-on-light-strong (5.95:1), not --accent-on-light, which
+ *   drops to 4.49:1 on a tinted panel.
+ * --border-on-light is decorative (space also carries the break), below 3:1.
+ * ------------------------------------------------------------------------ */
+:root {
+  --bg-on-light: #ffffff;
+  --panel-on-light: #f6f7f9;
+  --panel-2-on-light: #eef1f4;
+  --text-on-light: #1b232a;
+  --muted-on-light: #55616a;
+  --border-on-light: #d5dbe0;
+}

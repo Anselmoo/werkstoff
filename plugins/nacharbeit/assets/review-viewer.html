@@ -4,180 +4,350 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>nacharbeit — review report</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-sans); font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
-  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
-  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
-  .verdict {
-    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .legend {
-    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
-  }
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
-  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
-  .legend dd { margin: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  td.mono { font-family: var(--font-mono); }
-  /* Every outcome is a WORD plus a glyph. Colour is the third channel, never the only one. */
-  .outcome { white-space: nowrap; font-weight: 600; }
-  .outcome .glyph { display: inline-block; width: 1.1em; }
-  .o-landed { color: var(--silica); }
-  .o-accepted { color: var(--silica-light); }
-  .o-rejected { color: var(--samaria-light); }
-  .o-unmeasured { color: var(--muted); }
-  .breaker {
-    margin: var(--space-3) 0; padding: var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .breaker .maths { font-family: var(--font-mono); font-size: 0.86rem; }
-  .breaker p { margin: var(--space-1) 0 0; color: var(--muted); font-size: 0.84rem; }
-  .empty {
-    margin: var(--space-4) 0; padding: var(--space-3); background: var(--panel);
-    border: 1px solid var(--samaria-light); border-radius: var(--radius-panel);
-  }
-  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-3); margin: 0; font-size: 0.78rem; line-height: 1.3; }
+  .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
+  .legend dd { margin: 0 var(--space-2) 0 0; }
+  .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+  .rk-drawer-body dl.defs dt { font-weight: 600; white-space: nowrap; }
+  .rk-drawer-body dl.defs dd { margin: 0; }
+  .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.plain li { padding: var(--space-2) 0; border-bottom: 1px solid var(--rk-border); overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain li:last-child { border-bottom: 0; }
+  .rk-drawer-body ul.plain li > * { margin-right: var(--space-1); }
+  .rk-drawer-body code { overflow-wrap: anywhere; }
+
+  /* the heatmap: every colour is a kit token, so the theme toggle needs no redraw */
+  .hm-svg text { font-family: var(--font-sans); font-size: 12px; fill: var(--rk-text); }
+  .hm-svg .mono { font-family: var(--font-mono); }
+  .hm-svg .mute { fill: var(--rk-muted); font-size: 11px; }
+  .hm-svg .colh { font-weight: 650; font-size: 13px; }
+  .hm-svg .big { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .hm-svg .axis { fill: var(--rk-muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .hm-mark { cursor: pointer; }
+  .hm-mark:focus-visible { outline: 2px solid var(--rk-focus); outline-offset: 2px; }
+  .hm-cell rect { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1.5; }
+  .hm-cell.zero rect { fill: transparent; stroke-dasharray: 4 4; }
+  .hm-cell.zero text.big { fill: var(--rk-muted); font-weight: 500; }
+  .hm-cell.bad rect { stroke: var(--rk-bad); stroke-width: 2.5; }
+  .hm-cell.warn rect { stroke: var(--rk-warn); stroke-width: 2.5; }
+  .hm-cell.info rect { stroke: var(--rk-info); stroke-width: 2.5; }
+  .hm-cell.flat rect { stroke: var(--rk-flat); stroke-width: 2.5; }
+  .hm-sel rect { stroke: var(--rk-focus) !important; stroke-width: 4 !important; stroke-dasharray: none !important; }
+  .hm-head:hover text, .hm-head.hm-sel text { text-decoration: underline; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>nacharbeit — review report</h1>
-    <p class="sub">Every rule the rubric grades, what fired, and which tier can fix it.</p>
-    <p class="verdict" id="verdict">Loading the review…</p>
-  </header>
-
-  <div class="legend">
-    <dl>
-      <dt>blocker</dt><dd>ships broken. The plugin does not load, or a guard silently does nothing.</dd>
-      <dt>major</dt><dd>a stated contract is not kept — a reader or a tool is misled.</dd>
-      <dt>minor / nit</dt><dd>real but survivable; fix when the file is open anyway.</dd>
-      <dt>haiku · sonnet · opus · human</dt><dd>the cheapest tier that can actually apply the fix. A <strong>human</strong> tier is a judgement no model should make alone.</dd>
-    </dl>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>nacharbeit — review report</h1>
+  <p class="rk-sub" id="sub">Every rule the rubric grades, what fired, and which tier can fix it.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search findings">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
-
-  <div id="empty" class="empty" hidden>
-    <strong>No findings in this report.</strong>
-    <p>A review that found nothing and a review that never ran look identical here, and they are
-      not the same. Confirm the run produced this file — re-run
-      <code>nacharbeit_lint.py</code> and rebuild — before reading zero findings as a clean bill.</p>
+</header>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Heatmap of findings: one row per rule family, one column per severity, each cell the number of findings">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Loading the review…</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float">
+      <dl>
+        <dt>✗ blocker</dt><dd>ships broken: the plugin does not load, or a guard does nothing</dd>
+        <dt>! major</dt><dd>a stated contract is not kept; a reader or a tool is misled</dd>
+        <dt>i minor · – nit</dt><dd>real but survivable; fix it when the file is open anyway</dd>
+        <dt>haiku · sonnet · opus · human</dt><dd>the cheapest tier that can fix it; <strong>human</strong>: no model alone</dd>
+      </dl>
+    </div>
+    <span class="rk-hint">click a cell to filter the list below · hover for the rules</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
-
-  <h2>Findings</h2>
-  <table>
-    <thead><tr><th>severity</th><th>rule</th><th>family</th><th>fix tier</th><th>file</th><th>what fired</th></tr></thead>
-    <tbody id="findings"></tbody>
-  </table>
-
-  <h2>Coverage by rule family</h2>
-  <div class="breaker" id="families"></div>
-
-  <h2>What the calibration proved</h2>
-  <div class="breaker" id="calibration"></div>
-
-  <footer id="footer"></footer>
-</div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-/*__REVIEW_DATA__*/
-const DATA = (typeof REVIEW !== "undefined") ? REVIEW : null;
-function el(id) { return document.getElementById(id); }
-function cell(row, text, cls) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  if (cls) td.className = cls;
-  row.appendChild(td);
-  return td;
-}
-const GLYPH = { blocker: "\u2717", major: "\u25b2", minor: "\u00b7", nit: "\u00b7" };
-const CLS = { blocker: "o-rejected", major: "o-rejected", minor: "o-unmeasured", nit: "o-unmeasured" };
-
-function render() {
-  if (!DATA || !Array.isArray(DATA.findings)) {
-    el("verdict").textContent =
-      "This review could not be read, so nothing below is trustworthy. Regenerate it: " +
-      "nacharbeit_lint.py --json, then build_review_html.py --report";
-    el("empty").hidden = false;
+(() => {
+  const D = RK.readData("python3 plugins/nacharbeit/scripts/build_review_html.py --lint /tmp/review.json --out /tmp/review.html");
+  const verdict = RK.$("#verdict");
+  if (!D || !Array.isArray(D.findings)) {
+    verdict.textContent = "This review could not be read, so nothing below is trustworthy. Regenerate it: " +
+      "nacharbeit_lint.py --format json, then build_review_html.py --lint.";
     return;
   }
-  const f = DATA.findings;
+  const { h, badge } = RK;
+  const S = RK.stage();
+  const f = D.findings;
+  const tag = (x, k) => (x.tags && x.tags[k]) || "";
   const blockers = f.filter((x) => x.severity === "blocker");
-  const human = f.filter((x) => x.tier === "human");
+  const human = f.filter((x) => tag(x, "tier") === "human");
+  const plugins = D.plugins || 0;
 
   if (f.length === 0) {
-    el("verdict").textContent =
-      "No findings. Confirm this file came from the run you think produced it — a failed run " +
+    verdict.textContent = "No findings. Confirm this file came from the run you think produced it — a failed run " +
       "leaves the previous output in place, and zero findings then means nothing.";
-    el("empty").hidden = false;
   } else {
-    el("verdict").textContent =
-      f.length + " finding(s) across " + (DATA.plugins || 0) + " plugin(s): " +
-      blockers.length + " blocker(s), and " + human.length +
-      " that no model tier should fix alone.";
+    verdict.textContent = f.length + " finding(s) across " + plugins + " plugin(s): " +
+      blockers.length + " blocker(s), and " + human.length + " that no model tier should fix alone.";
+  }
+  verdict.classList.add(blockers.length ? "bad" : (f.length ? "warn" : "flat"));
+  RK.$("#sub").textContent += D.generated ? " Generated " + D.generated + "." : "";
+
+  const tierCount = (t) => f.filter((x) => tag(x, "tier") === t).length;
+  const fam = D.families || [];
+  const firedAll = fam.reduce((n, x) => n + x.fired, 0), totalAll = fam.reduce((n, x) => n + x.total, 0);
+  // The verdict already carries the finding, blocker and human-tier counts (R2), so the HUD
+  // shows what it does not: how the model-fixable ones split, and how much of the rubric fired.
+  S.stats([
+    { label: "Haiku-tier", value: String(tierCount("haiku")), note: "the cheapest tier can close these" },
+    { label: "Sonnet-tier", value: String(tierCount("sonnet")) },
+    { label: "Opus-tier", value: String(tierCount("opus")) },
+    { label: "Rules fired", value: fam.length ? firedAll + " / " + totalAll : "—", note: "of the mechanical rules the rubric defines" },
+  ]);
+
+  // ---- the long-form list, built first so a cell can drive its filter ---------------------------
+  const content = RK.$("#rk-content");
+  const box = RK.findings(f, {
+    facets: ["severity", "tier", "family"],
+    order: { severity: ["blocker", "major", "minor", "nit"], tier: ["haiku", "sonnet", "opus", "human"] },
+    empty: "No findings in this report. A review that found nothing and a review that never ran look identical " +
+      "here — confirm the run produced this file before reading zero as a clean bill.",
+  });
+  content.append(RK.section("findings", "Findings", box));
+  const fid = (x, i) => "finding-" + String(x.id || i + 1).replace(/[^A-Za-z0-9_.-]/g, "-");
+  const idOf = new Map(f.map((x, i) => [x, fid(x, i)]));
+
+  content.append(RK.section("families", "Coverage by rule family",
+    fam.length ? RK.table({ caption: "rules that fired per family", columns: [
+      { key: "family", label: "Family", mono: true }, { key: "fired", label: "Fired", num: true },
+      { key: "total", label: "Rules defined", num: true }],
+      rows: fam }) : RK.glance({ verdict: "No family totals in this report.", tone: "warn" }),
+    h("p", { class: "rk-muted", text: "Rules that fired, over rules the rubric defines in that family. A family at 0/n is not " +
+      "evidence of health — it is evidence that nothing in this plugin exercised it." })));
+
+  const c = D.calibration || {};
+  content.append(RK.section("calibration", "What the calibration proved",
+    c.planted ? RK.glance({ stats: [
+      { label: "Rules planted", value: String(c.planted) },
+      { label: "Fired", value: String(c.fired || 0), bad: (c.fired || 0) < c.planted },
+      { label: "Blanked, each went red", value: String(c.blanked || 0), bad: (c.blanked || 0) < c.planted }] })
+      : RK.glance({ verdict: "No calibration figures were supplied with this report, so the linter is unproven here.", tone: "warn",
+          detail: "Run test_nacharbeit_lint.py and pass its counts with --calibration." }),
+    h("p", { class: "rk-muted", text: "Every rule was sabotaged individually before this review was trusted. " +
+      "A guard that cannot fail reports success every run and nobody looks again." })));
+
+  // ---- the matrix model --------------------------------------------------------------------------
+  const FAMNAME = { M: "skills, agents, commands", Q: "judgement rules", H: "hooks", S: "scripts", A: "viewers and assets", P: "manifest, README, changelog", D: "repo docs" };
+  const GLYPH = { bad: "✗", warn: "!", info: "i", flat: "–", ok: "✓" };
+  const sevs = ["blocker", "major", "minor", "nit"];
+  for (const x of f) if (!sevs.includes(x.severity)) sevs.push(x.severity);
+  const fams = fam.map((x) => x.family);
+  for (const x of f) if (!fams.includes(tag(x, "family"))) fams.push(tag(x, "family"));
+  const famInfo = Object.fromEntries(fam.map((x) => [x.family, x]));
+  const cellOf = (fa, sv) => f.filter((x) => tag(x, "family") === fa && x.severity === sv);
+  const rowOf = (fa) => f.filter((x) => tag(x, "family") === fa);
+  const colOf = (sv) => f.filter((x) => x.severity === sv);
+  const maxCell = Math.max(1, ...fams.flatMap((fa) => sevs.map((sv) => cellOf(fa, sv).length)));
+  const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+  const tiersOf = (list) => ["haiku", "sonnet", "opus", "human"].map((t) => [t, list.filter((x) => tag(x, "tier") === t).length]).filter(([, n]) => n);
+  const tierLine = (list) => tiersOf(list).map(([t, n]) => t + " " + n).join(" · ");
+
+  let sel = null; // {fam, sev} with null meaning "any"
+  const marks = new Map();
+  const key = (fa, sv) => (fa || "*") + "|" + (sv || "*");
+
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const sv = (tagName, attrs, ...kids) => {
+    const el = document.createElementNS(SVGNS, tagName);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined && v !== false) el.setAttribute(k, String(v));
+    for (const k of kids.flat()) if (k) el.appendChild(k instanceof Node ? k : document.createTextNode(String(k)));
+    return el;
+  };
+  const tx = (x, y, text, cls, anchor) => { const e = sv("text", { x, y, class: cls || null, "text-anchor": anchor || "middle" }); e.textContent = text; return e; };
+  const press = (g, fn) => {
+    g.addEventListener("click", fn);
+    g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); fn(); } });
+  };
+  const tipFor = (g, title, list, extra) => {
+    const show = (ev) => S.tip.show(ev, title, list.length ? h("div", {}, list.slice(0, 6).map((x) => h("div", {}, h("code", { text: x.rule }), " " + tag(x, "tier")))) : h("div", { text: extra || "none" }),
+      list.length > 6 ? h("small", { class: "rk-muted", text: "and " + (list.length - 6) + " more" }) : null);
+    g.addEventListener("mouseenter", show); g.addEventListener("focus", show);
+    g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
+  };
+
+  function draw(w, hgt) {
+    const fig = S.figure;
+    fig.textContent = ""; marks.clear();
+    const labelW = 252, rightPad = 24;
+    const top = 222, bottom = 124;
+    const nr = fams.length, nc = sevs.length;
+    const cw = Math.max(110, Math.min(250, (w - labelW - rightPad) / nc));
+    const ch = Math.max(66, Math.min(130, (hgt - top - bottom) / Math.max(nr, 1)));
+    const W = Math.max(w, labelW + rightPad + cw * nc), H = Math.max(hgt, top + ch * nr + bottom);
+    const gap = 6;
+    const svg = sv("svg", { class: "hm-svg", width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "group", "aria-label": "Findings by rule family and severity" });
+    svg.append(tx(labelW, top - 44, "severity →", "axis", "start"), tx(14, top - 44, "rule family ↓", "axis", "start"));
+
+    sevs.forEach((s, j) => {
+      const x = labelW + cw * j + cw / 2, t = RK.toneFor(s), list = colOf(s);
+      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(null, s), "data-rk-key": key(null, s), "aria-label": "Severity " + s + ": " + plural(list.length, "finding") });
+      g.append(sv("rect", { x: x - cw / 2 + gap / 2, y: top - 36, width: cw - gap, height: 32, fill: "transparent" }),
+        tx(x, top - 20, GLYPH[t] + " " + s, "colh"), tx(x, top - 6, plural(list.length, "finding"), "mute"));
+      press(g, () => pick(null, s)); tipFor(g, "Every " + s + " finding", list, "no " + s + " finding");
+      svg.append(g); marks.set(key(null, s), g);
+    });
+
+    fams.forEach((fa, i) => {
+      const y = top + ch * i, row = rowOf(fa), info = famInfo[fa];
+      const g = sv("g", { class: "hm-mark hm-head", tabindex: "0", role: "button", "data-key": key(fa, null), "data-rk-key": key(fa, null),
+        "aria-label": "Family " + fa + ", " + (FAMNAME[fa] || "") + ": " + plural(row.length, "finding") });
+      g.append(sv("rect", { x: 8, y: y + gap / 2, width: labelW - 16, height: ch - gap, fill: "transparent" }),
+        tx(16, y + ch / 2 - 6, fa + " · " + (FAMNAME[fa] || "other"), "colh", "start"),
+        tx(16, y + ch / 2 + 12, plural(row.length, "finding") + (info ? " · rules " + info.fired + "/" + info.total : ""), "mute", "start"));
+      press(g, () => pick(fa, null)); tipFor(g, "Family " + fa + ": " + (FAMNAME[fa] || "other"), row, "no finding in this family");
+      svg.append(g); marks.set(key(fa, null), g);
+      sevs.forEach((s, j) => {
+        const list = cellOf(fa, s), t = RK.toneFor(s), n = list.length;
+        const x = labelW + cw * j + gap / 2;
+        const cell = sv("g", { class: "hm-mark hm-cell " + (n ? t : "zero"), tabindex: "0", role: "button", "data-key": key(fa, s), "data-rk-key": key(fa, s),
+          "aria-label": "Family " + fa + ", " + s + ": " + plural(n, "finding") });
+        const pct = n ? Math.round(14 + 46 * n / maxCell) : 0;
+        cell.append(sv("rect", { x, y: y + gap / 2, width: cw - gap, height: ch - gap, rx: 8,
+          style: n ? "fill: color-mix(in srgb, var(--rk-" + t + ") " + pct + "%, var(--rk-panel))" : null }),
+          tx(x + (cw - gap) / 2, y + ch / 2 + (n && tierLine(list) ? 2 : 10), (n ? GLYPH[t] + " " : "") + n, "big"));
+        if (n) cell.append(tx(x + (cw - gap) / 2, y + ch / 2 + 22, tierLine(list), "mute"));
+        press(cell, () => pick(fa, s));
+        tipFor(cell, "Family " + fa + " · " + s + ": " + plural(n, "finding"), list, "nothing fired here");
+        svg.append(cell); marks.set(key(fa, s), cell);
+      });
+    });
+    fig.append(svg);
+    paint();
   }
 
-  const tbody = el("findings");
-  for (const x of f) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.className = "outcome " + (CLS[x.severity] || "o-unmeasured");
-    const g = document.createElement("span");
-    g.className = "glyph";
-    g.textContent = GLYPH[x.severity] || "?";
-    td.appendChild(g);
-    td.appendChild(document.createTextNode(x.severity));
-    tr.appendChild(td);
-    cell(tr, x.rule, "mono");
-    cell(tr, x.family);
-    cell(tr, x.tier);
-    cell(tr, x.file, "mono");
-    cell(tr, x.message || "");
-    tbody.appendChild(tr);
+  function paint() {
+    for (const [k, el] of marks) el.classList.toggle("hm-sel", !!sel && k === key(sel.fam, sel.sev));
   }
 
-  const fam = el("families");
-  const fm = document.createElement("div");
-  fm.className = "maths";
-  fm.textContent = (DATA.families || [])
-    .map((x) => x.family + " " + x.fired + "/" + x.total).join("    ");
-  fam.appendChild(fm);
-  const fn = document.createElement("p");
-  fn.textContent = "Rules that fired, over rules the rubric defines in that family. A family at " +
-    "0/n is not evidence of health — it is evidence that nothing in this plugin exercised it.";
-  fam.appendChild(fn);
+  // ---- drawer --------------------------------------------------------------------------------------
+  const dl = (pairs) => h("dl", { class: "rk-dl" }, pairs.filter((p) => p[1] !== null && p[1] !== undefined && p[1] !== "")
+    .map(([k, v]) => [h("dt", { text: k }), h("dd", {}, v instanceof Node ? v : h("span", { text: String(v) }))]));
+  const whereOf = (x) => (x.file ? x.file + (x.line ? ":" + x.line : "") : "");
 
-  const cal = el("calibration");
-  const cm = document.createElement("div");
-  cm.className = "maths";
-  const c = DATA.calibration || {};
-  cm.textContent = (c.planted || 0) + " rules planted, " + (c.fired || 0) +
-    " fired, " + (c.blanked || 0) + " blanked and each went red";
-  cal.appendChild(cm);
-  const cn = document.createElement("p");
-  cn.textContent = "Every rule was sabotaged individually before this review was trusted. " +
-    "A guard that cannot fail reports success every run and nobody looks again.";
-  cal.appendChild(cn);
+  function showOverview() {
+    sel = null; paint();
+    S.open("How to read this", "findings by rule family and severity",
+      h("p", { text: "Each cell counts the findings one rule family raised at one severity. Click a cell to filter the list below to it and read its findings here; click a row or column label for a whole family or severity." }),
+      h("h3", { text: "Severity" }),
+      h("dl", { class: "defs" }, [["✗ blocker", "ships broken: the plugin does not load, or a guard silently does nothing."],
+        ["! major", "a stated contract is not kept: a reader or a tool is misled."],
+        ["i minor · – nit", "real but survivable; fix when the file is open anyway."]].map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })])),
+      h("h3", { text: "Fix tier" }),
+      h("p", { text: "haiku, sonnet, opus: the cheapest tier that can actually apply the fix. human: a judgement no model should make alone." }),
+      h("h3", { text: "A zero is not health" }),
+      h("p", { text: "A family with no findings is evidence only that nothing in the plugin exercised its rules. Each row shows how many of the family's rules fired." }));
+  }
 
-  el("footer").textContent =
-    "Reviewed " + (DATA.plugins || 0) + " plugin(s)" +
-    (DATA.generated ? " — " + DATA.generated : "") +
-    ". Regenerate with build_review_html.py after any re-run of the lint.";
-}
-render();
+  function showFinding(x) {
+    const where = whereOf(x);
+    const kids = [h("p", {}, badge(x.severity), " ", h("code", { text: x.rule || "" }), " ", badge(tag(x, "tier") || "unrated", "info")),
+      h("p", { text: x.claim || "(no claim recorded)" }),
+      dl([["Location", where ? h("span", {}, h("code", { text: where }), " ", RK.copyButton(where, "Copy the location")) : null],
+        ["Family", tag(x, "family")], ["Fix tier", tag(x, "tier")], ["Angle", tag(x, "angle")], ["Plugin", tag(x, "plugin")]])];
+    if (x.quote) kids.push(h("h3", { text: "Quoted" }), h("pre", { text: x.quote }));
+    if (x.fix) kids.push(h("h3", { text: "Suggested fix" }), h("p", { text: x.fix }));
+    if (!where && !x.quote && !x.fix) kids.push(h("p", { class: "rk-muted", text: "No evidence was recorded for this finding -- treat it as unverified." }));
+    kids.push(h("p", {}, S.link("Show it in the list below", () => {
+      const card = document.getElementById(idOf.get(x));
+      if (card) { card.open = true; card.scrollIntoView({ block: "center" }); }
+    })));
+    if (sel) kids.push(h("p", {}, S.link("Back to the cell", () => showCell(sel.fam, sel.sev, true))));
+    else kids.push(h("p", {}, S.link("How to read this", showOverview)));
+    S.open(x.rule || "Finding", where || (tag(x, "family") + " · " + x.severity), ...kids);
+  }
+
+  function showCell(fa, sv2, filtered) {
+    const list = f.filter((x) => (!fa || tag(x, "family") === fa) && (!sv2 || x.severity === sv2));
+    const title = (fa ? "Family " + fa : "All families") + (sv2 ? " · " + sv2 : "");
+    const info = fa ? famInfo[fa] : null;
+    const sub = plural(list.length, "finding") + (fa && FAMNAME[fa] ? " · " + FAMNAME[fa] : "");
+    const kids = [];
+    if (!list.length) {
+      kids.push(h("p", { text: "Nothing fired here." }));
+      kids.push(h("p", { class: "rk-muted", text: info ? "Rules in this family that fired anywhere in the review: " + info.fired + " of " + info.total + ". A zero is not evidence of health; it is evidence that nothing in this plugin exercised these rules." : "A zero is not evidence of health." }));
+    } else {
+      if (info) kids.push(dl([["Rules fired", info.fired + " of " + info.total + " in this family"], ["Fix tiers", tierLine(list)]]));
+      else kids.push(dl([["Fix tiers", tierLine(list)]]));
+      kids.push(h("h3", { text: "Findings, worst first" }));
+      const order = (x) => sevs.indexOf(x.severity);
+      kids.push(h("ul", { class: "plain" }, list.slice().sort((a, b) => order(a) - order(b)).map((x) =>
+        h("li", {}, badge(x.severity), " ", h("code", { text: x.rule || "" }), " ", badge(tag(x, "tier") || "unrated", "info"), " ",
+          S.link(x.claim || "(no claim recorded)", () => showFinding(x)), " ",
+          x.file ? h("small", { class: "rk-muted mono", text: whereOf(x) }) : null))));
+      kids.push(h("p", { class: "rk-muted", text: filtered ? "The list below is filtered to this selection. Press Escape to clear it." : "Click the cell to filter the list below to it." }));
+    }
+    S.open(title, sub, ...kids);
+  }
+
+  function applyFilter(fa, sv2) {
+    box.setFilter("family", fa ? [fa] : []);
+    box.setFilter("severity", sv2 ? [sv2] : []);
+  }
+
+  let filteredNow = false;
+  function pick(fa, sv2) {
+    const again = sel && sel.fam === fa && sel.sev === sv2 && filteredNow;
+    if (again) { S.close(); return; } // the Escape path clears the selection and the filter
+    sel = { fam: fa, sev: sv2 };
+    paint();
+    const filtered = list(fa, sv2).length > 0;
+    filteredNow = filtered;
+    if (filtered) applyFilter(fa, sv2); else applyFilter(null, null);
+    showCell(fa, sv2, filtered);
+  }
+  const list = (fa, sv2) => f.filter((x) => (!fa || tag(x, "family") === fa) && (!sv2 || x.severity === sv2));
+
+  // Closing the drawer (Escape, the close button) drops the selection and its filter with it.
+  new MutationObserver(() => {
+    if (RK.$("#rk-drawer").hidden) { sel = null; filteredNow = false; paint(); applyFilter(null, null); }
+  }).observe(RK.$("#rk-drawer"), { attributes: true, attributeFilter: ["hidden"] });
+
+  // ---- boot ------------------------------------------------------------------------------------------
+  S.onResize((w, hgt) => draw(w, hgt));
+  RK.init();
+  // A finding opens in the drawer beside the heatmap: claim the hash so the page stays on
+  // the figure. #sec-* is left to the kit, which scrolls to the section.
+  const fromHash = () => {
+    const id = RK.hashId();
+    const x = id ? f.find((y) => idOf.get(y) === id) : null;
+    if (!x) return false;
+    showFinding(x);
+    RK.claimHash();
+    return true;
+  };
+  window.addEventListener("hashchange", fromHash);
+  const linked = fromHash();
+  if (!linked) {
+    // Open on the worst populated cell (not filtering the list: the reader has not asked for that yet).
+    let worst = null;
+    for (const sv2 of sevs) { const fa = fams.find((x) => cellOf(x, sv2).length); if (fa) { worst = [fa, sv2]; break; } }
+    if (worst) { sel = { fam: worst[0], sev: worst[1] }; paint(); showCell(worst[0], worst[1]); } else showOverview();
+  }
+})();
 </script>
 </body>
 </html>

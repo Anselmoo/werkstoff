@@ -119,9 +119,11 @@ Alongside the JSON stage graph, this skill renders a self-contained HTML viewer
 (`build_stage_map_html.py`) that lays the real dependency graph out as a live
 `d3-force` physics simulation on canvas: nodes cluster by actual connectivity
 instead of directory structure, so a tight interconnected core reads as a
-visible cluster and an unconnected module drifts off on its own.
+visible cluster. The map fills the first screen; clicking a stage (or arrowing to it
+and pressing Enter) opens its files, wires, neighbours and findings in a drawer beside it,
+and the findings and the stage table follow below.
 
-![Force-directed dependency graph rendered on canvas: every stage is a dark disc whose rings carry its state -- a thick amber ring on the large "core" god-module at the bottom of the main cluster, thin grey rings on the ordinary stages (api, ui, cache, legacy), dashed rings on the dead-end "utils" and on the unconnected "sandbox" stage drifted off on its own, and a double red ring on each of the four stages caught in a dependency cycle, printing its cycle number above its name: "1" on auth and db, "2" on queue and worker. A panel stack in the top-left corner states the scope (11 stages, 16 wires, 103 files), answers "Which stages can't be changed on their own?" in a sentence naming core as the god-module and the cycles as #1 auth ⇄ db and #2 queue ⇄ worker, and carries an always-visible legend whose swatches are drawn with the same rings as the map -- ordinary stage, god-module, a cycle member shown both as a numbered double ring and in its small red-core form, dead-end, and circle area](assets/stage-map-viewer-screenshot.jpg)
+![Force-directed dependency graph filling the screen: every stage is a disc whose rings carry its state -- a thick amber ring on the large "core" god-module, thin grey rings on ordinary stages (api, ui, cache, legacy), dashed rings on the dead-end "utils" and the unconnected "sandbox", and a double red ring with its cycle number on auth and db (cycle 1) and queue and worker (cycle 2). The verdict floats top-left naming core as the god-module and the two cycles, with four numbers beneath it; an always-visible legend sits bottom-left; and a side drawer shows the selected core stage with its files, fan-in and fan-out, the stages it imports and is imported by as links, and its finding](assets/stage-map-viewer-screenshot.jpg)
 
 That picture is reproducible. The two inputs are committed beside the builder --
 `scripts/fixtures/sample_stage_graph.json` (11 stages, 16 wires) and

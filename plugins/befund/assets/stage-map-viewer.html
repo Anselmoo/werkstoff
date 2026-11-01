@@ -4,146 +4,114 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>befund — stage map</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
   :root {
-    /* Base tokens (--bg, --panel, --panel-2, --text, --muted, --accent,
-       --border, --status-*) come from the injected tools/design-tokens/
-       tokens.css above. --cycle and --god are this viewer's own semantic
-       aliases -- both hex values matched tokens.css's --status-bad/
-       --status-warn exactly, so they're sourced from the shared tokens
-       instead of a second hand-copied hex. */
-    --cycle: var(--status-bad);
-    --god: var(--status-warn);
+    /* --cycle and --god are this viewer's semantic aliases for the kit's status roles. */
+    --cycle: var(--rk-bad);
+    --god: var(--rk-warn);
   }
-  * { box-sizing: border-box; margin: 0; }
-  html, body { height: 100%; overflow: hidden; background: var(--bg);
-    color: var(--text); font: var(--font-size-base)/var(--line-height-base) var(--font-sans); }
+  /* Archetype (S1, R9): the map fills the kit's stage (#rk-figure). The verdict, the numbers,
+     the legend and the hint float over it; a stage's detail opens in the kit drawer beside it.
+     Findings and the stage table follow below as ordinary kit sections. */
+  .rk-wrap { max-width: none; }
   #map { position: absolute; inset: 0; cursor: grab; }
   #map.dragging { cursor: grabbing; }
-  /* R5 (report-viewer-standard): this viewer is the "absolute canvas"
-     archetype, so the canvas correctly fills the viewport -- but the chrome
-     floating over it must still never clip. The HUD is capped to the
-     viewport and scrolls internally rather than running off the bottom
-     edge; the sidebar and hint shrink rather than overhang a narrow one. */
-  #hud { position: absolute; top: 12px; left: 12px; width: 280px;
-    /* Capped above #hint, which a long legend used to run under. */
-    max-width: calc(100vw - 24px); max-height: calc(100vh - 76px);
-    overflow-y: auto; overscroll-behavior: contain;
-    display: flex; flex-direction: column; gap: 8px; z-index: 2; }
-  .panel { background: var(--panel); border: 1px solid var(--border);
-    border-radius: 8px; padding: var(--space-3) var(--space-3); }
-  .panel h1 { font-size: 15px; color: var(--accent); margin-bottom: var(--space-1); }
-  .panel h2 { font-size: 13px; color: var(--accent); margin-bottom: var(--space-1); }
-  .panel .sub { color: var(--muted); font-size: 12px; }
-  /* R1: the verdict sentence -- what this map FOUND, not how to drive it. */
-  .verdict { color: var(--text); font-size: 12px; line-height: 1.5; }
-  /* R4: a legend a reader gets without clicking anything. tokens.css's
-     mandate is "never color alone, always pair with an icon or a label".
-     Every swatch is a <canvas> painted by the same drawNodeMark() the map
-     uses, so a swatch cannot drift from the circle it explains, and the
-     non-colour channels -- ring weight, dashed ring, the cycle number --
-     read the same way in the legend as on the map. */
-  #legendpanel h3 { font-size: 11px; text-transform: uppercase;
-    letter-spacing: .05em; color: var(--muted); margin-bottom: var(--space-2); }
-  .legend { list-style: none; padding: 0; display: flex; flex-direction: column;
-    gap: var(--space-2); font-size: 12px; color: var(--muted); }
-  .legend li { display: flex; align-items: center; gap: 8px; }
+  #map:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; }
+  .rk-hud { max-width: min(520px, calc(100% - var(--rk-open-w) - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
+  .panel { background: var(--rk-panel); border: 1px solid var(--rk-border);
+    border-radius: var(--radius-panel); padding: var(--space-3); }
+  /* R4: a legend a reader gets without clicking anything. Every swatch is a <canvas> painted
+     by the same drawNodeMark() the map uses, so a swatch cannot drift from the circle it
+     explains, and the non-colour channels (ring weight, dashed ring, the cycle number) read
+     the same way in the legend as on the map. */
+  #legendpanel h3, #matchpanel h3 { font-size: 11px; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--rk-muted); margin: 0 0 var(--space-2); }
+  /* One compact row of short labels; each mark's full explanation is its hover title. */
+  .legend { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3); font-size: 12px; color: var(--rk-muted); }
+  .legend li { display: flex; align-items: center; gap: var(--space-1); cursor: help; }
   .legend canvas.swatch { flex: none; }
-  #search { width: 100%; padding: var(--space-2) var(--space-2); border-radius: 6px;
-    border: 1px solid var(--border); background: var(--panel-2);
-    color: var(--text); font: inherit; outline: none; }
-  #search:focus { border-color: var(--accent); }
-  #results { max-height: min(180px, 22vh); overflow-y: auto; margin-top: 4px; }
-  #results div { padding: var(--space-1) var(--space-2); border-radius: 4px; cursor: pointer;
-    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #results div:hover { background: var(--panel-2); }
-  #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
-    width: min(320px, calc(100vw - 24px)); overflow-y: auto; z-index: 2;
-    display: none; }
-  #sidebar.open { display: block; }
-  #sidebar h2 { font-size: 16px; word-break: break-word; }
-  #sidebar .meta { color: var(--muted); font-size: 12px; margin: var(--space-1) 0 var(--space-3); }
-  #sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
-    color: var(--muted); margin: 12px 0 4px; }
-  #sidebar .link { color: #5ba0e0; cursor: pointer; display: block;
-    padding: var(--space-1) 0; font-size: 13px; white-space: nowrap; overflow: hidden;
-    text-overflow: ellipsis; }
-  #sidebar .link:hover { color: var(--accent); }
-  #sidebar .closebtn { float: right; cursor: pointer; color: var(--muted);
-    font-size: 18px; line-height: 1; } #sidebar .closebtn:hover { color: var(--text); }
-  .badge { display: inline-block; padding: var(--space-1) var(--space-2); border-radius: 9px;
-    font-size: 11px; border: 1px solid var(--border); color: var(--muted); margin-right: 4px; }
-  /* The red is carried by the border (3.40:1 on --panel, clears 3:1); the
-     words are --text (13.90:1). --status-bad as small text was 3.40:1. */
-  .badge.cycle { border-color: var(--cycle); color: var(--text); }
-  .badge.god { border-color: var(--god); color: var(--god); }
-  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    max-width: calc(100vw - 24px); color: var(--muted); font-size: 12px;
-    z-index: 2; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 6px; padding: 4px 12px; }
+  #results { max-height: min(180px, 22vh); overflow-y: auto; }
+  #results button { display: block; width: 100%; text-align: left; margin: 0 0 var(--space-1); }
+  .rk-drawer-body .badges { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-2); }
+  .rk-drawer-body .row { display: flex; justify-content: space-between; gap: var(--space-2);
+    padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); font-size: 0.8rem; }
+  .rk-drawer-body .row .k { color: var(--rk-muted); }
+  .rk-drawer-body .row .v { text-align: right; overflow-wrap: anywhere; }
+  .rk-drawer-body .why { font-size: 0.8rem; color: var(--rk-muted); margin: var(--space-2) 0 0; line-height: 1.45; }
+  .rk-drawer-body ul.links { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.links li { margin: 0 0 var(--space-1); }
+  .rk-drawer-body .files { margin: var(--space-2) 0 0; font-size: 0.78rem; }
+  .rk-drawer-body .files summary { cursor: pointer; }
+  .rk-drawer-body .files code { display: block; overflow-wrap: anywhere; padding: 1px 0; }
   /* Says how many cycle numbers draw() left out because no spot for their tag was clear.
-     It lives in the HUD, so the note itself can never cover a stage. --text on --panel
-     13.90:1; the --status-bad border 3.40:1 on --panel, 3.77:1 on --bg. */
-  /* Pinned to the bottom of the HUD, so the count of left-out numbers stays visible even when
-     the HUD scrolls on a short viewport. */
-  #lodnote { position: sticky; bottom: 0; border-color: var(--cycle); color: var(--text);
-    font-size: 12px; line-height: 1.45; }
-  /* The HUD scrolls when it is taller than the viewport; this says so, so a clipped legend
-     is never silent. --muted on --panel 6.06:1. */
-  #hudmore { position: sticky; bottom: 0; text-align: center; color: var(--muted);
-    font-size: 11px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: var(--space-1) var(--space-2); }
-  #err { position: absolute; inset: 0; display: none; place-items: center; z-index: 9; }
-  #err .panel { max-width: 420px; text-align: center; }
+     It lives in the HUD, so the note itself can never cover a stage. */
+  #lodnote { border-color: var(--cycle); color: var(--rk-text); font-size: 12px; line-height: 1.45; }
+  .rk-section h2 { scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
 </style>
 </head>
-<body>
-<canvas id="map"></canvas>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>befund — stage map</h1>
+  <p class="rk-sub" id="stats"></p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search stages, findings and files</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search stages…" autocomplete="off">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
 
-<div id="hud">
-  <div class="panel">
-    <h1 id="title">befund — stage map</h1>
-    <div class="sub" id="stats"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Dependency graph of the stages: every stage a circle, every import a wire">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Which stages can't be changed on their own? The ones every other stage imports, and the
+        ones that import each other: everything downstream of a god-module has to
+        be re-tested with it, and a dependency cycle cannot be broken from one
+        side.</p>
+      <dl class="rk-hud-stats"></dl>
+      <div class="panel" id="matchpanel" hidden>
+        <h3>Matching stages</h3>
+        <div id="results"></div>
+      </div>
+      <div class="panel" id="lodnote" hidden></div>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure>
+      <canvas id="map" tabindex="0" role="application" aria-label="Force-directed dependency graph of the stages. Arrow keys move between stages, Enter opens a stage's detail. The same facts are listed under Findings and Stages below."></canvas>
+    </div>
+    <div class="rk-legend-float rk-card" id="legendpanel">
+      <ul class="legend" id="legend" aria-label="What the marks mean">
+        <li title="An ordinary stage: thin grey ring."><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>stage</li>
+        <li title="God-module: most other stages import it. Thick amber ring."><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module</li>
+        <li title="In a dependency cycle: double red ring, or a red core when small. Its number names the cycle."><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a cycle (number = which)</li>
+        <li title="Dead-end: imports nothing outward. Dashed ring."><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end</li>
+        <li title="Circle area is proportional to the number of files in the stage."><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>area = files</li>
+      </ul>
+    </div>
+    <span class="rk-hint" id="hint">drag to move or pan · scroll to zoom · click or Enter on a stage for detail · double-click to focus</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <p class="rk-sr" id="kbstatus" role="status" aria-live="polite"></p>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
-  <div class="panel">
-    <h2>Which stages can't be changed on their own?</h2>
-    <p class="verdict" id="verdict">The ones every other stage imports, and the
-      ones that import each other: everything downstream of a god-module has to
-      be re-tested with it, and a dependency cycle cannot be broken from one
-      side.</p>
-  </div>
-  <div class="panel" id="legendpanel">
-    <h3>What the marks mean</h3>
-    <ul class="legend" id="legend">
-      <li><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>ordinary stage — thin grey ring</li>
-      <li><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module — most stages import it (thick amber ring)</li>
-      <li><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a dependency cycle — double red ring, or a red core when small; its number names the cycle</li>
-      <li><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end — imports nothing outward (dashed ring)</li>
-      <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
-    </ul>
-  </div>
-  <div class="panel">
-    <input id="search" type="search" placeholder="Search stages…" autocomplete="off">
-    <div id="results"></div>
-  </div>
-  <div id="hudmore" hidden>↓ scroll for the rest of this panel</div>
-  <div class="panel" id="lodnote" hidden></div>
-</div>
-
-<div id="sidebar" class="panel"></div>
-<div id="hint">drag a stage to reposition · drag empty space to pan · scroll to zoom · double-click a stage to focus · Esc to reset</div>
-<div id="err" class="panel"><p></p></div>
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
 
 <!--__D3_SUBSET__-->
-<script type="module">
-function fail(html) {
-  const err = document.getElementById("err");
-  err.querySelector("p").innerHTML = html;
-  err.style.display = "grid";
-}
-
+<script type="application/json" id="report-data">@@DATA@@</script>
+<script>
+(() => {
+"use strict";
 const d3 = window.d3;
 
 // Injected by build_stage_map_html.py: the contents of stage_graph.json +
@@ -151,11 +119,17 @@ const d3 = window.d3;
 // lib.graph's own find_cycles/find_god_modules -- see that script for the
 // exact schema. `nodes` is a FLAT list (the data has no containment
 // hierarchy); `edges` are the directed wires between them.
-const DATA = /*__STAGE_MAP_DATA__*/ null;
+const DATA = RK.readData("python3 plugins/befund/scripts/build_stage_map_html.py --stage-graph <stage_graph.json> --file-stage-index <file_stage_index.json> --template plugins/befund/assets/stage-map-viewer.html --d3 plugins/befund/assets/inline-d3.html --tokens plugins/befund/assets/tokens.css --out STAGE_MAP.html");
+const S = RK.stage();
+const stageEl = S.figure;
+// RK.fail() puts its panel in the HUD, on the first screen; with no data there is nothing
+// for the legend and the interaction hint to explain, so they go.
+const hideStage = () => { for (const id of ["legendpanel", "hint"]) document.getElementById(id).hidden = true; };
 
 if (!DATA || !DATA.nodes) {
-  fail("No stage map data found in this file.<br>Re-run <code>befund-stage-map</code> to regenerate it.");
-  throw new Error("no data");
+  if (DATA) RK.fail("The data in this file has no stage list. Re-run befund-stage-map to regenerate it.", "befund-stage-map");
+  hideStage();
+  return;
 }
 
 // ── Canvas / draw scaffolding -- defined before the simulation below so
@@ -164,6 +138,7 @@ const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 let transform = d3.zoomIdentity;
 let hovered = null, selected = null;
+let matchIds = new Set();
 const MIN_R = 1.5, LABEL_R = 14;
 let raf = null;
 const requestDraw = () => { if (!raf) raf = requestAnimationFrame(() => { raf = null; draw(); }); };
@@ -178,11 +153,13 @@ const nodes = DATA.nodes.map(d => ({
   id: d.id, name: d.name, fileCount: d.fileCount || 0,
   fanIn: d.fanIn || 0, fanOut: d.fanOut || 0, inCycle: !!d.inCycle,
   cycleId: d.cycleId, godModuleFanIn: d.godModuleFanIn, deadEnd: !!d.deadEnd,
+  files: Array.isArray(d.files) ? d.files : [],
 }));
 const byId = new Map(nodes.map(n => [n.id, n]));
 if (!nodes.length) {
-  fail("The stage graph has no stages to draw.<br>Check <code>stage_graph.json</code>.");
-  throw new Error("empty graph");
+  RK.fail("The stage graph has no stages to draw; check stage_graph.json, then re-run befund-stage-map to regenerate it.", "befund-stage-map");
+  hideStage();
+  return;
 }
 
 const maxFileCount = Math.max(1, ...nodes.map(n => n.fileCount));
@@ -217,16 +194,36 @@ const mixHex = (a, b, t) => {
   const [pa, pb] = [rgbOf(a), rgbOf(b)];
   return "#" + pa.map((v, i) => Math.round(v * t + pb[i] * (1 - t)).toString(16).padStart(2, "0")).join("");
 };
-const COLOR = {
-  bg: cssVar("--bg"),
-  panel: cssVar("--panel"),
-  text: cssVar("--text"),
-  muted: cssVar("--muted"),
-  accent: cssVar("--accent"),
-  textFaint: hexToRgba(cssVar("--text"), 0.15),
-  cycle: cssVar("--status-bad"),
-  god: cssVar("--status-warn"),
-};
+// Colours come from the kit's --rk-* roles, so they follow the theme; readColors() runs again
+// whenever the theme changes. (The contrast figures below were measured on the dark theme;
+// the light theme maps the same roles and is checked on its screenshot.)
+let COLOR, FILL, RING;
+const TINT = 0.18;
+function readColors() {
+  COLOR = {
+    bg: cssVar("--rk-bg"),
+    panel: cssVar("--rk-panel"),
+    text: cssVar("--rk-text"),
+    muted: cssVar("--rk-muted"),
+    accent: cssVar("--rk-focus"),
+    textFaint: hexToRgba(cssVar("--rk-text"), 0.15),
+    cycle: cssVar("--rk-bad"),
+    god: cssVar("--rk-warn"),
+  };
+  FILL = {
+    stage: mixHex(COLOR.muted, COLOR.bg, TINT),
+    cycle: mixHex(COLOR.cycle, COLOR.bg, TINT),
+    god: mixHex(COLOR.god, COLOR.bg, TINT),
+    selected: mixHex(COLOR.accent, COLOR.bg, TINT),
+  };
+  RING = {
+    stage: { color: COLOR.muted, width: 2 },
+    cycle: { color: COLOR.cycle, width: 2.5 },
+    god: { color: COLOR.god, width: 4 },
+    selected: { color: COLOR.accent, width: 3 },
+  };
+}
+readColors();
 const FONT_SANS = cssVar("--font-sans");
 const RADIUS_SM = parseFloat(cssVar("--radius-sm")) || 0;
 
@@ -250,19 +247,6 @@ const RADIUS_SM = parseFloat(cssVar("--radius-sm")) || 0;
 //   cycle     --status-bad rings  3.77:1 vs --bg, 3.27:1 vs the cycle tint;  label 13.40:1
 // 18% is a ceiling, not a taste: at 30% the red ring falls to 2.85:1 against its own tint.
 // Every ring is at least 2px wide, so anti-aliasing leaves full-colour pixels.
-const TINT = 0.18;
-const FILL = {
-  stage: mixHex(COLOR.muted, COLOR.bg, TINT),
-  cycle: mixHex(COLOR.cycle, COLOR.bg, TINT),
-  god: mixHex(COLOR.god, COLOR.bg, TINT),
-  selected: mixHex(COLOR.accent, COLOR.bg, TINT),
-};
-const RING = {
-  stage: { color: COLOR.muted, width: 2 },
-  cycle: { color: COLOR.cycle, width: 2.5 },
-  god: { color: COLOR.god, width: 4 },
-  selected: { color: COLOR.accent, width: 3 },
-};
 const INNER_RING_W = 2, INNER_RING_GAP = 2, INNER_RING_MIN_R = 7;
 // The complete mark for a node, or for a legend swatch built from a node-shaped object.
 function markFor(n) {
@@ -362,12 +346,13 @@ function paintSwatch(cv) {
   // The same cycle member, drawn at a size too small for two rings.
   if (kind === "cycle") drawNodeMark(c, 40, h / 2, 5.5, markFor(node));
 }
-document.querySelectorAll("#legend canvas.swatch").forEach(paintSwatch);
+const paintSwatches = () => document.querySelectorAll("#legend canvas.swatch").forEach(paintSwatch);
+paintSwatches();
 
 // ── R1: the verdict, in words ────────────────────────────────────────────
 // The static markup already states the general finding this map exists to
-// surface; this replaces it with THIS graph's actual one. textContent, never
-// innerHTML -- stage names are untrusted input (barrier two of S3; the
+// surface; this replaces it with THIS graph's actual one, as text only --
+// stage names are untrusted input (barrier two of S3; the
 // builder's \u003c/\u003e/\u0026 escaping is barrier one).
 const godModules = nodes.filter(n => n.godModuleFanIn)
   .sort((a, b) => b.godModuleFanIn - a.godModuleFanIn);
@@ -425,42 +410,76 @@ document.getElementById("verdict").textContent = verdictText();
 // keeps differently-sized circles from overlapping at rest, and
 // forceCenter keeps the whole layout centered on the canvas origin.
 const links = edges.map(e => ({ source: e.source, target: e.target }));
+// R9: lay the graph out in the figure's own shape. A plain force layout settles into a disc,
+// which on a wide stage fills the height and leaves both sides empty; pulling harder toward
+// the horizontal axis than the vertical one stretches the cluster to the stage's aspect.
+const ASPECT = Math.min(2.4, Math.max(1, stageEl.clientWidth / Math.max(1, stageEl.clientHeight)));
 const simulation = d3.forceSimulation(nodes)
   .force("link", d3.forceLink(links).id(d => d.id).distance(70))
   .force("charge", d3.forceManyBody().strength(d => -60 - d.r * 4))
   .force("collide", d3.forceCollide().radius(d => d.r + 6))
   .force("center", d3.forceCenter())
-  .on("tick", requestDraw)
-  .on("end", fitToNodes);
+  // A pull toward the origin keeps an unconnected stage near the cluster (it has no wire to hold
+  // it there) instead of letting it drift off and shrink everything else when the map is fitted.
+  .force("x", d3.forceX().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2) / ASPECT))
+  .force("y", d3.forceY().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2) * ASPECT))
+  .on("tick", requestDraw);
+// Settle the layout before the first paint (about 300 ticks to alpha-min), so the map opens
+// framed and still rather than mid-animation; dragging a stage re-heats it as before.
+simulation.stop();
+for (let i = 0, n = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())); i < n; i++) simulation.tick();
 
-// fitToNodes() is wired to the simulation's "end" event, which fires again
-// after every re-heat (e.g. simulation.alphaTarget(...).restart() from the
-// node drag handlers below) -- not just the very first time the layout
-// settles. Without this guard, clicking or dragging a node would silently
-// yank the camera back to fit-all a couple seconds later, overriding
-// whatever flyTo()/pan/zoom the user just did. Only the initial auto-frame
-// should apply automatically; subsequent settles are expected to leave the
-// camera wherever the user left it.
-let hasInitialFit = false;
+// fitToNodes() frames the settled layout. It is NOT tied to the simulation's "end" event, which
+// fires again after every re-heat (a node drag) and would yank the camera back mid-gesture; it
+// runs on load and on figure resize, and only until the reader moves the camera themselves.
+let userTouched = false;
 function fitToNodes() {
-  if (hasInitialFit) return;
-  hasInitialFit = true;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
     minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
     minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r);
   }
   const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
-  const vw = innerWidth, vh = innerHeight;
-  const k = Math.min(vw / (w * 1.1), vh / (h * 1.1), MAX_K);
+  const vw = stageEl.clientWidth, vh = stageEl.clientHeight;
+  // Fit as large as the figure allows, then shrink only as far as it takes to keep every circle
+  // clear of the floating HUD (top left) and legend (bottom left).
+  const fr = stageEl.getBoundingClientRect();
+  const rect = el => { const r = el.getBoundingClientRect(); return { x: r.left - fr.left - 10, y: r.top - fr.top - 10, w: r.width + 20, h: r.height + 20 }; };
+  const floats = [rect(document.querySelector(".rk-hud")), rect(document.getElementById("legendpanel"))];
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, vh / 2 - cy * k).scale(k));
+  const k0 = Math.min(vw / (w * 1.04), vh / (h * 1.04), MAX_K);
+  const clear = (k, ox, oy) => nodes.every(n => {
+    const sx = n.x * k + ox, sy = n.y * k + oy, r = n.r * k;
+    return floats.every(f => {
+      const nx = Math.max(f.x, Math.min(sx, f.x + f.w)), ny = Math.max(f.y, Math.min(sy, f.y + f.h));
+      return Math.hypot(sx - nx, sy - ny) > r;
+    });
+  });
+  const free0 = floats[0].y + floats[0].h, free1 = floats[1].y;
+  let best = null;
+  for (let f = 1; f >= 0.35 && !best; f -= 0.03) {
+    const k = k0 * f;
+    // centre in the whole figure first, then in the band between the two floats, then
+    // nudged right of them (the floats sit on the left edge)
+    const right = Math.max(...floats.map(fl => fl.x + fl.w));
+    for (const oy of [vh / 2 - cy * k, (free0 + free1) / 2 - cy * k]) {
+      // every candidate is clamped so the whole layout stays inside the figure
+      const lo = 8 - minX * k, hi = vw - 8 - maxX * k;
+      for (const raw of [vw / 2 - cx * k, (vw + right) / 2 - cx * k, hi]) {
+        const ox = Math.min(hi, Math.max(lo, raw));
+        if (clear(k, ox, oy)) { best = { k, ox, oy }; break; }
+      }
+      if (best) break;
+    }
+  }
+  if (!best) { const k = k0 * 0.5; best = { k, ox: vw / 2 - cx * k, oy: (free0 + free1) / 2 - cy * k }; }
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(best.ox, best.oy).scale(best.k));
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
 function draw() {
   const dpr = window.devicePixelRatio || 1;
-  const vw = innerWidth, vh = innerHeight;
+  const vw = stageEl.clientWidth, vh = stageEl.clientHeight;
   const bw = Math.round(vw * dpr), bh = Math.round(vh * dpr);
   if (canvas.width !== bw) { canvas.width = bw; canvas.style.width = vw + "px"; }
   if (canvas.height !== bh) { canvas.height = bh; canvas.style.height = vh + "px"; }
@@ -511,6 +530,11 @@ function draw() {
     const extent = drawNodeMark(ctx, sx, sy, sr, mark, { hover: hovered === n.id });
     const outer = { x: sx, y: sy, r: extent };
     drawn.push(outer);
+    if (matchIds.has(n.id)) {
+      // a search hit: a dashed-free accent halo outside the state ring, so it reads without hue
+      ctx.beginPath(); ctx.arc(sx, sy, extent + 5, 0, Math.PI * 2);
+      ctx.lineWidth = 2; ctx.strokeStyle = COLOR.accent; ctx.stroke();
+    }
 
     const num = cycleNumber(n);
     const maxW = innerWidth_(sr, mark);
@@ -590,18 +614,17 @@ function draw() {
       (hiddenNumbers === 1 ? "it" : "them") + ".";
   }
   note.hidden = !hiddenNumbers;
-  updateHudMore();
 }
 
 const TAG_CLEAR = 6, OWN_MARGIN = 4, LEADER_CLEAR = 3;
 // HTML chrome floating over the canvas, in canvas coordinates (the canvas fills the viewport).
 function panelRects() {
   const rects = [];
-  for (const id of ["hud", "sidebar", "hint"]) {
-    const el = document.getElementById(id);
+  const origin = stageEl.getBoundingClientRect();
+  for (const el of [document.querySelector(".rk-hud"), document.getElementById("legendpanel"), document.getElementById("hint")]) {
     if (!el || el.hidden) continue;
     const r = el.getBoundingClientRect();
-    if (r.width && r.height) rects.push({ x: r.left, y: r.top, w: r.width, h: r.height });
+    if (r.width && r.height) rects.push({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height });
   }
   return rects;
 }
@@ -623,23 +646,6 @@ function segmentsCross(a, b) {
   return side(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1) !== side(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2) &&
     side(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1) !== side(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
 }
-// The HUD scrolls when it is taller than the viewport; #hudmore says so until the reader
-// reaches its end.
-function updateHudMore() {
-  const hud = document.getElementById("hud"), more = document.getElementById("hudmore");
-  const note = document.getElementById("lodnote"), hint = document.getElementById("hint");
-  // The HUD ends above the hint as it is actually laid out -- it wraps to two or three lines
-  // on a narrow viewport, which a fixed calc() could not know -- so the hint never paints
-  // over the pinned note or the cue.
-  const limit = hint.getBoundingClientRect().top - hud.getBoundingClientRect().top - 8;
-  hud.style.maxHeight = Math.max(80, Math.floor(limit)) + "px";
-  // The cue sits flush on the pinned note, so no scrolled legend shows between them.
-  more.style.bottom = note.hidden ? "0px" : note.offsetHeight + "px";
-  const hasMore = hud.scrollHeight - hud.scrollTop - hud.clientHeight > 4;
-  if (more.hidden === hasMore) more.hidden = !hasMore;
-}
-document.getElementById("hud").addEventListener("scroll", updateHudMore);
-addEventListener("resize", updateHudMore);
 function segmentHitsBox(s, b) {
   // Leaders are a few tens of pixels long; 16 samples cannot step over a tag box.
   for (let i = 0; i <= 16; i++) {
@@ -679,7 +685,7 @@ function hit(mx, my) {
 }
 
 const zoomB = d3.zoom().scaleExtent([0.3, MAX_K]).clickDistance(4)
-  .on("zoom", ev => { transform = ev.transform; requestDraw(); })
+  .on("zoom", ev => { if (ev.sourceEvent) userTouched = true; transform = ev.transform; requestDraw(); })
   .on("start", () => canvas.classList.add("dragging"))
   .on("end", () => canvas.classList.remove("dragging"));
 // Don't let d3.zoom start a pan gesture when the pointer is over a node --
@@ -692,13 +698,15 @@ const sel = d3.select(canvas).call(zoomB).on("dblclick.zoom", null);
 // Center on the simulation's origin immediately, before it has settled --
 // fitToNodes() (above) replaces this with a tight fit once the simulation's
 // "end" event fires (alpha decays below alphaMin, usually well under 2s).
-transform = d3.zoomIdentity.translate(innerWidth / 2, innerHeight / 2).scale(1);
+transform = d3.zoomIdentity.translate(stageEl.clientWidth / 2, stageEl.clientHeight / 2).scale(1);
 sel.call(zoomB.transform, transform);
+fitToNodes();
 
 let flyGen = 0;
 function flyTo(n) {
+  userTouched = true;
   const gen = ++flyGen;
-  const vw = innerWidth, vh = innerHeight, cur = transform;
+  const vw = stageEl.clientWidth, vh = stageEl.clientHeight, cur = transform;
   const from = [(vw / 2 - cur.x) / cur.k, (vh / 2 - cur.y) / cur.k, Math.min(vw, vh) / cur.k];
   const targetW = Math.max(n.r * 2.6, Math.min(vw, vh) / MAX_K);
   const interp = d3.interpolateZoom(from, [n.x, n.y, targetW]);
@@ -750,73 +758,234 @@ canvas.addEventListener("click", e => {
   if (dragMoved) { dragMoved = false; return; }
   const h = hit(e.offsetX, e.offsetY);
   selected = h ? h.id : null;
-  resultsEl.innerHTML = "";
-  renderSidebar(); requestDraw();
+  resultsEl.textContent = "";
+  renderDrawer(); requestDraw();
 });
 canvas.addEventListener("dblclick", e => { const h = hit(e.offsetX, e.offsetY); if (h) flyTo(h); });
 addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (e.target === searchEl) return;
-  flyGen++; selected = null; resultsEl.innerHTML = "";
-  flyTo(nodes[0]); renderSidebar();
+  flyGen++; selected = null; resultsEl.textContent = "";
+  flyTo(nodes[0]); renderDrawer();
 });
-addEventListener("resize", requestDraw);
+// ── Drawer: structured drill-down (R7), in the kit's drawer beside the map ─────────────
+const FINDINGS = Array.isArray(DATA.findings) ? DATA.findings : [];
+const findingsOf = id => FINDINGS.filter(f => f.stage === id || (f.stages || []).includes(id));
+const pick = n => { selected = n.id; flyTo(n); renderDrawer(); requestDraw(); };
 
-// ── Sidebar ─────────────────────────────────────────────────────────────
-const sidebar = document.getElementById("sidebar");
-const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-function renderSidebar() {
-  if (!selected) { sidebar.classList.remove("open"); return; }
-  const n = byId.get(selected);
-  const neighbors = [];
-  for (const e of adjacency.get(n.id) || []) {
-    if (e.source === n.id) neighbors.push({ id: e.target, dir: "→" });
-    else neighbors.push({ id: e.source, dir: "←" });
-  }
-  sidebar.innerHTML = `
-    <span class="closebtn" id="close">×</span>
-    <h2>${esc(n.name)}</h2>
-    <div class="meta">${n.fileCount} file(s)</div>
-    <div>
-      ${n.inCycle ? `<span class="badge cycle">in dependency cycle${n.cycleId != null ? " #" + (n.cycleId + 1) : ""}</span>` : ""}
-      ${n.godModuleFanIn ? `<span class="badge god">god-module: fan-in ${n.godModuleFanIn}</span>` : ""}
-      ${n.deadEnd ? '<span class="badge">dead-end (no outgoing wires)</span>' : ""}
-      <span class="badge">fan-in ${n.fanIn}</span>
-      <span class="badge">fan-out ${n.fanOut}</span>
-    </div>
-    ${neighbors.length ? `<h3>Wires (${neighbors.length})</h3>` +
-      neighbors.slice(0, 60).map(x => `<span class="link" data-id="${esc(x.id)}">${x.dir} ${esc(byId.get(x.id)?.name || x.id)}</span>`).join("") +
-      (neighbors.length > 60 ? `<div class="meta">…and ${neighbors.length - 60} more</div>` : "")
-      : `<h3>Wires</h3><div class="meta">none</div>`}`;
-  sidebar.classList.add("open");
-  sidebar.querySelector("#close").onclick = () => { selected = null; renderSidebar(); requestDraw(); };
-  sidebar.querySelectorAll(".link").forEach(el => el.onclick = () => {
-    const t = byId.get(el.dataset.id);
-    if (t) { selected = t.id; flyTo(t); renderSidebar(); requestDraw(); }
-  });
+// A neighbour is a kit link-button: it focuses that stage on the map and re-opens the drawer on it.
+function wireList(title, list) {
+  if (!list.length) return null;
+  return RK.h("div", {}, RK.h("h3", { text: title + " (" + list.length + ")" }),
+    RK.h("ul", { class: "links" }, list.slice(0, 60).map(id => {
+      const t = byId.get(id);
+      return RK.h("li", {}, t ? S.link(t.name, () => pick(t)) : RK.h("span", { text: id }));
+    })),
+    list.length > 60 ? RK.h("p", { class: "why", text: "…and " + (list.length - 60) + " more" }) : null);
 }
 
-// ── Search ────────────────────────────────────────────────────────────────
-const searchEl = document.getElementById("search");
-const resultsEl = document.getElementById("results");
-searchEl.addEventListener("input", () => {
-  const q = searchEl.value.trim().toLowerCase();
-  resultsEl.innerHTML = "";
-  if (!q) return;
-  const matches = nodes.filter(n => n.name.toLowerCase().includes(q)).slice(0, 30);
-  for (const n of matches) {
-    const div = document.createElement("div");
-    div.textContent = n.name;
-    div.onclick = () => { selected = n.id; flyTo(n); renderSidebar(); requestDraw(); searchEl.blur(); };
-    resultsEl.appendChild(div);
+// What the drawer shows when no stage is selected: the question this map answers.
+function renderOverview() {
+  S.open("Which stages can't be changed on their own?", "how to read this map",
+    RK.h("p", { text: "The ones every other stage imports, and the ones that import each other: everything downstream of a god-module has to be re-tested with it, and a dependency cycle cannot be broken from one side." }),
+    RK.h("p", { class: "why", text: "Click a stage on the map, or use the arrow keys and Enter, to read its wires, findings and files." }));
+}
+
+function renderDrawer() {
+  if (!selected) { S.close(); return; }
+  const n = byId.get(selected);
+  const outgoing = [], incoming = [];
+  for (const e of adjacency.get(n.id) || []) {
+    if (e.source === n.id) outgoing.push(e.target);
+    if (e.target === n.id) incoming.push(e.source);
+  }
+  const badges = RK.h("div", { class: "badges" },
+    n.inCycle ? RK.badge("cycle" + (n.cycleId != null ? " #" + (n.cycleId + 1) : ""), "bad") : null,
+    n.godModuleFanIn ? RK.badge("god-module", "warn") : null,
+    n.deadEnd ? RK.badge("dead-end", "info") : null,
+    !n.fanIn && !n.fanOut ? RK.badge("unconnected", "warn") : null);
+  const row = (k, v) => RK.h("div", { class: "row" }, RK.h("span", { class: "k", text: k }), RK.h("span", { class: "v", text: String(v) }));
+  const kids = [badges, row("Files", n.fileCount), row("Imported by (fan-in)", n.fanIn), row("Imports (fan-out)", n.fanOut)];
+  if (n.godModuleFanIn) {
+    kids.push(RK.h("p", { class: "why", text: "God-module: " + n.godModuleFanIn + " of " + Math.max(0, nodes.length - 1) +
+      " other stages import it; the threshold for this graph is " + (DATA.godThreshold != null ? DATA.godThreshold : "?") +
+      ". A change here has to be re-tested with every importer." }));
+  }
+  if (n.inCycle) {
+    const members = (DATA.cycles || [])[n.cycleId] || [];
+    kids.push(RK.h("p", { class: "why", text: "Cycle #" + (n.cycleId + 1) + ": these stages import each other, so none can be changed or tested alone." }));
+    kids.push(wireList("Cycle members", members.filter(m => m !== n.id)));
+  }
+  kids.push(wireList("Imports", outgoing), wireList("Imported by", incoming));
+  if (!outgoing.length && !incoming.length) kids.push(RK.h("p", { class: "why", text: "No wires: no stage imports this one and it imports none." }));
+  const found = findingsOf(n.id);
+  if (found.length) {
+    kids.push(RK.h("h3", { text: "Findings" }));
+    kids.push(RK.h("ul", { class: "links" }, found.map(f => {
+      const a = RK.h("a", { href: "#finding-" + f.id.replace(/[^A-Za-z0-9_.-]/g, "-"), text: f.claim });
+      a.addEventListener("click", () => setTimeout(openHashFinding, 0));
+      return RK.h("li", {}, a);
+    })));
+  }
+  if (n.files.length) {
+    kids.push(RK.h("details", { class: "files" }, RK.h("summary", { text: "Files in this stage (" + n.files.length + ")" }),
+      n.files.slice(0, 80).map(f => RK.h("code", { text: f })),
+      n.files.length > 80 ? RK.h("p", { class: "why", text: "…and " + (n.files.length - 80) + " more" }) : null));
+  }
+  S.open(n.name, n.fileCount + " file" + (n.fileCount === 1 ? "" : "s") + " · stage", ...kids);
+}
+// Closing the drawer (the close button, Escape) also clears the selection ring on the map.
+new MutationObserver(() => { if (document.getElementById("rk-drawer").hidden && selected) { selected = null; requestDraw(); } })
+  .observe(document.getElementById("rk-drawer"), { attributes: true, attributeFilter: ["hidden"] });
+
+// The map keeps its centre when the figure resizes (the drawer opening or closing narrows it).
+let lastW = stageEl.clientWidth, lastH = stageEl.clientHeight;
+S.onResize((w, h) => {
+  const dx = w - lastW, dy = h - lastH;
+  lastW = w; lastH = h;
+  if (userTouched) { if (dx || dy) sel.call(zoomB.transform, d3.zoomIdentity.translate(transform.x + dx / 2, transform.y + dy / 2).scale(transform.k)); }
+  else fitToNodes();
+  requestDraw();
+});
+
+// ── Keyboard: the map is one tab stop; arrows move between stages, Enter opens the drawer ──
+// Canvas marks are not DOM nodes, so each stage is reachable by key instead: the focused stage
+// is rung on the map, summarised in a tooltip, and announced to assistive technology.
+const kbOrder = nodes.slice().sort((a, b) => (b.fanIn + b.fanOut) - (a.fanIn + a.fanOut) || a.name.localeCompare(b.name));
+let kbIndex = -1;
+const kbStatus = document.getElementById("kbstatus");
+function describe(n) {
+  return n.name + ": " + n.fileCount + " files, imported by " + n.fanIn + ", imports " + n.fanOut +
+    (n.godModuleFanIn ? ", god-module" : "") + (n.inCycle ? ", in cycle " + (n.cycleId + 1) : "") +
+    (n.deadEnd ? ", dead-end" : "");
+}
+function showTip(n, evt) {
+  S.tip.show(evt, n.name, RK.h("div", { text: n.fileCount + " files · imported by " + n.fanIn + " · imports " + n.fanOut }),
+    n.godModuleFanIn || n.inCycle || n.deadEnd
+      ? RK.h("div", { text: [n.godModuleFanIn ? "god-module" : "", n.inCycle ? "in cycle #" + (n.cycleId + 1) : "", n.deadEnd ? "dead-end" : ""].filter(Boolean).join(" · ") })
+      : null);
+}
+function nodeEvent(n) {
+  const r = canvas.getBoundingClientRect();
+  return { clientX: r.left + n.x * transform.k + transform.x + n.r * transform.k, clientY: r.top + n.y * transform.k + transform.y };
+}
+canvas.addEventListener("keydown", e => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (step) {
+    e.preventDefault();
+    kbIndex = (kbIndex + step + kbOrder.length) % kbOrder.length;
+    const n = kbOrder[kbIndex];
+    hovered = n.id; requestDraw();
+    showTip(n, nodeEvent(n));
+    kbStatus.textContent = describe(n) + ". Press Enter for detail.";
+  } else if ((e.key === "Enter" || e.key === " ") && kbIndex >= 0) {
+    e.preventDefault();
+    pick(kbOrder[kbIndex]);
   }
 });
+canvas.addEventListener("blur", () => { S.tip.hide(); if (kbIndex >= 0) { hovered = null; requestDraw(); } });
+// Pointer hover shows the same summary as a tooltip.
+canvas.addEventListener("mousemove", e => {
+  if (dragNode) { S.tip.hide(); return; }
+  const h = hit(e.offsetX, e.offsetY);
+  if (h) showTip(h, e); else S.tip.hide();
+});
+canvas.addEventListener("mouseleave", () => S.tip.hide());
+
+// ── Search ────────────────────────────────────────────────────────────────
+// The kit's #rk-q also filters the findings and the stage table below; here it additionally
+// lists matching stages and rings them on the map.
+const searchEl = document.getElementById("rk-q");
+const resultsEl = document.getElementById("results");
+const matchPanel = document.getElementById("matchpanel");
+searchEl.addEventListener("input", () => {
+  const q = searchEl.value.trim().toLowerCase();
+  resultsEl.textContent = "";
+  matchIds = new Set();
+  matchPanel.hidden = !q;
+  if (q) {
+    const matches = nodes.filter(n => n.name.toLowerCase().includes(q) || n.files.some(f => f.toLowerCase().includes(q)));
+    matches.forEach(n => matchIds.add(n.id));
+    for (const n of matches.slice(0, 30)) {
+      const b = RK.h("button", { class: "rk-btn", type: "button", text: n.name });
+      b.addEventListener("click", () => { pick(n); searchEl.blur(); });
+      resultsEl.appendChild(b);
+    }
+    if (!matches.length) resultsEl.appendChild(RK.h("p", { class: "why", text: "No stage or file matches." }));
+  }
+  requestDraw();
+});
+
+// ── Deep links. #stage-<id> selects and frames a stage. #finding-<id> names a finding the
+// map can show -- its stage -- so it selects that stage the same way and stays beside the
+// figure. Both claim the hash; anything else (#sec-*, a finding with no stage) is left to
+// the kit, which opens and scrolls to it. Returns whether the map selected something.
+const cardId = f => "finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-");
+function applyHash() {
+  const id = RK.hashId() || "";
+  let n = null;
+  if (id.startsWith("stage-")) n = byId.get(id.slice(6)) || null;
+  else if (id.startsWith("finding-")) {
+    const f = FINDINGS.find(x => cardId(x) === id);
+    const sid = f && (f.stage || (f.stages || [])[0]);
+    n = sid ? byId.get(sid) || null : null;
+  }
+  if (!n) return false;
+  pick(n);
+  RK.claimHash();
+  return true;
+}
+addEventListener("hashchange", applyHash);
+
+// ── The kit's sections around the map ─────────────────────────────────────────────────
+const st = DATA.stats || {};
+const nUnconnected = st.unconnectedCount != null ? st.unconnectedCount : isolated.length;
+const inCycle = nodes.filter(n => n.inCycle).length;
+const topFanIn = nodes.reduce((m, n) => n.fanIn > m.fanIn ? n : m, nodes[0]);
+// R2: the verdict owns the god-module and cycle counts; the numbers here are the ones it does not state.
+S.stats([
+  { label: "Stages in a cycle", value: inCycle, bad: inCycle > 0, note: inCycle > 0 ? "cannot be changed alone" : "" },
+  { label: "Highest fan-in", value: topFanIn.fanIn, note: topFanIn.name + " is imported by this many stages" },
+  { label: "Unconnected stages", value: nUnconnected, bad: nUnconnected > 0, note: nUnconnected > 0 ? "wired to nothing" : "" },
+  { label: "Dead-end stages", value: st.deadEndCount != null ? st.deadEndCount : deadEnds.length, note: "import nothing outward" },
+]);
+RK.$("#rk-content").append(
+  RK.section("findings", "Findings", RK.findings(FINDINGS, {
+    facets: ["severity", "kind"], empty: "No god-module, dependency cycle, unconnected stage or dead-end was found.",
+  })),
+  RK.section("stages", "Stages", RK.table({
+    caption: "every stage with its files and wires",
+    columns: [
+      { key: "name", label: "Stage", mono: true }, { key: "files", label: "Files", num: true },
+      { key: "fanIn", label: "Imported by", num: true }, { key: "fanOut", label: "Imports", num: true },
+      { key: "flags", label: "Flags" },
+    ],
+    rows: nodes.map(n => ({
+      name: n.name, files: n.fileCount, fanIn: n.fanIn, fanOut: n.fanOut,
+      flags: [n.godModuleFanIn ? "god-module" : "", n.inCycle ? "cycle #" + (n.cycleId + 1) : "",
+        n.deadEnd ? "dead-end" : "", !n.fanIn && !n.fanOut ? "unconnected" : ""].filter(Boolean).join(", ") || "—",
+    })),
+  })));
 
 // Exposed only for this rebuild's own Playwright-driven verification (and
 // any future automated check) -- a `type="module"` script's top-level
 // bindings don't otherwise leak to `window`, so there is no other way to
 // inspect live simulation state from outside the page's own script.
 window.__stageMapDebug = { nodes, edges, simulation };
+
+// A theme change re-reads the colours, repaints the legend swatches and the map.
+new MutationObserver(() => { readColors(); paintSwatches(); requestDraw(); })
+  .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { readColors(); paintSwatches(); requestDraw(); });
+
+RK.init();
+// A deep link is honoured once the layout settles; otherwise the worst finding's stage is open
+// from the start, so the side panel shows its drill-down before anything is clicked.
+if (!applyHash()) {
+  const first = FINDINGS.find(f => f.stage && byId.has(f.stage));
+  if (first) { selected = first.stage; renderDrawer(); requestDraw(); } else renderOverview();
+}
+})();
 </script>
 </body>
 </html>

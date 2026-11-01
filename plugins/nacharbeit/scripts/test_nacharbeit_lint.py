@@ -148,6 +148,7 @@ def viewer_html(plugin: str, *, conformant: bool) -> str:
 <title>{plugin} — widget report</title>
 <style>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 .header {{ height: var(--header-h); }}
 </style>
 </head><body>
@@ -367,7 +368,8 @@ if __name__ == "__main__":
     w(root, f"{P}/assets/bad-viewer.html", viewer_html("bad", conformant=False))
     wb(root, f"{P}/assets/bad-viewer-screenshot.jpg", jpeg(800))
     for rid in ("A-R1-VERDICT", "A-R4-LEGEND", "A-S1-HEIGHT", "A-S2-HEAD", "A-C1-SCREENSHOT", "A-C2-DEMO-DATA",
-                "A-S3-INNERHTML", "A-S4-FAIL-VISIBLE", "A-NO-CDN", "A-TOKENS-PRESENT", "A-BUILDER-EXISTS"):
+                "A-S3-INNERHTML", "A-S4-FAIL-VISIBLE", "A-NO-CDN", "A-TOKENS-PRESENT", "A-BUILDER-EXISTS",
+                "A-REPORT-KIT"):
         exp[rid] = f"{P}/assets/bad-viewer.html"
     w(root, "plugins/bad2/assets/other-viewer.html", viewer_html("bad2", conformant=False))
 
@@ -531,7 +533,7 @@ if __name__ == "__main__":
 ''')
     w(root, f"{P}/hooks/test_clean_guard.py", "#!/usr/bin/env python3\n\"\"\"Usage: test_clean_guard.py  Exit: 0 green.\"\"\"\nimport sys\n\nif __name__ == '__main__':\n    sys.exit(0)\n")
     w(root, f"{P}/scripts/build_clean_html.py", '''#!/usr/bin/env python3
-"""Render clean-viewer.html from a report.
+"""Render clean-viewer.html from a report, inlining the kit via report_kit.py.
 
 Usage: build_clean_html.py <report.json> [--out clean-report.html]
 Exit: 0 written; 1 unreadable input.
@@ -554,6 +556,10 @@ if __name__ == "__main__":
 ''')
     w(root, f"{P}/assets/clean-viewer.html", viewer_html("clean", conformant=True))
     w(root, f"{P}/assets/tokens.css", ":root { --header-h: 61px; }\n")
+    # A-REPORT-KIT allows only when the marker AND all three vendored kit files exist.
+    w(root, f"{P}/assets/report-kit.css", ".rk {}\n")
+    w(root, f"{P}/assets/report-kit.js", "const RK = {};\n")
+    w(root, f"{P}/scripts/report_kit.py", '"""Inline the kit.\n\nusage: report_kit.py --template FILE --data FILE\n"""\n')
     wb(root, f"{P}/assets/clean-viewer-screenshot.jpg", jpeg(1600))
     w(root, f"{P}/scripts/fixtures/sample.json", "{}\n")
     # The correct shape: body at top level, `args` as an injected global, a
@@ -779,6 +785,29 @@ def main() -> int:
             red += len(clean)
         else:
             print("     negative: clean plugin silent")
+
+    # 4b. M-DUP-CONTENT exemption -- copies .rrt.toml vendors from ONE source are the
+    # fix the rule asks for, not the defect. Prove both directions on the positive
+    # tree: every copy declared -> silent; only one declared -> still fires (a
+    # hand-made copy beside a vendored one can drift).
+    for declared, want in ((["plugins/bad/references/proto.md", "plugins/bad2/references/proto.md"], False),
+                           (["plugins/bad/references/proto.md"], True)):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            build_positive(root)
+            w(root, ".rrt.toml", "".join(f'[[tool.rrt.artifact_targets]]\npath = "{d}"\ncommand = ["cp", "tools/proto.md", "{d}"]\n\n'
+                                         for d in declared))
+            for form in ("relative", "absolute"):
+                dirs = ["plugins/bad", "plugins/bad2", "plugins/bad3"]
+                if form == "absolute":
+                    dirs = [str(root / d) for d in dirs]
+                fired = any(x["rule_id"] == "M-DUP-CONTENT" and x["file"].endswith("plugins/bad/references/proto.md")
+                            for x in run(root, dirs))
+                if fired != want:
+                    print(f"RED  dup-vendored ({form} plugin paths): {len(declared)} of 2 declared -> "
+                          f"{'fired' if fired else 'silent'}, want {'fired' if want else 'silent'}")
+                    red += 1
+    print("     dup-vendored: all copies vendored -> silent; one hand-made copy -> fires (relative and absolute paths)")
 
     # 5. --fail-on: a CLI-level check, exercised through lp.main() rather than lp.lint()
     with tempfile.TemporaryDirectory() as td:

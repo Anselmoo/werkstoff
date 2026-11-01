@@ -81,7 +81,7 @@ redesign step order), `human` (changes a plugin's contract or pipeline order).
 | `M-REF-DEPTH` | A reference file does not link to another reference file (references stay one level deep from SKILL.md). | reference | minor | platform best-practices "Keep references one level deep" |
 | `M-REF-UNWIRED` | Every file under a skill's `references/` is linked or named from that skill's SKILL.md. | skill | minor | code.claude.com/skills "Reference supporting files from SKILL.md so Claude knows what each file contains and when to load it" |
 | `M-LINK-BROKEN` | Every relative markdown link or backticked relative path under the plugin resolves to an existing file. | all | major | craft-standards "wiring references"; plugin-validator |
-| `M-DUP-CONTENT` | No two prompt-bearing files anywhere under `plugins/` are byte-identical (a fact lives in one place). | all | minor | craft-standards "no duplication"; plugin-dev skill-development |
+| `M-DUP-CONTENT` | No two prompt-bearing files anywhere under `plugins/` are byte-identical (a fact lives in one place). A group whose every copy is a `.rrt.toml` `artifact_targets` path is exempt: that is one source distributed and hash-locked, the fix this rule asks for. One hand-made copy in the group voids the exemption. | all | minor | craft-standards "no duplication"; plugin-dev skill-development |
 | `M-SKILL-VOICE` | SKILL.md body avoids second-person address ("You should", "You need to", "You can"); it uses imperative or infinitive form. | skill | nit | plugin-dev skill-development "imperative/infinitive form" |
 
 ### Agents
@@ -267,6 +267,7 @@ it is reimplemented. The standard is `docs/plugin-authoring/references/report-vi
 | `A-NO-CDN` | No `<script src=` / `<link href=` to the network. | viewer | major | standard S2 CSP rationale; `tools/d3-subset` |
 | `A-TOKENS-PRESENT` | A plugin with a viewer ships `assets/tokens.css`. | viewer | minor | standard "What is mechanically checked" |
 | `A-BUILDER-EXISTS` | A `scripts/*.py` names the viewer or injects the `__DESIGN_TOKENS__` marker. | viewer | minor | standard (builder + template pairing) |
+| `A-REPORT-KIT` | The template carries `<!--__REPORT_KIT__-->` and the plugin vendors `assets/report-kit.css`, `assets/report-kit.js` and `scripts/report_kit.py`. Half a migration is a finding. | viewer | major | standard R6–R8 (content tier); `tools/report-kit/` |
 | `A-C4-ALT` | The README's screenshot alt text is ≥10 characters and not the plugin name. | readme | nit | standard C4 |
 | `A-VIEWER-REQUIRED` | The plugin ships at least one `assets/*-viewer.html`. Keyed on the manifest, because every other `A-*` rule grades a viewer that exists and so can never report one that does not. | manifest | major | CLAUDE.md "Every plugin ships an HTML report viewer" |
 

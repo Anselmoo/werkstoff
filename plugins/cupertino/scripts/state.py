@@ -1,99 +1,68 @@
 #!/usr/bin/env python3
-"""Manages the cupertino plugin's on-disk state markers under `.cupertino/`.
+"""Manage cupertino's on-disk state markers under `.cupertino/flags/`.
 
-`.cupertino/` (relative to the current project root) is the plugin's own
-artifact directory. Its mere existence is also what makes hooks/pretooluse_guard.py
-active at all -- see the "inert unless used" rule there. Do not point this at
-any other directory; nothing else in the plugin will look for state there.
+usage: state.py [-h] {init,set,clear,check,path} [flag] [value]
 
-Subcommands (all print JSON, all exit 0 on success / 1 on failure):
-  init                          create .cupertino/ if absent
-  set <flag> [value]            write .cupertino/flags/<flag>  (default value: "1")
-  clear <flag>                  remove .cupertino/flags/<flag>
-  check <flag>                  exit 0 + {"set": true}  if present, else {"set": false}
-  path                          print the resolved state dir (for debugging)
+  init                 create .cupertino/ (this is also what makes hooks/pretooluse_guard.py live)
+  set FLAG [VALUE]     write .cupertino/flags/FLAG (default value "1")
+  clear FLAG           remove .cupertino/flags/FLAG
+  check FLAG           print {"set": true|false}
+  path                 print the resolved state directory
+
+The project root is resolved by repair_lib.project_root(), the same function the
+guard uses. They used to disagree -- this script read CLAUDE_PROJECT_DIR while the
+guard read the hook payload's cwd -- so a flag could be written where the guard
+never looked.
+
+Every subcommand prints JSON. Exit: 0 ok; 1 refused (invalid flag name); 2 bad usage.
 """
+
+from __future__ import annotations
+
+import argparse
 import json
-import os
 import sys
+from pathlib import Path
 
-STATE_DIR_NAME = ".cupertino"
-
-
-def state_dir():
-    # Resolve the project root exactly the way hooks/pretooluse_guard.py does
-    # (CLAUDE_PROJECT_DIR first, os.getcwd() as fallback) so a skill running
-    # this script and the hook reading its output never disagree about where
-    # ".cupertino/" actually is.
-    root = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
-    return os.path.join(root, STATE_DIR_NAME)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from repair_lib import project_root, state_dir  # noqa: E402
 
 
-def flags_dir():
-    return os.path.join(state_dir(), "flags")
+def _valid(flag: str) -> bool:
+    return bool(flag) and not any(c in flag for c in ("/", "\\", "..", "\0"))
 
 
-def _ok(payload):
-    print(json.dumps(payload))
-    sys.exit(0)
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="state.py", description="Manage cupertino's .cupertino/flags/ markers.",
+                                     epilog="exit 0 ok, 1 refused, 2 bad usage")
+    parser.add_argument("cmd", choices=("init", "set", "clear", "check", "path"))
+    parser.add_argument("flag", nargs="?", default="")
+    parser.add_argument("value", nargs="?", default="1")
+    args = parser.parse_args(argv)
 
-
-def _fail(msg):
-    print(json.dumps({"ok": False, "error": msg}))
-    sys.exit(1)
-
-
-def cmd_init():
-    os.makedirs(flags_dir(), exist_ok=True)
-    _ok({"ok": True, "path": state_dir()})
-
-
-def cmd_set(flag, value="1"):
-    if not flag or any(c in flag for c in ("/", "..", "\0")):
-        _fail(f"invalid flag name: {flag!r}")
-    os.makedirs(flags_dir(), exist_ok=True)
-    with open(os.path.join(flags_dir(), flag), "w") as f:
-        f.write(value)
-    _ok({"ok": True, "flag": flag, "value": value})
-
-
-def cmd_clear(flag):
-    if not flag or any(c in flag for c in ("/", "..", "\0")):
-        _fail(f"invalid flag name: {flag!r}")
-    path = os.path.join(flags_dir(), flag)
-    if os.path.exists(path):
-        os.remove(path)
-    _ok({"ok": True, "flag": flag, "cleared": True})
-
-
-def cmd_check(flag):
-    path = os.path.join(flags_dir(), flag)
-    if os.path.exists(path):
-        with open(path) as f:
-            value = f.read()
-        _ok({"ok": True, "set": True, "value": value})
+    sdir = state_dir(project_root())
+    flags = sdir / "flags"
+    if args.cmd == "init":
+        flags.mkdir(parents=True, exist_ok=True)
+        out = {"ok": True, "path": str(sdir)}
+    elif args.cmd == "path":
+        out = {"ok": True, "path": str(sdir)}
+    elif not _valid(args.flag):
+        print(json.dumps({"ok": False, "error": f"invalid flag name: {args.flag!r}"}))
+        return 1
+    elif args.cmd == "set":
+        flags.mkdir(parents=True, exist_ok=True)
+        (flags / args.flag).write_text(args.value, encoding="utf-8")
+        out = {"ok": True, "flag": args.flag, "value": args.value}
+    elif args.cmd == "clear":
+        (flags / args.flag).unlink(missing_ok=True)
+        out = {"ok": True, "flag": args.flag, "cleared": True}
     else:
-        _ok({"ok": True, "set": False})
-
-
-def main():
-    args = sys.argv[1:]
-    if not args:
-        _fail("usage: state.py <init|set|clear|check|path> [flag] [value]")
-    cmd = args[0]
-    if cmd == "init":
-        cmd_init()
-    elif cmd == "set":
-        cmd_set(args[1] if len(args) > 1 else "", args[2] if len(args) > 2 else "1")
-    elif cmd == "clear":
-        cmd_clear(args[1] if len(args) > 1 else "")
-    elif cmd == "check":
-        cmd_check(args[1] if len(args) > 1 else "")
-    elif cmd == "path":
-        _ok({"ok": True, "path": state_dir()})
-    else:
-        _fail(f"unknown subcommand: {cmd}")
+        path = flags / args.flag
+        out = {"ok": True, "set": True, "value": path.read_text(encoding="utf-8")} if path.is_file() else {"ok": True, "set": False}
+    print(json.dumps(out))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main(sys.argv[1:]))

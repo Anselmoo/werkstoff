@@ -24,6 +24,7 @@ jobs:
       judge_contract: ${{ steps.judge_contract.outcome }}
       judge_calibration: ${{ steps.judge_calibration.outcome }}
       viewer_conformance: ${{ steps.viewer_conformance.outcome }}
+      ink_selftest: ${{ steps.ink_selftest.outcome }}
       design_tokens: ${{ steps.design_tokens.outcome }}
       readme_skeleton: ${{ steps.readme_skeleton.outcome }}
       symbol_indexer_tests: ${{ steps.symbol_indexer_tests.outcome }}
@@ -201,6 +202,22 @@ jobs:
         # one viewer shipping .legend CSS that nothing used. None of that was
         # visible to any existing check.
         run: python3 scripts/ci/check_viewer_conformance.py
+
+      - name: Self-test the figure ink instrument; kit text contrast
+        id: ink_selftest
+        continue-on-error: true
+        # R9 is judged by capture_viewer_screenshot.py's ink_share. Its first
+        # version measured the figure's element box and passed an empty stage at
+        # 93 %, so every viewer "filled the screen" while befund's map drew over
+        # 25 % of it. The selftest pins ink_share to known answers on synthetic
+        # first screens; it needs Pillow, not a browser.
+        run: |
+          pip install pillow
+          python3 scripts/ci/capture_viewer_screenshot.py --selftest
+          # Same step, no browser: every text role in the kit reaches 4.5:1 on bg and
+          # panel in both themes (status hues used as small text read 2.9-3.7:1 before).
+          python3 tools/report-kit/check_contrast.py --selftest
+          python3 tools/report-kit/check_contrast.py
 
       - name: Check design-token usage (docs theme + report viewers)
         id: design_tokens
@@ -565,6 +582,7 @@ jobs:
           steps.judge_contract.outcome == 'failure' ||
           steps.judge_calibration.outcome == 'failure' ||
           steps.viewer_conformance.outcome == 'failure' ||
+          steps.ink_selftest.outcome == 'failure' ||
           steps.design_tokens.outcome == 'failure' ||
           steps.readme_skeleton.outcome == 'failure' ||
           steps.symbol_indexer_tests.outcome == 'failure' ||
@@ -634,6 +652,7 @@ jobs:
             row "Judge verdict contract (command first, one rubric judge, abstain never passes; vendored copies in sync)" "${{ needs.checks.outputs.judge_contract }}"
             row "Judge calibration (known-answer sets, precision, derived records, no stale record)" "${{ needs.checks.outputs.judge_calibration }}"
             row "Report-viewer conformance" "${{ needs.checks.outputs.viewer_conformance }}"
+            row "Figure ink instrument (R9) selftest + kit text contrast" "${{ needs.checks.outputs.ink_selftest }}"
             row "Design-token usage (docs theme + viewers)" "${{ needs.checks.outputs.design_tokens }}"
             row "Plugin READMEs vs. canonical skeleton (P-README-*)" "${{ needs.checks.outputs.readme_skeleton }}"
             row "symbol-indexer test suite" "${{ needs.checks.outputs.symbol_indexer_tests }}"

@@ -1,12 +1,14 @@
 {
+  "description": "zeugnis: denies a second or out-of-scope source edit while a zeugnis-remediator remediation scope is open, and a Bash command that would install, publish or run a mutation tool in write mode. type:command, never type:prompt. Inert until analysis/zeugnis/ exists in the repo (the edit guard additionally needs an open analysis/zeugnis/remediation_scope.json), and bypassed per call by ZEUGNIS_DISABLE_GUARD=1.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write",
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_edit_scope.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_edit_scope.py\"",
+            "timeout": 60
           }
         ]
       },
@@ -15,7 +17,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_bash_scope.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_bash_scope.py\"",
+            "timeout": 60
           }
         ]
       }

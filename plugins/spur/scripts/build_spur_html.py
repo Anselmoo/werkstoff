@@ -26,23 +26,18 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-TEMPLATE = HERE.parent / "assets" / "spur-viewer.html"
-TOKENS = HERE.parent / "assets" / "tokens.css"
-FIXTURE = HERE / "fixtures" / "spur-demo.json"
+sys.path.insert(0, str(HERE))
+from report_kit import KIT_MARKER, TOKENS_MARKER, render as kit_render  # noqa: E402
 
-TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
-DATA_MARKER = "/*__SPUR_DATA__*/"
+ASSETS = HERE.parent / "assets"
+TEMPLATE = ASSETS / "spur-viewer.html"
+FIXTURE = HERE / "fixtures" / "spur-demo.json"
 
 
 def render(trace: dict) -> str:
-    tpl = TEMPLATE.read_text(encoding="utf-8")
-    if TOKENS.is_file():
-        tpl = tpl.replace(TOKENS_MARKER, "<style>\n" + TOKENS.read_text(encoding="utf-8") + "\n</style>")
-    payload = json.dumps(trace, indent=2)
-    # Escape the three characters that could close the <script> element early. The
-    # template renders every string through textContent; this is the second barrier.
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(DATA_MARKER, "const SPUR = " + payload + ";")
+    # The kit escapes < > & in the data island (first barrier); the template renders every
+    # string through textContent (second). The whole run record goes in: nothing is dropped.
+    return kit_render(TEMPLATE.read_text(encoding="utf-8"), ASSETS, trace)
 
 
 def selftest() -> int:
@@ -61,14 +56,23 @@ def selftest() -> int:
 
     html = render(demo)
     ok("tokens marker replaced", TOKENS_MARKER not in html and "--bg" in html)
-    ok("data marker replaced", DATA_MARKER not in html and "const SPUR" in html)
-    ok("no raw '<' survives inside the payload", "</" not in html.split("const SPUR", 1)[1].split("</script>", 1)[0])
+    ok("report-kit marker replaced and kit inlined",
+       KIT_MARKER + "\n</head>" not in html and "const RK = (" in html and "--rk-" in html)
+    ok("data island present and filled",
+       '<script type="application/json" id="report-data">' in html and "@@DATA@@" not in html)
+    start = html.index('id="report-data">') + len('id="report-data">')
+    island = html[start:html.index("</script>", start)]
+    ok("no raw '<' or '>' survives inside the data island", "<" not in island and ">" not in island)
+    ok("the island round-trips to the whole run record", json.loads(island)["steps"] == demo["steps"])
     ok("static h1 matches the title",
        "<title>spur — execution trace</title>" in html and "<h1>spur — execution trace</h1>" in html)
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("no network fetches", 'src="http' not in html and 'href="http' not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
-    ok("a static legend exists", 'class="legend"' in html)
+    ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
+    ok("the figure-first stage skeleton is present (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "a viewer without the stage leads with prose, not its figure")
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     statuses = {i["status"] for s in demo["steps"] for i in s["inputs"]}
     ok("demo shows a BROKEN link", "broken" in statuses,

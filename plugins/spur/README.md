@@ -120,10 +120,11 @@ maps to W3C PROV-JSON, is in [`references/trace-format.md`](references/trace-for
 
 ## The report page
 
-![spur's execution-trace page for the fixture pipeline's tampered run: a red-framed verdict that work/records.csv changed after s3 wrote it and before s5 read it, tiles counting 1 broken link and 1 unverified input, the three output-to-input links with the broken one marked ✗, and six step cards with their reads, writes and open call trees, the untraced sh step drawn dashed](assets/spur-viewer-screenshot.jpg)
+![spur's execution-trace page for the fixture pipeline's tampered run: the step chain fills the screen, six step boxes with the sources above and the files each step wrote below, joined by lines marked ✓ verified, ✗ broken, ! unverified or – source, a red-framed verdict and five counts floating over it, and the broken link's hashes open in the side panel](assets/spur-viewer-screenshot.jpg)
 
-One static page per run: verdict, the links between steps, and one card per step with
-its reads, writes and call tree. It loads nothing from the network
+One static page per run: the step chain is the figure, with the verdict over it. Click a
+link for its hashes, producer and consumer, or a step for its calls and file I/O; the
+list of links and one card per step follow below as the reference. It loads nothing from the network
 (`default-src 'none'`). The screenshot is rendered from the committed demo, a real run:
 
 ```bash

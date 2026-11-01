@@ -428,29 +428,34 @@ reports those as the vocabulary's backlog.
 
 | class | form | answers |
 |---|---|---|
-| **Ledger** | static document, print-first, no script at all | a finite list of measured claims against fixed thresholds |
+| **Ledger** | finite report: a figure plus tables that hold everything the figure shows; the page script (the report kit) only opens a drawer on a click | a finite list of measured claims against fixed thresholds |
 | **Specimen** | static document, landscape, set in the system's own tokens | what the design looks like |
 | **Viewer** | interactive, screen only | where a value came from and what depends on it |
 
 The test that sorts them is falsifiable: **print it**. If nothing is lost, it should not
-have been interactive. The derivation-health report loses nothing, so it is a Ledger —
-and a finite ledger has a property a screen destroys, in that it is complete and it ends.
-A reader who can click no longer knows whether they have seen everything.
+have been interactive. The derivation-health report loses nothing that its tables do not
+also hold, so it is a Ledger — and a finite ledger has a property a screen can destroy, in
+that it is complete and it ends. That is why the drawer adds no fact the tables below the
+figure lack.
 
-Being a Ledger has a pleasant consequence. The two independent XSS barriers a
-client-rendered viewer needs collapse into something stronger than either: there is no
-script, so there is no injection surface. The contrast chart is server-rendered SVG and
-prints with the rest.
+The report renders through the report kit, so it does ship a script, and the claim about
+injection is the checkable one: the data rides in one escaped JSON island,
+and the contrast figure is drawn from ratios `contrast.py` computed, never typed. The figure
+fills the first screen; clicking a pair opens its ratio, its thresholds and the nearest
+passing foreground beside it, and everything it shows is also in the tables below.
 
-## The provenance graph — the one interactive artefact
+## The provenance graph — the interactive artefact
 
-![A dark three-column graph: one reference node on the left, a column of Design Cards,
-and a column of tokens, with curved edges between them and a sidebar for the selected
-node. The verdict reads: 50 tokens trace to 1 reference, and 3 roles share --silica, so
-changing it changes 3 things, not one.](assets/provenance-viewer-screenshot.jpg)
+![A dark graph filling the first screen: one reference node on the left, Design Cards as small
+squares and tokens in three side-by-side strips, with curved edges between them, the selected
+token --silica and its three dependents lit and the rest dimmed, and a drawer on the right
+listing its value, type, card, reference and what depends on it. The verdict reads: 63 tokens
+trace to 1 reference, and 3 roles share --silica, so changing it changes 3 things, not
+one.](assets/provenance-viewer-screenshot.jpg)
 
-Everything else matrize emits is print-first, because an approval artefact ends as a PDF
-in front of someone who does not get a `localhost` URL. A graph earns the exception: it
+The sketchbook is print-first, because an approval
+artefact ends as a PDF in front of someone who does not get a `localhost` URL. A graph
+earns the exception to being read end to end: it
 has no readable static layout, and the reader arrives with a target question rather than
 reading it end to end — *why is this token this value, and what breaks if I change it?*
 Click any node and both answers light up at once.
@@ -565,9 +570,11 @@ police your whole repository the moment it was installed.
 
 ## The derivation-health report
 
-![matrize derivation-health report: a dark table-based report listing six references with
-their reliability and rights grades, four tokens blocked because their only evidence is a
-screenshot, and a computed-contrast table in which two roles fail WCAG AA.](assets/derivation-viewer-screenshot.jpg)
+![matrize derivation-health report: a dark contrast chart filling the first screen, one row per
+colour pair with its ratio against the 3.0, 4.5 and 7.0 thresholds, two pairs failing AA, and a
+drawer opened on quiet-action showing the ratio, thresholds and the nearest passing foreground;
+below the chart sit the references, the four tokens blocked on screenshot evidence alone and the
+computed-contrast table.](assets/derivation-viewer-screenshot.jpg)
 
 It charts what the pipeline knows about its own evidence: which references were decoded,
 their grades, which tokens rest on grade-C evidence alone, and which contrast pairs fail.

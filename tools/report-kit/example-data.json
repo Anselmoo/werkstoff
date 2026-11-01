@@ -1,0 +1,182 @@
+{
+ "glance": {
+  "verdict": "Partly proven: 2 of 3 acceptance checks pass; the KPI row still overflows at 390 px.",
+  "tone": "warn",
+  "stats": [
+   {
+    "label": "Acceptance checks",
+    "value": "2 / 3",
+    "note": "one fails at 390 px",
+    "bad": true
+   },
+   {
+    "label": "Files changed",
+    "value": "3",
+    "note": "all inside the approved scope"
+   },
+   {
+    "label": "Regressions",
+    "value": "0",
+    "note": "vs the baseline"
+   },
+   {
+    "label": "Deleted",
+    "value": "1",
+    "note": "restorable from trash/"
+   }
+  ],
+  "next": {
+   "command": "python3 plugins/cupertino/scripts/verify.py --run 2026-11-01-a",
+   "why": "Re-run verification after the remaining item is applied."
+  }
+ },
+ "proof": {
+  "verdict": "PARTLY PROVEN",
+  "headline": "The changeset is applied; one acceptance check still fails.",
+  "checks": [
+   {
+    "label": "No console errors at 1280 px",
+    "state": "pass",
+    "detail": "0 errors, 0 failed requests"
+   },
+   {
+    "label": "KPI row fits at 390 px",
+    "state": "fail",
+    "detail": "scrollWidth 412 > 390"
+   },
+   {
+    "label": "Dark mode unchanged",
+    "state": "pass",
+    "detail": "pixel diff 0.0% at 1600 px"
+   },
+   {
+    "label": "Unit tests",
+    "state": "na",
+    "detail": "the target has no test command"
+   }
+  ],
+  "notProven": [
+   "Behaviour in Safari -- only Chromium was run.",
+   "Data volumes above the fixture's 30 rows."
+  ],
+  "needsPerson": [
+   "Approve the remaining layout change at 390 px.",
+   "Confirm the deleted legacy chart is not linked from elsewhere."
+  ]
+ },
+ "findings": [
+  {
+   "id": "F1",
+   "severity": "major",
+   "rule": "KPI-OVERFLOW",
+   "tier": "sonnet",
+   "claim": "KPI row overflows the viewport at 390 px",
+   "file": "dashboard/styles.css",
+   "line": 42,
+   "quote": ".kpis { display: flex; }",
+   "fix": "Allow wrapping: .kpis { flex-wrap: wrap; }",
+   "evidence": [
+    {
+     "label": "probe web@390",
+     "detail": "scrollWidth 412 > clientWidth 390"
+    }
+   ]
+  },
+  {
+   "id": "F2",
+   "severity": "blocker",
+   "rule": "CHART-VAR",
+   "tier": "human",
+   "claim": "Chart palette moved to var() -- canvas cannot read CSS variables",
+   "file": "dashboard/chart.js",
+   "line": 17,
+   "quote": "color: 'var(--accent)'",
+   "fix": "Resolve the token with getComputedStyle before passing it to the chart.",
+   "evidence": [
+    {
+     "label": "console",
+     "detail": "chart renders black series"
+    }
+   ]
+  },
+  {
+   "id": "F3",
+   "severity": "minor",
+   "rule": "DEAD-CODE",
+   "tier": "haiku",
+   "claim": "legacy-chart.js is referenced by nothing",
+   "file": "dashboard/legacy-chart.js",
+   "fix": "Delete via apply_delete.py (restorable)."
+  },
+  {
+   "id": "F4",
+   "severity": "nit",
+   "rule": "COPY",
+   "tier": "haiku",
+   "claim": "Button label says 'Submit' on a filter",
+   "file": "dashboard/index.html",
+   "line": 88,
+   "quote": "<button>Submit</button>",
+   "fix": "Rename to 'Apply filter'."
+  },
+  {
+   "id": "F5",
+   "severity": "minor",
+   "rule": "CONTRAST",
+   "tier": "sonnet",
+   "claim": "Muted label is 3.9:1 on the light panel",
+   "file": "dashboard/styles.css",
+   "line": 12
+  },
+  {
+   "id": "F6",
+   "severity": "major",
+   "rule": "DARK-LOST",
+   "tier": "opus",
+   "claim": "A hard-coded background overrides the dark theme in the sidebar",
+   "file": "dashboard/styles.css",
+   "line": 101,
+   "quote": "background: #fff;",
+   "fix": "Use var(--panel)."
+  }
+ ],
+ "checks": [
+  {
+   "probe": "web:1280:dark",
+   "state": "pass",
+   "ms": 812,
+   "detail": "0 console errors",
+   "why": "Loaded the page at 1280 px in the dark theme and listened for console errors and failed requests; there were none."
+  },
+  {
+   "probe": "web:390:light",
+   "state": "fail",
+   "ms": 640,
+   "detail": "horizontal overflow",
+   "why": "Loaded the page at 390 px in the light theme; the KPI row is 412 px wide in a 390 px viewport, so the page scrolls sideways."
+  },
+  {
+   "probe": "command:npm test",
+   "state": "na",
+   "ms": 0,
+   "detail": "no test script",
+   "why": "The target declares no test script, so the probe has nothing to run. Not applicable is not a pass."
+  },
+  {
+   "probe": "file:legacy-chart.js",
+   "state": "pass",
+   "ms": 1,
+   "detail": "absent after delete",
+   "why": "The file the changeset deleted is gone from the working tree and present in trash/, so the delete can be undone."
+  }
+ ],
+ "beforeAfter": [
+  {
+   "label": "KPI row at 390 px",
+   "before": "data:image/png;base64,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",
+   "after": "data:image/png;base64,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",
+   "diff": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAC0CAIAAABqhmJGAAAFkUlEQVR4nO3dUWid5R3H8eeEdqGZWbMUbxxxzjmsXimU7qJxTCur4sRa3dLQ7lCIpXOldWAprGE4QTG0kI4elWZsi42RlrCpRNBUrLGUORGEIttEKJbtQrcLXYczXW1Md3HGoeyqJD1pfvTzuXo47/kf3ufiy3MOhLyV5cu7C5Cp5VLfADB7AoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgAoZgi+Yy/N57xy7WfcDl7IYbbpndoBMYggkYgs3pK3TDrL8AwOVs7j9CncAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQTMAQ7JIFfO21X3/ggQ3t7V9uLC7VnUCueQr47bcnSinXXfeN3t619VdqtcfPnDkzPf1FY1FKaWlp6e//6aFD+0dHn+zquur8T7jvvrtGR5964YXhVatWllI2b9740ksjfX299amhod3t7VfMz15g4ZjXE/jEiZMHD75YX1955bJnn/3d6dP/aSxKKT0993z22dT69T9+5pmxnTu3NgY7OzvWrr2zWt328MO/2LVreymlWv1Bb++DmzatL6Xcf//3X3316Kef/ns+9wILQRMDXras8+mnB0ZHn3riiV2NF+tHcW/v2ra2tpGRWrX6w/qirW1JKeXuu7/3/PMvl1KOHv3j8eN/bkx1dCx97rnfz8zMfPTRPzo6lpZSpqenOzu/evbs2aVLv7J6dXd9Ci43TQx4586tr7zy+saNW1977Vhr65fOv3Tw4ItTU6er1W0jI2P1xdTU6VLKNdd03XbbqpGR2t69j05MvN54/wcf/HViYrKUsmbNrZOTfyil7N37qz17fj44OPTQQ5trtd+eO3eueRuBBauJAa9cefPhw5OllDfeeHNm5osLGVm8eNGHH/69Wt02Pn74scd+9n9Xr776a319vYOD+0sp4+OHe3q2nDz5t1JKV9dVQ0O716z57kXeACx4TQx48eL//dPplpaWUioXMvLxx/88cuRYKeXIkWPXX//N8y+1tS0ZHHy0v3/gk09O1V+pVCrbt/ft2/frHTse7O8f2LHjJxfz7iFBEwM+fvxPq1ffUkq5/fbvVCoXFPBbb72zYsVNpZQVK256//0TpZT6b+NKpTIw0D88fOjdd//SePO6dXdNTr556tS/WltbK5XKkiWtzdgFLGRNDHhgoLZhw7rR0SdvvPFbn39+9kJGarXfbNrUc+DAvi1bfvTII3tKKbXa46WUe++9s7v72z0994yM1Pbv311KaW+/4o47bh0bGy+lHDgwNjz8y+HhQ83bCyxMleXLu2c93HgwhEerwCzMvSB/SgnBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBBAzBFl2UT2k84gWYT05gCCZgCDanx4sCl5YTGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIIJGIL9FwLFGq8poIQiAAAAAElFTkSuQmCC",
+   "note": "Pixel difference 6.2% -- confined to the KPI row."
+  }
+ ]
+}

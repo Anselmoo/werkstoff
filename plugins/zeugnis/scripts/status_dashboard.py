@@ -11,6 +11,7 @@ Usage:
     python3 status_dashboard.py <repo_root>
 """
 
+import argparse
 import json
 import os
 import subprocess
@@ -156,11 +157,11 @@ td, th {{ border: 1px solid #ccc; padding: 0.4rem 0.8rem; text-align: left; }}
 """
 
 
-def main() -> int:
-    if len(sys.argv) != 2:
-        print("usage: status_dashboard.py <repo_root>", file=sys.stderr)
-        return 2
-    repo_root = os.path.abspath(sys.argv[1])
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Read-only staleness check plus one next-action suggestion.")
+    parser.add_argument("repo_root", help="repository root to inspect")
+    repo_root = os.path.abspath(parser.parse_args(argv).repo_root)
 
     dashboard = build_dashboard(repo_root)
 

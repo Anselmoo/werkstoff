@@ -1,9 +1,9 @@
 {
-  "description": "cupertino: enforces MUST-NOT rules (ordering gates, one-item-per-dispatch, write-scope, persisted-state schema, no-commit-during-audit) at the tool-call layer, regardless of whether a skill is followed. Inert until a repo has a .cupertino/ state directory.",
+  "description": "cupertino: enforces MUST-NOT rules (ordering gates, one-item-per-dispatch, write-scope, persisted-state schema, no-commit-during-audit) and, during a cupertino-repair run, scopes every source edit to the active approved item and routes deletes through a reversible script at the tool-call layer, regardless of whether a skill is followed. Inert until a repo has a .cupertino/ state directory.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Skill|Task|Agent|Write|Edit|Bash",
+        "matcher": "Skill|Task|Agent|Write|Edit|MultiEdit|NotebookEdit|Bash",
         "hooks": [
           {
             "type": "command",

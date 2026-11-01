@@ -24,11 +24,13 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from lib.ledger import load_ledger  # noqa: E402
 from lib.paths import ensure_parent_dir, safe_output_path  # noqa: E402
+from report_kit import render  # noqa: E402
 
 
 def build_burndown(repo_root):
@@ -83,9 +85,12 @@ def build_mutation(repo_root):
     #142), or None when no mutation run has been reported -- the tab is then
     not shown at all, so a ledger-only report renders exactly as before.
 
-    Only what the tab draws is copied: per-module scores before and after,
-    each module's kills and still-alive mutants (shown when its row is
-    opened), the equivalents with their reasons, and the rejected claims. A summary
+    What the tab draws is copied whole: per-module counts and scores before
+    and after (including the score without equivalents), each shard's sources,
+    tests, exclusions and baseline state, every kill with the test and the proof
+    file that justify it, every still-alive mutant with its location, category
+    and fixability, the equivalents with their reasons and basis, and the
+    rejected claims. A summary
     that exists but cannot be read is not silently treated as "no run": it
     becomes {"error": ...} and the tab says so (report-viewer-standard S4).
     """
@@ -95,25 +100,33 @@ def build_mutation(repo_root):
     try:
         with open(path, encoding="utf-8") as fh:
             summary = json.load(fh)
-        keep = ("killed", "survived", "noTests", "notChecked", "timeout", "score", "equivalent")
+        keep = ("killed", "survived", "noTests", "notChecked", "timeout", "suspicious", "skipped", "segfault",
+                "caughtByTypeCheck", "interrupted", "score", "equivalent", "scoreExcludingEquivalent")
         return {
             "runId": summary["runId"],
             "tool": summary.get("tool"),
             "complete": bool(summary["complete"]),
+            "generatedAt": summary.get("generatedAt"),
             "shards": [{"shard": s["shard"], "baselineComplete": s["baselineComplete"],
-                        "remeasureComplete": s.get("remeasureComplete")} for s in summary["shards"]],
+                        "baselineState": s.get("baselineState"),
+                        "remeasureComplete": s.get("remeasureComplete"),
+                        "sources": s.get("sources", []), "tests": s.get("tests", []),
+                        "exclusions": [{"glob": x.get("glob"), "reason": x.get("reason")} for x in s.get("exclusions", [])]}
+                       for s in summary["shards"]],
             "modules": [{"module": m["module"],
                          "before": {k: m["before"].get(k) for k in keep if k in m["before"]},
                          "after": {k: m["after"].get(k) for k in keep if k in m["after"]},
                          "unreached": m.get("unreached", 0)} for m in summary["modules"]],
             # A module row opens to these: what the proven tests killed, and
             # what the tool still reports alive.
-            "kills": [{"mutantId": k["mutantId"], "module": k["module"], "test": k.get("test")}
+            "kills": [{"mutantId": k["mutantId"], "module": k["module"], "test": k.get("test"), "proof": k.get("proof")}
                       for k in summary.get("kills", [])],
             "alive": [{"mutantId": f["mutantId"], "module": f.get("module") or f["evidence"].split(":")[0],
-                       "evidence": f["evidence"], "category": f.get("category"), "state": f.get("state")}
+                       "evidence": f["evidence"], "category": f.get("category"), "state": f.get("state"),
+                       "severity": f.get("severity"), "fixability": f.get("fixability")}
                       for f in summary.get("findings", [])],
-            "equivalents": [{"mutantId": e["mutantId"], "module": e["module"], "reason": e["reason"]}
+            "equivalents": [{"mutantId": e["mutantId"], "module": e["module"], "reason": e["reason"],
+                             "basis": e.get("basis")}
                             for e in summary.get("equivalents", [])],
             "rejected": [{"mutantId": r["mutantId"], "state": r["state"], "reason": r.get("reason", "")}
                          for r in summary.get("rejected", [])],
@@ -123,29 +136,16 @@ def build_mutation(repo_root):
 
 
 def render_html(template_path, d3_path, tokens_path, burndown):
-    tpl = open(template_path, encoding="utf-8").read()
-
+    template_path = Path(template_path)
+    tpl = template_path.read_text(encoding="utf-8")
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
         raise ValueError(f"D3 injection marker not found in {template_path}")
-    tpl = tpl.replace(d3_marker, open(d3_path, encoding="utf-8").read())
-
-    # Canonical marker spelling, shared with every other report viewer in this
-    # marketplace (docs/plugin-authoring/references/report-viewer-standard.md,
-    # S2). It sits OUTSIDE any <style> block in the template, so the wrapper
-    # tags are supplied here rather than being hardcoded in the asset.
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tokens_css = open(tokens_path, encoding="utf-8").read()
-    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
-
-    data_marker = "/*__BURNDOWN_DATA__*/ null"
-    if data_marker not in tpl:
-        raise ValueError(f"injection marker not found in {template_path}")
-    data = json.dumps(burndown)
-    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(data_marker, "/*__BURNDOWN_DATA__*/ " + data)
+    tpl = tpl.replace(d3_marker, Path(d3_path).read_text(encoding="utf-8"))
+    # report_kit.render() inlines the design tokens and the report kit, and
+    # puts the data in a JSON island with < > & escaped (S3's first barrier;
+    # the template's textContent-only DOM is the second).
+    return render(tpl, template_path.parent, burndown, tokens=Path(tokens_path))
 
 
 def main(argv=None):

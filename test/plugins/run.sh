@@ -152,7 +152,13 @@ while IFS=$'\t' read -r id plugin fixture prompt artifact regex antiregex; do
   # copy, so the plugin has to find the defect from the code/ledger alone.
   rm -f "$tmp/_EXPECTED.md"
   echo "── [$id] plugin=$plugin  fixture=$fixture"
-  ( cd "$tmp" && "$CLAUDE_BIN" --plugin-dir "$REPO_ROOT/$plugin" "${SETTINGS_FLAGS[@]}" --print "$prompt" $CLAUDE_PERM_FLAGS ) \
+  # A headless run has no user to approve a cupertino-repair changeset, and the guard
+  # denies the model approving its own (cupertino's README, "approval is the user's").
+  # The prompt's "I approve in advance" is the case author's decision, made before the
+  # run: pass it the one way a model cannot forge, the environment the hook inherits.
+  CASE_ENV=()
+  [[ "$id" == cupertino-*-repair ]] && CASE_ENV=(CUPERTINO_REPAIR_PREAPPROVED=1)
+  ( cd "$tmp" && env "${CASE_ENV[@]}" "$CLAUDE_BIN" --plugin-dir "$REPO_ROOT/$plugin" "${SETTINGS_FLAGS[@]}" --print "$prompt" $CLAUDE_PERM_FLAGS ) \
     >"$tmp/.stdout" 2>"$tmp/.stderr"
   rc=$?
 

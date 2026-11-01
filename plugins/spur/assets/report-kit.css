@@ -1,0 +1,375 @@
+/* werkstoff report kit -- shared components for every plugins/<name>/assets/<name>-viewer.html.
+ *
+ * Source of truth. Vendored per plugin as assets/report-kit.css by .rrt.toml's
+ * artifact_targets; a builder replaces the __REPORT_KIT__ marker with
+ * this file and report-kit.js inlined. Never edit a vendored copy.
+ *
+ * Every colour comes from tools/design-tokens/tokens.css. The kit adds one
+ * semantic layer (--rk-*) so a viewer styles against roles, and the light theme
+ * is one re-pointing of that layer, never a second stylesheet.
+ *
+ * Theme: dark is the default (the brand is dark-first). Light applies when the
+ * OS asks for it and the reader has not forced dark, or when the reader forces
+ * light. The two light blocks are identical on purpose -- one answers the OS,
+ * one answers the toggle -- and a print block resets to black on white.
+ */
+
+:root {
+  color-scheme: dark;
+  --rk-bg: var(--bg);
+  --rk-panel: var(--panel);
+  --rk-panel-2: var(--panel-2);
+  --rk-text: var(--text);
+  --rk-muted: var(--muted);
+  --rk-border: var(--border);
+  --rk-link: var(--silica-light);
+  --rk-focus: var(--silica-light);
+  --rk-hit: var(--samaria-deep);
+  --rk-ok: var(--status-good);
+  --rk-bad: var(--status-bad);
+  --rk-warn: var(--status-warn);
+  --rk-info: var(--status-unknown);
+  --rk-flat: var(--muted);
+  /* Text-safe status hues. The --rk-ok/bad/warn hues are mark colours (a rule, a fill,
+   * a swatch) and fall short of 4.5:1 as small text; a status word in text uses these,
+   * which clear 4.5:1 on --rk-bg, --rk-panel and --rk-panel-2 in both themes
+   * (tools/report-kit/check_contrast.py holds that). */
+  --rk-ok-text: var(--chromia-light);
+  --rk-bad-text: var(--ferria-light);
+  --rk-warn-text: var(--samaria-light);
+  --rk-nav-w: 220px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --rk-bg: var(--bg-on-light);
+    --rk-panel: var(--panel-on-light);
+    --rk-panel-2: var(--panel-2-on-light);
+    --rk-text: var(--text-on-light);
+    --rk-muted: var(--muted-on-light);
+    --rk-border: var(--border-on-light);
+    --rk-link: var(--accent-on-light-strong);
+    --rk-focus: var(--accent-on-light-strong);
+    --rk-hit: var(--samaria-light);
+    --rk-flat: var(--muted-on-light);
+    --rk-ok-text: var(--chromia-deep);
+    --rk-bad-text: var(--ferria-deep);
+    --rk-warn-text: var(--samaria-deep);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --rk-bg: var(--bg-on-light);
+  --rk-panel: var(--panel-on-light);
+  --rk-panel-2: var(--panel-2-on-light);
+  --rk-text: var(--text-on-light);
+  --rk-muted: var(--muted-on-light);
+  --rk-border: var(--border-on-light);
+  --rk-link: var(--accent-on-light-strong);
+  --rk-focus: var(--accent-on-light-strong);
+  --rk-hit: var(--samaria-light);
+  --rk-flat: var(--muted-on-light);
+  --rk-ok-text: var(--chromia-deep);
+  --rk-bad-text: var(--ferria-deep);
+  --rk-warn-text: var(--samaria-deep);
+}
+
+/* ---- base ---------------------------------------------------------------- */
+.rk, .rk *, .rk *::before, .rk *::after { box-sizing: border-box; }
+body.rk {
+  margin: 0;
+  background: var(--rk-bg);
+  color: var(--rk-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+.rk a { color: var(--rk-link); }
+.rk :focus-visible { outline: 2px solid var(--rk-focus); outline-offset: 2px; }
+.rk code, .rk pre, .rk .mono { font-family: var(--font-mono); font-size: 0.86em; }
+.rk pre {
+  background: var(--rk-panel-2); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-2) var(--space-3);
+  overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: var(--space-2) 0;
+}
+.rk-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.rk-skip { position: absolute; left: -9999px; }
+.rk-skip:focus { left: var(--space-3); top: var(--space-2); z-index: 10; background: var(--rk-panel); padding: var(--space-2); }
+[hidden] { display: none !important; }
+
+/* ---- header -------------------------------------------------------------- */
+.rk-top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--rk-bg); border-bottom: 1px solid var(--rk-border);
+}
+.rk-top h1 { font-size: 1.25rem; margin: 0; letter-spacing: -0.01em; }
+.rk-top .rk-sub { color: var(--rk-muted); font-size: 0.85rem; margin: 0; flex: 1 1 240px; }
+.rk-tools { display: flex; gap: var(--space-2); align-items: center; }
+.rk-input, .rk-btn, .rk-select {
+  font: inherit; font-size: 0.85rem; color: var(--rk-text);
+  background: var(--rk-panel); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-1) var(--space-2);
+}
+.rk-input { min-width: 0; width: 14rem; max-width: 100%; }
+.rk-btn { cursor: pointer; }
+.rk-btn[aria-pressed="true"] { background: var(--rk-panel-2); border-color: var(--rk-focus); font-weight: 600; }
+.rk-btn:hover { border-color: var(--rk-muted); }
+
+/* ---- layout: sticky section nav collapsing to a select ------------------- */
+.rk-wrap { max-width: 1240px; margin: 0 auto; padding: var(--space-4); }
+.rk-layout { display: grid; grid-template-columns: var(--rk-nav-w) minmax(0, 1fr); gap: var(--space-4); }
+.rk-nav { position: sticky; top: calc(var(--header-h) + var(--space-3)); align-self: start; font-size: 0.86rem; }
+.rk-nav ul { list-style: none; margin: 0; padding: 0; }
+.rk-nav a { display: block; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); color: var(--rk-text); text-decoration: none; }
+.rk-nav a[aria-current="true"] { background: var(--rk-panel-2); font-weight: 600; }
+.rk-nav .rk-select { display: none; width: 100%; }
+.rk-found { color: var(--rk-muted); font-size: 0.8rem; margin: var(--space-2) 0 0; }
+/* initSearch() moves the count beside the search box, into the sticky header. */
+.rk-tools .rk-found { margin: 0; white-space: nowrap; }
+.rk-tools .rk-found:empty { display: none; }
+@media (max-width: 860px) {
+  .rk-layout { display: block; }
+  .rk-nav { position: static; margin-bottom: var(--space-3); }
+  .rk-nav ul { display: none; }
+  .rk-nav .rk-select { display: block; }
+  .rk-input { width: 100%; }
+  .rk-tools { flex-wrap: wrap; min-width: 0; max-width: 100%; }
+  .rk-tools .rk-found { white-space: normal; }
+}
+
+/* ---- sections, cards, verdict -------------------------------------------- */
+.rk-section { margin: 0 0 var(--space-5); scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
+.rk-section > h2 { font-size: 1rem; margin: 0 0 var(--space-2); }
+.rk-card {
+  background: var(--rk-panel); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-panel); padding: var(--space-3); margin: 0 0 var(--space-3);
+}
+.rk-muted { color: var(--rk-muted); }
+
+/* A verdict is words first. The tone class adds a left rule and a glyph, never
+ * meaning on its own (report-viewer-standard R1, R4). */
+.verdict, .rk-banner {
+  border: 1px solid var(--rk-border); border-left-width: 4px;
+  border-radius: var(--radius-panel); background: var(--rk-panel);
+  padding: var(--space-2) var(--space-3); margin: var(--space-2) 0;
+}
+.rk-banner strong { display: block; }
+.ok { border-left-color: var(--rk-ok); }
+.bad { border-left-color: var(--rk-bad); }
+.warn { border-left-color: var(--rk-warn); }
+.info { border-left-color: var(--rk-info); }
+.flat { border-left-color: var(--rk-flat); }
+
+.rk-badge {
+  display: inline-flex; align-items: center; gap: 0.25em; white-space: nowrap;
+  font-size: 0.76rem; font-weight: 600; line-height: 1.3;
+  padding: 0.05em 0.5em; border-radius: var(--radius-sm);
+  border: 1px solid var(--rk-border); border-left-width: 3px; background: var(--rk-panel-2);
+}
+
+/* ---- glance: KPI tiles ---------------------------------------------------- */
+.rk-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-2); margin: var(--space-2) 0; }
+.rk-stat { background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2) var(--space-3); margin: 0; }
+.rk-stat dt { font-size: 0.78rem; color: var(--rk-muted); }
+.rk-stat dd { margin: 0; font-size: 1.4rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.rk-stat small { display: block; color: var(--rk-muted); font-size: 0.76rem; }
+/* R3: the number that needs action looks different by shape, not only colour. */
+.rk-stat.bad { border-left: 4px solid var(--rk-bad); }
+.rk-stat.bad dd::before { content: "\26A0\FE0E  "; font-size: 0.8em; }
+.rk-stat.warn { border-left: 4px solid var(--rk-warn); }
+.rk-stat.ok { border-left: 4px solid var(--rk-ok); }
+.rk-stat.info { border-left: 4px solid var(--rk-info); }
+.rk-dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: var(--space-1) 0; }
+.rk-dl > dt { color: var(--rk-muted); font-weight: 600; }
+.rk-dl > dd { margin: 0; min-width: 0; }
+.rk-next { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.rk-next code { background: var(--rk-panel-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
+
+/* ---- findings ------------------------------------------------------------- */
+.rk-filters { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0 0 var(--space-2); align-items: center; }
+.rk-filters .rk-label { font-size: 0.78rem; color: var(--rk-muted); margin-right: var(--space-1); }
+.rk-finding { border: 1px solid var(--rk-border); border-left-width: 4px; border-radius: var(--radius-panel); background: var(--rk-panel); margin: 0 0 var(--space-2); scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
+.rk-finding:target { outline: 2px solid var(--rk-focus); }
+.rk-finding > summary { cursor: pointer; padding: var(--space-2) var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: baseline; list-style: none; }
+.rk-finding > summary::-webkit-details-marker { display: none; }
+.rk-finding > summary::before { content: "\25B8"; color: var(--rk-muted); }
+.rk-finding[open] > summary::before { content: "\25BE"; }
+/* min() so a 390 px phone never gets a 320 px basis plus a badge on one line; long
+ * paths and identifiers break anywhere rather than push the page sideways. */
+.rk-finding .rk-claim { flex: 1 1 min(320px, 100%); min-width: 0; font-weight: 550; overflow-wrap: anywhere; }
+.rk-finding .rk-where { color: var(--rk-muted); font-size: 0.8rem; min-width: 0; overflow-wrap: anywhere; }
+.rk-finding > summary code { min-width: 0; overflow-wrap: anywhere; }
+.rk-finding .rk-body { padding: 0 var(--space-3) var(--space-3); }
+.rk-finding .rk-body h4 { margin: var(--space-2) 0 var(--space-1); font-size: 0.78rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.rk-permalink { font-size: 0.78rem; margin-left: auto; }
+mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
+
+/* ---- tables --------------------------------------------------------------- */
+.rk-tw { overflow-x: auto; border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
+.rk-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.rk-table th, .rk-table td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--rk-border); vertical-align: top; }
+.rk-table th { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rk-muted); background: var(--rk-panel); position: sticky; top: 0; }
+.rk-table th button { all: unset; cursor: pointer; }
+.rk-table th button:focus-visible { outline: 2px solid var(--rk-focus); }
+.rk-table th[aria-sort="ascending"] button::after { content: " \25B4"; }
+.rk-table th[aria-sort="descending"] button::after { content: " \25BE"; }
+.rk-table tr:last-child td { border-bottom: 0; }
+.rk-table td.r, .rk-table th.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- proof ---------------------------------------------------------------- */
+.rk-checklist { list-style: none; padding: 0; margin: var(--space-1) 0; }
+.rk-checklist li { padding: var(--space-1) 0; }
+.rk-checklist li::before { content: "\2610  "; }
+
+/* ---- before / after ------------------------------------------------------- */
+.rk-ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-2); }
+.rk-ba figure { margin: 0; background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2); }
+.rk-ba figcaption { font-size: 0.8rem; color: var(--rk-muted); margin-top: var(--space-1); }
+.rk-ba img { display: block; max-width: 100%; max-height: 420px; height: auto; object-fit: contain; object-position: left top; border-radius: var(--radius-sm); }
+.rk-slider { position: relative; overflow: hidden; border-radius: var(--radius-sm); width: fit-content; max-width: 100%; }
+/* A screenshot is shown at most at its own size: a 390 px phone capture blown up to
+ * panel width is a wall of pixels, not a comparison. */
+.rk-slider img { max-width: 100%; max-height: 70vh; width: auto; object-fit: contain; object-position: left top; }
+.rk-slider .rk-after { position: absolute; inset: 0; clip-path: inset(0 0 0 50%); }
+.rk-slider input[type="range"] { width: 100%; margin-top: var(--space-1); }
+
+/* ---- failure panel -------------------------------------------------------- */
+.rk-fail { border: 1px solid var(--rk-bad); border-left-width: 4px; background: var(--rk-panel); border-radius: var(--radius-panel); padding: var(--space-3); margin: var(--space-3) 0; }
+.rk-fail p { margin: var(--space-1) 0 0; }
+/* RK.fail() on a figure-first page puts the panel where the verdict was. */
+.rk-hud .rk-fail { margin: 0; overflow-wrap: anywhere; }
+
+/* ---- print ---------------------------------------------------------------- */
+@media print {
+  :root, :root[data-theme] {
+    --rk-bg: var(--bg-on-light); --rk-panel: var(--bg-on-light); --rk-panel-2: var(--bg-on-light);
+    --rk-text: var(--text-on-light); --rk-muted: var(--muted-on-light);
+    --rk-border: var(--rule-on-light); --rk-link: var(--text-on-light);
+  }
+  .rk-top { position: static; }
+  .rk-nav, .rk-tools, .rk-filters, .rk-copy, .rk-permalink { display: none !important; }
+  .rk-layout { display: block; }
+  .rk-card, .rk-finding, figure, tr { break-inside: avoid; }
+}
+
+/* ---- figure-first stage ---------------------------------------------------
+ * R9: the figure IS the report. It fills the first screen; the verdict and the
+ * few numbers that matter float over it as a HUD; per-item detail opens in a
+ * drawer on click or a tooltip on hover, beside the figure instead of below it,
+ * so the reader never scrolls away from what they are reading about. Long-form
+ * sections (findings, tables) follow below the stage.
+ * ------------------------------------------------------------------------- */
+.rk-stage {
+  /* --rk-open-w is what the open drawer takes from the right; every overlay is bounded
+     by the figure column (100% minus it), never by the whole stage. */
+  --rk-drawer-w: min(400px, 42vw);
+  --rk-open-w: 0px;
+  position: relative;
+  height: calc(100vh - var(--header-h));
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 0;
+  transition: grid-template-columns var(--transition-base);
+  border-bottom: 1px solid var(--rk-border);
+  background: var(--rk-bg);
+}
+.rk-stage.rk-drawer-open { --rk-open-w: var(--rk-drawer-w); grid-template-columns: minmax(0, 1fr) var(--rk-drawer-w); }
+.rk-figure { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.rk-figure > svg, .rk-figure > canvas { display: block; width: 100%; height: 100%; }
+.rk-figure.rk-scroll { overflow: auto; }
+.rk-hud {
+  position: absolute; top: var(--space-3); left: var(--space-3); z-index: 3;
+  max-width: min(560px, calc(100% - var(--rk-open-w) - 2 * var(--space-3)));
+  display: flex; flex-direction: column; gap: var(--space-2); pointer-events: none;
+}
+.rk-hud > * { pointer-events: auto; }
+/* The HUD is a caption, not a page: the verdict is clamped to two lines (the whole
+   sentence opens in the drawer via "more", added by stage()), the numbers are one
+   row of chips. Every pixel the HUD takes is a pixel the figure's fit gives up. */
+.rk-hud .verdict {
+  /* Vertical room is a transparent BORDER, not padding: overflow clips at the padding
+     edge, so with padding the clamped third line would show half-drawn inside it. */
+  margin: 0; font-size: 0.86rem; line-height: 1.45; padding-block: 0;
+  border-top: var(--space-2) solid transparent; border-bottom: var(--space-2) solid transparent;
+  box-shadow: 0 -1px 0 var(--rk-border), 0 1px 0 var(--rk-border);  /* the frame line the borders gave up */
+  background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+/* all: unset resets pointer-events to inherit, i.e. the HUD's none -- and this rule
+   comes after .rk-hud > * at equal specificity, so it must restate auto itself. */
+.rk-hud-more { all: unset; pointer-events: auto; cursor: pointer; align-self: flex-start; font-size: 0.76rem; color: var(--rk-link);
+  text-decoration: underline; margin-top: calc(-1 * var(--space-1)); padding: 0 var(--space-1);
+  background: color-mix(in srgb, var(--rk-panel) 85%, transparent); border-radius: var(--radius-sm); }
+.rk-hud-more:focus-visible { outline: 2px solid var(--rk-focus); }
+.rk-hud-stats { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
+.rk-hud-stats .rk-stat { display: flex; align-items: baseline; gap: var(--space-1); padding: 2px var(--space-2);
+  min-width: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); }
+.rk-hud-stats .rk-stat dt { font-size: 0.72rem; margin: 0; }
+.rk-hud-stats .rk-stat dd { font-size: 0.92rem; margin: 0; }
+/* R4: visible without interaction, but compact -- short labels in a wrapping row; a
+   viewer puts the long explanation of each mark in a hover title, not in the strip. */
+.rk-legend-float {
+  position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 3; margin: 0;
+  max-width: min(720px, calc(100% - var(--rk-open-w) - 2 * var(--space-3)));
+  padding: var(--space-1) var(--space-2); font-size: 0.76rem;
+  background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px);
+}
+.rk-hint {
+  position: absolute; right: var(--space-3); bottom: var(--space-3); z-index: 3;
+  font-size: 0.76rem; color: var(--rk-muted);
+  background: color-mix(in srgb, var(--rk-panel) 85%, transparent);
+  padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
+  max-width: calc(100% - var(--rk-open-w) - 2 * var(--space-3));
+}
+/* The hint and any bottom-right overlay sit in the figure column, never under the drawer.
+   stage() lifts the hint above a legend it would overlap, or hides it (rk-hint-off). */
+.rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
+.rk-hint.rk-hint-off { visibility: hidden; }
+/* RK.mark()ed figure marks the header search does not match. */
+.rk-figure [data-rk-dim] { opacity: 0.22; transition: opacity var(--transition-fast); }
+.rk-figure:focus { outline: none; }
+.rk-figure:focus-visible { outline: 2px solid var(--rk-focus); outline-offset: -2px; }
+.rk-drawer {
+  position: relative; min-width: 0; overflow: auto; z-index: 4;
+  background: var(--rk-panel); border-left: 1px solid var(--rk-border);
+}
+.rk-drawer[hidden] { display: block !important; visibility: hidden; }
+.rk-drawer-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; gap: var(--space-2);
+  padding: var(--space-3); background: var(--rk-panel); border-bottom: 1px solid var(--rk-border);
+}
+.rk-drawer-head h2 { font-size: 1rem; margin: 0; flex: 1; overflow-wrap: anywhere; }
+.rk-drawer-head .rk-sub { color: var(--rk-muted); font-size: 0.8rem; margin: var(--space-1) 0 0; }
+.rk-drawer-body { padding: var(--space-3); font-size: 0.88rem; }
+.rk-drawer-body h3 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rk-muted); margin: var(--space-3) 0 var(--space-1); }
+.rk-drawer-body .rk-link { all: unset; cursor: pointer; color: var(--rk-link); text-decoration: underline; }
+.rk-drawer-body .rk-link:focus-visible { outline: 2px solid var(--rk-focus); }
+.rk-tip {
+  position: fixed; z-index: 20; pointer-events: none; max-width: 340px;
+  background: var(--rk-panel); color: var(--rk-text); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-2) var(--space-3);
+  font-size: 0.82rem; box-shadow: 0 6px 24px color-mix(in srgb, var(--bg) 45%, transparent);
+}
+.rk-tip[hidden] { display: none; }
+.rk-tip strong { display: block; margin-bottom: var(--space-1); }
+.rk-below { padding-top: var(--space-5); }
+@media (max-width: 860px) {
+  .rk-stage, .rk-stage.rk-drawer-open { --rk-open-w: 0px; grid-template-columns: minmax(0, 1fr); height: auto; min-height: 70vh; }
+  .rk-figure { height: 70vh; }
+  .rk-drawer { position: fixed; inset: auto 0 0 0; max-height: 60vh; border-left: 0; border-top: 1px solid var(--rk-border); }
+  .rk-drawer[hidden] { display: none !important; }
+}
+@media print {
+  .rk-hud .verdict { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+  .rk-hud-more { display: none; }
+  .rk-stage { height: auto; min-height: 0; display: block; }
+  .rk-figure { height: 70vh; }
+  .rk-drawer, .rk-tip, .rk-hint { display: none !important; }
+}

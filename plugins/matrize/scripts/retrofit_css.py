@@ -103,10 +103,30 @@ def typed(value: str) -> tuple[str, object] | None:
     return None
 
 
+MODE_BLOCK = re.compile(r"@media[^{]*prefers-color-scheme|\[data-theme|\.dark\b|\.light\b", re.I)
+
+
 def retrofit(css: str, reference: str = "existing-css") -> tuple[dict, list[str]]:
     decls = DECL.findall(css)
     if not decls:
         raise ValueError("no custom-property declarations found")
+    # One name declared twice with different values is a theme (a prefers-color-scheme
+    # block, a [data-theme] or .dark selector). DTCG as profiled here has no modes, and
+    # the flat lift below keeps the LAST value -- the dark override silently replaced
+    # the light one and arm 1 still passed, because it compares with the same flat
+    # parse. Refuse rather than collapse: a retrofit that loses a theme is not one.
+    seen: dict[str, str] = {}
+    clashes: set[str] = set()
+    for n, v in decls:
+        if n in seen and seen[n] != v.strip():
+            clashes.add(n)
+        seen.setdefault(n, v.strip())
+    clashes = sorted(clashes)
+    if clashes:
+        where = "a theme block (prefers-color-scheme / data-theme / .dark)" if MODE_BLOCK.search(css) else "more than one rule"
+        raise ValueError(f"{len(clashes)} custom propert(ies) are declared with different values in {where}: "
+                         + ", ".join(clashes[:8]) + " -- this profile has no modes, so lifting them would keep one "
+                         "value and drop the other. Retrofit each theme's block separately.")
 
     # First pass: decide every declaration's dotted path, so aliases can resolve to one.
     paths: dict[str, str] = {}
@@ -194,6 +214,12 @@ def selftest() -> int:
 
     alias = doc["color"]["accent"]["$value"]
     checks.append(("alias stays a reference, not a hex", alias == "{color.ink}"))
+    try:
+        retrofit(":root {\n  --a: #fff;\n}\n@media (prefers-color-scheme: dark) {\n  :root {\n    --a: #000;\n  }\n}\n")
+        refused = False
+    except ValueError as err:
+        refused = "theme block" in str(err)
+    checks.append(("a dark-mode override is refused, never collapsed into one value", refused))
     checks.append(("alias carries no $type of its own", "$type" not in doc["color"]["accent"]))
     checks.append(("hex spelling preserved verbatim",
                    doc["color"]["ink"]["$value"]["hex"] == "#dfe6ea"))

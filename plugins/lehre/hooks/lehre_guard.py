@@ -22,6 +22,10 @@ TWO GATES, ONE HOOK.
   2. RULES. A write whose resulting content violates a `severity: blocking`,
      hook-tier rule is denied, quoting the rule's own rationale.
 
+USAGE: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Write", "tool_input": {"file_path": "x"}}' | python3 lehre_guard.py
+
 CONTRACT (Claude Code PreToolUse):
   - stdin: JSON with at least {"cwd", "tool_name", "tool_input"}
   - ALLOW: exit 0
@@ -70,7 +74,7 @@ ESCAPE_HATCH = (
     "lehre-codify, or remove .lehre/ruleset.json if this repository no longer "
     "declares a doctrine"
 )
-EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
+EDIT_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 
 #: The declared Python floor (#123), checked past the inert test rather than
 #: assumed. A hook runs under whatever python3 is on PATH, and one that crashes
@@ -110,9 +114,10 @@ def edit_targets(core, cwd: str, tool_input: dict) -> list:
     payload must look empty here, not look full.
     """
     found = []
-    single = tool_input.get("file_path")
-    if isinstance(single, str) and single:
-        found.append(single)
+    for key in ("file_path", "notebook_path"):
+        single = tool_input.get(key)
+        if isinstance(single, str) and single:
+            found.append(single)
     edits = tool_input.get("edits")
     if isinstance(edits, list):
         for entry in edits:
@@ -202,6 +207,11 @@ def resulting_content(cwd: str, tool_name: str, tool_input: dict, rel_path: str)
         if isinstance(content, str):
             return content
         raise ContentUnknown("Write payload carried no string content")
+
+    if tool_name == "NotebookEdit":
+        # One cell's new source is not the module a layering rule judges; say so rather
+        # than guess (a content rule that applies then fails closed, as for any unknown).
+        raise ContentUnknown("a NotebookEdit changes one cell; the resulting file cannot be reconstructed")
 
     abs_path = os.path.join(cwd, rel_path)
     try:

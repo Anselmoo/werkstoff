@@ -4,343 +4,608 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>spur — execution trace</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-sans); font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
-  header { margin-bottom: var(--space-3); }
-  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
-  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
-  h3 { font-size: 0.92rem; margin: 0; font-weight: 600; }
-  code, .mono { font-family: var(--font-mono); font-size: 0.82rem; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; overflow-wrap: anywhere; }
-  .verdict {
-    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius-panel);
-  }
-  .verdict.bad { border-color: var(--status-bad); }
-  .verdict.warn { border-color: var(--status-warn); }
-  .verdict.good { border-color: var(--status-good); }
-  /* Tiles. The broken count is the number a reader must act on, so it alone gets
-     the status colour and a heavier frame; the others are context (standard R3). */
-  .tiles { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
-  .tile {
-    min-width: 132px; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .tile .v { font-size: 1.35rem; font-weight: 600; color: var(--muted); }
-  .tile .k { font-size: 0.78rem; color: var(--muted); }
-  .tile.alarm { border: 2px solid var(--status-bad); }
-  .tile.alarm .v { color: var(--status-bad); }
-  .tile.caution .v { color: var(--status-warn); }
-  .legend {
-    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
-  }
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
-  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
-  .legend dd { margin: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-  th, td { text-align: left; padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--smoke); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  /* State is carried by the word and the glyph; colour is a third channel. */
-  .state { white-space: nowrap; font-weight: 600; }
-  .state .glyph { display: inline-block; width: 1.1em; }
-  .st-verified { color: var(--status-good); }
-  .st-broken { color: var(--status-bad); }
-  .st-unverified { color: var(--status-warn); }
-  .st-source { color: var(--muted); }
-  .note { color: var(--muted); font-size: 0.8rem; }
-  .step {
-    margin: var(--space-3) 0; padding: var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .step.untraced { background: var(--bg); border-style: dashed; }
-  .step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); }
-  .step-head .cmd { overflow-wrap: anywhere; }
-  .badge {
-    font-size: 0.72rem; padding: 0 var(--space-1); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); color: var(--muted); white-space: nowrap;
-  }
-  .badge.fail { border-color: var(--status-bad); color: var(--status-bad); }
-  .meta { color: var(--muted); font-size: 0.8rem; margin: var(--space-1) 0 var(--space-2); }
-  .block { margin-top: var(--space-2); }
-  .block > .label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--smoke); }
+  .lg-row { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin: 0; padding: 0; list-style: none; font-size: 0.76rem; }
+  .lg-row li { white-space: nowrap; color: var(--rk-text); }
+  .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
+  .legend dd { margin: 0 var(--space-2) 0 0; }
+  .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+  .rk-drawer-body dl.defs dt { font-weight: 600; white-space: nowrap; }
+  .rk-drawer-body dl.defs dd { margin: 0; overflow-wrap: anywhere; }
+  .rk-drawer-body code { overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.plain li { padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain li:last-child { border-bottom: 0; }
+  #sub { overflow-wrap: anywhere; }
+  .step-cmd { overflow-wrap: anywhere; }
+  .step.untraced { border-style: dashed; }
+  .step .rk-meta { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-1) 0 var(--space-2); }
+  .step .rk-block { margin-top: var(--space-3); }
+  .step .rk-label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rk-muted); margin: 0 0 var(--space-1); }
   details.call { margin-left: var(--space-3); }
   details.call > summary { cursor: pointer; padding: 1px 0; }
   details.call.leaf > summary { list-style: none; cursor: default; }
-  details.call.leaf > summary::before { content: "· "; color: var(--muted); }
-  .fn { font-family: var(--font-mono); font-size: 0.82rem; color: var(--text); }
-  .where, .cnt { color: var(--muted); font-size: 0.78rem; }
-  .links li { margin-bottom: var(--space-1); }
-  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
-  #empty {
-    margin: var(--space-4) 0; padding: var(--space-3);
-    background: var(--panel); border: 1px solid var(--status-bad); border-radius: var(--radius-panel);
-  }
+  details.call.leaf > summary::before { content: "· "; color: var(--rk-muted); }
+  .fn { font-family: var(--font-mono); font-size: 0.82rem; }
+  .where, .cnt { color: var(--rk-muted); font-size: 0.78rem; }
+
+  /* the chain figure: every colour is a kit token, so the theme toggle needs no redraw */
+  .sp-svg text { font-family: var(--font-sans); font-size: 12px; fill: var(--rk-text); }
+  .sp-svg .mono { font-family: var(--font-mono); }
+  .sp-svg .mute { fill: var(--rk-muted); font-size: 11px; }
+  .sp-svg .lane { fill: var(--rk-muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .sp-svg .strong { font-weight: 650; font-size: 13px; }
+  .sp-box { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1.5; }
+  .sp-step.bad .sp-box { stroke: var(--rk-bad); stroke-width: 3; }
+  .sp-step.warn .sp-box { stroke: var(--rk-warn); stroke-width: 3; }
+  .sp-step.ok .sp-box { stroke: var(--rk-ok); stroke-width: 2; }
+  .sp-step.untraced .sp-box, .sp-file.untraced .sp-box { stroke-dasharray: 5 4; }
+  .sp-file.warn .sp-box { stroke: var(--rk-warn); stroke-width: 2; stroke-dasharray: 5 4; }
+  .sp-file .sp-box { fill: var(--rk-panel-2); }
+  .sp-mark { cursor: pointer; }
+  .sp-mark:focus-visible { outline: 2px solid var(--rk-focus); outline-offset: 2px; }
+  .sp-sel .sp-box { stroke: var(--rk-focus); stroke-width: 3.5; }
+  .sp-write { fill: none; stroke: var(--rk-muted); stroke-width: 1.5; opacity: 0.7; }
+  .sp-edge .line { fill: none; stroke-width: 2.4; }
+  .sp-edge.ok .line { stroke: var(--rk-ok); }
+  .sp-edge.bad .line { stroke: var(--rk-bad); stroke-width: 4; }
+  .sp-edge.warn .line { stroke: var(--rk-warn); stroke-dasharray: 7 5; }
+  .sp-edge.flat .line { stroke: var(--rk-flat); stroke-dasharray: 2 5; }
+  .sp-edge .hit { fill: none; stroke: transparent; stroke-width: 16; }
+  .sp-edge .pill { fill: var(--rk-panel); stroke-width: 1.5; }
+  .sp-edge.ok .pill { stroke: var(--rk-ok); }
+  .sp-edge.bad .pill { stroke: var(--rk-bad); stroke-width: 2.5; }
+  .sp-edge.warn .pill { stroke: var(--rk-warn); }
+  .sp-edge.flat .pill { stroke: var(--rk-flat); }
+  .sp-edge.sp-sel .line { stroke-width: 5; }
+  .sp-edge.sp-sel .pill { stroke: var(--rk-focus); stroke-width: 3; }
+  .sp-edge text { font-size: 11.5px; font-weight: 600; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>spur — execution trace</h1>
-    <p class="sub" id="sub">One run of the project's pipeline: every step, the calls it made, and every file it read and wrote.</p>
-    <p class="verdict" id="verdict">Loading the run record…</p>
-    <div class="tiles" id="tiles"></div>
-  </header>
-
-  <div class="legend">
-    <dl>
-      <dt>✓ verified</dt><dd>the step read exactly the bytes its producer wrote (sha256 equal).</dd>
-      <dt>✗ broken</dt><dd>the bytes changed between the producer's write and this read. Something outside the traced steps touched the file.</dd>
-      <dt>? unverified</dt><dd>the file changed during the run, but no traced step wrote it, or it could not be hashed. Never a pass.</dd>
-      <dt>○ source</dt><dd>an input that predates the run: nothing in it was produced here, so there is nothing to chain to.</dd>
-      <dt>path@n</dt><dd>the n-th version of a file in this run. A file rewritten in place gets a new version, and a consumer is checked against the latest version written before it read the file.</dd>
-      <dt>untraced step</dt><dd>a process the run spawned that left no record (a shell, a non-Python program). Its command is known; its calls and file I/O are not.</dd>
-    </dl>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>spur — execution trace</h1>
+  <p class="rk-sub" id="sub">One run of the project's pipeline: every step, the calls it made, and every file it read and wrote.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search steps and files">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
-
-  <div id="empty" hidden>
-    <strong>This report could not be read.</strong>
-    <p>Re-run <code>spur_trace.py run -- &lt;command&gt;</code>, or rebuild the page from a run record with
-      <code>build_spur_html.py --trace analysis/spur/&lt;runId&gt;/trace.json</code>.</p>
+</header>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The run as a chain: steps in the order they started, the files each one wrote, and a link from every write to each step that read it">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Loading the run record…</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float">
+      <ul class="lg-row">
+        <li title="read exactly what its producer wrote">✓ verified</li>
+        <li title="bytes changed between write and read">✗ broken</li>
+        <li title="changed with no traced writer; never a pass">! unverified</li>
+        <li title="predates the run; nothing to chain to">– source</li>
+        <li title="the n-th version of a file in this run">path@n</li>
+        <li title="untraced: command known, calls and file I/O not">dashed step</li>
+      </ul>
+    </div>
+    <span class="rk-hint">click a link or a step for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
-
-  <h2>Where one step's output feeds the next</h2>
-  <ul class="links" id="links"></ul>
-
-  <h2>Steps, in the order they started</h2>
-  <div id="steps"></div>
-
-  <footer id="footer"></footer>
-</div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-/*__SPUR_DATA__*/
-const DATA = (typeof SPUR !== "undefined") ? SPUR : null;
-const GLYPH = { verified: "✓", broken: "✗", unverified: "?", source: "○" };
-
-function el(id) { return document.getElementById(id); }
-function make(tag, cls, text) {
-  const n = document.createElement(tag);
-  if (cls) n.className = cls;
-  if (text !== undefined && text !== null) n.textContent = text;
-  return n;
-}
-function short(sha) { return sha ? sha.slice(0, 12) + "…" : "—"; }
-function stateCell(status) {
-  const td = make("td", "state st-" + status);
-  td.appendChild(make("span", "glyph", GLYPH[status] || "?"));
-  td.appendChild(document.createTextNode(status));
-  return td;
-}
-function shaCell(sha) {
-  const td = make("td", "mono", short(sha));
-  if (sha) td.title = sha;
-  return td;
-}
-function ms(ns) {
-  const v = ns / 1e6;
-  return v >= 10 ? v.toFixed(0) + " ms" : v.toFixed(2) + " ms";
-}
-
-function tree(nodes, unit, parent, depth) {
-  for (const n of nodes) {
-    const d = make("details", "call" + (n.children.length ? "" : " leaf"));
-    // The first levels open: a collapsed tree hides the one thing the section is for.
-    d.open = depth < 3;
-    const s = make("summary");
-    s.appendChild(make("span", "fn", n.fn));
-    s.appendChild(document.createTextNode(" "));
-    s.appendChild(make("span", "where", n.file + (n.line ? ":" + n.line : "")));
-    s.appendChild(document.createTextNode(" "));
-    s.appendChild(make("span", "cnt", "×" + n.calls + (unit === "samples" ? " samples" : "") + " · " + ms(n.ns)));
-    d.appendChild(s);
-    tree(n.children, unit, d, depth + 1);
-    parent.appendChild(d);
-  }
-}
-
-function table(headers, rows) {
-  const t = make("table");
-  const thead = make("thead");
-  const hr = make("tr");
-  for (const h of headers) hr.appendChild(make("th", null, h));
-  thead.appendChild(hr);
-  t.appendChild(thead);
-  const tb = make("tbody");
-  for (const r of rows) tb.appendChild(r);
-  t.appendChild(tb);
-  return t;
-}
-
-function stepCard(s, byId) {
-  const card = make("section", "step" + (s.traced ? "" : " untraced"));
-  card.id = s.id;
-  const head = make("div", "step-head");
-  head.appendChild(make("h3", null, s.id));
-  head.appendChild(make("code", "cmd", s.command.join(" ")));
-  head.appendChild(make("span", "badge", s.traced ? "traced" : "untraced"));
-  const code = s.exit && s.exit.code;
-  if (code !== null && code !== undefined && code !== 0) head.appendChild(make("span", "badge fail", "exit " + code));
-  card.appendChild(head);
-
-  const bits = [];
-  if (s.parent) bits.push("spawned by " + s.parent);
-  if (s.durationMs !== null && s.durationMs !== undefined) bits.push(s.durationMs + " ms");
-  if (s.exit) bits.push(s.exit.code === null ? "exit " + s.exit.how
-    : "exit " + s.exit.code + " (" + s.exit.how + ")");
-  if (s.python) bits.push("Python " + s.python);
-  if (s.why) bits.push(s.why);
-  if (s.io === "declared") bits.push("file I/O declared with --reads/--writes, not observed");
-  if (s.dropped) bits.push("tracer dropped " + s.dropped + " event(s): " + Object.keys(s.droppedWhy || {}).join(", "));
-  card.appendChild(make("p", "meta", bits.join(" · ")));
-
-  if (s.inputs.length) {
-    const b = make("div", "block");
-    b.appendChild(make("div", "label", "reads"));
-    b.appendChild(table(["state", "file", "sha256", "from"], s.inputs.map((i) => {
-      const tr = make("tr");
-      tr.appendChild(stateCell(i.status));
-      // A broken read did NOT read @n; @n is what it should have read.
-      tr.appendChild(make("td", "mono", i.path + (!i.version ? "" :
-        i.status === "verified" ? "@" + i.version : " (expected @" + i.version + ")")));
-      tr.appendChild(shaCell(i.sha256));
-      const from = make("td");
-      if (i.producer) from.appendChild(make("span", null, i.producer + (i.status === "broken" ? " wrote " + short(i.expected) : "")));
-      else from.appendChild(make("span", "note", i.status === "source" ? "predates the run" : "no traced producer"));
-      if (i.note) { from.appendChild(document.createElement("br")); from.appendChild(make("span", "note", i.note)); }
-      tr.appendChild(from);
-      return tr;
-    })));
-    card.appendChild(b);
-  }
-  if (s.outputs.length) {
-    const b = make("div", "block");
-    b.appendChild(make("div", "label", "writes"));
-    b.appendChild(table(["file", "sha256", "read next by"], s.outputs.map((o) => {
-      const tr = make("tr");
-      tr.appendChild(make("td", "mono", o.path + "@" + o.version));
-      tr.appendChild(shaCell(o.sha256));
-      tr.appendChild(make("td", null, (o.feeds || []).length ? o.feeds.join(", ") : "—"));
-      return tr;
-    })));
-    card.appendChild(b);
-  }
-  if ((s.removed || []).length) {
-    card.appendChild(make("p", "note", "removed: " + s.removed.join(", ")));
-  }
-
-  const calls = s.calls || {};
-  const b = make("div", "block");
-  if (calls.available && (calls.threads || []).some((t) => t.length)) {
-    b.appendChild(make("div", "label", "calls of the project's own functions (" + calls.source + ")"));
-    for (const t of calls.threads) tree(t, calls.unit, b, 0);
-  } else {
-    b.appendChild(make("div", "label", "calls"));
-    b.appendChild(make("p", "note", calls.why || "no call of the project's own code was observed"));
-  }
-  card.appendChild(b);
-
-  if ((s.code || []).length) {
-    const d = make("details", "block");
-    d.appendChild(make("summary", "label", "code it loaded from the project (" + s.code.length + " file(s), hashed, not part of the chain)"));
-    d.appendChild(table(["file", "sha256"], s.code.map((c) => {
-      const tr = make("tr");
-      tr.appendChild(make("td", "mono", c.path));
-      tr.appendChild(shaCell(c.sha256));
-      return tr;
-    })));
-    card.appendChild(d);
-  }
-  return card;
-}
-
-function render() {
-  if (!DATA || !Array.isArray(DATA.steps) || !DATA.chain) {
-    el("verdict").textContent =
-      "This report could not be read. Re-run spur_trace.py run, or rebuild it with build_spur_html.py.";
-    el("empty").hidden = false;
+(() => {
+  const D = RK.readData("python3 plugins/spur/scripts/build_spur_html.py --trace analysis/spur/<runId>/trace.json");
+  const verdict = RK.$("#verdict");
+  if (!D || !Array.isArray(D.steps) || !D.chain) {
+    verdict.textContent = "This report could not be read. Re-run spur_trace.py run, or rebuild it with build_spur_html.py.";
     return;
   }
-  const steps = DATA.steps;
-  const byId = Object.fromEntries(steps.map((s) => [s.id, s]));
-  const c = DATA.chain;
+  const { h, badge, section } = RK;
+  const S = RK.stage();
+  const steps = D.steps;
+  const c = D.chain;
+  const TONE = { verified: "ok", broken: "bad", unverified: "warn", source: "flat" };
+  // Severity words the kit already tones; the badge text is relabelled below so the reader
+  // sees the status word, never "fail" for "broken".
+  const SEV = { broken: "fail", unverified: "gap", verified: "pass", source: "na" };
+  const GL = { ok: "✓", bad: "✗", warn: "!", flat: "–" };
+  const short = (sha) => (sha ? sha.slice(0, 12) + "…" : "—");
+  const shaNode = (sha) => h("span", { class: "mono", title: sha || "", text: short(sha) });
+  const ms = (ns) => { const v = ns / 1e6; return v >= 10 ? v.toFixed(0) + " ms" : v.toFixed(2) + " ms"; };
+  const clip = (s, n) => (s.length > n ? s.slice(0, Math.max(1, n - 1)) + "…" : s);
+  const safeId = (s) => String(s).replace(/[^A-Za-z0-9_.-]/g, "-");
+
   // Only the root's last segment: an absolute path is machine noise in a shared report
   // (trace.json keeps the full, home-redacted root).
-  const rootName = String(DATA.root).split("/").filter(Boolean).pop() || DATA.root;
-  el("sub").textContent = DATA.command.join(" ") + " · in " + rootName + "/ · run " + DATA.runId +
-    " · started " + DATA.started;
+  const rootName = String(D.root).split("/").filter(Boolean).pop() || D.root;
+  RK.$("#sub").textContent = D.command.join(" ") + " · in " + rootName + "/ · run " + D.runId + " · started " + D.started;
 
   const inputs = steps.flatMap((s) => s.inputs.map((i) => Object.assign({ consumer: s.id }, i)));
   const broken = inputs.filter((i) => i.status === "broken");
   const unver = inputs.filter((i) => i.status === "unverified");
-  const v = el("verdict");
-  if (DATA.exit !== 0) {
-    v.className = "verdict bad";
-    v.textContent = "The command failed (exit " + DATA.exit + "), so this run produced no result to vouch for. " +
+  let tone = "warn";
+  if (D.exit !== 0) {
+    tone = "bad";
+    verdict.textContent = "The command failed (exit " + D.exit + "), so this run produced no result to vouch for. " +
       "The steps below show how far it got.";
   } else if (c.verdict === "broken") {
-    v.className = "verdict bad";
+    tone = "bad";
     const b = broken[0];
-    v.textContent = "The hash chain is broken: " + b.path + " changed after " + b.producer +
+    verdict.textContent = "The hash chain is broken: " + b.path + " changed after " + b.producer +
       " wrote it and before " + b.consumer + " read it. A result downstream of that link was not computed " +
       "from what the pipeline produced.";
   } else if (c.verdict === "incomplete") {
-    v.className = "verdict warn";
-    v.textContent = "No link is broken, but the chain is incomplete: " + unver.map((i) => i.path).join(", ") +
+    verdict.textContent = "No link is broken, but the chain is incomplete: " + unver.map((i) => i.path).join(", ") +
       " changed during the run without a traced producer. Those inputs are unverified, not passed.";
   } else if (c.verdict === "verified") {
-    v.className = "verdict good";
-    v.textContent = "Every input a step read is either an untouched source or exactly what an earlier step " +
+    tone = "ok";
+    verdict.textContent = "Every input a step read is either an untouched source or exactly what an earlier step " +
       "wrote. The chain from the sources to the final outputs holds.";
   } else {
-    v.className = "verdict warn";
-    v.textContent = "Nothing to check: no step read a file another step wrote, so this run has no chain " +
+    verdict.textContent = "Nothing to check: no step read a file another step wrote, so this run has no chain " +
       "to verify. That is not a pass.";
   }
+  verdict.classList.add(tone);
 
-  const tiles = el("tiles");
-  const tile = (n, k, cls) => {
-    const t = make("div", "tile" + (cls ? " " + cls : ""));
-    t.appendChild(make("div", "v", String(n)));
-    t.appendChild(make("div", "k", k));
-    tiles.appendChild(t);
+  const content = RK.$("#rk-content");
+  const untraced = steps.filter((s) => !s.traced).length;
+  S.stats([
+    { label: "Broken links", value: String(c.broken), note: "bytes changed between write and read", bad: c.broken > 0 },
+    { label: "Unverified inputs", value: String(c.unverified), note: "changed with no traced writer", bad: c.unverified > 0 },
+    { label: "Verified links", value: String(c.verified) },
+    { label: "Sources", value: String(c.source), note: "predate the run" },
+    { label: "Untraced steps", value: String(untraced), note: "no calls or file I/O recorded" },
+  ]);
+
+  // ---- every input as a record: status, hashes and the producing step are the evidence ----
+  const linkRecords = inputs.map((i, n) => {
+    const ev = [{ label: "sha256 read by " + i.consumer, detail: i.sha256 || "not hashed" }];
+    if (i.expected) ev.push({ label: "sha256 " + i.producer + " wrote", detail: i.expected });
+    if (i.producer) ev.push({ label: "producing step", detail: i.producer + " wrote " + i.path + "@" + i.version });
+    if (i.note) ev.push({ label: "note", detail: i.note });
+    return {
+      id: i.consumer + "-" + n,
+      severity: SEV[i.status] || "na",
+      claim: (i.producer ? i.producer + " → " : "") + i.path + (i.version ? "@" + i.version : "") + " → " + i.consumer +
+        (i.status === "source" ? " (predates the run)" : ""),
+      file: i.path,
+      evidence: ev,
+      tags: { status: i.status, consumer: i.consumer, producer: i.producer || "(none)" },
+      input: i,
+      domId: "link-" + safeId(i.consumer + "-" + n),
+    };
+  });
+
+  // ---- the figure ----------------------------------------------------------------------------
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const sv = (tag, attrs, ...kids) => {
+    const el = document.createElementNS(SVGNS, tag);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined && v !== false) el.setAttribute(k, String(v));
+    for (const k of kids.flat()) if (k) el.appendChild(k instanceof Node ? k : document.createTextNode(String(k)));
+    return el;
   };
-  tile(c.broken, "broken links", c.broken ? "alarm" : "");
-  tile(c.unverified, "unverified inputs", c.unverified ? "caution" : "");
-  tile(c.verified, "verified links");
-  tile(c.source, "sources");
-  tile(steps.filter((s) => !s.traced).length, "untraced steps");
+  const tx = (x, y, text, cls, anchor) => { const e = sv("text", { x, y, class: cls || null, "text-anchor": anchor || "middle" }); e.textContent = text; return e; };
 
-  const ul = el("links");
-  const linked = inputs.filter((i) => i.producer);
-  for (const i of linked) {
-    const li = make("li");
-    li.appendChild(make("span", "state st-" + i.status, GLYPH[i.status] + " "));
-    li.appendChild(make("code", null, i.producer + " → " + i.path + "@" + i.version + " → " + i.consumer));
-    li.appendChild(make("span", "note", " " + i.status + (i.note ? ": " + i.note : "")));
-    ul.appendChild(li);
+  const stepTone = (s) => {
+    const bad = s.inputs.some((i) => i.status === "broken") || (s.exit && s.exit.code);
+    const warn = s.inputs.some((i) => i.status === "unverified");
+    return bad ? "bad" : warn ? "warn" : (s.traced ? "ok" : "flat");
+  };
+  const stepWord = (s) => {
+    const nb = s.inputs.filter((i) => i.status === "broken").length;
+    const nu = s.inputs.filter((i) => i.status === "unverified").length;
+    if (nb) return "✗ " + nb + " broken input" + (nb > 1 ? "s" : "");
+    if (s.exit && s.exit.code) return "✗ exit " + s.exit.code;
+    if (nu) return "! " + nu + " unverified input" + (nu > 1 ? "s" : "");
+    return s.traced ? "✓ inputs hold" : "– untraced";
+  };
+
+  // Files: an output is keyed path@version and sits under the step that wrote it; an input with
+  // no traced producer (a source, or a file changed by an untraced hand) sits above its first reader.
+  const outs = new Map();
+  steps.forEach((s) => s.outputs.forEach((o) => outs.set(o.path + "@" + o.version, { kind: "out", key: o.path + "@" + o.version, o, step: s.id })));
+  const srcs = new Map();
+  const edges = linkRecords.map((r) => {
+    const i = r.input;
+    const pk = i.producer && i.version ? i.path + "@" + i.version : null;
+    let from;
+    if (pk && outs.has(pk)) from = outs.get(pk);
+    else {
+      if (!srcs.has(i.path)) srcs.set(i.path, { kind: "src", key: "src:" + i.path, path: i.path, status: i.status, consumer: i.consumer, note: i.note });
+      from = srcs.get(i.path);
+    }
+    return { rec: r, i, from, to: i.consumer };
+  });
+
+  let selected = null; // {type:"link"|"step", id}
+  const marks = new Map(); // dom id -> element, for the selection ring
+  let figW = 0, figH = 0;
+
+  function draw(w, hgt) {
+    figW = w; figH = hgt;
+    const fig = S.figure;
+    fig.textContent = ""; marks.clear();
+    if (!steps.length) {
+      fig.append(h("p", { class: "rk-muted", style: "padding:140px var(--space-4) 0", text: "No step was recorded in this run." }));
+      return;
+    }
+    const n = steps.length;
+    const colMin = 168;
+    const W = Math.max(w, n * colMin + 40);
+    const colW = (W - 40) / n;
+    const ins = S.insets();
+    const areaTop = ins.top + 26, areaBot = hgt - ins.bottom - 8;
+    const avail = areaBot - areaTop;
+    const bw = Math.min(colW - 26, 300), bh = Math.max(74, Math.min(130, avail * 0.2));
+    const fh = Math.max(40, Math.min(64, avail * 0.1));
+    const srcY = Math.max(areaTop + 20 + fh / 2, 150);
+    const outY = Math.max(areaBot - fh / 2, srcY + 200);
+    const stepY = Math.round((srcY + outY) / 2);
+    const H = Math.max(hgt, outY + fh / 2 + 10);
+    const cx = (idx) => 20 + colW * (idx + 0.5);
+    const idxOf = Object.fromEntries(steps.map((s, k) => [s.id, k]));
+    const svg = sv("svg", { class: "sp-svg", width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "group", "aria-label": "Step chain" });
+    const gEdges = sv("g", {}), gNodes = sv("g", {});
+    svg.append(gEdges, gNodes);
+
+    svg.append(tx(10, srcY - 36, "inputs with no traced writer", "lane", "start"),
+      tx(10, stepY - bh / 2 - 12, "steps, in the order they started", "lane", "start"),
+      tx(10, outY - 36, "files each step wrote", "lane", "start"));
+
+    // file node geometry
+    const fw = Math.min(colW - 18, 260);
+    const place = new Map();
+    const srcByCol = {};
+    for (const f of srcs.values()) (srcByCol[idxOf[f.consumer]] = srcByCol[idxOf[f.consumer]] || []).push(f);
+    for (const [col, list] of Object.entries(srcByCol)) {
+      const k = list.length, sw = Math.max(96, Math.min(fw, colW / k - 6));
+      list.forEach((f, j) => place.set(f.key, { x: cx(+col) + (j - (k - 1) / 2) * (sw + 6), y: srcY, w: sw }));
+    }
+    steps.forEach((s, col) => {
+      const mine = s.outputs;
+      const k = mine.length, ow = Math.max(96, Math.min(fw, colW / Math.max(k, 1) - 6));
+      mine.forEach((o, j) => place.set(o.path + "@" + o.version, { x: cx(col) + (j - (k - 1) / 2) * (ow + 6), y: outY, w: ow }));
+    });
+
+    // inbound attachment slots on each step
+    const slotTop = {}, slotBot = {};
+    edges.forEach((e) => (e.from.kind === "src" ? slotTop : slotBot)[e.to] = ((e.from.kind === "src" ? slotTop : slotBot)[e.to] || []).concat([e]));
+    const fan = (list, e, base) => { const k = list.length, j = list.indexOf(e); return base + (j - (k - 1) / 2) * Math.min(26, (bw - 30) / Math.max(k, 1)); };
+
+    for (const e of edges) {
+      const toX = cx(idxOf[e.to]);
+      const fp = place.get(e.from.key);
+      const t = TONE[e.i.status] || "flat";
+      let d, mx, my;
+      if (e.from.kind === "src") {
+        const x1 = fp.x, y1 = fp.y + fh / 2, x2 = fan(slotTop[e.to], e, toX), y2 = stepY - bh / 2;
+        d = `M${x1},${y1} C${x1},${y1 + 50} ${x2},${y2 - 50} ${x2},${y2}`;
+        mx = (x1 + x2) / 2; my = (y1 + y2) / 2;
+      } else {
+        const x1 = fp.x, y1 = fp.y - fh / 2, x2 = fan(slotBot[e.to], e, toX + 22), y2 = stepY + bh / 2;
+        d = `M${x1},${y1} C${x1},${y1 - 60} ${x2},${y2 + 60} ${x2},${y2}`;
+        mx = (x1 + x2) / 2; my = (y1 + y2) / 2;
+      }
+      const label = GL[t] + " " + e.i.status;
+      const pw = label.length * 6.6 + 14;
+      const g = sv("g", { class: "sp-edge sp-mark " + t, tabindex: "0", role: "button", "data-id": e.rec.domId, "data-rk-key": e.rec.domId,
+        "aria-label": "Link: " + e.rec.claim + ", " + e.i.status },
+        sv("path", { class: "hit", d }), sv("path", { class: "line", d }),
+        sv("rect", { class: "pill", x: mx - pw / 2, y: my - 11, width: pw, height: 22, rx: 11 }),
+        tx(mx, my + 4, label));
+      g.addEventListener("click", () => select("link", e.rec.domId));
+      g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select("link", e.rec.domId); } });
+      g.addEventListener("mouseenter", (ev) => S.tip.show(ev, e.rec.claim, h("div", { text: e.i.status + (e.i.note ? " — " + e.i.note : "") }), h("small", { class: "rk-muted", text: "click for the hashes" })));
+      g.addEventListener("mouseleave", () => S.tip.hide());
+      g.addEventListener("focus", (ev) => S.tip.show(ev, e.rec.claim, h("div", { text: e.i.status })));
+      g.addEventListener("blur", () => S.tip.hide());
+      gEdges.append(g);
+      marks.set(e.rec.domId, g);
+    }
+
+    // write connectors: step -> the file it wrote
+    steps.forEach((s, col) => s.outputs.forEach((o) => {
+      const p = place.get(o.path + "@" + o.version);
+      gEdges.append(sv("path", { class: "sp-write", d: `M${cx(col)},${stepY + bh / 2} C${cx(col)},${stepY + bh / 2 + 40} ${p.x},${p.y - fh / 2 - 40} ${p.x},${p.y - fh / 2}` }));
+    }));
+
+    // files
+    for (const f of srcs.values()) {
+      const p = place.get(f.key), t = TONE[f.status] || "flat";
+      const g = sv("g", { class: "sp-file " + (t === "warn" ? "warn" : "") });
+      g.append(sv("rect", { class: "sp-box", x: p.x - p.w / 2, y: p.y - fh / 2, width: p.w, height: fh, rx: 6 }),
+        tx(p.x, p.y - 3, clip(f.path, Math.floor(p.w / 7)), "mono", "middle"),
+        tx(p.x, p.y + 12, f.status === "source" ? "– source, predates the run" : "! no traced writer", "mute"));
+      g.append(sv("title", {}, f.path + (f.status === "source" ? " (a source: predates the run)" : " (changed during the run with no traced writer)")));
+      gNodes.append(g);
+    }
+    for (const o of outs.values()) {
+      const p = place.get(o.key);
+      const feeds = o.o.feeds || [];
+      const g = sv("g", { class: "sp-file" });
+      g.append(sv("rect", { class: "sp-box", x: p.x - p.w / 2, y: p.y - fh / 2, width: p.w, height: fh, rx: 6 }),
+        tx(p.x, p.y - 3, clip(o.key, Math.floor(p.w / 7)), "mono", "middle"),
+        tx(p.x, p.y + 12, feeds.length ? "read by " + feeds.join(", ") : "read by no step", "mute"));
+      g.append(sv("title", {}, o.key + " written by " + o.step + (feeds.length ? ", read by " + feeds.join(", ") : ", read by no step")));
+      gNodes.append(g);
+    }
+
+    // steps
+    steps.forEach((s, col) => {
+      const t = stepTone(s), x = cx(col);
+      const g = sv("g", { class: "sp-step sp-mark " + t + (s.traced ? "" : " untraced"), tabindex: "0", role: "button", "data-id": "step-" + s.id, "data-rk-key": "step-" + s.id,
+        "aria-label": "Step " + s.id + ": " + s.command.join(" ") + ", " + stepWord(s) });
+      g.append(sv("rect", { class: "sp-box", x: x - bw / 2, y: stepY - bh / 2, width: bw, height: bh, rx: 8 }),
+        tx(x - bw / 2 + 10, stepY - 14, s.id, "strong", "start"),
+        tx(x + bw / 2 - 10, stepY - 14, s.traced ? "traced" : "untraced", "mute", "end"),
+        tx(x - bw / 2 + 10, stepY + 4, clip(s.command.slice(0, 3).join(" "), Math.floor((bw - 20) / 6.6)), "mono mute", "start"),
+        tx(x - bw / 2 + 10, stepY + 24, stepWord(s), "", "start"));
+      g.addEventListener("click", () => select("step", "step-" + s.id));
+      g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select("step", "step-" + s.id); } });
+      g.addEventListener("mouseenter", (ev) => S.tip.show(ev, s.id + " — " + s.command.join(" "), h("div", { text: stepWord(s) }),
+        h("small", { class: "rk-muted", text: s.inputs.length + " read(s), " + s.outputs.length + " write(s) — click for calls and I/O" })));
+      g.addEventListener("mouseleave", () => S.tip.hide());
+      g.addEventListener("focus", (ev) => S.tip.show(ev, s.id, h("div", { text: stepWord(s) })));
+      g.addEventListener("blur", () => S.tip.hide());
+      gNodes.append(g);
+      marks.set("step-" + s.id, g);
+    });
+
+    fig.append(svg);
+    paintSelection();
   }
-  if (!linked.length) ul.appendChild(make("li", "note", "no step read a file an earlier step wrote"));
 
-  const host = el("steps");
-  for (const s of steps) host.appendChild(stepCard(s, byId));
+  function paintSelection() {
+    for (const [id, el] of marks) el.classList.toggle("sp-sel", !!selected && selected.id === id);
+  }
 
-  el("footer").textContent = "Run record " + DATA.schema + ", finished " + DATA.finished +
-    ". The same run as W3C PROV-JSON is prov.json beside trace.json. Rebuild this page with " +
-    "build_spur_html.py --trace trace.json.";
-}
+  // ---- the drawer -----------------------------------------------------------------------------
+  const DEFS = [
+    ["✓ verified", "the step read exactly the bytes its producer wrote (sha256 equal)."],
+    ["✗ broken", "the bytes changed between the producer's write and this read. Something outside the traced steps touched the file."],
+    ["! unverified", "the file changed during the run, but no traced step wrote it, or it could not be hashed. Never a pass."],
+    ["– source", "an input that predates the run: nothing in it was produced here, so there is nothing to chain to."],
+    ["path@n", "the n-th version of a file in this run. A file rewritten in place gets a new version, and a consumer is checked against the latest version written before it read the file."],
+    ["untraced step", "a process the run spawned that left no record (a shell, a non-Python program). Its command is known; its calls and file I/O are not."],
+  ];
+  const dl = (pairs) => h("dl", { class: "rk-dl" }, pairs.filter((p) => p[1] !== null && p[1] !== undefined && p[1] !== "")
+    .map(([k, v]) => [h("dt", { text: k }), h("dd", {}, v instanceof Node ? v : h("span", { text: String(v) }))]));
+  const stepLink = (id) => (steps.some((s) => s.id === id) ? S.link(id, () => select("step", "step-" + id)) : h("span", { text: id }));
+  const meaning = () => S.link("What the words mean", showOverview);
 
-render();
+  function showOverview() {
+    selected = null; paintSelection();
+    S.open("The run at a glance", c.verified + " verified · " + c.broken + " broken · " + c.unverified + " unverified · " + c.source + " source(s)",
+      h("p", { text: "Each box is a step, in the order it started. Each line is one file a step read, drawn from the step that wrote it (below) or from where it came from (above). Click a line for its hashes, a step for its calls and file I/O." }),
+      h("h3", { text: "What the words mean" }),
+      h("dl", { class: "defs" }, DEFS.map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })])));
+  }
+
+  function showLink(domId) {
+    const r = linkRecords.find((x) => x.domId === domId);
+    if (!r) return;
+    const i = r.input, t = TONE[i.status] || "flat";
+    const why = {
+      verified: "The step read exactly the bytes its producer wrote.",
+      broken: "The bytes differ from what the producer wrote: something outside the traced steps changed this file in between.",
+      unverified: "The file changed during the run but no traced step wrote it, or it could not be hashed. This is not a pass.",
+      source: "An input that predates the run: nothing in it was produced here, so there is nothing to chain to.",
+    }[i.status];
+    S.open((i.producer ? i.producer + " → " : "") + i.path + (i.version ? "@" + i.version : "") + " → " + i.consumer,
+      "one file read by one step",
+      h("p", {}, badge(i.status, t)),
+      h("p", { text: why }),
+      h("h3", { text: "The link" }),
+      dl([["File", h("code", { text: i.path })],
+        ["Version", i.version ? (i.status === "verified" ? "@" + i.version : "expected @" + i.version) : null],
+        ["Written by", i.producer ? stepLink(i.producer) : h("span", { class: "rk-muted", text: i.status === "source" ? "nothing: predates the run" : "no traced producer" })],
+        ["Read by", stepLink(i.consumer)]]),
+      h("h3", { text: "Hashes" }),
+      dl([["sha256 read", i.sha256 ? h("code", { text: i.sha256 }) : "not hashed"],
+        ["sha256 written", i.expected ? h("code", { text: i.expected }) : (i.producer ? null : "no writer to compare with")],
+        ["Equal", i.sha256 && i.expected ? (i.sha256 === i.expected ? "yes" : "no — the bytes changed") : null]]),
+      i.note ? h("div", {}, h("h3", { text: "Note" }), h("p", { text: i.note })) : null,
+      h("p", {}, meaning()));
+  }
+
+  function showStep(domId) {
+    const s = steps.find((x) => "step-" + x.id === domId);
+    if (!s) return;
+    const bits = [];
+    if (s.parent) bits.push(["Spawned by", stepLink(s.parent)]);
+    if (s.durationMs !== null && s.durationMs !== undefined) bits.push(["Duration", s.durationMs + " ms"]);
+    if (s.exit) bits.push(["Exit", s.exit.code === null ? s.exit.how : s.exit.code + " (" + s.exit.how + ")"]);
+    if (s.python) bits.push(["Python", s.python]);
+    if (s.why) bits.push(["Why", s.why]);
+    if (s.io === "declared") bits.push(["File I/O", "declared with --reads/--writes, not observed"]);
+    if (s.dropped) bits.push(["Dropped", s.dropped + " event(s): " + Object.keys(s.droppedWhy || {}).join(", ")]);
+    const kids = [h("p", {}, badge(s.traced ? "traced" : "untraced", s.traced ? "info" : "flat"), " ", h("span", { text: stepWord(s) })),
+      dl(bits)];
+    kids.push(h("h3", { text: "Reads (" + s.inputs.length + ")" }));
+    kids.push(s.inputs.length ? h("ul", { class: "plain" }, s.inputs.map((i) => {
+      const rec = linkRecords.find((r) => r.input === i);
+      return h("li", {}, badge(i.status, TONE[i.status] || "flat"), " ", h("code", { text: i.path + (i.version ? (i.status === "verified" ? "@" + i.version : " (expected @" + i.version + ")") : "") }), " ",
+        shaNode(i.sha256), " ", i.producer ? h("span", {}, "from ", stepLink(i.producer)) : h("span", { class: "rk-muted", text: i.status === "source" ? "predates the run" : "no traced producer" }), " ",
+        rec ? S.link("details", () => select("link", rec.domId)) : null);
+    })) : h("p", { class: "rk-muted", text: "No file was read." }));
+    kids.push(h("h3", { text: "Writes (" + s.outputs.length + ")" }));
+    kids.push(s.outputs.length ? h("ul", { class: "plain" }, s.outputs.map((o) =>
+      h("li", {}, h("code", { text: o.path + "@" + o.version }), " ", shaNode(o.sha256), " ",
+        (o.feeds || []).length ? h("span", {}, "read next by ", (o.feeds || []).map((f, k) => [k ? ", " : "", stepLink(f)])) : h("span", { class: "rk-muted", text: "read by no step" }))))
+      : h("p", { class: "rk-muted", text: "No file was written." }));
+    if ((s.removed || []).length) kids.push(h("p", { class: "rk-muted", text: "removed: " + s.removed.join(", ") }));
+    const calls = s.calls || {};
+    kids.push(h("h3", { text: "Calls" }));
+    if (calls.available && (calls.threads || []).some((t) => t.length)) {
+      const cb = h("div", {});
+      kids.push(h("p", { class: "rk-muted", text: "the project's own functions (" + calls.source + ")" }));
+      for (const t of calls.threads) tree(t, calls.unit, cb, 0);
+      kids.push(cb);
+    } else {
+      kids.push(h("p", { class: "rk-muted", text: calls.why || "no call of the project's own code was observed" }));
+    }
+    if ((s.code || []).length) {
+      kids.push(h("h3", { text: "Code loaded from the project (" + s.code.length + ")" }),
+        h("ul", { class: "plain" }, s.code.map((x) => h("li", {}, h("code", { text: x.path }), " ", shaNode(x.sha256)))));
+    }
+    kids.push(h("p", {}, meaning()));
+    S.open("Step " + s.id, s.command.join(" "), ...kids);
+  }
+
+  let booted = false;
+  function select(type, id) {
+    selected = { type, id };
+    paintSelection();
+    // Only after boot: rewriting the fragment while the page still parses makes the browser
+    // scroll to the matching card below the figure when loading finishes.
+    if (booted && history.replaceState) { try { history.replaceState(null, "", "#" + id); } catch (_) { /* file:// quirks */ } }
+    if (type === "link") showLink(id); else showStep(id);
+  }
+
+  // ---- the long-form reference below the figure ------------------------------------------------
+  const links = RK.findings(linkRecords, {
+    idPrefix: "link-", facets: ["status", "consumer"],
+    order: { severity: ["fail", "gap", "pass", "na"], status: ["broken", "unverified", "verified", "source"] },
+    empty: "No step read a file an earlier step wrote, and no source was read.",
+  });
+  // The kit tones "fail"/"gap"/"pass"/"na"; show the real status word beside the same glyph.
+  const byCard = Object.fromEntries(linkRecords.map((r) => [r.domId, r]));
+  for (const card of RK.$$(".rk-finding", links)) {
+    const rec = byCard[card.id];
+    const b = RK.$(".rk-badge", card);
+    if (!rec || !b) continue;
+    const t = TONE[rec.tags.status] || "flat";
+    b.className = "rk-badge " + t;
+    b.textContent = GL[t] + " " + rec.tags.status;
+  }
+  content.append(section("links", "Where one step's output feeds the next", links));
+
+  // ---- steps -------------------------------------------------------------------------------
+  function tree(nodes, unit, parent, depth) {
+    for (const n of nodes) {
+      const d = h("details", { class: "call" + (n.children.length ? "" : " leaf") });
+      d.open = depth < 3; // the first levels open: a collapsed tree hides what the section is for
+      d.append(h("summary", {},
+        h("span", { class: "fn", text: n.fn }), " ",
+        h("span", { class: "where", text: n.file + (n.line ? ":" + n.line : "") }), " ",
+        h("span", { class: "cnt", text: "×" + n.calls + (unit === "samples" ? " samples" : "") + " · " + ms(n.ns) })));
+      tree(n.children, unit, d, depth + 1);
+      parent.appendChild(d);
+    }
+  }
+
+  const stepCard = (s, open) => {
+    const cardTone = stepTone(s);
+    const code = s.exit && s.exit.code;
+    const card = h("details", { class: "step rk-finding " + cardTone + (s.traced ? "" : " untraced"), id: "step-" + s.id, "data-rk-search": true },
+      h("summary", {},
+        h("strong", { text: s.id }), h("code", { class: "step-cmd", text: s.command.join(" ") }),
+        badge(s.traced ? "traced" : "untraced", s.traced ? "info" : "flat"),
+        code !== null && code !== undefined && code !== 0 ? badge("exit " + code, "bad") : null,
+        h("a", { class: "rk-permalink", href: "#step-" + s.id, title: "Link to this step", text: "#" })));
+    card.open = open;
+    const body = h("div", { class: "rk-body" });
+    const bits = [];
+    if (s.parent) bits.push("spawned by " + s.parent);
+    if (s.durationMs !== null && s.durationMs !== undefined) bits.push(s.durationMs + " ms");
+    if (s.exit) bits.push(s.exit.code === null ? "exit " + s.exit.how : "exit " + s.exit.code + " (" + s.exit.how + ")");
+    if (s.python) bits.push("Python " + s.python);
+    if (s.why) bits.push(s.why);
+    if (s.io === "declared") bits.push("file I/O declared with --reads/--writes, not observed");
+    if (s.dropped) bits.push("tracer dropped " + s.dropped + " event(s): " + Object.keys(s.droppedWhy || {}).join(", "));
+    body.append(h("p", { class: "rk-meta", text: bits.join(" · ") }));
+
+    if (s.inputs.length) {
+      body.append(h("div", { class: "rk-block" }, h("p", { class: "rk-label", text: "reads" }), RK.table({
+        caption: s.id + " reads",
+        columns: [{ key: "state", label: "State" }, { key: "file", label: "File", mono: true },
+          { key: "sha", label: "sha256" }, { key: "from", label: "From" }],
+        rows: s.inputs.map((i) => ({
+          state: badge(i.status, TONE[i.status] || "flat"),
+          // A broken read did NOT read @n; @n is what it should have read.
+          file: i.path + (!i.version ? "" : i.status === "verified" ? "@" + i.version : " (expected @" + i.version + ")"),
+          sha: shaNode(i.sha256),
+          from: h("span", {},
+            i.producer ? i.producer + (i.status === "broken" ? " wrote " + short(i.expected) : "")
+              : h("span", { class: "rk-muted", text: i.status === "source" ? "predates the run" : "no traced producer" }),
+            i.note ? h("br") : null, i.note ? h("span", { class: "rk-muted", text: i.note }) : null),
+        })),
+      })));
+    }
+    if (s.outputs.length) {
+      body.append(h("div", { class: "rk-block" }, h("p", { class: "rk-label", text: "writes" }), RK.table({
+        caption: s.id + " writes",
+        columns: [{ key: "file", label: "File", mono: true }, { key: "sha", label: "sha256" }, { key: "next", label: "Read next by" }],
+        rows: s.outputs.map((o) => ({ file: o.path + "@" + o.version, sha: shaNode(o.sha256),
+          next: (o.feeds || []).length ? o.feeds.join(", ") : "—" })),
+      })));
+    }
+    if ((s.removed || []).length) body.append(h("p", { class: "rk-muted", text: "removed: " + s.removed.join(", ") }));
+
+    const calls = s.calls || {};
+    const cb = h("div", { class: "rk-block" });
+    if (calls.available && (calls.threads || []).some((t) => t.length)) {
+      cb.append(h("p", { class: "rk-label", text: "calls of the project's own functions (" + calls.source + ")" }));
+      for (const t of calls.threads) tree(t, calls.unit, cb, 0);
+    } else {
+      cb.append(h("p", { class: "rk-label", text: "calls" }),
+        h("p", { class: "rk-muted", text: calls.why || "no call of the project's own code was observed" }));
+    }
+    body.append(cb);
+
+    if ((s.code || []).length) {
+      body.append(h("details", { class: "rk-block" },
+        h("summary", { class: "rk-label", text: "code it loaded from the project (" + s.code.length + " file(s), hashed, not part of the chain)" }),
+        RK.table({ caption: s.id + " code", columns: [{ key: "file", label: "File", mono: true }, { key: "sha", label: "sha256" }],
+          rows: s.code.map((x) => ({ file: x.path, sha: shaNode(x.sha256) })) })));
+    }
+    card.append(body);
+    return card;
+  };
+
+  // Few steps: all open. Many: only the ones with a problem, so the page stays scannable.
+  const problem = (s) => s.inputs.some((i) => i.status === "broken" || i.status === "unverified") || (s.exit && s.exit.code);
+  content.append(section("steps", "Steps, in the order they started",
+    steps.map((s) => stepCard(s, steps.length <= 8 || !!problem(s))),
+    h("p", { class: "rk-muted", text: "Run record " + D.schema + ", finished " + D.finished +
+      ". The same run as W3C PROV-JSON is prov.json beside trace.json. Rebuild this page with build_spur_html.py --trace trace.json." })));
+
+  // ---- boot --------------------------------------------------------------------------------------
+  S.onResize((w, hgt) => draw(w, hgt));
+  RK.init();
+  // A link or a step names a mark the figure selects: select it, claim the hash, stay on the
+  // figure. #sec-* is left to the kit, which scrolls to the section.
+  const fromHash = () => {
+    const id = RK.hashId();
+    if (!id) return false;
+    if (id.startsWith("link-") && linkRecords.some((r) => r.domId === id)) { select("link", id); RK.claimHash(); return true; }
+    if (id.startsWith("step-") && steps.some((s) => "step-" + s.id === id)) { select("step", id); RK.claimHash(); return true; }
+    return false;
+  };
+  window.addEventListener("hashchange", fromHash);
+  window.addEventListener("load", () => { booted = true; });
+  const linked = fromHash();
+  if (!linked) {
+    // The drawer opens on the worst link, or on the overview when nothing is wrong.
+    const worst = linkRecords.find((r) => r.input.status === "broken") || linkRecords.find((r) => r.input.status === "unverified");
+    if (worst) select("link", worst.domId); else showOverview();
+  }
+})();
 </script>
 </body>
 </html>

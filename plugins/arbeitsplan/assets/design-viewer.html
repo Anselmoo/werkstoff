@@ -4,148 +4,106 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>arbeitsplan — workflow design</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-sans); font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
-  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
-  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
-  .sub .synthetic { color: var(--status-warn); font-weight: 600; }
-  .verdict {
-    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  /* R3: a number to act on (.bad) is not typeset like a number for context. */
-  .tiles { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0; }
-  .tile {
-    min-width: 128px; padding: var(--space-2) var(--space-3); background: var(--panel);
-    border: 1px solid var(--border); border-radius: var(--radius-panel);
-  }
-  .tile .v { font-size: 1.3rem; font-weight: 600; color: var(--smoke); font-family: var(--font-mono); }
-  .tile .k { font-size: 0.76rem; color: var(--muted); }
-  .tile.bad { border-color: var(--status-bad); }
-  .tile.bad .v { color: var(--status-bad); }
-  .tile.bad .k::before { content: "✗ "; color: var(--status-bad); }
-  .legend {
-    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-panel); font-size: 0.8rem; color: var(--muted);
-  }
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
-  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
-  .legend dd { margin: 0; }
-  code, .mono { font-family: var(--font-mono); font-size: 0.82em; }
-  .split { display: grid; grid-template-columns: minmax(0, auto) minmax(280px, 1fr); gap: var(--space-3); align-items: start; }
-  .graph { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius-panel); padding: var(--space-2); overflow-x: auto; }
-  .graph svg { display: block; margin: 0 auto; }
-  .note { color: var(--muted); font-size: 0.82rem; margin: var(--space-2) 0 0; }
+  .sub .synthetic { color: var(--rk-warn-text); font-weight: 600; }
+  .rk-hud { max-width: min(400px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
+  .rk-hud .verdict { font-size: 0.84rem; }
+  .rk-legend-float { max-width: min(400px, calc(100% - var(--rk-open-w) - 2 * var(--space-3))); }
+  .rk-hint { bottom: auto; top: var(--space-3); }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(var(--rk-open-w) + var(--space-3)); }
+  .legend.rk-legend-float { font-size: 0.78rem; padding: var(--space-2) var(--space-3); }
+  .legend.rk-legend-float p { margin: 0 0 var(--space-1); }
+  .legend.rk-legend-float p:last-child { margin: 0; }
+  .legend strong { color: var(--rk-text); }
+  .howto { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.86rem; }
+  .howto dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
+  .howto dd { margin: 0; }
+  .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: var(--space-3); align-items: start; }
+  @media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } }
+  .graph { background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2); overflow-x: auto; }
+  .graph svg { display: block; margin: 0 auto; width: auto; max-width: 100%; height: auto; }
+  .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 0; }
   .detail {
-    position: sticky; top: var(--space-3); padding: var(--space-3); background: var(--panel);
-    border: 1px solid var(--border); border-radius: var(--radius-panel); font-size: 0.82rem;
+    position: sticky; top: calc(var(--header-h) + var(--space-3)); padding: var(--space-3); background: var(--rk-panel);
+    border: 1px solid var(--rk-border); border-radius: var(--radius-panel); font-size: 0.82rem;
   }
   .detail h3 { margin: 0 0 var(--space-2); font-size: 0.95rem; font-family: var(--font-mono); }
-  .detail dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
-  .detail dt { color: var(--muted); white-space: nowrap; }
-  .detail dd { margin: 0; overflow-wrap: anywhere; }
-  .detail .rej { color: var(--status-bad); }
-  /* the graph */
-  .band { fill: var(--panel-2); stroke: var(--rule-soft); }
-  .bandlabel { font-size: 11px; fill: var(--smoke); font-weight: 600; }
-  .edge { fill: none; stroke: var(--border); stroke-width: 1.5; marker-end: url(#arrow); }
-  .cut { stroke: var(--status-warn); stroke-width: 1.5; stroke-dasharray: 6 4; }
-  .cutlabel { font-size: 10px; fill: var(--status-warn); }
-  .overlap { fill: none; stroke: var(--status-bad); stroke-width: 2; stroke-dasharray: 5 3; }
-  .overlaplabel { font-size: 10px; fill: var(--status-bad); font-weight: 600; }
+  .detail dl, .rk-drawer-body dl.rows { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
+  .detail dt, .rk-drawer-body dl.rows dt { color: var(--rk-muted); white-space: nowrap; }
+  .detail dd, .rk-drawer-body dl.rows dd { margin: 0; overflow-wrap: anywhere; }
+  .rej { color: var(--rk-bad-text); font-weight: 600; }
+  .rk-drawer-body .nbrs { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); margin: 0; padding: 0; list-style: none; }
+  .figsvg { display: block; margin: 0 auto; }
+  /* the graph: every colour is a --rk-* role, so the light theme re-points it */
+  .band { fill: var(--rk-panel-2); stroke: var(--rk-border); }
+  .bandlabel { font-size: 12px; fill: var(--rk-muted); font-weight: 600; }
+  .edge { fill: none; stroke: var(--rk-muted); stroke-width: 1.5; }
+  .arrowhead { fill: var(--rk-muted); }
+  .cut { stroke: var(--rk-warn); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .cutlabel { font-size: 11px; fill: var(--rk-text); }
+  .overlap { fill: none; stroke: var(--rk-bad); stroke-width: 2; stroke-dasharray: 5 3; }
+  .overlaplabel { font-size: 11px; fill: var(--rk-text); font-weight: 600; }
   .node { cursor: pointer; }
-  .node rect { fill: var(--panel); stroke-width: 1.5; }
+  .node:hover rect { stroke-width: 2.5; }
+  .node rect { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1.5; }
+  .node.t-ok rect { stroke: var(--rk-ok); }
+  .node.t-bad rect { stroke: var(--rk-bad); }
+  .node.t-warn rect { stroke: var(--rk-warn); }
+  .node.t-flat rect { stroke: var(--rk-flat); }
   .node.sel rect { stroke-width: 3; }
-  .node text { font-size: 11.5px; fill: var(--text); pointer-events: none; }
-  .node .l2 { font-size: 10px; fill: var(--muted); }
-  .node .rejtext { font-size: 10px; fill: var(--status-bad); font-weight: 600; }
+  .node:focus-visible rect { stroke: var(--rk-focus); stroke-width: 3; }
+  .node text { font-size: 12px; fill: var(--rk-text); pointer-events: none; }
+  .node .l2 { font-size: 11px; fill: var(--rk-muted); }
+  .node .rejtext { font-size: 11px; fill: var(--rk-text); font-weight: 600; }
   .node .st { font-size: 13px; font-weight: 700; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
-  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--smoke); font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  ul.rejections { margin: 0; padding-left: var(--space-4); font-size: 0.84rem; }
-  ul.rejections li { margin: 0 0 var(--space-1); }
-  .ok-word { color: var(--status-good); font-weight: 600; }
-  .bad-word { color: var(--status-bad); font-weight: 600; }
-  .warn-word { color: var(--status-warn); font-weight: 600; }
-  .empty {
-    margin: var(--space-4) 0; padding: var(--space-3); background: var(--panel);
-    border: 1px solid var(--status-bad); border-radius: var(--radius-panel);
-  }
-  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+  .node .st-ok { fill: var(--rk-ok-text); }
+  .node .st-bad { fill: var(--rk-bad-text); }
+  .node .st-warn { fill: var(--rk-warn-text); }
+  .node .st-flat { fill: var(--rk-flat); }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>arbeitsplan — workflow design</h1>
-    <p class="sub" id="sub">A design, node by node: what each node does, where it runs, when, and how.</p>
-    <p class="verdict" id="verdict">Loading the design…</p>
-  </header>
-
-  <div class="tiles" id="tiles"></div>
-
-  <div class="legend">
-    <dl>
-      <dt>▶ agent</dt><dd>a dispatched model that builds, reviews or fixes. A wave's rows each run in their own agent worktree, side by side.</dd>
-      <dt>$ script</dt><dd>one declared command, run by a Bash-only runner. <strong>Dashed outline: an authored step</strong>, which the plan writes and verifies before anything runs it.</dd>
-      <dt>⇄ merge-gate</dt><dd>merges its wave into the integration branch and runs every gate; the target moves only when they are green.</dd>
-      <dt>‖ human gate</dt><dd>a person approves <strong>between</strong> runs. The dashed line across the graph is where one run ends and the next begins.</dd>
-      <dt>status</dt><dd>✓ done, green, approved or verified · ✗ red · ↻ stale · ∅ missing or still a stub · ○ pending · no mark: the run state records nothing for this node. A red outline marked <em>✗ rejected</em> is the validator's refusal, not a run result.</dd>
-      <dt>overlap</dt><dd>a red dashed arc joins two rows that run at the same time and may write the same file.</dd>
-    </dl>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>arbeitsplan — workflow design</h1>
+  <p class="rk-sub sub" id="sub">A design, node by node: what each node does, where it runs, when, and how.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search nodes and findings">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
-
-  <div id="empty" class="empty" hidden>
-    <strong>No design in this report.</strong>
-    <p>Build it from a design: <code>python3 plugins/arbeitsplan/scripts/build_design_html.py --design analysis/arbeitsplan/&lt;runId&gt;/design.json</code>.</p>
+</header>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The design as a graph, top to bottom, in the order its nodes can run">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Loading the design…</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float rk-card rk-muted">
+      <p><strong>node</strong> ▶ agent · $ script · ⇄ merge-gate · ‖ human gate · dashed outline = an authored step · wave bands group rows that run side by side</p>
+      <p><strong>status</strong> ✓ done or green · ✗ red · ↻ stale · ∅ missing or stub · ○ pending · <strong>red outline, ✗ rejected</strong> = the validator's refusal · <strong>red dashed arc</strong> = two concurrent rows may write the same file</p>
+    </div>
+    <span class="rk-hint">click a node for its agent, model, writes and refusals · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
-
-  <section id="designpanel" hidden>
-    <h2>Where, when and how each node runs — top to bottom, in the order they can run</h2>
-    <div class="split">
-      <div>
-        <div class="graph"><svg id="dag" role="img" aria-label="The design as a graph"></svg></div>
-        <p class="note" id="dagnote"></p>
-      </div>
-      <aside class="detail" id="detail"></aside>
-    </div>
-
-    <h2>What the validator refuses</h2>
-    <ul class="rejections" id="rejections"></ul>
-
-    <h2>Toolchains the design's commands need</h2>
-    <table>
-      <thead><tr><th>toolchain</th><th>probe</th><th>here</th></tr></thead>
-      <tbody id="toolchains"></tbody>
-    </table>
-  </section>
-
-  <section id="workflowpanel" hidden>
-    <h2 id="wfhead">The compiled workflow</h2>
-    <div class="split">
-      <div><div class="graph"><svg id="wfdag" role="img" aria-label="The compiled workflow's phases"></svg></div></div>
-      <aside class="detail" id="wfdetail"></aside>
-    </div>
-    <ul class="rejections" id="wfrejections"></ul>
-  </section>
-
-  <footer id="footer"></footer>
-</div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-/*__DESIGN_DATA__*/
-const DATA = (typeof DESIGN !== "undefined") ? DESIGN : null;
+(() => {
+const DATA = RK.readData("python3 plugins/arbeitsplan/scripts/build_design_html.py --design <design.json> --out /tmp/design.html");
 const SVGNS = "http://www.w3.org/2000/svg";
 function el(id) { return document.getElementById(id); }
 function txt(s) { return document.createTextNode(String(s)); }
@@ -165,18 +123,21 @@ function add(parent, tag, text, cls) {
 function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
 
 const KIND = { agent: "▶", script: "$", referee: "⚖", "merge-gate": "⇄", "human-gate": "‖" };
+// glyph, tone class. Colour lives in the stylesheet (--rk-* roles), never in a string here,
+// so the graph follows the light/dark toggle without being redrawn.
 const STATUS = {
-  done: ["✓", "var(--status-good)"], green: ["✓", "var(--status-good)"],
-  approved: ["✓", "var(--status-good)"], verified: ["✓", "var(--status-good)"],
-  red: ["✗", "var(--status-bad)"], stale: ["↻", "var(--status-warn)"],
-  missing: ["∅", "var(--status-warn)"], stub: ["∅", "var(--status-warn)"],
-  authored: ["?", "var(--status-warn)"], pending: ["○", "var(--muted)"],
+  done: ["✓", "ok"], green: ["✓", "ok"], approved: ["✓", "ok"], verified: ["✓", "ok"],
+  red: ["✗", "bad"], stale: ["↻", "warn"], missing: ["∅", "warn"], stub: ["∅", "warn"],
+  authored: ["?", "warn"], pending: ["○", "flat"],
 };
 const short = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + "…" : (s || ""));
 
 /* Longest-path layering, top to bottom: a node sits one layer below its
    deepest dependency, so an edge never points upwards. A design is a long,
-   narrow chain; laid out sideways it would be shrunk past reading. */
+   narrow chain; laid out sideways it would be shrunk past reading.
+   opts.fit = {w, h} sizes the boxes to the figure (layout scales, type never does);
+   without it the boxes keep their natural size and the panel scrolls. opts.avoid is a
+   list of rects (the HUD, the legend) the block is shifted clear of. */
 function drawGraph(svg, items, opts) {
   clear(svg);
   const byId = {};
@@ -194,25 +155,56 @@ function drawGraph(svg, items, opts) {
   const rows = {};
   items.forEach((it) => { (rows[depth[it.id]] = rows[depth[it.id]] || []).push(it); });
   const keys = Object.keys(rows).map(Number).sort((a, b) => a - b);
-  const BW = 212, BH = 54, HGAP = 22, VGAP = 30, LG = opts.gutter || 12, PAD = 10;
+  const L = keys.length;
   const widest = Math.max.apply(null, keys.map((k) => rows[k].length));
-  const W = LG + widest * BW + (widest - 1) * HGAP + 2 * PAD + (opts.overlaps && opts.overlaps.length ? 30 : 0);
-  const H = keys.length * BH + (keys.length - 1) * VGAP + 2 * PAD + 16;
+  const hasOv = !!(opts.overlaps && opts.overlaps.length);
+  const HGAP = 22, LG = opts.gutter || 12, PAD = 10, TOP = hasOv ? 34 : 18, BOT = 12;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  /* the region the block may use: all of the figure, or what is left of it once the floating
+     HUD and legend (a left column) are cleared -- sideways if the narrowest block still fits
+     there, otherwise below the HUD and above the legend */
+  let rx = 0, ry = 0, rw = 0, rh = 0;
+  const fit = opts.fit;
+  if (fit) {
+    rw = fit.w; rh = fit.h;
+    const av = opts.avoid || [];
+    const minW = LG + widest * 196 + (widest - 1) * HGAP + 2 * PAD + (hasOv ? 30 : 0);
+    const colR = av.reduce((m, r) => Math.max(m, r.right), 0);
+    if (av.length && fit.w - (colR + 8) >= minW) { rx = Math.ceil(colR + 8); rw = fit.w - rx; }
+    else if (av.length) {
+      ry = Math.ceil(av[0].bottom + 8);
+      rh = Math.floor((av[1] ? av[1].top - 8 : fit.h) - ry);
+    }
+  }
+  let BW = 212, BH = 54, VGAP = 30;
+  if (fit) {
+    BW = clamp(Math.floor((rw - LG - 2 * PAD - (hasOv ? 30 : 0) - (widest - 1) * HGAP) / widest), 196, 300);
+    const room = rh - TOP - BOT - 2 * PAD;
+    BH = clamp(Math.floor(room / L * 0.62), 54, 84);
+    VGAP = clamp(Math.floor((room - L * BH) / Math.max(1, L - 1)), 22, 64);
+  }
+  const blockW = LG + widest * BW + (widest - 1) * HGAP + 2 * PAD + (hasOv ? 30 : 0);
+  const blockH = TOP + L * BH + (L - 1) * VGAP + BOT + 2 * PAD;
+  const W = fit ? Math.max(fit.w, rx + blockW) : blockW;
+  const H = fit ? Math.max(fit.h, ry + blockH) : blockH;
+  const X0 = fit ? rx + Math.max(0, Math.floor((rw - blockW) / 2)) : 0;
+  const Y0 = fit ? ry + Math.max(0, Math.floor((rh - blockH) / 2)) : 0;
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
+  const tlen = Math.max(18, Math.floor((BW - 20) / 6.2));
 
   const defs = mk("defs", {}, svg);
   const m = mk("marker", { id: svg.id + "-arrow", viewBox: "0 0 10 10", refX: "9", refY: "5",
                            markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse" }, defs);
-  mk("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--border)" }, m);
+  mk("path", { d: "M0,0 L10,5 L0,10 z", class: "arrowhead" }, m);
 
   const at = {};
   keys.forEach((k, ri) => {
     const list = rows[k];
     const span = list.length * BW + (list.length - 1) * HGAP;
-    const x0 = LG + PAD + (widest * BW + (widest - 1) * HGAP - span) / 2;
-    list.forEach((it, i) => { at[it.id] = { x: x0 + i * (BW + HGAP), y: PAD + 8 + ri * (BH + VGAP) }; });
+    const x0 = X0 + LG + PAD + (widest * BW + (widest - 1) * HGAP - span) / 2;
+    list.forEach((it, i) => { at[it.id] = { x: x0 + i * (BW + HGAP), y: Y0 + TOP + PAD + ri * (BH + VGAP) }; });
   });
 
   const gB = mk("g", {}, svg), gE = mk("g", {}, svg), gN = mk("g", {}, svg), gO = mk("g", {}, svg);
@@ -221,8 +213,8 @@ function drawGraph(svg, items, opts) {
   items.forEach((it) => { if (it.wave !== null && it.wave !== undefined) (waves[it.wave] = waves[it.wave] || []).push(at[it.id].y); });
   Object.keys(waves).forEach((w) => {
     const y0 = Math.min.apply(null, waves[w]) - 8, y1 = Math.max.apply(null, waves[w]) + BH + 8;
-    mk("rect", { x: 2, y: y0, width: W - 4, height: y1 - y0, rx: 8, class: "band" }, gB);
-    mk("text", { x: 8, y: y0 + 16, class: "bandlabel" }, gB).appendChild(txt("wave " + w));
+    mk("rect", { x: X0 + 2, y: y0, width: blockW - 4, height: y1 - y0, rx: 8, class: "band" }, gB);
+    mk("text", { x: X0 + 8, y: y0 + 16, class: "bandlabel" }, gB).appendChild(txt("wave " + w));
   });
   items.forEach((it) => it.deps.forEach((d) => {
     const a = at[d], b = at[it.id];
@@ -234,30 +226,37 @@ function drawGraph(svg, items, opts) {
   /* a human gate cuts the graph: one run ends above the line, the next begins below */
   items.filter((it) => it.cut).forEach((it) => {
     const y = at[it.id].y + BH / 2;
-    mk("line", { x1: 4, y1: y, x2: W - 4, y2: y, class: "cut" }, gB);
-    mk("text", { x: 8, y: y - 5, class: "cutlabel" }, gB).appendChild(txt("run ends · approve · next run"));
+    mk("line", { x1: X0 + 4, y1: y, x2: X0 + blockW - 4, y2: y, class: "cut" }, gB);
+    mk("text", { x: X0 + 8, y: y - 5, class: "cutlabel" }, gB).appendChild(txt("run ends · approve · next run"));
   });
+  const ly = (k) => Math.round((BH - 45) / 2 + 15 * (k + 1) - 3);
   items.forEach((it) => {
     const p = at[it.id];
     const st = STATUS[it.status] || null;
-    const stroke = it.rejected ? "var(--status-bad)" : (st ? st[1] : "var(--border)");
-    const g = mk("g", { class: "node", tabindex: "0", "data-id": it.id }, gN);
-    const r = mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 7, stroke: stroke }, g);
+    const tone = it.rejected ? "bad" : (st ? st[1] : "none");
+    const g = mk("g", { class: "node t-" + tone, tabindex: "0", role: "button", "data-id": it.id, "data-rk-key": it.id,
+                        "aria-label": it.id + (it.status ? ", " + it.status : "") + (it.rejected ? ", rejected by the validator" : "") + ". Open details." }, gN);
+    const r = mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 7 }, g);
     if (it.rejected) r.setAttribute("stroke-width", "2.5");
     if (it.dashed) r.setAttribute("stroke-dasharray", "5 3");
-    mk("text", { x: p.x + 10, y: p.y + 19 }, g).appendChild(txt(short(it.line1, 30)));
-    mk("text", { x: p.x + 10, y: p.y + 34, class: "l2" }, g).appendChild(txt(short(it.line2, 38)));
-    if (it.rejected) mk("text", { x: p.x + 10, y: p.y + 47, class: "rejtext" }, g)
-      .appendChild(txt("✗ rejected: " + short(it.rejected.replace(/^AP-/, "").toLowerCase(), 24)));
-    else if (it.line3) mk("text", { x: p.x + 10, y: p.y + 47, class: "l2" }, g).appendChild(txt(short(it.line3, 38)));
+    mk("text", { x: p.x + 10, y: p.y + ly(0) }, g).appendChild(txt(short(it.line1, tlen)));
+    mk("text", { x: p.x + 10, y: p.y + ly(1), class: "l2" }, g).appendChild(txt(short(it.line2, tlen + 6)));
+    if (it.rejected) mk("text", { x: p.x + 10, y: p.y + ly(2), class: "rejtext" }, g)
+      .appendChild(txt(((nm) => (nm.length + 12 > tlen ? "✗ " + short(nm, tlen - 2) : "✗ rejected: " + nm))(it.rejected.replace(/^AP-/, "").toLowerCase())));
+    else if (it.line3) mk("text", { x: p.x + 10, y: p.y + ly(2), class: "l2" }, g).appendChild(txt(short(it.line3, tlen + 6)));
     if (st) {
-      const s = mk("text", { x: p.x + BW - 18, y: p.y + 20, class: "st", fill: st[1] }, g);
+      const s = mk("text", { x: p.x + BW - 18, y: p.y + ly(0), class: "st st-" + st[1] }, g);
       s.appendChild(txt(st[0]));
     }
-    const title = mk("title", {}, g);
-    title.appendChild(txt(it.id + (it.status ? " — " + it.status : "")));
     g.addEventListener("click", () => opts.select(it.id));
-    g.addEventListener("keydown", (e) => { if (e.key === "Enter") opts.select(it.id); });
+    g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); opts.select(it.id); } });
+    if (opts.hover) {
+      g.addEventListener("mouseenter", (e) => opts.hover(it.id, e));
+      g.addEventListener("mousemove", (e) => opts.hover(it.id, e));
+      g.addEventListener("focus", (e) => opts.hover(it.id, e));
+      g.addEventListener("mouseleave", () => opts.leave());
+      g.addEventListener("blur", () => opts.leave());
+    }
   });
   (opts.overlaps || []).forEach((o) => {
     const a = at[o.a], b = at[o.b];
@@ -288,11 +287,10 @@ function row(dl, key, value, cls) {
   if (cls) dd.className = cls;
 }
 
-function showNode(n) {
-  const box = el("detail");
-  clear(box);
-  add(box, "h3", (KIND[n.kind] || "·") + " " + n.id);
-  const dl = add(box, "dl");
+/* The drawer for one node: what it does, where, when and how, then the validator's
+   refusals set apart, then its neighbours as links so the chain can be walked. */
+function nodeDetail(n, S, byId, jump) {
+  const dl = RK.h("dl", { class: "rows" });
   row(dl, "what", n.goal);
   row(dl, "kind", n.kind + (n.role ? " (" + n.role + ")" : ""));
   row(dl, "where", n.where);
@@ -314,17 +312,23 @@ function showNode(n) {
     if (n.authored.sample) row(dl, "sample", (n.authored.sample.args || []).join(" ") + " → exit " + JSON.stringify(n.authored.sample.expectExit));
   }
   row(dl, "status", n.status === null ? "not recorded by the run state" : n.status);
-  n.rejections.forEach((r) => row(dl, "REJECTED", r, "rej"));
+  const refusals = RK.h("dl", { class: "rows" });
+  n.rejections.forEach((r) => row(refusals, "REJECTED", r, "rej"));
   (DATA.design.overlaps || []).filter((o) => o.a === n.id || o.b === n.id).forEach((o) =>
-    row(dl, "REJECTED", "runs beside " + (o.a === n.id ? o.b : o.a) + " in wave " + o.wave +
+    row(refusals, "REJECTED", "runs beside " + (o.a === n.id ? o.b : o.a) + " in wave " + o.wave +
         " and may write the same files (" + o.globs.join(" vs ") + ")", "rej"));
+  const kids = [dl];
+  if (refusals.childNodes.length) kids.push(RK.h("h3", { text: "What the validator refuses" }), refusals);
+  const links = (ids) => ids.length
+    ? RK.h("ul", { class: "nbrs" }, ids.map((x) => RK.h("li", {}, S.link(x, () => jump(x)))))
+    : RK.h("span", { class: "rk-muted", text: "none" });
+  const unlocks = Object.keys(byId).filter((x) => byId[x].depends_on.indexOf(n.id) >= 0);
+  kids.push(RK.h("h3", { text: "Runs after" }), links(n.depends_on.filter((x) => byId[x])),
+            RK.h("h3", { text: "Unlocks" }), links(unlocks));
+  return { title: (KIND[n.kind] || "·") + " " + n.id, sub: n.kind + (n.where ? " · " + n.where : "") + (n.status ? " · " + n.status : ""), kids };
 }
 
-function showPhase(p) {
-  const box = el("wfdetail");
-  clear(box);
-  add(box, "h3", p.id);
-  const dl = add(box, "dl");
+function phaseRows(dl, p) {
   row(dl, "kind", p.kind);
   row(dl, "pattern", p.pattern);
   row(dl, "model tier", modelOf(p.modelTier));
@@ -337,43 +341,85 @@ function showPhase(p) {
   p.rejections.forEach((r) => row(dl, "REJECTED", r, "rej"));
 }
 
-function tile(label, value, bad) {
-  const t = add(el("tiles"), "div", null, "tile" + (bad ? " bad" : ""));
-  add(t, "div", value, "v");
-  add(t, "div", label, "k");
+function showPhase(p) {
+  const box = el("wfdetail");
+  clear(box);
+  add(box, "h3", p.id);
+  const dl = add(box, "dl");
+  phaseRows(dl, p);
 }
 
+
+// ---- the page --------------------------------------------------------------------------
+const TONE = { ok: "ok", bad: "bad", warn: "warn", flat: "flat" };
+const splitPanel = (svgId, label, asideId, note) => {
+  const svg = document.createElementNS(SVGNS, "svg");
+  svg.id = svgId;
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", label);
+  const aside = RK.h("aside", { class: "detail", id: asideId });
+  const left = RK.h("div", {}, RK.h("div", { class: "graph" }, svg), note || null);
+  return { box: RK.h("div", { class: "split" }, left, aside), svg, aside };
+};
+// A validator rejection as a finding: the rule id and the node it names are facets; a
+// rejection that names no node is a design-level one. Nothing is a bare count.
+const rejectionRecords = (list, prefix, nodeOf) => list.map((r, i) => {
+  const rule = (String(r).match(/\[(AP-[A-Z0-9-]+)\]/) || [])[1] || "";
+  const m = /^node (\S+): (.*)$/s.exec(String(r));
+  const node = m ? m[1] : (nodeOf ? nodeOf(r) : "") || "(design)";
+  return { id: prefix + (i + 1), severity: "error", rule, claim: m ? m[2] : String(r),
+    evidence: [{ label: "where", detail: node === "(design)" ? "the design as a whole" : "node " + node }],
+    tags: { rule: rule || "(none)", node } };
+});
+
 function render() {
+  const verdict = RK.$("#verdict");
   if (!DATA || (!DATA.design && !DATA.workflow)) {
-    el("verdict").textContent =
-      "This design report could not be read, so nothing below is trustworthy. Regenerate it: " +
+    verdict.textContent = "This design report could not be read, so nothing below is trustworthy. Regenerate it: " +
       "python3 plugins/arbeitsplan/scripts/build_design_html.py --design <design.json>";
-    el("empty").hidden = false;
     return;
   }
-  el("verdict").textContent = DATA.verdict;
+  verdict.textContent = DATA.verdict;
   const d = DATA.design;
-  const sub = el("sub");
-  clear(sub);
+  const wf = DATA.workflow;
+  const sub = RK.$("#sub");
   const bits = [];
   if (d) bits.push("design " + d.name + " · run " + d.runId + " · sha256 " + String(d.sha256).slice(0, 12) + "…");
   if (d && d.state) bits.push("state from the run helper's show");
   if (DATA.generated) bits.push(DATA.generated);
-  sub.appendChild(txt(bits.join(" · ")));
+  sub.textContent = bits.join(" · ");
   if (DATA.synthetic) { sub.appendChild(txt(" · ")); add(sub, "span", "SYNTHETIC demo data", "synthetic"); }
 
-  if (d) {
-    el("designpanel").hidden = false;
-    const waves = new Set(d.nodes.filter((n) => n.wave !== null).map((n) => n.wave));
-    const missing = d.toolchains.filter((t) => t.installed === false).length;
-    const red = d.state ? d.state.redGates.length : 0;
-    tile("nodes", d.nodes.length, false);
-    tile("waves", waves.size, false);
-    tile("rejections", d.rejections.length, d.rejections.length > 0);
-    tile("toolchains not installed", missing, missing > 0);
-    if (d.state) tile("red gates in the last run", red, red > 0);
-    tile("authored steps", d.nodes.filter((n) => n.authored).length, false);
+  const redCount = d && d.state ? d.state.redGates.length : 0;
+  const bad = (d && (d.rejections.length || redCount)) || (wf && wf.rejections.length);
+  const missingTc = d ? d.toolchains.filter((t) => t.installed === false).length : 0;
+  verdict.classList.add(bad ? "bad" : (missingTc ? "warn" : "ok"));
 
+  const content = RK.$("#rk-content");
+  const { section } = RK;
+  const S = RK.stage();
+
+  // The figure is the design when there is one, otherwise the compiled workflow's phases.
+  const figSvg = document.createElementNS(SVGNS, "svg");
+  figSvg.id = "dag";
+  figSvg.setAttribute("class", "figsvg");
+  figSvg.setAttribute("role", "group");
+  figSvg.setAttribute("aria-label", d ? "The design as a graph" : "The compiled workflow's phases");
+  S.figure.appendChild(figSvg);
+
+  if (d) {
+    const waves = new Set(d.nodes.filter((n) => n.wave !== null).map((n) => n.wave));
+    const stats = [
+      { label: "Nodes", value: String(d.nodes.length) },
+      { label: "Waves", value: String(waves.size) },
+      { label: "Rejections", value: String(d.rejections.length), note: "from the validator", bad: d.rejections.length > 0 },
+      { label: "Toolchains not installed", value: String(missingTc), bad: missingTc > 0 },
+    ];
+    if (d.state) stats.push({ label: "Red gates in the last run", value: String(redCount), bad: redCount > 0 });
+    stats.push({ label: "Authored steps", value: String(d.nodes.filter((n) => n.authored).length) });
+    S.stats(stats);
+
+    // ---- the graph fills the stage; a click opens the node's what/where/when/how ------------
     const items = d.nodes.map((n) => ({
       id: n.id, deps: n.depends_on, wave: n.wave, status: n.status,
       cut: n.kind === "human-gate", dashed: !!n.authored,
@@ -390,54 +436,173 @@ function render() {
     }));
     const byId = {};
     d.nodes.forEach((n) => { byId[n.id] = n; });
-    let mark = () => {};
-    const select = (id) => { showNode(byId[id]); mark(id); };
-    mark = drawGraph(el("dag"), items, { gutter: 58, overlaps: d.overlaps, select: select });
-    const first = items.find((it) => it.rejected) || items.find((it) => STATUS[it.status] && STATUS[it.status][0] === "✗") || items[0];
-    if (first) select(first.id);
-    el("dagnote").textContent = "Select a node for its full what, where, when and how. Integration: waves merge into " +
-      d.integration.branch + "; " + d.integration.target + " moves only after a green gate. Gates: " +
-      (d.gates.length ? d.gates.join(", ") : "none declared") + ".";
+    const itemById = {};
+    items.forEach((it) => { itemById[it.id] = it; });
 
-    const ul = el("rejections");
-    if (!d.rejections.length) add(ul, "li", "Nothing: the validator accepts this design.", "ok-word");
-    d.rejections.forEach((r) => add(ul, "li", r));
-    const tb = el("toolchains");
-    d.toolchains.forEach((t) => {
-      const tr = add(tb, "tr");
-      add(tr, "td", t.name, "mono");
-      add(tr, "td", t.probe, "mono");
-      const td = add(tr, "td");
-      if (t.installed === true) add(td, "span", "✓ installed", "ok-word");
-      else if (t.installed === false) add(td, "span", "✗ not installed", "bad-word");
-      else add(td, "span", "? not probed — run arbeitsplan-preflight", "warn-word");
+    let selected = null, mark = () => {};
+    const select = (id) => {
+      if (!byId[id]) return;
+      selected = id;
+      const det = nodeDetail(byId[id], S, byId, select);
+      S.open(det.title, det.sub, ...det.kids);
+      mark(id);
+    };
+    const hover = (id, evt) => {
+      const n = byId[id], it = itemById[id];
+      S.tip.show(evt, (KIND[n.kind] || "·") + " " + n.id,
+        RK.h("div", { text: it.line2 }),
+        it.rejected ? RK.h("div", { class: "rej", text: "✗ rejected: " + it.rejected }) : null,
+        n.status ? RK.h("div", { text: "status: " + n.status }) : null,
+        RK.h("div", { class: "rk-muted", text: "click for the full detail" }));
+    };
+    const rects = () => {
+      const f = S.figure.getBoundingClientRect();
+      return [".rk-hud", ".rk-legend-float"].map((sel) => {
+        const e = RK.$(sel);
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return { left: r.left - f.left, right: r.right - f.left, top: r.top - f.top, bottom: r.bottom - f.top };
+      }).filter(Boolean);
+    };
+    const redraw = (w, h) => {
+      if (w < 40 || h < 40) return;
+      mark = drawGraph(figSvg, items, { gutter: 58, overlaps: d.overlaps, select, fit: { w, h },
+        hover, leave: () => S.tip.hide(), avoid: rects() });
+      if (selected) mark(selected);
+    };
+    S.onResize(redraw);
+
+    const first = items.find((it) => it.rejected) || items.find((it) => STATUS[it.status] && STATUS[it.status][0] === "✗") || items[0];
+    // #node-<id> names a node the graph selects: select it and stay beside the figure.
+    // Any other hash (#sec-*, #gate-*, #rejection-*) is a card below; the kit scrolls there.
+    const fromHash = RK.hashId("node-") || "";
+    if (byId[fromHash]) RK.claimHash();
+    const start = byId[fromHash] ? fromHash : (first && first.id);
+    if (start) select(start);
+
+    // ---- how to read the graph: what used to sit above it, now below the stage --------------
+    content.append(section("howto", "How to read the graph", RK.h("dl", { class: "howto" },
+      RK.h("dt", { text: "▶ agent" }), RK.h("dd", { text: "a dispatched model that builds, reviews or fixes. A wave's rows each run in their own agent worktree, side by side." }),
+      RK.h("dt", { text: "$ script" }), RK.h("dd", {}, "one declared command, run by a Bash-only runner. ", RK.h("strong", { text: "Dashed outline: an authored step" }), ", which the plan writes and verifies before anything runs it."),
+      RK.h("dt", { text: "⇄ merge-gate" }), RK.h("dd", { text: "merges its wave into the integration branch and runs every gate; the target moves only when they are green." }),
+      RK.h("dt", { text: "‖ human gate" }), RK.h("dd", {}, "a person approves ", RK.h("strong", { text: "between" }), " runs. The dashed line across the graph is where one run ends and the next begins."),
+      RK.h("dt", { text: "status" }), RK.h("dd", {}, "✓ done, green, approved or verified · ✗ red · ↻ stale · ∅ missing or still a stub · ○ pending · no mark: the run state records nothing for this node. A red outline marked ", RK.h("em", { text: "✗ rejected" }), " is the validator's refusal, not a run result."),
+      RK.h("dt", { text: "overlap" }), RK.h("dd", { text: "a red dashed arc joins two rows that run at the same time and may write the same file." })),
+      RK.h("p", { class: "note", text: "Integration: waves merge into " + d.integration.branch + "; " + d.integration.target +
+        " moves only after a green gate. Gates: " + (d.gates.length ? d.gates.join(", ") : "none declared") + "." })));
+
+    // ---- every node as a searchable table: the graph cannot be searched --------------------
+    content.append(section("nodes", "All nodes", RK.table({
+      caption: "every node of the design",
+      columns: [{ key: "id", label: "Node", mono: true }, { key: "kind", label: "Kind" }, { key: "wave", label: "Wave", num: true },
+        { key: "where", label: "Where" }, { key: "model", label: "Model" }, { key: "writes", label: "Writes", mono: true },
+        { key: "status", label: "Status" }],
+      rows: d.nodes.map((n) => ({ id: n.id, kind: n.kind, wave: n.wave === null ? "" : n.wave, where: n.where || "",
+        model: n.kind === "human-gate" ? "" : modelOf(n.model),
+        writes: (n.writeScope || []).join(", "),
+        status: n.status === null ? "not recorded" : n.status })),
+    })));
+
+    // ---- what the validator refuses ---------------------------------------------------------
+    const rej = rejectionRecords(d.rejections, "rej-");
+    // The validator already refuses an overlap as text; the pair and the globs that meet are the
+    // evidence, so attach them to that refusal rather than listing it twice.
+    d.overlaps.forEach((o) => {
+      const hit = rej.find((r) => r.rule === "AP-WAVE-SCOPE-OVERLAP" && r.claim.includes("wave " + o.wave));
+      const ev = { label: o.a + " and " + o.b + " write scopes that meet", detail: o.globs.join(" vs ") };
+      if (hit) hit.evidence.push(ev);
+      else rej.push({ id: "overlap-" + o.a + "-" + o.b, severity: "error", rule: "AP-WAVE-SCOPE-OVERLAP",
+        claim: o.a + " and " + o.b + " run side by side in wave " + o.wave + " and may write the same files",
+        evidence: [ev], tags: { rule: "AP-WAVE-SCOPE-OVERLAP", node: o.a + " / " + o.b } });
     });
+    const dedup = rej;
+    content.append(section("rejections", "What the validator refuses", RK.findings(dedup, {
+      idPrefix: "rejection-", facets: ["rule", "node"], empty: "Nothing: the validator accepts this design." })));
+
+    // ---- the last run's red gates, with the findings that turned them red -------------------
+    if (d.state) {
+      const red = d.state.redGates.map((g, i) => ({
+        id: "red-" + (i + 1), severity: "fail", claim: g.gate + " went RED (stage " + g.stage + "); " + d.integration.target + " did not move",
+        evidence: g.findings.length
+          ? g.findings.map((f) => ({ label: (f.gate || "check") + (f.source ? " · " + f.source : ""), detail: "exit " + f.exit }))
+          : [{ label: "findings", detail: "the state records none for this gate" }],
+        tags: { gate: g.gate },
+      }));
+      content.append(section("redgates", "Red gates in the last run", RK.findings(red, {
+        idPrefix: "gate-", empty: "No gate was red in the last run." })));
+    }
+
+    const tcRows = d.toolchains.map((t) => ({ name: t.name, probe: t.probe,
+      here: t.installed === true ? RK.badge("installed", "ok") : t.installed === false ? RK.badge("not installed", "bad")
+        : RK.badge("not probed — run arbeitsplan-preflight", "warn") }));
+    content.append(section("toolchains", "Toolchains the design's commands need", tcRows.length
+      ? RK.table({ caption: "toolchains", columns: [{ key: "name", label: "Toolchain", mono: true },
+          { key: "probe", label: "Probe", mono: true }, { key: "here", label: "Here" }], rows: tcRows })
+      : RK.h("p", { class: "rk-muted", text: "The design's commands need no toolchain." })));
+
+    // ---- what the builder always had and the page never showed ------------------------------
+    const extra = [];
+    if ((d.warnings || []).length) extra.push(RK.h("h3", { text: "Validator warnings" }), RK.h("ul", {}, d.warnings.map((w) => RK.h("li", { text: String(w) }))));
+    if ((d.offLimits || []).length) extra.push(RK.h("h3", { text: "Off limits" }), RK.h("ul", {}, d.offLimits.map((w) => RK.h("li", { class: "mono", text: String(w) }))));
+    if (d.problemRef) extra.push(RK.h("p", { class: "rk-muted" }, "Problem: ", RK.h("code", { text: String(d.problemRef) })));
+    if (extra.length) content.append(section("context", "Warnings, limits and the problem it answers", ...extra));
   }
 
-  const wf = DATA.workflow;
+  if (!d && wf) {
+    // no design: the stage draws the compiled workflow's phases instead
+    const pb = {};
+    wf.phases.forEach((p) => { pb[p.id] = p; });
+    const pitems = wf.phases.map((p) => ({
+      id: p.id, deps: p.depends_on, wave: null, status: null, cut: false, dashed: p.kind === "script",
+      rejected: p.rejections.length ? "see detail" : null,
+      line1: p.id, line2: [p.kind, p.pattern].filter(Boolean).join(" · "),
+      line3: [p.modelTier, p.fanOut ? "fan-out " + p.fanOut : null, p.writes ? "writes " + p.writes : null].filter(Boolean).join(" · "),
+    }));
+    S.stats([{ label: "Phases", value: String(wf.phases.length) },
+      { label: "Rejections", value: String(wf.rejections.length), bad: wf.rejections.length > 0 }]);
+    let markW = () => {}, selW = null;
+    const selectW = (id) => {
+      selW = id;
+      const dl = RK.h("dl", { class: "rows" });
+      phaseRows(dl, pb[id]);
+      S.open(id, pb[id].kind, dl);
+      markW(id);
+    };
+    S.onResize((w, h) => {
+      if (w < 40 || h < 40) return;
+      markW = drawGraph(figSvg, pitems, { select: selectW, fit: { w, h },
+        hover: (id, e) => S.tip.show(e, id, RK.h("div", { text: pb[id].kind })), leave: () => S.tip.hide() });
+      if (selW) markW(selW);
+    });
+    if (wf.phases.length) selectW(wf.phases[0].id);
+  }
+
   if (wf) {
-    el("workflowpanel").hidden = false;
-    el("wfhead").textContent = "The compiled workflow " + wf.runId + (wf.totalDispatches ? " — budget " + wf.totalDispatches + " dispatches" : "");
     const byPhase = {};
     wf.phases.forEach((p) => { byPhase[p.id] = p; });
+    const panel = splitPanel("wfdag", "The compiled workflow's phases", "wfdetail", null);
+    content.append(section("workflow", "The compiled workflow " + wf.runId + (wf.totalDispatches ? " — budget " + wf.totalDispatches + " dispatches" : ""),
+      panel.box,
+      RK.findings(rejectionRecords(wf.rejections, "wf-", (r) => (/^phases\[\d+\] \((\S+)\)/.exec(r) || [])[1]),
+        { idPrefix: "wfrejection-", facets: ["rule", "node"], empty: "The compiler accepts this workflow." })));
     let markP = () => {};
     const selectP = (id) => { showPhase(byPhase[id]); markP(id); };
-    markP = drawGraph(el("wfdag"), wf.phases.map((p) => ({
+    markP = drawGraph(panel.svg, wf.phases.map((p) => ({
       id: p.id, deps: p.depends_on, wave: null, status: null, cut: false, dashed: p.kind === "script",
       rejected: p.rejections.length ? "see detail" : null,
       line1: p.id, line2: [p.kind, p.pattern].filter(Boolean).join(" · "),
       line3: [p.modelTier, p.fanOut ? "fan-out " + p.fanOut : null, p.writes ? "writes " + p.writes : null].filter(Boolean).join(" · "),
     })), { select: selectP });
     if (wf.phases.length) selectP(wf.phases[0].id);
-    const ul = el("wfrejections");
-    wf.rejections.forEach((r) => add(ul, "li", r));
   }
 
-  el("footer").textContent = "Generated by build_design_html.py from the design, the run helper's state and the " +
+  content.append(RK.h("p", { class: "rk-muted", text: "Generated by build_design_html.py from the design, the run helper's state and the " +
     "preflight results; rebuild it after the design or the run changes. Rejections come from design_spec.py, " +
-    "overlaps from land_candidate.py, statuses from `<name>_state.py show`.";
+    "overlaps from land_candidate.py, statuses from `<name>_state.py show`." }));
+  RK.init();
 }
-render();
+if (DATA) render();
+})();
 </script>
 </body>
 </html>

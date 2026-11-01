@@ -119,6 +119,12 @@ class InjectionContentTests(unittest.TestCase):
             r = run_builder_with_both_flags(repo)
             self.assertEqual(r.returncode, 0, r.stderr)
             html = Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
+        # The data rides in the report kit's JSON island (< > & escaped), read by RK.readData.
+        self.assertIn('<script type="application/json" id="report-data">', html)
+        self.assertNotIn("@@DATA@@", html)
+        self.assertIn("werkstoff report kit", html)  # the kit's css/js were inlined at the marker
+        self.assertNotIn("<!--__REPORT_KIT__-->", html)
+        self.assertIn("const RK = (() => {", html)
         self.assertIn('"totalPasses": 3', html)
 
 
@@ -144,9 +150,13 @@ class ReportConformanceTests(unittest.TestCase):
             html = self.render(repo)
         # R1: a verdict element that exists before any script runs.
         self.assertIn('class="verdict"', html)
+        # R9: the figure-first stage skeleton.
+        self.assertIn('id="rk-stage"', html)
+        self.assertIn("data-rk-figure", html)
+        self.assertIn('id="rk-drawer"', html)
         # R4: every status colour named in an always-visible legend, each with a
         # label and a glyph -- colour is never the only channel.
-        self.assertIn('<ul class="legend">', html)
+        self.assertIn('<ul class="legend rk-card rk-legend-float" id="ledgerLegend">', html)
         for label in ("closed", "open", "escalated"):
             self.assertIn('<span class="name">' + label + "</span>", html)
 
@@ -154,15 +164,20 @@ class ReportConformanceTests(unittest.TestCase):
         with Repo(THREE_PASS_LEDGER) as repo:
             html = self.render(repo)
         # R3: a class meaning "this number needs action".
-        self.assertIn(".stat.alarm", html)
-        self.assertIn("'alarm'", html)
+        # The kit's .rk-stat.bad outline, set only when the escalated count is non-zero.
+        self.assertIn(".rk-stat.bad", html)
+        self.assertIn("bad: escalated > 0", html)
 
     def test_chart_height_is_not_a_constant(self):
         with Repo(THREE_PASS_LEDGER) as repo:
             html = self.render(repo)
         # R5: no fixed pixel height for the trend panel, in CSS or in JS.
         self.assertNotIn("height: 300px", html)
-        self.assertIn("const H = Math.max(180, maxCum", html)
+        # The figure is drawn from the stage's measured size, not a constant.
+        self.assertIn("S.onResize(", html)
+        self.assertIn("function drawTrend(W, H)", html)
+        self.assertNotIn("const W = 900", html)
+        self.assertNotIn("height: 300px", html)
 
 
 class SplitViewStructureTests(unittest.TestCase):
@@ -171,9 +186,13 @@ class SplitViewStructureTests(unittest.TestCase):
             r = run_builder_with_both_flags(repo)
             self.assertEqual(r.returncode, 0, r.stderr)
             html = Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
-        self.assertIn('id="view-trend"', html)
-        self.assertIn('id="view-breakdown"', html)
-        self.assertIn("renderTrendChart", html)
+        # The report is two views (ledger, mutation); the ledger's trend and its
+        # findings are separate sections, and there is no combined chart.
+        self.assertIn('id: "grp-ledger"', html)
+        self.assertIn('id: "grp-mutation"', html)
+        self.assertIn('section("passes"', html)
+        self.assertIn('section("findings"', html)
+        self.assertIn("function drawTrend(", html)
         self.assertNotIn("function renderChart(", html)
 
 
@@ -188,9 +207,9 @@ class MutationTabTests(unittest.TestCase):
         r = run_builder_with_both_flags(repo)
         self.assertEqual(r.returncode, 0, r.stderr)
         html = Path(json.loads(r.stdout)["burndownPath"]).read_text(encoding="utf-8")
-        marker = "/*__BURNDOWN_DATA__*/ "
+        marker = '<script type="application/json" id="report-data">'
         start = html.index(marker) + len(marker)
-        return json.JSONDecoder().raw_decode(html[start:])[0]
+        return json.loads(html[start:html.index("</script>", start)])
 
     def test_no_summary_no_tab_data(self):
         with Repo(THREE_PASS_LEDGER) as repo:
@@ -215,7 +234,7 @@ class MutationTabTests(unittest.TestCase):
 
     def test_tab_renders_through_text_content_only(self):
         html = TEMPLATE.read_text(encoding="utf-8")
-        body = html[html.index("function renderMutationView"):html.index("function setActiveTab")]
+        body = html[html.index("function moduleRow"):html.index("function setView")]
         self.assertNotIn("innerHTML", body)
         self.assertIn('id="tabMutationBtn" data-view="mutation" aria-pressed="false" hidden', html)
 
@@ -230,30 +249,57 @@ class MutationTabTests(unittest.TestCase):
             self.assertEqual(alive, m["after"]["survived"] - m["after"]["equivalent"] + m["after"]["noTests"])
 
 
+    def test_not_checked_reaches_the_payload_and_is_shown(self):
+        # The builder forwards notChecked (mutants the tool generated but never ran); a
+        # viewer that drops it shows a module with 25 unrun mutants as fully measured.
+        with Repo(THREE_PASS_LEDGER) as repo:
+            (repo.root / "analysis" / "zeugnis" / "mutation_harden_summary.json").write_text(self.FIXTURE.read_text())
+            mutation = self._payload(repo)["mutation"]
+        boot = next(m for m in mutation["modules"] if m["module"] == "src/stats/bootstrap.py")
+        self.assertEqual((boot["before"]["notChecked"], boot["after"]["notChecked"]), (25, 0))
+        html = TEMPLATE.read_text(encoding="utf-8")
+        row = html[html.index("function moduleRow"):html.index("function mutationSentence")]
+        figure = html[html.index("function drawMutation"):html.index("function selectModule")]
+        drawer = html[html.index("function selectModule"):html.index("// ---- compose")]
+        for where, body in (("the module row", row), ("the figure", figure)):
+            self.assertIn("notCheckedText(m)", body, where)
+        self.assertIn('meta("Not checked before → after", notChecked(m)', drawer)
+
+
 class InteractionTests(unittest.TestCase):
     """Every control is a keyboard-reachable button with a state attribute; a
     selection is shown by more than colour; motion respects the user."""
 
     HTML = TEMPLATE.read_text(encoding="utf-8")
 
+    def test_hash_is_never_decoded_unguarded(self):
+        # decodeURIComponent throws on "#rule-100%-done"; an uncaught throw at load left
+        # the figure blank. Every read goes through the kit's RK.hashId(), which returns
+        # null instead.
+        script = self.HTML[self.HTML.index("<script>"):]
+        self.assertNotIn("decodeURIComponent(", script)
+        self.assertIn("RK.hashId(", script)
+
     def test_no_inner_html_anywhere_in_the_script(self):
-        script = self.HTML[self.HTML.index('<script type="module">'):]
+        script = self.HTML[self.HTML.index("<script>"):]
         code = "\n".join(ln for ln in script.splitlines() if not ln.strip().startswith("//"))
         self.assertNotIn("innerHTML", code)
 
     def test_controls_are_buttons_with_state(self):
-        for needle in ("button('bar-row')", "button('finding-toggle')", "button('mut-row')",
-                       ".attr('role', 'button')", ".attr('tabindex', 0)",
-                       "'aria-pressed'", "'aria-expanded'", "'aria-controls'"):
+        # R9: a pass point or a module track is a keyboard-reachable button whose
+        # selection opens the drawer (its close button replaces the old Unpin).
+        for needle in ('S.open(', 'h("details"',
+                       'role: "button"', 'tabindex: 0',
+                       '"aria-pressed"', '"aria-expanded"'):
             self.assertIn(needle, self.HTML)
 
     def test_keyboard_and_escape(self):
-        self.assertIn("event.key === 'Enter' || event.key === ' '", self.HTML)
-        self.assertIn("event.key !== 'Escape'", self.HTML)
+        self.assertIn('e.key === "Enter" || e.key === " "', self.HTML)
+        self.assertIn('event.key === "Escape"', self.HTML)
 
     def test_selection_is_more_than_colour_and_motion_is_optional(self):
-        self.assertIn('.bar-row[aria-pressed="true"] .label { color: var(--text); font-weight: 600; }', self.HTML)
-        self.assertIn(":focus-visible { outline: 2px solid var(--accent)", self.HTML)
+        self.assertIn('.rk-btn[aria-pressed="true"] { background: var(--rk-panel-2); border-color: var(--rk-focus); font-weight: 600; }', self.HTML + (SCRIPT_DIR.parent / "assets" / "report-kit.css").read_text(encoding="utf-8"))
+        self.assertIn(":focus-visible { outline: 2px solid var(--rk-focus)", (SCRIPT_DIR.parent / "assets" / "report-kit.css").read_text(encoding="utf-8"))
         self.assertIn("@media (prefers-reduced-motion: reduce)", self.HTML)
 
 

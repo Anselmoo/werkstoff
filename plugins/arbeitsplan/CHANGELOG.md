@@ -3,6 +3,8 @@
 All notable changes to the `arbeitsplan` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_design_html.py` and `build_run_html.py` now render through `report_kit.render()` with a JSON data island instead of their own token and data markers; the run builder also carries each candidate's per-criterion referee evidence, checks and files, and keeps `cannot_judge` and `accepted_different_approach` apart from `rejected`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 
 ## [1.3.0] - 2026-10-30
 ### Changed

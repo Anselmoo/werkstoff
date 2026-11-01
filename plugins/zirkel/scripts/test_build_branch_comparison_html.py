@@ -41,6 +41,14 @@ ok("build_payload selects the highest Total as winner", payload["selected"] == "
 ok("build_payload marks exactly the winner isWinner=True", [b["isWinner"] for b in payload["branches"]] == [False, True])
 ok("build_payload re-attaches description from the raw branches", payload["branches"][0]["description"] == "desc A")
 
+_state_extra = {
+    "run_id": "t3", "raw_task": "extras", "phase": "Explore", "explore_ran": True,
+    "explore": {"branches": [{"name": "A", "feasibility": 5, "impact": 5, "risk": 5, "rationale": "kept"}]},
+}
+payload_extra = B.build_payload(_state_extra)
+ok("build_payload passes through branch keys the guard does not know", payload_extra["branches"][0]["extra"] == {"rationale": "kept"})
+ok("build_payload carries the run phase", payload_extra["phase"] == "Explore")
+
 # --- Tie-break by lower risk, and a missing description defaults to "" ---
 _state_tie = {
     "run_id": "t2", "raw_task": "tie case", "phase": "Explore", "explore_ran": True,
@@ -105,7 +113,10 @@ try:
     html = open(out_path, encoding="utf-8").read()
     ok("rendered report has no leftover D3 marker", "<!--__D3_SUBSET__-->" not in html)
     ok("rendered report has no leftover tokens marker", "<!--__DESIGN_TOKENS__-->" not in html)
-    ok("rendered report has no leftover data marker", "/*__BRANCH_DATA__*/ null" not in html)
+    ok("rendered report has no leftover data marker", "@@DATA@@" not in html)
+    ok("rendered report has no leftover report-kit marker", "<!--__REPORT_KIT__-->" not in html)
+    ok("rendered report carries the kit and a JSON data island",
+       "const RK = (() => {" in html and '<script type="application/json" id="report-data">' in html)
     ok("rendered report embeds the winning branch's name",
        "Standalone D3 branch-comparison viewer" in html)
     ok("rendered report embeds the vendored d3 bundle", "var d3=" in html)
@@ -116,15 +127,20 @@ try:
        "<title>zirkel \u2014 branch comparison</title>" in html)
     # report-viewer-standard.md R1: the verdict element must be in STATIC markup,
     # so it survives into the file even before any script runs.
-    ok("rendered report keeps a static, empty class=\"verdict\" element filled via textContent",
-       '<p class="verdict" id="verdict"></p>' in html)
+    ok("rendered report keeps a static class=\"verdict\" sentence that the script refines via textContent",
+       '<p class="verdict" id="verdict">The winner is' in html)
     # S1: centered document, not a left-hugging max-width with no auto margin.
     # Matched on the whole .wrap RULE, never on the bare string "margin: 0 auto":
     # that substring also occurs in the prose comment explaining this rule, so the
     # loose form passed on a viewer whose .wrap had been un-centered. Calibrated by
     # deleting the declaration and confirming this assertion goes red.
     ok("rendered report centers its content (S1, not a fourth archetype)",
-       ".wrap { max-width: 1180px; margin: 0 auto;" in html)
+       ".rk-wrap { max-width: 1240px; margin: 0 auto;" in html)
+
+    # report-viewer-standard.md R9: the figure leads. The stage skeleton must be in
+    # STATIC markup so a template that lost it fails here, not in a browser.
+    ok("rendered report carries the R9 stage skeleton (stage, figure, drawer)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html)
 
     # main() with no --run-id must fall back to find_latest_explore_run.
     rc2 = B.main([

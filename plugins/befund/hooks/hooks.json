@@ -1,5 +1,5 @@
 {
-  "description": "Denies an Edit/Write/MultiEdit into target-repo source unless idiom_fix.mode or transform.mode explicitly authorizes it, and the tree is clean (or require_clean_tree is off). type:command, never type:prompt.",
+  "description": "Denies an Edit/Write/MultiEdit into target-repo source unless idiom_fix.mode or transform.mode explicitly authorizes it, and the tree is clean (or require_clean_tree is off). type:command, never type:prompt. Inert until a befund remediator dispatch has opened analysis/befund/edit_scope.json.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,7 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_target_edit.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_target_edit.py\"",
+            "timeout": 60
           }
         ]
       }

@@ -373,7 +373,7 @@
         {
           "id": "befund:befund-ui-audit",
           "name": "befund-ui-audit",
-          "description": "Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", \"review this UI before we ship\", or as part of befund-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review."
+          "description": "Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to \"audit UI accessibility\", \"check our components for a11y issues\", \"find hardcoded design values\", \"review this UI before we ship\", or as part of befund-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and to fix or change an existing UI without breaking it use cupertino-repair."
         }
       ],
       "agents": [
@@ -571,12 +571,12 @@
         {
           "id": "cupertino:cupertino-council",
           "name": "cupertino-council",
-          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for reviewing an interface that already exists: for accessibility, semantic-markup or hardcoded-design-value problems in shipped source use befund-ui-audit, and for a full-lifecycle design pass over an existing project use cupertino-review."
+          "description": "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for changing an interface that already exists -- fixing, adjusting or extending a shipped page or dashboard is cupertino-repair, which keeps everything else as it is; for a static accessibility or hardcoded-value audit of shipped source use befund-ui-audit."
         },
         {
           "id": "cupertino:cupertino-elevate",
           "name": "cupertino-elevate",
-          "description": "Use at build-time, ONLY when a low-status commodity feature already in scope for the current build — error messages, logs, config, settings, onboarding, migrations, loading states, empty states, backups, status output — could be transfigured into something beloved, the way Apple turned boring backup into Time Machine. Trigger on 'this feature is boring', 'nobody uses this', 'make this delightful', 'elevate this'. Never seek out a commodity feature independently or apply this to a brand-new capability not already being worked on — route a brand-new capability to cupertino-backwards instead; if nothing already in scope qualifies, say so and skip."
+          "description": "Use at build-time, ONLY when a low-status commodity feature already in scope for the current build — error messages, logs, config, settings, onboarding, migrations, loading states, empty states, backups, status output — could be transfigured into something beloved, the way Apple turned boring backup into Time Machine. Trigger on 'this feature is boring', 'nobody uses this', 'make this delightful', 'elevate this'. Never seek out a commodity feature independently or apply this to a brand-new capability not already being worked on — route a brand-new capability to cupertino-backwards instead; if nothing already in scope qualifies, say so and skip. Not inside a cupertino-repair run (the hook refuses it there): a repair changes only what its approved changeset names."
         },
         {
           "id": "cupertino:cupertino-focus",
@@ -619,19 +619,24 @@
           "description": "Use at build-time, parallel to cupertino-council, whenever a specific empirical uncertainty needs settling by actually building and running a throwaway version rather than debating it in the abstract. Trigger on 'not sure if this approach will actually work', 'let's spike this', 'will this library even do what we need', or any disagreement that a small runnable experiment would resolve faster than continued discussion. Never use for general feasibility studies — only for one specific, answerable question."
         },
         {
+          "id": "cupertino:cupertino-repair",
+          "name": "cupertino-repair",
+          "description": "Use when something that already exists must be changed without breaking it -- fix, repair, adjust, extend, add to, or delete part of an existing dashboard, page, UI, CLI, library, build, kernel or platform. Trigger on 'fix this dashboard', 'this layout is broken on mobile', 'repair this', 'make X work again', 'remove this dead code', 'add a filter to this existing page', 'change this without breaking anything'. Runs objective -> baseline -> approved changeset -> scoped apply -> verify, with a hook that limits every edit to the approved item and a script-only, restorable delete. Not for designing something new: use cupertino-backwards then cupertino-council. Not for a full lifecycle pass: use cupertino-review."
+        },
+        {
           "id": "cupertino:cupertino-reveal",
           "name": "cupertino-reveal",
-          "description": "Use at ship-time, as the last automatic step for a finished feature, module, tool, or API, to deliver exactly one non-obvious, high-leverage addition in a keynote 'and one more thing' structure. Trigger on 'what's missing here', 'is there anything else this needs before shipping', or automatically as the final stage when cupertino-review runs the full pipeline. Never produces a list — exactly one suggestion, and it must be built, not pitched."
+          "description": "Use at ship-time, as the last automatic step for a finished feature, module, tool, or API, to deliver exactly one non-obvious, high-leverage addition in a keynote 'and one more thing' structure. Trigger on 'what's missing here', 'is there anything else this needs before shipping', or automatically as the final stage when cupertino-review runs the full pipeline. Never produces a list — exactly one suggestion, and it must be built, not pitched. Not inside a cupertino-repair run (the hook refuses it there), and never as a way to 'fix' an existing artifact: that is cupertino-repair."
         },
         {
           "id": "cupertino:cupertino-review",
           "name": "cupertino-review",
-          "description": "Use when a project spans multiple lifecycle moments and the user wants the whole cupertino discipline applied end-to-end in one pass — 'give this the full cupertino treatment', 'review this like Apple would', 'run the whole design lifecycle on this'. Composes the plugin's other techniques as fixed, sequenced stages rather than requiring the user to invoke each one by hand. Not for a single lifecycle moment with one obvious technique — use that technique directly instead."
+          "description": "Use when a project spans multiple lifecycle moments and the user wants the whole cupertino discipline applied end-to-end in one pass — 'give this the full cupertino treatment', 'review this like Apple would', 'run the whole design lifecycle on this'. Composes the plugin's other techniques as fixed, sequenced stages rather than requiring the user to invoke each one by hand. Not for a single lifecycle moment with one obvious technique — use that technique directly instead. Not for fixing or changing something that already exists: the pipeline redesigns and adds features, so a fix routed here breaks what worked -- use cupertino-repair."
         },
         {
           "id": "cupertino:cupertino-unbox",
           "name": "cupertino-unbox",
-          "description": "Use at build/finishing-time, after core feature work has produced something worth a new user's first five minutes, to redesign the actual first-run, onboarding, or install flow. Trigger on 'improve onboarding', 'first-run experience', 'unboxing', 'install flow', 'first five minutes'. Scope is strictly the first five minutes of first contact — not the whole onboarding arc, and not to be confused with cupertino-elevate, which transfigures an existing feature's ongoing feel rather than the first-contact sequence."
+          "description": "Use at build/finishing-time, after core feature work has produced something worth a new user's first five minutes, to redesign the actual first-run, onboarding, or install flow. Trigger on 'improve onboarding', 'first-run experience', 'unboxing', 'install flow', 'first five minutes'. Scope is strictly the first five minutes of first contact — not the whole onboarding arc, and not to be confused with cupertino-elevate, which transfigures an existing feature's ongoing feel rather than the first-contact sequence. Not inside a cupertino-repair run (the hook refuses it there): a repair changes only what its approved changeset names."
         }
       ],
       "agents": [
@@ -658,7 +663,7 @@
         {
           "id": "cupertino:handbook-remediator",
           "name": "handbook-remediator",
-          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true design-handbook finding's exact rewrite at its cited file:line, and nothing else. Findings originate only from cupertino-handbook-check's design/UI handbook rules — not for language-idiom or modernization rewrites, which belong to befund's idiom-remediator. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch may cover several findings if they cluster on the same (file, rule); it touches only the exact locations cited and never anything else. Not selected from a bare \"apply this mechanical fix\" request — dispatch always comes from cupertino-handbook-fix.",
+          "description": "Use when dispatched by cupertino-handbook-fix to apply one already-verified mechanical:true design-handbook finding's exact rewrite at its cited location, and nothing else. Findings originate only from cupertino-handbook-check's design/UI handbook rules — not for language-idiom or modernization rewrites, which belong to befund's idiom-remediator. Never dispatched for a mechanical:false finding — those need design judgment this agent explicitly refuses. Never verifies its own work: cupertino-handbook-fix always dispatches handbook-verifier next, blind to this agent's output. One dispatch covers exactly one finding at one location; it touches only that location and never anything else. Not selected from a bare \"apply this mechanical fix\" request — dispatch always comes from cupertino-handbook-fix.",
           "tools": [
             "Read",
             "Edit"
@@ -1074,8 +1079,8 @@
           ]
         },
         {
-          "id": "passung:passung-critic",
-          "name": "passung-critic",
+          "id": "passung:consistency-critic",
+          "name": "consistency-critic",
           "description": "Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the single contract judge in canonize and verify.",
           "tools": [
             "Read",
@@ -1469,6 +1474,7 @@
     "cupertino:cupertino-integrate",
     "cupertino:cupertino-longevity",
     "cupertino:cupertino-prototype",
+    "cupertino:cupertino-repair",
     "cupertino:cupertino-reveal",
     "cupertino:cupertino-review",
     "cupertino:cupertino-unbox",
@@ -1575,7 +1581,7 @@
     "nacharbeit:component-finder",
     "nacharbeit:fix-verifier",
     "passung:align-executor",
-    "passung:passung-critic",
+    "passung:consistency-critic",
     "passung:equivalence-verifier",
     "passung:pattern-analyst",
     "passung:pattern-extractor",

@@ -5,6 +5,8 @@ Releases before the rename were published as `compass`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_branch_comparison_html.py` now renders through `report_kit.render()`, passes any branch field the guard does not know through as `extra` instead of dropping it, and carries the run's phase; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 
 ## [1.2.0] - 2026-10-30
 ### Changed

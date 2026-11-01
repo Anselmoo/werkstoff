@@ -338,15 +338,17 @@ always let any other out-of-repo write through.
 the chat as one self-contained HTML file, written to `<ledger_dir>/ANDON_BOARD.html`.
 
 The report answers one question -- *where is the line stopped, and why?* -- and
-states its answer in a sentence before any chart appears. Below it, a left-to-right
-value-stream diagram carries a labelled edge per handoff: green when linked evidence
-says green, amber when verification was attempted and hung, and **dashed when no
-evidence doc exists at all**. Those last two are different failures, not degrees of
-one, so the edge label spells the state out in words rather than leaving it to
-colour. Stage nodes carry a red open-gap badge and open a sidebar listing that
-stage's gaps with kind and blast-radius badges.
+states its answer in a sentence floating over the figure. The figure is the value stream,
+filling the first screen: a left-to-right diagram with a labelled edge per handoff -- green
+when linked evidence says green, amber when verification was attempted and hung, and
+**dashed when no evidence doc exists at all**. Those last two are different failures, not
+degrees of one, so the edge label spells the state out in words rather than leaving it to
+colour. Evidence documents hang under the wire they prove and open gaps under the stage they
+block. Clicking a stage, a wire, an evidence chip or a gap opens its detail -- description,
+ledger prose, verdict, tier, blast radius, proposal -- in a drawer beside the figure, and
+hovering shows a summary. The findings lists and the full tables follow below the figure.
 
-![andon board for a stopped five-stage feature pipeline: a verdict panel reading "The line is stopped at enrich->score by a Tier 1 structural-evidence contradiction — the one verdict nothing in this loop can override. 3 of 4 handoffs carry no green proof, and 7 gaps are open across 4 of 5 stages"; a red non-overridable-hold banner naming enrich->score; four tiles of which three are outlined in red — 7 open gaps, 3 handoffs without green proof, 1 non-overridable hold — beside an un-outlined 1 cycle converged; and a value-stream diagram of ingest, normalize, enrich, score and publish whose four edges are each labelled in words, ingest->normalize proven green, normalize->enrich verdict hung, enrich->score proven red, score->publish dashed with no evidence yet, with red gap-count badges on the first four stages and none on publish](assets/board-viewer-screenshot.jpg)
+![andon board for a stopped five-stage feature pipeline filling the screen: a verdict reading that the line is stopped at enrich->score by a Tier 1 structural-evidence contradiction, four numbers (7 open gaps, 3 wires without green proof, 1 non-overridable hold, 1 cycle converged), the stages ingest, normalize, enrich, score and publish joined by wires labelled in words (green, hung, red, no evidence yet), evidence chips under each wire and open-gap chips under each stage, and a side drawer showing the red Tier 1 evidence document that stops the line](assets/board-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the ledger it shows is
 committed at `scripts/fixtures/sample_ledger/`, a real OKF directory tree
@@ -358,7 +360,7 @@ structural index at Tier 1, and one never verified at all. To rebuild it:
 
 ```bash
 python3 plugins/andon/scripts/build_board_html.py \
-    plugins/andon/scripts/fixtures sample_ledger \
+    . plugins/andon/scripts/fixtures/sample_ledger \
     --template plugins/andon/assets/board-viewer.html \
     --d3 plugins/andon/assets/inline-d3.html \
     --tokens plugins/andon/assets/tokens.css \

@@ -27,6 +27,10 @@ through `&&`, `;` and newlines; after `|`, `||`, `&`, a heredoc, `pushd` or
 lines are text, not commands, and are skipped (_strip_heredoc_bodies), so a
 README written through `cat <<'EOF'` may mention `mutmut run`.
 
+Usage: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Bash", "tool_input": {"command": "ls"}}' | python3 guard_bash_scope.py
+
 Same fail-closed / inert-when-absent / escape-hatch contract as
 guard_edit_scope.py — see that file's docstring for the full protocol
 description.

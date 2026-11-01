@@ -82,7 +82,8 @@ NUMBER_WORDS = {
     "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
     "nineteen": 19, "twenty": 20, "twenty-one": 21, "twenty-two": 22, "twenty-three": 23,
     "twenty-four": 24, "twenty-five": 25, "twenty-six": 26, "twenty-seven": 27,
-    "twenty-eight": 28, "twenty-nine": 29, "thirty": 30, "thirty-one": 31, "thirty-two": 32,
+    "twenty-eight": 28, "twenty-nine": 29, "thirty": 30, "thirty-one": 31, "thirty-two": 32, "thirty-three": 33,
+    "thirty-four": 34, "thirty-five": 35, "thirty-six": 36,
     "thirty-seven": 37,
     "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "seventy-six": 76,
     "eighty": 80, "ninety": 90, "ninety-eight": 98, "one hundred": 100,
@@ -902,15 +903,15 @@ def check_c1_counts(report: Report, recipes: list[tuple[Path, dict]]) -> None:
          n_hook_plugins - 1, "plugins registering a PreToolUse hook, other than takt"),
 
         # Plugins shipping a report viewer (distinct plugins with
-        # plugins/*/assets/*-viewer.html) and the file count (matrize and arbeitsplan
-        # ship two each).
+        # plugins/*/assets/*-viewer.html) and the file count (matrize, arbeitsplan and
+        # cupertino ship two each).
         (REPORT_VIEWER_STANDARD, r"All ([A-Za-z-]+|\d+) plugins ship a self-contained HTML report",
          n_viewer_plugins, "plugins shipping a report viewer"),
         (REPORT_VIEWER_STANDARD, r"self-contained HTML report — ([A-Za-z-]+|\d+) files",
          n_viewer_files, "report-viewer HTML files"),
         (PLUGIN_AUTHORING_README,
-         r"the ([A-Za-z-]+|\d+) self-contained HTML reports \(one per plugin, two for `matrize` "
-         r"and `arbeitsplan`\)",
+         r"the ([A-Za-z-]+|\d+) self-contained HTML reports \(one per plugin, two for `matrize`, "
+         r"`arbeitsplan` and `cupertino`\)",
          n_viewer_files, "report-viewer HTML files"),
     ]
     apply_claims(report, claims)

@@ -41,25 +41,26 @@ import argparse
 import json
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import chart as chartlib  # noqa: E402
 import contrast  # noqa: E402
 import vocabulary as vocablib  # noqa: E402
+from report_kit import render as kit_render  # noqa: E402
 
 TEMPLATE = HERE.parent / "assets" / "derivation-viewer.html"
 DEFAULT_TOKENS = HERE.parent / "assets" / "tokens.css"
 
 TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
+KIT_MARKER = "<!--__REPORT_KIT__-->"
+DATA_MARKER = "@@DATA@@"
+#: Static markup the builder fills itself. Everything else rides in the JSON island and is
+#: composed by the page script through the report kit.
 MARKERS = {
     "verdict": "<!--__VERDICT__-->",
     "scope": "<!--__SCOPE__-->",
-    "references": "<!--__REFERENCES__-->",
-    "gradec": "<!--__GRADE_C__-->",
-    "contrast": "<!--__CONTRAST__-->",
-    "vocabulary": "<!--__VOCABULARY__-->",
 }
 
 REQUIRED = ("scope", "verdict", "references", "gradeCOnly", "contrast", "vocabulary")
@@ -134,115 +135,143 @@ def vocabulary_block(declared: dict) -> dict:
     }
 
 
-def references_table(rows: list[dict]) -> str:
-    if not rows:
-        return '<p class="empty">No references collected.</p>'
-    body = "".join(
-        "<tr>"
-        f"<td>{esc(r['name'])}</td><td>{esc(r['method'])}</td>"
-        f"<td class=\"grade grade-{esc(str(r['reliability']).lower())}\">{esc(r['reliability'])}</td>"
-        f"<td>{esc(r['rights'])}</td><td class=\"num\">{esc(r['cards'])}</td>"
-        "</tr>" for r in rows
-    )
-    return ("<table><thead><tr><th>Reference</th><th>Method</th><th>Reliability</th>"
-            f"<th>Rights</th><th>Cards</th></tr></thead><tbody>{body}</tbody></table>")
+def suggest_fg(fg: str, bg: str, target: float = contrast.AA_BODY) -> str | None:
+    """The nearest foreground on the same hue axis that clears `target`: the fg mixed toward
+    black on a light ground, toward white on a dark one, in 1% steps. A suggestion, computed
+    with the same ratio the report grades with -- never a number a human typed."""
+    bg_light = contrast.luminance(contrast.parse_hex(bg)) > 0.5
+    r, g, b = contrast.parse_hex(fg)
+    end = 0 if bg_light else 255
+    for step in range(1, 101):
+        t = step / 100
+        cand = "#{:02X}{:02X}{:02X}".format(*(round(c + (end - c) * t) for c in (r, g, b)))
+        if contrast.ratio(cand, bg) >= target:
+            return cand
+    return None
 
 
-def gradec_table(rows: list[dict]) -> str:
-    if not rows:
-        return ('<p class="empty">None — every token rests on at least one grade-A or '
-                'grade-B source.</p>')
-    body = "".join(
-        "<tr>"
-        f"<td>{esc(r['token'])}</td><td>{esc(r['reference'])}</td>"
-        f"<td>{esc(r['wouldSet'])}</td><td class=\"blocking\">blocked</td>"
-        "</tr>" for r in rows
-    )
-    return ("<table><thead><tr><th>Token</th><th>Reference</th>"
-            "<th>What it would have set</th><th>Status</th></tr></thead>"
-            f"<tbody>{body}</tbody></table>")
+def grade_c_findings(rows: list[dict]) -> list[dict]:
+    return [{
+        "id": r["token"], "severity": "blocker", "rule": "grade-C-only",
+        "claim": f"{r['token']} would be set from grade-C evidence alone",
+        "file": r["reference"], "quote": r["wouldSet"],
+        "fix": "Corroborate with a grade-A or grade-B source, or carry it to the brief as an open question for a person to settle.",
+        "evidence": [{"label": "reference", "detail": f"{r['reference']} is the only source recorded for this token"},
+                     {"label": "why blocked", "detail": "a value supported solely by a screenshot or proof is not a token"}],
+    } for r in rows]
 
 
-def contrast_block(pairs: list[dict]) -> str:
-    """The chart carries the margin; the table carries the exact values. Never both for
-    the same fact — the table prints the ratio, the chart shows the distance to the rule."""
-    if not pairs:
-        return '<p class="empty">No colour pairs to check.</p>'
-    svg = chartlib.render(
-        chartlib.contrast_chart([{"role": p["role"], "ratio": p["ratio"]} for p in pairs]),
-        width=720,
-    )
-    # R2 — no number is printed twice. The chart already prints each ratio (that printed
-    # value is what keeps colour from being its only channel), so the table carries the
-    # pair and the verdicts and NOT the ratio. A first draft had both, which is the rule
-    # broken in the very report that grades other people's rules.
-    body = "".join(
-        "<tr>"
-        f"<td>{esc(p['role'])}</td><td>{esc(p['fg'])} on {esc(p['bg'])}</td>"
-        f"<td class=\"mode mode-{esc(p['mode'])}\">{esc(p['mode'])}</td>"
-        f"<td{'' if p['passesAA'] else ' class=\"blocking\"'}>"
-        f"{'passes' if p['passesAA'] else 'FAILS'}</td>"
-        f"<td{'' if p['passesAALarge'] else ' class=\"blocking\"'}>"
-        f"{'passes' if p['passesAALarge'] else 'FAILS'}</td>"
-        "</tr>" for p in pairs
-    )
-    # The mode column is mandatory, per color-system.md. Without it this very table mixes
-    # a white-background pair with three dark-background ones and reads as one population.
-    table = ("<table><thead><tr><th>Role</th><th>Pair</th><th>Mode</th>"
-             "<th>Body text (AA 4.5)</th><th>Large text (AA 3.0)</th></tr></thead>"
-             f"<tbody>{body}</tbody></table>")
-    return f"<figure>{svg}</figure>{table}"
+def concept_rows(block: dict) -> list[dict]:
+    rows = [{"concept": d, "standing": "vocabulary", "note": "\u2014"} for d in block["named"]]
+    rows += [{"concept": e["term"], "standing": "declared extension",
+              "note": f"{e.get('why', '')} ({e.get('card', 'no card')})"} for e in block["extensions"]]
+    rows += [{"concept": t, "standing": "unknown",
+              "note": "neither a vocabulary term nor a declared extension"} for t in block["unknown"]]
+    return rows
 
 
-def vocabulary_table(block: dict) -> str:
-    rows = []
-    for display in block["named"]:
-        rows.append(f"<tr><td>{esc(display)}</td><td>vocabulary</td><td>—</td></tr>")
-    for entry in block["extensions"]:
-        rows.append(
-            f"<tr><td>{esc(entry['term'])}</td>"
-            f"<td class=\"extension\">declared extension</td>"
-            f"<td>{esc(entry.get('why', ''))} "
-            f"({esc(entry.get('card', 'no card'))})</td></tr>")
-    for text in block["unknown"]:
-        rows.append(f"<tr><td>{esc(text)}</td><td class=\"blocking\">unknown</td>"
-                    f"<td>neither a vocabulary term nor a declared extension</td></tr>")
-    if not rows:
-        return '<p class="empty">This system names no concepts at all.</p>'
-    table = ("<table><thead><tr><th>Concept</th><th>Standing</th><th>Note</th></tr></thead>"
-             f"<tbody>{''.join(rows)}</tbody></table>")
-    if block["missingMandatory"]:
-        items = "".join(f"<li>{esc(name)}</li>" for name in block["missingMandatory"])
-        table += ('<p class="note blocking">Mandatory asset classes with no coverage:</p>'
-                  f'<ul class="gaps">{items}</ul>')
-    else:
-        table += ('<p class="note">Every mandatory asset class is covered.</p>')
-    return table
+def concept_findings(block: dict) -> list[dict]:
+    out = [{
+        "id": f"unknown-{i}", "severity": "blocker", "rule": "unknown-concept", "claim": text,
+        "fix": "Name a vocabulary term, or declare it as an extension with its reason and the card that decided it.",
+        "evidence": [{"label": "registry", "detail": "looked up in references/vocabulary/ and not found"}],
+    } for i, text in enumerate(block["unknown"], 1)]
+    out += [{
+        "id": f"uncovered-{i}", "severity": "major", "rule": "mandatory-class-uncovered",
+        "claim": f"Mandatory asset class with no coverage: {name}",
+        "fix": f"Declare {name} in assetClasses once the system covers it, or record why it does not.",
+        "evidence": [{"label": "registry", "detail": "the vocabulary marks this class mandatory; the input does not list it"}],
+    } for i, name in enumerate(block["missingMandatory"], 1)]
+    return out
+
+
+def contrast_findings(pairs: list[dict]) -> list[dict]:
+    out = []
+    for p in pairs:
+        if p["passesAA"]:
+            continue
+        large = p["passesAALarge"]
+        fix_hex = suggest_fg(p["fg"], p["bg"])
+        short = round(contrast.AA_BODY - p["ratio"], 2)
+        out.append({
+            "id": f"{p['role']}-{p['mode']}", "severity": "major" if large else "blocker",
+            "rule": "AA-body" if large else "AA-body+large",
+            "claim": f"{p['role']} ({p['mode']}) " + ("clears AA only at large sizes" if large else "fails AA at every size"),
+            "file": p["role"], "quote": f"{p['fg']} on {p['bg']}",
+            "fix": (f"Darken the foreground to about {fix_hex} (computed to clear 4.5)." if fix_hex
+                    and contrast.luminance(contrast.parse_hex(p["bg"])) > 0.5 else
+                    f"Lighten the foreground to about {fix_hex} (computed to clear 4.5)." if fix_hex
+                    else "No foreground on this hue axis clears 4.5 against this ground; change the ground."),
+            "evidence": [{"label": "short of AA body", "detail": f"{short} below the 4.5 threshold; the chart shows the pair's exact ratio"},
+                         {"label": "large text", "detail": "passes at AA 3.0" if large else "also fails AA 3.0"}],
+        })
+    return out
+
+
+def contrast_entry(p: dict) -> dict:
+    """One pair for the page script: the figure draws from it, the drawer prints it. The ratio
+    and the suggested foreground are COMPUTED here (contrast.py), never typed by a person, and
+    the page prints each ratio only in the figure and the drawer -- the table below carries
+    the pair and the verdicts without it (R2)."""
+    suggest = None if p["passesAA"] else suggest_fg(p["fg"], p["bg"])
+    light = contrast.luminance(contrast.parse_hex(p["bg"])) > 0.5
+    return {
+        "role": p["role"], "pair": f"{p['fg']} on {p['bg']}", "mode": p["mode"],
+        "fg": p["fg"], "bg": p["bg"], "ratio": p["ratio"],
+        "aa": p["passesAA"], "aaLarge": p["passesAALarge"],
+        "suggest": suggest,
+        "suggestRatio": round(contrast.ratio(suggest, p["bg"]), 2) if suggest else None,
+        "direction": "darken" if light else "lighten",
+    }
+
+
+def kit_report(payload: dict) -> dict:
+    """The JSON island: everything the page script composes through the report kit."""
+    pairs = payload["contrast"]
+    vocab = payload["vocabulary"]
+    blocked = payload["gradeCOnly"]
+    fails = [p for p in pairs if not p["passesAA"]]
+    return {
+        "stats": [
+            {"label": "References", "value": str(len(payload["references"])), "note": "decoded and graded"},
+            {"label": "Blocked tokens", "value": str(len(blocked)), "bad": bool(blocked),
+             "note": "rest on grade-C evidence alone"},
+            {"label": "Contrast pairs failing AA", "value": f"{len(fails)} / {len(pairs)}", "bad": bool(fails),
+             "note": "body text, computed"},
+            {"label": "Mandatory classes uncovered", "value": str(len(vocab["missingMandatory"])),
+             "bad": bool(vocab["missingMandatory"]), "note": "asset classes with no coverage"},
+        ],
+        "references": payload["references"],
+        "gradeCFindings": grade_c_findings(blocked),
+        "concepts": concept_rows(vocab),
+        "conceptFindings": concept_findings(vocab),
+        "thresholds": {"body": contrast.AA_BODY, "large": contrast.AA_LARGE, "aaa": contrast.AAA_BODY},
+        "contrast": [contrast_entry(p) for p in pairs],
+        "contrastFindings": contrast_findings(pairs),
+    }
 
 
 def render(payload: dict, tokens_path: Path) -> str:
     template = TEMPLATE.read_text(encoding="utf-8")
-    for marker in (TOKENS_MARKER, *MARKERS.values()):
+    for marker in (TOKENS_MARKER, KIT_MARKER, DATA_MARKER, *MARKERS.values()):
         if marker not in template:
             raise ValueError(f"template has no {marker}")
 
-    # House convention: the marker is REPLACED by a whole <style> block, rather than
-    # sitting inside one. Matching it means a builder and a template from two different
-    # plugins stay interchangeable.
-    # The Ledger's whole claim is that it has no injection surface because it has no
-    # script. That holds only if the injected CSS cannot close its own element: a token
-    # value is a string the validator does not constrain (fontFamily is "any string"), and
-    # HTML closes a raw-text element case-INSENSITIVELY, so `</StYlE>` would end the block
-    # and everything after it becomes markup.
+    # The injected CSS must not be able to close its own element: a token value is a string
+    # the validator does not constrain (fontFamily is "any string"), and HTML closes a
+    # raw-text element case-INSENSITIVELY, so `</StYlE>` would end the block and everything
+    # after it would become markup -- in a page that now carries a script. The kit's render()
+    # inlines the tokens file as-is, so the sanitised copy is what it is handed.
     css = CLOSING_STYLE.sub(r"<\\/\1", tokens_path.read_text(encoding="utf-8"))
-    out = template.replace(TOKENS_MARKER, "<style>\n" + css + "\n</style>", 1)
-    out = out.replace(MARKERS["verdict"], esc(payload["verdict"]), 1)
-    out = out.replace(MARKERS["scope"], esc(payload["scope"]), 1)
-    out = out.replace(MARKERS["references"], references_table(payload["references"]), 1)
-    out = out.replace(MARKERS["gradec"], gradec_table(payload["gradeCOnly"]), 1)
-    out = out.replace(MARKERS["contrast"], contrast_block(payload["contrast"]), 1)
-    out = out.replace(MARKERS["vocabulary"], vocabulary_table(payload["vocabulary"]), 1)
-    return out
+    with tempfile.TemporaryDirectory() as td:
+        safe_tokens = Path(td) / "tokens.css"
+        safe_tokens.write_text(css, encoding="utf-8")
+        page = kit_render(template, TEMPLATE.parent, kit_report(payload), tokens=safe_tokens)
+    # The static markers are filled AFTER the kit has inlined the data island: text that
+    # arrives from the input (the verdict, the scope) must never sit in the template while
+    # the kit is still searching it for its own markers.
+    return (page.replace(MARKERS["scope"], esc(payload["scope"]), 1)
+            .replace(MARKERS["verdict"], esc(payload["verdict"]), 1))
 
 
 def selftest() -> int:
@@ -291,16 +320,39 @@ def selftest() -> int:
     checks.append(("refuses incomplete input", True))
 
     page = render(build_payload(sample), DEFAULT_TOKENS)
-    checks.append(("no script element at all — nothing to inject into",
-                   "<script" not in page))
+    # The Ledger used to have no script at all. It now renders through the report kit, so the
+    # claim that survives is narrower and still checkable: the report's data rides in ONE JSON
+    # island that holds no raw angle bracket, and no script reaches for the network or innerHTML.
+    island = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', page, re.S)
+    scripts = re.findall(r"<script\b[^>]*>(.*?)</script>", page, re.S)
+    checks.append(("the data rides in one JSON island with no raw < > &",
+                   island is not None and not re.search(r"[<>&]", island.group(1))))
+    checks.append(("no script assigns HTML strings or reaches the network",
+                   not any(re.search(r"innerHTML|outerHTML|insertAdjacentHTML|fetch\(|XMLHttpRequest", sc)
+                           for sc in scripts)))
     checks.append(("print rules are present", "@page" in page and "@media print" in page))
     checks.append(("tokens marker replaced by a whole <style> block",
                    TOKENS_MARKER not in page and page.count("<style>") >= 2))
     checks.append(("every content marker filled",
-                   not any(m in page for m in MARKERS.values())))
-    checks.append(("the chart primitive is embedded, server-rendered",
-                   'class="chart"' in page and "<svg" in page))
-    checks.append(("the verdict is static markup", 'class="verdict"' in page))
+                   not any(m in page for m in (*MARKERS.values(), DATA_MARKER))))
+    checks.append(("the report kit marker replaced by its css and js",
+                   "const RK = (() =>" in page and KIT_MARKER not in page))
+    # The chart used to be server-rendered SVG. It is now the figure that fills the stage, so
+    # the page script draws it from the island's computed ratios; what must still hold is that
+    # the page ships the drawing code and the data it draws from, and no ratio is typed in.
+    checks.append(("the contrast figure is drawn by the page script from computed island data",
+                   'class: "chart"' in page and 'role: "button"' in page and "S.open(" in page
+                   and '"ratio": 3.84' in island.group(1) and "CONTRAST_CHART" not in page))
+    checks.append(("the figure-first stage skeleton is in the page (R9)",
+                   'id="rk-stage"' in page and "data-rk-figure" in page and 'id="rk-drawer"' in page
+                   and 'class="legend rk-legend-float' in page and 'class="rk-hud-stats"' in page))
+    entry = build_payload(sample)["contrast"][0]
+    nearest = contrast_entry(entry)
+    checks.append(("a failing pair carries a computed nearest passing foreground that clears 4.5",
+                   nearest["suggest"] is not None and contrast.ratio(nearest["suggest"], "#FFFFFF") >= contrast.AA_BODY
+                   and nearest["direction"] == "darken"))
+    checks.append(("the verdict is static markup",
+                   re.search(r'<p class="verdict[ "][^>]*>v</p>', page) is not None))
 
     nasty = json.loads(json.dumps(sample))
     nasty["verdict"] = "</style><img src=x onerror=alert(1)>"
@@ -311,6 +363,13 @@ def selftest() -> int:
     checks.append(("markup in content cannot form a tag",
                    "&lt;/style&gt;" in page2 and "<img" not in page2
                    and "&lt;img src=x onerror=alert(1)&gt;" in page2))
+    # The same payload inside the data island: escaped on the way in (barrier one).
+    hostile = json.loads(json.dumps(sample))
+    hostile["gradeCOnly"] = [{"token": "</script><img src=x onerror=alert(1)>", "reference": "r",
+                              "wouldSet": "x"}]
+    page_h = render(build_payload(hostile), DEFAULT_TOKENS)
+    checks.append(("markup in a finding cannot form a tag inside the data island",
+                   "<img" not in page_h and "\\u003cimg" in page_h))
 
     # R2, asserted rather than trusted: each ratio appears exactly once in the document.
     multi = {**sample, "contrast": [
@@ -339,8 +398,11 @@ def selftest() -> int:
     made_up["vocabulary"]["terms"] = [{"term": "Vibe", "dimension": "color-system"}]
     checks.append(("a concept the vocabulary does not name is reported, not accepted",
                    build_payload(made_up)["vocabulary"]["unknown"] != []))
+    # The table is composed by the page script now, so the word has two halves: the mode
+    # travels in the island as a word, and the script prints it in its own column.
     checks.append(("the mode is rendered as a word, not only as a colour",
-                   ">light<" in page and 'class="mode' in page))
+                   '"mode": "light"' in island.group(1) and 'label: "Mode"' in page
+                   and 'class: "mode"' in page))
 
     # The Ledger's class claim is "no script, therefore no injection surface". That holds
     # only if the injected token CSS cannot close its own <style> -- and HTML closes a

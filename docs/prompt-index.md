@@ -1,6 +1,6 @@
 # Prompt index by plugin
 
-Every example prompt shipped by the 13 plugin READMEs, 105 in
+Every example prompt shipped by the 13 plugin READMEs, 106 in
 total, collected on one page. This is the plugin-indexed view; for the task-indexed
 view — which skill fires at which moment of a piece of work — see the
 [prompt catalog](/catalog/).
@@ -315,7 +315,7 @@ cannot drift from them. Edit the prompts in their own README, never here.
 
 ## cupertino
 
-[`plugins/cupertino/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/README.md) — 15 prompts.
+[`plugins/cupertino/README.md`](https://github.com/Anselmoo/werkstoff/blob/main/plugins/cupertino/README.md) — 16 prompts.
 
 ### Run the full review
 
@@ -324,6 +324,15 @@ cannot drift from them. Edit the prompts in their own README, never here.
 ````
 
 > Triggers `cupertino-review` — runs all eight lifecycle stages end-to-end, backwards-compatibility check through reveal.
+
+### Fix an existing dashboard without breaking it
+
+````prompt
+"the KPI tiles overflow sideways on my phone — fix the dashboard, but don't change how it
+looks on desktop or in dark mode"
+````
+
+> Triggers `cupertino-repair` — states the objective and what must be preserved, takes a baseline, gets an approved changeset, applies one item at a time under a hook that scopes each edit, and ends with a verdict. See [The repair route](#the-repair-route).
 
 ### Convene the council
 

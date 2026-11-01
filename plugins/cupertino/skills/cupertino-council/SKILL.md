@@ -1,6 +1,6 @@
 ---
 name: cupertino-council
-description: "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for reviewing an interface that already exists: for accessibility, semantic-markup or hardcoded-design-value problems in shipped source use befund-ui-audit, and for a full-lifecycle design pass over an existing project use cupertino-review."
+description: "Use at UI/frontend build-time, before writing any code, whenever a user-facing interface or screen is being designed. Trigger on 'design this screen', 'build this UI', 'make this feel premium', 'this feels generic', or any request to design or implement a user-facing surface. Applies to any stack (HTML, React, Vue, native, etc.). Always run before code, never after — retrofitting the council onto finished code defeats the purpose. Not for a not-yet-scoped new feature where customer experience and technology are both still undecided — run cupertino-backwards first to establish the experience statement. Not for changing an interface that already exists -- fixing, adjusting or extending a shipped page or dashboard is cupertino-repair, which keeps everything else as it is; for a static accessibility or hardcoded-value audit of shipped source use befund-ui-audit."
 ---
 
 Convene exactly five lenses before writing a line of UI code. This is not decoration on top of your own design instinct — it is the design process.
@@ -29,7 +29,11 @@ This skill is gated: a PreToolUse hook blocks it until `cupertino-backwards` has
    ```
    If it exits non-zero, the resolved order violated the fixed precedence — return to step 3 and re-resolve the offending tension using the fixed precedence order, then re-run this check. Do not proceed to step 5 until it passes.
 5. **Design Identity**: one sentence naming what each lens contributed, and one sentence naming the resulting design identity as a whole.
-6. **Only now, write the code** — production-grade, matched to the actual stack in use. Code without a preceding Council Brief and Tension Log is not this technique; if you find yourself about to write UI code with neither, stop and go back to step 1.
+6. **Record that the council ran** — the marker takt and other plugins can order against:
+   ```bash
+   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set council-done
+   ```
+7. **Only now, write the code** — production-grade, matched to the actual stack in use. Code without a preceding Council Brief and Tension Log is not this technique; if you find yourself about to write UI code with neither, stop and go back to step 1.
 
 ## Example
 

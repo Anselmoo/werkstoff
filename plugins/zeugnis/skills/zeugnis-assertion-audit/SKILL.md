@@ -66,6 +66,10 @@ cycle skill points you at) with the SAME `invocation_id` the cycle
 provided. Building it twice inside one cycle invocation violates the
 single-flight rule the rest of the plugin relies on.
 
+For the snapshot contract itself (how to resolve `analysis/zeugnis/current.json`, the
+single-flight lock, and when a repo is too small to be worth indexing), read
+`references/parallel-safe-research-protocol.md`.
+
 ## What NOT to do
 
 - Do not present findings without having run step 4 — a Find-only result

@@ -10,7 +10,8 @@
       "producedBy": "widget",
       "scope": "file",
       "satisfied": false,
-      "reason": "deploy-docs publishes numbers the coverage run produces; publishing before it has run ships last week's figures as this week's."
+      "reason": "deploy-docs publishes numbers the coverage run produces; publishing before it has run ships last week's figures as this week's.",
+      "id": "deploy-docs-after-COVERAGE"
     },
     {
       "gates": "widget-release",
@@ -18,7 +19,8 @@
       "producedBy": "widget",
       "scope": "file",
       "satisfied": true,
-      "reason": "the release notes are assembled from the audit summary; releasing without it produces notes with nothing behind them."
+      "reason": "the release notes are assembled from the audit summary; releasing without it produces notes with nothing behind them.",
+      "id": "widget-release-after-audit_summary"
     }
   ],
   "refused": [
@@ -36,19 +38,51 @@
     }
   ],
   "produces": [
-    { "marker": "audit_summary", "plugin": "widget", "after": "widget-audit",
-      "evidenceKind": "artifact", "evidencePath": "analysis/widget/audit_summary.json",
-      "meaning": "the audit ran and its findings are on record", "why": "" },
-    { "marker": "council-done", "plugin": "cupertino", "after": "cupertino-council",
-      "evidenceKind": "none", "evidencePath": "",
+    {
+      "marker": "audit_summary",
+      "plugin": "widget",
+      "after": "widget-audit",
+      "evidenceKind": "artifact",
+      "evidencePath": "analysis/widget/audit_summary.json",
+      "meaning": "the audit ran and its findings are on record",
+      "why": ""
+    },
+    {
+      "marker": "council-done",
+      "plugin": "cupertino",
+      "after": "cupertino-council",
+      "evidenceKind": "none",
+      "evidencePath": "",
       "meaning": "the design council ran before any UI code was written",
-      "why": "the council produces a brief, a tension log and code, all in conversation; nothing durable is written" },
-    { "marker": "plugin-reviewed", "plugin": "nacharbeit", "after": "nacharbeit-review",
-      "evidenceKind": "artifact", "evidencePath": "analysis/nacharbeit/run.json",
-      "meaning": "a calibrated review pass has findings on record", "why": "" },
-    { "marker": "wire-proven", "plugin": "andon", "after": "andon-verify",
-      "evidenceKind": "none", "evidencePath": "",
+      "why": "the council produces a brief, a tension log and code, all in conversation; nothing durable is written"
+    },
+    {
+      "marker": "plugin-reviewed",
+      "plugin": "nacharbeit",
+      "after": "nacharbeit-review",
+      "evidenceKind": "artifact",
+      "evidencePath": "analysis/nacharbeit/run.json",
+      "meaning": "a calibrated review pass has findings on record",
+      "why": ""
+    },
+    {
+      "marker": "wire-proven",
+      "plugin": "andon",
+      "after": "andon-verify",
+      "evidenceKind": "none",
+      "evidencePath": "",
       "meaning": "one named wire has been proven against evidence",
-      "why": "andon-verify is forbidden to write; andon-loop persists the result, so nothing marks that one wire was proven" }
+      "why": "andon-verify is forbidden to write; andon-loop persists the result, so nothing marks that one wire was proven"
+    }
+  ],
+  "dropped": [
+    {
+      "requirer": "widget",
+      "marker": "wire-proven",
+      "producer": "andon"
+    }
+  ],
+  "malformed": [
+    "widget requires 'schema-frozen', which no installed plugin produces"
   ]
 }

@@ -1,80 +1,120 @@
 #!/usr/bin/env python3
-"""Renders passung's matrix.json (from /passung-map) as a
-self-contained, offline-capable HTML consistency matrix -- a D3/SVG-rendered
-grid of module x dimension cells. This plugin had no build script for this
-viewer at all before this file: matrix-viewer.html existed as a static asset
-with an injection marker, and passung-map.md's Render step hand-built the
-HTML inline via a Python heredoc instead of calling a script, unlike every
-other report-viewer plugin. This script replaces that heredoc, following the
-same marker-replacement shape as plugins/zeugnis/scripts/build_burndown_html.py
-and plugins/cli-scaffold/scripts/build_architecture_tree.py -- three markers
-here instead of one or two, since this is the first viewer to consume the
-shared tools/design-tokens/tokens.css as well as the D3 bundle.
+"""Render passung's matrix.json (from /passung-map) as a self-contained,
+offline-capable HTML consistency matrix: a D3/SVG grid of module x dimension
+cells, with a side panel per cell, a searchable list of divergent cells that
+carry their evidence (location, counts, inferred canon, suggested fix) and an
+every-pair table.
+
+The page shell, theme, search and finding components come from the shared
+report kit (scripts/report_kit.py + assets/report-kit.{css,js}); this script
+only adds the D3 bundle and hands the matrix to the kit's renderer, which
+escapes it into the page's JSON data island.
 
 Usage:
     build_matrix_html.py <repo_root> <area> --template <path> --d3 <path> --tokens <path> [--out <path>]
+    build_matrix_html.py --selftest
+
+Exit: 0 written (or selftest passed), 1 selftest failed, 2 an input or marker is missing.
 """
+
+from __future__ import annotations
+
 import argparse
 import json
-import os
 import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from report_kit import KitError, render  # noqa: E402
+
+D3_MARKER = "<!--__D3_SUBSET__-->"
 
 
-def load_matrix(repo_root, area):
-    matrix_path = os.path.join(repo_root, "analysis", area, "matrix.json")
-    with open(matrix_path, encoding="utf-8") as fh:
-        return json.load(fh)
+def load_matrix(repo_root: Path, area: str) -> dict:
+    matrix_path = repo_root / "analysis" / area / "matrix.json"
+    return json.loads(matrix_path.read_text(encoding="utf-8"))
 
 
-def render_html(template_path, d3_path, tokens_path, matrix):
-    tpl = open(template_path, encoding="utf-8").read()
-
-    d3_marker = "<!--__D3_SUBSET__-->"
-    if d3_marker not in tpl:
+def render_html(template_path: Path, d3_path: Path, tokens_path: Path, matrix: dict) -> str:
+    tpl = template_path.read_text(encoding="utf-8")
+    if D3_MARKER not in tpl:
         raise ValueError(f"D3 injection marker not found in {template_path}")
-    d3_snippet = open(d3_path, encoding="utf-8").read()
-    tpl = tpl.replace(d3_marker, d3_snippet)
-
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tokens_css = open(tokens_path, encoding="utf-8").read()
-    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
-
-    data_marker = "/*__MATRIX_DATA__*/ null"
-    if data_marker not in tpl:
-        raise ValueError(f"data injection marker not found in {template_path}")
-    data = json.dumps(matrix)
-    # matrix.json's module/dimension names are derived from source file and
-    # directory names, which are effectively untrusted (a module could be
-    # named to break out of the <script> block the data is injected into) --
-    # escape JSON-unsafe HTML-breakout characters, same discipline the old
-    # hand-authored heredoc in passung-map.md used.
-    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    tpl = tpl.replace(data_marker, "/*__MATRIX_DATA__*/ " + data)
-
-    return tpl
+    tpl = tpl.replace(D3_MARKER, d3_path.read_text(encoding="utf-8"))
+    # matrix.json's module/dimension names derive from file and directory names,
+    # which are untrusted: the kit's render() escapes < > & in the data island
+    # (S3's first barrier); the page then only ever sets textContent.
+    return render(tpl, template_path.parent, matrix, tokens=tokens_path)
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("repo_root")
-    parser.add_argument("area")
-    parser.add_argument("--template", required=True)
-    parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
-    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css snippet")
-    parser.add_argument("--out", help="defaults to analysis/<area>/CONSISTENCY_MATRIX.html")
+def selftest() -> int:
+    here = Path(__file__).resolve().parent
+    assets = here.parent / "assets"
+    sample = json.loads((here / "testdata" / "sample_matrix.json").read_text(encoding="utf-8"))
+    hostile = json.loads(json.dumps(sample))
+    hostile["modules"][0] = "</script><b>x</b>"
+    fails: list[str] = []
+
+    def ok(name: str, cond: bool) -> None:
+        print(f"  {'ok  ' if cond else 'FAIL'} {name}")
+        if not cond:
+            fails.append(name)
+
+    html = render_html(assets / "matrix-viewer.html", assets / "inline-d3.html", assets / "tokens.css", sample)
+    ok("data island present", 'id="report-data"' in html and "@@DATA@@" not in html)
+    ok("kit and tokens inlined", "const RK" in html and "--rk-bg" in html and "<!--__REPORT_KIT__-->" not in html)
+    ok("d3 inlined", D3_MARKER not in html and "window.d3" in html)
+    ok("sample cells reach the island", "return Result" in html and "src/shipping/label.py:22" in html)
+    ok("static verdict element kept", 'class="verdict"' in html)
+    ok("figure-first stage skeleton", 'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html)
+    bad = render_html(assets / "matrix-viewer.html", assets / "inline-d3.html", assets / "tokens.css", hostile)
+    ok("hostile module name cannot close the island", "\\u003c/script\\u003e" in bad)
+    with tempfile.TemporaryDirectory() as td:
+        broken = Path(td) / "t.html"
+        broken.write_text("<html></html>", encoding="utf-8")
+        try:
+            render_html(broken, assets / "inline-d3.html", assets / "tokens.css", sample)
+            ok("template without the d3 marker is an error", False)
+        except ValueError:
+            ok("template without the d3 marker is an error", True)
+    print()
+    if fails:
+        print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
+        return 1
+    print("selftest passed")
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Render analysis/<area>/matrix.json as an HTML consistency matrix.")
+    parser.add_argument("repo_root", nargs="?")
+    parser.add_argument("area", nargs="?")
+    parser.add_argument("--template", type=Path)
+    parser.add_argument("--d3", type=Path, help="path to the vendored inline-d3.html snippet")
+    parser.add_argument("--tokens", type=Path, help="path to the vendored tokens.css snippet")
+    parser.add_argument("--out", type=Path, help="defaults to analysis/<area>/CONSISTENCY_MATRIX.html")
+    parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args(argv)
+    if args.selftest:
+        return selftest()
+    if not (args.repo_root and args.area and args.template and args.d3 and args.tokens):
+        parser.error("repo_root, area, --template, --d3 and --tokens are required (or --selftest)")
 
-    matrix = load_matrix(args.repo_root, args.area)
+    repo_root = Path(args.repo_root)
+    try:
+        matrix = load_matrix(repo_root, args.area)
+        html = render_html(args.template, args.d3, args.tokens, matrix)
+    except (OSError, ValueError, KitError) as err:
+        print(f"build_matrix_html: {err}", file=sys.stderr)
+        return 2
 
-    out_path = args.out or os.path.join(args.repo_root, "analysis", args.area, "CONSISTENCY_MATRIX.html")
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, args.d3, args.tokens, matrix))
+    out_path = args.out or repo_root / "analysis" / args.area / "CONSISTENCY_MATRIX.html"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(html, encoding="utf-8")
 
     print(json.dumps({
-        "matrixPath": out_path,
+        "matrixPath": str(out_path),
         "modules": len(matrix.get("modules", [])),
         "dimensions": len(matrix.get("dimensions", [])),
         "cells": len(matrix.get("cells", [])),

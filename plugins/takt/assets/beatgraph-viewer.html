@@ -4,206 +4,363 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>takt — beat graph</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font-family: var(--font-sans); font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: var(--space-4); }
-  header { margin-bottom: var(--space-4); }
-  h1 { font-size: 1.4rem; margin: 0 0 var(--space-1); letter-spacing: -0.01em; }
-  h2 { font-size: 0.95rem; margin: var(--space-4) 0 var(--space-2); color: var(--smoke); font-weight: 600; }
-  .sub { color: var(--muted); font-size: 0.85rem; margin: 0; }
-  .verdict {
-    font-size: 0.95rem; margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius-panel);
-  }
-  .verdict strong { color: var(--text); }
-  .legend {
-    margin: var(--space-3) 0; padding: var(--space-2) var(--space-3);
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius-panel); font-size: 0.82rem; color: var(--muted);
-  }
-  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-2); margin: 0; }
-  .legend dt { font-weight: 600; color: var(--text); white-space: nowrap; }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); margin: 0; font-size: 0.85rem; }
+  .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
   .legend dd { margin: 0; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-  th, td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--smoke); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
-  td.mono, th.mono { font-family: var(--font-mono); }
-  /* State is carried by the WORD and the glyph, never by colour alone: colour
-     is a third channel on top of two that already work without it. */
-  .state { white-space: nowrap; font-weight: 600; }
-  .state .glyph { display: inline-block; width: 1.1em; }
-  .state-satisfied { color: var(--silica); }
-  .state-blocked { color: var(--samaria-light); }
-  .scope { font-size: 0.76rem; color: var(--muted); white-space: nowrap; }
-  .empty {
-    margin: var(--space-4) 0; padding: var(--space-3);
-    background: var(--panel); border: 1px solid var(--samaria-light);
-    border-radius: var(--radius-panel);
-  }
-  .produces li { margin-bottom: var(--space-1); }
-  .produces code { font-family: var(--font-mono); }
-  footer { margin-top: var(--space-4); color: var(--muted); font-size: 0.78rem; }
+  .rk-legend-float { max-height: 42vh; overflow: auto; }
+  .lg-row { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin: 0; padding: 0; list-style: none; font-size: 0.76rem; }
+  .lg-row li { white-space: nowrap; color: var(--rk-text); }
+  .bg-node { cursor: pointer; }
+  .bg-node:focus { outline: none; }
+  .bg-node:focus-visible rect.bg-box, .bg-node.sel rect.bg-box { stroke: var(--rk-focus); stroke-width: 3; }
+  .bg-node.dim { opacity: 0.22; }
+  .bg-node text { font-family: inherit; fill: var(--rk-text); pointer-events: none; }
+  .bg-node text.sub { fill: var(--rk-muted); }
+  .bg-colhead { fill: var(--rk-muted); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .bg-edge { fill: none; stroke-width: 2; }
+  .bg-edge.dim { opacity: 0.15; }
 </style>
 </head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>takt — beat graph</h1>
-    <p class="sub">Every cross-plugin ordering rule this repository declares, and whether its marker exists yet.</p>
-    <p class="verdict" id="verdict">Loading the compiled declaration…</p>
-  </header>
-
-  <div class="legend">
-    <dl>
-      <dt>✓ satisfied</dt><dd>the required marker exists, so takt allows the gated call.</dd>
-      <dt>✗ blocked</dt><dd>the marker is absent; takt denies the gated call until the producing step runs.</dd>
-      <dt>repo-level</dt><dd>a durable fact (<code>.takt/&lt;name&gt;</code>). Survives every run.</dd>
-      <dt>per-run</dt><dd>namespaced under <code>.takt/&lt;runId&gt;/</code>, so an earlier run cannot satisfy this one.</dd>
-      <dt>refused</dt><dd>declared, but <strong>not compiled into a beat</strong> — already enforced in code, or its producer leaves no evidence. A refusal is a result, not an omission.</dd>
-      <dt>evidence</dt><dd><code>artifact</code> = a real produced file; <code>none</code> = the step leaves nothing durable, so nothing can depend on it.</dd>
-    </dl>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>takt — beat graph</h1>
+  <p class="rk-sub" id="sub">Every cross-plugin ordering rule this repository declares, and whether its marker exists yet.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search beats and markers">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
-
-  <div id="empty" class="empty" hidden>
-    <strong>No beats compiled.</strong>
-    <p>This report was rendered from an empty declaration, which means either no plugin declares a
-      <code>requires</code> entry, or the compile step did not run. Regenerate with
-      <code>python3 plugins/arbeitsplan/scripts/emit_beats.py --repo-only --write</code>,
-      then rebuild this page. An empty graph is not the same as an unblocked one.</p>
+</header>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The beat graph: required markers on the left, the beats that check them in the middle, the calls they gate on the right">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Loading the compiled declaration…</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float">
+      <ul class="lg-row">
+        <li title="marker exists; takt allows the call.">✓ satisfied</li>
+        <li title="marker absent; takt denies the call.">✗ blocked</li>
+        <li title="declared, not compiled (dashed).">– refused</li>
+        <li title="optional, producer not installed (dashed).">! dropped</li>
+        <li title="evidence “none”: nothing durable to depend on.">red marker = no evidence</li>
+      </ul>
+    </div>
+    <span class="rk-hint">click a beat, marker or gated call for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
-
-  <h2 id="beats-heading">Declared beats</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>state</th><th class="mono">gated call</th><th class="mono">requires marker</th>
-        <th>produced by</th><th>scope</th><th>why</th>
-      </tr>
-    </thead>
-    <tbody id="beats"></tbody>
-  </table>
-
-  <h2 id="refused-heading">Declared, and deliberately NOT compiled</h2>
-  <table>
-    <thead><tr><th>requirer</th><th class="mono">marker</th><th>refused because</th><th>why it matters</th></tr></thead>
-    <tbody id="refused"></tbody>
-  </table>
-
-  <h2>Markers each plugin produces</h2>
-  <ul class="produces" id="produces"></ul>
-
-  <footer id="footer"></footer>
-</div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-/*__BEATGRAPH_DATA__*/
-const DATA = (typeof BEATGRAPH !== "undefined") ? BEATGRAPH : null;
-
-function el(id) { return document.getElementById(id); }
-
-function cell(row, text, cls) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  if (cls) td.className = cls;
-  row.appendChild(td);
-  return td;
-}
-
-function render() {
-  // Visible failure. A page that silently renders nothing is indistinguishable
-  // from a repository with no ordering rules, which is the wrong conclusion to
-  // let a reader reach in silence.
-  if (!DATA || !Array.isArray(DATA.beats)) {
-    el("verdict").textContent =
-      "This report could not be read. Rebuild it with plugins/takt/scripts/build_beatgraph_html.py.";
-    el("empty").hidden = false;
+(() => {
+  const D = RK.readData("python3 plugins/takt/scripts/build_beatgraph_html.py --repo . --out /tmp/beatgraph.html");
+  const verdict = RK.$("#verdict");
+  // Visible failure: a page that silently renders nothing is indistinguishable
+  // from a repository with no ordering rules, the wrong conclusion to reach in silence.
+  if (!D || !Array.isArray(D.beats)) {
+    verdict.textContent = "This report could not be read. Re-run plugins/takt/scripts/build_beatgraph_html.py to regenerate it.";
     return;
   }
-
-  const beats = DATA.beats;
+  const beats = D.beats;
+  const refused = D.refused || [];
+  const dropped = D.dropped || [];
+  const malformed = D.malformed || [];
   const blocked = beats.filter((b) => !b.satisfied);
 
+  let tone = "ok";
   if (beats.length === 0) {
-    const ref = (DATA.refused || []).length;
-    if (ref > 0) {
-      el("verdict").textContent =
-        "No beats compiled, and that is a RESULT rather than an omission: " + ref +
+    if (refused.length > 0) {
+      verdict.textContent = "No beats compiled, and that is a RESULT rather than an omission: " + refused.length +
         " declared requirement(s) were refused — already enforced in code, or their producer " +
         "leaves no evidence to gate on. takt is correctly inert here.";
+      tone = "info";
     } else {
-      el("verdict").textContent =
-        "No cross-plugin ordering rules are declared in this repository, so takt gates nothing.";
-      el("empty").hidden = false;
+      verdict.textContent = "No cross-plugin ordering rules are declared in this repository, so takt gates nothing. " +
+        "An empty graph is not the same as an unblocked one: if you expected beats, run " +
+        "emit_beats.py --repo-only --write and rebuild this page.";
+      tone = "warn";
     }
   } else if (blocked.length === 0) {
-    el("verdict").textContent =
-      "Every declared beat is satisfied: all " + beats.length +
+    verdict.textContent = "Every declared beat is satisfied: all " + beats.length +
       " required markers exist, so takt is currently blocking nothing.";
   } else {
-    const names = blocked.map((b) => b.gates).join(", ");
-    el("verdict").textContent =
-      blocked.length + " of " + beats.length + " declared beats are blocked. " +
-      "takt will deny " + names + " until the step that produces each marker has run.";
+    verdict.textContent = blocked.length + " of " + beats.length + " declared beats are blocked. takt will deny " +
+      blocked.map((b) => b.gates).join(", ") + " until the step that produces each marker has run.";
+    tone = "bad";
+  }
+  if (malformed.length) tone = "bad";
+  verdict.classList.add(tone);
+  RK.$("#sub").textContent += " Compiled from " + (D.declarations || 0) + " plugin declaration(s)" +
+    (D.generated ? " at " + D.generated : "") + ".";
+
+  const produces = D.produces || [];
+  const content = RK.$("#rk-content");
+  const { section } = RK;
+
+  // A beat's state is a word AND a glyph (R4): the badge node carries both.
+  const stateCell = (b) => RK.badge(b.satisfied ? "satisfied" : "blocked", b.satisfied ? "ok" : "bad");
+  content.append(section("beats", "Declared beats", beats.length ? RK.table({
+    caption: "declared beats",
+    columns: [
+      { key: "state", label: "State" }, { key: "gates", label: "Gated call", mono: true },
+      { key: "marker", label: "Requires marker", mono: true }, { key: "producedBy", label: "Produced by" },
+      { key: "scope", label: "Scope" }, { key: "reason", label: "Why" }],
+    rows: beats.map((b) => ({ state: stateCell(b), gates: b.gates, marker: b.marker,
+      producedBy: b.producedBy || "nothing declared", scope: b.scope, reason: b.reason || "" })),
+  }) : RK.h("p", { class: "rk-muted", text: "No beats compiled." })));
+
+  const asFinding = (severity, prefix) => (r, i) => ({
+    id: prefix + "-" + (i + 1), severity, claim: r.claim, file: r.file || "", rule: r.rule || "",
+    evidence: r.evidence || [], tags: r.tags || {},
+  });
+  content.append(section("refused", "Declared, and deliberately NOT compiled", RK.findings(
+    refused.map((r, i) => asFinding("refused", "refused")({
+      claim: r.gates + " requires " + r.marker + " — refused: " + (r.reason || ""),
+      evidence: r.why ? [{ label: "why it matters", detail: r.why }] : [],
+    }, i)), { idPrefix: "refused-", empty: "Nothing was refused: every declared requirement became a beat." })));
+
+  const problems = [
+    ...dropped.map((d, i) => asFinding("gap", "dropped")({
+      claim: d.requirer + " requires " + d.marker + " from " + d.producer + ", which is not installed — dropped, " +
+        "because an optional order against a plugin that cannot run would deny forever.",
+    }, i)),
+    ...malformed.map((m, i) => asFinding("error", "malformed")({ claim: m }, i)),
+  ];
+  content.append(section("problems", "Dropped and malformed declarations", RK.findings(problems, {
+    idPrefix: "problem-", empty: "No declaration was dropped or malformed.",
+  })));
+
+  content.append(section("produces", "Markers each plugin produces", produces.length ? RK.table({
+    caption: "produced markers",
+    columns: [
+      { key: "marker", label: "Marker", mono: true }, { key: "plugin", label: "Plugin" }, { key: "after", label: "After" },
+      { key: "evidence", label: "Evidence" }, { key: "detail", label: "What it records" }],
+    rows: produces.map((p) => {
+      const kind = p.evidenceKind || "undeclared";
+      return {
+        marker: p.marker, plugin: p.plugin, after: p.after,
+        evidence: RK.h("span", {}, RK.badge(kind, kind === "none" || kind === "undeclared" ? "bad" : "ok"),
+          p.evidencePath ? RK.h("code", { text: " " + p.evidencePath }) : null),
+        detail: kind === "none" ? "CANNOT BE DEPENDED ON — " + (p.why || "") : (p.meaning || ""),
+      };
+    }),
+  }) : RK.h("p", { class: "rk-muted", text: "No plugin declares a produced marker." })));
+
+
+  // ---- the figure: markers -> beats -> gated calls, a layered DAG in plain SVG ----
+  const S = RK.stage();
+  const { h } = RK;
+  S.stats([
+    { label: "Compiled beats", value: String(beats.length), note: "each a PreToolUse denial" },
+    { label: "Blocked", value: String(blocked.length), note: "marker absent right now", bad: blocked.length > 0 },
+    { label: "Refused", value: String(refused.length), note: "declared, not compiled" },
+    { label: "Dropped / malformed", value: dropped.length + " / " + malformed.length, note: "cannot compile", bad: malformed.length > 0 },
+  ]);
+
+  const markerKey = {};                       // any spelling of a marker -> its node key
+  produces.forEach((p) => { const k = p.evidencePath || p.marker; markerKey[p.marker] = k; markerKey[k] = k; });
+  const keyOf = (m) => markerKey[m] || m;
+  const prodFor = (k) => produces.find((p) => (p.evidencePath || p.marker) === k);
+
+  const beatNodes = [];
+  beats.forEach((b) => beatNodes.push({ kind: b.satisfied ? "satisfied" : "blocked", b, mk: keyOf(b.marker), gates: String(b.gates).split(", ") }));
+  refused.forEach((r) => beatNodes.push({ kind: "refused", b: r, mk: keyOf(r.marker), gates: [r.gates] }));
+  dropped.forEach((d) => beatNodes.push({ kind: "dropped", b: d, mk: keyOf(d.marker), gates: [d.requirer] }));
+  const order = { blocked: 0, satisfied: 1, refused: 2, dropped: 3 };
+  beatNodes.sort((x, y) => order[x.kind] - order[y.kind]);
+  beatNodes.forEach((n, i) => {
+    n.id = "beat:" + i;
+    n.title = n.kind === "refused" || n.kind === "dropped" ? n.gates[0] + " ← " + n.b.marker : (n.b.id || n.gates.join(", "));
+  });
+
+  const markerNodes = [], seenM = {};
+  const addMarker = (k) => { if (seenM[k]) return; const p = prodFor(k);
+    seenM[k] = { id: "marker:" + k, key: k, title: k, p, label: p ? p.marker : k }; markerNodes.push(seenM[k]); };
+  beatNodes.forEach((n) => addMarker(n.mk));
+  beatNodes.forEach((n) => { if (n.b.producedBy && !seenM[n.mk].by) seenM[n.mk].by = n.b.producedBy; });
+  produces.forEach((p) => addMarker(p.evidencePath || p.marker));
+  const gateNodes = [], seenG = {};
+  beatNodes.forEach((n) => n.gates.forEach((g) => { if (!seenG[g]) { seenG[g] = { id: "gate:" + g, title: g }; gateNodes.push(seenG[g]); } }));
+
+  const tonePal = { satisfied: "--rk-ok", blocked: "--rk-bad", refused: "--rk-info", dropped: "--rk-warn" };
+  const mark = { satisfied: "✓ satisfied", blocked: "✗ blocked", refused: "– refused", dropped: "! dropped" };
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const el = (name, attrs, ...kids) => {
+    const n = document.createElementNS(SVGNS, name);
+    for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined) n.setAttribute(k, v);
+    kids.forEach((c) => n.append(c)); return n;
+  };
+  const clip = (t, w, px) => { const max = Math.max(4, Math.floor(w / (px * 0.52))); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
+
+  // --- drawer content ---
+  const kv = (rows) => h("dl", { class: "rk-dl" }, rows.filter((r) => r[1] !== null && r[1] !== "").map(([k, v]) =>
+    [h("dt", { text: k }), h("dd", {}, typeof v === "string" ? h("code", { text: v }) : v)]));
+  const textKv = (rows) => h("dl", { class: "rk-dl" }, rows.filter((r) => r[1]).map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })]));
+  const evidence = (p) => !p ? h("span", { class: "rk-muted", text: "no evidence kind declared for this marker" }) :
+    h("span", {}, RK.badge(p.evidenceKind || "undeclared", (p.evidenceKind === "none" || !p.evidenceKind) ? "bad" : "ok"),
+      p.evidencePath ? h("code", { text: " " + p.evidencePath }) : null);
+  const beatLinks = (list) => list.length ? h("ul", {}, list.map((n) => h("li", {}, S.link(n.title, () => select(n.id))))) :
+    h("span", { class: "rk-muted", text: "none" });
+
+  const byId = {};
+  [...beatNodes, ...markerNodes, ...gateNodes].forEach((n) => { byId[n.id] = n; });
+
+  function detail(n) {
+    if (n.id.startsWith("beat:")) {
+      const b = n.b, tone = n.kind === "satisfied" ? "ok" : n.kind === "blocked" ? "bad" : n.kind === "refused" ? "info" : "warn";
+      const mk = seenM[n.mk];
+      return [n.title, mark[n.kind] + " · " + (n.kind === "refused" || n.kind === "dropped" ? "not compiled into a beat" : "a PreToolUse denial"),
+        RK.badge(mark[n.kind].replace(/^\S+ /, ""), tone),
+        h("h3", { text: "Requirement" }),
+        textKv([["Gated call", n.gates.join(", ")], ["Requires marker", b.marker], ["Scope", b.scope],
+          ["Produced by", n.kind === "dropped" ? b.producer + " (not installed)" : (b.producedBy || "nothing declared")]]),
+        h("h3", { text: "Evidence the marker leaves" }), evidence(mk && mk.p),
+        b.reason ? h("h3", { text: n.kind === "refused" ? "Why it was refused" : "Why" }) : null,
+        b.reason ? h("p", { text: b.reason }) : null,
+        b.why ? h("h3", { text: "Why that matters" }) : null, b.why ? h("p", { text: b.why }) : null,
+        n.kind === "dropped" ? h("p", { text: "Dropped: an optional order against a plugin that cannot run would deny forever." }) : null,
+        h("h3", { text: "Neighbours" }),
+        h("p", {}, "Marker: ", S.link(mk.title, () => select(mk.id))),
+        h("p", {}, "Gated: ", ...n.gates.flatMap((g, i) => [i ? ", " : "", S.link(g, () => select("gate:" + g))]))];
+    }
+    if (n.id.startsWith("marker:")) {
+      const users = beatNodes.filter((x) => x.mk === n.key), p = n.p;
+      return [n.label, "required marker" + (p ? " · produced by " + p.plugin : n.by ? " · produced by " + n.by : " · no declared producer"),
+        h("h3", { text: "Evidence" }), evidence(p),
+        p && p.meaning ? h("h3", { text: "What it records" }) : null, p && p.meaning ? h("p", { text: p.meaning }) : null,
+        p && p.evidenceKind === "none" ? h("p", { text: "CANNOT BE DEPENDED ON — " + (p.why || "the step leaves nothing durable") }) : null,
+        p ? textKv([["Produced after", p.after]]) : null,
+        h("h3", { text: "Beats that require it" }), beatLinks(users)];
+    }
+    const gb = beatNodes.filter((x) => x.gates.includes(n.title));
+    return [n.title, "gated call", h("h3", { text: "Beats that gate it" }), beatLinks(gb)];
   }
 
-  const tbody = el("beats");
-  for (const b of beats) {
-    const tr = document.createElement("tr");
-    const st = document.createElement("td");
-    st.className = "state " + (b.satisfied ? "state-satisfied" : "state-blocked");
-    const glyph = document.createElement("span");
-    glyph.className = "glyph";
-    glyph.textContent = b.satisfied ? "✓" : "✗";
-    st.appendChild(glyph);
-    st.appendChild(document.createTextNode(b.satisfied ? "satisfied" : "blocked"));
-    tr.appendChild(st);
-    cell(tr, b.gates, "mono");
-    cell(tr, b.marker, "mono");
-    cell(tr, b.producedBy || "nothing declared");
-    cell(tr, b.scope, "scope");
-    cell(tr, b.reason || "");
-    tbody.appendChild(tr);
+  function overview() {
+    S.open("What this graph shows", "markers → beats → gated calls",
+      h("p", { text: "Each beat is one PreToolUse denial: takt refuses the gated call until the marker it requires exists. Click any node for its requirement, evidence and reasons." }),
+      h("h3", { text: "Reading the states" }),
+      textKv([["satisfied", "the required marker exists, so takt allows the gated call."],
+        ["blocked", "the marker is absent; takt denies the gated call until the producing step runs."],
+        ["repo-level", "a durable fact (.takt/<name>), surviving every run."],
+        ["per-run", "namespaced under .takt/<runId>/, so an earlier run cannot satisfy this one."],
+        ["refused", "declared but not compiled into a beat: already enforced in code, or its producer leaves no evidence. A result, not an omission."],
+        ["dropped", "an optional requirement whose producing plugin is not installed."],
+        ["malformed", "names a marker no installed plugin produces, so it cannot compile."],
+        ["evidence", "artifact = a real produced file; none = the step leaves nothing durable, so nothing can depend on it."]]),
+      malformed.length ? h("h3", { text: "Malformed declarations" }) : null,
+      malformed.length ? h("ul", {}, malformed.map((m) => h("li", { text: m }))) : null);
   }
 
-  const rt = el("refused");
-  for (const r of (DATA.refused || [])) {
-    const tr = document.createElement("tr");
-    cell(tr, r.gates, "mono");
-    cell(tr, r.marker, "mono");
-    cell(tr, r.reason || "");
-    cell(tr, r.why || "");
-    rt.appendChild(tr);
+  let sel = null, redraw = () => {};
+  function select(id) {
+    sel = id; redraw();
+    S.open(...detail(byId[id]));
   }
 
-  const ul = el("produces");
-  for (const p of (DATA.produces || [])) {
-    const li = document.createElement("li");
-    const code = document.createElement("code");
-    code.textContent = p.marker;
-    li.appendChild(code);
-    const kind = p.evidenceKind || "undeclared";
-    li.appendChild(document.createTextNode(
-      " [" + kind + (p.evidencePath ? ": " + p.evidencePath : "") + "] — " +
-      p.plugin + ", after " + p.after + ". " +
-      (kind === "none" ? "CANNOT BE DEPENDED ON — " + (p.why || "") : (p.meaning || ""))));
-    ul.appendChild(li);
-  }
+  redraw = function () {
+    const { width: W, height: H } = S.size();
+    S.figure.textContent = "";
+    if (!W || !H) return;
+    if (!beatNodes.length && !markerNodes.length) {
+      S.figure.append(h("p", { class: "rk-muted", style: "position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:0 var(--space-5);text-align:center",
+        text: "Nothing to draw: no beats compiled and no plugin declares a marker. See the verdict above." }));
+      return;
+    }
+    const ins = S.insets();
+    const pad = 20, top = ins.top + 36, bottom = ins.bottom + 8;
+    const colW = (W - 2 * pad) / 3, nodeW = Math.min(520, colW * 0.84);
+    const colX = [0, 1, 2].map((i) => pad + i * colW + (colW - nodeW) / 2);
+    const rows = Math.max(markerNodes.length, beatNodes.length, gateNodes.length, 1);
+    const avail = Math.max(120, H - top - bottom);
+    const nodeH = Math.max(46, Math.min(120, avail / rows * 0.8));
+    const fs = Math.round(Math.max(14, Math.min(19, 14 * nodeH / 62)));
+    const place = (list, x) => list.forEach((n, i) => {
+      const step = avail / list.length; n.x = x; n.y = top + step * i + (step - nodeH) / 2; n.w = nodeW; n.h = nodeH;
+    });
+    place(markerNodes, colX[0]); place(beatNodes, colX[1]); place(gateNodes, colX[2]);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, role: "group", "aria-label": "Beat graph" });
+    const heads = ["Required marker", "Beat", "Gated call"];
+    heads.forEach((t, i) => svg.append(el("text", { class: "bg-colhead", x: colX[i], y: top - 16 }, document.createTextNode(t))));
+    const edges = [];
+    const edge = (a, b, tone, dashed) => {
+      const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2, mx = (x1 + x2) / 2;
+      const path = el("path", { class: "bg-edge", d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`,
+        stroke: css(tonePal[tone]), "stroke-dasharray": dashed ? "7 5" : null });
+      edges.push({ path, ids: [a.id, b.id] }); svg.append(path);
+    };
+    beatNodes.forEach((n) => {
+      const dashed = n.kind === "refused" || n.kind === "dropped";
+      edge(seenM[n.mk], n, n.kind, dashed);
+      n.gates.forEach((g) => edge(n, seenG[g], n.kind, dashed));
+    });
+    const q = (S.query || "").toLowerCase();
+    const nodeEl = (n, tone, lines, extra) => {
+      const g = el("g", { class: "bg-node" + (sel === n.id ? " sel" : "") + (extra && extra.dim ? " dim" : ""), tabindex: "0", role: "button",
+        "aria-label": lines.join(", ") + ". Open details", "data-id": n.id, "data-rk-node": "",
+        // RK.mark: the key brings focus back after a redraw; data-rk-text is the same text the
+        // search below matches on, so the kit's dimming agrees with this figure's own.
+        "data-rk-key": n.id, "data-rk-text": extra && extra.text });
+      g.append(el("rect", { class: "bg-box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 8, fill: css("--rk-panel"),
+        stroke: tone ? css(tonePal[tone] || tone) : css("--rk-border"), "stroke-width": tone ? 2 : 1.5,
+        "stroke-dasharray": extra && extra.dashed ? "6 4" : null }));
+      g.append(el("text", { x: n.x + 12, y: n.y + n.h / 2 - (lines[1] ? 4 : -fs / 3), "font-size": fs, "font-weight": 600 },
+        document.createTextNode(clip(lines[0], n.w - 24, fs))));
+      if (lines[1]) g.append(el("text", { class: "sub", x: n.x + 12, y: n.y + n.h / 2 + fs + 2, "font-size": Math.max(12, fs - 2) },
+        document.createTextNode(clip(lines[1], n.w - 24, Math.max(12, fs - 2)))));
+      const open = () => select(n.id);
+      g.addEventListener("click", open);
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
+      const tipFor = (e) => S.tip.show(e, n.title, h("div", { text: lines.slice(1).join(" · ") || "click for details" }));
+      g.addEventListener("mouseenter", tipFor); g.addEventListener("mousemove", tipFor);
+      g.addEventListener("focus", tipFor);
+      g.addEventListener("mouseleave", S.tip.hide); g.addEventListener("blur", S.tip.hide);
+      const hl = (on) => edges.forEach((e) => e.path.classList.toggle("dim", on && !e.ids.includes(n.id)));
+      g.addEventListener("mouseenter", () => hl(true)); g.addEventListener("mouseleave", () => hl(false));
+      svg.append(g); return g;
+    };
+    const dimIf = (n, text) => q && !text.toLowerCase().includes(q);
+    const textOf = { marker: (n) => n.title + " " + (n.p ? n.p.plugin : ""), beat: (n) => n.title + " " + n.kind + " " + (n.b.reason || ""), gate: (n) => n.title };
+    markerNodes.forEach((n) => nodeEl(n, n.p && n.p.evidenceKind === "none" ? "--rk-bad" : null,
+      [n.label, n.p ? n.p.plugin + " · " + (n.p.evidenceKind || "undeclared") : (n.by ? n.by + " · evidence not declared" : "no declared producer")],
+      { dim: dimIf(n, textOf.marker(n)), text: textOf.marker(n) }));
+    beatNodes.forEach((n) => nodeEl(n, n.kind, [n.title, mark[n.kind]],
+      { dashed: n.kind === "refused" || n.kind === "dropped", dim: dimIf(n, textOf.beat(n)), text: textOf.beat(n) }));
+    gateNodes.forEach((n) => nodeEl(n, null, [n.title, "gated call"], { dim: dimIf(n, textOf.gate(n)), text: textOf.gate(n) }));
+    S.figure.append(svg);
+  };
 
-  el("footer").textContent =
-    "Compiled from " + (DATA.declarations || 0) + " plugin declaration(s)" +
-    (DATA.generated ? " at " + DATA.generated : "") +
-    ". Regenerate with emit_beats.py --repo-only, then rebuild this page.";
-}
+  S.query = "";
+  RK.onSearch((t) => { S.query = t; redraw(); });
+  S.onResize(() => redraw());
+  new MutationObserver(() => redraw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  const themeBtn = RK.$("#rk-theme"); if (themeBtn) themeBtn.addEventListener("click", () => setTimeout(redraw, 0));
+  const firstBlocked = beatNodes.find((n) => n.kind === "blocked");
+  // #beat-<n> names a beat the graph selects: select it, claim the hash, stay on the graph.
+  // #problem-*, #refused-* and #sec-* are cards and sections below; the kit scrolls to them.
+  const beatNo = RK.hashId("beat-");
+  const hashed = beatNo !== null && /^\d+$/.test(beatNo) ? beatNodes[Number(beatNo)] : null;
+  if (hashed) RK.claimHash();
+  if (hashed) select(hashed.id); else if (firstBlocked) select(firstBlocked.id); else overview();
 
-render();
+  RK.init();
+})();
 </script>
 </body>
 </html>

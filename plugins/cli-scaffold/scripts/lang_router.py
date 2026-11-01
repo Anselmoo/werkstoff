@@ -19,6 +19,7 @@ Exit codes (follow the frozen contract):
        (unsupported) to stderr. Caller MUST stop and ask the user.
     2  usage error    -> wrong number of arguments.
 """
+import argparse
 import json
 import sys
 
@@ -28,7 +29,6 @@ from constants import (
     DISPLAY_NAMES,
     EXIT_RUNTIME_ERROR,
     EXIT_SUCCESS,
-    EXIT_USAGE_ERROR,
     LANGUAGE_REGISTRY,
     SHELL,
 )
@@ -97,13 +97,14 @@ def _supported_list():
     return ", ".join(DISPLAY_NAMES[k] for k in LANGUAGE_REGISTRY)
 
 
-def main(argv):
-    if len(argv) != 2:
-        sys.stderr.write("usage: lang_router.py <language-or-dialect>\n")
-        return EXIT_USAGE_ERROR
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Resolve a language/dialect name to its paradigm skill.")
+    parser.add_argument("language", help="language or dialect name")
+    args = parser.parse_args(argv)
 
     try:
-        result = resolve(argv[1])
+        result = resolve(args.language)
     except Ambiguous as exc:
         sys.stderr.write("AMBIGUOUS: %s\n" % exc)
         # A clarification is required; refuse to route.
@@ -122,4 +123,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())

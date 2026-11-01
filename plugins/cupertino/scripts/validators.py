@@ -15,7 +15,17 @@ Used two ways:
      on success; exits 1 and prints `{"ok": false, "errors": [...]}` on
      failure. Skills MUST treat a non-zero exit as "revise and re-check",
      never as something to narrate around.
+
+Usage:
+    <json> | python3 validators.py <check>
+    python3 validators.py --help        # lists every <check>
+
+Exit: 0 ok, 1 validation failure or unreadable JSON, 2 unknown check (argparse).
 """
+
+from __future__ import annotations
+
+import argparse
 import json
 import re
 import sys
@@ -33,10 +43,15 @@ COUNCIL_TENSION_ORDER = ("Usability", "Reduction", "Craft", "Hierarchy", "Metaph
 REVEAL_MAX_SUGGESTIONS = 1
 FOCUS_MAX_SENTENCES_PER_SURVIVOR = 1
 
+# "table", "component" and "screen" are deliberately NOT banned: a dashboard's
+# experience statement is naturally about a table, a component of a view or a
+# screen, and banning them pushed the wording toward app-flavoured paraphrase
+# ("the thing you glance at") that says less. The remaining nouns are still
+# implementation vocabulary no experience statement needs.
 TECH_NOUNS = (
-    "database", "db", "framework", "api", "widget", "button", "screen",
+    "database", "db", "framework", "api", "widget", "button",
     "endpoint", "server", "backend", "frontend", "microservice", "sdk",
-    "library", "queue", "cache", "schema", "table", "component", "react",
+    "library", "queue", "cache", "schema", "react",
     "vue", "angular", "kubernetes", "docker", "container", "cloud",
     "lambda", "rest", "graphql", "json", "sql", "nosql", "orm", "cli",
     "class", "function", "method", "interface", "module", "package",
@@ -209,6 +224,19 @@ def validate_handbook_draft_summary(obj):
     return {"ok": True}
 
 
+# The ONE canonical check-summary shape (skills/cupertino-handbook-check/SKILL.md shows it):
+#   {domain, generatedAt, findings: [{rule, file, line, severity, title, evidence,
+#    quotedLine, mechanical, suggestedFix, verification: {verdict: "confirmed"}}],
+#    skippedScaffolded?: int}
+# `endLine` is optional (a finding that spans lines is never mechanical). `rule` is required
+# because handbook-fix.js throws without it; `quotedLine` is required because the fix pass
+# re-locates its target by text, not by a line number that earlier edits have shifted.
+CHECK_FINDING_REQUIRED = (
+    "rule", "file", "line", "severity", "title", "evidence", "quotedLine", "mechanical", "suggestedFix",
+)
+CHECK_FINDING_NONEMPTY_STR = ("rule", "file", "quotedLine")
+
+
 def validate_handbook_check_summary(obj):
     required_top = ("domain", "generatedAt", "findings")
     for key in required_top:
@@ -216,16 +244,27 @@ def validate_handbook_check_summary(obj):
             _fail([f"handbook check summary missing required field '{key}'"])
     if not isinstance(obj["findings"], list):
         _fail(["'findings' must be a list (an empty list is a valid, expected outcome)"])
+    skipped = obj.get("skippedScaffolded")
+    if skipped is not None and (isinstance(skipped, bool) or not isinstance(skipped, int) or skipped < 0):
+        _fail([f"'skippedScaffolded' must be a non-negative integer when present, got {skipped!r}"])
     for i, f in enumerate(obj["findings"]):
-        for key in ("file", "line", "severity", "title", "evidence", "mechanical", "suggestedFix"):
+        if not isinstance(f, dict):
+            _fail([f"findings[{i}] must be an object, got {f!r}"])
+        for key in CHECK_FINDING_REQUIRED:
             if key not in f:
                 _fail([f"findings[{i}] missing required field '{key}' -- a value nobody supplied must never enter this artifact"])
+        for key in CHECK_FINDING_NONEMPTY_STR:
+            if not isinstance(f[key], str) or not f[key].strip():
+                _fail([f"findings[{i}].{key} must be a non-empty string, got {f[key]!r}"])
         if f["severity"] not in SEVERITIES:
             _fail([f"findings[{i}].severity must be one of {SEVERITIES}, got {f['severity']!r}"])
         if not isinstance(f["mechanical"], bool):
             _fail([f"findings[{i}].mechanical must be a boolean, got {f['mechanical']!r}"])
-        if not isinstance(f["line"], int):
+        if isinstance(f["line"], bool) or not isinstance(f["line"], int):
             _fail([f"findings[{i}].line must be an integer, got {f['line']!r}"])
+        end = f.get("endLine")
+        if end is not None and (isinstance(end, bool) or not isinstance(end, int) or end < f["line"]):
+            _fail([f"findings[{i}].endLine must be an integer >= line when present, got {end!r}"])
         # handbook-fix applies a finding only when this is "confirmed"; a summary that omits it
         # would make fix mode a silent no-op, so refuse it here instead of defaulting it.
         verification = f.get("verification")
@@ -246,17 +285,20 @@ CHECKS = {
 }
 
 
-def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in CHECKS:
-        sys.stderr.write(f"usage: validators.py <{'|'.join(CHECKS)}>  (payload JSON on stdin)\n")
-        sys.exit(2)
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="validators.py",
+        description="Content-shape checks for the cupertino plugin. The subject JSON is read from stdin.",
+    )
+    parser.add_argument("check", choices=sorted(CHECKS), help="which check to run")
+    args = parser.parse_args(argv)
     try:
         payload = json.load(sys.stdin)
     except Exception as e:
         print(json.dumps({"ok": False, "errors": [f"invalid JSON on stdin: {e}"]}))
         sys.exit(1)
     try:
-        result = CHECKS[sys.argv[1]](payload)
+        result = CHECKS[args.check](payload)
         print(json.dumps(result))
         sys.exit(0)
     except ValidationError as e:

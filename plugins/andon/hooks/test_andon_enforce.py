@@ -474,6 +474,59 @@ class TestContainment(unittest.TestCase):
             self.assertEqual(decision(r), "allow")
 
 
+def run_input(cwd: Path, tool_input: dict, tool: str = "MultiEdit") -> subprocess.CompletedProcess:
+    payload = json.dumps({"cwd": str(cwd), "tool_name": tool, "tool_input": tool_input})
+    r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode in (0, 2), f"hook must exit 0 (allow) or 2 (deny), got {r.returncode}: {r.stderr}"
+    return r
+
+
+class TestMultiPathPayloads(unittest.TestCase):
+    """H-MULTI-PATH: paths in edits[].file_path / file_paths must be examined.
+    Every deny is paired with an allow over the same shape, so a guard that
+    denied everything would fail one of the pair. Here "exempt" targets are
+    ledger files and paths outside the repo; "gated" targets are source."""
+
+    LEDGER = "analysis/andon/ledger/gaps/g0.md"
+
+    def test_edits_with_a_gated_path_denies_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"edits": [{"file_path": self.LEDGER}, {"file_path": "src/api.py"}]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_edits_with_only_exempt_paths_allows_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"edits": [{"file_path": self.LEDGER},
+                                             {"file_path": "analysis/andon/ledger/log.md"}]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_file_paths_with_a_gated_path_denies_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"file_paths": [self.LEDGER, "src/api.py"]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_file_paths_with_only_exempt_paths_allows_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"file_paths": [self.LEDGER]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_multi_path_source_edit_allowed_when_ledger_is_clean(self):
+        with Fixture(gaps=[GAP_LEGACY_TAGS]) as f:
+            r = run_input(f.root, {"edits": [{"file_path": "src/a.py"}, {"file_path": "src/b.py"}]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_no_readable_path_denies_while_stopped(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"edits": [{"old_string": "a", "new_string": "b"}]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_string_file_paths_is_not_iterated_as_characters(self):
+        with Fixture(gaps=[GAP_NO_BLAST]) as f:
+            r = run_input(f.root, {"file_paths": self.LEDGER})
+            self.assertEqual(decision(r), "deny")  # no readable target: stays gated
+
+
 class TestSupersedeAndRetire(unittest.TestCase):
     """#68: evidence whose gap already closed, or whose wire was later
     re-verified, must not gate forever. Permanent regressions for

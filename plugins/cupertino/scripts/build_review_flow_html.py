@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Renders a cupertino-review run's fixed 8-technique pipeline (longevity and
+"""Renders a cupertino-review run's fixed nine-stage pipeline (longevity and
 integrate as a real parallel fork) as a self-contained HTML flow diagram.
 
 MUST be called before cupertino-review's own end-of-run flag cleanup --
@@ -18,12 +18,30 @@ the flag. This script trusts that marker rather than treating absence and
 skip as the same thing.
 
 Usage:
-    build_review_flow_html.py <cupertino_dir> --template <path> --d3 <path> --tokens <path> [--out <path>]
+    build_review_flow_html.py <cupertino_dir> --template <path> --d3 <path> [--tokens <path>] [--out <path>]
+    build_review_flow_html.py --selftest
+
+The page leads with the nine-stage flow as its figure (the longevity/integrate fork drawn
+as a fork), the verdict and counts floating over it. Clicking a stage opens what it
+reported -- structured, or its recorded skip reason, or "never reached" -- in a side
+panel; the one-card-per-stage list stays below as the reference.
+
+Rendered through the vendored report kit (scripts/report_kit.py). --tokens is
+still accepted so existing callers keep working; when given it replaces the
+kit's default assets/tokens.css.
 """
+
+from __future__ import annotations
+
 import argparse
 import json
-import os
+import shutil
 import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from report_kit import render  # noqa: E402
 
 # (stage_id, flag_name, display_label, lane) -- lane 0 is the main sequence;
 # longevity/integrate share lane 1/2 at the same x-position, a real fork.
@@ -40,12 +58,11 @@ STAGES = [
 ]
 
 
-def _read_flag(flags_dir, flag_name):
-    path = os.path.join(flags_dir, flag_name)
-    if not os.path.isfile(path):
+def _read_flag(flags_dir: Path, flag_name: str):
+    path = flags_dir / flag_name
+    if not path.is_file():
         return None
-    with open(path, encoding="utf-8") as fh:
-        raw = fh.read()
+    raw = path.read_text(encoding="utf-8")
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -54,8 +71,8 @@ def _read_flag(flags_dir, flag_name):
         return {"raw": raw}
 
 
-def build_flow(cupertino_dir):
-    flags_dir = os.path.join(cupertino_dir, "flags")
+def build_flow(cupertino_dir) -> dict:
+    flags_dir = Path(cupertino_dir) / "flags"
     stages = []
     for stage_id, flag_name, label, lane in STAGES:
         content = _read_flag(flags_dir, flag_name)
@@ -65,69 +82,85 @@ def build_flow(cupertino_dir):
             status = "skipped"
         else:
             status = "ran"
-        stages.append({
-            "id": stage_id,
-            "label": label,
-            "lane": lane,
-            "status": status,
-            "content": content,
-        })
-    # "source" is provenance for the viewer's subtitle: which flags directory
-    # this run was actually read from. The counts deliberately do NOT go in the
-    # subtitle -- they belong to the verdict sentence, and printing a number on
-    # two surfaces is what report-viewer-standard.md R2 forbids.
-    # Shown verbatim in the subtitle, so keep it repo-shaped rather than an
-    # absolute path: every sibling viewer prints a relative provenance path,
-    # and a committed screenshot rendered from a temp dir otherwise leaks it.
-    parts = os.path.normpath(flags_dir).split(os.sep)
-    source = os.path.join(*parts[-2:]) if len(parts) >= 2 else flags_dir
+        stages.append({"id": stage_id, "label": label, "lane": lane, "status": status, "content": content})
+    # "source" is provenance for the viewer's subtitle, kept repo-shaped (the
+    # last two path parts) so a screenshot rendered from a temp dir leaks no
+    # absolute path. Counts are deliberately not here: the viewer's glance tiles
+    # own them (report-viewer-standard R2).
+    parts = Path(*flags_dir.parts).parts
+    source = "/".join(parts[-2:]) if len(parts) >= 2 else str(flags_dir)
     return {"source": source, "stages": stages}
 
 
-def render_html(template_path, d3_path, tokens_path, flow):
-    tpl = open(template_path, encoding="utf-8").read()
-
-    d3_snippet = open(d3_path, encoding="utf-8").read()
+def render_html(template_path, d3_path, tokens_path, flow: dict) -> str:
+    template = Path(template_path)
+    tpl = template.read_text(encoding="utf-8")
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
         raise ValueError(f"D3 injection marker not found in {template_path}")
-    tpl = tpl.replace(d3_marker, d3_snippet)
-
-    tokens_css = open(tokens_path, encoding="utf-8").read()
-    # The canonical spelling across every report viewer in the marketplace
-    # (report-viewer-standard.md S2). It sits OUTSIDE the template's <style>
-    # block, so the stylesheet is wrapped here rather than pasted raw -- a
-    # `<!-- ... -->` comment inside a CSS block is a CDO/CDC token pair, not a
-    # comment, and would swallow the marker name as a parse error.
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
-
-    marker = "/*__FLOW_DATA__*/ null"
-    if marker not in tpl:
-        raise ValueError(f"injection marker not found in {template_path}")
-    data = json.dumps(flow)
-    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(marker, "/*__FLOW_DATA__*/ " + data)
+    tpl = tpl.replace(d3_marker, Path(d3_path).read_text(encoding="utf-8"))
+    return render(tpl, template.parent, flow, Path(tokens_path) if tokens_path else None)
 
 
-def main(argv=None):
+def selftest() -> int:
+    """Render the committed sample run and assert the page's contract."""
+    import tempfile
+
+    fails: list[str] = []
+
+    def ok(name: str, cond: bool, extra: str = "") -> None:
+        print(f"  {'ok  ' if cond else 'FAIL'} {name}{'' if cond else ': ' + extra}")
+        if not cond:
+            fails.append(name)
+
+    assets = HERE.parent / "assets"
+    flags = HERE / "fixtures" / "sample_review_flags"
+    ok("committed sample flags exist", flags.is_dir(), str(flags))
+    if not flags.is_dir():
+        print("\nSELFTEST FAILED")
+        return 1
+    with tempfile.TemporaryDirectory() as td:
+        shutil.copytree(flags, Path(td) / ".cupertino" / "flags")
+        flow = build_flow(Path(td) / ".cupertino")
+    states = {s["id"]: s["status"] for s in flow["stages"]}
+    ok("the sample run shows all three states", {"ran", "skipped", "not-run"} <= set(states.values()), str(states))
+    ok("a skip is told apart from an unreached stage", states["prototype"] == "skipped" and states["reveal"] == "not-run")
+    html = render_html(assets / "review-flow-viewer.html", assets / "inline-d3.html", None, flow)
+    ok("kit and tokens inlined", "<!--__REPORT_KIT__-->" not in html and "const RK" in html and "--bg" in html)
+    ok("data island filled", "@@DATA@@" not in html and '"stages"' in html)
+    ok("the figure-first stage skeleton is present (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "a viewer without the stage leads with prose, not its flow")
+    ok("static title and h1 agree", "<title>cupertino — review flow</title>" in html
+       and "<h1>cupertino — review flow</h1>" in html)
+    ok("CSP is default-src 'none'", "default-src 'none'" in html)
+    ok("static verdict and legend exist", 'class="verdict' in html and 'class="legend' in html)
+    ok("no innerHTML", "innerHTML" not in (assets / "review-flow-viewer.html").read_text(encoding="utf-8"))
+    print()
+    if fails:
+        print(f"SELFTEST FAILED ({len(fails)}): " + ", ".join(fails))
+        return 1
+    print("selftest passed")
+    return 0
+
+
+def main(argv=None) -> int:
+    if argv is None:
+        argv = sys.argv[1:]
+    if "--selftest" in argv:
+        return selftest()
     parser = argparse.ArgumentParser()
     parser.add_argument("cupertino_dir", help="the .cupertino directory for this repo")
     parser.add_argument("--template", required=True)
     parser.add_argument("--d3", required=True, help="path to the vendored inline-d3.html snippet")
-    parser.add_argument("--tokens", required=True, help="path to the vendored tokens.css snippet")
+    parser.add_argument("--tokens", help="optional tokens.css override; the kit's assets/tokens.css is used otherwise")
     parser.add_argument("--out", help="defaults to <cupertino_dir>/CUPERTINO_REVIEW_FLOW.html")
     args = parser.parse_args(argv)
 
     flow = build_flow(args.cupertino_dir)
-
-    out_path = args.out or os.path.join(args.cupertino_dir, "CUPERTINO_REVIEW_FLOW.html")
-    with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, args.d3, args.tokens, flow))
-
-    print(json.dumps({"flowPath": out_path}))
+    out_path = Path(args.out) if args.out else Path(args.cupertino_dir) / "CUPERTINO_REVIEW_FLOW.html"
+    out_path.write_text(render_html(args.template, args.d3, args.tokens, flow), encoding="utf-8")
+    print(json.dumps({"flowPath": str(out_path)}))
     return 0
 
 

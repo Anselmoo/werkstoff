@@ -1,5 +1,5 @@
 ---
-name: passung-critic
+name: consistency-critic
 description: Adversarially reviews a proposed canonical Pattern Card or an applied alignment diff. Looks for forced consistency where real variation was warranted, unsound basis reasoning, and PASS verdicts that were rubber-stamped rather than re-derived. Use as the single contract judge in canonize and verify.
 tools: Read, Glob, Grep, Bash
 ---

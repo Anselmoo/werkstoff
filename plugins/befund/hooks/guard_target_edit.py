@@ -12,6 +12,10 @@ call site a model chooses to reach. Measured this session: a rule reached
 only via "the skill is supposed to call this function" is honored on the
 order of 1 run in 3; a PreToolUse hook is invoked every time.
 
+Usage: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Edit", "tool_input": {"file_path": "x"}}' | python3 guard_target_edit.py
+
 Contract (from Claude Code's PreToolUse hook protocol):
   - stdin: JSON with at least {"cwd": ..., "tool_name": ..., "tool_input": {...}}
   - to ALLOW: exit 0 (no output required)
@@ -84,6 +88,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from types import SimpleNamespace
 
 # This hook lives at plugins/befund/hooks/guard_target_edit.py -- one
 # level under the plugin root, unlike zeugnis's scripts/hooks/ nesting. `lib/`
@@ -141,6 +146,98 @@ def allow() -> int:
     return 0
 
 
+def edit_targets(tool_input: dict) -> list[str]:
+    """Every path an edit payload names: file_path, notebook_path, edits[].file_path, file_paths.
+
+    Reading only file_path let a MultiEdit payload carrying its paths elsewhere through
+    the gate unexamined (nacharbeit H-MULTI-PATH; takt_guard.py's edit_targets is the model).
+    """
+    targets: list[str] = []
+    for key in ("file_path", "notebook_path"):
+        value = tool_input.get(key)
+        # isinstance, not truthiness: a str is iterable, and iterating one yields characters.
+        if isinstance(value, str) and value:
+            targets.append(value)
+    edits = tool_input.get("edits")
+    if isinstance(edits, list):
+        for edit in edits:
+            if isinstance(edit, dict) and isinstance(edit.get("file_path"), str) and edit["file_path"]:
+                targets.append(edit["file_path"])
+    paths = tool_input.get("file_paths")
+    if isinstance(paths, list):
+        targets.extend(v for v in paths if isinstance(v, str) and v)
+    return targets
+
+
+def _check_target(target: str, cwd: str, lib: SimpleNamespace) -> str | None:
+    """Return a deny reason for one edit target, or None to allow it."""
+    cwd_norm = os.path.normpath(cwd)
+    cwd_real = os.path.realpath(cwd)
+    target_lexical = os.path.normpath(target if os.path.isabs(target) else os.path.join(cwd, target))
+    target_real = os.path.realpath(target_lexical)
+    if not _is_contained(target_lexical, cwd_norm) and not _is_contained(target_real, cwd_real):
+        return None
+
+    settings = lib.load_settings(cwd)
+    output_dir = settings.get("output_dir", "analysis/befund")
+
+    # A write befund makes to its OWN report directory is never what
+    # idiom-fix-mode-fix-gate or dirty-tree-gate are about -- only a write
+    # that reaches into the target repo's actual source is.
+    try:
+        resolved_target = os.path.realpath(
+            target if os.path.isabs(target) else os.path.join(cwd, target)
+        )
+        own_output_dir = os.path.realpath(lib.resolve_output_path(cwd, output_dir, "."))
+    except lib.WriteScopeError as exc:
+        return f"guard_target_edit: {exc}. {ESCAPE_HATCH}"
+
+    if resolved_target == own_output_dir or resolved_target.startswith(own_output_dir + os.sep):
+        return None
+
+    scope = lib.read_scope(cwd)
+    if scope is None:
+        # Lock file vanished between the os.path.isfile check above and here
+        # (e.g. a concurrent close-edit-scope) -- nothing left to enforce.
+        return None
+
+    try:
+        allowed_resolved = {
+            os.path.realpath(lib.safe_repo_path(cwd, f)) for f in scope.get("allowedFiles", [])
+        }
+    except lib.WriteScopeError as exc:
+        return (f"guard_target_edit: edit-scope lock is corrupt ({exc}). {ESCAPE_HATCH}")
+
+    if resolved_target not in allowed_resolved:
+        return (
+            f"Edit target {target!r} is not one of the files named in the open "
+            f"befund edit-scope lock ({sorted(scope.get('allowedFiles', []))!r}) "
+            "(rule: remediator-scope-enforcement). "
+            f"{ESCAPE_HATCH}"
+        )
+
+    mode = scope.get("mode")
+    try:
+        lib.check_dirty_tree(cwd, require_clean_tree=settings.get("require_clean_tree", True))
+    except lib.SelfAssessError as exc:
+        return (f"{exc} (rule: dirty-tree-gate-ask-before-edit). {ESCAPE_HATCH}")
+
+    # Defense in depth: re-run the mode-specific gate too, in case settings
+    # were hand-edited to something that contradicts the open scope's own
+    # mode (e.g. idiom_fix.mode flipped back to 'propose' mid-run) -- these
+    # re-raise SelfAssessError on the exact documented conditions, nothing
+    # new invented here.
+    try:
+        if mode == "idiom_fix":
+            lib.check_idiom_fix_mode(settings)
+        elif mode == "transform":
+            lib.check_transform_mode(settings)
+    except lib.SelfAssessError as exc:
+        return (f"{exc} {ESCAPE_HATCH}")
+
+    return None
+
+
 def run() -> int:
     if os.environ.get("BEFUND_DISABLE_GUARD") == "1":
         return allow()
@@ -157,9 +254,7 @@ def run() -> int:
 
     cwd = event.get("cwd") or os.getcwd()
     tool_input = event.get("tool_input") or {}
-    target = tool_input.get("file_path")
-    if not target:
-        return allow()  # no single target (e.g. some MultiEdit shapes) -- nothing to scope-check
+    targets = edit_targets(tool_input)
 
     # Inert unless a befund remediator dispatch actually has an edit-scope
     # lock open right now. Checked with stdlib only, BEFORE importing lib, so
@@ -172,6 +267,16 @@ def run() -> int:
     scope_path = os.path.join(cwd, "analysis", "befund", "edit_scope.json")
     if not os.path.isfile(scope_path):
         return allow()
+
+    if not targets:
+        # The lock is open, so this guard is active. An edit naming no path it can read
+        # (file_path, notebook_path, edits[].file_path, file_paths) cannot be scoped to
+        # the lock's allowedFiles; allowing it is the MultiEdit bypass (H-MULTI-PATH).
+        return deny(
+            "guard_target_edit: this edit names no path the guard can read (file_path, "
+            "edits[].file_path, file_paths), so it cannot be checked against the open "
+            f"edit-scope lock; refusing rather than letting it through. {ESCAPE_HATCH}"
+        )
 
     if sys.version_info < MIN_PYTHON:
         return deny(
@@ -245,70 +350,16 @@ def run() -> int:
     # instead of returning "../elsewhere" unless walk_up=True, which needs
     # 3.12+ -- the same asymmetry CLAUDE.md documents for takt_guard.py and
     # arbeitsplan_guard.py, kept here too.
-    cwd_norm = os.path.normpath(cwd)
-    cwd_real = os.path.realpath(cwd)
-    target_lexical = os.path.normpath(target if os.path.isabs(target) else os.path.join(cwd, target))
-    target_real = os.path.realpath(target_lexical)
-    if not _is_contained(target_lexical, cwd_norm) and not _is_contained(target_real, cwd_real):
-        return allow()
-
-    settings = load_settings(cwd)
-    output_dir = settings.get("output_dir", "analysis/befund")
-
-    # A write befund makes to its OWN report directory is never what
-    # idiom-fix-mode-fix-gate or dirty-tree-gate are about -- only a write
-    # that reaches into the target repo's actual source is.
-    try:
-        resolved_target = os.path.realpath(
-            target if os.path.isabs(target) else os.path.join(cwd, target)
-        )
-        own_output_dir = os.path.realpath(resolve_output_path(cwd, output_dir, "."))
-    except WriteScopeError as exc:
-        return deny(f"guard_target_edit: {exc}. {ESCAPE_HATCH}")
-
-    if resolved_target == own_output_dir or resolved_target.startswith(own_output_dir + os.sep):
-        return allow()
-
-    scope = read_scope(cwd)
-    if scope is None:
-        # Lock file vanished between the os.path.isfile check above and here
-        # (e.g. a concurrent close-edit-scope) -- nothing left to enforce.
-        return allow()
-
-    try:
-        allowed_resolved = {
-            os.path.realpath(safe_repo_path(cwd, f)) for f in scope.get("allowedFiles", [])
-        }
-    except WriteScopeError as exc:
-        return deny(f"guard_target_edit: edit-scope lock is corrupt ({exc}). {ESCAPE_HATCH}")
-
-    if resolved_target not in allowed_resolved:
-        return deny(
-            f"Edit target {target!r} is not one of the files named in the open "
-            f"befund edit-scope lock ({sorted(scope.get('allowedFiles', []))!r}) "
-            "(rule: remediator-scope-enforcement). "
-            f"{ESCAPE_HATCH}"
-        )
-
-    mode = scope.get("mode")
-    try:
-        check_dirty_tree(cwd, require_clean_tree=settings.get("require_clean_tree", True))
-    except SelfAssessError as exc:
-        return deny(f"{exc} (rule: dirty-tree-gate-ask-before-edit). {ESCAPE_HATCH}")
-
-    # Defense in depth: re-run the mode-specific gate too, in case settings
-    # were hand-edited to something that contradicts the open scope's own
-    # mode (e.g. idiom_fix.mode flipped back to 'propose' mid-run) -- these
-    # re-raise SelfAssessError on the exact documented conditions, nothing
-    # new invented here.
-    try:
-        if mode == "idiom_fix":
-            check_idiom_fix_mode(settings)
-        elif mode == "transform":
-            check_transform_mode(settings)
-    except SelfAssessError as exc:
-        return deny(f"{exc} {ESCAPE_HATCH}")
-
+    lib = SimpleNamespace(
+        load_settings=load_settings, check_dirty_tree=check_dirty_tree,
+        check_idiom_fix_mode=check_idiom_fix_mode, check_transform_mode=check_transform_mode,
+        SelfAssessError=SelfAssessError, WriteScopeError=WriteScopeError,
+        resolve_output_path=resolve_output_path, read_scope=read_scope, safe_repo_path=safe_repo_path,
+    )
+    for target in targets:
+        reason = _check_target(target, cwd, lib)
+        if reason is not None:
+            return deny(reason)
     return allow()
 
 

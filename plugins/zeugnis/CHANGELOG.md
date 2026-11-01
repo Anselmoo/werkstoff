@@ -5,6 +5,12 @@ Releases before the rename were published as `confab`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_burndown_html.py` now renders through `report_kit.render()` and copies the mutation data whole: shard sources, tests, exclusions and baseline state, each kill's proof file, each survivor's severity and fixability, and each equivalent's basis; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+### Changed
+- **Mutation view fills the stage, its marks never overlap**: track height, dots and labels scale with the available height (ink 45 % -> 65 %). The before ring and after dot are capped at a 15px radius, and two marks closer than two radii (or an unchanged score, where the ring used to hide the dot) sit on the track's upper and lower edge. Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
+### Fixed
+- **Hook timeouts 60 s** (were 15): a hook that times out allows the call.
 
 ## [1.3.0] - 2026-10-30
 ### Added

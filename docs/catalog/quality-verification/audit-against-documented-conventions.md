@@ -13,7 +13,7 @@ beats:
   - skill: "passung:pattern-extractor"
     why: "Handles the undocumented half explicitly, refusing to force a pick when the signal between competing patterns is genuinely tied."
     prompt: "find any undocumented conventions this codebase has converged on inconsistently, and tell me which variant should become canonical"
-  - skill: "passung:passung-critic"
+  - skill: "passung:consistency-critic"
     why: "Second judge -- catches forced consistency and a PASS verdict that was rubber-stamped rather than re-derived from the evidence."
   - skill: "pr-review-toolkit:code-simplifier"
     why: "Runs last, on the now-aligned code only -- simplifying before the convention is settled means simplifying twice."

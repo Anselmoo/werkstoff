@@ -149,7 +149,7 @@ leaving these agents' own defaults in place:
 | befund | arch-health-auditor, business-rules-miner, ci-topology-auditor, complexity-surveyor, convention-auditor, docs-drift-auditor, idiom-auditor, idiom-remediator, stage-mapper, transform-executor, ui-auditor | `inherit` (declared explicitly) |
 | andon | andon-adjudicator, andon-challenger, andon-defender, andon-verifier | none declared |
 | zeugnis | agentic-reliability-auditor, assertion-auditor, zeugnis-remediator, contract-auditor, dependency-auditor | none declared |
-| passung | align-executor, passung-critic, equivalence-verifier, pattern-analyst, pattern-extractor | none declared |
+| passung | align-executor, consistency-critic, equivalence-verifier, pattern-analyst, pattern-extractor | none declared |
 
 Two rows read the same at runtime but say different things on the page: befund's
 agents spell out `model: inherit`, while andon, zeugnis, and passung omit

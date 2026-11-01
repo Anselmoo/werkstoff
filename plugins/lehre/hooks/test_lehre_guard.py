@@ -119,6 +119,9 @@ expect_deny("api before contracts validated",
             run(fresh, write("src/api/h.py", "x = 1\n")), must_mention="contracts")
 expect_allow("contracts itself has no unmet dependency",
              run(fresh, write("src/contracts/c.py", "x = 1\n")))
+expect_deny("NotebookEdit's notebook_path is gated too (it carries no file_path)",
+            run(fresh, {"tool_name": "NotebookEdit", "tool_input": {"notebook_path": "src/api/n.ipynb",
+                                                                    "new_source": "x = 1"}}), must_mention="contracts")
 expect_allow("file in no unit is not order-gated",
              run(fresh, write("README.md", "hello")))
 

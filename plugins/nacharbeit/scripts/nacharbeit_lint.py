@@ -186,6 +186,7 @@ META: dict[str, tuple[str, str]] = {
     "A-NO-CDN": ("major", "contract"),
     "A-TOKENS-PRESENT": ("minor", "contract"),
     "A-BUILDER-EXISTS": ("minor", "contract"),
+    "A-REPORT-KIT": ("major", "contract"),
     "A-C4-ALT": ("nit", "clarity"),
     # ---- P: manifest, README, CHANGELOG
     "P-MANIFEST-PARSE": ("blocker", "contract"),
@@ -697,6 +698,36 @@ def r_link_broken(u: Unit, ctx: list[Unit]) -> list[dict]:
     return out
 
 
+_VENDORED: dict[str, set[str]] = {}
+
+
+def _vendored_paths() -> set[str]:
+    """Paths .rrt.toml declares as artifact_targets: copies regenerated from ONE source.
+
+    Such a group is the fix this rule asks for, not the defect: the fact lives in one
+    place (the source under tools/) and `rrt artifacts --check --strict` holds every
+    copy to its hash, so the copies cannot drift. Each plugin keeps one because a
+    plugin must install alone. Read from the cwd, like OPTIONS["readme_markers"].
+    """
+    key = str(Path.cwd())
+    if key not in _VENDORED:
+        found: set[str] = set()
+        _VENDORED[key] = found
+        cfg = Path(".rrt.toml")
+        if cfg.is_file():
+            import tomllib
+            try:
+                data = tomllib.loads(cfg.read_text(encoding="utf-8"))
+            except (tomllib.TOMLDecodeError, OSError):
+                data = {}
+            for target in data.get("tool", {}).get("rrt", {}).get("artifact_targets", []):
+                if isinstance(target, dict) and isinstance(target.get("path"), str):
+                    # Absolute, so it compares equal to a unit discovered from either a
+                    # relative or an absolute plugin path on the command line.
+                    found.add(Path(target["path"]).resolve().as_posix())
+    return _VENDORED[key]
+
+
 def r_dup_content(u: Unit, ctx: list[Unit]) -> list[dict]:
     # one finding per duplicate group, attached to the group's first member
     if u.kind not in PROMPT_KINDS or u.kind == "workflow" or not u.text.strip():
@@ -704,6 +735,11 @@ def r_dup_content(u: Unit, ctx: list[Unit]) -> list[dict]:
     h = hashlib.sha256(u.text.encode()).hexdigest()
     same = [v for v in ctx if v.kind in PROMPT_KINDS and v.kind != "workflow" and v.text == u.text]
     if len(same) < 2 or same[0] is not u:
+        return []
+    # Every copy vendored from one declared source: not a duplicate, a distribution.
+    # ALL of them, not any: one hand-made copy beside vendored ones can still drift.
+    vendored = _vendored_paths()
+    if all(v.path.resolve().as_posix() in vendored for v in same):
         return []
     others = ", ".join(v.path.as_posix() for v in same[1:])
     return [_finding(u, "M-DUP-CONTENT", f"byte-identical to {len(same) - 1} other file(s): {others}",
@@ -1563,6 +1599,31 @@ def r_a_tokens_present(u: Unit, ctx: list[Unit]) -> list[dict]:
     return [_finding(u, "A-TOKENS-PRESENT", "plugin ships a viewer but no assets/tokens.css; the builder cannot inject the design tokens", "vendor tools/design-tokens/tokens.css via .rrt.toml artifact_targets", line=None, quote="assets/tokens.css")]
 
 
+def r_a_report_kit(u: Unit, ctx: list[Unit]) -> list[dict]:
+    """The viewer builds on the shared report kit (report-viewer-standard R6-R8).
+
+    The kit is where evidence-per-finding, drill-down instead of raw JSON, and
+    filtering live. A viewer that does not carry its marker re-implements them or,
+    as every viewer before the kit did, ships without them. Three things must hold
+    together, so a half-migration is caught: the template carries the marker, and
+    the plugin vendors both kit assets and the renderer that inlines them.
+    """
+    if u.kind != "viewer":
+        return []
+    missing = [rel for rel in ("assets/report-kit.css", "assets/report-kit.js", "scripts/report_kit.py")
+               if not (u.plugin_dir / rel).is_file()]
+    if "<!--__REPORT_KIT__-->" in u.text and not missing:
+        return []
+    what = []
+    if "<!--__REPORT_KIT__-->" not in u.text:
+        what.append("the template has no <!--__REPORT_KIT__--> marker")
+    if missing:
+        what.append("the plugin does not vendor " + ", ".join(missing))
+    return [_finding(u, "A-REPORT-KIT", "viewer is not built on the shared report kit: " + "; ".join(what),
+                     "add the marker and vendor tools/report-kit/ via .rrt.toml artifact_targets; see tools/report-kit/README.md",
+                     line=None, quote=u.path.name)]
+
+
 def r_a_builder_exists(u: Unit, ctx: list[Unit]) -> list[dict]:
     if u.kind != "viewer":
         return []
@@ -2266,6 +2327,7 @@ RULES = {
     "A-NO-CDN": r_a_no_cdn,
     "A-TOKENS-PRESENT": r_a_tokens_present,
     "A-BUILDER-EXISTS": r_a_builder_exists,
+    "A-REPORT-KIT": r_a_report_kit,
     "A-C4-ALT": r_a_c4_alt,
     "P-MANIFEST-PARSE": r_p_manifest_parse,
     "P-MANIFEST-NAME-DIR": r_p_manifest_name_dir,

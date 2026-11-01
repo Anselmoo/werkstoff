@@ -50,13 +50,19 @@ structure" pattern the craft rules below argue against.
   this before arguing about a finding in `docs/prompt-quality-findings.md`, and change it
   (not the finder) when a rule is wrong.
 - [`references/report-viewer-standard.md`](references/report-viewer-standard.md) — the
-  rules for the 15 self-contained HTML reports (one per plugin, two for `matrize` and `arbeitsplan`)
+  rules for the 16 self-contained HTML reports (one per plugin, two for `matrize`, `arbeitsplan` and `cupertino`)
   under
   `plugins/*/assets/*-viewer.html`: state the verdict in words, never print a number
   twice, an actionable number must not look inert, colour is never the only channel,
   height derives from content — plus the required `<head>`, the three legitimate page
   archetypes, and how a screenshot and its demo data get committed so the image is
   reproducible. Read this before editing any viewer or its `build_*_html.py`.
+- `tools/report-kit/` (its `README.md` in the repo) — the shared report components
+  (CSS, JS, a Python renderer and a worked example) vendored into every plugin through
+  `.rrt.toml`'s `artifact_targets`. A viewer starts from the kit rather than from scratch;
+  `A-REPORT-KIT` in the rubric flags a half-finished migration. The content tier
+  (R6–R8) in `report-viewer-standard.md` is what the kit's evidence, filters, search and
+  deep links exist to satisfy.
 - [`references/design-tokens.md`](references/design-tokens.md) — the corporate design
   usage rules `scripts/ci/check_design_tokens.py` enforces over the docs theme and every
   viewer: no literal hex/color-function/font-family/radius where a token exists, a
