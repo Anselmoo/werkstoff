@@ -573,7 +573,22 @@ const RK = (() => {
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !drawer.hidden) close(); });
     if ("ResizeObserver" in window) new ResizeObserver(() => fire()).observe(figure);
     else window.addEventListener("resize", () => fire());
-    return {
+    // The verdict is clamped to two lines by CSS; when the sentence is longer, a "more"
+    // button opens the whole of it in the drawer. Re-checked whenever the verdict's text
+    // or size changes, because viewers set the text after stage() runs.
+    const verdict = $(".rk-hud .verdict", root);
+    let api = null;
+    if (verdict) {
+      const more = h("button", { class: "rk-hud-more", type: "button", text: "more", hidden: true,
+        "aria-label": "Read the whole verdict" });
+      verdict.after(more);
+      more.addEventListener("click", () => api && api.open("Verdict", null, h("p", { text: verdict.textContent })));
+      const check = () => { more.hidden = verdict.scrollHeight <= verdict.clientHeight + 1; };
+      new MutationObserver(check).observe(verdict, { childList: true, characterData: true, subtree: true });
+      if ("ResizeObserver" in window) new ResizeObserver(check).observe(verdict);
+      requestAnimationFrame(check);
+    }
+    return api = {
       figure, size,
       onResize(fn) { resizeFns.push(fn); const s = size(); lastSize = s.width + "x" + s.height; fn(s.width, s.height); },
       // Redraw on a theme switch (toggle or OS); colours read via getComputedStyle.

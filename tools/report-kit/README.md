@@ -38,8 +38,14 @@ S.onClose(() => clearSelection());
 const { top, bottom } = S.insets();                // room the HUD and legend take
 ```
 
-`capture_viewer_screenshot.py --min-figure-share 0.6` checks the figure covers at least 60 %
-of a 1600 × 900 first screen.
+`capture_viewer_screenshot.py --min-ink-share 0.55` checks that what the figure DRAWS spans at
+least 55 % of the 1600 × 900 first screen (overlays masked, the open drawer subtracted) — the
+figure's box is not the figure. `scripts/ci/regen_viewer_screenshots.py` rebuilds and measures
+every viewer from its committed demo data.
+
+The HUD is a caption: `.verdict` is clamped to two lines and `stage()` adds a *more* button
+that opens the whole sentence in the drawer; `stats()` renders one row of chips. Keep the
+floating legend to one row of short labels and put each mark's long explanation in a `title`.
 
 ## Render the example
 

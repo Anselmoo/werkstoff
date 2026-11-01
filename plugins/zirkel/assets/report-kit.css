@@ -260,13 +260,33 @@ mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
   display: flex; flex-direction: column; gap: var(--space-2); pointer-events: none;
 }
 .rk-hud > * { pointer-events: auto; }
-.rk-hud .verdict { margin: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px); }
+/* The HUD is a caption, not a page: the verdict is clamped to two lines (the whole
+   sentence opens in the drawer via "more", added by stage()), the numbers are one
+   row of chips. Every pixel the HUD takes is a pixel the figure's fit gives up. */
+.rk-hud .verdict {
+  /* Vertical room is a transparent BORDER, not padding: overflow clips at the padding
+     edge, so with padding the clamped third line would show half-drawn inside it. */
+  margin: 0; font-size: 0.86rem; line-height: 1.45; padding-block: 0;
+  border-top: var(--space-2) solid transparent; border-bottom: var(--space-2) solid transparent;
+  box-shadow: 0 -1px 0 var(--rk-border), 0 1px 0 var(--rk-border);  /* the frame line the borders gave up */
+  background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.rk-hud-more { all: unset; cursor: pointer; align-self: flex-start; font-size: 0.76rem; color: var(--rk-link);
+  text-decoration: underline; margin-top: calc(-1 * var(--space-1)); padding: 0 var(--space-1);
+  background: color-mix(in srgb, var(--rk-panel) 85%, transparent); border-radius: var(--radius-sm); }
+.rk-hud-more:focus-visible { outline: 2px solid var(--rk-focus); }
 .rk-hud-stats { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0; }
-.rk-hud-stats .rk-stat { padding: var(--space-1) var(--space-2); min-width: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); }
-.rk-hud-stats .rk-stat dd { font-size: 1.05rem; }
+.rk-hud-stats .rk-stat { display: flex; align-items: baseline; gap: var(--space-1); padding: 2px var(--space-2);
+  min-width: 0; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); }
+.rk-hud-stats .rk-stat dt { font-size: 0.72rem; margin: 0; }
+.rk-hud-stats .rk-stat dd { font-size: 0.92rem; margin: 0; }
+/* R4: visible without interaction, but compact -- short labels in a wrapping row; a
+   viewer puts the long explanation of each mark in a hover title, not in the strip. */
 .rk-legend-float {
   position: absolute; left: var(--space-3); bottom: var(--space-3); z-index: 3; margin: 0;
-  max-width: min(640px, calc(100% - 2 * var(--space-3)));
+  max-width: min(720px, calc(100% - 2 * var(--space-3)));
+  padding: var(--space-1) var(--space-2); font-size: 0.76rem;
   background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px);
 }
 .rk-hint {
@@ -308,6 +328,8 @@ mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
   .rk-drawer[hidden] { display: none !important; }
 }
 @media print {
+  .rk-hud .verdict { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+  .rk-hud-more { display: none; }
   .rk-stage { height: auto; min-height: 0; display: block; }
   .rk-figure { height: 70vh; }
   .rk-drawer, .rk-tip, .rk-hint { display: none !important; }

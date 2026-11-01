@@ -182,10 +182,23 @@ A viewer exists for its figure: the matrix, the Sankey, the trend line, the grap
 it into a card above three screens of prose makes the reader scroll away from the thing the
 prose explains, and lose it. So:
 
-- **The figure fills the first screen.** It lives in the kit's stage (`#rk-stage`, with
-  `#rk-figure[data-rk-figure]`), sized to the viewport, and sized from the container rather
-  than a constant (R5). `capture_viewer_screenshot.py --min-figure-share 0.6` measures it:
-  the figure must cover at least 60 % of a 1600 × 900 first screen.
+- **The figure fills the first screen — what it draws, not its box.** It lives in the kit's
+  stage (`#rk-stage`, with `#rk-figure[data-rk-figure]`), sized to the viewport, and its marks
+  are laid out from the container rather than a constant (R5): a graph in the stage's aspect
+  ratio and fitted to the free area, a chart's tracks from the available height.
+  `capture_viewer_screenshot.py --min-ink-share 0.55` measures **ink**: the bounding box of
+  drawn pixels inside the figure, every overlay masked out and isolated specks ignored, over
+  the 1600 × 900 first screen minus the open drawer. The first version of this rule measured
+  the figure's *element box*. Every viewer passed at 70 % — an empty stage scores 93 % on
+  it — while befund's stage map drew over 25 % of the screen and the user, looking at the
+  picture, said nothing had improved. `--selftest` holds the instrument to known answers
+  (empty stage 0, small centred graph and the stage's own frame below 0.1, a stray speck
+  ignored), each one sabotage-tested.
+- **The HUD is a caption, not a page.** The kit clamps the verdict to two lines (the full
+  sentence opens in the drawer via *more*) and sets the numbers as one row of chips. The
+  legend stays visible (R4) as one compact row of short labels; each mark's long explanation
+  is its hover `title`. Every pixel the HUD and legend take is a pixel the figure's fit gives
+  up.
 - **The verdict and the few numbers that matter float over it** as a HUD (`.rk-hud`, the
   static `.verdict` inside it, `stage.stats([...])`), with the static legend as a floating
   overlay (`.legend.rk-legend-float`). That keeps R1, R3 and R4 without taking the figure's space.
@@ -277,15 +290,21 @@ to — check it by hand when you add one.
 
 ## Screenshots
 
-### C1 — Capture at content height, not a fixed viewport
+### C1 — Capture the first screen the figure fills
 
-Width 1600 for consistency; height = the page's own `scrollHeight`. Capture with
-`python3 scripts/ci/capture_viewer_screenshot.py <rendered.html> <out.jpg>` — it measures
-the height, records console errors (exit 1 if the page logged any, because a screenshot of
-an error panel still "succeeds"), and exits 3 "not run" instead of writing a placeholder
-when no browser driver is available. The seven images from
-`821a14a` are all 1600×1000 and mostly empty. `plugins/lehre/assets/doctrine-viewer-screenshot.jpg`
-is 1600×1728 because that is where its content ends.
+Width 1600 for consistency; height 900 — the first screen a reader sees. Since R9 the figure
+*is* that screen; a full-page image puts the findings and tables under it in the picture,
+which is exactly the "information below the figure" the figure-first rule exists to end.
+(The earlier rule captured at `scrollHeight`, because the seven images from `821a14a` were
+1600×1000 viewports that were mostly empty: a viewer that did not fill its viewport. Ink
+share (R9) is what now catches that, measured rather than looked for.) Capture with
+`python3 scripts/ci/regen_viewer_screenshots.py`, which renders every viewer from its
+committed demo data (`scripts/ci/viewer-screenshots.json`), captures it through
+`capture_viewer_screenshot.py`, and fails on console errors (a screenshot of an error panel
+still "succeeds"), on ink below the floor, and exits 3 "not run" instead of writing a
+placeholder when no browser driver is available. `--full-page` remains for reviewing a page,
+not for a README. `--sheet` writes a contact sheet of every first screen: look at it, because
+a number is not a verdict.
 
 ### C2 — The demo data must be committed
 

@@ -23,7 +23,6 @@
   #map.dragging { cursor: grabbing; }
   #map:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; }
   .rk-hud { max-width: min(520px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
-  .rk-hud .verdict { font-size: 0.9rem; line-height: 1.5; }
   .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
   .panel { background: var(--rk-panel); border: 1px solid var(--rk-border);
     border-radius: var(--radius-panel); padding: var(--space-3); }
@@ -33,11 +32,10 @@
      the same way in the legend as on the map. */
   #legendpanel h3, #matchpanel h3 { font-size: 11px; text-transform: uppercase;
     letter-spacing: .05em; color: var(--rk-muted); margin: 0 0 var(--space-2); }
-  .rk-legend-float { max-width: min(820px, calc(100% - 2 * var(--space-3))); padding: var(--space-2) var(--space-3); }
-  .rk-legend-float h3 { margin: 0 0 var(--space-1); }
-  .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: var(--space-1) var(--space-4); font-size: 12px; color: var(--rk-muted); }
-  .legend li { display: flex; align-items: center; gap: var(--space-2); }
+  /* One compact row of short labels; each mark's full explanation is its hover title. */
+  .legend { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap;
+    gap: var(--space-1) var(--space-3); font-size: 12px; color: var(--rk-muted); }
+  .legend li { display: flex; align-items: center; gap: var(--space-1); cursor: help; }
   .legend canvas.swatch { flex: none; }
   #results { max-height: min(180px, 22vh); overflow-y: auto; }
   #results button { display: block; width: 100%; text-align: left; margin: 0 0 var(--space-1); }
@@ -90,13 +88,12 @@
       <canvas id="map" tabindex="0" role="application" aria-label="Force-directed dependency graph of the stages. Arrow keys move between stages, Enter opens a stage's detail. The same facts are listed under Findings and Stages below."></canvas>
     </div>
     <div class="rk-legend-float rk-card" id="legendpanel">
-      <h3>What the marks mean</h3>
-      <ul class="legend" id="legend">
-        <li><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>ordinary stage — thin grey ring</li>
-        <li><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module — most stages import it (thick amber ring)</li>
-        <li><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a dependency cycle — double red ring, or a red core when small; its number names the cycle</li>
-        <li><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end — imports nothing outward (dashed ring)</li>
-        <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
+      <ul class="legend" id="legend" aria-label="What the marks mean">
+        <li title="An ordinary stage: thin grey ring."><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>stage</li>
+        <li title="God-module: most other stages import it. Thick amber ring."><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module</li>
+        <li title="In a dependency cycle: double red ring, or a red core when small. Its number names the cycle."><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a cycle (number = which)</li>
+        <li title="Dead-end: imports nothing outward. Dashed ring."><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end</li>
+        <li title="Circle area is proportional to the number of files in the stage."><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>area = files</li>
       </ul>
     </div>
     <span class="rk-hint" id="hint">drag to move or pan · scroll to zoom · click or Enter on a stage for detail · double-click to focus</span>
@@ -413,6 +410,10 @@ document.getElementById("verdict").textContent = verdictText();
 // keeps differently-sized circles from overlapping at rest, and
 // forceCenter keeps the whole layout centered on the canvas origin.
 const links = edges.map(e => ({ source: e.source, target: e.target }));
+// R9: lay the graph out in the figure's own shape. A plain force layout settles into a disc,
+// which on a wide stage fills the height and leaves both sides empty; pulling harder toward
+// the horizontal axis than the vertical one stretches the cluster to the stage's aspect.
+const ASPECT = Math.min(2.4, Math.max(1, stageEl.clientWidth / Math.max(1, stageEl.clientHeight)));
 const simulation = d3.forceSimulation(nodes)
   .force("link", d3.forceLink(links).id(d => d.id).distance(70))
   .force("charge", d3.forceManyBody().strength(d => -60 - d.r * 4))
@@ -420,8 +421,8 @@ const simulation = d3.forceSimulation(nodes)
   .force("center", d3.forceCenter())
   // A pull toward the origin keeps an unconnected stage near the cluster (it has no wire to hold
   // it there) instead of letting it drift off and shrink everything else when the map is fitted.
-  .force("x", d3.forceX().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2)))
-  .force("y", d3.forceY().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2)))
+  .force("x", d3.forceX().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2) / ASPECT))
+  .force("y", d3.forceY().strength(d => (d.fanIn + d.fanOut ? 0.05 : 0.2) * ASPECT))
   .on("tick", requestDraw);
 // Settle the layout before the first paint (about 300 ticks to alpha-min), so the map opens
 // framed and still rather than mid-animation; dragging a stage re-heats it as before.
@@ -446,7 +447,7 @@ function fitToNodes() {
   const rect = el => { const r = el.getBoundingClientRect(); return { x: r.left - fr.left - 10, y: r.top - fr.top - 10, w: r.width + 20, h: r.height + 20 }; };
   const floats = [rect(document.querySelector(".rk-hud")), rect(document.getElementById("legendpanel"))];
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  const k0 = Math.min(vw / (w * 1.08), vh / (h * 1.08), MAX_K);
+  const k0 = Math.min(vw / (w * 1.04), vh / (h * 1.04), MAX_K);
   const clear = (k, ox, oy) => nodes.every(n => {
     const sx = n.x * k + ox, sy = n.y * k + oy, r = n.r * k;
     return floats.every(f => {
@@ -458,13 +459,21 @@ function fitToNodes() {
   let best = null;
   for (let f = 1; f >= 0.35 && !best; f -= 0.03) {
     const k = k0 * f;
-    // centre in the whole figure first, then in the band between the two floats
+    // centre in the whole figure first, then in the band between the two floats, then
+    // nudged right of them (the floats sit on the left edge)
+    const right = Math.max(...floats.map(fl => fl.x + fl.w));
     for (const oy of [vh / 2 - cy * k, (free0 + free1) / 2 - cy * k]) {
-      if (clear(k, vw / 2 - cx * k, oy)) { best = { k, oy }; break; }
+      // every candidate is clamped so the whole layout stays inside the figure
+      const lo = 8 - minX * k, hi = vw - 8 - maxX * k;
+      for (const raw of [vw / 2 - cx * k, (vw + right) / 2 - cx * k, hi]) {
+        const ox = Math.min(hi, Math.max(lo, raw));
+        if (clear(k, ox, oy)) { best = { k, ox, oy }; break; }
+      }
+      if (best) break;
     }
   }
-  if (!best) { const k = k0 * 0.5; best = { k, oy: (free0 + free1) / 2 - cy * k }; }
-  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * best.k, best.oy).scale(best.k));
+  if (!best) { const k = k0 * 0.5; best = { k, ox: vw / 2 - cx * k, oy: (free0 + free1) / 2 - cy * k }; }
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(best.ox, best.oy).scale(best.k));
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
