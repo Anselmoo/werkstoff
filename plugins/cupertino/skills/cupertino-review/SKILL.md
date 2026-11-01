@@ -1,6 +1,6 @@
 ---
 name: cupertino-review
-description: "Use when a project spans multiple lifecycle moments and the user wants the whole cupertino discipline applied end-to-end in one pass — 'give this the full cupertino treatment', 'review this like Apple would', 'run the whole design lifecycle on this'. Composes the plugin's other techniques as fixed, sequenced stages rather than requiring the user to invoke each one by hand. Not for a single lifecycle moment with one obvious technique — use that technique directly instead."
+description: "Use when a project spans multiple lifecycle moments and the user wants the whole cupertino discipline applied end-to-end in one pass — 'give this the full cupertino treatment', 'review this like Apple would', 'run the whole design lifecycle on this'. Composes the plugin's other techniques as fixed, sequenced stages rather than requiring the user to invoke each one by hand. Not for a single lifecycle moment with one obvious technique — use that technique directly instead. Not for fixing or changing something that already exists: the pipeline redesigns and adds features, so a fix routed here breaks what worked -- use cupertino-repair."
 ---
 
 Run the fixed pipeline, in order, on the given project or scope:
@@ -15,7 +15,7 @@ cupertino-backwards -> cupertino-focus -> [cupertino-longevity & cupertino-integ
 ```bash
 python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" init
 python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set review-pipeline-active
-for f in backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
+for f in backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output reveal-output; do
   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
 done
 ```
@@ -126,7 +126,7 @@ Clear every flag when you finish (success, early stop, or the user cancels) — 
 would let a future run wrongly treat this one's stages as already done:
 
 ```bash
-for f in review-pipeline-active backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output; do
+for f in review-pipeline-active backwards-done focus-output longevity-output integrate-output council-output prototype-output elevate-output unbox-output reveal-output; do
   python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear "$f"
 done
 ```

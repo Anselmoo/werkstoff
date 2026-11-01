@@ -101,6 +101,9 @@ function fence(label, value) {
 const NORMALIZED_ARGS = normalizeArgs(args)
 const domain = NORMALIZED_ARGS && NORMALIZED_ARGS.domain
 const symbolIndexPath = NORMALIZED_ARGS && NORMALIZED_ARGS.symbolIndexPath
+// Scaffolded defaults are INVENTED rules (no convention exists in the repo). They enter the
+// handbook only when the user opted in, passed by the calling SKILL.md; absent means no.
+const scaffoldDefaults = !!NORMALIZED_ARGS && NORMALIZED_ARGS.scaffoldDefaults === true
 const dimensions = DIMENSION_CATALOG[domain]
 if (!dimensions) {
   throw new Error(
@@ -154,10 +157,38 @@ const results = await pipeline(
     }).then((v) => ({ ...candidate, verification: v }))
 )
 
-const rules = results.filter(Boolean)
-if (rules.length !== dimensions.length) {
-  log(`${dimensions.length - rules.length} dimension(s) failed to produce a candidate and were dropped -- not silently treated as complete coverage.`)
+const candidates = results.filter(Boolean)
+if (candidates.length !== dimensions.length) {
+  log(`${dimensions.length - candidates.length} dimension(s) failed to produce a candidate and were dropped -- not silently treated as complete coverage.`)
+}
+
+// A candidate survives only if its independent re-verification said "confirmed". A "revise"
+// verdict, or no verdict at all, is a failed candidate: it is discarded, never kept with the
+// verdict attached for someone downstream to ignore (the SKILL promises discard).
+const verified = candidates.filter((c) => c.verification && c.verification.verdict === 'confirmed')
+const failedVerification = candidates.length - verified.length
+if (failedVerification > 0) {
+  log(`${failedVerification} candidate(s) did not pass re-verification (verdict revise or missing) and were discarded.`)
+}
+
+// Scaffolded rules are kept only on opt-in, and always carry sourceMode "scaffolded" explicitly,
+// so handbook-check can tell an observed convention from an invented default.
+const rules = []
+let droppedScaffolded = 0
+for (const c of verified) {
+  if (c.sourceMode === 'scaffolded') {
+    if (!scaffoldDefaults) {
+      droppedScaffolded++
+      continue
+    }
+    rules.push({ ...c, sourceMode: 'scaffolded' })
+  } else {
+    rules.push(c)
+  }
+}
+if (droppedScaffolded > 0) {
+  log(`${droppedScaffolded} scaffolded default(s) left out: the repo has no convention there and scaffoldDefaults was not enabled.`)
 }
 
 // judge-contract: no sealed set has measured this judge, so its verdicts are labelled calibrated: false.
-return { domain, rules, calibrated: false }
+return { domain, rules, droppedRevised: failedVerification, droppedScaffolded, calibrated: false }

@@ -1,6 +1,6 @@
 ---
 name: befund-ui-audit
-description: Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", "review this UI before we ship", or as part of befund-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and for the end-to-end design pipeline that surface belongs to use cupertino-review.
+description: Statically audits JSX/TSX, Vue/Svelte, HTML, and CSS/SCSS source for accessibility, semantic-markup, and design-token problems -- never running or rendering the app. Use when the user asks to "audit UI accessibility", "check our components for a11y issues", "find hardcoded design values", "review this UI before we ship", or as part of befund-autopilot's CHECK phase. Not for designing an interface that does not exist yet, and not a design critique -- for build-time design of a new screen or surface use cupertino-council, and to fix or change an existing UI without breaking it use cupertino-repair.
 ---
 
 # befund-ui-audit

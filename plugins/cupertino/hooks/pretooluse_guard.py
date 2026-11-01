@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """cupertino PreToolUse guard.
 
+usage: python3 pretooluse_guard.py < payload.json   (registered in hooks/hooks.json; Claude Code
+       pipes the PreToolUse payload on stdin). Exit 0 allow; 2 deny, with the reason on stderr
+       and a hookSpecificOutput deny decision on stdout.
+
 This is the one place in the plugin where a MUST-NOT rule holds regardless of
 whether the model feels like reading a SKILL.md that day. Every check below
 corresponds to a specific rule id from the plugin's behavioral spec (named in

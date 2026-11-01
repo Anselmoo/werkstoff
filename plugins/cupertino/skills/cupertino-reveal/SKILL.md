@@ -1,6 +1,6 @@
 ---
 name: cupertino-reveal
-description: "Use at ship-time, as the last automatic step for a finished feature, module, tool, or API, to deliver exactly one non-obvious, high-leverage addition in a keynote 'and one more thing' structure. Trigger on 'what's missing here', 'is there anything else this needs before shipping', or automatically as the final stage when cupertino-review runs the full pipeline. Never produces a list — exactly one suggestion, and it must be built, not pitched."
+description: "Use at ship-time, as the last automatic step for a finished feature, module, tool, or API, to deliver exactly one non-obvious, high-leverage addition in a keynote 'and one more thing' structure. Trigger on 'what's missing here', 'is there anything else this needs before shipping', or automatically as the final stage when cupertino-review runs the full pipeline. Never produces a list — exactly one suggestion, and it must be built, not pitched. Not inside a cupertino-repair run (the hook refuses it there), and never as a way to 'fix' an existing artifact: that is cupertino-repair."
 ---
 
 Deliver exactly one reveal. Never a numbered list, never a set of alternatives to choose from — the discipline of "and one more thing" is that there is exactly one thing.

@@ -21,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import validators
 
 FINDING = {
+    "rule": "no-inline-styles",
     "file": "src/a.tsx",
+    "quotedLine": "<div style={{ padding: 8 }}>",
     "line": 7,
     "severity": "Medium",
     "title": "inline style",

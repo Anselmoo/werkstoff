@@ -1,6 +1,6 @@
 ---
 name: cupertino-unbox
-description: "Use at build/finishing-time, after core feature work has produced something worth a new user's first five minutes, to redesign the actual first-run, onboarding, or install flow. Trigger on 'improve onboarding', 'first-run experience', 'unboxing', 'install flow', 'first five minutes'. Scope is strictly the first five minutes of first contact — not the whole onboarding arc, and not to be confused with cupertino-elevate, which transfigures an existing feature's ongoing feel rather than the first-contact sequence."
+description: "Use at build/finishing-time, after core feature work has produced something worth a new user's first five minutes, to redesign the actual first-run, onboarding, or install flow. Trigger on 'improve onboarding', 'first-run experience', 'unboxing', 'install flow', 'first five minutes'. Scope is strictly the first five minutes of first contact — not the whole onboarding arc, and not to be confused with cupertino-elevate, which transfigures an existing feature's ongoing feel rather than the first-contact sequence. Not inside a cupertino-repair run (the hook refuses it there): a repair changes only what its approved changeset names."
 ---
 
 Redesign exactly the first five minutes of first contact — the way unwrapping an Apple product is itself part of the product. Nothing beyond that window is in scope for this technique.

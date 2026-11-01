@@ -24,28 +24,30 @@ Do not attempt any workaround.
    cat ".cupertino/handbook_check_${domain}_summary.json" | python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/validators.py" handbook-check-summary
    ```
    If this exits non-zero, stop — do not attempt to guess or repair the missing fields yourself. Report the validator's errors and ask the user to re-run `cupertino-handbook-check`.
-3. **Filter to `mechanical: true` findings only.** Everything else is explicitly out of scope for this skill — it requires design judgment `handbook-remediator` is built to refuse.
-4. **Mark the fix pass active**, which the PreToolUse hook uses to block any `git commit`/`git push`/destructive command for the duration:
+3. **Filter to `mechanical: true` findings only.** Everything else is explicitly out of scope for this skill — it requires design judgment `handbook-remediator` is built to refuse. The workflow then demotes, deterministically, any of those that a model cannot be trusted to call mechanical: a `.js`/`.ts`/`.jsx`/`.tsx`/`.mjs` file whose suggested fix introduces `var(--` (script code such as charts cannot read CSS variables), and any finding spanning more than one line. Demoted findings are counted as skipped.
+4. **Baseline the repo's own check.** If the repo has a test or build command (look in `package.json` scripts, `Makefile`, `pyproject.toml`, CI config; if `cupertino-repair`'s `scripts/baseline.py` / `scripts/verify.py` apply, use them), run it now, before any edit, and record pass/fail and the command. If there is none, say so in the report. A red baseline is reported as red, and the after-run is then compared against it.
+5. **Mark the fix pass active**, which the PreToolUse hook uses to block any `git commit`/`git push`/destructive command for the duration:
    ```bash
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" set handbook-fix-active
    ```
-5. **Run the fix pipeline** via the Workflow tool:
+6. **Run the fix pipeline** via the Workflow tool:
    ```
    Workflow({ scriptPath: "${CLAUDE_PLUGIN_ROOT}/workflows/handbook-fix.js", args: { findings: [...] } })
    ```
-   This clusters findings by `(file, rule)`, dispatches `handbook-remediator` once per cluster (never touching anything outside the cited file:line, never verifying its own work), and immediately dispatches a **fresh, independent** `handbook-verifier` per finding — one that is never shown the remediator's own description, rationale, or confidence, only the original pre-fix evidence and the rule text. Both constraints are backstopped by the PreToolUse hook regardless of what the workflow script does.
+   This dispatches `handbook-remediator` once per **location** (never touching anything outside it; locations in one file run in sequence, different files in parallel; the remediator finds its target by the quoted original text because earlier edits shift line numbers, and re-reads its edit to confirm it is syntactically intact), then dispatches a **fresh, independent** `handbook-verifier` per finding on the file's post-edit state — one that is never shown the remediator's own description, rationale, or confidence, only the rule text, the original pre-fix evidence and the original line text. Both constraints are backstopped by the PreToolUse hook regardless of what the workflow script does.
 
-   If this step errors, is interrupted, or any verifier rejects a fix, still run step 6 to clear `handbook-fix-active` before reporting the failure — do not leave the flag set on a failed or partial run. Only skip step 6 if the state file itself cannot be written, in which case tell the user to clear `handbook-fix-active` manually.
-6. **Clear the flag**:
+   If this step errors, is interrupted, or any verifier rejects a fix, still run step 7 to clear `handbook-fix-active` before reporting the failure — do not leave the flag set on a failed or partial run. Only skip step 7 if the state file itself cannot be written, in which case tell the user to clear `handbook-fix-active` manually.
+7. **Clear the flag**:
    ```bash
    python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/state.py" clear handbook-fix-active
    ```
-7. **Report one accept/fail line per finding fixed** — the remediation outcome and the independent verifier's verdict, side by side, so a "fixed" claim that the verifier actually rejected is visible, not hidden.
-8. **Never commit or push**, and never touch test files or CI configuration — this skill's job ends at the working tree.
+8. **Re-run the baseline command** from step 4, now that the flag is cleared, and report both results side by side. A fix pass that turns a passing command red is a **regression**: say so first, list every edit it made (`file:line` and the remediator's change) so the user can revert them, and do not revert anything yourself. A command that was already red is reported as such, not as a regression.
+9. **Report one accept/fail line per finding fixed** — the remediation outcome and the independent verifier's verdict, side by side, so a "fixed" claim that the verifier actually rejected is visible, not hidden.
+10. **Never commit or push**, and never touch test files or CI configuration — this skill's job ends at the working tree.
 
 ## Output format
 
-Mode-gate confirmation → validated findings count (mechanical vs. skipped) → per-finding accept/fail table (remediation status + verifier verdict) → explicit statement that nothing was committed or pushed.
+Mode-gate confirmation → validated findings count (mechanical vs. skipped) → baseline command result before and after (or that none exists) → per-finding accept/fail table (remediation status + verifier verdict) → explicit statement that nothing was committed or pushed.
 
 ```
 Mode gate: handbook.fix.mode = fix (confirmed)

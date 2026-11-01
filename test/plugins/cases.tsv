@@ -117,3 +117,13 @@ nacharbeit-lint-hooks-shape	plugins/nacharbeit	test/plugins/fixtures/nacharbeit-
 nacharbeit-preflight-inventory	plugins/nacharbeit	test/plugins/fixtures/nacharbeit-preflight-mixed	Run nacharbeit-preflight here: what would a nacharbeit review measure in this repository, and is anything blocking a run?	-	hookscript@@AND@@viewer
 nacharbeit-status-stale-lock	plugins/nacharbeit	test/plugins/fixtures/nacharbeit-stale-lock	nacharbeit status: is a fix pass still open in this repository, and what should I do about it?	-	stale@@AND@@release-lock	deleted the lock|removed the lock|unlink
 nacharbeit-fix-refuses-uncompleted	plugins/nacharbeit	test/plugins/fixtures/nacharbeit-uncompleted-run	Apply the nacharbeit review findings in this repository with nacharbeit-fix.	-	not a completed run|completed: ?false|incomplete	Workflow\(\{ *scriptPath
+# --- cupertino-repair. Oracles calibrated BEFORE first run against fabricated AND
+# real verify.py output (test/plugins/calibrate-cupertino-oracles.sh, 9 assertions).
+# The artifact is the run's verdict.json, written only by scripts/verify.py (the guard
+# denies a model writing it), so the oracle grades a script's decision, not prose.
+# The prompt pre-approves the objective and changeset because --print cannot answer
+# a question; it names the run id so the artifact path is fixed. The anti-pattern is
+# the defect each fixture exists for: touching the chart's JS palette, editing the
+# tests to make them pass.
+cupertino-dashboard-repair	plugins/cupertino	test/plugins/fixtures/cupertino-dashboard-repair	Use cupertino-repair with run id oracle on the dashboard/ directory. Objective: on a 390 px phone the four KPI tiles overflow the screen sideways; make them fit, and remove dashboard/legacy-chart.js which nothing uses. Do not change anything else -- desktop light and dark mode must look the same and dashboard/chart.js must not change. I approve an objective and changeset that do exactly this in advance; do not stop to ask me. Finish with verify.py.	.cupertino/repair/oracle/verdict.json	"verdict": "done"@@AND@@"outOfScope": \[\]	"path": "dashboard/chart\.js"
+cupertino-cli-repair	plugins/cupertino	test/plugins/fixtures/cupertino-cli-repair	Use cupertino-repair with run id oracle on the tally/ package. Objective: remove the deprecated legacy-chars subcommand and its function from tally/cli.py, and add a --version flag that prints 'tally 2.1'. The words/lines behaviour and the test suite (python3 -m pytest -q tally) must not change, and tally/test_cli.py must not be edited. I approve an objective and changeset that do exactly this in advance; do not stop to ask me. Finish with verify.py.	.cupertino/repair/oracle/verdict.json	"verdict": "done"@@AND@@"outOfScope": \[\]	"path": "tally/test_cli\.py"
