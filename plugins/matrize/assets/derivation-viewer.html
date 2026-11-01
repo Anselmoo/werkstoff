@@ -3,141 +3,127 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>matrize — derivation health</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-/* A LEDGER: a finite list of measured claims against fixed thresholds. Print-first, and
-   entirely static — no script at all. I7's test is falsifiable: print it, and if nothing
-   is lost it should not have been interactive. Nothing is lost here, so the two XSS
-   barriers the house viewers need collapse into something better than both — there is no
-   injection surface, because there is no script. */
+/* A LEDGER: a finite list of measured claims against fixed thresholds. Still print-first --
+   the kit opens every drill-down on print, so nothing a reader would lose on paper is hidden
+   behind a click. The contrast chart is server-rendered SVG, moved into its section by the
+   page script; it never passes through innerHTML. */
 @page { size: A4; margin: 14mm; }
-
-* { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font-family: var(--font-sans); font-size: var(--font-size-base);
-  line-height: var(--line-height-base);
-}
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 var(--space-4) var(--space-5); }
-header {
-  height: var(--header-h); display: flex; align-items: center;
-  border-bottom: 1px solid var(--border); margin-bottom: var(--space-4);
-}
-h1 { font-size: 1.15rem; font-weight: 600; margin: 0; letter-spacing: .01em; }
-h2 {
-  font-size: .95rem; font-weight: 600; margin: var(--space-5) 0 var(--space-2);
-  color: var(--smoke); text-transform: uppercase; letter-spacing: .08em;
-  break-after: avoid;
-}
-.subtitle { color: var(--muted); margin: 0 0 var(--space-4); font-size: .9rem; }
-.verdict {
-  border: 1px solid var(--border); border-left: 3px solid var(--status-warn, var(--cat-4));
-  background: var(--panel); border-radius: var(--radius-panel);
-  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-4); font-size: 1.02rem;
-  break-inside: avoid;
-}
 .legend {
   display: flex; flex-wrap: wrap; gap: var(--space-3);
-  color: var(--muted); font-size: .82rem; margin: var(--space-2) 0 var(--space-3);
+  color: var(--rk-muted); font-size: .82rem; margin: var(--space-2) 0 var(--space-3);
 }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
-table { border-collapse: collapse; width: 100%; font-size: .88rem; }
-th, td {
-  text-align: left; padding: 8px 10px;
-  border-bottom: 1px solid var(--border); vertical-align: top;
-}
-th { color: var(--muted); font-weight: 500; font-size: .78rem;
-     text-transform: uppercase; letter-spacing: .06em; }
-tr { break-inside: avoid; }
-td.num { font-variant-numeric: tabular-nums; }
-.grade { font-weight: 600; }
-.grade-a { color: var(--status-good, var(--cat-2)); }
-.grade-b { color: var(--cat-4); }
-.grade-c { color: var(--status-bad, var(--cat-5)); }
-/* The appearance mode a contrast pair belongs to. Not colour-coded alone: the word is
-   the channel, and the tint only reinforces it. */
-td.mode { font-variant: small-caps; letter-spacing: .04em; color: var(--smoke); }
-td.mode-dark { color: var(--muted); }
-.extension { color: var(--cat-4); }
-ul.gaps { margin: var(--space-2) 0 0; padding-left: 1.1rem; color: var(--text); }
-ul.gaps li { margin: 2px 0; }
-/* R3: an actionable number must not look like an inert one. */
-.blocking { color: var(--status-bad, var(--cat-5)); font-weight: 700; }
-.blocking::after { content: " ✗"; font-weight: 700; }
-.note { color: var(--muted); font-size: .84rem; margin: var(--space-2) 0 0; }
-.empty { color: var(--muted); padding: var(--space-4); border: 1px dashed var(--border);
+.swatch { width: 10px; height: 10px; border-radius: var(--radius-sm); display: inline-block; background: currentColor; }
+.grade-a { color: var(--rk-ok); }
+.grade-b { color: var(--rk-warn); }
+.grade-c { color: var(--rk-bad); }
+.note { color: var(--rk-muted); font-size: .84rem; margin: var(--space-2) 0 0; }
+.empty { color: var(--rk-muted); padding: var(--space-4); border: 1px dashed var(--rk-border);
          border-radius: var(--radius-panel); }
-figure { margin: var(--space-3) 0 0; break-inside: avoid; }
+figure { margin: var(--space-3) 0; break-inside: avoid; }
+/* The appearance mode a contrast pair belongs to. The word is the channel. */
+.mode { font-variant: small-caps; letter-spacing: .04em; }
 
 /* The threshold chart, shared with the sketchbook. Colour is redundant to position,
    shape and a printed value throughout. */
 .chart { display: block; max-width: 100%; }
-.chart .rule { stroke: var(--border); stroke-width: 1; }
-.chart .rule-pass { stroke: var(--smoke); }
-.chart .rule-label { font-size: 9px; fill: var(--muted); }
-.chart .stem { stroke: var(--border); stroke-width: 2; }
-.chart .stem-short { stroke: var(--status-bad, var(--cat-5)); }
-.chart .head-clears { fill: var(--smoke); }
-.chart .head-short { fill: var(--status-bad, var(--cat-5)); }
-.chart .mark-label { font-size: 11px; fill: var(--text); }
-.chart .mark-value { font-size: 10.5px; fill: var(--text); font-variant-numeric: tabular-nums; }
-
-@media print {
-  body { background: #fff; color: #111; }
-  .wrap { max-width: none; padding: 0; }
-  header { border-color: #ccc; }
-  th, td { border-color: #ddd; }
-  .verdict { background: #f6f6f6; border-color: #ccc; }
-  .chart .mark-label, .chart .mark-value { fill: #111; }
-  .chart .head-clears { fill: #111; }
-  .chart .stem { stroke: #bbb; }
-}
+.chart .rule { stroke: var(--rk-border); stroke-width: 1; }
+.chart .rule-pass { stroke: var(--rk-muted); }
+.chart .rule-label { font-size: 9px; fill: var(--rk-muted); }
+.chart .stem { stroke: var(--rk-border); stroke-width: 2; }
+.chart .stem-short { stroke: var(--rk-bad); }
+.chart .head-clears { fill: var(--rk-text); }
+.chart .head-short { fill: var(--rk-bad); }
+.chart .mark-label { font-size: 11px; fill: var(--rk-text); }
+.chart .mark-value { font-size: 10.5px; fill: var(--rk-text); font-variant-numeric: tabular-nums; }
 </style>
 </head>
-<body>
-<header><div class="wrap"><h1>matrize — derivation health</h1></div></header>
-<div class="wrap">
-
-  <p class="verdict"><!--__VERDICT__--></p>
-  <p class="subtitle"><!--__SCOPE__--></p>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>matrize — derivation health</h1>
+  <p class="rk-sub"><!--__SCOPE__--></p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search the report">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
+<main class="rk-wrap">
+  <p class="verdict warn"><!--__VERDICT__--></p>
 
   <p class="legend">
-    <span><i class="swatch grade-a" style="background:currentColor"></i> grade A — usable as stated</span>
-    <span><i class="swatch grade-b" style="background:currentColor"></i> grade B — ratios only</span>
-    <span><i class="swatch grade-c" style="background:currentColor"></i> grade C — direction only, cannot set a token alone</span>
+    <span><i class="swatch grade-a"></i> grade A — usable as stated</span>
+    <span><i class="swatch grade-b"></i> grade B — ratios only</span>
+    <span><i class="swatch grade-c"></i> grade C — direction only, cannot set a token alone</span>
     <span>✗ blocks a token or fails a threshold</span>
     <span>mode — the appearance a contrast pair was measured in</span>
   </p>
 
-  <h2>References</h2>
-  <!--__REFERENCES__-->
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
+  </div>
+  <figure id="contrast-chart" hidden><!--__CONTRAST_CHART__--></figure>
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
+<script>
+(() => {
+  const RERUN_COMMAND = "python3 plugins/matrize/scripts/build_derivation_html.py --data plugins/matrize/scripts/fixtures/derivation-demo.json --out /tmp/derivation.html";
+  const D = RK.readData(RERUN_COMMAND);
+  if (!D) return;
+  const { h, section } = RK;
+  const TONE = { A: "ok", B: "warn", C: "bad" };
+  const STANDING_TONE = { "vocabulary": "ok", "declared extension": "info", "unknown": "bad" };
 
-  <h2>Tokens resting on grade-C evidence alone</h2>
-  <!--__GRADE_C__-->
-  <p class="note">Each of these is an open question, not a value. A value supported
-    solely by a screenshot is not a token — corroborate it with an A or B source, or
-    carry it to the brief for a human to settle.</p>
+  const refs = RK.table({ caption: "references", columns: [
+    { key: "name", label: "Reference" }, { key: "method", label: "Method" },
+    { key: "grade", label: "Reliability" }, { key: "rights", label: "Rights" },
+    { key: "cards", label: "Cards", num: true }],
+    rows: D.references.map((r) => ({ ...r, grade: RK.badge("grade " + r.reliability, TONE[r.reliability]) })) });
 
-  <h2>Concepts this system names</h2>
-  <!--__VOCABULARY__-->
-  <p class="note">Every token instantiates a concept from
-    <code>references/vocabulary/</code>, and the vocabulary decides which concepts may be
-    stored at all — a <em>derived</em> term is computed from tokens and never kept
-    separately, a <em>property</em> is observed and not kept at all. A concept the
-    vocabulary does not name is allowed only as a declared extension carrying its reason
-    and the card that decided it. Checked by
-    <code>scripts/validate_tokens.py</code> and refused by the PreToolUse guard.</p>
+  const concepts = [RK.table({ caption: "concepts", columns: [
+    { key: "concept", label: "Concept" }, { key: "standing", label: "Standing" }, { key: "note", label: "Note" }],
+    rows: D.concepts.map((c) => ({ ...c, standing: RK.badge(c.standing, STANDING_TONE[c.standing]) })) })];
+  concepts.push(RK.findings(D.conceptFindings, { idPrefix: "concept-", empty: "Every mandatory asset class is covered and every named concept is known." }));
+  concepts.push(h("p", { class: "note" }, "Every token instantiates a concept from ", h("code", { text: "references/vocabulary/" }),
+    ", and the vocabulary decides which concepts may be stored at all — a derived term is computed from tokens and never kept separately, a property is observed and not kept at all. A concept the vocabulary does not name is allowed only as a declared extension carrying its reason and the card that decided it. Checked by ",
+    h("code", { text: "scripts/validate_tokens.py" }), " and refused by the PreToolUse guard."));
 
-  <h2>Computed contrast</h2>
-  <!--__CONTRAST__-->
-  <p class="note">Ratios are computed by <code>scripts/contrast.py</code> and cannot be
-    supplied; the builder rejects input that states one. The chart shows <em>margin</em>,
-    which a table flattens: a pair just short of 4.5 is a near miss fixed by darkening a
-    few percent, and one near 1.0 is a different colour.</p>
+  const contrastKids = [];
+  const chart = RK.$("#contrast-chart");
+  if (chart && chart.firstElementChild) { chart.hidden = false; contrastKids.push(chart); }
+  if (D.contrast.length) {
+    contrastKids.push(RK.table({ caption: "computed contrast", columns: [
+      { key: "role", label: "Role" }, { key: "pair", label: "Pair", mono: true }, { key: "mode", label: "Mode" },
+      { key: "aa", label: "Body text (AA 4.5)" }, { key: "aaLarge", label: "Large text (AA 3.0)" }],
+      rows: D.contrast.map((p) => ({
+        role: p.role, pair: p.pair, mode: h("span", { class: "mode", text: p.mode }),
+        aa: RK.badge(p.aa ? "passes" : "FAILS", p.aa ? "ok" : "bad"),
+        aaLarge: RK.badge(p.aaLarge ? "passes" : "FAILS", p.aaLarge ? "ok" : "bad") })) }));
+  }
+  contrastKids.push(RK.findings(D.contrastFindings, { idPrefix: "contrast-", empty: "Every pair clears AA for body text." }));
+  contrastKids.push(h("p", { class: "note" }, "Ratios are computed by ", h("code", { text: "scripts/contrast.py" }),
+    " and cannot be supplied; the builder rejects input that states one. The chart shows margin, which a table flattens: a pair just short of 4.5 is a near miss fixed by darkening a few percent, and one near 1.0 is a different colour."));
 
-</div>
+  RK.$("#rk-content").append(
+    section("glance", "At a glance", RK.glance({ verdict: null, stats: D.stats })),
+    section("references", "References", refs),
+    section("gradec", "Tokens resting on grade-C evidence alone",
+      RK.findings(D.gradeCFindings, { idPrefix: "gradec-", empty: "None — every token rests on at least one grade-A or grade-B source." }),
+      h("p", { class: "note", text: "Each of these is an open question, not a value. A value supported solely by a screenshot is not a token — corroborate it with an A or B source, or carry it to the brief for a human to settle." })),
+    section("concepts", "Concepts this system names", ...concepts),
+    section("contrast", "Computed contrast", ...contrastKids));
+  RK.init();
+})();
+</script>
 </body>
 </html>

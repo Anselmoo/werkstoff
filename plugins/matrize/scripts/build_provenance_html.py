@@ -41,13 +41,17 @@ from collections import defaultdict
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))
+from report_kit import render as kit_render  # noqa: E402
+
 TEMPLATE = HERE.parent / "assets" / "provenance-viewer.html"
 TOKENS_CSS = HERE.parent / "assets" / "tokens.css"
 
 EXT = "com.werkstoff.matrize"
 REF = re.compile(r"^\{([A-Za-z0-9_.-]+)\}$")
-DATA_MARKER = "/*__PROVENANCE_DATA__*/ null"
+DATA_MARKER = "@@DATA@@"
 TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
+KIT_MARKER = "<!--__REPORT_KIT__-->"
 VERDICT_MARKER = "<!--__VERDICT__-->"
 
 
@@ -72,8 +76,9 @@ def build_graph(doc: dict) -> dict:
     nodes: dict[str, dict] = {}
     edges: list[dict] = []
 
-    def node(nid: str, kind: str, label: str, sub: str = "") -> None:
-        nodes.setdefault(nid, {"id": nid, "kind": kind, "label": label, "sub": sub})
+    def node(nid: str, kind: str, label: str, sub: str = "", detail: dict | None = None) -> None:
+        nodes.setdefault(nid, {"id": nid, "kind": kind, "label": label, "sub": sub,
+                               "detail": detail or {}})
 
     for path, token in tokens:
         ext = (token.get("$extensions") or {}).get(EXT) or {}
@@ -83,7 +88,14 @@ def build_graph(doc: dict) -> dict:
         card = ext.get("card")
 
         node(f"ref:{ref_name}", "reference", ref_name, "collected reference")
-        node(f"tok:{path}", "token", css, path)
+        # What the token IS and where its evidence came from: previously dropped, and the
+        # two questions the graph exists to answer ("why this value?") need both.
+        node(f"tok:{path}", "token", css, path, {
+            "value": value_text(token.get("$value")), "type": token.get("$type", ""),
+            "role": ext.get("role", ""), "reference": ref_name, "card": card or "",
+            "grade": grade, "rights": ext.get("rights", ""),
+            "description": token.get("$description", ""),
+        })
 
         if card:
             node(f"card:{card}", "card", card, ext.get("role", ""))
@@ -115,6 +127,17 @@ def build_graph(doc: dict) -> dict:
     return {"nodes": list(nodes.values()), "edges": unique}
 
 
+def value_text(value) -> str:
+    """A token value as one readable line: an alias as written, a colour as its hex, else JSON."""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict) and isinstance(value.get("hex"), str):
+        return value["hex"]
+    if isinstance(value, dict) and "value" in value and "unit" in value:
+        return f"{value['value']}{value['unit']}"
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
 def dependents(graph: dict, node_id: str) -> set[str]:
     out: set[str] = set()
     queue = [node_id]
@@ -125,6 +148,50 @@ def dependents(graph: dict, node_id: str) -> set[str]:
                 out.add(e["to"])
                 queue.append(e["to"])
     return out
+
+
+def kit_report(graph: dict) -> dict:
+    """The JSON island: the graph, a token table and the findings the graph implies, in the
+    report kit's record shape (R6)."""
+    labels = {n["id"]: n for n in graph["nodes"]}
+    tokens = [n for n in graph["nodes"] if n["kind"] == "token"]
+    rows = []
+    for n in tokens:
+        d = n["detail"]
+        rows.append({"id": n["id"], "css": n["label"], "path": n["sub"], "value": d.get("value", ""),
+                     "reference": d.get("reference", ""), "card": d.get("card", ""),
+                     "grade": d.get("grade", ""), "dependents": len(dependents(graph, n["id"]))})
+    findings = []
+    for e in graph["edges"]:
+        if e["grade"] != "C":
+            continue
+        tgt = labels[e["to"]]
+        findings.append({
+            "id": f"gc-{e['from']}-{e['to']}", "severity": "major", "rule": "grade-C-edge",
+            "claim": f"{labels[e['to']]['label']} is reached by a grade-C edge from {labels[e['from']]['label']}",
+            "file": tgt["sub"] or tgt["label"], "quote": f"{e['from']} -> {e['to']} ({e['kind']})",
+            "fix": "Corroborate the source with a grade-A or grade-B reference before relying on the value; the edge gives direction only.",
+            "evidence": [{"label": "grade", "detail": "C -- direction only, drawn dashed in the graph"}],
+            "tags": {"kind": "grade-C"},
+        })
+    fan: dict[str, list[str]] = defaultdict(list)
+    for e in graph["edges"]:
+        if e["kind"] == "alias":
+            fan[e["from"]].append(e["to"])
+    for src, users in sorted(fan.items()):
+        if len(users) < 2:
+            continue
+        s_node = labels[src]
+        findings.append({
+            "id": f"fan-{src}", "severity": "info", "rule": "shared-source",
+            "claim": f"Changing {s_node['label']} changes {len(users)} things, not one",
+            "file": s_node["sub"], "quote": s_node["detail"].get("value", ""),
+            "fix": "Review every dependent before editing the source; each is a separate role that happens to share it.",
+            "evidence": [{"label": "dependent", "detail": f"{labels[u]['label']} ({labels[u]['sub']})"} for u in users],
+            "tags": {"kind": "shared-source"},
+        })
+    return {"scope": graph.get("scope", ""), "nodes": graph["nodes"], "edges": graph["edges"],
+            "tokens": rows, "findings": findings}
 
 
 def esc(text) -> str:
@@ -198,19 +265,17 @@ def render(doc: dict, scope: str) -> str:
     graph = build_graph(doc)
     graph["scope"] = scope
     template = TEMPLATE.read_text(encoding="utf-8")
-    for marker in (DATA_MARKER, TOKENS_MARKER, VERDICT_MARKER):
+    for marker in (DATA_MARKER, TOKENS_MARKER, KIT_MARKER, VERDICT_MARKER):
         if marker not in template:
             raise ValueError(f"template has no {marker}")
 
-    page = template.replace(TOKENS_MARKER, TOKENS_CSS.read_text(encoding="utf-8"), 1)
-    # The verdict names a token label taken from the document's own cssName, so it is
-    # input-derived and must be escaped before it becomes markup.
-    page = page.replace(VERDICT_MARKER, esc(verdict(graph)), 1)
-    blob = json.dumps(graph, ensure_ascii=False)
-    # House convention: escape the delimiters that could close the script element.
-    # Barrier two is the template, which renders every label via textContent.
-    blob = blob.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return page.replace(DATA_MARKER, blob, 1)
+    # The kit inlines tokens, its own css/js and the escaped JSON island (barrier one). The
+    # template renders every label through textContent (barrier two). The static verdict names
+    # a token label taken from the document's own cssName, so it is input-derived and is
+    # escaped before it becomes markup -- and filled AFTER the kit has run, so that text can
+    # never sit in the template while the kit is still searching it for its own markers.
+    page = kit_render(template, TEMPLATE.parent, kit_report(graph), tokens=TOKENS_CSS)
+    return page.replace(VERDICT_MARKER, esc(verdict(graph)), 1)
 
 
 def selftest() -> int:
@@ -263,10 +328,17 @@ def selftest() -> int:
                    any(e["grade"] == "C" for e in build_graph(doc_c)["edges"])))
 
     page = render(doc, "selftest")
-    checks.append(("payload marker replaced", DATA_MARKER not in page))
-    checks.append(("tokens injected", TOKENS_MARKER not in page))
+    def static_markup(html: str) -> str:
+        """The page a reader gets before any script runs: <script> and <style> removed."""
+        return re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
+
+    checks.append(("payload marker replaced by a JSON island",
+                   DATA_MARKER not in page and 'type="application/json" id="report-data"' in page))
+    checks.append(("tokens injected", "--bg:" in page and "<!--__DESIGN_TOKENS__-->" not in page.split("</head>")[1]))
+    checks.append(("the report kit is inlined",
+                   "const RK = (() =>" in page and ".rk-top" in page))
     checks.append(("verdict is in STATIC markup, not written by script",
-                   VERDICT_MARKER not in page and "tokens trace to" in page.split("<script>")[0]))
+                   VERDICT_MARKER not in static_markup(page) and "tokens trace to" in static_markup(page)))
     # This check used to read `... or True`, with its middle term sliced to [:0] as well:
     # unconditionally true twice over, so deleting the payload escaping entirely still
     # printed GREEN. It is the defect this repository is named for -- code that looks
@@ -280,9 +352,13 @@ def selftest() -> int:
     # so splitting on the comment yields the entire page; slicing to the next "</script>"
     # over-reaches into the surrounding JS, where an ordinary code comment mentioning a
     # tag name reads as a raw `<`. raw_decode returns the JSON value's true end offset.
-    start = hostile_page.index('{"nodes"')
-    _, length = json.JSONDecoder().raw_decode(hostile_page, start)
-    payload = hostile_page[start:length]
+    # Under the report kit the payload is a JSON island; its end is the closing script tag
+    # of that island, which is only safe to look for because the escaping under test is
+    # what guarantees no earlier `</script>` can appear inside it.
+    island = re.search(r'<script type="application/json" id="report-data">(.*?)</script>',
+                       hostile_page, re.S)
+    payload = island.group(1) if island else ""
+    json.loads(payload)  # the island must still be valid JSON after escaping
     checks.append(("payload: `<` is escaped, and no raw `<` survives in it",
                    "\\u003c" in payload and "<" not in payload))
     checks.append(("payload: `>` and `&` are escaped too",
@@ -308,7 +384,7 @@ def selftest() -> int:
         for part in target.split("."):
             node = node[part]
         node["$extensions"][EXT]["cssName"] = '--x"><img src=x onerror=alert(1)>'
-        head = render(evil, "selftest").split("<script>")[0]
+        head = static_markup(render(evil, "selftest"))
         checks.append(("verdict: markup in a shared label cannot form a tag",
                        "<img" not in head and "&lt;img" in head))
     else:
