@@ -439,15 +439,20 @@ A reader who can click no longer knows whether they have seen everything.
 
 Being a Ledger has a pleasant consequence. The two independent XSS barriers a
 client-rendered viewer needs collapse into something stronger than either: there is no
-script, so there is no injection surface. The contrast chart is server-rendered SVG and
-prints with the rest.
+script, so there is no injection surface. The report now renders through the report kit, so
+the claim that survives is narrower and checkable: the data rides in one escaped JSON island,
+and the contrast figure is drawn from ratios `contrast.py` computed, never typed. The figure
+fills the first screen; clicking a pair opens its ratio, its thresholds and the nearest
+passing foreground beside it, and everything it shows is also in the tables below.
 
 ## The provenance graph — the one interactive artefact
 
-![A dark three-column graph: one reference node on the left, a column of Design Cards,
-and a column of tokens, with curved edges between them and a sidebar for the selected
-node. The verdict reads: 50 tokens trace to 1 reference, and 3 roles share --silica, so
-changing it changes 3 things, not one.](assets/provenance-viewer-screenshot.jpg)
+![A dark graph filling the first screen: one reference node on the left, Design Cards as small
+squares and tokens in three side-by-side strips, with curved edges between them, the selected
+token --silica and its three dependents lit and the rest dimmed, and a drawer on the right
+listing its value, type, card, reference and what depends on it. The verdict reads: 63 tokens
+trace to 1 reference, and 3 roles share --silica, so changing it changes 3 things, not
+one.](assets/provenance-viewer-screenshot.jpg)
 
 Everything else matrize emits is print-first, because an approval artefact ends as a PDF
 in front of someone who does not get a `localhost` URL. A graph earns the exception: it
@@ -565,9 +570,11 @@ police your whole repository the moment it was installed.
 
 ## The derivation-health report
 
-![matrize derivation-health report: a dark table-based report listing six references with
-their reliability and rights grades, four tokens blocked because their only evidence is a
-screenshot, and a computed-contrast table in which two roles fail WCAG AA.](assets/derivation-viewer-screenshot.jpg)
+![matrize derivation-health report: a dark contrast chart filling the first screen, one row per
+colour pair with its ratio against the 3.0, 4.5 and 7.0 thresholds, two pairs failing AA, and a
+drawer opened on quiet-action showing the ratio, thresholds and the nearest passing foreground;
+below the chart sit the references, the four tokens blocked on screenshot evidence alone and the
+computed-contrast table.](assets/derivation-viewer-screenshot.jpg)
 
 It charts what the pipeline knows about its own evidence: which references were decoded,
 their grades, which tokens rest on grade-C evidence alone, and which contrast pairs fail.

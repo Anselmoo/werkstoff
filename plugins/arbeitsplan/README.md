@@ -461,7 +461,7 @@ rules somebody meant.
 
 ## The run report
 
-![Four candidates over one scope: one landed, one accepted but not selected, one rejected with its failing criterion, and one unmeasured and excluded from the denominator](assets/run-viewer-screenshot.jpg)
+![A candidates by acceptance-criteria matrix filling the first screen: four candidate rows, each cell a glyph and a word (met, NOT met, not measured), the landed candidate outlined, one rejected with its failing criterion, one unmeasured and excluded from the denominator, and a drawer showing the landed candidate's referee evidence, checks and files](assets/run-viewer-screenshot.jpg)
 
 ```bash
 python3 plugins/arbeitsplan/scripts/build_run_html.py --run <runId> --out /tmp/run.html
