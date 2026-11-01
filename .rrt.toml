@@ -832,6 +832,11 @@ description = "docs copy of plugins/cupertino/assets/review-flow-viewer-screensh
 command = ["cp", "plugins/cupertino/assets/review-flow-viewer-screenshot.jpg", "docs/plugins/assets/review-flow-viewer-screenshot.jpg"]
 
 [[tool.rrt.artifact_targets]]
+path = "docs/plugins/assets/repair-viewer-screenshot.jpg"
+description = "docs copy of plugins/cupertino/assets/repair-viewer-screenshot.jpg"
+command = ["cp", "plugins/cupertino/assets/repair-viewer-screenshot.jpg", "docs/plugins/assets/repair-viewer-screenshot.jpg"]
+
+[[tool.rrt.artifact_targets]]
 path = "docs/plugins/assets/review-viewer-screenshot.jpg"
 description = "docs copy of plugins/nacharbeit/assets/review-viewer-screenshot.jpg"
 command = ["cp", "plugins/nacharbeit/assets/review-viewer-screenshot.jpg", "docs/plugins/assets/review-viewer-screenshot.jpg"]
