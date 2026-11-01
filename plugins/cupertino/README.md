@@ -8,7 +8,10 @@ discipline behind the products, not for the look of them.
 
 - **Use when** you are designing a new user-facing feature or screen and want the experience
   settled before anyone names a framework or draws a component.
-- **Not when** the interface already exists and you want its shipped source checked for
+- **Also use when** something that already exists must change without breaking —
+  `cupertino-repair` fixes, extends or deletes part of a dashboard, CLI, library or build
+  against an approved changeset, with a hook scoping every edit to the active item.
+- **Not when** the interface already exists and you want its shipped source only *checked* for
   accessibility or hardcoded design values — use `befund` (`befund-ui-audit`). Not when you
   want a machine-checked rule that blocks a write — use `lehre`.
 
@@ -55,7 +58,8 @@ cupertino-backwards -> cupertino-focus -> [cupertino-longevity & cupertino-integ
   -> cupertino-council -> cupertino-prototype -> cupertino-elevate -> cupertino-unbox -> cupertino-reveal
 ```
 
-`cupertino-review` runs all eight stages end-to-end. `cupertino-cannibalize` is a ninth,
+`cupertino-review` runs all eight stages end-to-end. Changing something that already exists
+is a different route — `cupertino-repair`, below — not a stage of this sequence. `cupertino-cannibalize` is a ninth,
 **user-invoked-only** technique for a post-ship cadence — it never runs automatically.
 Four `cupertino-handbook-*` skills give the same discipline a durable, checkable memory
 per domain (code / design / testing / documentation).
@@ -65,8 +69,9 @@ per domain (code / design / testing / documentation).
 - Not a post-hoc auditor of a UI that already exists — `cupertino-council` runs before
   any code is written and is never retrofitted onto finished code; for accessibility,
   semantic-markup or hardcoded-design-value problems in shipped source, use
-  `befund:befund-ui-audit`, and for a full-lifecycle design pass over an
-  existing project use `cupertino-review` instead.
+  `befund:befund-ui-audit`, for a full-lifecycle design pass over an
+  existing project use `cupertino-review`, and to *fix* what exists without breaking the
+  rest use `cupertino-repair`.
 - Not an auditor of repo-wide documented conventions such as `CLAUDE.md` or
   `.claude/house-rules.md` — `cupertino-handbook-check` only compares work against a
   domain handbook this plugin itself drafted; use `befund:befund-lint-audit`
@@ -87,7 +92,10 @@ per domain (code / design / testing / documentation).
 ```
 
 The PreToolUse hook is inert until the current repo already has a `.cupertino/` state
-directory, so installing the plugin changes nothing on its own — no environment
+directory, with one exception: the gated skills (`cupertino-focus`, `-longevity`,
+`-integrate`, `-council`) are denied on first use in a repo with no `.cupertino/` yet,
+because `cupertino-backwards` has not run. Everything else stays untouched, so
+installing the plugin changes nothing on its own — no environment
 variables or external services are required either; everything the plugin needs is
 either in this repo or written under `.cupertino/` in the target project.
 
@@ -151,6 +159,17 @@ Every stage payload in that fixture passes the plugin's own `scripts/validators.
 (zero tech nouns in the experience statement, one sentence per focus survivor, six 1–5
 evolution dimensions scoring 16 against the threshold of 18, exactly five council lenses in
 the fixed tension order), so it is a plausible run rather than lorem ipsum shaped like one.
+
+##### Fix an existing dashboard without breaking it
+
+````prompt
+"the KPI tiles overflow sideways on my phone — fix the dashboard, but don't change how it
+looks on desktop or in dark mode"
+````
+
+> Triggers `cupertino-repair` — states the objective and what must be preserved, takes a
+> baseline, gets an approved changeset, applies one item at a time under a hook that
+> scopes each edit, and ends with a verdict. See [The repair route](#the-repair-route).
 
 ##### Convene the council
 
@@ -291,6 +310,39 @@ the fixed tension order), so it is a plausible run rather than lorem ipsum shape
 `cupertino-backwards` always runs first; the other lifecycle stages stay locked
 until it has.
 
+## The repair route
+
+`cupertino-repair` is the one orchestrator for the opposite job to the lifecycle above:
+change something that **already exists** so that exactly what was asked changes and nothing
+else does. It covers six operations — read, verify, modify, add, create, delete — over any
+domain (a dashboard, a CLI, a library, a build, a kernel); only the probe differs: a
+rendered page, a command, or a file.
+
+```
+preflight -> objective (asked, never inferred) -> baseline -> approved changeset
+  -> start-item / edit / finish-item, one item at a time -> verify -> verdict
+```
+
+The verdict is `done`, `partial` or `regressed`, and a run with any check that could not run
+is never `done`. A delete goes through `scripts/apply_delete.py` only, which refuses while
+anything still references the file and keeps the original in `trash/` so it can be restored.
+
+![Cupertino repair report with a regressed verdict. Acceptance shows 2 of 2 passing and must-preserve shows 1 of 3 preserved. The change list attributes the stylesheet edit to its approved item but flags a change to chart.js as outside the approved scope. A before and after comparison shows the dashboard chart bars drawn in the theme colour before, and black in light mode after.](assets/repair-viewer-screenshot.jpg)
+
+The run shown is deliberately a failure: both acceptance checks pass, yet the verdict is
+`regressed` because a must-preserve check failed (the chart bars went black in light mode,
+`ctx.fillStyle = "var(--accent)"` painting black) and a change to `chart.js` belongs to no
+approved item. It is committed as `scripts/fixtures/repair-demo.json`; to rebuild the report:
+
+```bash
+python3 plugins/cupertino/scripts/build_repair_html.py \
+    --report plugins/cupertino/scripts/fixtures/repair-demo.json --out /tmp/repair.html
+```
+
+The design source is the existing system: `scripts/design_sources.py` reads a repo's CSS
+custom properties (with their dark-mode blocks), matrize tokens, or a named Claude Design
+System artifact — see `skills/cupertino-repair/references/design-sources.md`.
+
 ## A note on the Workflow tool
 
 `workflows/*.js` are written for Claude Code's `Workflow` tool (`pipeline()` /
@@ -310,7 +362,7 @@ properties that a single model-driven loop can't reliably hold to.
   not instructions a model could skip.
 - **1 PreToolUse hook** (`hooks/hooks.json` + `hooks/pretooluse_guard.py`) — the
   mechanical backstop for every MUST-NOT rule in the spec. Runs on every `Skill`,
-  `Task`/`Agent`, `Write`/`Edit`, and `Bash` call; inert (exits 0 immediately) unless
+  `Task`/`Agent`, `Write`/`Edit`/`MultiEdit`/`NotebookEdit`, and `Bash` call; inert (exits 0 immediately) unless
   the current repo already has a `.cupertino/` state directory, so it never polices an
   unrelated project.
 - **Shared scripts** (`scripts/`) — `validators.py` (content-shape checks: zero tech
@@ -318,8 +370,15 @@ properties that a single model-driven loop can't reliably hold to.
   fixed tension order, reveal shape, handbook JSON schemas), `state.py` (the
   `.cupertino/flags/` marker store the hook and skills share), `run_prototype.sh`
   (actually executes a prototype spike and reports its real exit code/output).
+- **Repair scripts** (`scripts/`) — the machinery behind `cupertino-repair`, and the only
+  writers of its gate files: `preflight_repair.py` (starts the run, detects probes, tests,
+  design sources), `repair_state.py` (objective, approve, start-item/finish-item, end),
+  `baseline.py` (every check and file hash as things are now), `probes.py` (the web, command
+  and file probes), `apply_delete.py` (reversible delete), `verify.py` (re-run, compare,
+  attribute, write the verdict), `design_sources.py`, `repair_lib.py` (shared run state), and
+  `build_repair_html.py` with `assets/repair-viewer.html` (the report).
 
-### Skills (15)
+### Skills (16)
 
 | Skill | Purpose |
 |---|---|
@@ -334,6 +393,7 @@ properties that a single model-driven loop can't reliably hold to.
 | `cupertino-reveal` | Delivers exactly one non-obvious, high-leverage "and one more thing" addition at ship-time. |
 | `cupertino-review` | Orchestrator — runs all eight lifecycle stages end-to-end in one pass. |
 | `cupertino-cannibalize` | User-invoked-only ninth technique: considers replacing a currently-successful thing with a better successor, on a deliberate post-ship cadence. Never automatic. |
+| `cupertino-repair` | Orchestrator — changes an existing system with six operations (read, verify, modify, add, create, delete): objective, baseline, approved changeset, scoped apply, verify. Not for designing something new. |
 | `cupertino-handbook-draft` | Creates and persists a durable, checkable handbook for one domain (code / design / testing / documentation). |
 | `cupertino-handbook-apply` | Pulls in only the handbook constraints and exceptions relevant to upcoming work, rather than the whole document. |
 | `cupertino-handbook-check` | Compares new or changed work against an existing handbook to find divergence, with file:line evidence. Read-only. |
@@ -354,7 +414,7 @@ properties that a single model-driven loop can't reliably hold to.
 
 | Rule | Enforcement |
 |---|---|
-| `backwards-runs-first` | PreToolUse hook denies `Skill` calls to `cupertino-focus`/`-longevity`/`-integrate`/`-council` unless `.cupertino/flags/backwards-done` exists |
+| `backwards-runs-first` | PreToolUse hook denies `Skill` calls to `cupertino-focus`/`-longevity`/`-integrate`/`-council` unless `.cupertino/flags/backwards-done` exists. This holds on first use too: with no `.cupertino/` directory the hook is otherwise inert, but these four skills are still denied, and the reason points at `cupertino-repair` for changing an existing system |
 | `experience-zero-tech-nouns` | `validators.py zero-tech-nouns` — skill must run it and treat non-zero as failure |
 | `focus-one-sentence-per-survivor` | `validators.py one-sentence-per-survivor` |
 | `evolution-score-triggers-roadmap` | `validators.py evolution-score` — `EVOLUTION_SCORE_ROADMAP_THRESHOLD = 18` is a named constant; script computes `rosettaRoadmapRequired` mechanically, rejects any call without exactly 6 integer 1–5 scores |
@@ -378,13 +438,23 @@ properties that a single model-driven loop can't reliably hold to.
 | handbook overwrite guard | PreToolUse hook refuses to overwrite an existing `*-handbook.md` unless the new content's first line is `<!-- cupertino-overwrite-confirmed -->`, which the skill is instructed to add only after the user says yes |
 | handbook-fix mode gate | PreToolUse hook parses `.claude/cupertino.local.md` for a `fix:` block with `mode: fix`; denies the `Skill` dispatch otherwise |
 | no commit/push during handbook fix/check | PreToolUse hook denies mutating `git`/`rm -rf` commands while `.cupertino/flags/handbook-fix-active` or `handbook-check-active` is set |
+| repair: no edit before objective and baseline | while a repair run is active the hook denies any source `Write`/`Edit`/`MultiEdit`/`NotebookEdit` until `objective.json` and the baseline exist |
+| repair: no edit before approval | the hook denies source edits until the changeset is approved; approval is bound to the changeset's sha256, so editing it voids it |
+| repair: edit only the active item | each edit must target a path of the one active approved item; a `create` must not exist yet, a `modify` must; an edit naming no readable path is denied |
+| repair: no shell writes or deletes | during a run the hook denies `rm`, `mv`, `cp`, `tee`, `sed -i`, `find -delete`, `git rm/mv/apply/stash/restore` and shell redirects into a file; a delete goes through `apply_delete.py` |
+| repair: no git mutation until a verdict | commit, push, reset, checkout, merge and rebase are denied until `verify.py` has written a verdict and the run is closed |
+| repair: gate files are script-only | `preflight.json`, `approved`, `active-item`, `baseline/`, `after/`, `trash/` and `verdict.json` are written only by the repair scripts, never by Write/Edit |
+| repair: no new-build skills mid-run | `cupertino-council`, `-elevate`, `-unbox` and `-reveal` are denied while a repair run is active; add the new work to the changeset instead |
+| handbook rules from analysis only | `cupertino-handbook-fix` acts on analyzed rules by default, runs the remediator on sonnet with one location per dispatch, relocates by quoted text, and runs a before/after test command; the check summary schema requires `rule` and `quotedLine` per finding |
 
 ## The report
 
-The one screenshot this plugin ships — the `cupertino-review` pipeline rendered as a
-self-contained HTML flow diagram — is embedded inside [Example Prompts](#example-prompts)
-under "Run the full review," alongside the reproducible fixture and the exact rebuild
-command, since that prompt is the only place the report is referenced from.
+The plugin ships two reports, both built on the shared report kit. The
+`cupertino-review` pipeline rendered as a self-contained HTML flow diagram is embedded
+inside [Example Prompts](#example-prompts) under "Run the full review," alongside its
+reproducible fixture and rebuild command. The `cupertino-repair` verdict report is embedded
+in [The repair route](#the-repair-route), with its own committed fixture and rebuild
+command.
 
 ## Design decisions
 
@@ -473,11 +543,21 @@ command, since that prompt is the only place the report is referenced from.
 
 ```bash
 python3 plugins/cupertino/scripts/test_state.py          # the .cupertino/flags/ marker store round-trips
+python3 plugins/cupertino/hooks/test_repair_guard.py     # the repair-run guard denies AND allows
+python3 plugins/cupertino/scripts/probes.py --selftest   # web / command / file probes against known answers
+python3 plugins/cupertino/scripts/design_sources.py --selftest
+python3 plugins/cupertino/scripts/build_repair_html.py --selftest
+bash test/plugins/calibrate-cupertino-oracles.sh          # the two cupertino-repair case oracles discriminate
 python3 test/plugins/lint-frontmatter.py plugins/cupertino
 python3 test/plugins/verify-hooks-deny.py plugins/cupertino   # DENY on the plugin-specific fixture, ALLOW when .cupertino/ is absent
 claude plugin validate plugins/cupertino --strict
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/cupertino --docs-root docs
 ```
+
+`test/plugins/cases.tsv` carries two behavioural cases, `cupertino-dashboard-repair` and
+`cupertino-cli-repair`, graded on the `verdict.json` that `verify.py` writes. The
+calibration script is run before them; the cases themselves need `verify-clean-box.sh` to
+pass first.
 
 `verify-hooks-deny.py` uses `test/plugins/fixtures/hook-violation-cupertino/` rather
 than the generic fixture, because `pretooluse_guard.py` is scope-conditional: it is
@@ -486,7 +566,9 @@ the generic fixture would report that correct "allow" as a hook that does nothin
 
 ## Escape hatch
 
-`CUPERTINO_DISABLE_GUARD=1` bypasses `pretooluse_guard.py` for one session. The other
+`CUPERTINO_DISABLE_GUARD=1` bypasses `pretooluse_guard.py` for one session, including the
+repair-run scoping and the first-use denial of the gated skills. A repair run abandoned
+midway is closed with `repair_state.py end --abandon`. The other
 way out is narrower rather than total: removing `.cupertino/` from a repo that no
 longer uses cupertino makes the hook inert again on its own, since it only acts when
 that directory exists.

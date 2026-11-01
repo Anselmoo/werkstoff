@@ -93,6 +93,7 @@ into another workflow's beats and gates.
 |`befund-transform-execute`|Applies exactly one human-authorized phase of `MODERNIZATION_BRIEF.md`|
 |`zirkel-solve`|Clarify -> Explore -> Decompose -> Execute -> Revise as one fixed pipeline|
 |`cupertino-handbook-fix`|Applies mechanical findings from a prior `cupertino-handbook-check` pass|
+|`cupertino-repair`|Objective, baseline, approved changeset, scoped apply and verdict share one run directory under `.cupertino/repair/<run>/`; a hook limits each edit to the active approved item, so an edit made without the earlier steps is denied|
 |`/passung-map`, `/passung-canonize`, `/passung-brief`, `/passung-align`, `/passung-verify`|Every one reads `analysis/<area>/` artifacts an earlier command wrote|
 |`nacharbeit-review`|Bakes its args, calibrates a finder against planted fixtures and a sealed hold-out, then finds, routes, verifies and synthesizes; every later step reads what the calibration froze|
 |`nacharbeit-fix`|Opens the fix lock, snapshots the plugins about to change, applies the haiku and sonnet tiers under a PreToolUse guard, and releases the lock only after post-checks and a contract diff|
@@ -161,6 +162,11 @@ parallel execution. One per response = sequential." Pair it with
 for isolation. Leaf work at this beat: `scaffold-cli` under the `cli-architecture`
 doctrine, `cupertino-council` at UI build-time before any code is written, and
 `befund-idiom-fix` for mechanical rewrites.
+
+Fixing or extending something that **already exists** belongs to the same beat but is not a leaf:
+`cupertino-repair` owns it as an orchestrator, with a baseline taken first, an approved changeset and
+a verdict at the end. Reach for it instead of `cupertino-council` or `cupertino-review` when the request is
+"fix this dashboard" rather than "design a new one".
 
 **Verify.** `andon-verify` proves one named wire through whichever of seven strategies
 its type calls for; `zeugnis-assertion-audit` asks whether the tests would catch a

@@ -57,6 +57,12 @@ structure" pattern the craft rules below argue against.
   height derives from content — plus the required `<head>`, the three legitimate page
   archetypes, and how a screenshot and its demo data get committed so the image is
   reproducible. Read this before editing any viewer or its `build_*_html.py`.
+- [`tools/report-kit/`](../../tools/report-kit/README.md) — the shared report components
+  (CSS, JS, a Python renderer and a worked example) vendored into every plugin through
+  `.rrt.toml`'s `artifact_targets`. A viewer starts from the kit rather than from scratch;
+  `A-REPORT-KIT` in the rubric flags a half-finished migration. The content tier
+  (R6–R8) in `report-viewer-standard.md` is what the kit's evidence, filters, search and
+  deep links exist to satisfy.
 - [`references/design-tokens.md`](references/design-tokens.md) — the corporate design
   usage rules `scripts/ci/check_design_tokens.py` enforces over the docs theme and every
   viewer: no literal hex/color-function/font-family/radius where a token exists, a

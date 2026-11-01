@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 
 ## [1.1.0] - 2026-10-30
 ### Changed

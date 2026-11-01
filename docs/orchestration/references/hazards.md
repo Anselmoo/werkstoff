@@ -208,6 +208,28 @@ reviews stay active — and the plugin's own README names the intended case as
 worker's turns." A session running subagent-driven-development's implementer/reviewer
 cycle alongside security-guidance is exactly that case.
 
+## cupertino's guard changed shape in two ways
+
+**It denies on first use.** The hook used to be inert in any repo with no `.cupertino/` directory, so
+`cupertino-focus`, `cupertino-longevity`, `cupertino-integrate` and `cupertino-council` ran on their
+first call with no `cupertino-backwards` before them. It now denies those four skills there, with a
+reason that names `cupertino-repair` for the case where the work is changing something that already
+exists. The "inert unless" line on its card is still true for every other tool; it is no longer true
+for these four skills. A session that used to reach `cupertino-council` straight away now has to run
+`cupertino-backwards` first or use the escape hatch.
+
+**During a repair run it polices the whole session, not only cupertino.** While
+`.cupertino/repair/ACTIVE` exists, every `Write`, `Edit`, `MultiEdit` and `NotebookEdit` is limited to the
+paths of the one active approved item, shell writes and deletes (`rm`, `mv`, `sed -i`, redirects) and
+git mutations are denied, and `cupertino-council`, `-elevate`, `-unbox` and `-reveal` are denied. The
+payload carries no field naming which plugin issued an edit (see the next section), so the guard cannot
+exempt anyone else: an `andon-loop` remediation, a `nacharbeit-fix` pass, a `befund-idiom-fix` cluster
+or a plain direct edit made in the same session is denied until the run ends with `repair_state.py end`.
+Do not interleave them. Finish or abandon the repair first (`repair_state.py end --abandon`), or set
+`CUPERTINO_DISABLE_GUARD=1` for the session, which also turns off the first-use denial above.
+Unlike befund's and zeugnis's guards, this one is gated on a run marker that a repair opens and closes,
+so it behaves like a per-dispatch lock for the duration of one run.
+
 ## Do not combine
 
 `learning-output-style` instructs the model to stop at decision points and hand a

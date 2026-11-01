@@ -3,6 +3,37 @@
 All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **`cupertino-repair`** (orchestrator skill + `references/design-sources.md`): change an existing system
+  (dashboard, page, CLI, library, build, kernel) with six operations -- read, verify, modify, add, create,
+  delete -- via objective, baseline, approved changeset, scoped apply, verify. New scripts
+  `preflight_repair.py`, `repair_state.py`, `baseline.py`, `probes.py` (web / command / file),
+  `apply_delete.py` (reversible), `verify.py`, `design_sources.py`, `repair_lib.py` and
+  `build_repair_html.py`, with `assets/repair-viewer.html`, its screenshot and a committed demo
+  (`scripts/fixtures/repair-demo.json`).
+- **Guard scope for repair runs** (`hooks/pretooluse_guard.py`): while a run is active every
+  `Write`/`Edit`/`MultiEdit`/`NotebookEdit` is limited to the active approved item's paths, shell writes and
+  deletes and git mutations are denied, gate files are script-only, and `cupertino-council`/`-elevate`/
+  `-unbox`/`-reveal` are denied. `hooks/test_repair_guard.py` asserts it denies and allows.
+- **Behavioural cases** `cupertino-dashboard-repair` and `cupertino-cli-repair` in `test/plugins/cases.tsv`, with
+  `test/plugins/calibrate-cupertino-oracles.sh`. Not yet run live: the cloud box they were written on is not
+  an isolated clean box.
+- `cupertino-council` writes `.cupertino/flags/council-done`; `beats.json` now names that marker as evidence.
+### Changed
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+- **BREAKING -- first-use denial.** The guard used to be inert in a repo with no `.cupertino/` directory and so
+  allowed `cupertino-focus`, `-longevity`, `-integrate` and `-council` on first use, defeating the
+  backwards-first gate. It now denies them there, and the reason points at `cupertino-repair` for changing
+  an existing system. Run `cupertino-backwards` first, or set `CUPERTINO_DISABLE_GUARD=1`.
+- **BREAKING -- handbook check summary schema.** Each finding now requires `rule` and `quotedLine`; check
+  summaries written before this change fail validation and must be regenerated with `cupertino-handbook-check`.
+- **Handbook route made safe**: `cupertino-handbook-fix` acts on analyzed-only rules by default, runs the
+  remediator on sonnet with one location per dispatch, relocates by quoted text instead of line number, and
+  runs a before/after test command, so working code is no longer rewritten to invented rules.
+- The `cupertino-council`, `-review`, `-elevate`, `-unbox` and `-reveal` descriptions, and `befund-ui-audit`'s,
+  now route "fix an existing X" to `cupertino-repair`.
+- **README**: new Example Prompts entry, a section on the repair route, components, enforcement table and
+  verification commands updated.
 
 ## [1.2.0] - 2026-10-30
 ### Changed

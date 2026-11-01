@@ -3,6 +3,10 @@
 All notable changes to the `cli-scaffold` plugin are documented here.
 
 ## [Unreleased]
+### Added
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer is built by `scripts/build_cli-scaffold_html.py` from the same report data as before; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+### Fixed
+- The scaffold selftest runs `node --check` on a temporary file instead of a path that could be stale or missing.
 
 ## [1.1.0] - 2026-10-30
 ### Changed
