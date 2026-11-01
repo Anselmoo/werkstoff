@@ -345,7 +345,7 @@
       "aria-label": "Cumulative findings closed across " + passes.length + " passes" }, figure);
     if (!passes.length) { svgText(svg, { x: W / 2, y: H / 2, "text-anchor": "middle", class: "t-axis" }, "No passes recorded yet."); return; }
     const maxCum = Math.max(1, ...passes.map((p) => p.cumulativeClosed));
-    const x = d3.scaleLinear().domain([1, Math.max(2, lastPassNumber)]).range([padL + 24, padL + plotW - 24]);
+    const x = d3.scaleLinear().domain([1, Math.max(2, lastPassNumber)]).range([padL + 44, padL + plotW - 76]);
     const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
     for (const tick of y.ticks(6)) {
       svgEl("line", { class: "grid", x1: padL, x2: padL + plotW, y1: y(tick), y2: y(tick) }, svg);
@@ -354,7 +354,6 @@
     svgEl("line", { class: "axis", x1: padL, x2: padL + plotW, y1: padT + plotH, y2: padT + plotH }, svg);
     svgEl("line", { class: "axis", x1: padL, x2: padL, y1: padT, y2: padT + plotH }, svg);
     svgText(svg, { class: "t-title", x: padL, y: padT - 10 }, "findings closed (cumulative) ↑");
-    svgText(svg, { class: "t-title", x: padL + plotW, y: padT + plotH + 44, "text-anchor": "end" }, "pass number →");
     const spacing = passes.length > 1 ? (x(passes[1].passNumber) - x(passes[0].passNumber)) : plotW;
     for (const p of passes) {
       svgText(svg, { class: "t-axis", x: x(p.passNumber), y: padT + plotH + 20, "text-anchor": "middle" }, "#" + p.passNumber);
@@ -406,12 +405,13 @@
     const padX = 20;
     const labelW = Math.min(Math.max(150, Math.ceil(Math.max(...mods.map((m) => m.module.length)) * 7.9) + 16), Math.round(W * 0.3), 300);
     const figW = Math.min(Math.max(210, Math.round(W * 0.22)), 320);
-    const tx0 = padX + labelW + 14, tx1 = Math.max(tx0 + 120, W - padX - figW - 14);
     const axisH = 28;
     const rowH = Math.max(64, Math.min(130, (H - inset.top - inset.bottom - axisH) / mods.length));
     const rowsY = inset.top + axisH;
     const trackH = Math.max(18, Math.min(38, Math.round(rowH * 0.34)));
     const rad = Math.max(8, Math.min(15, Math.round(trackH * 0.55)));
+    // a mark at 0 % or 100 % overhangs the track by its radius, so the track keeps clear of the text on both sides
+    const tx0 = padX + labelW + 14 + rad, tx1 = Math.max(tx0 + 120, W - padX - figW - 14 - rad);
     const sx = (v) => tx0 + Math.max(0, Math.min(1, v)) * (tx1 - tx0);
     svgText(svg, { class: "t-title", x: tx0, y: inset.top - 6 }, "mutation score: killed ÷ (killed + survived)");
     for (const v of [0, 0.25, 0.5, 0.75, 1]) {
@@ -505,7 +505,7 @@
     const equivalents = (MUT.equivalents || []).filter((e) => e.module === m.module);
     const untested = m.after.noTests || 0;
     const kids = [
-      meta("Shard", m.shard || "—"), meta("Score before → after", moduleFigures(m)),
+      m.shard ? meta("Shard", m.shard) : null, meta("Score before → after", moduleFigures(m)),
       m.after.scoreExcludingEquivalent !== undefined ? meta("Score without equivalents", pct(m.after.scoreExcludingEquivalent)) : null,
       meta("Untested before → after", (m.before.noTests || 0) + " → " + untested), meta("Unreached", m.unreached || 0),
       h("h3", { text: "Killed (" + kills.length + ")" }),
@@ -652,7 +652,7 @@
     if (t && !/^module-/.test(t.id)) t.scrollIntoView();
     // The browser scrolls a #module-… anchor to its row below the stage on load; the module is
     // already selected in the drawer, so put the figure back on screen.
-    if (t && /^module-/.test(t.id)) { window.scrollTo(0, 0); window.addEventListener("load", () => window.scrollTo(0, 0)); }
+    if (t && /^module-/.test(t.id)) { window.scrollTo(0, 0); window.addEventListener("load", () => { for (const ms of [0, 120, 260]) setTimeout(() => window.scrollTo(0, 0), ms); }); }
   }
   // Esc lets go of the selected pass or module (the kit closes the drawer itself).
   document.addEventListener("keydown", (event) => {

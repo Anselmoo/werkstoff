@@ -15,21 +15,15 @@
     --cycle: var(--rk-bad);
     --god: var(--rk-warn);
   }
-  /* Archetype (S1): absolute canvas. The map fills #stage, a fixed-height box inside the
-     report; the HUD, side panel and hint float over it and never clip. Findings and the
-     stage table follow below as ordinary kit sections. */
+  /* Archetype (S1, R9): the map fills the kit's stage (#rk-figure). The verdict, the numbers,
+     the legend and the hint float over it; a stage's detail opens in the kit drawer beside it.
+     Findings and the stage table follow below as ordinary kit sections. */
   .rk-wrap { max-width: none; }
-  .verdict-panel { margin: 0 0 var(--space-4); border-left: 3px solid var(--rk-link); }
-  .verdict-panel h2 { font-size: 0.95rem; margin: 0 0 var(--space-2); }
-  .verdict { color: var(--rk-text); font-size: 0.9rem; line-height: 1.5; margin: 0; }
-  #stage { position: relative; height: 720px; overflow: hidden; border: 1px solid var(--rk-border);
-    border-radius: var(--radius-panel); background: var(--rk-bg); }
   #map { position: absolute; inset: 0; cursor: grab; }
   #map.dragging { cursor: grabbing; }
-  #hud { position: absolute; top: 12px; left: 12px; width: 280px;
-    max-width: calc(100% - 24px); max-height: calc(100% - 64px);
-    overflow-y: auto; overscroll-behavior: contain;
-    display: flex; flex-direction: column; gap: var(--space-2); z-index: 2; }
+  #map:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; }
+  .rk-hud { max-width: min(520px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
+  .rk-hud .verdict { font-size: 0.9rem; line-height: 1.5; }
   .panel { background: var(--rk-panel); border: 1px solid var(--rk-border);
     border-radius: var(--radius-panel); padding: var(--space-3); }
   /* R4: a legend a reader gets without clicking anything. Every swatch is a <canvas> painted
@@ -38,42 +32,28 @@
      the same way in the legend as on the map. */
   #legendpanel h3, #matchpanel h3 { font-size: 11px; text-transform: uppercase;
     letter-spacing: .05em; color: var(--rk-muted); margin: 0 0 var(--space-2); }
-  .legend { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column;
-    gap: var(--space-2); font-size: 12px; color: var(--rk-muted); }
+  .rk-legend-float { max-width: min(760px, calc(100% - 2 * var(--space-3))); padding: var(--space-2) var(--space-3); }
+  .rk-legend-float h3 { margin: 0 0 var(--space-1); }
+  .legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--space-1) var(--space-4); font-size: 12px; color: var(--rk-muted); }
   .legend li { display: flex; align-items: center; gap: var(--space-2); }
   .legend canvas.swatch { flex: none; }
   #results { max-height: min(180px, 22vh); overflow-y: auto; }
   #results button { display: block; width: 100%; text-align: left; margin: 0 0 var(--space-1); }
-  #sidebar { position: absolute; top: 12px; right: 12px; bottom: 12px;
-    width: min(340px, calc(100% - 24px)); overflow-y: auto; z-index: 2; display: none; }
-  #sidebar.open { display: block; }
-  #sidebar h2 { font-size: 1rem; word-break: break-word; margin: 0 0 var(--space-2); }
-  #sidebar h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
-    color: var(--rk-muted); margin: var(--space-3) 0 var(--space-1); }
-  #sidebar .closebtn { float: right; line-height: 1; }
-  #sidebar .badges { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-2); }
-  #sidebar .row { display: flex; justify-content: space-between; gap: var(--space-2);
+  .rk-drawer-body .badges { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-bottom: var(--space-2); }
+  .rk-drawer-body .row { display: flex; justify-content: space-between; gap: var(--space-2);
     padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); font-size: 0.8rem; }
-  #sidebar .row .k { color: var(--rk-muted); }
-  #sidebar .row .v { text-align: right; overflow-wrap: anywhere; }
-  #sidebar .why { font-size: 0.8rem; color: var(--rk-muted); margin: var(--space-2) 0 0; line-height: 1.45; }
-  #sidebar ul.links { list-style: none; margin: 0; padding: 0; }
-  #sidebar ul.links li { margin: 0 0 var(--space-1); }
-  #sidebar ul.links button { width: 100%; text-align: left; }
-  #sidebar .files { margin: var(--space-2) 0 0; font-size: 0.78rem; }
-  #sidebar .files summary { cursor: pointer; }
-  #sidebar .files code { display: block; overflow-wrap: anywhere; padding: 1px 0; }
-  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    max-width: calc(100% - 24px); color: var(--rk-muted); font-size: 12px;
-    z-index: 2; background: var(--rk-panel); border: 1px solid var(--rk-border);
-    border-radius: var(--radius-control); padding: var(--space-1) var(--space-3); }
+  .rk-drawer-body .row .k { color: var(--rk-muted); }
+  .rk-drawer-body .row .v { text-align: right; overflow-wrap: anywhere; }
+  .rk-drawer-body .why { font-size: 0.8rem; color: var(--rk-muted); margin: var(--space-2) 0 0; line-height: 1.45; }
+  .rk-drawer-body ul.links { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.links li { margin: 0 0 var(--space-1); }
+  .rk-drawer-body .files { margin: var(--space-2) 0 0; font-size: 0.78rem; }
+  .rk-drawer-body .files summary { cursor: pointer; }
+  .rk-drawer-body .files code { display: block; overflow-wrap: anywhere; padding: 1px 0; }
   /* Says how many cycle numbers draw() left out because no spot for their tag was clear.
      It lives in the HUD, so the note itself can never cover a stage. */
-  #lodnote { position: sticky; bottom: 0; border-color: var(--cycle); color: var(--rk-text);
-    font-size: 12px; line-height: 1.45; }
-  #hudmore { position: sticky; bottom: 0; text-align: center; color: var(--rk-muted);
-    font-size: 11px; background: var(--rk-panel); border: 1px solid var(--rk-border);
-    border-radius: var(--radius-control); padding: var(--space-1) var(--space-2); }
+  #lodnote { border-color: var(--cycle); color: var(--rk-text); font-size: 12px; line-height: 1.45; }
   /* Where RK.fail() puts its panel when the page has no data. */
   #rk-content { position: relative; z-index: 9; }
   .rk-section h2 { scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
@@ -91,45 +71,41 @@
   </div>
 </header>
 
-<main class="rk-wrap">
-  <section class="verdict-panel rk-card">
-    <h2>Which stages can't be changed on their own?</h2>
-    <p class="verdict" id="verdict">The ones every other stage imports, and the
-      ones that import each other: everything downstream of a god-module has to
-      be re-tested with it, and a dependency cycle cannot be broken from one
-      side.</p>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Dependency graph of the stages: every stage a circle, every import a wire">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Which stages can't be changed on their own? The ones every other stage imports, and the
+        ones that import each other: everything downstream of a god-module has to
+        be re-tested with it, and a dependency cycle cannot be broken from one
+        side.</p>
+      <dl class="rk-hud-stats"></dl>
+      <div class="panel" id="matchpanel" hidden>
+        <h3>Matching stages</h3>
+        <div id="results"></div>
+      </div>
+      <div class="panel" id="lodnote" hidden></div>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure>
+      <canvas id="map" tabindex="0" role="application" aria-label="Force-directed dependency graph of the stages. Arrow keys move between stages, Enter opens a stage's detail. The same facts are listed under Findings and Stages below."></canvas>
+    </div>
+    <div class="rk-legend-float rk-card" id="legendpanel">
+      <h3>What the marks mean</h3>
+      <ul class="legend" id="legend">
+        <li><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>ordinary stage — thin grey ring</li>
+        <li><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module — most stages import it (thick amber ring)</li>
+        <li><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a dependency cycle — double red ring, or a red core when small; its number names the cycle</li>
+        <li><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end — imports nothing outward (dashed ring)</li>
+        <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
+      </ul>
+    </div>
+    <span class="rk-hint" id="hint">drag a stage to move it · drag empty space to pan · scroll to zoom · click or press Enter on a stage for detail · double-click to focus · Esc to close</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
   </section>
-
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div>
+  <p class="rk-sr" id="kbstatus" role="status" aria-live="polite"></p>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
       <div id="rk-content" tabindex="-1"></div>
-      <section class="rk-section" id="sec-map">
-        <h2>Map</h2>
-        <div id="stage">
-          <canvas id="map" role="img" aria-label="Force-directed dependency graph of the stages; the same facts are listed under Findings and Stages below"></canvas>
-          <div id="hud">
-            <div class="panel" id="legendpanel">
-              <h3>What the marks mean</h3>
-              <ul class="legend" id="legend">
-                <li><canvas class="swatch" data-mark="stage" aria-hidden="true"></canvas>ordinary stage — thin grey ring</li>
-                <li><canvas class="swatch" data-mark="god" aria-hidden="true"></canvas>god-module — most stages import it (thick amber ring)</li>
-                <li><canvas class="swatch" data-mark="cycle" aria-hidden="true"></canvas>in a dependency cycle — double red ring, or a red core when small; its number names the cycle</li>
-                <li><canvas class="swatch" data-mark="dead" aria-hidden="true"></canvas>dead-end — imports nothing outward (dashed ring)</li>
-                <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
-              </ul>
-            </div>
-            <div class="panel" id="matchpanel" hidden>
-              <h3>Matching stages</h3>
-              <div id="results"></div>
-            </div>
-            <div id="hudmore" hidden>↓ scroll for the rest of this panel</div>
-            <div class="panel" id="lodnote" hidden></div>
-          </div>
-          <div id="sidebar" class="panel" aria-live="polite"></div>
-          <div id="hint">drag a stage to reposition · drag empty space to pan · scroll to zoom · click a stage for its detail · double-click to focus · Esc to reset</div>
-        </div>
-      </section>
     </div>
   </div>
 </main>
@@ -148,11 +124,13 @@ const d3 = window.d3;
 // exact schema. `nodes` is a FLAT list (the data has no containment
 // hierarchy); `edges` are the directed wires between them.
 const DATA = RK.readData("python3 plugins/befund/scripts/build_stage_map_html.py --stage-graph <stage_graph.json> --file-stage-index <file_stage_index.json> --template plugins/befund/assets/stage-map-viewer.html --d3 plugins/befund/assets/inline-d3.html --tokens plugins/befund/assets/tokens.css --out STAGE_MAP.html");
-const stageEl = document.getElementById("stage");
+const S = RK.stage();
+const stageEl = S.figure;
+const hideStage = () => { document.getElementById("rk-stage").hidden = true; };
 
 if (!DATA || !DATA.nodes) {
   if (DATA) RK.fail("The data in this file has no stage list. Re-run befund-stage-map to regenerate it.", "befund-stage-map");
-  document.getElementById("sec-map").hidden = true;
+  hideStage();
   return;
 }
 
@@ -182,7 +160,7 @@ const nodes = DATA.nodes.map(d => ({
 const byId = new Map(nodes.map(n => [n.id, n]));
 if (!nodes.length) {
   RK.fail("The stage graph has no stages to draw; check stage_graph.json, then re-run befund-stage-map to regenerate it.", "befund-stage-map");
-  document.getElementById("sec-map").hidden = true;
+  hideStage();
   return;
 }
 
@@ -461,9 +439,14 @@ function fitToNodes() {
   }
   const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
   const vw = stageEl.clientWidth, vh = stageEl.clientHeight;
-  const k = Math.min(vw / (w * 1.1), vh / (h * 1.1), MAX_K);
+  // Fit into the part of the figure the floating HUD (top) and legend (bottom) leave free.
+  const fr = stageEl.getBoundingClientRect();
+  const inTop = Math.max(0, Math.min(vh * 0.4, document.querySelector(".rk-hud").getBoundingClientRect().bottom - fr.top));
+  const inBot = Math.max(0, Math.min(vh * 0.3, fr.bottom - document.getElementById("legendpanel").getBoundingClientRect().top));
+  const fh = Math.max(120, vh - inTop - inBot);
+  const k = Math.min(vw / (w * 1.12), fh / (h * 1.12), MAX_K);
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, vh / 2 - cy * k).scale(k));
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, inTop + fh / 2 - cy * k).scale(k));
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -604,7 +587,6 @@ function draw() {
       (hiddenNumbers === 1 ? "it" : "them") + ".";
   }
   note.hidden = !hiddenNumbers;
-  updateHudMore();
 }
 
 const TAG_CLEAR = 6, OWN_MARGIN = 4, LEADER_CLEAR = 3;
@@ -612,8 +594,7 @@ const TAG_CLEAR = 6, OWN_MARGIN = 4, LEADER_CLEAR = 3;
 function panelRects() {
   const rects = [];
   const origin = stageEl.getBoundingClientRect();
-  for (const id of ["hud", "sidebar", "hint"]) {
-    const el = document.getElementById(id);
+  for (const el of [document.querySelector(".rk-hud"), document.getElementById("legendpanel"), document.getElementById("hint")]) {
     if (!el || el.hidden) continue;
     const r = el.getBoundingClientRect();
     if (r.width && r.height) rects.push({ x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height });
@@ -638,23 +619,6 @@ function segmentsCross(a, b) {
   return side(a.x1, a.y1, a.x2, a.y2, b.x1, b.y1) !== side(a.x1, a.y1, a.x2, a.y2, b.x2, b.y2) &&
     side(b.x1, b.y1, b.x2, b.y2, a.x1, a.y1) !== side(b.x1, b.y1, b.x2, b.y2, a.x2, a.y2);
 }
-// The HUD scrolls when it is taller than the viewport; #hudmore says so until the reader
-// reaches its end.
-function updateHudMore() {
-  const hud = document.getElementById("hud"), more = document.getElementById("hudmore");
-  const note = document.getElementById("lodnote"), hint = document.getElementById("hint");
-  // The HUD ends above the hint as it is actually laid out -- it wraps to two or three lines
-  // on a narrow viewport, which a fixed calc() could not know -- so the hint never paints
-  // over the pinned note or the cue.
-  const limit = hint.getBoundingClientRect().top - hud.getBoundingClientRect().top - 8;
-  hud.style.maxHeight = Math.max(80, Math.floor(limit)) + "px";
-  // The cue sits flush on the pinned note, so no scrolled legend shows between them.
-  more.style.bottom = note.hidden ? "0px" : note.offsetHeight + "px";
-  const hasMore = hud.scrollHeight - hud.scrollTop - hud.clientHeight > 4;
-  if (more.hidden === hasMore) more.hidden = !hasMore;
-}
-document.getElementById("hud").addEventListener("scroll", updateHudMore);
-addEventListener("resize", updateHudMore);
 function segmentHitsBox(s, b) {
   // Leaders are a few tens of pixels long; 16 samples cannot step over a tag box.
   for (let i = 0; i <= 16; i++) {
@@ -775,8 +739,6 @@ addEventListener("keydown", e => {
   flyGen++; selected = null; resultsEl.textContent = "";
   flyTo(nodes[0]); renderSidebar();
 });
-addEventListener("resize", requestDraw);
-
 // ── Sidebar: structured drill-down (R7) ───────────────────────────────────
 const sidebar = document.getElementById("sidebar");
 const FINDINGS = Array.isArray(DATA.findings) ? DATA.findings : [];
@@ -864,7 +826,6 @@ searchEl.addEventListener("input", () => {
     }
     if (!matches.length) resultsEl.appendChild(RK.h("p", { class: "why", text: "No stage or file matches." }));
   }
-  updateHudMore();
   requestDraw();
 });
 
