@@ -1,657 +1,657 @@
 [meta]
-generated_at = "2026-11-01T14:05:14+00:00"
+generated_at = "2026-11-01T14:15:54+00:00"
 rrt_version = "1.18.0"
 
 [files."plugins/befund/scripts/build_symbol_index.py"]
 hash = "sha256:86ac508922650d6039bc3e99900196974413810a517a0a72855939eb0c4d7a37"
 size = 34465
 description = "befund's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/scripts/build_symbol_index.py"]
 hash = "sha256:86ac508922650d6039bc3e99900196974413810a517a0a72855939eb0c4d7a37"
 size = 34465
 description = "andon's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/scripts/build_symbol_index.py"]
 hash = "sha256:86ac508922650d6039bc3e99900196974413810a517a0a72855939eb0c4d7a37"
 size = 34465
 description = "zirkel's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/scripts/build_symbol_index.py"]
 hash = "sha256:86ac508922650d6039bc3e99900196974413810a517a0a72855939eb0c4d7a37"
 size = 34465
 description = "zeugnis's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/scripts/build_symbol_index.py"]
 hash = "sha256:86ac508922650d6039bc3e99900196974413810a517a0a72855939eb0c4d7a37"
 size = 34465
 description = "cupertino's synced copy of tools/symbol-indexer/build_symbol_index.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/references/parallel-safe-research-protocol.md"]
 hash = "sha256:f1012b95c7286f6d5d94714a7bf83b16bc5e896160efdcd90b2699f7b3b688a7"
 size = 3817
 description = "befund's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/references/parallel-safe-research-protocol.md"]
 hash = "sha256:f1012b95c7286f6d5d94714a7bf83b16bc5e896160efdcd90b2699f7b3b688a7"
 size = 3817
 description = "andon's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/references/parallel-safe-research-protocol.md"]
 hash = "sha256:f1012b95c7286f6d5d94714a7bf83b16bc5e896160efdcd90b2699f7b3b688a7"
 size = 3817
 description = "zirkel's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/references/parallel-safe-research-protocol.md"]
 hash = "sha256:f1012b95c7286f6d5d94714a7bf83b16bc5e896160efdcd90b2699f7b3b688a7"
 size = 3817
 description = "zeugnis's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/references/parallel-safe-research-protocol.md"]
 hash = "sha256:f1012b95c7286f6d5d94714a7bf83b16bc5e896160efdcd90b2699f7b3b688a7"
 size = 3817
 description = "cupertino's synced copy of tools/symbol-indexer/parallel-safe-research-protocol.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/scripts/lib/judge_contract.py"]
 hash = "sha256:5da1fef810deaa87c0ac2b2c928abd2c77cee69daa73ba2545547cd86dea7183"
 size = 30368
 description = "befund's synced copy of tools/judge-contract/judge_contract.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/references/judge-contract.md"]
 hash = "sha256:251c1f439fa0536d4733273aa76d635e15f842a2c0644785754aee4cc4a08e9a"
 size = 6249
 description = "befund's synced copy of tools/judge-contract/judge-contract.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/references/judge-contract.md"]
 hash = "sha256:251c1f439fa0536d4733273aa76d635e15f842a2c0644785754aee4cc4a08e9a"
 size = 6249
 description = "passung's synced copy of tools/judge-contract/judge-contract.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "arbeitsplan's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "cli-scaffold's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/lehre/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "lehre's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "zirkel's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "befund's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/scripts/run_record.py"]
 hash = "sha256:706d11abc2aee656cc648d2f5e453e070ca3bd782600f561bb3eeb7129a2ce1d"
 size = 18579
 description = "passung's synced copy of tools/run-record/run_record.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/scripts/subrun.py"]
 hash = "sha256:1ec53a36819c330b0397123c25a694c01cd89c4fe7285839a99ca0b765dbc5b9"
 size = 42978
 description = "arbeitsplan's synced copy of tools/subrun/subrun.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/scripts/subrun.py"]
 hash = "sha256:1ec53a36819c330b0397123c25a694c01cd89c4fe7285839a99ca0b765dbc5b9"
 size = 42978
 description = "nacharbeit's synced copy of tools/subrun/subrun.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/scripts/lib/README.md"]
 hash = "sha256:d8d53be7c815d0362aa8504e302255cf8b940649f3d5fd76e60335440b736ad4"
 size = 1938
 description = "befund's synced copy of tools/plugin-lib-canary/README.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/scripts/lib/README.md"]
 hash = "sha256:d8d53be7c815d0362aa8504e302255cf8b940649f3d5fd76e60335440b736ad4"
 size = 1938
 description = "zeugnis's synced copy of tools/plugin-lib-canary/README.md"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "befund's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "cli-scaffold's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "andon's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "zeugnis's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "cli-scaffold's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "passung's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/lehre/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "lehre's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "befund's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "arbeitsplan's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "nacharbeit's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/takt/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "takt's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/matrize/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "matrize's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "cupertino's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "zirkel's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/spur/assets/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "spur's synced copy of tools/design-tokens/tokens.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/.vitepress/theme/tokens.css"]
 hash = "sha256:58abe6ee50d17e92bfc8a4a57286ec755ee6f88879d3643ee0fb7d247f392232"
 size = 12540
 description = "the docs theme's synced copy of tools/design-tokens/tokens.css, imported by theme/index.js ahead of werkstoff.css so the theme's --wk-*/--vp-c-brand-* declarations can reference it with var() instead of restating its values"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "andon's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "andon's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "andon's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "arbeitsplan's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "arbeitsplan's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/arbeitsplan/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "arbeitsplan's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "befund's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "befund's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/befund/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "befund's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "cli-scaffold's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "cli-scaffold's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cli-scaffold/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "cli-scaffold's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "cupertino's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "cupertino's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "cupertino's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/lehre/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "lehre's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/lehre/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "lehre's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/lehre/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "lehre's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/matrize/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "matrize's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/matrize/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "matrize's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/matrize/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "matrize's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "nacharbeit's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "nacharbeit's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "nacharbeit's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "passung's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "passung's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "passung's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/spur/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "spur's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/spur/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "spur's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/spur/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "spur's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/takt/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "takt's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/takt/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "takt's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/takt/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "takt's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "zeugnis's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "zeugnis's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "zeugnis's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/assets/report-kit.css"]
-hash = "sha256:6476c1a46248fa76ae69ed58d41299d5309fdff0bccd2cae943b837049801853"
-size = 17373
+hash = "sha256:7b6c8f2115a1ef0f4803ed48e0822183ff8f058c9e3bfc29ab8c9766c7c42dfc"
+size = 17553
 description = "zirkel's synced copy of tools/report-kit/report-kit.css"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/assets/report-kit.js"]
 hash = "sha256:8d4158d84972555da65ee44cc07b92ce3f855439005f63b74c7e8206fe3d9eb6"
 size = 28445
 description = "zirkel's synced copy of tools/report-kit/report-kit.js"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/scripts/report_kit.py"]
 hash = "sha256:2b2d72213647a4a6683924b780380908d35c708c3d2545740dcd2efc15b74939"
 size = 6964
 description = "zirkel's synced copy of tools/report-kit/report_kit.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files.".design/system/tokens.json"]
 hash = "sha256:504cf4c1581aa6007944df944ffd3705061ab22fb3d98dee252376b1b34fa216"
 size = 31385
 description = "the DTCG token file matrize derives from tools/design-tokens/tokens.css -- regenerated, never hand-edited"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/andon/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "andon's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zeugnis/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "zeugnis's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/passung/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "passung's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/cupertino/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "cupertino's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/zirkel/assets/inline-d3.html"]
 hash = "sha256:bedcfd59fc343a41e27b566482f19085260ddd2cca8b243aae63672e6979d0f8"
 size = 124648
 description = "zirkel's synced copy of tools/d3-subset/inline-d3.html"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/prompt-index.md"]
 hash = "sha256:6b6efb1f0fb29618465f9c5b1c4c6c10d4f97c2b5e035aac2e915d6deea55a0e"
 size = 34006
 description = "generated aggregate of every plugin README's Example Prompts section"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/prompt-quality-findings.md"]
 hash = "sha256:0eacc31b43c5309f62f78186b23be328152aba9c282047e125c8831c05d6f28a"
 size = 383639
 description = "generated nacharbeit findings roll-up; build_report.py leaves the committed file untouched when analysis/nacharbeit/ holds no run"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/scripts/check_viewer_conformance.py"]
 hash = "sha256:969360271de451ba479362b6f5bf45a8bc44a9a8a84da4aa4794d2205d4955a9"
 size = 12150
 description = "nacharbeit's synced copy of scripts/ci/check_viewer_conformance.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/scripts/verify_hooks_deny.py"]
 hash = "sha256:13f87f73b8a1701ae0f0d11f6d38f5d4e8b4b27a711dd02253d57a0d37afd071"
 size = 11485
 description = "nacharbeit's synced copy of test/plugins/verify-hooks-deny.py"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."plugins/nacharbeit/scripts/check_workflow_models.py"]
 hash = "sha256:f5eec3eaa002c0b688fe69a04097d48f8c2a3b035d8392bdfe8f5626039ff5b3"
 size = 29136
 description = "nacharbeit's synced copy of scripts/ci/check_workflow_models.py (S-WF-MODEL, S-WF-RELAY)"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/.vitepress/data/surface.json"]
 hash = "sha256:c34b10c8c2ea39a2b717c189177637915eef2cb954198fa71ca3f2b5720ade26"
 size = 120904
 description = "generated index of the real plugin surface (skills, agents, commands, hooks, workflows)"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/architecture-tree-viewer-screenshot.jpg"]
-hash = "sha256:1b86f0d647c7a4b4f0808e016b66b8087a893edfe09012530acdb2b29a1bac85"
-size = 144165
+hash = "sha256:99e50acb631a4624a42237894ee62230cef0c9c5b0d2ae1eee6ded35fc4b773e"
+size = 211874
 description = "docs copy of plugins/cli-scaffold/assets/architecture-tree-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/beatgraph-viewer-screenshot.jpg"]
-hash = "sha256:aa15fa91ceae696d195925d97cc947ede4f0bee448d84b830a0a9f2d33585ba9"
-size = 214597
+hash = "sha256:e52a8e2023e7912f962c5f98f5010c68a3eb824db9651572108fc12d5dae3e2b"
+size = 274477
 description = "docs copy of plugins/takt/assets/beatgraph-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/board-viewer-screenshot.jpg"]
-hash = "sha256:5bec8184b8ad202e0cde937713ca0a0cf4b8235501f2836e9d1eb1ca4c0303b3"
-size = 298413
+hash = "sha256:cd24c1ce8e6d959a3f3a86308a545a7ab13445b4a6a5816c914c23d8c896f7fe"
+size = 340937
 description = "docs copy of plugins/andon/assets/board-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/branch-comparison-viewer-screenshot.jpg"]
-hash = "sha256:d94dd54c8592c554bfd28f2c7e1de38a6fb744e35b7a92fafa8b3db974d3df4b"
-size = 201387
+hash = "sha256:18da4b901466b945baad1b137e2d9d67f04b472860842cde40d09f704020c400"
+size = 295172
 description = "docs copy of plugins/zirkel/assets/branch-comparison-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/burndown-viewer-screenshot.jpg"]
-hash = "sha256:57bc9587526f57648f3a4a7043f2fdcddb7f6696cc9884055c6badd5d284c258"
-size = 187036
+hash = "sha256:b3345bf13fc341e63c453e3ee3cf3478151adf513900dfe49efa84e87cefd1ed"
+size = 251833
 description = "docs copy of plugins/zeugnis/assets/burndown-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/burndown-viewer-mutation-screenshot.jpg"]
-hash = "sha256:0dac191d6afa52034b33f0a50d36e41426f74a40b8b04fb93833845bcf26e808"
-size = 349234
+hash = "sha256:03f0c07b4807c6485f97bc09fdd2b9ef3b90eab47ef8548d056ed10dfcec8a04"
+size = 473122
 description = "docs copy of plugins/zeugnis/assets/burndown-viewer-mutation-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/derivation-viewer-screenshot.jpg"]
-hash = "sha256:4586bc61eed7cc6090bb96b34b2accf515bb764385109963b071631f3b82ddcd"
-size = 295333
+hash = "sha256:ddf5369c5f74ce1895065d3db279c4a72a9447a7fb30a67233649a7e383f52da"
+size = 360746
 description = "docs copy of plugins/matrize/assets/derivation-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/doctrine-viewer-screenshot.jpg"]
-hash = "sha256:8897f943cd5ca399c770a5080f4a4a04014acc8a8bcb0f20de5425ae235ce990"
-size = 286854
+hash = "sha256:d2472189512395e19953eaf209615188871a2954ad43f292ebc7b7d41fbc03db"
+size = 345619
 description = "docs copy of plugins/lehre/assets/doctrine-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/icon-system-screenshot.jpg"]
 hash = "sha256:7db40f19e1edf48685f05df2a0e950fc827cb8325108eeba0f0a6372646c6f00"
 size = 143615
 description = "docs copy of plugins/matrize/assets/icon-system-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/matrix-viewer-screenshot.jpg"]
-hash = "sha256:3b365955013c4a383cb59f10a6cb45084b7ac28c733ccfd8273d9db58416694d"
-size = 571921
+hash = "sha256:7f6e54a0c988f594e96e0eb5236a8a90b096af878251ccdf064bb5002cb3e886"
+size = 605961
 description = "docs copy of plugins/passung/assets/matrix-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/provenance-viewer-screenshot.jpg"]
 hash = "sha256:b7d95a471503da78198a000b3dc365e5708d99830fa0be9d179e362938fa0813"
 size = 305572
 description = "docs copy of plugins/matrize/assets/provenance-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/review-flow-viewer-screenshot.jpg"]
 hash = "sha256:ce039848e7b84b68f3f435905cda1beddf3b6a225a3852008555169aa27942c5"
 size = 413258
 description = "docs copy of plugins/cupertino/assets/review-flow-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/repair-viewer-screenshot.jpg"]
 hash = "sha256:1ea9959ff54ceb88cd7e938b4e97b1871484bad75955c9f953d7389da77d88cd"
 size = 345580
 description = "docs copy of plugins/cupertino/assets/repair-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/review-viewer-screenshot.jpg"]
-hash = "sha256:2f9a3ebfa2f1772a105600a7fc55ffc9085216ab78f4707f29d049f2a8caada9"
-size = 171704
+hash = "sha256:09bf82784848ac02c924b6f8eb1bb6e798f0716b12914005434175a40c977544"
+size = 236610
 description = "docs copy of plugins/nacharbeit/assets/review-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/design-viewer-screenshot.jpg"]
-hash = "sha256:a3ff98a7b0a8cef6193530674f4e15b3c5f7d855937a35682bb3a71643716b6b"
-size = 384578
+hash = "sha256:a9effe9aa1ce33d0004b8c96f701d469a3fb42dbbdb0fdfaea7b7c4b872c2ce1"
+size = 420629
 description = "docs copy of plugins/arbeitsplan/assets/design-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/run-viewer-screenshot.jpg"]
-hash = "sha256:53f6a1df78fb061d7fd4ce1cc560cc543f507864352616d2d023df420bc70594"
-size = 153587
+hash = "sha256:372187a5751af1a4b0b8b2b1ca6e671338f1873dfa44b2302bb89600004b598f"
+size = 282528
 description = "docs copy of plugins/arbeitsplan/assets/run-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/sketchbook-screenshot.jpg"]
 hash = "sha256:6fe5f88b8cbdc95b86bd4411b433a5e0b2016c5fecbba43abd6d00a37e936d3d"
 size = 92865
 description = "docs copy of plugins/matrize/assets/sketchbook-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/spur-viewer-screenshot.jpg"]
-hash = "sha256:67f0ee5cfcbfab7c238d73f9cb4545059c160317a2adf2fb2027cfdc133507f0"
-size = 350958
+hash = "sha256:2cd9af048e246a67e1df96992be26b2e6c412f90999b99ced2e0c1b72b357e09"
+size = 411684
 description = "docs copy of plugins/spur/assets/spur-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"
 
 [files."docs/plugins/assets/stage-map-viewer-screenshot.jpg"]
-hash = "sha256:de4b1a34c1a8c627b84c1a24ca112b36e9351349e27f854df498e8ebcc0c4614"
-size = 213720
+hash = "sha256:4d4be47eaae72ab4f1b8041174b880d1223b459c9a6657dca9493cbe2a7ac690"
+size = 205231
 description = "docs copy of plugins/befund/assets/stage-map-viewer-screenshot.jpg"
-updated_at = "2026-11-01T14:05:14+00:00"
+updated_at = "2026-11-01T14:15:54+00:00"

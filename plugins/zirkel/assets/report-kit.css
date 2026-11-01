@@ -275,6 +275,8 @@ mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
   background: color-mix(in srgb, var(--rk-panel) 85%, transparent);
   padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm);
 }
+/* The hint and any bottom-right overlay sit in the figure column, never under the drawer. */
+.rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
 .rk-drawer {
   position: relative; min-width: 0; overflow: auto; z-index: 4;
   background: var(--rk-panel); border-left: 1px solid var(--rk-border);

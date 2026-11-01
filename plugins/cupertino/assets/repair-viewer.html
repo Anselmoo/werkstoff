@@ -9,6 +9,46 @@
 <title>cupertino — repair report</title>
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
+<style>
+  /* the legend floats top-right here: the bottom edge belongs to the comparison */
+  .rk-legend-float.ba-legend { left: auto; right: var(--space-3); bottom: auto; top: var(--space-3); max-width: min(440px, 36%); font-size: 0.78rem; line-height: 1.35; }
+  .rk-stage.rk-drawer-open .ba-legend { right: calc(min(400px, 42vw) + var(--space-3)); }
+  .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
+  .rk-drawer-body dl.defs dt { font-weight: 600; white-space: nowrap; }
+  .rk-drawer-body dl.defs dd { margin: 0; overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.plain li { padding: var(--space-2) 0; border-bottom: 1px solid var(--rk-border); overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain li:last-child { border-bottom: 0; }
+  .rk-drawer-body code { overflow-wrap: anywhere; }
+
+  /* the HUD strip of checks, and the comparison it drives */
+  .ba-strip { position: absolute; left: var(--space-3); right: var(--space-3); top: 150px; z-index: 2; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; }
+  .ba-strip .ba-group { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--rk-muted); margin-left: var(--space-2); }
+  .ba-strip .ba-group:first-child { margin-left: 0; }
+  .ba-strip .ba-modes { margin-left: auto; display: flex; gap: var(--space-1); }
+  .ba-chip { font: inherit; font-size: 0.82rem; cursor: pointer; color: var(--rk-text); background: var(--rk-panel); border: 1px solid var(--rk-border); border-left-width: 4px; border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2); }
+  .ba-chip:hover { border-color: var(--rk-muted); }
+  .ba-chip.ok { border-left-color: var(--rk-ok); }
+  .ba-chip.bad { border-left-color: var(--rk-bad); }
+  .ba-chip.flat { border-left-color: var(--rk-flat); }
+  .ba-chip[aria-pressed="true"] { background: var(--rk-panel-2); border-color: var(--rk-focus); border-left-width: 4px; font-weight: 650; }
+  .ba-chip .ba-noimg { color: var(--rk-muted); font-weight: 400; }
+  .ba-area { position: absolute; left: var(--space-3); right: var(--space-3); bottom: var(--space-3); }
+  .ba-box { position: absolute; overflow: hidden; background: var(--rk-panel-2); border: 1px solid var(--rk-border); touch-action: none; cursor: ew-resize; }
+  .ba-box img, .ba-panel img { position: absolute; left: 0; top: 0; max-width: none; display: block; user-select: none; -webkit-user-drag: none; }
+  .ba-after { clip-path: inset(0 0 0 50%); }
+  .ba-handle { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: var(--rk-focus); cursor: ew-resize; }
+  .ba-handle::after { content: "\25C0\A0\25B6"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--rk-focus); color: var(--rk-bg); font-size: 0.78rem; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); white-space: nowrap; }
+  .ba-handle:focus-visible { outline: 3px solid var(--rk-text); outline-offset: 2px; }
+  .ba-tag { position: absolute; top: var(--space-2); z-index: 1; font-size: 0.78rem; font-weight: 650; background: color-mix(in srgb, var(--rk-panel) 92%, transparent); border: 1px solid var(--rk-border); padding: 2px var(--space-2); border-radius: var(--radius-sm); }
+  .ba-tag.l { left: var(--space-2); }
+  .ba-tag.r { right: var(--space-2); }
+  .ba-row { position: absolute; display: flex; gap: var(--space-3); }
+  .ba-panel { position: relative; flex: none; }
+  .ba-panel .ba-pic { position: relative; overflow: hidden; border: 1px solid var(--rk-border); background: var(--rk-panel-2); }
+  .ba-panel figcaption { font-size: 0.8rem; color: var(--rk-muted); margin-top: var(--space-1); }
+  .ba-empty { position: absolute; left: 0; right: 0; top: 40%; text-align: center; color: var(--rk-muted); }
+</style>
 </head>
 <body class="rk">
 <a class="rk-skip" href="#rk-content">Skip to the report</a>
@@ -21,15 +61,25 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <p class="verdict">No verdict yet — this line is replaced by the run's verdict.</p>
-  <div class="legend rk-card rk-muted">
-    Done means every acceptance and must-preserve check passed, nothing was "not run", and every changed file is named by an approved item.
-    Every state is a word plus a glyph — ✓ pass, ✗ fail, – not run. A check that could not run is never counted as a pass.
-  </div>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Before and after of the selected check, with one chip per acceptance and must-preserve check">
+    <div class="rk-hud">
+      <p class="verdict">No verdict yet — this line is replaced by the run's verdict.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float ba-legend">
+      Done means every acceptance and must-preserve check passed, nothing was "not run", and every changed file is named by an approved item.
+      Every state is a word plus a glyph — ✓ pass, ✗ fail, – not run. A check that could not run is never counted as a pass.
+    </div>
+    <span class="rk-hint">click a check for its detail · drag the handle to compare</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
@@ -41,13 +91,206 @@
   const RERUN_COMMAND = "python3 plugins/cupertino/scripts/build_repair_html.py --run <runId>";
   const D = RK.readData(RERUN_COMMAND);
   if (!D) return;
-  const { section, h } = RK;
+  const { section, h, badge } = RK;
+  const S = RK.stage();
   const verdict = RK.$(".verdict");
   verdict.textContent = D.glance.verdict;
   verdict.classList.add(D.glance.tone);
   RK.$("#objective").textContent = "Objective: " + D.headline;
+  S.stats(D.glance.stats || []);
+
+  // ---- the checks: one record per proof check, joined to its screenshots by label ---------------
+  const GL = { ok: "✓", bad: "✗", warn: "!", info: "i", flat: "–" };
+  const WORD = { pass: "pass", fail: "fail", na: "not run" };
+  const TONE = { pass: "ok", fail: "bad", na: "flat" };
+  const GROUP = { acceptance: "acceptance", mustPreserve: "must preserve" };
+  const pre = D.proof.checks || [];
+  const checks = pre.map((c) => {
+    const m = /^(\S+) (\S+): ([\s\S]*)$/.exec(c.label);
+    const shot = (D.beforeAfter || []).find((b) => b.label === c.label) || null;
+    const px = /([\d.]+)% > ([\d.]+)%/.exec(c.detail || "") || null;
+    const pxNote = shot && /pixel difference ([\d.]+)%\s*$/.exec(shot.note || "");
+    return {
+      c, shot, group: m ? m[1] : "", id: m ? m[2] : c.label, criterion: m ? m[3] : c.label,
+      state: c.state, tone: TONE[c.state] || "flat",
+      pixel: px ? { value: px[1], allowed: px[2] } : (pxNote ? { value: pxNote[1], allowed: null } : null),
+      findingId: m ? m[1] + "-" + m[2] : "",
+    };
+  });
+  const byFinding = (id) => (D.findings || []).filter((f) => f.id === id);
+  const fid = (f) => "finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-");
+
+  // The most important web check: the first one that failed, else the first with a screenshot.
+  let cur = checks.findIndex((x) => x.shot && x.state === "fail");
+  if (cur < 0) cur = checks.findIndex((x) => x.shot);
+  let shotIdx = cur; // the check whose images the figure shows
+  let mode = "slider";
+  let pos = 50;
+  let selected = cur >= 0 ? cur : (checks.length ? 0 : -1);
+
+  // ---- figure -----------------------------------------------------------------------------------
+  const strip = h("div", { class: "ba-strip", role: "group", "aria-label": "Checks" });
+  const area = h("div", { class: "ba-area" });
+  S.figure.append(strip, area);
+  const chipEls = [];
+  let lastGroup = null;
+  checks.forEach((x, i) => {
+    if (x.group !== lastGroup) { strip.append(h("span", { class: "ba-group", text: GROUP[x.group] || x.group })); lastGroup = x.group; }
+    const chip = h("button", { class: "ba-chip " + x.tone, type: "button", "aria-pressed": "false", title: x.criterion + " — " + (x.c.detail || ""),
+      "aria-label": (GROUP[x.group] || x.group) + " " + x.id + ": " + x.criterion + ", " + WORD[x.state] },
+      GL[x.tone] + " " + x.id + " " + WORD[x.state], x.shot ? null : h("span", { class: "ba-noimg", text: " · no image" }));
+    chip.addEventListener("click", () => pickCheck(i));
+    chip.addEventListener("mouseenter", (ev) => S.tip.show(ev, x.id + ": " + x.criterion, h("div", { text: WORD[x.state] + " — " + (x.c.detail || "") })));
+    chip.addEventListener("mouseleave", () => S.tip.hide());
+    chip.addEventListener("blur", () => S.tip.hide());
+    strip.append(chip); chipEls.push(chip);
+  });
+  const overviewBtn = h("button", { class: "rk-btn", type: "button" }, "Overview");
+  overviewBtn.addEventListener("click", () => { selected = -1; paintChips(); showOverview(); });
+  const modes = h("div", { class: "ba-modes", role: "group", "aria-label": "Comparison view" });
+  const modeBtns = {};
+  for (const [k, label] of [["slider", "Slider"], ["side", "Side by side"], ["diff", "Difference"]]) {
+    const b = h("button", { class: "rk-btn", type: "button", "aria-pressed": "false" }, label);
+    b.addEventListener("click", () => { mode = k; layout(); });
+    modeBtns[k] = b; modes.append(b);
+  }
+  strip.append(overviewBtn, modes);
+
+  // Images are created once per check and sized in layout(): the picture is fitted to the room
+  // the figure has now, never to a constant, and never cropped.
+  const imgCache = new Map();
+  const imgsOf = (x) => {
+    if (!imgCache.has(x)) {
+      const mk = (src, alt) => { if (!src) return null; const im = h("img", { src, alt }); im.addEventListener("load", layout); return im; };
+      imgCache.set(x, { before: mk(x.shot.before, "before — " + x.criterion), after: mk(x.shot.after, "after — " + x.criterion), diff: mk(x.shot.diff, "difference — " + x.criterion) });
+    }
+    return imgCache.get(x);
+  };
+  const dims = (im) => (im && im.naturalWidth ? [im.naturalWidth, im.naturalHeight] : null);
+  const place = (im, scale) => { const d = dims(im); im.style.width = Math.round(d[0] * scale) + "px"; im.style.height = Math.round(d[1] * scale) + "px"; };
+
+  function setPos(p) {
+    pos = Math.max(0, Math.min(100, p));
+    const after = RK.$(".ba-after", area), handle = RK.$(".ba-handle", area), box = RK.$(".ba-box", area);
+    if (after && box) { after.style.clipPath = "inset(0 0 0 " + pos + "%)"; handle.style.left = pos + "%"; handle.setAttribute("aria-valuenow", String(Math.round(pos))); }
+  }
+
+  function layout() {
+    area.textContent = "";
+    // The strip sits under whichever floating panel reaches lower: the HUD or the legend.
+    const f0 = S.figure.getBoundingClientRect().top;
+    let under = 0;
+    for (const sel of [".rk-hud", ".ba-legend"]) { const e = RK.$(sel); if (e) under = Math.max(under, e.getBoundingClientRect().bottom - f0); }
+    strip.style.top = Math.round(under + 12) + "px";
+    const top = Math.round(under + 12) + strip.offsetHeight + 10;
+    area.style.top = top + "px";
+    const aw = area.clientWidth, ah = area.clientHeight;
+    const x = shotIdx >= 0 ? checks[shotIdx] : null;
+    for (const [k, b] of Object.entries(modeBtns)) {
+      b.setAttribute("aria-pressed", String(mode === k));
+      b.disabled = !x || (k === "diff" && !(x.shot && x.shot.diff)) || (k === "slider" && !(x.shot && x.shot.before && x.shot.after));
+    }
+    if (!x || !x.shot) { area.append(h("p", { class: "ba-empty", text: "No web check in this run, so there is no screenshot to compare." })); return; }
+    const im = imgsOf(x);
+    let m = mode;
+    if (m === "slider" && !(im.before && im.after)) m = "side";
+    if (m === "diff" && !im.diff) m = "side";
+    const loaded = [im.before, im.after, im.diff].filter(Boolean);
+    if (loaded.some((i) => !dims(i))) { area.append(h("p", { class: "ba-empty", text: "Loading the screenshots…" })); return; }
+    if (m === "side") {
+      const parts = [["before", im.before], ["after", im.after], ["difference", im.diff]].filter((p) => p[1]);
+      const gap = 16, cap = 28;
+      const sumW = parts.reduce((n, p) => n + dims(p[1])[0], 0), maxH = Math.max(...parts.map((p) => dims(p[1])[1]));
+      const scale = Math.min((aw - gap * (parts.length - 1)) / sumW, (ah - cap) / maxH, 2);
+      const row = h("div", { class: "ba-row" });
+      for (const [label, img] of parts) {
+        const d = dims(img), w = Math.round(d[0] * scale), hh = Math.round(d[1] * scale);
+        place(img, scale);
+        const pic = h("div", { class: "ba-pic", style: "width:" + w + "px;height:" + hh + "px" }, img);
+        row.append(h("figure", { class: "ba-panel", style: "margin:0" }, pic, h("figcaption", { text: label })));
+      }
+      area.append(row);
+      row.style.left = Math.max(0, (aw - parts.reduce((n, p) => n + Math.round(dims(p[1])[0] * scale), 0) - gap * (parts.length - 1)) / 2) + "px";
+      row.style.top = "0px";
+      return;
+    }
+    const one = m === "diff" ? [im.diff] : [im.before, im.after];
+    const maxW = Math.max(...one.map((i) => dims(i)[0])), maxH = Math.max(...one.map((i) => dims(i)[1]));
+    const scale = Math.min(aw / maxW, ah / maxH, 2.2);
+    const bw = Math.round(maxW * scale), bh = Math.round(maxH * scale);
+    const box = h("div", { class: "ba-box", style: "width:" + bw + "px;height:" + bh + "px;left:" + Math.max(0, (aw - bw) / 2) + "px;top:" + Math.max(0, (ah - bh) / 2) + "px" });
+    if (m === "diff") { place(im.diff, scale); box.append(im.diff, h("span", { class: "ba-tag l", text: "difference" })); box.style.cursor = "default"; area.append(box); return; }
+    place(im.before, scale); place(im.after, scale);
+    im.after.classList.add("ba-after");
+    const handle = h("div", { class: "ba-handle", role: "slider", tabindex: "0", "aria-label": "Reveal the after image", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "50", style: "left:50%" });
+    box.append(im.before, im.after, handle, h("span", { class: "ba-tag l", text: "before" }), h("span", { class: "ba-tag r", text: "after" }));
+    const fromX = (cx) => { const r = box.getBoundingClientRect(); setPos(((cx - r.left) / r.width) * 100); };
+    box.addEventListener("pointerdown", (ev) => { box.setPointerCapture(ev.pointerId); fromX(ev.clientX); handle.focus({ preventScroll: true }); });
+    box.addEventListener("pointermove", (ev) => { if (box.hasPointerCapture(ev.pointerId)) fromX(ev.clientX); });
+    handle.addEventListener("keydown", (ev) => {
+      const step = ev.shiftKey ? 10 : 2;
+      if (ev.key === "ArrowLeft") { ev.preventDefault(); setPos(pos - step); }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); setPos(pos + step); }
+      else if (ev.key === "Home") { ev.preventDefault(); setPos(0); }
+      else if (ev.key === "End") { ev.preventDefault(); setPos(100); }
+    });
+    area.append(box);
+    setPos(pos);
+  }
+
+  function paintChips() { chipEls.forEach((c, i) => c.setAttribute("aria-pressed", String(i === selected))); }
+
+  // ---- drawer ---------------------------------------------------------------------------------------
+  const dl = (pairs) => h("dl", { class: "rk-dl" }, pairs.filter((p) => p[1] !== null && p[1] !== undefined && p[1] !== "")
+    .map(([k, v]) => [h("dt", { text: k }), h("dd", {}, v instanceof Node ? v : h("span", { text: String(v) }))]));
+  const findingItem = (f) => h("li", {}, badge(f.severity), " ", f.rule ? h("code", { text: f.rule }) : null,
+    h("p", { text: f.claim || "" }),
+    f.file ? h("p", {}, h("code", { text: f.file })) : null,
+    f.quote ? h("pre", { text: f.quote }) : null,
+    (f.evidence || []).map((e) => h("p", { class: "rk-muted", text: e.label + " — " + e.detail })),
+    f.fix ? h("p", {}, h("strong", { text: "Fix: " }), f.fix) : null);
+
+  function showCheck(i) {
+    const x = checks[i];
+    const own = byFinding(x.findingId);
+    const kids = [h("p", {}, badge(WORD[x.state], x.tone)),
+      dl([["Criterion", x.criterion], ["Group", GROUP[x.group] || x.group], ["State", WORD[x.state]], ["Detail", x.c.detail],
+        ["Pixel difference", x.pixel ? x.pixel.value + "%" + (x.pixel.allowed ? " (allowed " + x.pixel.allowed + "%)" : "") : null]])];
+    if (x.shot) {
+      if (!x.pixel) kids.push(h("p", { class: "rk-muted", text: x.shot.note || "" }));
+      kids.push(h("p", {}, shotIdx === i ? h("span", { class: "rk-muted", text: "Shown in the figure." }) : S.link("Show its screenshots in the figure", () => { shotIdx = i; layout(); }),
+        x.shot.diff ? [" · ", S.link("see the difference image", () => { shotIdx = i; mode = "diff"; layout(); })] : null));
+    } else {
+      kids.push(h("p", { class: "rk-muted", text: "This check has no screenshots, so the figure keeps showing the last web check. Its result is the detail above." }));
+    }
+    if (own.length) kids.push(h("h3", { text: "What went wrong" }), h("ul", { class: "plain" }, own.map(findingItem)));
+    kids.push(h("p", {}, S.link("Overview of the run", () => { selected = -1; paintChips(); showOverview(); })));
+    S.open(x.id + " — " + x.criterion, (GROUP[x.group] || x.group) + " check", ...kids);
+  }
+
+  function showOverview() {
+    const tied = new Set(checks.map((x) => x.findingId));
+    const loose = (D.findings || []).filter((f) => !tied.has(f.id));
+    S.open("The run at a glance", "round " + D.round + " · " + D.verdict,
+      h("p", { text: D.glance.verdict }),
+      h("h3", { text: "Not proven" }),
+      h("ul", { class: "plain" }, (D.proof.notProven || []).map((t) => h("li", { text: t }))),
+      h("h3", { text: "Waiting for a person" }),
+      h("ul", { class: "plain" }, (D.proof.needsPerson || []).map((t) => h("li", { text: t }))),
+      loose.length ? h("h3", { text: "Other findings" }) : null,
+      loose.length ? h("ul", { class: "plain" }, loose.map(findingItem)) : null,
+      h("p", { class: "rk-muted", text: "Pick a chip for one check, or read the tables below for every change and the approved changeset." }));
+  }
+
+  function pickCheck(i) {
+    selected = i;
+    if (checks[i].shot) shotIdx = i;
+    paintChips(); layout(); showCheck(i);
+  }
+
+  // ---- the long-form reference below the figure -----------------------------------------------------
   RK.$("#rk-content").append(
-    section("glance", "At a glance", RK.glance({ ...D.glance, verdict: null })),
+    section("glance", "Next step", RK.glance({ ...D.glance, verdict: null, stats: [] })),
     section("proof", "Proof", RK.proof(D.proof)),
     section("findings", "What went wrong", RK.findings(D.findings, { facets: ["severity", "kind"], facetLabels: { kind: "source" }, empty: "Nothing went wrong: every change is accounted for and every check holds." })),
     section("changes", "Every change, and the item that allowed it", RK.table({ caption: "changes", columns: [
@@ -59,7 +302,28 @@
     section("before-after", "Before and after",
       D.beforeAfter.length ? D.beforeAfter.map((b) => RK.beforeAfter(b)) : h("p", { class: "rk-muted", text: "No web checks in this run." }))
   );
+
+  // ---- boot -------------------------------------------------------------------------------------------
+  S.onResize(() => layout());
   RK.init();
+  paintChips();
+  const fromHash = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (!id.startsWith("finding-")) return false;
+    const f = (D.findings || []).find((y) => fid(y) === id);
+    if (!f) return false;
+    const i = checks.findIndex((x) => x.findingId === f.id);
+    if (i >= 0) pickCheck(i); else { selected = -1; paintChips(); showOverview(); }
+    return true;
+  };
+  window.addEventListener("hashchange", fromHash);
+  let linked = false;
+  // The browser's own fragment scroll runs after parsing: undo it, the figure is the destination.
+  window.addEventListener("load", () => { if (linked) window.scrollTo(0, 0); });
+  linked = fromHash();
+  if (!linked) {
+    if (selected >= 0) pickCheck(selected); else showOverview();
+  }
 })();
 </script>
 </body>
