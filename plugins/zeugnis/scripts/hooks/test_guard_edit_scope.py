@@ -339,6 +339,76 @@ class TestMutationHardenTestScope(unittest.TestCase):
             self.assertEqual(decision(r), "deny")
 
 
+class TestMultiPathPayloads(unittest.TestCase):
+    """H-MULTI-PATH: paths in edits[].file_path / file_paths must all be checked.
+    Every deny is paired with an allow over the same shape, so a guard that
+    denied everything would fail one of the pair."""
+
+    def _run(self, repo: Repo, tool_input: dict, tool: str = "MultiEdit") -> subprocess.CompletedProcess:
+        payload = json.dumps({"cwd": str(repo.root), "tool_name": tool, "tool_input": tool_input})
+        r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                           capture_output=True, text=True, timeout=30)
+        assert r.returncode in (0, 2), f"hook must exit 0 or 2, got {r.returncode}: {r.stderr}"
+        return r
+
+    def test_edits_with_out_of_scope_path_denies(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"edits": [{"file_path": "src/correct_file.py"}, {"file_path": "src/api.py"}]})
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("remediator-one-fix-per-finding", r.stderr)
+
+    def test_edits_with_only_in_scope_path_allows(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"edits": [{"file_path": "src/correct_file.py"}]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_file_paths_with_out_of_scope_path_denies(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"file_paths": ["src/correct_file.py", "src/api.py"]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_file_paths_with_only_in_scope_path_allows(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"file_paths": ["src/correct_file.py"]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_notebook_path_out_of_scope_denies(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"notebook_path": "src/api.py"}, tool="NotebookEdit")
+            self.assertEqual(decision(r), "deny")
+
+    def test_no_readable_path_denies_when_scope_active(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            r = self._run(repo, {"edits": [{"old_string": "a", "new_string": "b"}]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_no_readable_path_is_inert_without_a_scope(self):
+        with Repo(scope=None) as repo:
+            self.assertEqual(decision(self._run(repo, {"edits": []})), "allow")
+
+    def test_string_file_paths_is_not_iterated_as_characters(self):
+        with Repo(scope=FIXABLE_SCOPE) as repo:
+            self.assertEqual(decision(self._run(repo, {"file_paths": "src/correct_file.py"})), "deny")
+
+    def test_test_scope_multi_path_all_under_test_root_allows_and_spends_each(self):
+        with Repo(TEST_SCOPE) as repo:
+            r = self._run(repo, {"file_paths": ["tests/test_a.py", "tests/test_b.py"]})
+            self.assertEqual(decision(r), "allow")
+            self.assertEqual(scope_on_disk(repo)["editsUsed"], 2)
+
+    def test_test_scope_multi_path_with_a_source_path_denies_and_spends_nothing(self):
+        with Repo(TEST_SCOPE) as repo:
+            r = self._run(repo, {"edits": [{"file_path": "tests/test_a.py"}, {"file_path": "src/api.py"}]})
+            self.assertEqual(decision(r), "deny")
+            self.assertEqual(scope_on_disk(repo)["editsUsed"], 0)
+
+    def test_test_scope_multi_path_over_budget_denies(self):
+        with Repo(TEST_SCOPE) as repo:  # budget 2
+            r = self._run(repo, {"file_paths": ["tests/t1.py", "tests/t2.py", "tests/t3.py"]})
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("budget is spent", r.stderr)
+
+
 class TestOpenTestsCli(unittest.TestCase):
     def _cli(self, repo: Repo, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run([sys.executable, str(CLI), *args], capture_output=True, text=True, timeout=30)

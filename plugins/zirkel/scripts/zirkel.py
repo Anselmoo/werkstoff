@@ -267,11 +267,11 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="check", metavar="<check>", required=True)
     for name in sorted(CHECKS):
         sp = sub.add_parser(name, help=f"run the {name} check")
-        if name != "state-read":  # state-read needs no stdin payload
-            sp.add_argument("payload", nargs="?", metavar="PAYLOAD.json|-",
-                            help="payload file, or '-' (default) for stdin")
-            sp.add_argument("--in", dest="src", metavar="PAYLOAD.json|-",
-                            help="payload file or '-'; takes precedence over the positional")
+        # state-read accepts (and ignores) the payload so `state-read - --from P` keeps working
+        sp.add_argument("payload", nargs="?", metavar="PAYLOAD.json|-",
+                        help="payload file, or '-' (default) for stdin")
+        sp.add_argument("--in", dest="src", metavar="PAYLOAD.json|-",
+                        help="payload file or '-'; takes precedence over the positional")
         if name in ("state-write", "state-find", "run-event"):
             sp.add_argument("--output-dir", default=C.DEFAULT_OUTPUT_DIR)
         if name == "state-write":

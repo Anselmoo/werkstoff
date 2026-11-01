@@ -698,6 +698,34 @@ def r_link_broken(u: Unit, ctx: list[Unit]) -> list[dict]:
     return out
 
 
+_VENDORED: dict[str, set[str]] = {}
+
+
+def _vendored_paths() -> set[str]:
+    """Paths .rrt.toml declares as artifact_targets: copies regenerated from ONE source.
+
+    Such a group is the fix this rule asks for, not the defect: the fact lives in one
+    place (the source under tools/) and `rrt artifacts --check --strict` holds every
+    copy to its hash, so the copies cannot drift. Each plugin keeps one because a
+    plugin must install alone. Read from the cwd, like OPTIONS["readme_markers"].
+    """
+    key = str(Path.cwd())
+    if key not in _VENDORED:
+        found: set[str] = set()
+        _VENDORED[key] = found
+        cfg = Path(".rrt.toml")
+        if cfg.is_file():
+            import tomllib
+            try:
+                data = tomllib.loads(cfg.read_text(encoding="utf-8"))
+            except (tomllib.TOMLDecodeError, OSError):
+                data = {}
+            for target in data.get("tool", {}).get("rrt", {}).get("artifact_targets", []):
+                if isinstance(target, dict) and isinstance(target.get("path"), str):
+                    found.add(Path(target["path"]).as_posix())
+    return _VENDORED[key]
+
+
 def r_dup_content(u: Unit, ctx: list[Unit]) -> list[dict]:
     # one finding per duplicate group, attached to the group's first member
     if u.kind not in PROMPT_KINDS or u.kind == "workflow" or not u.text.strip():
@@ -705,6 +733,11 @@ def r_dup_content(u: Unit, ctx: list[Unit]) -> list[dict]:
     h = hashlib.sha256(u.text.encode()).hexdigest()
     same = [v for v in ctx if v.kind in PROMPT_KINDS and v.kind != "workflow" and v.text == u.text]
     if len(same) < 2 or same[0] is not u:
+        return []
+    # Every copy vendored from one declared source: not a duplicate, a distribution.
+    # ALL of them, not any: one hand-made copy beside vendored ones can still drift.
+    vendored = _vendored_paths()
+    if all(v.path.as_posix() in vendored for v in same):
         return []
     others = ", ".join(v.path.as_posix() for v in same[1:])
     return [_finding(u, "M-DUP-CONTENT", f"byte-identical to {len(same) - 1} other file(s): {others}",

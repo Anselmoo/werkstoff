@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook for Edit and Write: enforces remediator-one-fix-per-
+"""PreToolUse hook for Edit, Write, MultiEdit and NotebookEdit: enforces remediator-one-fix-per-
 finding, fixable-domains-in-cycle, and draft-domains-in-cycle REGARDLESS
 of whether the zeugnis-remediator agent (or the orchestrating session)
 cooperates with its own instructions.
@@ -9,6 +9,15 @@ prompt says one edit per finding" (a sentence a model reads and might
 still violate) and "a second edit in the same remediation scope is
 mechanically impossible" (a deny the runtime enforces before the edit
 lands).
+
+Usage: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Edit", "tool_input": {"file_path": "x"}}' | python3 guard_edit_scope.py
+
+MULTI-PATH PAYLOADS (nacharbeit H-MULTI-PATH): a MultiEdit may name its paths in
+edits[].file_path or file_paths, and a NotebookEdit in notebook_path. edit_targets()
+collects all of them and EVERY target must pass the lock's checks; an edit that
+names no readable path is denied while a lock is open.
 
 Contract (from Claude Code's PreToolUse hook protocol):
   - stdin: JSON with at least {"cwd": ..., "tool_name": ..., "tool_input": {...}}
@@ -101,29 +110,58 @@ def _find_zeugnis_root(cwd: str) -> str | None:
         here = parent
 
 
-def _test_scope_decision(root, cwd, scope, target, scope_write_violation,
+def edit_targets(tool_input: object) -> list[str]:
+    """Every path an edit payload names: file_path, notebook_path, edits[].file_path, file_paths.
+
+    Reading only file_path let a MultiEdit payload carrying its paths elsewhere yield
+    no target (nacharbeit H-MULTI-PATH; takt_guard.py's edit_targets is the model).
+    """
+    if not isinstance(tool_input, dict):
+        return []
+    targets: list[str] = []
+    for key in ("file_path", "notebook_path"):
+        value = tool_input.get(key)
+        # isinstance, not truthiness: a str is iterable, and iterating one yields characters.
+        if isinstance(value, str) and value:
+            targets.append(value)
+    edits = tool_input.get("edits")
+    if isinstance(edits, list):
+        for edit in edits:
+            if isinstance(edit, dict) and isinstance(edit.get("file_path"), str) and edit["file_path"]:
+                targets.append(edit["file_path"])
+    paths = tool_input.get("file_paths")
+    if isinstance(paths, list):
+        targets.extend(v for v in paths if isinstance(v, str) and v)
+    return targets
+
+
+def _test_scope_decision(root, cwd, scope, targets, scope_write_violation,
                          lexical_path, is_fixable, record_test_edit) -> int:
     """The mutation_harden branch (issue #142): a budget of writes, each under
     a testRoot and none under a sourcePath, a protected config file, or
     analysis/. Taken whenever the lock's DOMAIN says so -- never inferred from
     which fields the lock happens to carry, so a lock missing testRoots is a
     deny, not a fall-through to the single-file branch below."""
-    if not target:
-        return deny(f"guard_edit_scope: tool_input.file_path missing; failing closed. {ESCAPE_HATCH}")
-    target_path = lexical_path(cwd, target)
-    reason = scope_write_violation(lexical_path(root, "."), scope, target_path)
-    if reason:
-        return deny(
-            f"Edit target {target!r} refused under the mutation_harden test-scope lock for lane "
-            f"{scope.get('findingId')!r}: {reason}. A surviving mutant is killed by a new test, "
-            f"never by editing the code it survived in. {ESCAPE_HATCH}"
-        )
+    if not targets:
+        return deny(f"guard_edit_scope: the edit names no path (file_path, edits[].file_path, file_paths); failing closed. {ESCAPE_HATCH}")
+    for i, target in enumerate(targets):
+        target_path = lexical_path(cwd, target)
+        # Each target spends one edit of the budget, so the i-th is judged with i already used.
+        spent = {**scope, "editsUsed": int(scope.get("editsUsed", 0)) + i}
+        reason = scope_write_violation(lexical_path(root, "."), spent, target_path)
+        if reason:
+            return deny(
+                f"Edit target {target!r} refused under the mutation_harden test-scope lock for lane "
+                f"{scope.get('findingId')!r}: {reason}. A surviving mutant is killed by a new test, "
+                f"never by editing the code it survived in. {ESCAPE_HATCH}"
+            )
     if not is_fixable(scope.get("domain"), scope.get("category")):
         return deny(
             f"Remediation scope for lane {scope.get('findingId')!r} has domain={scope.get('domain')!r}, "
             f"which is not in zeugnis's auto-fixable set. {ESCAPE_HATCH}"
         )
-    record_test_edit(root)
+    for _ in targets:
+        record_test_edit(root)
     return allow()
 
 
@@ -151,12 +189,12 @@ def run() -> int:
         return deny(f"guard_edit_scope: could not parse hook input JSON ({exc}); failing closed. {ESCAPE_HATCH}")
 
     tool_name = event.get("tool_name")
-    if tool_name not in ("Edit", "Write"):
+    if tool_name not in ("Edit", "Write", "MultiEdit", "NotebookEdit"):
         return allow()
 
     cwd = event.get("cwd") or os.getcwd()
     tool_input = event.get("tool_input") or {}
-    target = tool_input.get("file_path")
+    targets = edit_targets(tool_input)
 
     # Inert unless this repo shows evidence of using zeugnis (analysis/zeugnis/
     # exists at cwd or an ancestor). Computed with stdlib only, BEFORE
@@ -198,7 +236,7 @@ def run() -> int:
         return allow()
 
     if scope.get("domain") in TEST_SCOPE_DOMAINS:
-        return _test_scope_decision(root, cwd, scope, target, scope_write_violation,
+        return _test_scope_decision(root, cwd, scope, targets, scope_write_violation,
                                     lexical_path, is_fixable, record_test_edit)
 
     if scope.get("consumed"):
@@ -208,22 +246,23 @@ def run() -> int:
             f"A second Edit/Write in the same remediation scope is refused. {ESCAPE_HATCH}"
         )
 
-    if not target:
-        return deny(f"guard_edit_scope: tool_input.file_path missing; failing closed. {ESCAPE_HATCH}")
+    if not targets:
+        return deny(f"guard_edit_scope: the edit names no path (file_path, edits[].file_path, file_paths); failing closed. {ESCAPE_HATCH}")
 
     try:
-        resolved_target = target if os.path.isabs(target) else os.path.join(cwd, target)
         allowed_resolved = safe_repo_path(root, scope["allowedFile"])
     except UnsafeWritePathError as exc:
         return deny(f"guard_edit_scope: {exc}. {ESCAPE_HATCH}")
 
-    if os.path.realpath(resolved_target) != os.path.realpath(allowed_resolved):
-        return deny(
-            f"Edit target {target!r} does not match the locked remediation scope's "
-            f"allowedFile {scope['allowedFile']!r} for finding {scope.get('findingId')!r} "
-            f"(rule: remediator-one-fix-per-finding — scope is limited to the cited "
-            f"file:line only). {ESCAPE_HATCH}"
-        )
+    for target in targets:
+        resolved_target = target if os.path.isabs(target) else os.path.join(cwd, target)
+        if os.path.realpath(resolved_target) != os.path.realpath(allowed_resolved):
+            return deny(
+                f"Edit target {target!r} does not match the locked remediation scope's "
+                f"allowedFile {scope['allowedFile']!r} for finding {scope.get('findingId')!r} "
+                f"(rule: remediator-one-fix-per-finding — scope is limited to the cited "
+                f"file:line only). {ESCAPE_HATCH}"
+            )
 
     # Domain/category is validated again here (open_scope already checked
     # it, but a hand-edited or corrupted lock file should not be trusted

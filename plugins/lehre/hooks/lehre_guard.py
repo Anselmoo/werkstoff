@@ -22,6 +22,10 @@ TWO GATES, ONE HOOK.
   2. RULES. A write whose resulting content violates a `severity: blocking`,
      hook-tier rule is denied, quoting the rule's own rationale.
 
+USAGE: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Write", "tool_input": {"file_path": "x"}}' | python3 lehre_guard.py
+
 CONTRACT (Claude Code PreToolUse):
   - stdin: JSON with at least {"cwd", "tool_name", "tool_input"}
   - ALLOW: exit 0

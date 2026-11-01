@@ -786,6 +786,25 @@ def main() -> int:
         else:
             print("     negative: clean plugin silent")
 
+    # 4b. M-DUP-CONTENT exemption -- copies .rrt.toml vendors from ONE source are the
+    # fix the rule asks for, not the defect. Prove both directions on the positive
+    # tree: every copy declared -> silent; only one declared -> still fires (a
+    # hand-made copy beside a vendored one can drift).
+    for declared, want in ((["plugins/bad/references/proto.md", "plugins/bad2/references/proto.md"], False),
+                           (["plugins/bad/references/proto.md"], True)):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            build_positive(root)
+            w(root, ".rrt.toml", "".join(f'[[tool.rrt.artifact_targets]]\npath = "{d}"\ncommand = ["cp", "tools/proto.md", "{d}"]\n\n'
+                                         for d in declared))
+            fired = any(x["rule_id"] == "M-DUP-CONTENT" and x["file"] == "plugins/bad/references/proto.md"
+                        for x in run(root, ["plugins/bad", "plugins/bad2", "plugins/bad3"]))
+            if fired != want:
+                print(f"RED  dup-vendored: {len(declared)} of 2 copies declared -> M-DUP-CONTENT {'fired' if fired else 'silent'}, "
+                      f"want {'fired' if want else 'silent'}")
+                red += 1
+    print("     dup-vendored: all copies vendored -> silent; one hand-made copy -> fires")
+
     # 5. --fail-on: a CLI-level check, exercised through lp.main() rather than lp.lint()
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
