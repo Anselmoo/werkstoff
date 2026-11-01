@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import re
 import struct
 import subprocess
@@ -51,7 +52,22 @@ import retrofit_css  # noqa: E402
 
 DECL = re.compile(r"^[ \t]*(--[\w-]+)[ \t]*:[ \t]*([^;]+);", re.M)
 VAR = re.compile(r"^var\(\s*(--[\w-]+)\s*\)$")
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+MAC_CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+CHROME_NAMES = ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable", "chrome")
+
+
+def find_chrome() -> str:
+    """A Chrome on PATH first, the macOS app path last. The macOS path alone meant arm 3
+    never ran on Linux or in CI -- and, before it failed closed, passed anyway."""
+    for name in CHROME_NAMES:
+        found = shutil.which(name)
+        if found:
+            return found
+    return MAC_CHROME
+
+
+CHROME = find_chrome()
+ALLOW_NO_BROWSER = False
 
 
 def decls(css: str) -> dict[str, str]:
@@ -131,7 +147,12 @@ def png_size(path: Path) -> tuple[int, int]:
 
 def arm3_visual(src: str, regen: str, workdir: Path, chrome: str) -> tuple[bool, list[str]]:
     if not Path(chrome).exists():
-        return True, [f"SKIPPED — no Chromium at {chrome}; arms 1 and 2 still ran"]
+        # NOT RUN is not a pass. "Zero visual diff" is the claim this script exists to
+        # make; printing it with the only visual arm skipped reported success it never
+        # measured. --allow-no-browser keeps arms 1 and 2 usable, labelled as such.
+        return ALLOW_NO_BROWSER, [f"NOT RUN — no Chromium found (PATH names {', '.join(CHROME_NAMES)}, or {MAC_CHROME}); "
+                                  + ("accepted by --allow-no-browser: only arms 1 and 2 are proven" if ALLOW_NO_BROWSER
+                                     else "pass --chrome PATH, or --allow-no-browser to accept arms 1-2 only")]
     names = list(decls(src))
     shots = []
     for label, css in (("before", src), ("after", regen)):
@@ -266,6 +287,10 @@ def selftest() -> int:
     c1, _ = arm1_textual(src, drop_css)
     checks.append(("dropped token FAILS arm 1", not c1))
 
+    with tempfile.TemporaryDirectory() as tmp:
+        ok3, notes3 = arm3_visual(src, regen, Path(tmp), "/nonexistent/chrome")
+    checks.append(("a missing browser FAILS arm 3, never a silent pass", not ok3 and "NOT RUN" in notes3[0]))
+
     for label, ok in checks:
         print(f"  {label:<52} {'ok' if ok else 'FAIL'}")
     bad = sum(1 for _, ok in checks if not ok)
@@ -280,8 +305,12 @@ def main() -> int:
     ap.add_argument("tokens", nargs="?")
     ap.add_argument("--chrome", default=CHROME)
     ap.add_argument("--workdir")
+    ap.add_argument("--allow-no-browser", action="store_true",
+                    help="accept a missing browser: arm 3 is reported NOT RUN instead of failing")
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args()
+    global ALLOW_NO_BROWSER
+    ALLOW_NO_BROWSER = args.allow_no_browser
 
     if args.selftest:
         return selftest()

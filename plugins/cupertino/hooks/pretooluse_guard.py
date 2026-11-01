@@ -270,11 +270,39 @@ def check_repair_write(cwd, file_path):
              "file needs a create item.")
 
 
+def edit_targets(tool_input):
+    """Every path an edit payload names: file_path, notebook_path, edits[].file_path, file_paths.
+
+    Reading only file_path let a payload carrying its paths elsewhere through every
+    check unexamined (nacharbeit H-MULTI-PATH; takt_guard.py's edit_targets is the model).
+    """
+    targets = []
+    for key in ("file_path", "notebook_path"):
+        value = tool_input.get(key)
+        # isinstance, not truthiness: a str is iterable, and iterating one yields characters.
+        if isinstance(value, str) and value:
+            targets.append(value)
+    for edit in tool_input.get("edits") or []:
+        if isinstance(edit, dict) and isinstance(edit.get("file_path"), str) and edit["file_path"]:
+            targets.append(edit["file_path"])
+    for value in tool_input.get("file_paths") or []:
+        if isinstance(value, str) and value:
+            targets.append(value)
+    return targets
+
+
 def handle_write_or_edit(cwd, tool_input):
-    file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
-    if file_path:
+    targets = edit_targets(tool_input)
+    if not targets and _repair_run(cwd) is not None:
+        deny("cupertino-repair: this edit names no path the guard can read (file_path, edits[].file_path, "
+             "file_paths), so it cannot be scoped to the active item; refusing rather than letting it through.")
+    for file_path in targets:
         check_repair_write(cwd, file_path)
-    if not file_path or not is_cupertino_artifact_path(file_path):
+        handle_artifact_write(cwd, file_path, tool_input)
+
+
+def handle_artifact_write(cwd, file_path, tool_input):
+    if not is_cupertino_artifact_path(file_path):
         return
     check_write_scope(cwd, file_path)
     content = tool_input.get("content")

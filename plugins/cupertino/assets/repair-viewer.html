@@ -36,7 +36,10 @@
 <script type="application/json" id="report-data">@@DATA@@</script>
 <script>
 (() => {
-  const D = RK.readData("python3 plugins/cupertino/scripts/build_repair_html.py --run <runId>");
+  // On a missing or unreadable island readData() shows a visible failure: re-run the
+  // builder below to regenerate this report.
+  const RERUN_COMMAND = "python3 plugins/cupertino/scripts/build_repair_html.py --run <runId>";
+  const D = RK.readData(RERUN_COMMAND);
   if (!D) return;
   const { section, h } = RK;
   const verdict = RK.$(".verdict");

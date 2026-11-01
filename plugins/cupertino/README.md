@@ -130,7 +130,7 @@ are not the same thing: a skip is a recorded decision carrying its own reason, a
 stage is an unfinished review. Each node encodes that difference twice, in outline style as
 well as colour, and the legend at the foot of the page repeats it in words.
 
-![Cupertino review flow report. A verdict line reads "This review is incomplete: 5 of 9 stages ran and 1 (prototype) was explicitly skipped with a recorded reason, but 3 (elevate, unbox, reveal) were never reached at all — the run got no further than prototype." Below it the nine-stage pipeline runs left to right — backwards, focus, a real fork into longevity above and integrate below that merges back into council, then prototype, elevate, unbox, reveal — with five nodes outlined solid green, prototype outlined dashed amber, and the last three drawn muted grey. A right-hand sidebar lists every stage against its state and quotes the recorded skip reason for prototype; a footer legend names the three states in words](assets/review-flow-viewer-screenshot.jpg)
+![Cupertino review flow report. A verdict line reads "This review is incomplete: prototype was explicitly skipped with a recorded reason, but elevate, unbox and reveal were never reached at all — the run got no further than prototype." Glance tiles show 5 ran, 1 explicitly skipped and 3 never reached, the last flagged as a problem. The nine-stage pipeline runs left to right — backwards, focus, a real fork into longevity above and integrate below that merges back into council, then prototype, elevate, unbox, reveal — with five nodes outlined solid green, prototype dashed amber, and the last three dotted grey, each labelled with its state in words. Below, one expandable card per stage shows what it reported as headed sections, lists and definition lists, quotes the recorded skip reason for prototype, and marks the unreached stages as never reached](assets/review-flow-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the run it shows is committed as
 a set of stage flag files at `scripts/fixtures/sample_review_flags/`, chosen so all three
@@ -144,8 +144,7 @@ mkdir -p /tmp/cupertino-demo/.cupertino
 cp -R plugins/cupertino/scripts/fixtures/sample_review_flags /tmp/cupertino-demo/.cupertino/flags
 python3 plugins/cupertino/scripts/build_review_flow_html.py /tmp/cupertino-demo/.cupertino \
     --template plugins/cupertino/assets/review-flow-viewer.html \
-    --d3 plugins/cupertino/assets/inline-d3.html \
-    --tokens plugins/cupertino/assets/tokens.css
+    --d3 plugins/cupertino/assets/inline-d3.html
 ```
 
 Every stage payload in that fixture passes the plugin's own `scripts/validators.py` checks

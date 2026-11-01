@@ -112,6 +112,11 @@ def main() -> int:
         expect("Edit of a file no item names is denied", root, "Edit", {"file_path": "app/chart.js"}, DENY, "not in active item")
         expect("MultiEdit outside scope is denied (MultiEdit was unmatched before)", root, "MultiEdit",
                {"file_path": "app/chart.js", "edits": []}, DENY, "not in active item")
+        expect("edits[].file_path outside the item is denied", root, "MultiEdit",
+               {"edits": [{"file_path": "app/chart.js", "old_string": "a", "new_string": "b"}]}, DENY, "not in active item")
+        expect("file_paths outside the item is denied", root, "Edit", {"file_paths": ["app/styles.css", "app/chart.js"]},
+               DENY, "not in active item")
+        expect("an edit naming no readable path is denied during a run", root, "Edit", {"file_path": 7}, DENY, "names no path")
         expect("a ../ escape is denied", root, "Write", {"file_path": "../outside.txt", "content": "x"}, DENY, "outside the project")
         expect("changing the changeset mid-item is denied", root, "Write",
                {"file_path": str(rdir / "changeset.json"), "content": "{}"}, DENY, "finish-item")

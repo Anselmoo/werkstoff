@@ -276,8 +276,13 @@ def main():
         m = re.search(r'<script type="module">(.*?)</script>', rendered, re.S)
         expect(m is not None, "module script block present")
         if m:
-            proc = subprocess.run(["node", "--check", "/dev/stdin"],
-                                   input=m.group(1), text=True, capture_output=True)
+            # A temp .mjs file, not /dev/stdin: Node 22 cannot `--check` a pipe
+            # (ENOENT /proc/.../fd/pipe), so the stdin form failed on every run
+            # regardless of the script. .mjs because the block is type="module".
+            with tempfile.NamedTemporaryFile("w", suffix=".mjs", delete=False) as js:
+                js.write(m.group(1))
+            proc = subprocess.run(["node", "--check", js.name], text=True, capture_output=True)
+            os.unlink(js.name)
             expect(proc.returncode == 0,
                    "rendered script has valid JS syntax: " + proc.stderr.strip())
 
