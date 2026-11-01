@@ -43,6 +43,13 @@ except Exception as exc:
     validators = None  # handled defensively below; schema checks degrade to "deny" on write, not "skip"
     _validators_import_error = exc
 
+_repair_import_error: Exception | None = None
+try:
+    import repair_lib  # type: ignore  # noqa: E402
+except Exception as exc:
+    repair_lib = None  # an active repair run with no library to read it denies, never allows
+    _repair_import_error = exc
+
 MIN_PYTHON = (3, 11)
 
 ESCAPE_HATCH = "set CUPERTINO_DISABLE_GUARD=1 to bypass this guard, or remove .cupertino/ if this repo no longer uses cupertino"
@@ -74,6 +81,16 @@ MUTATING_GIT_RE = re.compile(
     re.IGNORECASE,
 )
 DESTRUCTIVE_FS_RE = re.compile(r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f\b|\brm\s+-[a-zA-Z]*f[a-zA-Z]*r\b", re.IGNORECASE)
+# During a repair run every source write goes through Write/Edit (scoped to the
+# active item below) and every delete through scripts/apply_delete.py (reversible).
+# These are the shell routes around both. Same caveat as above: a tripwire for a
+# cooperative model, not a sandbox.
+REPAIR_SHELL_WRITE_RE = re.compile(
+    r"\b(?:rm|unlink|shred|truncate|mv|cp|rsync|tee|dd|install)\b|\bgit\s+(?:rm|mv|apply|stash|restore)\b"
+    r"|\bsed\s+(?:-\w*\s+)*-i|\bperl\s+-\w*i|\bfind\b[^|;&]*-delete\b|(?<![0-9&])>{1,2}\s*(?!&|/dev/null)[\w./~\"'$-]",
+    re.IGNORECASE,
+)
+REPAIR_GATED_SKILLS = {"cupertino-council", "cupertino-elevate", "cupertino-unbox", "cupertino-reveal"}
 
 
 def deny(reason: str) -> NoReturn:
@@ -173,8 +190,90 @@ def check_handbook_overwrite(cwd, file_path, content):
         )
 
 
+def _repair_run(cwd):
+    """(root, run_id) of the active repair run, or None. Fails closed if unreadable."""
+    marker = os.path.join(state_dir(cwd), "repair", "ACTIVE")
+    if not os.path.isfile(marker):
+        return None
+    if repair_lib is None:
+        deny(f"cupertino: a repair run is active but repair_lib failed to load ({_repair_import_error}); "
+             "refusing rather than allowing an unscoped edit. " + ESCAPE_HATCH)
+    root = repair_lib.project_root(cwd)
+    try:
+        run_id = repair_lib.active_run(root)
+    except repair_lib.RepairError as e:
+        deny(f"cupertino: {e}. " + ESCAPE_HATCH)
+    return root, run_id
+
+
+def check_repair_write(cwd, file_path):
+    """While a repair run is active, a source edit must belong to the active approved item.
+
+    This is what makes "fix the KPI row" unable to also restyle the chart: the
+    model may edit only the paths the user approved, one item at a time, and only
+    after an objective and a baseline exist to verify against.
+    """
+    run = _repair_run(cwd)
+    if run is None:
+        return
+    root, run_id = run
+    try:
+        rel = repair_lib.rel_posix(root, file_path)
+    except repair_lib.RepairError as e:
+        deny(f"cupertino-repair: {e}; a repair edits only inside the project.")
+    rdir_rel = f".cupertino/repair/{run_id}/"
+    if rel.startswith(".cupertino/"):
+        if rel.startswith(rdir_rel):
+            inner = rel[len(rdir_rel):]
+            top = inner.split("/", 1)[0]
+            if inner in repair_lib.SCRIPT_ONLY or top in repair_lib.SCRIPT_ONLY_DIRS:
+                deny(f"cupertino-repair: {rel} is written only by the repair scripts (preflight, baseline, "
+                     "repair_state, apply_delete, verify) -- a verification result or a gate that a model can "
+                     "write is not a verification.")
+            rdir = root / ".cupertino" / "repair" / run_id
+            if inner == "changeset.json" and (rdir / "active-item").is_file():
+                deny("cupertino-repair: an item is being applied; finish-item it before changing the changeset "
+                     "(and a changed changeset must be approved again).")
+        return
+    rdir = root / ".cupertino" / "repair" / run_id
+    missing = [name for name, p in (("objective.json", rdir / "objective.json"),
+                                     ("baseline (baseline.py)", rdir / "baseline" / "baseline.json"))
+               if not p.is_file()]
+    if missing:
+        deny(f"cupertino-repair: no source edit before {' and '.join(missing)} exist -- without an objective and a "
+             f"baseline there is nothing to verify the change against. Target: {rel}")
+    try:
+        changeset = repair_lib.approved_changeset(root, run_id)
+    except repair_lib.RepairError as e:
+        deny(f"cupertino-repair: {e}. Target: {rel}")
+    active = rdir / "active-item"
+    if not active.is_file():
+        deny(f"cupertino-repair: no item is active -- run `repair_state.py start-item <id>` for the approved item "
+             f"that names {rel}.")
+    item_id = active.read_text(encoding="utf-8").strip()
+    item = next((i for i in changeset["items"] if i["id"] == item_id), None)
+    if item is None:
+        deny(f"cupertino-repair: active item {item_id!r} is not in the approved changeset.")
+    if item["op"] not in repair_lib.WRITE_OPS:
+        deny(f"cupertino-repair: item {item_id} is a {item['op']!r} item, which edits nothing"
+             + (" -- deletes go through scripts/apply_delete.py." if item["op"] == "delete" else "."))
+    paths = [repair_lib.rel_posix(root, p) for p in item["paths"]]
+    if rel not in paths:
+        deny(f"cupertino-repair: {rel} is not in active item {item_id}'s approved paths {paths}. If it must change, "
+             "stop, add an item for it, show the changeset to the user and approve again.")
+    exists = (root / rel).exists()
+    if item["op"] == "create" and exists:
+        deny(f"cupertino-repair: item {item_id} is a create, but {rel} already exists -- that is a modify, and "
+             "must be approved as one.")
+    if item["op"] in ("modify", "add") and not exists:
+        deny(f"cupertino-repair: item {item_id} is a {item['op']} of {rel}, which does not exist -- creating a "
+             "file needs a create item.")
+
+
 def handle_write_or_edit(cwd, tool_input):
-    file_path = tool_input.get("file_path", "")
+    file_path = tool_input.get("file_path") or tool_input.get("notebook_path") or ""
+    if file_path:
+        check_repair_write(cwd, file_path)
     if not file_path or not is_cupertino_artifact_path(file_path):
         return
     check_write_scope(cwd, file_path)
@@ -186,6 +285,19 @@ def handle_write_or_edit(cwd, tool_input):
 
 def handle_bash(cwd, tool_input):
     command = tool_input.get("command", "") or ""
+    run = _repair_run(cwd)
+    if run is not None:
+        if MUTATING_GIT_RE.search(command):
+            deny("cupertino-repair: a repair run is active; no commit, push, reset, checkout, merge or rebase until "
+                 "verify.py has written a verdict and `repair_state.py end` closed the run. " + ESCAPE_HATCH)
+        only_plugin_scripts = all(
+            "cupertino" in seg and "/scripts/" in seg
+            for seg in re.split(r"&&|\|\||;|\n", command) if seg.strip()
+        )
+        if not only_plugin_scripts and REPAIR_SHELL_WRITE_RE.search(command):
+            deny("cupertino-repair: a repair run is active, and this command can write or delete files outside the "
+                 "approved item. Edit with Write/Edit (scoped to the active item); delete only with "
+                 "`python3 <plugin>/scripts/apply_delete.py --item <id>` (restorable). " + ESCAPE_HATCH)
     if flag_set(cwd, "handbook-fix-active") or flag_set(cwd, "handbook-check-active"):
         if MUTATING_GIT_RE.search(command):
             deny(
@@ -200,6 +312,13 @@ def handle_bash(cwd, tool_input):
 def handle_skill(cwd, tool_input):
     skill_name = (tool_input.get("skill") or tool_input.get("name") or "").split(":")[-1]
     args_str = str(tool_input.get("args") or "")
+
+    if skill_name in REPAIR_GATED_SKILLS and _repair_run(cwd) is not None:
+        deny(
+            f"cupertino: {skill_name} builds something new; a repair run is active, and a repair changes only "
+            "what its approved changeset names. Finish the run first, or add the new work to the changeset as "
+            "an approved add/create item and apply it there."
+        )
 
     if skill_name == "cupertino-cannibalize" and flag_set(cwd, "review-pipeline-active"):
         deny(
@@ -323,6 +442,19 @@ def main():
         deny(f"cupertino: could not check for .cupertino/ ({e}); failing closed. {ESCAPE_HATCH}")
 
     if not cupertino_active:
+        # Inert for every tool EXCEPT cupertino's own gated skills. Invoking the
+        # plugin is using it: allowing a gated skill here meant the ordering gate
+        # never fired on first use -- measured in docs/examples/design-ui.md, where
+        # both runs fired cupertino-council first with zero denials.
+        if payload.get("tool_name") == "Skill":
+            ti = payload.get("tool_input", {}) or {}
+            name = (ti.get("skill") or ti.get("name") or "").split(":")[-1]
+            if name in GATED_AFTER_BACKWARDS:
+                deny(
+                    f"cupertino: {name} requires cupertino-backwards to run first in this repo, and this repo has "
+                    f"no .cupertino/ state yet. Run cupertino-backwards first. Changing an EXISTING system "
+                    f"instead? That is cupertino-repair, not {name}."
+                )
         allow()
 
     if sys.version_info < MIN_PYTHON:
@@ -344,7 +476,7 @@ def main():
             # across environments rather than silently doing nothing in one
             # of them.
             handle_agent_dispatch(tool_input)
-        elif tool_name in ("Write", "Edit"):
+        elif tool_name in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
             handle_write_or_edit(cwd, tool_input)
         elif tool_name == "Bash":
             handle_bash(cwd, tool_input)

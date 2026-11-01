@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revenue dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<aside class="sidebar">
+  <h2>Acme</h2>
+  <nav><a href="#" aria-current="page">Overview</a><a href="#">Customers</a><a href="#">Billing</a></nav>
+</aside>
+<main>
+  <h1>Revenue</h1>
+  <section class="kpis" id="kpis">
+    <div class="kpi"><span class="label">MRR</span><span class="value">$84,210</span></div>
+    <div class="kpi"><span class="label">Customers</span><span class="value">1,204</span></div>
+    <div class="kpi"><span class="label">Churn</span><span class="value">2.1%</span></div>
+    <div class="kpi"><span class="label">ARPA</span><span class="value">$69.94</span></div>
+  </section>
+  <section class="panel">
+    <h2>Monthly revenue</h2>
+    <canvas id="revenue" width="640" height="240" aria-label="Monthly revenue, January to June"></canvas>
+  </section>
+</main>
+<script src="chart.js"></script>
+</body>
+</html>

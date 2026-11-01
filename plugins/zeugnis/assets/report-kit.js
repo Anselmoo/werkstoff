@@ -1,7 +1,7 @@
 /* werkstoff report kit -- shared behaviour for every plugins/<name>/assets/<name>-viewer.html.
  *
  * Source of truth; vendored per plugin as assets/report-kit.js (.rrt.toml
- * artifact_targets) and inlined by the builder at <!--__REPORT_KIT__-->.
+ * artifact_targets) and inlined by the builder at __REPORT_KIT__.
  *
  * Safety contract (report-viewer-standard S3), stated once and kept here:
  *   - data reaches the page only through createTextNode / textContent;
@@ -89,6 +89,11 @@ const RK = (() => {
     major: "warn", medium: "warn", warning: "warn", gap: "warn", partial: "warn",
     minor: "info", low: "info", info: "info", nit: "flat", na: "flat",
     pass: "ok", ok: "ok", done: "ok", proven: "ok",
+    // Outcome words plugins already use, so a badge can keep its own word.
+    broken: "bad", rejected: "bad", refused: "bad", missing: "bad", blocked: "bad", denied: "bad",
+    unverified: "warn", contested: "warn", stale: "warn", dropped: "warn", malformed: "warn",
+    verified: "ok", landed: "ok", accepted: "ok", met: "ok", linked: "ok", named: "ok",
+    unmeasured: "flat", skipped: "flat", unknown: "flat", unrated: "flat",
   };
   const GLYPH = { ok: "✓", bad: "✗", warn: "!", info: "i", flat: "–" };
   const toneFor = (word) => SEVERITY_TONE[String(word || "").toLowerCase()] || "flat";
@@ -201,6 +206,11 @@ const RK = (() => {
     }
   }
 
+  // A viewer with its own filter (a matrix, a graph) registers here instead of
+  // adding a second listener on #rk-q, so one box drives every view.
+  const searchHooks = [];
+  function onSearch(fn) { searchHooks.push(fn); }
+
   function runSearch(term, found) {
     const items = $$("[data-rk-search]");
     const needle = term.toLowerCase();
@@ -217,6 +227,18 @@ const RK = (() => {
       }
     }
     if (found) found.textContent = needle ? `${shown} of ${items.length} match "${term}"` : "";
+    for (const fn of searchHooks) fn(term);
+  }
+
+  // --header-h is a fallback constant (tokens.css says so); a sticky offset must
+  // use the header's measured height, which changes when the header wraps.
+  function syncHeaderHeight() {
+    const top = $(".rk-top");
+    if (!top) return;
+    const set = () => document.documentElement.style.setProperty("--header-h", top.offsetHeight + "px");
+    set();
+    if ("ResizeObserver" in window) new ResizeObserver(set).observe(top);
+    else window.addEventListener("resize", set);
   }
 
   // An item is visible only when no search and no facet filter excludes it.
@@ -225,6 +247,7 @@ const RK = (() => {
   }
 
   function init() {
+    syncHeaderHeight();
     initTheme();
     initNav();
     initSearch();
@@ -264,6 +287,7 @@ const RK = (() => {
   //   {id, severity, claim, file, line, quote, fix, evidence:[{label, detail, href}], tags:{k:v}}
   // opts.facets: tag/field names that get a filter bar when there are > 5 findings.
   // opts.order:  {field: [values in display order]} for the facet buttons and the sort.
+  // opts.facetLabels: {field: "Shown label"} when the tag key is not reader-facing.
   function findings(list, opts) {
     const o = opts || {};
     const prefix = o.idPrefix || "finding-";
@@ -282,13 +306,15 @@ const RK = (() => {
       const where = f.file ? f.file + (f.line ? ":" + f.line : "") : "";
       const card = h("details", { class: "rk-finding " + toneFor(f.severity), id, "data-rk-search": true },
         h("summary", {},
-          badge(f.severity || "unrated"),
+          // f.badge = {word, tone} keeps a plugin's own outcome word ("broken",
+          // "landed") instead of forcing it into a severity.
+          f.badge ? badge(f.badge.word, f.badge.tone) : badge(f.severity || "unrated"),
           f.rule ? h("code", { text: f.rule }) : null,
           h("span", { class: "rk-claim", text: f.claim || f.message || "(no claim recorded)" }),
           where ? h("span", { class: "rk-where mono", text: where }) : null,
           h("a", { class: "rk-permalink", href: "#" + id, title: "Link to this finding", text: "#" })),
         evidenceBody(f, where));
-      for (const key of o.facets || []) card.dataset["rk" + key] = String(valueOf(f, key) ?? "");
+      for (const key of o.facets || []) card.setAttribute(facetAttr(key), String(valueOf(f, key) ?? ""));
       return card;
     });
 
@@ -314,6 +340,9 @@ const RK = (() => {
     return body;
   }
 
+  // Any facet key (spaces included) maps to a valid attribute name.
+  const facetAttr = (key) => "data-rk-facet-" + String(key).toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+
   function filterBar(cards, sorted, o, valueOf) {
     const bar = h("div", { class: "rk-filters", role: "group", "aria-label": "Filter findings" });
     const active = {};
@@ -322,7 +351,7 @@ const RK = (() => {
       const order = (o.order && o.order[key]) || values;
       values.sort((a, b) => order.indexOf(a) - order.indexOf(b));
       if (values.length < 2) continue;
-      bar.appendChild(h("span", { class: "rk-label", text: key }));
+      bar.appendChild(h("span", { class: "rk-label", text: (o.facetLabels && o.facetLabels[key]) || key }));
       for (const v of values) {
         const n = sorted.filter((f) => String(valueOf(f, key) ?? "") === v).length;
         const btn = h("button", { class: "rk-btn", type: "button", "aria-pressed": "false" }, `${v || "(none)"} · ${n}`);
@@ -332,7 +361,7 @@ const RK = (() => {
           active[key] = active[key] || new Set();
           if (on) active[key].add(v); else active[key].delete(v);
           for (const c of cards) {
-            const out = Object.entries(active).some(([k, set]) => set.size && !set.has(c.dataset["rk" + k]));
+            const out = Object.entries(active).some(([k, set]) => set.size && !set.has(c.getAttribute(facetAttr(k))));
             c.toggleAttribute("data-rk-filtered", out);
             applyVisibility(c);
           }
@@ -345,7 +374,7 @@ const RK = (() => {
 
   // table({columns:[{key, label, num}], rows:[{...}], caption}) -- sortable by header.
   function table(t) {
-    const thead = h("tr", {}, t.columns.map((c) => h("th", { scope: "col", "aria-sort": "none" }, h("button", { type: "button", text: c.label }))));
+    const thead = h("tr", {}, t.columns.map((c) => h("th", { scope: "col", "aria-sort": "none", class: c.num ? "r" : null }, h("button", { type: "button", text: c.label }))));
     const tbody = h("tbody", {});
     const render = (rows) => {
       tbody.textContent = "";
@@ -366,7 +395,10 @@ const RK = (() => {
         th.setAttribute("aria-sort", dir);
         const sign = dir === "ascending" ? 1 : -1;
         render(t.rows.slice().sort((a, b) => {
-          const x = a[col.key], y = b[col.key];
+          // A Node cell sorts by its text unless the row gives <key>Sort.
+          const key = (r) => (r[col.key + "Sort"] !== undefined ? r[col.key + "Sort"]
+            : r[col.key] instanceof Node ? r[col.key].textContent : r[col.key]);
+          const x = key(a), y = key(b);
           if (col.num) return sign * ((Number(x) || 0) - (Number(y) || 0));
           return sign * String(x ?? "").localeCompare(String(y ?? ""));
         }));
@@ -420,5 +452,5 @@ const RK = (() => {
     return h("section", { class: "rk-section", id: "sec-" + id }, h("h2", { text: title }), ...kids);
   }
 
-  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, glance, findings, table, proof, beforeAfter, section };
+  return { h, append, safeUrl, $, $$, readData, fail, toneFor, badge, copyButton, init, onSearch, glance, findings, table, proof, beforeAfter, section };
 })();

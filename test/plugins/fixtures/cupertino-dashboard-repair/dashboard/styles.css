@@ -1,0 +1,31 @@
+:root {
+  --bg: #ffffff;
+  --panel: #f4f6f8;
+  --text: #1b232a;
+  --muted: #55616a;
+  --accent: #1874c2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0a0d10;
+    --panel: #141a1f;
+    --text: #dfe6ea;
+    --muted: #8b9aa4;
+    --accent: #73b6fa;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; display: flex; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, sans-serif; }
+.sidebar { width: 180px; flex: none; padding: 16px; background: var(--panel); min-height: 100vh; }
+.sidebar nav a { display: block; color: var(--muted); padding: 4px 0; text-decoration: none; }
+.sidebar nav a[aria-current] { color: var(--accent); font-weight: 600; }
+main { flex: 1; padding: 16px; min-width: 0; }
+.kpis { display: flex; gap: 12px; }
+.kpi { min-width: 150px; background: var(--panel); border-radius: 8px; padding: 12px; }
+.kpi .label { display: block; color: var(--muted); font-size: 13px; }
+.kpi .value { font-size: 22px; font-weight: 650; }
+.panel { margin-top: 16px; background: var(--panel); border-radius: 8px; padding: 12px; }
+canvas { max-width: 100%; height: auto; }
+@media (max-width: 600px) {
+  .sidebar { display: none; }
+}

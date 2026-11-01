@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
+<title>cupertino — repair report</title>
+<!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
+</head>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>cupertino — repair report</h1>
+  <p class="rk-sub" id="objective">Whether one change to an existing system did what was asked and broke nothing else.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search the report">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
+<main class="rk-wrap">
+  <p class="verdict">No verdict yet — this line is replaced by the run's verdict.</p>
+  <div class="legend rk-card rk-muted">
+    Done means every acceptance and must-preserve check passed, nothing was "not run", and every changed file is named by an approved item.
+    Every state is a word plus a glyph — ✓ pass, ✗ fail, – not run. A check that could not run is never counted as a pass.
+  </div>
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
+  </div>
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
+<script>
+(() => {
+  const D = RK.readData("python3 plugins/cupertino/scripts/build_repair_html.py --run <runId>");
+  if (!D) return;
+  const { section, h } = RK;
+  const verdict = RK.$(".verdict");
+  verdict.textContent = D.glance.verdict;
+  verdict.classList.add(D.glance.tone);
+  RK.$("#objective").textContent = "Objective: " + D.headline;
+  RK.$("#rk-content").append(
+    section("glance", "At a glance", RK.glance({ ...D.glance, verdict: null })),
+    section("proof", "Proof", RK.proof(D.proof)),
+    section("findings", "What went wrong", RK.findings(D.findings, { facets: ["severity", "kind"], facetLabels: { kind: "source" }, empty: "Nothing went wrong: every change is accounted for and every check holds." })),
+    section("changes", "Every change, and the item that allowed it", RK.table({ caption: "changes", columns: [
+      { key: "path", label: "File", mono: true }, { key: "change", label: "Change" },
+      { key: "items", label: "Approved item" }, { key: "state", label: "Attributed", badge: true }], rows: D.changes })),
+    section("changeset", "The approved changeset", RK.table({ caption: "changeset", columns: [
+      { key: "id", label: "Item", mono: true }, { key: "op", label: "Operation" },
+      { key: "paths", label: "Paths", mono: true }, { key: "rationale", label: "Why" }], rows: D.changeset })),
+    section("before-after", "Before and after",
+      D.beforeAfter.length ? D.beforeAfter.map((b) => RK.beforeAfter(b)) : h("p", { class: "rk-muted", text: "No web checks in this run." }))
+  );
+  RK.init();
+})();
+</script>
+</body>
+</html>
