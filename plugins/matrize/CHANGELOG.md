@@ -3,6 +3,8 @@
 All notable changes to the `matrize` plugin are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_provenance_html.py` and `build_derivation_html.py` now render through `report_kit.render()`; the provenance builder keeps what each token is and where its evidence came from and adds findings, and the derivation builder adds grade-C, vocabulary-concept and contrast findings and a suggested foreground for a failing pair; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Fixed
