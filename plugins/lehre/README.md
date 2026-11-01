@@ -158,7 +158,7 @@ the one thing every werkstoff report viewer shares.
 Click any node in the enforcement flow to filter the rule table; ribbons are grouped by
 full path tuple, so the filter is exact rather than approximate.
 
-![Doctrine map filling the first screen: a Sankey carrying all 11 rules from provenance through severity and check kind to enforcement outcome, with the three linter-kind ribbons draining amber into "sweep + CI only", a verdict reading "3 of 8 blocking rules never deny a write" and four figures floating at top left, a toggle to the build-order graph, and a right-hand drawer open on the overview that lists the three leaking rules; the rule cards, with their quoted predicates and evidence, follow below](assets/doctrine-viewer-screenshot.jpg)
+![Doctrine map filling the first screen: a Sankey carrying all 11 rules from provenance through severity and check kind to enforcement outcome, with the three linter-kind ribbons draining amber into "sweep + CI only", a verdict reading "3 of 8 blocking rules never deny a write" and four figures floating at top left, a toggle to the build-order graph, and a right-hand drawer open on the overview that lists the three leaking rules](assets/doctrine-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the doctrine it shows is
 committed at `scripts/fixtures/sample_doctrine_ruleset.json` (11 rules chosen so all four

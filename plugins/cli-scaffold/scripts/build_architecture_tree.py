@@ -16,7 +16,8 @@ Usage:
                                [--out <path>]
 
 The page is composed by the shared report kit (assets/report-kit.{css,js}, scripts/report_kit.py):
-the tree and its guide rails stay bespoke d3-hierarchy, while the doctrine gaps, the evidence
+the figure (an icicle of the tree joined by ribbons to a per-pillar role ledger) and the indented
+file list below it stay bespoke d3-hierarchy, while the doctrine gaps, the evidence
 behind each one and the scaffold's CLI surface come from the same manifest and are shown in the
 kit's findings and table components.
 """

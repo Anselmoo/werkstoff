@@ -348,7 +348,7 @@ block. Clicking a stage, a wire, an evidence chip or a gap opens its detail -- d
 ledger prose, verdict, tier, blast radius, proposal -- in a drawer beside the figure, and
 hovering shows a summary. The findings lists and the full tables follow below the figure.
 
-![andon board for a stopped five-stage feature pipeline filling the screen: a verdict reading that the line is stopped at enrich->score by a Tier 1 structural-evidence contradiction, four numbers (7 open gaps, 3 wires without green proof, 1 non-overridable hold, 1 cycle converged), the stages ingest, normalize, enrich, score and publish joined by wires labelled in words (green, hung, red, no evidence yet), evidence chips under each wire and open-gap chips under each stage, and a side drawer showing the red Tier 1 evidence document that stops the line]](assets/board-viewer-screenshot.jpg)
+![andon board for a stopped five-stage feature pipeline filling the screen: a verdict reading that the line is stopped at enrich->score by a Tier 1 structural-evidence contradiction, four numbers (7 open gaps, 3 wires without green proof, 1 non-overridable hold, 1 cycle converged), the stages ingest, normalize, enrich, score and publish joined by wires labelled in words (green, hung, red, no evidence yet), evidence chips under each wire and open-gap chips under each stage, and a side drawer showing the red Tier 1 evidence document that stops the line](assets/board-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the ledger it shows is
 committed at `scripts/fixtures/sample_ledger/`, a real OKF directory tree

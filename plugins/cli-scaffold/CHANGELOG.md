@@ -5,6 +5,8 @@ All notable changes to the `cli-scaffold` plugin are documented here.
 ## [Unreleased]
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer is built by `scripts/build_cli-scaffold_html.py` from the same report data as before; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+### Changed
+- **Architecture tree redrawn as a figure**: an icicle of directories and files joined by ribbons to a pillar ledger, where a role no file plays is a hatched empty slot and a pillar with no file is framed in red; click a directory to zoom, a file for its roles. The indented file list moves below the stage. Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
 ### Fixed
 - The scaffold selftest runs `node --check` on a temporary file instead of a path that could be stale or missing.
 

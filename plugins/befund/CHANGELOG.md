@@ -7,6 +7,8 @@ are listed in `test/plugins/retired-groups.txt` and remain valid.
 ## [Unreleased]
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+### Changed
+- **Stage map fills the stage**: the force layout follows the stage's aspect ratio and is fitted to the free area (ink 25 % -> 73 %); the legend is one compact row with each mark's explanation on hover. Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
 
 ## [1.3.0] - 2026-10-30
 ### Changed

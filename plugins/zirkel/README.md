@@ -136,7 +136,7 @@ report — `scripts/build_branch_comparison_html.py` renders the run's
 `state.json` as a small-multiples grouped-bar D3 chart, one card per branch,
 so the scores never live only in chat history:
 
-![Branch comparison filling the first screen: grouped Feasibility, Impact and Risk bars for four branches with per-branch Total labels, the winner "Standalone D3 branch-comparison viewer" (Total 19) outlined in amber and marked WINNER, a verdict and three figures floating at top left, and a right-hand drawer open on the winner showing why it ranks here, its score bars, description, biggest blocker and how the winner is chosen; the per-branch cards follow below the figure](assets/branch-comparison-viewer-screenshot.jpg)
+![Branch comparison filling the first screen: grouped Feasibility, Impact and Risk bars for four branches with per-branch Total labels, the winner "Standalone D3 branch-comparison viewer" (Total 19) outlined in amber and marked WINNER, a verdict and three figures floating at top left, and a right-hand drawer open on the winner showing why it ranks here, its score bars, description, biggest blocker and how the winner is chosen](assets/branch-comparison-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the run it renders is
 committed at `scripts/fixtures/sample_explore_state.json` (four branches whose Totals

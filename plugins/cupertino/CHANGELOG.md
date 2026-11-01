@@ -20,6 +20,7 @@ All notable changes to the `cupertino` plugin are documented here.
   an isolated clean box.
 - `cupertino-council` writes `.cupertino/flags/council-done`; `beats.json` now names that marker as evidence.
 ### Changed
+- **Review-flow viewer fills the stage**: the pipeline and its fork scale to the free height (ink 52 % -> 69 %). Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 - **BREAKING -- first-use denial.** The guard used to be inert in a repo with no `.cupertino/` directory and so
   allowed `cupertino-focus`, `-longevity`, `-integrate` and `-council` on first use, defeating the

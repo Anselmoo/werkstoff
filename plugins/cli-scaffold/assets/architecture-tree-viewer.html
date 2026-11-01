@@ -16,17 +16,48 @@
      the cap is the material, not a style choice). Six roles, five slots: completion is the one
      folded to neutral, because build_architecture_tree.py maps it to the same doctrine pillar
      as help (UX/discoverability), so folding it costs no pillar coverage. It gets no --role-*
-     entry: its badge is drawn by the neutral [data-role="completion"] rule below, not a hue. */
+     entry: its marks are drawn with --rk-muted, not a hue. */
   --role-core: var(--cat-1); --role-entry: var(--cat-2); --role-distribution: var(--cat-3);
   --role-test: var(--cat-4); --role-help: var(--cat-5);
 }
 .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
-/* Figure-first (report-viewer-standard.md R9): the tree is the figure. Rows stretch to fill
-   the stage, each role gets its own column so the matrix of file x role reads at a glance,
-   and a row opens its role, manifest key, gap and CLI surface in the drawer. */
+/* Figure-first (report-viewer-standard.md R9). The figure is an icicle -- the scaffold's
+   directories as bands, its files as leaf cells, depth left to right -- joined by ribbons to a
+   pillar ledger on the right: one slot per doctrine role, grouped by the pillar it evidences.
+   A role no file plays is an EMPTY hatched slot with no ribbon reaching it, so the verdict's
+   absence is a visible gap, not a missing row. */
 .rk-hud { max-width: min(920px, calc(100% - 2 * var(--space-3))); }
-.rk-figure.rk-scroll { overflow-y: auto; }
-#tree-canvas { position: relative; }
+#fig-svg { position: absolute; inset: 0; }
+.crumbs { position: absolute; left: var(--space-2); display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--space-1); font-size: 0.82rem; color: var(--rk-muted); z-index: 2; }
+.crumbs button { all: unset; cursor: pointer; color: var(--rk-link); padding: 0 var(--space-1); border-radius: var(--radius-sm); }
+.crumbs button:focus-visible { outline: 2px solid var(--rk-focus); }
+.crumbs button[aria-current="true"] { color: var(--rk-text); font-weight: 600; cursor: default; }
+.mark { cursor: pointer; transition: opacity var(--transition-fast); }
+.mark:focus { outline: none; }
+.mark .bg { stroke: var(--rk-border); stroke-width: 1; }
+.mark:hover .bg { stroke: var(--rk-text); }
+.mark:focus-visible .bg, .mark.sel .bg { stroke: var(--rk-focus); stroke-width: 3; }
+.mark.dim, .ribbon.dim { opacity: 0.18; }
+.dirband .bg { fill: var(--rk-panel-2); }
+.fileless .bg { fill: var(--rk-panel); stroke-dasharray: 3 3; }
+.t-name { fill: var(--rk-text); font-size: 14px; font-weight: 600; }
+.t-sub { fill: var(--rk-muted); font-size: 12px; }
+.t-role { fill: var(--rk-text); font-size: 12px; }
+.ribbon { fill-opacity: 0.32; stroke: none; pointer-events: visiblePainted; }
+.ribbon:hover { fill-opacity: 0.6; }
+.pillar-frame { fill: none; stroke: var(--rk-border); stroke-width: 1; }
+.pillar-frame.bare { stroke: var(--rk-bad); stroke-width: 2; stroke-dasharray: 6 4; }
+.t-pillar { fill: var(--rk-text); font-size: 13px; font-weight: 600; }
+.t-pillar-state { font-size: 12px; fill: var(--rk-muted); }
+.t-pillar-state.bare { fill: var(--rk-bad); font-weight: 600; }
+.slot.empty .bg { fill: url(#hatch); stroke: var(--rk-muted); stroke-dasharray: 5 4; stroke-width: 1.5; }
+.hatch-line { stroke: var(--rk-muted); stroke-opacity: 0.3; stroke-width: 2; }
+.fileless .t-role { fill: var(--rk-muted); }
+.slot.empty .t-name { fill: var(--rk-text); }
+.col-head { fill: var(--rk-muted); font-size: 12px; letter-spacing: 0.04em; }
+/* The file list below the stage: the same tree as an indented list, one column per role. */
+#tree-canvas { position: relative; margin: var(--space-2) 0 var(--space-3); }
 .guide { stroke: var(--rk-muted); stroke-opacity: .55; }
 #guides { position: absolute; left: 0; pointer-events: none; }
 .tree-head, .tree-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; white-space: nowrap; }
@@ -47,7 +78,7 @@
    carried as a left-border swatch, so the role NAME is always the text and no per-role text
    colour is ever needed. A border/mark needs WCAG 1.4.11's 3:1, which all five hues clear
    against both grounds (measured with plugins/matrize/scripts/contrast.py). */
-.badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
+.badge { display: inline-flex; align-items: center; padding: 0 var(--space-2);
   border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; cursor: inherit;
   background: var(--rk-panel-2); color: var(--rk-text);
   border: 1px solid var(--rk-border); border-left: 4px solid var(--rk-border); }
@@ -56,11 +87,11 @@
 .badge.absent { background: transparent; color: var(--rk-muted); border: 1px dashed var(--rk-muted); }
 button.badge { font: inherit; font-size: 12px; cursor: pointer; }
 button.badge:focus-visible { outline: 2px solid var(--rk-focus); }
-#legend { display: flex; gap: var(--space-1) var(--space-3); font-size: 12px; flex-wrap: wrap; align-items: center;
-  padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
+#legend { display: flex; gap: var(--space-1) var(--space-2); flex-wrap: wrap; align-items: center;
+  border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
 .legend-lead { color: var(--rk-muted); }
-.legend-item { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); color: var(--rk-muted);
-  padding: var(--space-1); border-radius: var(--radius-sm); }
+.legend-item { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--space-1); color: var(--rk-muted);
+  padding: 1px; border-radius: var(--radius-sm); }
 .legend-item:focus-visible { outline: 2px solid var(--rk-focus); }
 .legend-item[aria-pressed="true"] { background: var(--rk-panel-2); color: var(--rk-text); }
 .legend-item.absent { color: var(--rk-text); cursor: default; }
@@ -85,14 +116,14 @@ button.badge:focus-visible { outline: 2px solid var(--rk-focus); }
   </div>
 </header>
 <main>
-  <section class="rk-stage" id="rk-stage" aria-label="Does every pillar the doctrine names have a file behind it? The scaffold's file tree with one column per doctrine role">
+  <section class="rk-stage" id="rk-stage" aria-label="Does every pillar the doctrine names have a file behind it? The scaffold's directories and files as an icicle, each file joined to the doctrine role slots it fills; a role no file plays is an empty hatched slot">
     <div class="rk-hud">
       <p class="verdict" id="verdict">Each file the scaffold's manifest names plays a doctrine role; this report says which pillars have a file behind them and which have none.</p>
       <dl class="rk-hud-stats"></dl>
     </div>
     <div class="rk-figure" id="rk-figure" data-rk-figure></div>
-    <div class="legend rk-legend-float" id="legend"><span class="legend-lead">Role badges, each a word and a swatch (hollow dashed = no file claims it; press one to dim other rows):</span></div>
-    <span class="rk-hint">click a file or directory for its roles · hover for a summary</span>
+    <div class="legend rk-legend-float" id="legend"><span class="legend-lead" title="Each file cell, ribbon and slot is coloured by the role it plays and also names it in words. A hollow dashed role has no file behind it and appears as an empty hatched slot. Press a role to dim everything that does not play it.">Role:</span></div>
+    <span class="rk-hint">click a file for its roles · a directory to zoom · hover for a summary</span>
     <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
   </section>
   <div class="rk-wrap rk-below">
@@ -119,10 +150,8 @@ if (DATA && !DATA.tree) {
 
 const { h } = RK;
 const S = RK.stage();
+const SVGNS = "http://www.w3.org/2000/svg";
 
-// ── Layout: indented tree (directories genuinely nest, but at 5-15 files
-// and 1-3 levels a circle-pack buries the one thing that matters -- role
-// badges -- behind a click; a plain indented list shows it inline). ─────
 function countLeaves(n) {
   if (n.type === "file") return 1;
   return (n.children || []).reduce((s, c) => s + countLeaves(c), 0);
@@ -139,8 +168,7 @@ function fullPath(d) {
 
 // Row 0 is DATA.tree's own top-level children -- the scaffold root itself
 // is already named in the title panel above, so it is not its own row.
-// ROW_H and INDENT are only starting values: draw() re-derives them from the
-// figure's height and width, so the tree fills the stage instead of hugging a corner.
+// These rows are the indented file list below the stage; the figure is the icicle.
 let ROW_H = 22, INDENT = 26;
 const LEFT_PAD = 10;
 const rows = [];
@@ -248,7 +276,7 @@ function surfaceBlock() {
     h("p", { class: "rk-muted", text: surface.completion ? "Shell completion: " + surface.completion : (surface.completionSupported ? "Shell completion is declared." : "No shell completion is declared.") })];
 }
 
-function roleBlock(role, path) {
+function roleBlock(role) {
   const key = roleKeys[role];
   const gaps = findings.filter(f => f.tags && f.tags.pillar === rolePillars[role]);
   return [
@@ -261,10 +289,16 @@ function roleBlock(role, path) {
 
 function openOverview() {
   S.open("Does every pillar have a file?", DATA.appName + " · " + (DATA.language || "?"),
-    h("p", { text: "Each badge is a role the scaffold's own cli-scaffold.manifest.json declares for that file — the same gating keys verify_scaffold.py reads to decide pass/fail, not a guess made from the filename." }),
+    h("p", { text: "Each file cell names the role the scaffold's own cli-scaffold.manifest.json declares for that file — the same gating keys verify_scaffold.py reads to decide pass/fail, not a guess made from the filename. A ribbon joins it to that role's slot on the right; a slot no ribbon reaches is a role no file plays." }),
     h("p", { text: "The fifth pillar, Unix composability, is behavioural (exit codes 0/1/2, data on stdout, diagnostics on stderr), so no file can carry its badge and it is deliberately not counted here." }),
     h("h3", { text: "Gaps, worst first" }),
     sortedGaps.length ? sortedGaps.map((f, i) => gapDetail(f, i === 0)) : h("p", { class: "rk-muted", text: "Every role is claimed by a file that exists." }));
+}
+
+function rolesUnder(d) {
+  const set = new Set();
+  d.each(x => { for (const r of (x.data.roles || [])) set.add(r); });
+  return set;
 }
 
 let selected = null;
@@ -279,21 +313,21 @@ function pick(d) {
       h("h3", { text: "Roles played inside" }),
       under.length ? h("ul", {}, under.map(r => h("li", {}, h("code", { text: r }), " — " + DATA.roleLabels[r]))) : h("p", { class: "rk-muted", text: "No file in this directory plays a doctrine role." }),
       h("h3", { text: "Contents" }),
-      h("ul", {}, kids.map(c => h("li", {}, S.link(c.data.name + (c.data.type === "dir" ? "/" : ""), () => pick(c)))))
+      h("ul", {}, kids.map(c => h("li", {}, S.link(c.data.name + (c.data.type === "dir" ? "/" : ""), () => pick(c))))),
+      d.parent ? h("p", {}, S.link("Zoom out to " + fullPath(d.parent) + "/", () => { zoomTo(d.parent); pick(d.parent); })) : null
     );
   } else {
     const roles = d.data.roles || [];
     const surfaceRoles = roles.some(r => r === "entry" || r === "help");
     S.open(path, "file · " + (roles.length ? roles.join(", ") : "no doctrine role"),
-      roles.length ? roles.map(r => roleBlock(r, path)) : h("p", { class: "rk-muted", text: "The manifest names no role for this file; it is part of the scaffold but no doctrine pillar points at it." }),
+      roles.length ? roles.map(r => roleBlock(r)) : h("p", { class: "rk-muted", text: "The manifest names no role for this file; it is part of the scaffold but no doctrine pillar points at it." }),
       surfaceRoles ? surfaceBlock() : null,
-      h("p", {}, d.parent && d.parent.depth > 0 ? ["In ", S.link(fullPath(d.parent) + "/", () => pick(d.parent))] : null));
+      h("p", {}, d.parent && d.parent.depth > 0 ? ["In ", S.link(fullPath(d.parent) + "/", () => { zoomTo(d.parent); pick(d.parent); })] : null));
   }
 }
 function openRole(role) {
   const absent = !presentRoles.has(role);
-  const files = [];
-  root.each(d => { if (d.data.type === "file" && (d.data.roles || []).includes(role)) files.push(d); });
+  const files = filesByRole.get(role) || [];
   const gaps = findings.filter(f => f.tags && f.tags.role === role);
   S.open(role, absent ? "no file claims this role" : files.length + " file(s)",
     h("p", { text: DATA.roleLabels[role] || role }),
@@ -302,23 +336,67 @@ function openRole(role) {
     gaps.length ? [h("h3", { text: "Gap" }), gaps.map(f => gapDetail(f, true))] : null);
 }
 
-function rolesUnder(d) {
-  const set = new Set();
-  d.each(x => { for (const r of (x.data.roles || [])) set.add(r); });
-  return set;
+// ── Figure data: icicle slots and the pillar ledger ─────────────────────
+// Every file (and every empty directory) is one leaf slot, in pre-order, so a
+// directory's band spans exactly its own leaves. Leaves are sized evenly: the
+// question is which files play which role, and every file answers it once.
+let slotN = 0;
+root.eachBefore(d => {
+  d.leafStart = slotN;
+  if (!d.children || !d.children.length) slotN += 1;
+});
+root.eachAfter(d => { d.leafCount = d.children && d.children.length ? d.children.reduce((s, c) => s + c.leafCount, 0) : 1; });
+
+const filesByRole = new Map(roleOrder.map(r => [r, []]));
+root.each(d => { if (d.data.type === "file") for (const r of (d.data.roles || [])) if (filesByRole.has(r)) filesByRole.get(r).push(d); });
+const pillarOrder = [];
+for (const r of roleOrder) { const p = rolePillars[r] || "?"; if (!pillarOrder.includes(p)) pillarOrder.push(p); }
+const rolesOfPillar = p => roleOrder.filter(r => (rolePillars[r] || "?") === p);
+
+// completion carries no categorical hue (see the --role-* comment): neutral.
+const roleVar = r => r === "completion" || !roleOrder.includes(r) ? "var(--rk-muted)" : "var(--role-" + r + ")";
+const tint = (r, pct) => "color-mix(in srgb, " + roleVar(r) + " " + pct + "%, var(--rk-panel))";
+
+// Text is clipped by an estimate of glyph width rather than a measure: a cell's
+// label must never spill into its neighbour.
+function fit(text, px, fontPx) {
+  const max = Math.floor(px / (fontPx * 0.58));
+  if (max <= 1) return "";
+  return text.length <= max ? text : text.slice(0, max - 1) + "…";
 }
 
-// ── The figure ──────────────────────────────────────────────────────────
-let rowSel = null, activeRole = null, lastW = 0, lastH = 0;
-function hudBottom() {
-  const hud = RK.$(".rk-hud");
-  return hud ? hud.offsetHeight + 12 : 140;
-}
+let focus = root, lastW = 0, lastH = 0, activeRole = null;
+let svg = null, gCells = null, gRibbons = null, crumbsEl = null;
+let frame = null, geo = new Map(), slotGeo = new Map(), cellEls = [], ribbonEls = [], slotEls = [];
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function tipFor(e, d) {
-  const roles = d.data.roles || [];
-  S.tip.show(e, fullPath(d) + (d.data.type === "dir" ? "/" : ""),
-    h("div", { text: d.data.type === "dir" ? countLeaves(d.data) + " files · roles inside: " + ([...rolesUnder(d)].join(", ") || "none") : (roles.length ? "roles: " + roles.join(", ") : "no doctrine role") }));
+function svgEl(tag, attrs, parent) {
+  const el = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) if (attrs[k] !== null && attrs[k] !== undefined) el.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(el);
+  return el;
+}
+function svgText(parent, cls, text) { const t = svgEl("text", { class: cls }, parent); t.textContent = text; return t; }
+
+// Layout of the icicle under `f`: one column per directory depth, files extended
+// to the icicle's right edge so every ribbon leaves from the same line.
+function icicleLayout(f) {
+  const F = frame, out = new Map();
+  let deepestDir = 0;
+  f.each(d => { if (d.children && d.children.length) deepestDir = Math.max(deepestDir, d.depth - f.depth); });
+  const nCols = deepestDir + 1;
+  let dw = Math.min(170, Math.max(84, F.icW * 0.17));
+  if (nCols * dw > F.icW * 0.58) dw = (F.icW * 0.58) / nCols;
+  const unit = F.h / Math.max(1, f.leafCount);
+  f.each(d => {
+    const rel = d.depth - f.depth;
+    const y = F.y + (d.leafStart - f.leafStart) * unit;
+    const x = F.x + rel * dw;
+    const isLeaf = !d.children || !d.children.length;
+    const w = isLeaf ? F.x + F.icW - x : dw;
+    out.set(d, { x, y, w, h: d.leafCount * unit });
+  });
+  return out;
 }
 
 function draw(w, hh) {
@@ -328,24 +406,236 @@ function draw(w, hh) {
   S.tip.hide();
   const fig = S.figure;
   fig.textContent = "";
-  const legendH = (document.getElementById("legend") || {}).offsetHeight || 40;
-  const top = hudBottom(), headH = 34, bottom = legendH + 24;
-  const avail = hh - top - headH - bottom;
-  ROW_H = Math.max(30, Math.min(64, Math.floor(avail / Math.max(1, rows.length))));
-  fig.classList.toggle("rk-scroll", ROW_H * rows.length > avail);
+  const ins = S.insets();
+  const crumbH = 28, pad = 10;
+  const top = ins.top + crumbH + 6, bottom = Math.max(ins.bottom, 34) + 8;
+  const innerW = w - 2 * pad;
+  const icW = innerW * 0.52, gapW = Math.max(60, innerW * 0.13);
+  frame = { x: pad, y: top, h: Math.max(120, hh - top - bottom), icW, lx: pad + icW + gapW, lw: innerW - icW - gapW };
+
+  crumbsEl = h("nav", { class: "crumbs", "aria-label": "Zoom path", style: "top:" + (ins.top + 4) + "px" });
+  fig.appendChild(crumbsEl);
+  svg = svgEl("svg", { id: "fig-svg", width: w, height: hh, viewBox: "0 0 " + w + " " + hh, role: "group",
+    "aria-label": "Icicle of the scaffold's files joined to the doctrine role slots they fill" }, fig);
+  const defs = svgEl("defs", {}, svg);
+  const pat = svgEl("pattern", { id: "hatch", patternUnits: "userSpaceOnUse", width: 9, height: 9, patternTransform: "rotate(45)" }, defs);
+  svgEl("line", { class: "hatch-line", x1: 0, y1: 0, x2: 0, y2: 9 }, pat);
+
+  const headY = ins.top + 21;
+  const dh = svgText(svg, "col-head", "DIRECTORIES AND FILES");
+  dh.setAttribute("x", frame.x + frame.icW); dh.setAttribute("y", headY); dh.setAttribute("text-anchor", "end");
+  const lh = svgText(svg, "col-head", "PILLARS AND THE ROLES THAT EVIDENCE THEM");
+  lh.setAttribute("x", frame.lx); lh.setAttribute("y", headY);
+  if (frame.lw < 330) lh.textContent = "PILLARS · ROLES";
+
+  gRibbons = svgEl("g", { "aria-hidden": "true" }, svg);
+  gCells = svgEl("g", {}, svg);
+  drawLedger();
+  buildCells(focus);
+  geo = icicleLayout(focus);
+  place(1, null);
+  paint();
+}
+
+// ── The pillar ledger: one band per pillar, one slot per role ───────────
+function drawLedger() {
+  const F = frame, g = svgEl("g", {}, svg);
+  slotEls = []; slotGeo = new Map();
+  const headH = 24, bandGap = 12, slotGap = 5;
+  const slotH = (F.h - pillarOrder.length * headH - (pillarOrder.length - 1) * bandGap - (roleOrder.length - pillarOrder.length) * slotGap) / Math.max(1, roleOrder.length);
+  let y = F.y;
+  for (const p of pillarOrder) {
+    const roles = rolesOfPillar(p);
+    const bare = barePillars.includes(p);
+    const bandH = headH + roles.length * slotH + (roles.length - 1) * slotGap;
+    svgEl("rect", { class: "pillar-frame" + (bare ? " bare" : ""), x: F.lx - 4, y: y - 2, width: F.lw + 8, height: bandH + 6, rx: 6 }, g);
+    const hits = roles.filter(r => presentRoles.has(r)).length;
+    const state = bare ? "no file behind this pillar" : hits + " of " + roles.length + " role" + (roles.length > 1 ? "s" : "") + " filled";
+    const st = svgText(g, "t-pillar-state" + (bare ? " bare" : ""), state);
+    st.setAttribute("x", F.lx + F.lw); st.setAttribute("y", y + 15); st.setAttribute("text-anchor", "end");
+    const pt = svgText(g, "t-pillar", fit(p, F.lw - state.length * 7 - 12, 13));
+    pt.setAttribute("x", F.lx + 2); pt.setAttribute("y", y + 15);
+    let sy = y + headH;
+    for (const r of roles) {
+      slotGeo.set(r, { x: F.lx, y: sy, w: F.lw, h: slotH });
+      slotEls.push(drawSlot(g, r, F.lx, sy, F.lw, slotH));
+      sy += slotH + slotGap;
+    }
+    y += bandH + bandGap;
+  }
+}
+
+function drawSlot(parent, r, x, y, w, hh) {
+  const files = filesByRole.get(r) || [];
+  const empty = files.length === 0;
+  const g = svgEl("g", { class: "mark slot" + (empty ? " empty" : ""), tabindex: 0, role: "button", "data-role": r,
+    "aria-label": r + " role, " + (empty ? "no file plays it" : files.length + " file" + (files.length > 1 ? "s" : "")) + ". Press Enter for details." }, parent);
+  g.__role = r;
+  const bg = svgEl("rect", { class: "bg", x, y, width: w, height: hh, rx: 4 }, g);
+  if (!empty) {
+    bg.style.fill = tint(r, 20);
+    svgEl("rect", { x, y, width: 6, height: hh, rx: 2, style: "fill:" + roleVar(r) }, g);
+  }
+  const tx = x + 14;
+  const t1 = svgText(g, "t-name", fit(empty ? r + " — no file" : r + " · " + files.length + " file" + (files.length > 1 ? "s" : ""), w - 22, 14));
+  t1.setAttribute("x", tx); t1.setAttribute("y", y + Math.min(22, hh / 2 + 5));
+  if (hh >= 42) {
+    const t2 = svgText(g, "t-sub", fit(DATA.roleLabels[r] || r, w - 22, 12));
+    t2.setAttribute("x", tx); t2.setAttribute("y", y + 40);
+  }
+  if (hh >= 62 && !empty) {
+    const t3 = svgText(g, "t-role", fit(files.map(d => d.data.name).join(", "), w - 22, 12));
+    t3.setAttribute("x", tx); t3.setAttribute("y", y + 58);
+  }
+  g.addEventListener("click", () => openRole(r));
+  g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openRole(r); } });
+  const tipR = e => S.tip.show(e, r + (empty ? " — no file" : ""), h("div", { text: (DATA.roleLabels[r] || r) + " · pillar " + (rolePillars[r] || "?") + (empty ? "" : " · " + files.map(d => d.data.name).join(", ")) }));
+  g.addEventListener("mousemove", tipR); g.addEventListener("focus", () => tipR(g));
+  g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
+  return g;
+}
+
+// ── The icicle: directory bands and file cells ──────────────────────────
+function buildCells(f) {
+  gCells.textContent = ""; gRibbons.textContent = "";
+  cellEls = []; ribbonEls = [];
+  renderCrumbs(f);
+  f.each(d => {
+    const isFile = d.data.type === "file";
+    const roles = d.data.roles || [];
+    const g = svgEl("g", { class: "mark " + (isFile ? "filecell" + (roles.length ? "" : " fileless") : "dirband"), tabindex: 0, role: "button",
+      "aria-label": fullPath(d) + (isFile ? " file" + (roles.length ? ", roles " + roles.join(", ") : ", no doctrine role") + ". Press Enter for details."
+        : " directory, " + countLeaves(d.data) + " files. Press Enter to zoom " + (d === f && d.parent ? "out" : "in") + ".") }, gCells);
+    g.__d = d;
+    const bg = svgEl("rect", { class: "bg", rx: 3 }, g);
+    if (isFile && roles.length) bg.style.fill = tint(roles[0], 26);
+    const stripes = isFile ? roles.map(r => svgEl("rect", { rx: 1, style: "fill:" + roleVar(r) }, g)) : [];
+    const name = svgText(g, "t-name", "");
+    const sub = svgText(g, isFile ? "t-role" : "t-sub", "");
+    g.__parts = { bg, stripes, name, sub };
+    const act = () => {
+      if (isFile) { pick(d); return; }
+      const target = d === focus && d.parent ? d.parent : d;
+      zoomTo(target);
+      pick(target);
+    };
+    g.addEventListener("click", act);
+    g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+    g.addEventListener("mousemove", e => tipFor(e, d)); g.addEventListener("focus", () => tipFor(g, d));
+    g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
+    cellEls.push(g);
+    if (isFile) roles.forEach((r, i) => {
+      if (!slotGeo.has(r)) return;
+      const p = svgEl("path", { class: "ribbon", style: "fill:" + roleVar(r) }, gRibbons);
+      p.__d = d; p.__role = r; p.__i = i; p.__n = roles.length;
+      p.addEventListener("mousemove", e => S.tip.show(e, d.data.name + " → " + r, h("div", { text: (DATA.roleLabels[r] || r) + " · pillar " + (rolePillars[r] || "?") })));
+      p.addEventListener("mouseleave", () => S.tip.hide());
+      ribbonEls.push(p);
+    });
+  });
+}
+
+function renderCrumbs(f) {
+  crumbsEl.textContent = "";
+  const chain = f.ancestors().reverse();
+  chain.forEach((d, i) => {
+    if (i) crumbsEl.appendChild(h("span", { "aria-hidden": "true", text: "›" }));
+    const b = h("button", { type: "button", text: d.data.name + "/", "aria-current": d === f ? "true" : null });
+    if (d !== f) b.addEventListener("click", () => { zoomTo(d); pick(d); });
+    crumbsEl.appendChild(b);
+  });
+  if (f !== root) crumbsEl.appendChild(h("span", { text: "· click the left band or a crumb to zoom out" }));
+}
+
+function place(t, from) {
+  const lerp = (a, b) => a + (b - a) * t;
+  const cur = new Map();
+  for (const g of cellEls) {
+    const d = g.__d, to = geo.get(d), fr = from && from.get(d);
+    const r = fr ? { x: lerp(fr.x, to.x), y: lerp(fr.y, to.y), w: lerp(fr.w, to.w), h: lerp(fr.h, to.h) } : to;
+    cur.set(d, r);
+    g.style.opacity = from && !fr ? String(t) : "";
+    const { bg, stripes, name, sub } = g.__parts;
+    const gx = r.x + 1, gy = r.y + 1, gw = Math.max(0, r.w - 2), gh = Math.max(0, r.h - 2);
+    bg.setAttribute("x", gx); bg.setAttribute("y", gy); bg.setAttribute("width", gw); bg.setAttribute("height", gh);
+    const sh = gh / Math.max(1, stripes.length);
+    stripes.forEach((s, i) => { s.setAttribute("x", gx); s.setAttribute("y", gy + i * sh); s.setAttribute("width", 6); s.setAttribute("height", Math.max(0, sh - 1)); });
+    const d2 = d.data, isFile = d2.type === "file", roles = d2.roles || [];
+    const tw = gw - 20, twoLines = gh >= 40;
+    name.setAttribute("x", gx + 14); sub.setAttribute("x", gx + 14);
+    if (gh < 16) { name.textContent = ""; sub.textContent = ""; continue; }
+    name.textContent = fit(d2.name + (isFile ? "" : "/"), tw, 14);
+    const subText = isFile ? (roles.length ? roles.join(" · ") : "no role") : countLeaves(d2) + " file" + (countLeaves(d2) === 1 ? "" : "s");
+    if (isFile && !twoLines) {
+      name.setAttribute("y", gy + gh / 2 + 5);
+      sub.textContent = "";
+    } else if (isFile) {
+      name.setAttribute("y", gy + gh / 2 - 3); sub.setAttribute("y", gy + gh / 2 + 14);
+      sub.textContent = fit(subText, tw, 12);
+    } else {
+      name.setAttribute("y", gy + 20); sub.setAttribute("y", gy + 37);
+      sub.textContent = twoLines ? fit(subText, tw, 12) : "";
+    }
+  }
+  // Ribbons: a band from the file's right edge to its share of the role slot.
+  const edge = frame.x + frame.icW;
+  for (const p of ribbonEls) {
+    const d = p.__d, c = cur.get(d), s = slotGeo.get(p.__role);
+    if (!c || !s) { p.setAttribute("d", ""); continue; }
+    const files = filesByRole.get(p.__role), k = files.indexOf(d), n = files.length;
+    const srcH = Math.min(26, c.h * 0.5) / p.__n, sy0 = c.y + c.h / 2 - (p.__n * srcH) / 2 + p.__i * srcH;
+    const seg = (s.h - 12) / n, tH = Math.min(26, seg - 4), ty0 = s.y + 6 + k * seg + (seg - tH) / 2;
+    const tx = s.x, mx = (edge + tx) / 2;
+    p.setAttribute("d", "M" + edge + "," + sy0 + "C" + mx + "," + sy0 + " " + mx + "," + ty0 + " " + tx + "," + ty0 +
+      "L" + tx + "," + (ty0 + tH) + "C" + mx + "," + (ty0 + tH) + " " + mx + "," + (sy0 + srcH) + " " + edge + "," + (sy0 + srcH) + "Z");
+  }
+}
+
+let anim = 0;
+function zoomTo(d) {
+  if (!d || d.data.type === "file" || d === focus) return;
+  const from = geo;
+  focus = d;
+  S.tip.hide();
+  buildCells(focus);
+  geo = icicleLayout(focus);
+  cancelAnimationFrame(anim);
+  if (REDUCED) { place(1, null); paint(); return; }
+  const t0 = performance.now(), dur = 420;
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur), e = d3.easeCubicInOut ? d3.easeCubicInOut(t) : t;
+    place(e, from);
+    if (t < 1) anim = requestAnimationFrame(step);
+  };
+  place(0, from); paint();
+  anim = requestAnimationFrame(step);
+}
+
+function tipFor(e, d) {
+  const roles = d.data.roles || [];
+  S.tip.show(e, fullPath(d) + (d.data.type === "dir" ? "/" : ""),
+    h("div", { text: d.data.type === "dir" ? countLeaves(d.data) + " files · roles inside: " + ([...rolesUnder(d)].join(", ") || "none") + " · click to " + (d === focus && d.parent ? "zoom out" : "zoom in") : (roles.length ? "roles: " + roles.join(", ") : "no doctrine role") }));
+}
+
+// ── The file list below the stage (the same tree as indented rows) ──────
+let rowSel = null, listW = 0;
+function drawList(listEl) {
+  const w = listEl.clientWidth;
+  if (!w || w === listW) return;
+  listW = w;
+  listEl.textContent = "";
+  ROW_H = 32;
+  const headH = 34;
   const maxDepth = rows.reduce((m, d) => Math.max(m, d.depth), 1);
-  const COL_W = Math.max(88, Math.min(150, Math.floor((w * 0.5) / Math.max(1, roleOrder.length))));
-  const cellsW = COL_W * roleOrder.length + 24;
-  const nameW = Math.max(220, w - cellsW);
-  INDENT = Math.max(22, Math.min(48, Math.floor((nameW - 240) / Math.max(1, maxDepth))));
-  const canvas = h("div", { id: "tree-canvas", style: "height:" + (top + headH + ROW_H * rows.length + bottom) + "px" });
-  fig.appendChild(canvas);
+  const COL_W = Math.max(84, Math.min(120, Math.floor((w * 0.55) / Math.max(1, roleOrder.length))));
+  INDENT = 24;
+  const canvas = h("div", { id: "tree-canvas", style: "height:" + (headH + ROW_H * rows.length) + "px" });
+  listEl.appendChild(canvas);
 
   // Column headers: one per role, hollow and dashed when no file plays it.
-  const head = d3.select(canvas).append("div").attr("class", "tree-head")
-    .style("top", top + "px").style("height", headH + "px");
+  const head = d3.select(canvas).append("div").attr("class", "tree-head").style("top", "0px").style("height", headH + "px");
   head.append("div").attr("class", "row-main").style("padding-left", LEFT_PAD + "px").text("file or directory");
-  const headCells = head.append("div").style("display", "flex").style("padding-right", "24px");
+  const headCells = head.append("div").style("display", "flex");
   for (const role of roleOrder) {
     const absent = !presentRoles.has(role);
     const b = headCells.append("div").attr("class", "row-cell").style("width", COL_W + "px")
@@ -359,7 +649,6 @@ function draw(w, hh) {
   // Guide rails: one vertical rail per directory (parent row down to its last
   // child row) plus one horizontal tick per child, computed from d3.hierarchy()'s
   // own parent/children links -- real SVG lines, not CSS border tricks.
-  // (d3.max is NOT used here -- d3-array is not in the vendored bundle.)
   const guideLines = [];
   for (const d of rows) {
     if (!d.children || !d.children.length) continue;
@@ -367,10 +656,10 @@ function draw(w, hh) {
     guideLines.push({ type: "v", x: railX, y1: rowMidY(d), y2: rowMidY(d.children[d.children.length - 1]) });
     for (const c of d.children) guideLines.push({ type: "h", y: rowMidY(c), x1: railX, x2: colX(c.depth) });
   }
-  const rowsTop = top + headH;
+  const nameW = colX(maxDepth) + 20;
   const svgH = rows.length * ROW_H;
   const guides = d3.select(canvas).append("svg").attr("id", "guides").attr("aria-hidden", "true")
-    .attr("width", nameW).attr("height", svgH).attr("viewBox", `0 0 ${nameW} ${svgH}`).style("top", rowsTop + "px");
+    .attr("width", nameW).attr("height", svgH).attr("viewBox", `0 0 ${nameW} ${svgH}`).style("top", headH + "px");
   guides.selectAll("line.guide").data(guideLines).join("line")
     .attr("class", "guide")
     .attr("x1", d => d.type === "v" ? d.x : d.x1).attr("y1", d => d.type === "v" ? d.y1 : d.y)
@@ -385,7 +674,7 @@ function draw(w, hh) {
     .attr("class", "tree-row")
     .attr("tabindex", 0).attr("role", "button")
     .attr("aria-label", d => fullPath(d) + (d.data.type === "dir" ? " directory" : " file") + ((d.data.roles || []).length ? ", roles " + d.data.roles.join(", ") : "") + ". Press Enter for details.")
-    .style("top", d => (rowsTop + d.rowIndex * ROW_H) + "px")
+    .style("top", d => (headH + d.rowIndex * ROW_H) + "px")
     .style("height", ROW_H + "px")
     .on("click", (e, d) => pick(d))
     .on("keydown", (e, d) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(d); } })
@@ -397,15 +686,14 @@ function draw(w, hh) {
     const main = row.append("div").attr("class", "row-main").style("padding-left", colX(d.depth) + 10 + "px");
     main.append("span").attr("class", "row-name").text(d.data.name + (d.data.type === "dir" ? "/" : ""));
     if (d.data.type === "dir") main.append("span").attr("class", "row-count").text("(" + countLeaves(d.data) + ")");
-    const cells = row.append("div").style("display", "flex").style("padding-right", "24px");
+    const cells = row.append("div").style("display", "flex");
     const own = d.data.roles || [], under = rolesUnder(d);
     for (const role of roleOrder) {
       const cell = cells.append("div").attr("class", "row-cell").style("width", COL_W + "px");
       if (own.includes(role)) {
         const badge = cell.append("span").attr("class", "badge").attr("data-role", role).attr("title", DATA.roleLabels[role] || role).text(role);
-        // completion carries no categorical hue (see the --role-* comment and
-        // the [data-role="completion"] CSS rule) -- its neutral swatch colour
-        // comes entirely from that static rule, not from an inline override.
+        // completion carries no categorical hue -- its neutral swatch comes
+        // entirely from the static [data-role="completion"] rule.
         if (role !== "completion") badge.style("border-left-color", "var(--role-" + role + ")");
       } else if (d.data.type === "dir" && under.has(role)) {
         cell.append("span").attr("class", "row-dot").attr("aria-hidden", "true").text("•");
@@ -416,20 +704,28 @@ function draw(w, hh) {
 }
 
 function paint() {
-  if (!rowSel) return;
-  rowSel.classed("dim", d => activeRole !== null && !rolesUnder(d).has(activeRole));
-  rowSel.classed("sel", d => d === selected);
+  const dimFor = d => activeRole !== null && !rolesUnder(d).has(activeRole);
+  for (const g of cellEls) {
+    g.classList.toggle("dim", dimFor(g.__d));
+    g.classList.toggle("sel", g.__d === selected);
+  }
+  for (const p of ribbonEls) p.classList.toggle("dim", activeRole !== null && p.__role !== activeRole);
+  for (const s of slotEls) s.classList.toggle("dim", activeRole !== null && s.__role !== activeRole);
+  if (rowSel) {
+    rowSel.classed("dim", d => dimFor(d));
+    rowSel.classed("sel", d => d === selected);
+  }
   for (const b of document.querySelectorAll(".legend-item")) {
     b.setAttribute("aria-pressed", String(b.dataset.role === activeRole));
   }
 }
 
 // ── Legend ──────────────────────────────────────────────────────────────
-// The legend repeats the badge VERBATIM rather than showing a colour swatch:
-// the inline badge says "help" and so does the legend chip, so the mapping
-// from a badge to its long-form pillar meaning is read off the shared word,
-// not off matching two hues. tokens.css: never colour alone. Each entry is
-// also a toggle: pressing it dims every row that does not play that role.
+// One compact row. Each chip repeats the role's word VERBATIM -- the same word
+// printed in every file cell and slot -- so the mapping is read off the shared
+// word, not off matching two hues (tokens.css: never colour alone). The long
+// meaning sits in the item's title. Each entry is also a toggle: pressing it
+// dims every mark that does not play that role.
 function setRole(role) {
   activeRole = activeRole === role ? null : role;
   paint();
@@ -444,7 +740,7 @@ function setRole(role) {
     item.dataset.role = role;
     item.setAttribute("aria-pressed", "false");
     item.className = "legend-item" + (absent ? " absent" : "");
-    item.title = DATA.roleLabels[role];
+    item.title = DATA.roleLabels[role] + " · pillar " + (rolePillars[role] || "?") + (absent ? " · no file plays this role: its slot is empty and hatched" : " · press to dim every other role");
     if (!absent) item.addEventListener("click", () => setRole(role));
     if (absent) item.disabled = true;
 
@@ -479,19 +775,25 @@ surfaceKids.push(RK.h("p", { class: "rk-muted", text: surface.completion
   ? "Shell completion: " + surface.completion
   : (surface.completionSupported ? "Shell completion is declared." : "No shell completion is declared.") }));
 
+const listEl = RK.h("div", { class: "tree-list" });
 RK.$("#rk-content").append(
   RK.section("gaps", "Doctrine gaps and the evidence for them",
-    RK.h("p", { class: "note" }, "Each badge in the figure is a role the scaffold's own ", RK.h("code", { text: "cli-scaffold.manifest.json" }),
+    RK.h("p", { class: "note" }, "Each file cell in the figure names the role the scaffold's own ", RK.h("code", { text: "cli-scaffold.manifest.json" }),
       " declares for that file — the same gating keys ", RK.h("code", { text: "verify_scaffold.py" }),
-      " reads to decide pass/fail, not a guess made from the filename. A role with no file is drawn hollow and dashed. The fifth pillar, ",
+      " reads to decide pass/fail, not a guess made from the filename. A role with no file is an empty hatched slot with no ribbon reaching it. The fifth pillar, ",
       RK.h("em", { text: "Unix composability" }),
       ", is behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so no file can carry its badge and it is deliberately not counted here."),
     RK.findings(findings, { empty: "Every role is claimed by a file that exists." })),
+  RK.section("files", "File tree, one column per role",
+    RK.h("p", { class: "note", text: "The figure's files as an indented list: each role's column carries a badge where a file plays it, a dot where a directory holds one, and a hollow dashed header where no file does." }),
+    listEl),
   RK.section("surface", "CLI surface", ...surfaceKids));
 RK.init();
 
 S.onResize((w, hh) => draw(w, hh));
-new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+S.onTheme(() => draw());
+drawList(listEl);
+if ("ResizeObserver" in window) new ResizeObserver(() => drawList(listEl)).observe(listEl);
 
 // A deep link to a gap opens it in the drawer too; with none, the drawer opens on
 // the overview, which lists the gaps worst first with the worst one expanded.
