@@ -9,7 +9,49 @@
       "checksPassed": 2,
       "checksTotal": 3,
       "filesTouched": 3,
-      "evidence": "a3 not met: requirements.txt gains 'slowapi' (src/api/search.py:8)"
+      "evidence": "a3 not met: requirements.txt gains 'slowapi' (src/api/search.py:8)",
+      "criteria": [
+        {
+          "id": "a1",
+          "met": true,
+          "evidence": "src/api/search.py:41 raises HTTPException(429) past 60/min"
+        },
+        {
+          "id": "a2",
+          "met": true,
+          "evidence": "diff touches no field of the search response"
+        },
+        {
+          "id": "a3",
+          "met": false,
+          "evidence": "requirements.txt gains 'slowapi' (src/api/search.py:8)"
+        }
+      ],
+      "checks": [
+        {
+          "id": "k1",
+          "command": "pytest tests/api -q",
+          "exit": 0
+        },
+        {
+          "id": "k2",
+          "command": "ruff check src",
+          "exit": 0
+        },
+        {
+          "id": "k3",
+          "command": "pip check",
+          "exit": 1
+        }
+      ],
+      "files": [
+        "src/api/middleware.py",
+        "src/api/search.py",
+        "requirements.txt"
+      ],
+      "outOfScopeWrites": [],
+      "note": "Adds a dependency the acceptance criteria forbid.",
+      "rationaleLeaked": false
     },
     {
       "id": "c2",
@@ -18,7 +60,48 @@
       "checksPassed": 3,
       "checksTotal": 3,
       "filesTouched": 2,
-      "evidence": "3/3 met; 429 raised past 60/min at src/api/search.py:41"
+      "evidence": "3/3 met; 429 raised past 60/min at src/api/search.py:41",
+      "criteria": [
+        {
+          "id": "a1",
+          "met": true,
+          "evidence": "src/api/search.py:41 raises HTTPException(429) past 60/min"
+        },
+        {
+          "id": "a2",
+          "met": true,
+          "evidence": "diff touches no search response shape"
+        },
+        {
+          "id": "a3",
+          "met": true,
+          "evidence": "requirements.txt absent from filesTouched"
+        }
+      ],
+      "checks": [
+        {
+          "id": "k1",
+          "command": "pytest tests/api -q",
+          "exit": 0
+        },
+        {
+          "id": "k2",
+          "command": "ruff check src",
+          "exit": 0
+        },
+        {
+          "id": "k3",
+          "command": "pip check",
+          "exit": 0
+        }
+      ],
+      "files": [
+        "src/api/search.py",
+        "tests/api/test_search.py"
+      ],
+      "outOfScopeWrites": [],
+      "note": "Limit state is per-process; the criteria did not ask for shared state.",
+      "rationaleLeaked": false
     },
     {
       "id": "c3",
@@ -27,7 +110,13 @@
       "checksPassed": 0,
       "checksTotal": 0,
       "filesTouched": 0,
-      "evidence": "worktree has no nginx toolchain; the angle cannot be built here at all"
+      "evidence": "worktree has no nginx toolchain; the angle cannot be built here at all",
+      "criteria": [],
+      "checks": [],
+      "files": [],
+      "outOfScopeWrites": [],
+      "note": "",
+      "rationaleLeaked": false
     },
     {
       "id": "c4",
@@ -36,9 +125,60 @@
       "checksPassed": 3,
       "checksTotal": 3,
       "filesTouched": 4,
-      "evidence": "3/3 met, but touches 4 files to c2's 2, so the selection rule prefers c2"
+      "evidence": "3/3 met, but touches 4 files to c2's 2, so the selection rule prefers c2",
+      "criteria": [
+        {
+          "id": "a1",
+          "met": true,
+          "evidence": "src/store/bucket.py:22 refills on read"
+        },
+        {
+          "id": "a2",
+          "met": true,
+          "evidence": "diff touches no search response shape"
+        },
+        {
+          "id": "a3",
+          "met": true,
+          "evidence": "requirements.txt absent from filesTouched"
+        }
+      ],
+      "checks": [
+        {
+          "id": "k1",
+          "command": "pytest tests/api -q",
+          "exit": 0
+        },
+        {
+          "id": "k2",
+          "command": "ruff check src",
+          "exit": 0
+        },
+        {
+          "id": "k3",
+          "command": "pip check",
+          "exit": 0
+        }
+      ],
+      "files": [
+        "src/store/bucket.py",
+        "src/store/__init__.py",
+        "src/api/search.py",
+        "tests/api/test_bucket.py"
+      ],
+      "outOfScopeWrites": [],
+      "note": "Meets every criterion; loses only the fewest-files selection rule.",
+      "rationaleLeaked": false
     }
   ],
-  "breaker": { "accepted": 2, "measured": 3, "unmeasured": 1, "tripped": false },
-  "budget": { "used": 8, "total": 9 }
+  "breaker": {
+    "accepted": 2,
+    "measured": 3,
+    "unmeasured": 1,
+    "tripped": false
+  },
+  "budget": {
+    "used": 8,
+    "total": 9
+  }
 }

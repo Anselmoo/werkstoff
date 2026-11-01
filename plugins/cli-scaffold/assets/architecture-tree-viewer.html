@@ -4,140 +4,102 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>cli-scaffold — architecture tree</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
 :root {
-  /* Role colors ride tokens.css's --cat-1..5 categorical scale instead of a
-     bespoke six-hue ramp (see that file's header comment for the CVD-
-     separation metric the five were validated against -- the cap is the
-     material, not a style choice). Six roles, five slots: tokens.css says a
-     sixth series "folds into Other, or the chart facets" -- reusing a slot
-     (round 1's core/completion sharing --cat-1) is neither of those
-     treatments and is a defect, not a compromise.
-     completion is the one folded to neutral: build_architecture_tree.py's
-     own ROLE_LABELS/ROLE_PILLARS map it to the same doctrine pillar as help
-     (UX/discoverability), so folding it costs no pillar coverage -- help
-     alone still evidences that pillar -- and the builder's own comment
-     already treats completion as the most optional of the six ("a nested
-     {file: ...} that may be null / absent for languages with no native
-     completion mechanism"). It gets no --role-* entry: its badge is drawn by
-     the neutral [data-role="completion"] rule below .badge, not a hue. */
+  /* Role colors ride tokens.css's --cat-1..5 categorical scale instead of a bespoke ramp
+     (see that file's header for the CVD-separation metric the five were validated against --
+     the cap is the material, not a style choice). Six roles, five slots: completion is the one
+     folded to neutral, because build_architecture_tree.py maps it to the same doctrine pillar
+     as help (UX/discoverability), so folding it costs no pillar coverage. It gets no --role-*
+     entry: its badge is drawn by the neutral [data-role="completion"] rule below, not a hue. */
   --role-core: var(--cat-1); --role-entry: var(--cat-2); --role-distribution: var(--cat-3);
   --role-test: var(--cat-4); --role-help: var(--cat-5);
 }
-* { box-sizing: border-box; margin: 0; }
-html, body { background: var(--bg); color: var(--text);
-  font: var(--font-size-base)/var(--line-height-base) var(--font-sans); }
-body { max-width: 900px; margin: 0 auto; padding: var(--space-5); }
-.panel { background: var(--panel); border: 1px solid var(--border);
-  border-radius: var(--radius-panel); padding: var(--space-3); }
-main > .panel + .panel { margin-top: var(--space-3); }
-#title-panel h1 { font-size: 15px; color: var(--accent); margin-bottom: var(--space-1); }
-#title-panel .sub { color: var(--muted); font-size: 12px; }
-#verdict-panel h2 { font-size: 13px; color: var(--text); margin-bottom: var(--space-2); }
-.verdict { font-size: 14px; line-height: 1.5; }
-/* R3 vocabulary: the verdict is the number you act on, so it is the only
-   text on the page rendered in the alarm colour when coverage is short.
-   .complete recolours it when nothing is missing -- the same sentence must
-   not look identical in both states. */
-.verdict { color: var(--status-warn); }
-.verdict.complete { color: var(--status-good); }
-.note { color: var(--muted); font-size: 12px; margin-top: var(--space-2); }
-#tree-wrap { position: relative; }
+.q { font-size: 1rem; margin: 0 0 var(--space-2); }
+.note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
+#tree-wrap { position: relative; overflow-x: auto; margin: var(--space-2) 0; }
+.guide { stroke: var(--rk-muted); stroke-opacity: .55; }
 #guides { position: absolute; top: 0; left: 0; pointer-events: none; }
 #tree { position: relative; }
 .tree-row { position: absolute; display: flex; align-items: center; gap: var(--space-2);
-  height: 22px; white-space: nowrap; }
+  height: 22px; white-space: nowrap; transition: opacity var(--transition-fast); }
+.tree-row.dim { opacity: 0.25; }
 .row-name { font-size: 13px; }
-.row-count { color: var(--muted); font-size: 11px; }
+.row-count { color: var(--rk-muted); font-size: 11px; }
 .row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
-/* Every badge is a neutral chip -- --panel-2 fill, --text label -- with its
-   categorical identity carried as a left-border swatch instead of as the
-   fill itself. Round 1 filled each badge with its role colour and needed a
-   fg literal (#fff) for the one slot (ferria) where neither var(--bg) nor
-   var(--text) cleared 4.5:1 on that fill. A fixed fill/label pair sidesteps
-   that: var(--text) on --panel-2 is 12.45:1 on every slot, so no per-role
-   text colour -- literal or token -- is ever needed.
-   R4 swatch contrast, measured with plugins/matrize/scripts/contrast.py
-   (fg on --panel-2 #1c242b; a border/mark needs WCAG 1.4.11's 3:1, not
-   the 4.5:1 body-text threshold, because the role NAME is the text and it
-   is always var(--text)):
-     --cat-1 silica   #348ad9  4.33:1
-     --cat-2 chromia  #08935c  3.99:1
-     --cat-3 neodymia #ab6dc6  4.29:1
-     --cat-4 samaria  #ab8f00  4.98:1
-     --cat-5 ferria   #bd5137  3.29:1
-   All five clear 3:1 against --panel-2; none needed adjustment. */
+/* Every badge is a neutral chip -- panel fill, text label -- with its categorical identity
+   carried as a left-border swatch, so the role NAME is always the text and no per-role text
+   colour is ever needed. A border/mark needs WCAG 1.4.11's 3:1, which all five hues clear
+   against both grounds (measured with plugins/matrize/scripts/contrast.py). */
 .badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm); font-size: 10px; line-height: 1.5; cursor: default;
-  background: var(--panel-2); color: var(--text);
-  border: 1px solid var(--border); border-left: 4px solid var(--border); }
-/* completion is the role folded to neutral (see the --role-* comment above):
-   it draws the same chip with no categorical swatch at all -- var(--muted)
-   on the left border instead of a --cat-* hue -- rather than reusing
-   another role's colour or inventing a sixth. */
-.badge[data-role="completion"] { border-left-color: var(--muted); }
-/* A role no file claims is drawn hollow and dashed, so "absent" is legible
-   in the legend without reading the colour at all. */
-.badge.absent { background: transparent; color: var(--muted);
-  border: 1px dashed var(--muted); }
-#legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 11px;
-  color: var(--muted); flex-wrap: wrap; }
-#legend h2 { flex-basis: 100%; font-size: 11px; color: var(--text);
-  text-transform: uppercase; letter-spacing: 0.06em; }
-.legend-item { display: flex; align-items: center; gap: var(--space-2); }
-.legend-item.absent { color: var(--status-warn); }
+  background: var(--rk-panel-2); color: var(--rk-text);
+  border: 1px solid var(--rk-border); border-left: 4px solid var(--rk-border); }
+.badge[data-role="completion"] { border-left-color: var(--rk-muted); }
+/* A role no file claims is drawn hollow and dashed, so "absent" is legible without colour. */
+.badge.absent { background: transparent; color: var(--rk-muted); border: 1px dashed var(--rk-muted); }
+#legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 12px; flex-wrap: wrap; margin-top: var(--space-3); }
+.legend-item { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); color: var(--rk-muted);
+  padding: var(--space-1); border-radius: var(--radius-sm); }
+.legend-item:focus-visible { outline: 2px solid var(--rk-focus); }
+.legend-item[aria-pressed="true"] { background: var(--rk-panel-2); color: var(--rk-text); }
+.legend-item.absent { color: var(--rk-text); }
 </style>
 </head>
-<body>
-<main>
-  <header class="panel" id="title-panel">
-    <h1>cli-scaffold — architecture tree</h1>
-    <div class="sub" id="subtitle"></div>
-  </header>
-
-  <section class="panel" id="verdict-panel">
-    <h2>Does every pillar the doctrine names have a file behind it?</h2>
-    <p class="verdict" id="verdict"></p>
-    <p class="note">
-      Each badge below is a role the scaffold's own
-      <code>cli-scaffold.manifest.json</code> declares for that file — the same
-      gating keys <code>verify_scaffold.py</code> reads to decide pass/fail, not
-      a guess made from the filename. A role with no file is drawn hollow and
-      dashed in the legend. The fifth pillar, <em>Unix composability</em>, is
-      behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so
-      no file can carry its badge and it is deliberately not counted here.
-    </p>
-  </section>
-
-  <section class="panel">
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>cli-scaffold — architecture tree</h1>
+  <p class="rk-sub" id="subtitle"></p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search gaps and CLI surface">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
+<main class="rk-wrap">
+  <h2 class="q">Does every pillar the doctrine names have a file behind it?</h2>
+  <p class="verdict" id="verdict"></p>
+  <p class="note">
+    Each badge below is a role the scaffold's own
+    <code>cli-scaffold.manifest.json</code> declares for that file — the same
+    gating keys <code>verify_scaffold.py</code> reads to decide pass/fail, not
+    a guess made from the filename. A role with no file is drawn hollow and
+    dashed in the legend. The fifth pillar, <em>Unix composability</em>, is
+    behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so
+    no file can carry its badge and it is deliberately not counted here.
+  </p>
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
+  </div>
+  <div id="stage" hidden>
     <div id="tree-wrap">
       <svg id="guides"></svg>
       <div id="tree"></div>
     </div>
-  </section>
-
-  <section class="panel" id="legend">
-    <h2>Roles</h2>
-  </section>
+    <div id="legend"></div>
+  </div>
 </main>
-<div id="err" class="panel" style="position:fixed;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 
 <!--__D3_SUBSET__-->
 <script type="module">
 const d3 = window.d3;
+const RERUN_COMMAND = "python3 plugins/cli-scaffold/scripts/build_architecture_tree.py <scaffold_dir> --template plugins/cli-scaffold/assets/architecture-tree-viewer.html --d3 plugins/cli-scaffold/assets/inline-d3.html --tokens plugins/cli-scaffold/assets/tokens.css";
 
-// Injected by build_architecture_tree.py.
-const DATA = /*__TREE_DATA__*/ null;
+// Injected by build_architecture_tree.py as the JSON island.
+const DATA = RK.readData(RERUN_COMMAND);
 
-if (!DATA || !DATA.tree) {
-  const err = document.getElementById("err");
-  err.querySelector("p").innerHTML =
-    "No architecture data found in this file.<br>Re-run the cli-scaffold paradigm skill to regenerate it.";
-  err.style.display = "grid";
-  throw new Error("no data");
-}
+if (DATA && !DATA.tree) {
+  RK.fail("The architecture payload has no tree, so there is nothing to draw.", RERUN_COMMAND);
+} else if (DATA) {
 
 // ── Layout: indented tree (directories genuinely nest, but at 5-15 files
 // and 1-3 levels a circle-pack buries the one thing that matters -- role
@@ -207,18 +169,20 @@ let verdict;
 if (missingRoles.length === 0) {
   verdict = app + " claims all " + roleOrder.length +
     " file-backed doctrine roles — every pillar a file can evidence is evidenced here.";
-  verdictEl.classList.add("complete");
+  verdictEl.classList.add("ok");
 } else if (barePillars.length) {
   verdict = app + " claims " + (roleOrder.length - missingRoles.length) + " of " +
     roleOrder.length + " file-backed doctrine roles — nothing in this tree plays the " +
     joinList(missingRoles, "or") + " role, leaving the " +
     joinList(barePillars, "and") + " pillar" +
     (barePillars.length > 1 ? "s" : "") + " with no file to point at.";
+  verdictEl.classList.add("bad");
 } else {
   verdict = app + " claims " + (roleOrder.length - missingRoles.length) + " of " +
     roleOrder.length + " file-backed doctrine roles — nothing in this tree plays the " +
     joinList(missingRoles, "or") + " role, though every pillar still has at " +
     "least one file behind it.";
+  verdictEl.classList.add("warn");
 }
 verdictEl.textContent = verdict;
 
@@ -257,7 +221,7 @@ d3.select(guides).selectAll("line.guide")
   .attr("y1", d => d.type === "v" ? d.y1 : d.y)
   .attr("x2", d => d.type === "v" ? d.x : d.x2)
   .attr("y2", d => d.type === "v" ? d.y2 : d.y)
-  .attr("stroke", "var(--border)")
+  // The stroke colour is the .guide CSS rule, so a theme switch repaints the rails.
   .attr("stroke-width", 1);
 
 const treeEl = document.getElementById("tree");
@@ -270,6 +234,12 @@ const rowSel = d3.select(treeEl).selectAll(".tree-row")
   .style("top", d => (d.rowIndex * ROW_H) + "px")
   .style("left", d => colX(d.depth) + "px")
   .attr("title", d => fullPath(d));
+
+function rolesUnder(d) {
+  const set = new Set();
+  d.each(x => { for (const r of (x.data.roles || [])) set.add(r); });
+  return set;
+}
 
 rowSel.each(function (d) {
   const row = d3.select(this);
@@ -303,13 +273,28 @@ rowSel.each(function (d) {
 // The legend repeats the badge VERBATIM rather than showing a colour swatch:
 // the inline badge says "help" and so does the legend chip, so the mapping
 // from a badge to its long-form pillar meaning is read off the shared word,
-// not off matching two hues. tokens.css: never colour alone.
+// not off matching two hues. tokens.css: never colour alone. Each entry is
+// also a toggle: pressing it dims every row that does not play that role.
+let activeRole = null;
+function setRole(role) {
+  activeRole = activeRole === role ? null : role;
+  rowSel.classed("dim", d => activeRole !== null && !rolesUnder(d).has(activeRole));
+  for (const b of document.querySelectorAll(".legend-item")) {
+    b.setAttribute("aria-pressed", String(b.dataset.role === activeRole));
+  }
+}
+
 (function renderLegend() {
   const legend = document.getElementById("legend");
   for (const [role, label] of Object.entries(DATA.roleLabels)) {
     const absent = !presentRoles.has(role);
-    const item = document.createElement("span");
+    const item = document.createElement("button");
+    item.type = "button";
+    item.dataset.role = role;
+    item.setAttribute("aria-pressed", "false");
     item.className = "legend-item" + (absent ? " absent" : "");
+    if (!absent) item.addEventListener("click", () => setRole(role));
+    if (absent) item.disabled = true;
 
     const chip = document.createElement("span");
     chip.className = "badge" + (absent ? " absent" : "");
@@ -327,6 +312,31 @@ rowSel.each(function (d) {
     legend.appendChild(item);
   }
 })();
+
+// ── Kit sections ────────────────────────────────────────────────────────
+const stage = document.getElementById("stage");
+const treeBlock = [document.getElementById("tree-wrap"), document.getElementById("legend")];
+const surface = DATA.surface || { rows: [] };
+const surfaceKids = [];
+if (surface.rows.length) {
+  surfaceKids.push(RK.table({ caption: "the CLI surface the manifest declares", columns: [
+    { key: "kind", label: "Kind" }, { key: "name", label: "Name", mono: true },
+    { key: "required", label: "Required" }, { key: "description", label: "Description" }],
+    rows: surface.rows }));
+}
+surfaceKids.push(RK.h("p", { class: "rk-muted", text: surface.completion
+  ? "Shell completion: " + surface.completion
+  : (surface.completionSupported ? "Shell completion is declared." : "No shell completion is declared.") }));
+
+RK.$("#rk-content").append(
+  RK.section("gaps", "Doctrine gaps and the evidence for them",
+    RK.findings(DATA.findings || [], { empty: "Every role is claimed by a file that exists." })),
+  RK.section("tree", "Architecture tree", ...treeBlock),
+  RK.section("surface", "CLI surface", ...surfaceKids));
+stage.remove();
+RK.init();
+
+}
 </script>
 </body>
 </html>

@@ -115,9 +115,9 @@ def main():
         template = os.path.join(tmp, "template.html")
         with open(template, "w") as fh:
             fh.write(
-                "<html><head><!--__DESIGN_TOKENS__--></head>"
+                "<html><head><!--__DESIGN_TOKENS__--><!--__REPORT_KIT__--></head>"
                 "<body><!--__D3_SUBSET__-->"
-                '<script type="module">const DATA = /*__TREE_DATA__*/ null;</script>'
+                '<script type="application/json" id="report-data">@@DATA@@</script>'
                 "</body></html>"
             )
         d3_stub = os.path.join(tmp, "d3.html")
@@ -138,6 +138,10 @@ def main():
                "canonical tokens marker fully replaced")
         expect("/*__TOKENS__*/" not in rendered,
                "the old non-canonical /*__TOKENS__*/ spelling is gone (S2)")
+        expect("<!--__REPORT_KIT__-->" not in rendered and "const RK = (() =>" in rendered,
+               "the report kit marker is replaced by the kit's css and js")
+        expect("@@DATA@@" not in rendered and 'id="report-data"' in rendered,
+               "the data marker is replaced by the JSON island")
 
         code, _, err = run([bat, scaffold, "--template", template,
                              "--d3", d3_stub, "--out", out])
@@ -205,6 +209,37 @@ def main():
         expect('"snapshot_test": null' in open(
                    os.path.join(FIXTURE, "cli-scaffold.manifest.json")).read(),
                "C3: fixture leaves the stability pillar with no file behind it")
+
+        isl = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', rendered, re.S)
+        payload = json.loads(isl.group(1)) if isl else {}
+        gaps = {f["tags"]["role"] for f in payload.get("findings", []) if f["rule"] == "role-unclaimed"}
+        expect(gaps == {"test", "completion"},
+               "R6: the island carries one finding per role no file plays (the same two the verdict names)")
+        expect(all(f.get("quote") and f.get("fix") and f.get("evidence") for f in payload.get("findings", [])),
+               "R6: every finding carries its manifest quote, a fix and evidence")
+        expect(len(payload.get("surface", {}).get("rows", [])) == 4,
+               "the manifest's flags and positional args reach the page instead of being dropped")
+
+    print("architecture tree — a role whose file the manifest names but the tree lacks:")
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold = os.path.join(tmp, "ghostapp")
+        os.makedirs(scaffold)
+        with open(os.path.join(scaffold, "cli-scaffold.manifest.json"), "w") as fh:
+            json.dump({"app_name": "ghostapp", "language": "python", "core_files": ["core.py"],
+                       "entry_file": "cli.py", "distribution_file": "pyproject.toml",
+                       "snapshot_test": "tests/test_help.py", "help_file": None, "completion": None}, fh)
+        for name in ("core.py", "cli.py", "pyproject.toml"):
+            open(os.path.join(scaffold, name), "w").close()
+        out = os.path.join(tmp, "ARCHITECTURE.html")
+        code, _, err = run([bat, scaffold, "--template", os.path.join(ASSETS, "architecture-tree-viewer.html"),
+                            "--d3", os.path.join(ASSETS, "inline-d3.html"),
+                            "--tokens", os.path.join(ASSETS, "tokens.css"), "--out", out])
+        expect(code == 0, "build succeeds: " + err.strip())
+        rendered = open(out).read() if os.path.exists(out) else ""
+        isl = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', rendered, re.S)
+        found = json.loads(isl.group(1)).get("findings", []) if isl else []
+        expect(any(f["rule"] == "declared-file-missing" and f["severity"] == "blocker" for f in found),
+               "a manifest path with no file behind it is a blocker finding, not a silently absent role")
 
     print("architecture tree — indented tree rebuild:")
     with tempfile.TemporaryDirectory() as tmp:
@@ -274,7 +309,7 @@ def main():
         expect(code == 0, "build succeeds with a nested subdirectory: " + err.strip())
         rendered = open(out).read() if os.path.exists(out) else ""
 
-        data_m = re.search(r'/\*__TREE_DATA__\*/\s*(\{.*?\})\s*;', rendered, re.S)
+        data_m = re.search(r'<script type="application/json" id="report-data">(.*?)</script>', rendered, re.S)
         script_m = re.search(r'<script type="module">(.*?)</script>', rendered, re.S)
         expect(data_m is not None, "tree DATA payload present in rendered output")
         expect(script_m is not None, "module script block present")

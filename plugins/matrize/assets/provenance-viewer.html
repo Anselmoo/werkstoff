@@ -4,229 +4,180 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
 <title>matrize — provenance graph</title>
-<style>
 <!--__DESIGN_TOKENS__-->
-* { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font-family: var(--font-sans); font-size: var(--font-size-base);
-  line-height: var(--line-height-base);
+<!--__REPORT_KIT__-->
+<style>
+.pv-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--space-4); align-items: start; }
+.pv-side {
+  position: sticky; top: calc(var(--header-h) + var(--space-3));
+  max-height: calc(100vh - var(--header-h) - var(--space-4)); overflow-y: auto;
 }
-header {
-  min-height: var(--header-h); display: flex; align-items: center; gap: var(--space-4);
-  padding: 0 var(--space-4); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; background: var(--bg); z-index: 5;
-}
-h1 { font-size: 1.05rem; font-weight: 600; margin: 0; }
-.sub { color: var(--muted); font-size: .82rem; margin: 0; }
-.layout { display: grid; grid-template-columns: 1fr 340px; min-height: calc(100vh - var(--header-h)); }
-.main { padding: var(--space-4); overflow-x: auto; }
-.sidebar {
-  border-left: 1px solid var(--border); padding: var(--space-4);
-  position: sticky; top: var(--header-h); align-self: start; max-height: calc(100vh - var(--header-h));
-  overflow-y: auto;
-}
-h2 {
-  font-size: .72rem; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--muted); font-weight: 600; margin: 0 0 var(--space-2);
-}
-.verdict {
-  border: 1px solid var(--border); border-left: 3px solid var(--accent);
-  background: var(--panel); border-radius: var(--radius-panel);
-  padding: var(--space-3) var(--space-4); margin: 0 0 var(--space-3); font-size: 1rem;
-}
-.note { color: var(--muted); font-size: .82rem; margin: var(--space-2) 0 0; }
-.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--muted);
-  font-size: .8rem; margin: 0 0 var(--space-3); }
+@media (max-width: 860px) { .pv-layout { grid-template-columns: minmax(0, 1fr); } .pv-side { position: static; max-height: none; } }
+.pv-side h3 { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--rk-muted); font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
+.note { color: var(--rk-muted); font-size: .84rem; margin: var(--space-2) 0; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); color: var(--rk-muted); font-size: .82rem; margin: 0 0 var(--space-3); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
-.key { width: 22px; height: 0; border-top: 2px solid var(--muted); display: inline-block; }
-.key.c { border-top-style: dashed; border-top-color: var(--status-bad, var(--cat-5)); }
-.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.key { width: 22px; height: 0; border-top: 2px solid var(--rk-muted); display: inline-block; }
+.key.c { border-top-style: dashed; border-top-color: var(--rk-bad); }
+.dot { width: 10px; height: 10px; border-radius: var(--radius-sm); display: inline-block; }
 .dot.ref { background: var(--cat-1); }
 .dot.card { background: var(--cat-4); }
 .dot.token { background: var(--cat-2); }
 
-svg { display: block; }
+.graphwrap { overflow-x: auto; }
+svg { display: block; width: 100%; height: auto; }
+.rk-fold > summary { cursor: pointer; padding: var(--space-2) 0; font-weight: 550; }
 .node rect { cursor: pointer; }
-/* Focus must be visible, or "focusable" is a claim rather than a feature. `outline` on
-   an SVG child is unreliable across engines, so the ring is drawn as a stroke. */
+/* Focus must be visible, or "focusable" is a claim rather than a feature. `outline` on an
+   SVG child is unreliable across engines, so the ring is drawn as a stroke. */
 .node:focus { outline: none; }
-.node:focus rect { stroke: var(--status-warn, var(--cat-4)); stroke-width: 3; }
-.node:focus-visible rect { stroke: var(--status-warn, var(--cat-4)); stroke-width: 3; }
-@media (forced-colors: active) {
-  .node:focus rect { stroke: Highlight; stroke-width: 3; }
-}
-.node text { font-size: 11px; fill: var(--text); pointer-events: none; }
-.node .sub { font-size: 9px; fill: var(--muted); }
-.n-ref rect { fill: var(--panel-2); stroke: var(--cat-1); }
-.n-card rect { fill: var(--panel-2); stroke: var(--cat-4); }
-.n-token rect { fill: var(--panel-2); stroke: var(--cat-2); }
+.node:focus rect, .node:focus-visible rect { stroke: var(--rk-focus); stroke-width: 3; }
+@media (forced-colors: active) { .node:focus rect { stroke: Highlight; stroke-width: 3; } }
+.node text { font-size: 11px; fill: var(--rk-text); pointer-events: none; }
+.node .nsub { font-size: 9px; fill: var(--rk-muted); }
+.n-reference rect { fill: var(--rk-panel-2); stroke: var(--cat-1); }
+.n-card rect { fill: var(--rk-panel-2); stroke: var(--cat-4); }
+.n-token rect { fill: var(--rk-panel-2); stroke: var(--cat-2); }
 .node.dim { opacity: .22; }
-.node.on rect { stroke-width: 2.5; fill: var(--panel); }
-.edge { stroke: var(--border); stroke-width: 1.4; fill: none; }
-.edge.gC { stroke: var(--status-bad, var(--cat-5)); stroke-dasharray: 4,3; }
-.edge.alias { stroke: var(--cat-3); }
+.node.on rect { stroke-width: 2.5; fill: var(--rk-panel); }
+.edge { stroke: var(--rk-muted); stroke-opacity: .55; stroke-width: 1.4; fill: none; }
+.edge.gC { stroke: var(--rk-bad); stroke-opacity: 1; stroke-dasharray: 4,3; }
+.edge.alias { stroke: var(--cat-3); stroke-opacity: 1; }
 .edge.dim { opacity: .12; }
-.edge.on { stroke-width: 2.4; stroke: var(--accent); }
-
+.edge.on { stroke-width: 2.4; stroke: var(--rk-link); stroke-opacity: 1; }
 .chain { margin: 0; padding: 0; list-style: none; font-size: .84rem; }
-.chain li { padding: 6px 0; border-bottom: 1px solid var(--border); }
-.chain .k { color: var(--muted); font-size: .72rem; text-transform: uppercase;
-  letter-spacing: .06em; display: block; }
-.grade { font-weight: 600; }
-.gA { color: var(--status-good, var(--cat-2)); }
-.gB { color: var(--cat-4); }
-.gC { color: var(--status-bad, var(--cat-5)); }
-.empty { color: var(--muted); font-size: .84rem; }
-.pill { display: inline-block; border: 1px solid var(--border); border-radius: var(--radius-sm);
-  padding: 1px 6px; font-size: .72rem; color: var(--muted); }
+.chain li { padding: 6px 0; border-bottom: 1px solid var(--rk-border); }
+.chain .k { color: var(--rk-muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; display: block; }
+.facts { margin: 0; font-size: .84rem; display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-2); }
+.facts dt { color: var(--rk-muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.pick { all: unset; cursor: pointer; color: var(--rk-link); text-decoration: underline; }
+.pick:focus-visible { outline: 2px solid var(--rk-focus); }
 </style>
 </head>
-<body>
-<header>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
   <h1>matrize — provenance graph</h1>
-  <p class="sub" id="scope">Not generated yet.</p>
-</header>
-
-<div class="layout">
-  <div class="main">
-    <p class="verdict" id="verdict"><!--__VERDICT__--></p>
-
-    <p class="legend">
-      <span><i class="dot ref"></i> reference</span>
-      <span><i class="dot card"></i> Design Card</span>
-      <span><i class="dot token"></i> token</span>
-      <span><i class="key"></i> edge, grade A or B</span>
-      <span><i class="key c"></i> grade C — direction only, drawn dashed</span>
-      <span>click a node: ancestors and dependents both light up</span>
-    </p>
-
-    <p class="note">This is the one interactive artefact matrize emits. Everything else is
-      print-first, because an approval artefact ends as a PDF in front of someone who does
-      not get a localhost URL. A graph earns the exception: it has no readable static
-      layout, and the reader arrives with a target question — <em>why is this token this
-      value, and what breaks if I change it?</em></p>
-
-    <div id="graph"></div>
+  <p class="rk-sub" id="scope">Not generated yet.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search tokens and findings</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search tokens and findings">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
+</header>
+<main class="rk-wrap">
+  <p class="verdict info"><!--__VERDICT__--></p>
+  <p id="rk-found" class="rk-found" role="status" aria-live="polite"></p>
 
-  <aside class="sidebar">
-    <h2>Selected</h2>
-    <div id="detail"><p class="empty">Click a node to trace it backwards to its
-      reference and forwards to everything that depends on it.</p></div>
-  </aside>
-</div>
+  <p class="legend">
+    <span><i class="dot ref"></i> reference</span>
+    <span><i class="dot card"></i> Design Card</span>
+    <span><i class="dot token"></i> token</span>
+    <span><i class="key"></i> edge, grade A or B</span>
+    <span><i class="key c"></i> grade C — direction only, drawn dashed</span>
+    <span>click a node or a token name: ancestors and dependents both light up</span>
+  </p>
 
+  <p class="note">This is the one interactive artefact matrize emits. Everything else is
+    print-first, because an approval artefact ends as a PDF in front of someone who does
+    not get a localhost URL. A graph earns the exception: it has no readable static
+    layout, and the reader arrives with a target question — <em>why is this token this
+    value, and what breaks if I change it?</em></p>
+
+  <div class="pv-layout">
+    <div id="rk-content" tabindex="-1"></div>
+    <aside class="pv-side rk-card" aria-label="Selected node">
+      <h2 style="font-size:1rem;margin:0 0 var(--space-2)">Selected</h2>
+      <div id="detail"><p class="rk-muted">Click a node to trace it backwards to its
+        reference and forwards to everything that depends on it.</p></div>
+    </aside>
+  </div>
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <script>
-var DATA = /*__PROVENANCE_DATA__*/ null;
-(function () {
-  var host = document.getElementById('graph');
-  var detail = document.getElementById('detail');
-
-  if (!DATA || !DATA.nodes || !DATA.nodes.length) {
-    document.getElementById('scope').textContent =
-      'Could not read the provenance payload. Re-run build_provenance_html.py to regenerate this graph.';
-    host.innerHTML = '';
-    var p = document.createElement('p');
-    p.className = 'empty';
-    p.textContent = 'No graph to draw.';
-    host.appendChild(p);
+(() => {
+  const RERUN_COMMAND = "python3 plugins/matrize/scripts/build_provenance_html.py --tokens /tmp/tokens.json --out /tmp/prov.html";
+  const D = RK.readData(RERUN_COMMAND);
+  if (!D) return;
+  if (!D.nodes || !D.nodes.length) {
+    RK.fail("The provenance payload has no nodes, so there is no graph to draw.", RERUN_COMMAND);
     return;
   }
-  document.getElementById('scope').textContent = DATA.scope;
+  const { h, section } = RK;
+  document.getElementById("scope").textContent = D.scope;
+  const detail = document.getElementById("detail");
+  const byId = {};
+  D.nodes.forEach((n) => { byId[n.id] = n; });
 
-  var COL = { reference: 0, card: 1, token: 2 };
-  var W = 250, H = 34, GAPX = 150, GAPY = 12, PADX = 12, PADY = 12;
-  var byCol = [[], [], []];
-  DATA.nodes.forEach(function (n) { byCol[COL[n.kind]].push(n); });
-  var pos = {};
-  byCol.forEach(function (list, ci) {
-    list.forEach(function (n, i) {
-      pos[n.id] = { x: PADX + ci * (W + GAPX), y: PADY + i * (H + GAPY) };
-    });
-  });
-  var rows = Math.max(byCol[0].length, byCol[1].length, byCol[2].length);
-  var width = PADX * 2 + 3 * W + 2 * GAPX + 60;   // room for the alias bow
-  var height = PADY * 2 + rows * (H + GAPY);
+  /* ------------------------------ graph ------------------------------ */
+  const COL = { reference: 0, card: 1, token: 2 };
+  const W = 250, H = 34, GAPX = 150, GAPY = 12, PADX = 12, PADY = 12;
+  const byCol = [[], [], []];
+  D.nodes.forEach((n) => byCol[COL[n.kind]].push(n));
+  const pos = {};
+  byCol.forEach((list, ci) => list.forEach((n, i) => { pos[n.id] = { x: PADX + ci * (W + GAPX), y: PADY + i * (H + GAPY) }; }));
+  const rows = Math.max(byCol[0].length, byCol[1].length, byCol[2].length);
+  const width = PADX * 2 + 3 * W + 2 * GAPX + 60;   // room for the alias bow
+  const height = PADY * 2 + rows * (H + GAPY);
 
-  var NS = 'http://www.w3.org/2000/svg';
-  function el(name, attrs) {
-    var e = document.createElementNS(NS, name);
-    for (var k in attrs) { e.setAttribute(k, attrs[k]); }
-    return e;
-  }
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (name, attrs) => { const e = document.createElementNS(NS, name); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+  const svg = el("svg", { viewBox: "0 0 " + width + " " + height, role: "img",
+    "aria-label": "Provenance graph: references to Design Cards to tokens" });
+  const edgeEls = [], nodeEls = {};
 
-  var svg = el('svg', { viewBox: '0 0 ' + width + ' ' + height, width: width, height: height });
-  var edgeEls = [], nodeEls = {};
-
-  DATA.edges.forEach(function (e) {
-    var a = pos[e.from], b = pos[e.to];
-    if (!a || !b) { return; }
-    var d;
+  D.edges.forEach((e) => {
+    const a = pos[e.from], b = pos[e.to];
+    if (!a || !b) return;
+    let d;
     if (a.x === b.x) {
-      // Same column — an alias points token->token. Left-to-right routing would draw it
+      // Same column -- an alias points token->token. Left-to-right routing would draw it
       // backwards as a stub, so bow it out to the right of the column and back.
-      var bow = a.x + W + 46;
-      d = 'M' + (a.x + W) + ' ' + (a.y + H / 2) +
-          ' C' + bow + ' ' + (a.y + H / 2) + ' ' + bow + ' ' + (b.y + H / 2) +
-          ' ' + (b.x + W) + ' ' + (b.y + H / 2);
+      const bow = a.x + W + 46;
+      d = "M" + (a.x + W) + " " + (a.y + H / 2) + " C" + bow + " " + (a.y + H / 2) + " " + bow + " " + (b.y + H / 2) + " " + (b.x + W) + " " + (b.y + H / 2);
     } else {
-      var x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2;
-      var mid = (x1 + x2) / 2;
-      d = 'M' + x1 + ' ' + y1 + ' C' + mid + ' ' + y1 + ' ' + mid + ' ' + y2 + ' ' + x2 + ' ' + y2;
+      const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mid = (x1 + x2) / 2;
+      d = "M" + x1 + " " + y1 + " C" + mid + " " + y1 + " " + mid + " " + y2 + " " + x2 + " " + y2;
     }
-    var path = el('path', {
-      d: d,
-      'class': 'edge ' + (e.kind === 'alias' ? 'alias' : '') + ' g' + e.grade
-    });
+    const path = el("path", { d, class: "edge " + (e.kind === "alias" ? "alias" : "") + " g" + e.grade });
     path.__e = e;
     edgeEls.push(path);
     svg.appendChild(path);
   });
 
-  DATA.nodes.forEach(function (n) {
-    var p = pos[n.id];
-    // Focusable, named, and operable from the keyboard. A plain <g> with a click
-    // handler is invisible to keyboard and screen-reader users, which in a viewer whose
-    // ONLY function is "click a node to trace it" means the artefact has no non-mouse
-    // path to its content at all.
-    var g = el('g', {
-      'class': 'node n-' + n.kind,
-      transform: 'translate(' + p.x + ',' + p.y + ')',
-      tabindex: '0',
-      role: 'button',
-      'aria-label': n.label + ' — ' + (n.sub || n.kind) + '. Trace its provenance.'
-    });
-    g.appendChild(el('rect', { width: W, height: H, rx: 6 }));
-    var t = el('text', { x: 10, y: 15 });
-    t.textContent = n.label;              // textContent, never innerHTML
-    g.appendChild(t);
-    var s = el('text', { x: 10, y: 27, 'class': 'sub' });
-    s.textContent = n.sub || '';
-    g.appendChild(s);
-    g.addEventListener('click', function () { select(n.id); });
-    g.addEventListener('keydown', function (ev) {
-      if (ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar') {
-        ev.preventDefault();            // Space would otherwise scroll the page
-        select(n.id);
-      }
+  D.nodes.forEach((n) => {
+    const p = pos[n.id];
+    // Focusable, named and operable from the keyboard: a plain <g> with a click handler is
+    // invisible to keyboard and screen-reader users, and this viewer's only function is
+    // "select a node to trace it".
+    const g = el("g", { class: "node n-" + n.kind, transform: "translate(" + p.x + "," + p.y + ")", tabindex: "0", role: "button",
+      "aria-label": n.label + " — " + (n.sub || n.kind) + ". Trace its provenance." });
+    g.appendChild(el("rect", { width: W, height: H, rx: 6 }));
+    const t = el("text", { x: 10, y: 15 }); t.textContent = n.label; g.appendChild(t);
+    const s = el("text", { x: 10, y: 27, class: "nsub" }); s.textContent = n.sub || ""; g.appendChild(s);
+    g.addEventListener("click", () => select(n.id));
+    g.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " " || ev.key === "Spacebar") { ev.preventDefault(); select(n.id); }
     });
     nodeEls[n.id] = g;
     svg.appendChild(g);
   });
-  host.appendChild(svg);
+  const graphWrap = h("div", { class: "graphwrap" }, svg);
 
   function walk(start, dir) {
-    var seen = {}, queue = [start], out = { nodes: {}, edges: [] };
+    const seen = {}, queue = [start], out = { nodes: {}, edges: [] };
     while (queue.length) {
-      var cur = queue.shift();
-      if (seen[cur]) { continue; }
+      const cur = queue.shift();
+      if (seen[cur]) continue;
       seen[cur] = true;
       out.nodes[cur] = true;
-      DATA.edges.forEach(function (e) {
-        var a = dir === 'back' ? e.to : e.from;
-        var b = dir === 'back' ? e.from : e.to;
+      D.edges.forEach((e) => {
+        const a = dir === "back" ? e.to : e.from, b = dir === "back" ? e.from : e.to;
         if (a === cur) { out.edges.push(e); queue.push(b); }
       });
     }
@@ -234,84 +185,64 @@ var DATA = /*__PROVENANCE_DATA__*/ null;
   }
 
   function select(id) {
-    var back = walk(id, 'back'), fwd = walk(id, 'fwd');
-    var live = {};
-    Object.keys(back.nodes).forEach(function (k) { live[k] = true; });
-    Object.keys(fwd.nodes).forEach(function (k) { live[k] = true; });
-    var liveEdges = back.edges.concat(fwd.edges);
-
-    Object.keys(nodeEls).forEach(function (k) {
-      nodeEls[k].classList.toggle('dim', !live[k]);
-      nodeEls[k].classList.toggle('on', k === id);
-    });
-    edgeEls.forEach(function (p) {
-      var on = liveEdges.indexOf(p.__e) !== -1;
-      p.classList.toggle('dim', !on);
-      p.classList.toggle('on', on);
-    });
-    render(id, back, fwd);
+    const back = walk(id, "back"), fwd = walk(id, "fwd");
+    const live = { ...back.nodes, ...fwd.nodes };
+    const liveEdges = back.edges.concat(fwd.edges);
+    Object.keys(nodeEls).forEach((k) => { nodeEls[k].classList.toggle("dim", !live[k]); nodeEls[k].classList.toggle("on", k === id); });
+    edgeEls.forEach((p) => { const on = liveEdges.indexOf(p.__e) !== -1; p.classList.toggle("dim", !on); p.classList.toggle("on", on); });
+    renderDetail(id, back, fwd);
   }
 
-  function render(id, back, fwd) {
-    var node = DATA.nodes.filter(function (n) { return n.id === id; })[0];
-    detail.textContent = '';
-    var h = document.createElement('p');
-    h.innerHTML = '';
-    h.textContent = node.label;
-    h.style.fontWeight = '600';
-    detail.appendChild(h);
-    if (node.sub) {
-      var sp = document.createElement('p');
-      sp.className = 'note';
-      sp.textContent = node.sub;
-      detail.appendChild(sp);
-    }
-
-    function list(title, items, empty) {
-      var h2 = document.createElement('h2');
-      h2.textContent = title;
-      h2.style.marginTop = '14px';
-      detail.appendChild(h2);
-      if (!items.length) {
-        var e = document.createElement('p');
-        e.className = 'empty';
-        e.textContent = empty;
-        detail.appendChild(e);
-        return;
-      }
-      var ul = document.createElement('ul');
-      ul.className = 'chain';
-      items.forEach(function (it) {
-        var li = document.createElement('li');
-        var k = document.createElement('span');
-        k.className = 'k';
-        k.textContent = it.kind;
-        li.appendChild(k);
-        li.appendChild(document.createTextNode(it.label));
-        if (it.grade) {
-          var g = document.createElement('span');
-          g.className = 'grade g' + it.grade;
-          g.textContent = '  grade ' + it.grade;
-          li.appendChild(g);
-        }
-        ul.appendChild(li);
-      });
-      detail.appendChild(ul);
-    }
-
-    function chain(set, self) {
-      return Object.keys(set.nodes).filter(function (k) { return k !== self; })
-        .map(function (k) {
-          var n = DATA.nodes.filter(function (x) { return x.id === k; })[0];
-          var e = set.edges.filter(function (x) { return x.from === k || x.to === k; })[0];
-          return { kind: n.kind, label: n.label, grade: e ? e.grade : '' };
-        });
-    }
-
-    list('Came from', chain(back, id), 'Nothing upstream — this is a source.');
-    list('What depends on it', chain(fwd, id),
-      'Nothing downstream. Changing it breaks nothing else.');
+  function chain(set, self) {
+    return Object.keys(set.nodes).filter((k) => k !== self).map((k) => {
+      const n = byId[k];
+      const e = set.edges.filter((x) => x.from === k || x.to === k)[0];
+      return { kind: n.kind, label: n.label, grade: e ? e.grade : "" };
+    });
   }
+
+  function renderDetail(id, back, fwd) {
+    const node = byId[id];
+    detail.textContent = "";
+    detail.appendChild(h("p", { style: "font-weight:600;margin:0", text: node.label }));
+    if (node.sub) detail.appendChild(h("p", { class: "note", text: node.sub }));
+    const facts = Object.entries(node.detail || {}).filter(([, v]) => v !== "" && v != null);
+    if (facts.length) {
+      detail.appendChild(h("h3", { text: "What it is" }));
+      detail.appendChild(h("dl", { class: "facts" }, facts.map(([k, v]) => [h("dt", { text: k }), h("dd", { text: v })])));
+    }
+    const list = (title, items, empty) => {
+      detail.appendChild(h("h3", { text: title }));
+      if (!items.length) { detail.appendChild(h("p", { class: "rk-muted", text: empty })); return; }
+      detail.appendChild(h("ul", { class: "chain" }, items.map((it) => h("li", {},
+        h("span", { class: "k", text: it.kind }), it.label,
+        it.grade ? RK.badge("grade " + it.grade, { A: "ok", B: "warn", C: "bad" }[it.grade]) : null))));
+    };
+    list("Came from", chain(back, id), "Nothing upstream — this is a source.");
+    list("What depends on it", chain(fwd, id), "Nothing downstream. Changing it breaks nothing else.");
+  }
+
+  /* ------------------------------ sections ------------------------------ */
+  const pick = (id, label) => {
+    const b = h("button", { type: "button", class: "pick", text: label });
+    b.addEventListener("click", () => { select(id); nodeEls[id].focus({ preventScroll: true }); graphWrap.scrollIntoView({ block: "nearest" }); });
+    return b;
+  };
+  const TONE = { A: "ok", B: "warn", C: "bad" };
+  const table = RK.table({ caption: "tokens and their provenance", columns: [
+    { key: "css", label: "Token" }, { key: "path", label: "Path", mono: true }, { key: "value", label: "Value", mono: true },
+    { key: "reference", label: "Reference" }, { key: "card", label: "Card", mono: true },
+    { key: "gradeBadge", label: "Grade" }, { key: "dependents", label: "Dependents", num: true }],
+    rows: D.tokens.map((t) => ({ ...t, css: pick(t.id, t.css), gradeBadge: RK.badge("grade " + t.grade, TONE[t.grade]) })) });
+
+  RK.$("#rk-content").append(
+    section("graph", "Graph", graphWrap),
+    section("findings", "What to check before changing a token",
+      RK.findings(D.findings, { facets: ["kind"], empty: "No grade-C edge and no shared source: every token has one reference and one dependent chain." })),
+    section("tokens", "Every token and where it came from",
+      h("details", { class: "rk-fold", "data-rk-search": true },
+        h("summary", { text: D.tokens.length + " tokens \u2014 show the table" }), table)));
+  RK.init();
 })();
 </script>
 </body>

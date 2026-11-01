@@ -4,220 +4,76 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="color-scheme" content="dark light">
 <title>zeugnis — burndown</title>
 <!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
 <style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: var(--font-size-base);
-    line-height: var(--line-height-base);
-  }
-  header { padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border); }
-  header h1 { font-size: 16px; margin: 0 0 4px; font-weight: 600; color: var(--accent); }
-  header .sub { color: var(--muted); font-size: 12px; }
-  .tabs { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
-  .tab-btn {
-    background: var(--panel); color: var(--muted); border: 1px solid var(--border);
-    border-radius: var(--radius-control); padding: var(--space-2) var(--space-4); font: inherit; font-size: 12px;
-    cursor: pointer; transition: var(--transition-fast);
-  }
-  .tab-btn:hover { color: var(--text); }
-  .tab-btn.active { color: var(--accent); border-color: var(--accent); background: var(--panel-2); }
-  .stat-row { padding: var(--space-4) var(--space-5) 0; display: flex; gap: var(--space-4); flex-wrap: wrap; }
-  .stat {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-control);
-    padding: var(--space-3) var(--space-5);
-    min-width: 110px;
-  }
-  .stat .v { font-size: 22px; font-weight: 600; color: var(--accent); }
-  .stat .k { font-size: 11px; color: var(--muted); margin-top: var(--space-1); }
-  .stat .need { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.02em; }
-  /* R3: an actionable number must not be typographically identical to an inert
-     one. `.watch` is queued work, `.alarm` is work the cycle refuses to retry
-     and handed back to a human. `.hot` fires only when the count is non-zero,
-     so a clean run does not shout an alarm colour at a 0. Same vocabulary as
-     lehre's .fstep.terminal / .fstep.leak outlines. */
-  .stat.watch { border-color: var(--status-warn); }
-  .stat.alarm { border-color: var(--status-bad); outline: 1px solid var(--status-bad); }
-  .stat.watch.hot .v { color: var(--status-warn); }
-  .stat.alarm.hot .v { color: var(--status-bad); }
-  .stat.watch .need, .stat.alarm .need { color: var(--smoke); }
-  .content {
-    padding: var(--space-5);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: var(--space-5);
-    max-width: 1400px;
-  }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-panel);
-    padding: var(--space-4);
-  }
-  .panel.wide { grid-column: 1 / -1; }
-  .panel h2 {
-    font-size: 13px;
-    margin: 0 0 var(--space-3);
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-  /* R4: colour is never the only channel. Every status colour used anywhere in
-     this report is named here, in static markup, above both tabs -- a reader
-     who never clicks still learns what red means. */
-  .verdict-block { padding: var(--space-4) var(--space-5) 0; max-width: 1400px; }
-  .verdict-block .panel { padding: var(--space-4) var(--space-4) var(--space-3); }
-  .verdict-block h2 {
-    font-size: 13px; margin: 0 0 var(--space-2); color: var(--accent);
-    text-transform: uppercase; letter-spacing: 0.03em;
-  }
-  .verdict { margin: 0; font-size: 13px; line-height: var(--line-height-base); color: var(--smoke); }
-  .note { margin: var(--space-2) 0 0; font-size: 11.5px; line-height: var(--line-height-base); color: var(--muted); }
-  .legend {
-    display: flex; gap: 16px; font-size: 11px; color: var(--muted); margin: 12px 0 0;
-    flex-wrap: wrap; list-style: none; padding: 0;
-  }
+  .rk-top .tabs { display: flex; gap: var(--space-2); }
+  .rk-q { font-size: 1rem; margin: 0 0 var(--space-2); }
+  .note { margin: var(--space-2) 0 0; font-size: 0.86rem; color: var(--rk-muted); }
+  /* R4: every status colour used anywhere in this report is named here, in
+     static markup above both views, each with a swatch AND a glyph AND a word. */
+  .legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 0.82rem; flex-wrap: wrap; list-style: none; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0; }
   .legend li { display: flex; align-items: center; gap: var(--space-1); }
-  .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: 2px; flex-shrink: 0; }
-  .legend .swatch.line { width: 18px; height: 3px; border-radius: 2px; }
-  .legend .swatch.open { background: var(--status-warn); }
-  .legend .swatch.closed { background: var(--status-good); }
-  .legend .swatch.escalated { background: var(--status-bad); }
-  .legend .swatch.trend { background: var(--accent-2); }
-  .legend .glyph { font-size: 11px; color: var(--smoke); width: 1em; text-align: center; }
-  .legend .name { color: var(--smoke); }
-  /* Interaction (every control is a real <button>, reachable by keyboard).
-     A selection is never colour alone: it gains an outline AND bold text. */
-  button { font: inherit; color: inherit; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .bar-row {
-    display: flex; align-items: center; gap: 8px; margin: var(--space-1) 0; font-size: 12px; cursor: pointer;
-    width: 100%; background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-2); text-align: left; transition: var(--transition-fast);
-  }
-  .bar-row:hover { background: var(--panel-2); }
-  .bar-row:hover .label { color: var(--accent); }
-  .bar-row[aria-pressed="true"] { border-color: var(--accent); background: var(--panel-2); }
-  .bar-row[aria-pressed="true"] .label { color: var(--text); font-weight: 600; }
-  .filter-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); flex-wrap: wrap; }
-  .filter-chip {
-    border: 1px solid var(--accent); border-radius: var(--radius-control); padding: 2px var(--space-2);
-    font-size: 12px; font-weight: 600;
-  }
-  .small-btn {
-    background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius-control);
-    padding: 2px var(--space-2); font-size: 11px; color: var(--muted); cursor: pointer; transition: var(--transition-fast);
-  }
-  .small-btn:hover { color: var(--text); border-color: var(--accent); }
-  .finding-list { list-style: none; margin: 0; padding: 0; }
-  .finding-toggle {
-    display: flex; gap: var(--space-2); align-items: baseline; width: 100%; background: none; border: 1px solid transparent;
-    border-radius: var(--radius-sm); padding: var(--space-1); text-align: left; cursor: pointer; transition: var(--transition-fast);
-  }
-  .finding-toggle:hover { background: var(--panel-2); }
-  .finding-toggle[aria-expanded="true"] { border-color: var(--border); }
-  .finding-toggle[aria-expanded="true"] .id { font-weight: 600; }
-  .chev { color: var(--muted); width: 1em; flex-shrink: 0; display: inline-block; }
-  .sev { color: var(--muted); font-size: 11px; }
-  .finding-detail { padding: 0 var(--space-1) var(--space-2) calc(1em + var(--space-3)); }
-  .readout { margin: var(--space-2) 0 0; font-size: 12px; color: var(--muted); min-height: 1.8em;
-    display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
-  .readout.pinned { color: var(--text); font-weight: 600; }
-  .pass-point { cursor: pointer; outline: none; }
-  .pass-point .ring { fill: none; stroke: transparent; stroke-width: 2; transition: var(--transition-fast); }
-  .pass-point:hover .ring, .pass-point:focus-visible .ring { stroke: var(--muted); }
-  .pass-point:focus-visible .ring { stroke: var(--accent); }
-  .pass-point[aria-pressed="true"] .ring { stroke: var(--text); }
-  .crosshair { stroke: var(--muted); stroke-dasharray: 3 3; }
-  .bar-row .label { width: 140px; flex-shrink: 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar-row .track { flex: 1; background: var(--panel-2); border-radius: var(--radius-sm); height: 16px; overflow: hidden; }
-  .bar-row .fill { height: 100%; border-radius: var(--radius-sm); }
-  .bar-row .count { width: 28px; text-align: right; flex-shrink: 0; }
-  /* R5: no fixed height. The viewBox is sized from the data in
-     renderTrendChart(); `height: auto` lets the rendered box follow it instead
-     of clipping a tall burndown or floating a short one in dead space. */
+  .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: var(--radius-sm); flex-shrink: 0; }
+  .legend .swatch.line { width: 18px; height: 3px; }
+  .legend .swatch.open { background: var(--rk-warn); }
+  .legend .swatch.closed { background: var(--rk-ok); }
+  .legend .swatch.escalated { background: var(--rk-bad); }
+  .legend .swatch.trend { background: var(--rk-link); }
+  .legend .glyph { width: 1em; text-align: center; }
+  .legend .mut-mark { font-size: 0.9rem; line-height: 1; }
   #chart { display: block; width: 100%; height: auto; }
-  .layout { display: flex; }
-  .sidebar {
-    width: 340px; border-left: 1px solid var(--border); background: var(--panel);
-    padding: var(--space-4); overflow-y: auto; flex-shrink: 0;
-    position: sticky; top: var(--space-3); max-height: calc(100vh - 2 * var(--space-3));
-  }
-  .sidebar h2 { font-size: 14px; margin: 0 0 var(--space-3); color: var(--accent); }
-  .sidebar .placeholder { color: var(--muted); font-size: 13px; line-height: var(--line-height-base); margin-top: calc(var(--space-5) * 2); }
-  .sidebar .finding-item { padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
-  .sidebar .finding-item .id { font-weight: 500; }
-  .sidebar .finding-item .meta { color: var(--muted); margin-top: var(--space-1); }
-  .sidebar .finding-item .evidence {
-    margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-2); font-family: var(--font-mono); font-size: 11px;
-    word-break: break-word;
-  }
-  /* Mutation tab (issue #142). The track runs 0-100 %; the hollow ring is the
-     score before, the filled dot the score after, so shape -- not hue alone --
-     tells them apart (R4). Rows are DOM, so the panel grows with the module
-     count instead of a constant height (R5). */
-  .mut-item { border-bottom: 1px solid var(--border); }
-  .mut-row {
-    display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(160px, 2fr) minmax(240px, 1.7fr);
-    gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-1); font-size: 12px;
-    width: 100%; background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
-    text-align: left; cursor: pointer; transition: var(--transition-fast);
-  }
-  .mut-row:hover { background: var(--panel-2); }
-  .mut-row[aria-expanded="true"] { border-color: var(--accent); }
-  .mut-row[aria-expanded="true"] .module { font-weight: 600; }
-  .mut-row .module { font-family: var(--font-mono); font-size: 11px; word-break: break-all; display: block; }
-  .mut-row .figures { display: block; }
-  .mut-track { display: block; position: relative; height: 16px; background: var(--panel-2); border-radius: var(--radius-sm); }
+  .readout { margin: var(--space-2) 0 0; font-size: 0.86rem; color: var(--rk-muted); min-height: 1.8em; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+  .readout.pinned { color: var(--rk-text); font-weight: 600; }
+  .pass-point { cursor: pointer; outline: none; }
+  .pass-point .ring { fill: none; stroke: transparent; stroke-width: 2; }
+  .pass-point:hover .ring, .pass-point:focus-visible .ring { stroke: var(--rk-muted); }
+  .pass-point:focus-visible .ring { stroke: var(--rk-focus); }
+  .pass-point[aria-pressed="true"] .ring { stroke: var(--rk-text); }
+  /* Mutation view. The track runs 0-100 %; the hollow ring is the score
+     before, the filled dot the score after, so shape -- not hue alone --
+     tells them apart (R4). Rows are DOM, so the view grows with the module
+     count (R5). */
+  .mut-sum { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: minmax(170px, 1.3fr) minmax(150px, 2fr) minmax(220px, 1.7fr); gap: var(--space-3); align-items: center; width: 100%; }
+  .mut-sum .module { font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; }
+  .mut-track { display: block; position: relative; height: 16px; background: var(--rk-panel-2); border-radius: var(--radius-sm); }
   .mut-track .mut-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); }
-  .mut-mark { font-size: 13px; line-height: 1; }
-  .mut-mark.before { color: var(--muted); }
-  .mut-mark.after { color: var(--accent); }
-  .mut-row .figures { color: var(--muted); }
-  .mut-row .figures .untested.hot { color: var(--status-warn); }
-  .mut-list { margin: 0; padding-left: var(--space-4); font-size: 12px; }
-  .mut-list li { margin: var(--space-2) 0; }
-  .mut-list .id { font-family: var(--font-mono); font-size: 11px; color: var(--smoke); }
-  .mut-list .more { color: var(--muted); list-style: none; }
+  .mut-mark { font-size: 0.95rem; line-height: 1; }
+  .mut-mark.before { color: var(--rk-muted); }
+  .mut-mark.after { color: var(--rk-link); }
+  .mut-figures { color: var(--rk-muted); font-size: 0.84rem; }
+  .mut-figures .hot { color: var(--rk-warn); font-weight: 600; }
+  .mut-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
   .mut-detail > div { min-width: 0; }
-  .mut-detail li { overflow-wrap: anywhere; }
-  .mut-detail {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3);
-    padding: var(--space-2) var(--space-3) var(--space-3);
-  }
-  .mut-detail h3 {
-    font-size: 11px; margin: 0 0 var(--space-1); color: var(--muted);
-    text-transform: uppercase; letter-spacing: 0.03em;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { transition: none !important; animation: none !important; }
-  }
-  [hidden] { display: none !important; }
+  .mut-detail h4 { margin: 0 0 var(--space-1); }
+  .mut-list { margin: 0; padding-left: var(--space-4); font-size: 0.86rem; }
+  .mut-list li { margin: var(--space-2) 0; overflow-wrap: anywhere; }
+  .mut-list .id { font-family: var(--font-mono); font-size: 0.8rem; }
+  .mut-list .more { color: var(--rk-muted); list-style: none; }
+  @media (max-width: 860px) { .mut-sum { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 </style>
 </head>
-<body>
-
-<header>
-  <h1 id="title">zeugnis — burndown</h1>
-  <span class="sub" id="subtitle"></span>
-  <div class="tabs">
-    <button type="button" class="tab-btn active" id="tabTrendBtn" data-view="trend" aria-pressed="true">Trend</button>
-    <button type="button" class="tab-btn" id="tabBreakdownBtn" data-view="breakdown" aria-pressed="false">Breakdown</button>
-    <button type="button" class="tab-btn" id="tabMutationBtn" data-view="mutation" aria-pressed="false" hidden>Mutation</button>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>zeugnis — burndown</h1>
+  <p class="rk-sub" id="subtitle"></p>
+  <div class="tabs" role="group" aria-label="Report view">
+    <button type="button" class="rk-btn" id="tabLedgerBtn" data-view="ledger" aria-pressed="true">Ledger</button>
+    <button type="button" class="rk-btn" id="tabMutationBtn" data-view="mutation" aria-pressed="false" hidden>Mutation</button>
+  </div>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search findings, mutants, modules">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-
-<section class="verdict-block" id="verdictBlock">
-  <div class="panel">
-    <h2>Has this cleanup converged?</h2>
+<main class="rk-wrap">
+  <section id="ledgerHead">
+    <h2 class="rk-q">Has this cleanup converged?</h2>
     <p class="verdict" id="verdict">
       A zeugnis cycle has converged when every finding it opened is closed and the
       latest pass had nothing left to close; it has stalled when a pass closes
@@ -229,29 +85,15 @@
       reopened past its thrash limit and refused to retry — the cycle gave up and
       handed it back to a human, and it will never close on its own.
     </p>
-    <ul class="legend">
+    <ul class="legend rk-card">
       <li><span class="swatch closed"></span><span class="glyph">✓</span><span class="name">closed</span> — fixed and re-verified; needs nothing</li>
       <li><span class="swatch open"></span><span class="glyph">●</span><span class="name">open</span> — still queued for a later pass</li>
       <li><span class="swatch escalated"></span><span class="glyph">▲</span><span class="name">escalated</span> — a human must act; the cycle stopped retrying</li>
       <li><span class="swatch line trend"></span><span class="glyph">╱</span><span class="name">cumulative closed</span> — the trend line, findings closed so far</li>
     </ul>
-  </div>
-</section>
-
-<div class="stat-row" id="statRow"></div>
-
-<div id="view-trend" class="content"></div>
-
-<div id="view-breakdown" class="layout" hidden>
-  <div class="content" id="breakdownContent"></div>
-  <div class="sidebar" id="sidebar">
-    <div class="placeholder">Click a "by status" or "by domain" bar, or focus it and press Enter, to list the findings behind that count.</div>
-  </div>
-</div>
-
-<div id="view-mutation" class="content" hidden>
-  <div class="panel wide">
-    <h2>Did the new tests kill what survived?</h2>
+  </section>
+  <section id="mutationHead" hidden>
+    <h2 class="rk-q">Did the new tests kill what survived?</h2>
     <p class="verdict" id="mutationVerdict">
       A mutant counts as killed only when a real mutation tool saw a test fail on
       it, or when a new test was proven to pass on the original code and to fail
@@ -263,569 +105,352 @@
       are kept out of the score, so a module can read 100 % while most of it is
       never exercised: read the untested count before the score.
     </p>
-    <ul class="legend">
+    <ul class="legend rk-card">
       <li><span class="mut-mark before">○</span><span class="name">before</span> — killed ÷ (killed + survived) with the original tests</li>
       <li><span class="mut-mark after">●</span><span class="name">after</span> — the same ratio with the proven new tests</li>
       <li><span class="glyph">◌</span><span class="name">untested</span> — counted beside the score, never inside it; amber while any remain</li>
     </ul>
-    <div id="mutationRows"></div>
+  </section>
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
   </div>
-  <div class="panel" id="mutationEquivalents"><h2>Equivalent mutants — read every reason</h2></div>
-  <div class="panel" id="mutationRejected"><h2>Rejected kill claims</h2></div>
-</div>
-
-<div id="err" class="panel" style="position:absolute;inset:0;display:none;place-items:center;z-index:9;"><p></p></div>
-
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
 <!--__D3_SUBSET__-->
-<script type="module">
-// build_burndown_html.py replaces everything from the marker onward on this
-// line with the real JSON literal.
-const BURNDOWN_DATA_RAW = /*__BURNDOWN_DATA__*/ null;
+<script>
+(() => {
+  const D = RK.readData("python3 plugins/zeugnis/scripts/build_burndown_html.py <repo_root> --template plugins/zeugnis/assets/burndown-viewer.html --d3 plugins/zeugnis/assets/inline-d3.html --tokens plugins/zeugnis/assets/tokens.css");
+  if (!D) return;
+  if (!D.passes) { RK.fail("The data in this file is not a zeugnis burndown; re-run zeugnis-status (with a zeugnis-cycle ledger present) to regenerate it.", ""); return; }
+  const { h, section } = RK;
+  const d3 = window.d3;
+  const LEDGER_SUB = "zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json";
 
-if (!BURNDOWN_DATA_RAW || !BURNDOWN_DATA_RAW.passes) {
-  const err = document.getElementById('err');
-  const msg = err.querySelector('p');
-  msg.textContent = 'No burndown data found in this file. Re-run ';
-  msg.appendChild(textEl('code', null, 'zeugnis-status'));
-  msg.appendChild(document.createTextNode(' (with a zeugnis-cycle ledger present) to regenerate it.'));
-  err.style.display = 'grid';
-  document.querySelector('.tabs').style.display = 'none';
-  ['statRow', 'verdictBlock', 'view-trend', 'view-breakdown', 'view-mutation'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
-  });
-  throw new Error('no data');
-}
-const DATA = BURNDOWN_DATA_RAW;
-const d3 = window.d3;
+  // R2: the subtitle carries scope and provenance only; every integer on the
+  // ledger view is printed on exactly one surface -- the tiles.
+  const subtitle = RK.$("#subtitle");
+  subtitle.textContent = LEDGER_SUB;
 
-// R2: the subtitle carries scope and provenance only. Every integer on this
-// page is printed on exactly one surface -- the tiles below -- so nothing here
-// restates totalPasses or totalFindingsEver.
-document.getElementById('subtitle').textContent =
-  'zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json';
+  const css = () => getComputedStyle(document.documentElement);
+  const role = (name) => css().getPropertyValue(name).trim();
+  const byStatus = D.byStatus || {};
 
-// Every string reaches the page through textContent (S3's second barrier),
-// never innerHTML. Function declarations hoist, so the no-data path above can
-// use this too.
-function textEl(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text !== undefined) e.textContent = String(text);
-  return e;
-}
-function button(cls, text) {
-  const b = textEl('button', cls, text);
-  b.type = 'button';
-  return b;
-}
-
-// ---- Breakdown: a bar is a toggle button; the sidebar lists its findings
-// behind a visible filter chip with a Clear control.
-let activeFilter = null;  // {field, key}
-let findingSeq = 0;
-
-function findingItem(f) {
-  const li = textEl('li', 'finding-item');
-  const toggle = button('finding-toggle');
-  toggle.setAttribute('aria-expanded', 'false');
-  toggle.appendChild(textEl('span', 'chev', '▸'));
-  toggle.appendChild(textEl('span', 'id', f.id));
-  if (f.severity) toggle.appendChild(textEl('span', 'sev', f.severity));
-  const detail = textEl('div', 'finding-detail');
-  detail.id = 'finding-detail-' + (++findingSeq);
-  detail.hidden = true;
-  toggle.setAttribute('aria-controls', detail.id);
-  detail.appendChild(textEl('div', 'meta',
-    'domain: ' + f.domain + ' · category: ' + (f.category || '?') + ' · status: ' + f.status
-    + (f.reopenCount ? ' · reopened ' + f.reopenCount + '×' : '')));
-  detail.appendChild(textEl('div', 'evidence', f.evidence || 'no evidence recorded'));
-  toggle.addEventListener('click', () => {
-    const open = toggle.getAttribute('aria-expanded') !== 'true';
-    toggle.setAttribute('aria-expanded', String(open));
-    toggle.querySelector('.chev').textContent = open ? '▾' : '▸';
-    detail.hidden = !open;
-  });
-  li.appendChild(toggle);
-  li.appendChild(detail);
-  return li;
-}
-
-function renderSidebar() {
-  const sidebar = document.getElementById('sidebar');
-  sidebar.textContent = '';
-  if (!activeFilter) {
-    sidebar.appendChild(textEl('div', 'placeholder',
-      'Click a "by status" or "by domain" bar, or focus it and press Enter, to list the findings behind that count.'));
-    return;
+  // ---- R1: the ledger verdict, from this run's numbers -------------------------
+  function ledgerVerdict() {
+    const open = byStatus.open || 0, escalated = byStatus.escalated || 0;
+    const passes = D.passes || [];
+    const last = passes.length ? passes[passes.length - 1] : null;
+    const lastClosed = last ? last.closed : 0;
+    if (!passes.length) {
+      return ["flat", "No cleanup pass has run yet, so this burndown has no verdict to give: run zeugnis-cycle and the trend line below will start at pass 1."];
+    }
+    if (escalated > 0) {
+      return ["bad", "This cleanup has NOT converged: " + escalated + " finding" + (escalated === 1 ? " is" : "s are") + " escalated and " + open + " still open, "
+        + "and the last pass (#" + last.passNumber + ", " + last.domain + ") closed " + lastClosed + ". An escalated finding is one zeugnis reopened past its thrash "
+        + "limit and stopped retrying — it will never close on its own, so the cycle is waiting on a human, not on another pass."];
+    }
+    if (open === 0) {
+      return ["ok", "This cleanup has converged: every finding zeugnis opened is closed, nothing is escalated, and the trend line below has flattened at its total. Nothing here needs a human."];
+    }
+    if (lastClosed === 0) {
+      return ["warn", "This cleanup has stalled rather than converged: " + open + " finding" + (open === 1 ? " is" : "s are") + " still open but the last pass (#"
+        + last.passNumber + ", " + last.domain + ") closed none of them, so the trend line below is flat while work remains."];
+    }
+    return ["info", "This cleanup is still closing findings, not yet converged: " + open + " still open, and the last pass (#" + last.passNumber + ", " + last.domain
+      + ") closed " + lastClosed + ". Nothing is escalated, so another pass should keep the trend line below climbing."];
   }
-  const head = textEl('div', 'filter-head');
-  head.appendChild(textEl('span', 'filter-chip', activeFilter.field + ': ' + activeFilter.key));
-  const clear = button('small-btn', 'Clear');
-  clear.setAttribute('aria-label', 'Clear the ' + activeFilter.field + ' filter');
-  clear.addEventListener('click', clearFilter);
-  head.appendChild(clear);
-  sidebar.appendChild(head);
-  const findings = (DATA.findings || []).filter(f => f[activeFilter.field] === activeFilter.key);
-  if (!findings.length) {
-    sidebar.appendChild(textEl('div', 'placeholder', 'No findings in this bucket.'));
-    return;
-  }
-  const list = textEl('ul', 'finding-list');
-  for (const f of findings) list.appendChild(findingItem(f));
-  sidebar.appendChild(list);
-}
+  const [vTone, vText] = ledgerVerdict();
+  RK.$("#verdict").textContent = vText;
+  RK.$("#verdict").classList.add(vTone);
 
-function syncBarRows() {
-  for (const row of document.querySelectorAll('.bar-row')) {
-    const on = !!activeFilter && row.dataset.field === activeFilter.field && row.dataset.key === activeFilter.key;
-    row.setAttribute('aria-pressed', String(on));
-  }
-}
-function toggleFilter(field, key) {
-  const same = activeFilter && activeFilter.field === field && activeFilter.key === key;
-  activeFilter = same ? null : { field, key };
-  syncBarRows();
-  renderSidebar();
-}
-function clearFilter() {
-  activeFilter = null;
-  syncBarRows();
-  renderSidebar();
-}
+  // ---- ledger: tiles (R3: only the number somebody must act on is "bad") --------
+  const escalated = byStatus.escalated || 0;
+  const glanceBox = RK.glance({ stats: [
+    { label: "Total passes", value: D.totalPasses, note: "context" },
+    { label: "Findings tracked", value: D.totalFindingsEver, note: "context" },
+    { label: "Open", value: byStatus.open || 0, note: "● queued for a later pass" },
+    { label: "Closed", value: byStatus.closed || 0, note: "✓ done" },
+    { label: "Escalated", value: escalated, bad: escalated > 0, note: "▲ needs a human" },
+  ] });
 
-// The status glyphs repeat the legend's, so a bar's state is named by shape as
-// well as by its fill colour (R4).
-const STATUS_GLYPH = { closed: '✓ ', open: '● ', escalated: '▲ ' };
+  // ---- ledger: the trend (d3) ---------------------------------------------------
+  // ONE line, cumulative closed vs. pass index. A bar's height (a per-pass
+  // rate) and a line's height (a running total) mean different things, so they
+  // never share an axis. Per-pass detail lives in the readout, once (R2).
+  const passes = D.passes;
+  const chartHost = h("div", { class: "rk-card" });
+  const readout = h("div", { class: "readout", "aria-live": "polite" });
+  let pinned = null;   // a passNumber, kept across theme redraws
+  let showPass = () => {};
+  const describe = (p) => "pass #" + p.passNumber + " (" + p.domain + "): closed " + p.closed + " this pass, "
+    + p.cumulativeClosed + " closed in total, " + p.fixOrDraftOutcomes + " fix/draft outcomes";
 
-function renderBarPanel(title, parent, counts, colorMap, field) {
-  const panel = textEl('div', 'panel');
-  panel.appendChild(textEl('h2', null, title));
-  const keys = Object.keys(counts);
-  const max = Math.max(1, ...keys.map(k => counts[k] || 0));
-  for (const k of keys) {
-    const n = counts[k] || 0;
-    const row = button('bar-row');
-    row.dataset.field = field;
-    row.dataset.key = k;
-    row.setAttribute('aria-pressed', 'false');
-    row.setAttribute('aria-label', title + ': ' + k + ', ' + n + '. Toggle to list these findings.');
-    row.appendChild(textEl('span', 'label', (field === 'status' ? STATUS_GLYPH[k] || '' : '') + k));
-    const track = textEl('span', 'track');
-    const fill = textEl('span', 'fill');
-    fill.style.display = 'block';
-    fill.style.width = (n / max * 100) + '%';
-    fill.style.background = (colorMap && colorMap[k]) || 'var(--accent)';
-    track.appendChild(fill);
-    row.appendChild(track);
-    row.appendChild(textEl('span', 'count', n));
-    row.addEventListener('click', () => toggleFilter(field, k));
-    panel.appendChild(row);
-  }
-  parent.appendChild(panel);
-}
-
-// Primary view: ONE line, cumulative closed vs. pass index. No grouped bars
-// sharing this axis -- a bar's height (a per-pass rate) and a line's height
-// (a running total) mean structurally different things, which is exactly
-// the chartjunk the cupertino-council verdict for zeugnis's burndown flagged
-// in the old combined chart this function replaces. Per-pass detail
-// (closed / fixOrDraftOutcomes) is still available, but only as a
-// per-point tooltip -- metadata, never a second competing mark.
-function renderTrendChart(parent) {
-  const panel = textEl('div', 'panel wide');
-  panel.appendChild(textEl('h2', null, 'Cumulative findings closed, by pass'));
-
-  const passes = DATA.passes;
-  const W = 900, padL = 44, padR = 20, padT = 16, padB = 34;
-  // R5: the plot's height comes from the data, not a constant. The y axis
-  // counts findings closed, so it gets one 26px band per finding, floored at
-  // 180 so a one- or two-finding run is still legible. A fixed 300px either
-  // crushed a long cleanup into unreadable ticks or left a short one floating
-  // in dead space -- the same defect the 55-72%-empty screenshots came from.
-  const maxCum = passes.length
-    ? Math.max(1, ...passes.map(p => p.cumulativeClosed))
-    : 1;
-  const H = Math.max(180, maxCum * 26 + padT + padB);
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-
-  const svg = d3.select(panel).append('svg')
-    .attr('viewBox', '0 0 ' + W + ' ' + H)
-    .attr('id', 'chart');
-
-  if (!passes.length) {
-    svg.append('text')
-      .attr('x', W / 2).attr('y', H / 2)
-      .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--muted)')
-      .text('No passes recorded yet.');
-    parent.appendChild(panel);
-    return;
-  }
-
-  const lastPass = passes[passes.length - 1].passNumber;
-  const x = d3.scaleLinear().domain([1, Math.max(1, lastPass)]).range([padL, padL + plotW]);
-  const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
-
-  svg.append('line')
-    .attr('x1', padL).attr('y1', padT + plotH).attr('x2', padL + plotW).attr('y2', padT + plotH)
-    .attr('stroke', 'var(--border)');
-  svg.append('line')
-    .attr('x1', padL).attr('y1', padT).attr('x2', padL).attr('y2', padT + plotH)
-    .attr('stroke', 'var(--border)');
-
-  for (const tick of y.ticks(5)) {
-    svg.append('text')
-      .attr('x', padL - 8).attr('y', y(tick))
-      .attr('text-anchor', 'end').attr('dominant-baseline', 'middle')
-      .attr('fill', 'var(--muted)').attr('font-size', 10)
-      .text(tick);
-  }
-  for (const p of passes) {
-    svg.append('text')
-      .attr('x', x(p.passNumber)).attr('y', H - 10)
-      .attr('text-anchor', 'middle')
-      .attr('fill', 'var(--muted)').attr('font-size', 10)
-      .text('#' + p.passNumber);
-  }
-
-  // Manual path string: inline-d3.html vendors d3-scale + d3-selection but
-  // not d3-shape, so d3.line() is not available here -- this is the same
-  // coordinate math the old combined chart already did by hand for its
-  // cumulative-closed polyline, just fed by d3 scales instead of a
-  // hand-rolled linear map.
-  const pathD = passes.map((p, i) =>
-    (i === 0 ? 'M' : 'L') + x(p.passNumber) + ',' + y(p.cumulativeClosed)
-  ).join(' ');
-  svg.append('path')
-    .attr('d', pathD).attr('fill', 'none')
-    .attr('stroke', 'var(--accent-2)').attr('stroke-width', 2);
-
-  // Hover or focus a pass to read it; click, Enter or Space pins it; Esc or a
-  // second click unpins. The per-pass numbers live in this one readout -- a
-  // tooltip copy of them would be a second surface for the same numbers (R2).
-  const crosshair = svg.append('line').attr('class', 'crosshair')
-    .attr('y1', padT).attr('y2', padT + plotH).attr('visibility', 'hidden');
-  const readout = textEl('div', 'readout');
-  readout.setAttribute('aria-live', 'polite');
-  const describe = p => 'pass #' + p.passNumber + ' (' + p.domain + '): closed ' + p.closed + ' this pass, '
-    + p.cumulativeClosed + ' closed in total, ' + p.fixOrDraftOutcomes + ' fix/draft outcomes';
-  let pinned = null;
-
-  function show(p) {
-    readout.textContent = '';
-    readout.classList.toggle('pinned', !!pinned);
-    if (!p) {
-      crosshair.attr('visibility', 'hidden');
-      readout.textContent = 'Hover or focus a pass to read it; click it, or press Enter, to pin it. Esc unpins.';
+  function drawTrend() {
+    const C = { border: role("--rk-border"), muted: role("--rk-muted"), line: role("--rk-link") };
+    chartHost.textContent = "";
+    const W = 900, padL = 44, padR = 20, padT = 16, padB = 34;
+    // R5: the plot's height comes from the data, one 26px band per closed
+    // finding, floored so a one- or two-finding run is still legible.
+    const maxCum = passes.length ? Math.max(1, ...passes.map((p) => p.cumulativeClosed)) : 1;
+    const H = Math.max(180, maxCum * 26 + padT + padB);
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+    const svg = d3.select(chartHost).append("svg").attr("viewBox", "0 0 " + W + " " + H).attr("id", "chart")
+      .attr("role", "img").attr("aria-label", "Cumulative findings closed across " + passes.length + " passes");
+    if (!passes.length) {
+      svg.append("text").attr("x", W / 2).attr("y", H / 2).attr("text-anchor", "middle").attr("fill", C.muted).text("No passes recorded yet.");
+      chartHost.appendChild(readout);
       return;
     }
-    crosshair.attr('x1', x(p.passNumber)).attr('x2', x(p.passNumber)).attr('visibility', 'visible');
-    readout.appendChild(textEl('span', null, (pinned === p ? 'Pinned — ' : '') + describe(p) + '.'));
-    if (pinned === p) {
-      const unpin = button('small-btn', 'Unpin');
-      unpin.addEventListener('click', () => setPinned(null));
-      readout.appendChild(unpin);
+    const lastPass = passes[passes.length - 1].passNumber;
+    const x = d3.scaleLinear().domain([1, Math.max(1, lastPass)]).range([padL, padL + plotW]);
+    const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
+    svg.append("line").attr("x1", padL).attr("y1", padT + plotH).attr("x2", padL + plotW).attr("y2", padT + plotH).attr("stroke", C.border);
+    svg.append("line").attr("x1", padL).attr("y1", padT).attr("x2", padL).attr("y2", padT + plotH).attr("stroke", C.border);
+    for (const tick of y.ticks(5)) {
+      svg.append("text").attr("x", padL - 8).attr("y", y(tick)).attr("text-anchor", "end").attr("dominant-baseline", "middle")
+        .attr("fill", C.muted).attr("font-size", 11).text(tick);
     }
-  }
-  function setPinned(p) {
-    pinned = p;
-    points.attr('aria-pressed', d => String(d === pinned));
-    show(pinned);
-  }
-  unpinPass = () => { if (pinned) setPinned(null); };
+    for (const p of passes) {
+      svg.append("text").attr("x", x(p.passNumber)).attr("y", H - 10).attr("text-anchor", "middle").attr("fill", C.muted).attr("font-size", 11).text("#" + p.passNumber);
+    }
+    // inline-d3 vendors d3-scale + d3-selection but not d3-shape: the path
+    // string is built by hand from the d3 scales.
+    const pathD = passes.map((p, i) => (i === 0 ? "M" : "L") + x(p.passNumber) + "," + y(p.cumulativeClosed)).join(" ");
+    svg.append("path").attr("d", pathD).attr("fill", "none").attr("stroke", C.line).attr("stroke-width", 2);
+    const crosshair = svg.append("line").attr("y1", padT).attr("y2", padT + plotH).attr("visibility", "hidden")
+      .attr("stroke", C.muted).attr("stroke-dasharray", "3 3");
+    const byNumber = (n) => passes.find((p) => p.passNumber === n) || null;
+    const points = svg.selectAll("g.pass-point").data(passes).join("g")
+      .attr("class", "pass-point").attr("tabindex", 0).attr("role", "button")
+      .attr("aria-pressed", (p) => String(p.passNumber === pinned))
+      .attr("aria-label", (p) => describe(p) + ". Press Enter to pin.")
+      .on("mouseenter", (_, p) => showPass(p)).on("focus", (_, p) => showPass(p))
+      .on("mouseleave", () => showPass(byNumber(pinned))).on("blur", () => showPass(byNumber(pinned)))
+      .on("click", (_, p) => setPinned(pinned === p.passNumber ? null : p.passNumber))
+      .on("keydown", (event, p) => {
+        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPinned(pinned === p.passNumber ? null : p.passNumber); }
+      });
+    points.append("circle").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 14).attr("fill", "transparent");
+    points.append("circle").attr("class", "ring").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 8);
+    points.append("circle").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 3.5).attr("fill", C.line);
 
-  const points = svg.selectAll('g.pass-point').data(passes).join('g')
-    .attr('class', 'pass-point')
-    .attr('tabindex', 0)
-    .attr('role', 'button')
-    .attr('aria-pressed', 'false')
-    .attr('aria-label', p => describe(p) + '. Press Enter to pin.')
-    .on('mouseenter', (_, p) => show(p))
-    .on('focus', (_, p) => show(p))
-    .on('mouseleave', () => show(pinned))
-    .on('blur', () => show(pinned))
-    .on('click', (_, p) => setPinned(pinned === p ? null : p))
-    .on('keydown', (event, p) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        setPinned(pinned === p ? null : p);
+    showPass = (p) => {
+      readout.textContent = "";
+      readout.classList.toggle("pinned", !!pinned);
+      if (!p) {
+        crosshair.attr("visibility", "hidden");
+        readout.textContent = "Hover or focus a pass to read it; click it, or press Enter, to pin it. Esc unpins.";
+        return;
       }
-    });
-  points.append('circle').attr('class', 'hit')
-    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
-    .attr('r', 14).attr('fill', 'transparent');
-  points.append('circle').attr('class', 'ring')
-    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed)).attr('r', 8);
-  points.append('circle').attr('class', 'dot')
-    .attr('cx', p => x(p.passNumber)).attr('cy', p => y(p.cumulativeClosed))
-    .attr('r', 3.5).attr('fill', 'var(--accent-2)');
-
-  panel.appendChild(readout);
-  show(null);
-  parent.appendChild(panel);
-}
-
-// Set by renderTrendChart once the chart exists; Esc calls it.
-let unpinPass = () => {};
-
-function renderTrendView() {
-  const view = document.getElementById('view-trend');
-  view.textContent = '';
-  renderTrendChart(view);
-}
-
-// Secondary view: current-state snapshots (by-status, by-domain) -- a
-// fundamentally different question from "is this converging," so it is
-// never co-displayed with the trend line. Content and interaction
-// (click a bar, see the findings in the sidebar) are unchanged from the
-// original single-view file.
-function renderBreakdownView() {
-  const content = document.getElementById('breakdownContent');
-  content.textContent = '';
-  renderBarPanel('Findings by status', content, DATA.byStatus,
-    { open: 'var(--status-warn)', closed: 'var(--status-good)', escalated: 'var(--status-bad)' }, 'status');
-  renderBarPanel('Findings by domain', content, DATA.byDomain, null, 'domain');
-  renderSidebar();
-}
-
-// R1: the report's own conclusion, in words. The element and a truthful
-// default sentence exist in static markup; only the run-specific numbers are
-// substituted here, via textContent, so a viewer opened with the script
-// blocked still reads a verdict rather than an empty box.
-function renderVerdict() {
-  const open = DATA.byStatus.open || 0;
-  const escalated = DATA.byStatus.escalated || 0;
-  const passes = DATA.passes || [];
-  const last = passes.length ? passes[passes.length - 1] : null;
-  const lastClosed = last ? last.closed : 0;
-
-  let sentence;
-  if (!passes.length) {
-    sentence = 'No cleanup pass has run yet, so this burndown has no verdict to give: '
-      + 'run zeugnis-cycle and the trend line below will start at pass 1.';
-  } else if (escalated > 0) {
-    sentence = 'This cleanup has NOT converged: ' + escalated + ' finding'
-      + (escalated === 1 ? ' is' : 's are') + ' escalated and ' + open + ' still open, '
-      + 'and the last pass (#' + last.passNumber + ', ' + last.domain + ') closed '
-      + lastClosed + '. An escalated finding is one zeugnis reopened past its thrash '
-      + 'limit and stopped retrying — it will never close on its own, so the cycle is '
-      + 'waiting on a human, not on another pass.';
-  } else if (open === 0) {
-    sentence = 'This cleanup has converged: every finding zeugnis opened is closed, '
-      + 'nothing is escalated, and the trend line below has flattened at its total. '
-      + 'Nothing here needs a human.';
-  } else if (lastClosed === 0) {
-    sentence = 'This cleanup has stalled rather than converged: ' + open + ' finding'
-      + (open === 1 ? ' is' : 's are') + ' still open but the last pass (#'
-      + last.passNumber + ', ' + last.domain + ') closed none of them, so the trend '
-      + 'line below is flat while work remains.';
-  } else {
-    sentence = 'This cleanup is still closing findings, not yet converged: ' + open
-      + ' still open, and the last pass (#' + last.passNumber + ', ' + last.domain
-      + ') closed ' + lastClosed + '. Nothing is escalated, so another pass should '
-      + 'keep the trend line below climbing.';
+      crosshair.attr("x1", x(p.passNumber)).attr("x2", x(p.passNumber)).attr("visibility", "visible");
+      readout.appendChild(h("span", {}, (pinned === p.passNumber ? "Pinned — " : "") + describe(p) + "."));
+      if (pinned === p.passNumber) {
+        const unpin = h("button", { class: "rk-btn", type: "button" }, "Unpin");
+        unpin.addEventListener("click", () => setPinned(null));
+        readout.appendChild(unpin);
+      }
+    };
+    chartHost.appendChild(readout);
+    showPass(byNumber(pinned));
   }
-  document.getElementById('verdict').textContent = sentence;
-}
-
-// R3: "Escalated" is a number somebody has to act on; "Total passes" is
-// context. They are no longer rendered identically -- see .stat.watch /
-// .stat.alarm in the stylesheet.
-function renderStatRow() {
-  const statRow = document.getElementById('statRow');
-  statRow.textContent = '';
-  const stats = [
-    ['Total passes', DATA.totalPasses, '', ''],
-    ['Findings tracked', DATA.totalFindingsEver, '', ''],
-    ['Open', DATA.byStatus.open || 0, 'watch', '● queued for a later pass'],
-    ['Closed', DATA.byStatus.closed || 0, '', '✓ done'],
-    ['Escalated', DATA.byStatus.escalated || 0, 'alarm', '▲ needs a human'],
-  ];
-  for (const [k, v, tone, need] of stats) {
-    const cls = 'stat' + (tone ? ' ' + tone : '') + (tone && v > 0 ? ' hot' : '');
-    const stat = textEl('div', cls);
-    stat.appendChild(textEl('div', 'v', v));
-    stat.appendChild(textEl('div', 'k', k));
-    if (need) stat.appendChild(textEl('div', 'need', need));
-    statRow.appendChild(stat);
+  function setPinned(n) {
+    pinned = n;
+    RK.$$(".pass-point").forEach((g, i) => g.setAttribute("aria-pressed", String(passes[i].passNumber === n)));
+    showPass(passes.find((p) => p.passNumber === n) || null);
   }
-}
 
-// The Mutation tab (issue #142) answers a different question from the
-// ledger -- "did the new tests kill what survived?" -- so it gets its own view,
-// and every string in it goes in through textContent, never innerHTML.
-function pct(v) { return v === null || v === undefined ? 'n/a' : (v * 100).toFixed(1) + ' %'; }
-
-function fillMutationList(id, items, describe, empty) {
-  const panel = document.getElementById(id);
-  const list = textEl('ul', 'mut-list');
-  if (!items.length) list.appendChild(textEl('li', null, empty));
-  for (const item of items) {
-    const [head, reason] = describe(item);
-    const li = textEl('li');
-    li.appendChild(textEl('span', 'id', head));
-    li.appendChild(textEl('span', null, ' — ' + reason));
-    list.appendChild(li);
+  // ---- ledger: every finding with its evidence (R6) and facets (R8) --------------
+  const STATUS_RULE = { closed: "✓ closed", open: "● open", escalated: "▲ escalated" };
+  const STATUS_NOTE = {
+    escalated: "reopened past the thrash limit; the cycle stopped retrying and a human must act",
+    open: "queued for a later pass",
+    closed: "fixed and re-verified",
+  };
+  function ledgerFinding(f) {
+    // ledger evidence is a location, "path:line" when the auditor had a line.
+    const m = /^(.+):(\d+)$/.exec(f.evidence || "");
+    return {
+      id: f.id,
+      severity: f.severity || "unrated",
+      rule: STATUS_RULE[f.status] || f.status,
+      claim: (f.category || "uncategorised") + " — " + f.domain,
+      file: m ? m[1] : (f.evidence || null),
+      line: m ? Number(m[2]) : null,
+      evidence: [{ label: "status", detail: (STATUS_NOTE[f.status] || f.status) + (f.reopenCount ? "; reopened " + f.reopenCount + "×" : "") }],
+      tags: { status: f.status, domain: f.domain, severity: String(f.severity || "unrated").toLowerCase() },
+    };
   }
-  panel.appendChild(list);
-}
+  const domainOrder = Object.keys(D.byDomain || {});
 
-const DETAIL_CAP = 8;
+  // ---- mutation view -------------------------------------------------------------
+  const M = D.mutation;
+  const pct = (v) => (v === null || v === undefined ? "n/a" : (v * 100).toFixed(1) + " %");
+  const modSlug = (mod) => "module-" + String(mod).replace(/[^A-Za-z0-9_.-]/g, "-");
+  const CAP = 8;
 
-// One module's mutants, opened from its row: what the proven tests killed,
-// what is still alive, and what was judged equivalent.
-function moduleDetail(M, m) {
-  const detail = textEl('div', 'mut-detail');
-  const sections = [
-    ['Killed', (M.kills || []).filter(k => k.module === m.module),
-      k => [k.mutantId, k.test || 'killed in the re-measure (no proof recorded)']],
-    ['Still alive', (M.alive || []).filter(a => a.module === m.module),
-      a => [a.mutantId, a.evidence + ' · ' + (a.state || a.category)]],
-    ['Equivalent (model judgement)', M.equivalents.filter(e => e.module === m.module),
-      e => [e.mutantId, e.reason]],
-  ];
-  for (const [title, items, describe] of sections) {
-    const col = textEl('div');
-    col.appendChild(textEl('h3', null, title));
-    const list = textEl('ul', 'mut-list');
-    if (!items.length) list.appendChild(textEl('li', 'more', 'none'));
-    for (const item of items.slice(0, DETAIL_CAP)) {
-      const [head, reason] = describe(item);
-      const li = textEl('li');
-      li.appendChild(textEl('span', 'id', head));
-      li.appendChild(textEl('span', null, ' — ' + reason));
+  // A mutant list shows CAP rows and a button that opens the rest in place.
+  function mutantList(items, describe) {
+    const list = h("ul", { class: "mut-list" });
+    if (!items.length) { list.appendChild(h("li", { class: "more" }, "none")); return list; }
+    const extra = [];
+    items.forEach((item, i) => {
+      const [head, text] = describe(item);
+      const li = h("li", { hidden: i >= CAP }, h("span", { class: "id" }, head), " — ", text);
+      if (i >= CAP) extra.push(li);
       list.appendChild(li);
+    });
+    if (extra.length) {
+      const more = h("li", { class: "more" });
+      const btn = h("button", { class: "rk-btn", type: "button", "aria-expanded": "false" }, "Show all " + items.length);
+      btn.addEventListener("click", () => {
+        const open = btn.getAttribute("aria-expanded") !== "true";
+        btn.setAttribute("aria-expanded", String(open));
+        btn.textContent = open ? "Show fewer" : "Show all " + items.length;
+        extra.forEach((li) => { li.hidden = !open; });
+      });
+      more.appendChild(btn);
+      list.appendChild(more);
     }
-    if (items.length > DETAIL_CAP) {
-      list.appendChild(textEl('li', 'more',
-        '+' + (items.length - DETAIL_CAP) + ' more in analysis/zeugnis/mutation_harden_summary.json'));
-    }
-    col.appendChild(list);
-    detail.appendChild(col);
+    return list;
   }
-  return detail;
-}
 
-function mutationSentence(M) {
-  const cut = M.shards.filter(s => !s.baselineComplete || s.remeasureComplete === false).map(s => s.shard);
-  const untested = M.modules.filter(m => (m.after.noTests || 0) > 0).map(m => m.module);
-  const alive = M.modules.filter(m => (m.after.survived || 0) > 0);
-  const scored = M.modules.filter(m => m.after.score !== null && m.after.score !== undefined);
-  const worst = scored.sort((a, b) => a.after.score - b.after.score)[0];
-  let s = cut.length
-    ? 'This run is INCOMPLETE: shard ' + cut.join(', ') + ' timed out or left mutants unchecked, so the '
-      + 'scores below cover only what the tool finished. '
-    : '';
-  if (!alive.length && !untested.length) {
-    s += 'Every mutant the tool generated here is now killed or judged equivalent, and every kill '
-      + 'counted was proven by applying its mutant.';
-  } else {
-    s += 'Mutants are still alive after hardening'
-      + (worst ? ', and ' + worst.module + ' has the lowest score' : '')
-      + (untested.length
-        ? '; ' + untested.join(', ') + (untested.length === 1 ? ' still has' : ' still have')
-          + ' code no selected test reaches, which its score leaves out.'
-        : '.');
-  }
-  if (M.equivalents.length) {
-    s += ' Equivalence is a model judgement no command checked: read every reason below before '
-      + 'accepting the mutants it leaves alive.';
-  }
-  if (M.rejected.length) s += ' Some kill claims were rejected and are not counted.';
-  return s;
-}
-
-function renderMutationView() {
-  const M = DATA.mutation;
-  if (!M) return;
-  document.getElementById('tabMutationBtn').hidden = false;
-  const verdict = document.getElementById('mutationVerdict');
-  if (M.error) {
-    verdict.textContent = M.error + ' Re-run mutation_harden.py report to regenerate it.';
-    document.getElementById('mutationEquivalents').hidden = true;
-    document.getElementById('mutationRejected').hidden = true;
-    return;
-  }
-  const rows = document.getElementById('mutationRows');
-  rows.textContent = '';
-  M.modules.forEach((m, index) => {
-    const item = textEl('div', 'mut-item');
-    const row = button('mut-row');
-    row.setAttribute('aria-expanded', 'false');
-    const name = textEl('span', 'module');
-    name.appendChild(textEl('span', 'chev', '▸'));
-    name.appendChild(document.createTextNode(m.module));
-    row.appendChild(name);
-    const track = textEl('span', 'mut-track');
+  function moduleRow(m) {
+    const alive = (M.alive || []).filter((a) => a.module === m.module);
+    const kills = (M.kills || []).filter((k) => k.module === m.module);
+    const equivalents = (M.equivalents || []).filter((e) => e.module === m.module);
+    const untested = m.after.noTests || 0;
+    const track = h("span", { class: "mut-track" });
     // The ring is drawn last, so an unchanged score still shows both marks.
-    for (const [cls, glyph, score] of [['after', '●', m.after.score], ['before', '○', m.before.score]]) {
+    for (const [cls, glyph, score] of [["after", "●", m.after.score], ["before", "○", m.before.score]]) {
       if (score === null || score === undefined) continue;
-      const mark = textEl('span', 'mut-mark ' + cls, glyph);
-      mark.style.left = (score * 100) + '%';
-      mark.setAttribute('aria-label', 'score ' + cls);
+      const mark = h("span", { class: "mut-mark " + cls, "aria-label": "score " + cls }, glyph);
+      mark.style.left = (score * 100) + "%";
       track.appendChild(mark);
     }
-    row.appendChild(track);
-    const figures = textEl('span', 'figures');
-    figures.appendChild(textEl('span', null, pct(m.before.score) + ' → ' + pct(m.after.score)));
-    figures.appendChild(textEl('span', 'untested' + ((m.after.noTests || 0) > 0 ? ' hot' : ''),
-      ' · ◌ untested ' + (m.before.noTests || 0) + ' → ' + (m.after.noTests || 0)));
-    figures.appendChild(textEl('span', null,
-      ' · equivalent ' + (m.after.equivalent || 0) + ' · unreached ' + (m.unreached || 0)));
-    row.appendChild(figures);
-    const detail = moduleDetail(M, m);
-    detail.id = 'module-detail-' + index;
-    detail.hidden = true;
-    row.setAttribute('aria-controls', detail.id);
-    row.addEventListener('click', () => {
-      const open = row.getAttribute('aria-expanded') !== 'true';
-      row.setAttribute('aria-expanded', String(open));
-      row.querySelector('.chev').textContent = open ? '▾' : '▸';
-      detail.hidden = !open;
-    });
-    item.appendChild(row);
-    item.appendChild(detail);
-    rows.appendChild(item);
-  });
-  fillMutationList('mutationEquivalents', M.equivalents, e => [e.mutantId, e.reason], 'None judged equivalent.');
-  fillMutationList('mutationRejected', M.rejected, r => [r.mutantId + ' (' + r.state + ')', r.reason],
-    'No kill claim was rejected.');
-  verdict.textContent = mutationSentence(M);
-}
-
-function setActiveTab(view) {
-  for (const [id, name] of [['tabTrendBtn', 'trend'], ['tabBreakdownBtn', 'breakdown'], ['tabMutationBtn', 'mutation']]) {
-    const tab = document.getElementById(id);
-    tab.classList.toggle('active', view === name);
-    tab.setAttribute('aria-pressed', String(view === name));
+    const figures = h("span", { class: "mut-figures" },
+      pct(m.before.score) + " → " + pct(m.after.score),
+      m.after.scoreExcludingEquivalent !== undefined ? " (" + pct(m.after.scoreExcludingEquivalent) + " without equivalents)" : null,
+      " · ", h("span", { class: untested > 0 ? "hot" : "" }, "◌ untested " + (m.before.noTests || 0) + " → " + untested),
+      " · equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+    const tone = alive.length || untested > 0 ? "warn" : "ok";
+    const id = modSlug(m.module);
+    return h("details", { class: "rk-finding " + tone, id, "data-rk-search": true },
+      h("summary", {}, h("span", { class: "mut-sum" }, h("span", { class: "module" }, m.module), track, figures),
+        h("a", { class: "rk-permalink", href: "#" + id, title: "Link to this module", text: "#" })),
+      h("div", { class: "rk-body mut-detail" },
+        h("div", {}, h("h4", {}, "Killed (" + kills.length + ")"),
+          mutantList(kills, (k) => [k.mutantId, [k.test || "killed in the re-measure (no proof recorded)",
+            k.proof ? h("div", {}, "proof: ", h("code", {}, k.proof)) : null]])),
+        h("div", {}, h("h4", {}, "Still alive (" + alive.length + ")"),
+          mutantList(alive, (a) => [a.mutantId, a.evidence + " · " + (a.state || a.category) + (a.fixability ? " · " + a.fixability : "")])),
+        h("div", {}, h("h4", {}, "Equivalent — model judgement (" + equivalents.length + ")"),
+          mutantList(equivalents, (e) => [e.mutantId, e.reason]))));
   }
-  document.getElementById('view-trend').hidden = view !== 'trend';
-  document.getElementById('view-breakdown').hidden = view !== 'breakdown';
-  document.getElementById('view-mutation').hidden = view !== 'mutation';
-  // The ledger's convergence verdict and tiles answer the other tabs' question.
-  document.getElementById('verdictBlock').hidden = view === 'mutation';
-  document.getElementById('statRow').hidden = view === 'mutation';
-  document.getElementById('subtitle').textContent = view === 'mutation'
-    ? 'zeugnis-mutation-harden run ' + DATA.mutation.runId + ' · generated from analysis/zeugnis/mutation_harden_summary.json'
-    : 'zeugnis-cycle pass history · generated from analysis/zeugnis/ledger.json';
-}
 
-document.getElementById('tabTrendBtn').addEventListener('click', () => setActiveTab('trend'));
-document.getElementById('tabBreakdownBtn').addEventListener('click', () => setActiveTab('breakdown'));
-document.getElementById('tabMutationBtn').addEventListener('click', () => setActiveTab('mutation'));
-// Esc lets go of whatever is pinned or filtered.
-document.addEventListener('keydown', event => {
-  if (event.key !== 'Escape') return;
-  unpinPass();
-  if (activeFilter) clearFilter();
-});
+  function mutationSentence() {
+    const cut = M.shards.filter((s) => !s.baselineComplete || s.remeasureComplete === false).map((s) => s.shard);
+    const untested = M.modules.filter((m) => (m.after.noTests || 0) > 0).map((m) => m.module);
+    const alive = M.modules.filter((m) => (m.after.survived || 0) > 0);
+    const scored = M.modules.filter((m) => m.after.score !== null && m.after.score !== undefined);
+    const worst = scored.slice().sort((a, b) => a.after.score - b.after.score)[0];
+    let s = cut.length
+      ? "This run is INCOMPLETE: shard " + cut.join(", ") + " timed out or left mutants unchecked, so the scores below cover only what the tool finished. " : "";
+    if (!alive.length && !untested.length) {
+      s += "Every mutant the tool generated here is now killed or judged equivalent, and every kill counted was proven by applying its mutant.";
+    } else {
+      s += "Mutants are still alive after hardening" + (worst ? ", and " + worst.module + " has the lowest score" : "")
+        + (untested.length ? "; " + untested.join(", ") + (untested.length === 1 ? " still has" : " still have") + " code no selected test reaches, which its score leaves out." : ".");
+    }
+    if (M.equivalents.length) s += " Equivalence is a model judgement no command checked: read every reason below before accepting the mutants it leaves alive.";
+    if (M.rejected.length) s += " Some kill claims were rejected and are not counted.";
+    return [cut.length || alive.length || untested.length ? "warn" : "ok", s];
+  }
 
-renderVerdict();
-renderStatRow();
-renderTrendView();
-renderBreakdownView();
-renderMutationView();
-if (DATA.mutation && new URLSearchParams(location.search).get('view') === 'mutation') setActiveTab('mutation');
+  // ---- compose -------------------------------------------------------------------
+  const content = RK.$("#rk-content");
+  const ledgerGroup = h("div", { id: "grp-ledger" },
+    section("glance", "Where it stands", glanceBox),
+    section("trend", "Cumulative findings closed, by pass", chartHost),
+    section("findings", "Findings and their evidence",
+      RK.findings((D.findings || []).map(ledgerFinding), {
+        facets: ["status", "domain", "severity"], idPrefix: "finding-",
+        order: { status: ["escalated", "open", "closed"], domain: domainOrder },
+        empty: "The ledger tracks no findings." })));
+  const mutationGroup = h("div", { id: "grp-mutation", hidden: true });
+  content.append(ledgerGroup, mutationGroup);
+
+  const mutationHead = RK.$("#mutationHead"), ledgerHead = RK.$("#ledgerHead");
+  if (M) {
+    RK.$("#tabMutationBtn").hidden = false;
+    if (M.error) {
+      RK.$("#mutationVerdict").textContent = M.error + " Re-run mutation_harden.py report to regenerate it.";
+      RK.$("#mutationVerdict").classList.add("bad");
+    } else {
+      const [tone, text] = mutationSentence();
+      RK.$("#mutationVerdict").textContent = text;
+      RK.$("#mutationVerdict").classList.add(tone);
+      const shardCell = (s) => RK.badge(s.baselineState || (s.baselineComplete ? "finished" : "incomplete"), s.baselineComplete ? "ok" : "bad");
+      mutationGroup.append(
+        section("mut-modules", "Modules — open one to see its mutants", h("div", {}, M.modules.map(moduleRow))),
+        section("mut-shards", "Shards", RK.table({ caption: "mutation shards", columns: [
+          { key: "shard", label: "Shard", mono: true }, { key: "baseline", label: "Baseline" }, { key: "remeasure", label: "Re-measure" },
+          { key: "sources", label: "Sources", mono: true }, { key: "tests", label: "Tests", mono: true }, { key: "exclusions", label: "Exclusions" }],
+          rows: M.shards.map((s) => ({
+            shard: s.shard, baseline: shardCell(s),
+            remeasure: RK.badge(s.remeasureComplete === false ? "incomplete" : "complete", s.remeasureComplete === false ? "bad" : "ok"),
+            sources: (s.sources || []).join(", "), tests: (s.tests || []).join(", "),
+            exclusions: (s.exclusions || []).map((x) => x.glob + " — " + x.reason).join("; ") || "none" })) })),
+        section("mut-equivalents", "Equivalent mutants — read every reason",
+          RK.findings(M.equivalents.map((e) => ({ id: "equivalent-" + e.mutantId, severity: "gap", rule: "equivalent", claim: e.mutantId, file: e.module,
+            evidence: [{ label: "reason (" + (e.basis || "judgement") + ")", detail: e.reason }], tags: { module: e.module } })),
+            { facets: ["module"], empty: "None judged equivalent." })),
+        section("mut-rejected", "Rejected kill claims",
+          RK.findings(M.rejected.map((r) => ({ id: "rejected-" + r.mutantId, severity: "fail", rule: r.state, claim: r.mutantId + " — kill claim not counted",
+            evidence: [{ label: r.state, detail: r.reason }], tags: { state: r.state } })),
+            { empty: "No kill claim was rejected." })));
+    }
+  }
+
+  RK.init();
+  drawTrend();
+  new MutationObserver(drawTrend).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", drawTrend);
+
+  // ---- views: the ledger verdict and tiles answer the other view's question ------
+  function setView(view) {
+    const mut = view === "mutation" && !!M;
+    ledgerHead.hidden = mut; mutationHead.hidden = !mut;
+    ledgerGroup.hidden = mut; mutationGroup.hidden = !mut;
+    RK.$("#tabLedgerBtn").setAttribute("aria-pressed", String(!mut));
+    RK.$("#tabMutationBtn").setAttribute("aria-pressed", String(mut));
+    subtitle.textContent = mut
+      ? "zeugnis-mutation-harden run " + M.runId + " · generated from analysis/zeugnis/mutation_harden_summary.json" + (M.generatedAt ? " · " + M.generatedAt : "")
+      : LEDGER_SUB;
+    // the section nav was built from every section; keep only the visible view's
+    const live = mut ? mutationGroup : ledgerGroup;
+    for (const a of RK.$$("#rk-nav a[data-for]")) a.parentNode.hidden = !live.contains(document.getElementById(a.dataset.for));
+    for (const o of RK.$$("#rk-nav option")) o.hidden = !live.contains(document.getElementById(o.value));
+    const sel = RK.$("#rk-nav select");
+    if (sel) { const first = Array.from(sel.options).find((o) => !o.hidden); if (first) sel.value = first.value; }
+  }
+  RK.$("#tabLedgerBtn").addEventListener("click", () => setView("ledger"));
+  RK.$("#tabMutationBtn").addEventListener("click", () => setView("mutation"));
+  const wantMutation = new URLSearchParams(location.search).get("view") === "mutation" || /^#(mut-|module-|equivalent-|rejected-)/.test(location.hash);
+  setView(wantMutation ? "mutation" : "ledger");
+  // a deep link into the other view opens the finding it names
+  const openHash = () => {
+    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (!t) return;
+    if (t.tagName === "DETAILS") t.open = true;
+    t.scrollIntoView();
+  };
+  window.addEventListener("hashchange", openHash);
+  if (location.hash) openHash();
+  // Esc lets go of a pinned pass.
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && pinned !== null) setPinned(null); });
+})();
 </script>
 </body>
 </html>

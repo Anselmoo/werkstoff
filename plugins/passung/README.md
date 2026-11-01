@@ -158,7 +158,7 @@ The rendered `CONSISTENCY_MATRIX.html` is a self-contained D3/SVG grid — click
 cell for its variant, site count, and an example citation in the sidebar; a cell with a
 dashed outline reading “no data” has nothing recorded for that module × dimension pair.
 
-![Consistency matrix viewer showing six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions: every cell with data is filled green, amber or red by its conformance to the canonical pattern and prints a dark label plate carrying a matching glyph (✓ aligned, ≈ partially aligned, ✗ diverging) and its site count; the three pairs with no data are dark cells with a dashed outline reading "no data"; a legend under the grid repeats each key exactly as the cells draw it; and the sidebar is open on the selected shipping × error-handling-style cell, showing its diverging variant, 17 sites and 0% conformance](assets/matrix-viewer-screenshot.jpg)
+![Consistency matrix viewer: a verdict line and summary tiles above a grid of six modules (billing, shipping, auth, notifications, search, inventory) against four convention dimensions, each cell filled by conformance with a glyph label (✓ aligned, ≈ partially aligned, ✗ diverging) and its site count, "no data" cells dashed; the side panel is open on the worst cell, shipping × config-loading, showing its variant, the inferred canon, an example file:line with a copy button and buttons to related cells; below, filterable findings and an every-pair table](assets/matrix-viewer-screenshot.jpg)
 
 That image is reproducible rather than a one-off capture — the matrix it shows is
 committed at `scripts/testdata/sample_matrix.json` (6 modules × 4 dimensions, chosen so

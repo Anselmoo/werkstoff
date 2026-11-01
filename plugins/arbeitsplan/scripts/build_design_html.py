@@ -47,25 +47,19 @@ import compile_spec
 import design_spec
 import land_candidate
 
+from report_kit import KIT_MARKER, TOKENS_MARKER, render as kit_render
+
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
-TEMPLATE = PLUGIN / "assets" / "design-viewer.html"
-TOKENS = PLUGIN / "assets" / "tokens.css"
+ASSETS = PLUGIN / "assets"
+TEMPLATE = ASSETS / "design-viewer.html"
 FIXTURE = HERE / "fixtures" / "design-demo.json"
-TOKENS_MARKER = "<!--__DESIGN_TOKENS__-->"
-DATA_MARKER = "/*__DESIGN_DATA__*/"
 NODE_ERR = re.compile(r"\Anode (\S+): (.*)\Z", re.S)
 RULE = re.compile(r"\[(AP-[A-Z0-9-]+)\]")
 
 
 def render(report: dict) -> str:
-    tpl = TEMPLATE.read_text(encoding="utf-8")
-    if TOKENS.is_file():
-        tpl = tpl.replace(TOKENS_MARKER, "<style>\n" + TOKENS.read_text(encoding="utf-8")
-                          + "\n</style>")
-    payload = json.dumps(report, indent=2)
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(DATA_MARKER, "const DESIGN = " + payload + ";")
+    return kit_render(TEMPLATE.read_text(encoding="utf-8"), ASSETS, report)
 
 
 # --- the design ----------------------------------------------------------------------
@@ -303,13 +297,20 @@ def selftest() -> int:
     demo = collect(**bundle)
     html = render(demo)
     ok("tokens marker replaced", TOKENS_MARKER not in html and "--bg" in html)
-    ok("data marker replaced", DATA_MARKER not in html and "const DESIGN" in html)
+    ok("report-kit marker replaced and kit inlined",
+       KIT_MARKER + "\n</head>" not in html and "const RK = (" in html and "--rk-" in html)
+    ok("data island present and filled",
+       '<script type="application/json" id="report-data">' in html and "@@DATA@@" not in html)
+    start = html.index('id="report-data">') + len('id="report-data">')
+    island = html[start:html.index("</script>", start)]
+    ok("no raw '<' or '>' survives inside the data island", "<" not in island and ">" not in island)
+    ok("the island round-trips to the report", json.loads(island)["design"]["nodes"] == demo["design"]["nodes"])
     ok("static h1 matches the title", "<title>arbeitsplan — workflow design</title>" in html
        and "<h1>arbeitsplan — workflow design</h1>" in html)
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("no network fetches", 'src="http' not in html and 'href="http' not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
-    ok("a static legend exists", 'class="legend"' in html)
+    ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     ok("the demo is labelled synthetic", demo["synthetic"] is True)
 

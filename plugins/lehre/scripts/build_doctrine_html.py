@@ -42,10 +42,13 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import lehre_core as core  # noqa: E402
+from report_kit import KitError  # noqa: E402
+from report_kit import render as kit_render  # noqa: E402
 
 EXIT_OK, EXIT_UNUSABLE = 0, 2
 
@@ -86,6 +89,79 @@ def outcome_for(rule: dict) -> str:
         return "advisory only"
     return "denied at write time" if rule["enforcement"] == "hook" else "sweep + CI only"
 
+#: Finding severity words the report kit already tones: "gap" is amber, "proven"
+#: green, "info" blue. They name the ENFORCEMENT result, not the declared
+#: severity (which stays visible as the "declared" tag), so a reader scanning the
+#: badge column sees the leak and not the word "blocking" on all eleven rows.
+OUTCOME_SEVERITY = {
+    "denied at write time": "proven",
+    "sweep + CI only": "gap",
+    "advisory only": "info",
+    "judgement only": "info",
+}
+OUTCOME_WHY = {
+    "denied at write time": "blocking and decidable by the PreToolUse hook: a violating write is refused as it is attempted.",
+    "sweep + CI only": ("blocking, but the predicate is a linter command: the content being written is not on disk "
+                        "when the hook runs, so only a sweep or CI ever decides it."),
+    "advisory only": "advisory severity: a machine predicate reports it every sweep but nothing is denied.",
+    "judgement only": "no machine predicate: checked only when someone dispatches violation-auditor.",
+}
+LEAK_FIX = ("Either downgrade this rule to advisory so the doctrine stops claiming it blocks, or add a "
+            "hook-decidable predicate (python-import, python-construct, forbid-path or require-location) "
+            "for the same intent.")
+
+
+def split_location(ref: str) -> tuple[str, int | None]:
+    """'src/a.py:14' -> ('src/a.py', 14); anything without a trailing :<digits> stays whole."""
+    path, sep, tail = ref.rpartition(":")
+    if sep and path and tail.isdigit():
+        return path, int(tail)
+    return ref, None
+
+
+def describe_check(check: dict) -> str:
+    """The predicate in one readable block, so the rule's teeth are visible beside its claim."""
+    lines = [f"kind: {check.get('kind', '?')}"]
+    for key in ("paths", "forbid", "allowed"):
+        if check.get(key):
+            lines.append(f"{key}: " + ", ".join(str(v) for v in check[key]))
+    if check.get("command"):
+        lines.append("command: " + " ".join(str(v) for v in check["command"]))
+    if check.get("asks"):
+        lines.append("asks: " + str(check["asks"]))
+    return "\n".join(lines)
+
+
+def to_finding(row: dict) -> dict:
+    """One rule as the report kit's finding record (R6): location, quoted
+    predicate, suggested fix and the evidence the ruleset carried."""
+    refs = [split_location(e) for e in row["evidence"]]
+    file, line = refs[0] if refs else ("", None)
+    evidence = []
+    if row["authority"]:
+        evidence.append({"label": "authority", "detail": row["authority"]})
+    evidence.append({"label": "why this outcome", "detail": OUTCOME_WHY.get(row["outcome"], row["outcome"])})
+    evidence.append({"label": "rationale", "detail": row["rationale"]})
+    for path, ln in refs[1:]:
+        evidence.append({"label": "repo evidence", "detail": path + (f":{ln}" if ln else "")})
+    if not refs:
+        evidence.append({"label": row["sourceMode"],
+                         "detail": "no location in this repository was recorded as evidence for this rule"})
+    return {
+        "id": row["id"],
+        "severity": OUTCOME_SEVERITY.get(row["outcome"], "info"),
+        "claim": row["title"] or row["id"],
+        "rule": row["id"],
+        "file": file,
+        "line": line,
+        "quote": describe_check(row["check"]),
+        "fix": LEAK_FIX if row["outcome"] == "sweep + CI only" else "",
+        "evidence": evidence,
+        "tags": {"outcome": row["outcome"], "declared": row["severity"],
+                 "provenance": row["sourceMode"], "kind": row["kind"]},
+        "nodes": row["nodes"],
+    }
+
 
 def build(root: str, ruleset_path: str) -> dict:
     data = core.load_ruleset(ruleset_path)
@@ -104,12 +180,15 @@ def build(root: str, ruleset_path: str) -> dict:
             node_counts[nid] = node_counts.get(nid, 0) + 1
         rule_rows.append({
             "id": rule["id"],
+            "title": rule.get("title", ""),
             "severity": rule["severity"],
             "sourceMode": rule["sourceMode"],
             "kind": rule["check"]["kind"],
             "outcome": oc,
             "rationale": rule["rationale"],
             "authority": rule["authority"].get("source", ""),
+            "evidence": [e for e in rule.get("evidence") or [] if isinstance(e, str)],
+            "check": rule["check"],
             "nodes": ids,
         })
 
@@ -148,6 +227,8 @@ def build(root: str, ruleset_path: str) -> dict:
             "depends_on": unit.get("depends_on", []),
             "paths": unit.get("paths", []),
             "owns": unit.get("owns", ""),
+            "must_not_know": unit.get("must_not_know", []),
+            "reason": unit.get("reason", ""),
             "state": "validated" if done else ("blocked" if pending else "ready"),
             "blocked_by": pending,
         })
@@ -167,31 +248,20 @@ def build(root: str, ruleset_path: str) -> dict:
         "stages": stages,
         "links": links,
         "rules": rule_rows,
+        "findings": [to_finding(r) for r in rule_rows],
         "units": units,
     }
 
 
 def render(template_path: str, tokens_path: str, doctrine: dict) -> str:
-    with open(template_path, encoding="utf-8") as fh:
-        tpl = fh.read()
+    """Inline tokens, the report kit and the data island through the vendored kit.
 
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    with open(tokens_path, encoding="utf-8") as fh:
-        tpl = tpl.replace(tokens_marker, "<style>\n" + fh.read() + "\n</style>")
-
-    marker = "/*__DOCTRINE_DATA__*/ null"
-    if marker not in tpl:
-        raise ValueError(f"data injection marker not found in {template_path}")
-    payload = json.dumps(doctrine)
-    # Rule ids and rationales come from a file the repo itself authored, but every
-    # other viewer in this marketplace treats its own input as untrusted here and
-    # so does this one: escape the three characters that could break out of the
-    # <script> block. The template pairs this with textContent-only rendering, so
-    # neither barrier is load-bearing alone.
-    payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(marker, "/*__DOCTRINE_DATA__*/ " + payload)
+    The kit escapes < > & in the JSON island (barrier one of S3); the template's
+    kit-only DOM helper is barrier two. Its css/js sit beside the template.
+    """
+    template = Path(template_path)
+    return kit_render(template.read_text(encoding="utf-8"), template.parent, doctrine,
+                      tokens=Path(tokens_path))
 
 
 def main(argv=None) -> int:
@@ -228,8 +298,12 @@ def main(argv=None) -> int:
         return EXIT_OK
 
     out = args.out or os.path.join(out_dir, "DOCTRINE_MAP.html")
-    with open(out, "w", encoding="utf-8") as fh:
-        fh.write(render(args.template, args.tokens, doctrine))
+    try:
+        html = render(args.template, args.tokens, doctrine)
+    except (KitError, OSError) as exc:
+        print(f"lehre: cannot render the report -- {exc}", file=sys.stderr)
+        return EXIT_UNUSABLE
+    Path(out).write_text(html, encoding="utf-8")
 
     t = doctrine["totals"]
     print(f"{out}")
