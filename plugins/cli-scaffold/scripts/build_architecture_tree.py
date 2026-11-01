@@ -12,12 +12,23 @@ the architecture diagram alongside the code it describes means whoever
 receives the generated CLI also gets a visual explanation of it.
 
 Usage:
-    build_architecture_tree.py <scaffold_dir> --template <path> [--out <path>]
+    build_architecture_tree.py <scaffold_dir> --template <path> --d3 <path> --tokens <path>
+                               [--out <path>]
+
+The page is composed by the shared report kit (assets/report-kit.{css,js}, scripts/report_kit.py):
+the tree and its guide rails stay bespoke d3-hierarchy, while the doctrine gaps, the evidence
+behind each one and the scaffold's CLI surface come from the same manifest and are shown in the
+kit's findings and table components.
 """
 import argparse
 import json
 import os
 import sys
+from pathlib import Path
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from report_kit import KitError  # noqa: E402
+from report_kit import render as kit_render  # noqa: E402
 
 MANIFEST_NAME = "cli-scaffold.manifest.json"
 
@@ -106,31 +117,108 @@ def build_tree(scaffold_dir, manifest):
     }
 
 
-def render_html(template_path, d3_path, tokens_path, payload):
-    tpl = open(template_path, encoding="utf-8").read()
-    d3_snippet = open(d3_path, encoding="utf-8").read()
-    tokens_css = open(tokens_path, encoding="utf-8").read()
+def _manifest_paths(manifest):
+    """Every (manifest key, relative path, role) the manifest names, present on disk or not."""
+    out = [("core_files", f, "core") for f in manifest.get("core_files", []) or [] if f]
+    for key, role in (("entry_file", "entry"), ("distribution_file", "distribution"),
+                      ("snapshot_test", "test"), ("help_file", "help")):
+        if manifest.get(key):
+            out.append((key, manifest[key], role))
+    completion = manifest.get("completion") or {}
+    if completion.get("file"):
+        out.append(("completion.file", completion["file"], "completion"))
+    return out
 
-    # One marker spelling across every werkstoff report viewer
-    # (report-viewer-standard.md S2). The marker sits OUTSIDE any <style>
-    # block; the builder supplies the wrapper, exactly as
-    # build_doctrine_html.py does.
-    tokens_marker = "<!--__DESIGN_TOKENS__-->"
-    if tokens_marker not in tpl:
-        raise ValueError(f"design-tokens injection marker not found in {template_path}")
-    tpl = tpl.replace(tokens_marker, "<style>\n" + tokens_css + "\n</style>")
+
+def build_findings(scaffold_dir, manifest):
+    """The doctrine gaps this scaffold has, each with the manifest line that proves it.
+
+    Two kinds. A role no file plays (the manifest declares nothing for it), and a role whose
+    file the manifest names but the tree does not contain -- which the tree walk alone drops
+    without a word, so the role would render as merely "absent".
+    """
+    scaffold = Path(scaffold_dir)
+    declared = _manifest_paths(manifest)
+    declared_roles = {role for _, _, role in declared}
+    findings = []
+
+    for key, rel, role in declared:
+        if not (scaffold / rel).exists():
+            findings.append({
+                "id": f"missing-{role}-{rel}", "severity": "blocker", "rule": "declared-file-missing",
+                "claim": f"The manifest names {rel} for the {role} role, but that file is not in the scaffold",
+                "file": MANIFEST_NAME, "quote": f'"{key}": {json.dumps(rel)}',
+                "fix": f"Create {rel}, or correct the manifest key {key}; verify_scaffold.py reads the same key and will fail it.",
+                "evidence": [{"label": "role", "detail": ROLE_LABELS[role]},
+                             {"label": "checked", "detail": f"{rel} does not exist under {scaffold.name}/"}],
+                "tags": {"role": role, "pillar": ROLE_PILLARS[role]},
+            })
+
+    pillar_roles = {}
+    for role, pillar in ROLE_PILLARS.items():
+        pillar_roles.setdefault(pillar, []).append(role)
+    completion = manifest.get("completion") or {}
+    quotes = {
+        "core": '"core_files": ' + json.dumps(manifest.get("core_files")),
+        "entry": '"entry_file": ' + json.dumps(manifest.get("entry_file")),
+        "distribution": '"distribution_file": ' + json.dumps(manifest.get("distribution_file")),
+        "test": '"snapshot_test": ' + json.dumps(manifest.get("snapshot_test")),
+        "help": '"help_file": ' + json.dumps(manifest.get("help_file")),
+        "completion": '"completion": ' + json.dumps(completion or None),
+    }
+    for role in ROLE_LABELS:
+        if role in declared_roles:
+            continue
+        pillar = ROLE_PILLARS[role]
+        others = [r for r in pillar_roles[pillar] if r != role and r in declared_roles]
+        bare = not others
+        evidence = [{"label": "role", "detail": ROLE_LABELS[role]},
+                    {"label": "pillar", "detail": pillar + (" has no file behind it at all" if bare
+                                                             else " is still evidenced by the " + ", ".join(others) + " role")}]
+        if role == "completion" and completion.get("note"):
+            evidence.append({"label": "manifest note", "detail": completion["note"]})
+        findings.append({
+            "id": f"no-{role}", "severity": "major" if bare else "minor", "rule": "role-unclaimed",
+            "claim": f"No file plays the {role} role: {ROLE_LABELS[role]}",
+            "file": MANIFEST_NAME, "quote": quotes[role],
+            "fix": f"Generate the file for the {role} role and name it in the manifest; the verifier gates on that key.",
+            "evidence": evidence,
+            "tags": {"role": role, "pillar": pillar},
+        })
+    return findings
+
+
+def build_surface(manifest):
+    """The CLI surface the manifest declares -- flags, positional arguments, completion --
+    which the viewer used to drop."""
+    rows = [{"kind": "flag", "name": f.get("name", ""), "required": "", "description": f.get("description", "")}
+            for f in manifest.get("flags", []) or [] if isinstance(f, dict)]
+    rows += [{"kind": "argument", "name": a.get("name", ""),
+              "required": "required" if a.get("required") else "optional",
+              "description": a.get("description", "")}
+             for a in manifest.get("positional_args", []) or [] if isinstance(a, dict)]
+    completion = manifest.get("completion") or {}
+    return {"rows": rows, "completion": completion.get("note") or "",
+            "completionSupported": bool(completion.get("supported") or completion.get("file")),
+            "paradigm": manifest.get("paradigm", "")}
+
+
+def render_html(template_path, d3_path, tokens_path, payload):
+    template = Path(template_path)
+    tpl = template.read_text(encoding="utf-8")
+    d3_snippet = Path(d3_path).read_text(encoding="utf-8")
 
     d3_marker = "<!--__D3_SUBSET__-->"
     if d3_marker not in tpl:
         raise ValueError(f"D3 injection marker not found in {template_path}")
-    tpl = tpl.replace(d3_marker, d3_snippet)
 
-    data_marker = "/*__TREE_DATA__*/ null"
-    if data_marker not in tpl:
-        raise ValueError(f"data injection marker not found in {template_path}")
-    data = json.dumps(payload)
-    data = data.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    return tpl.replace(data_marker, "/*__TREE_DATA__*/ " + data)
+    # The kit's own assets sit beside the template; a template kept elsewhere (a test stub)
+    # falls back to this plugin's vendored copy. The kit inlines the tokens, its css/js and the
+    # data island with < > & escaped (barrier one of S3); the template's textContent-only DOM
+    # code is barrier two. The d3 snippet is trusted vendored code, so it is spliced in after.
+    assets = template.parent if (template.parent / "report-kit.css").is_file() else Path(__file__).resolve().parent.parent / "assets"
+    page = kit_render(tpl, assets, payload, tokens=Path(tokens_path))
+    return page.replace(d3_marker, d3_snippet, 1)
 
 
 def main(argv=None):
@@ -150,14 +238,21 @@ def main(argv=None):
     payload = {
         "appName": manifest.get("app_name"),
         "language": manifest.get("language"),
+        "paradigm": manifest.get("paradigm"),
         "tree": tree,
         "roleLabels": ROLE_LABELS,
         "rolePillars": ROLE_PILLARS,
+        "findings": build_findings(args.scaffold_dir, manifest),
+        "surface": build_surface(manifest),
     }
 
     out_path = args.out or os.path.join(args.scaffold_dir, "ARCHITECTURE.html")
-    with open(out_path, "w", encoding="utf-8") as fh:
-        fh.write(render_html(args.template, args.d3, args.tokens, payload))
+    try:
+        html = render_html(args.template, args.d3, args.tokens, payload)
+    except (KitError, ValueError, OSError) as exc:
+        print(f"build_architecture_tree.py: {exc}", file=sys.stderr)
+        return 2
+    Path(out_path).write_text(html, encoding="utf-8")
 
     print(json.dumps({"architecturePath": out_path}))
     return 0
