@@ -32,10 +32,10 @@
     {"id": "amb-29", "router": "skill", "text": "what are the rules a production CLI must follow?", "between": ["cli-architecture", "scaffold-cli"]},
     {"id": "amb-30", "router": "skill", "text": "break this into steps and tell me what depends on what", "between": ["zirkel-decompose-chain", "zirkel-solve", "zirkel-clarify-scope"]},
     {"id": "amb-31", "router": "agent", "text": "dispatch an agent to check whether the code follows one documented convention across the whole repo", "between": ["convention-auditor", "pattern-analyst", "handbook-drift-auditor", "violation-auditor"]},
-    {"id": "amb-32", "router": "agent", "text": "I need a read-only critic that tries to refute this proposed change", "between": ["andon-challenger", "passung-critic", "rule-critic"]},
+    {"id": "amb-32", "router": "agent", "text": "I need a read-only critic that tries to refute this proposed change", "between": ["andon-challenger", "consistency-critic", "rule-critic"]},
     {"id": "amb-33", "router": "agent", "text": "apply exactly this one already-approved mechanical fix at the cited line and nothing else", "between": ["handbook-remediator", "idiom-remediator", "zeugnis-remediator", "align-executor"]},
     {"id": "amb-34", "router": "agent", "text": "survey how this codebase handles error handling and cluster the variants with file:line evidence", "between": ["pattern-analyst", "pattern-extractor", "pattern-investigator", "convention-auditor"]},
-    {"id": "amb-35", "router": "agent", "text": "independently re-check this one finding and tell me if it's real", "between": ["handbook-verifier", "equivalence-verifier", "andon-verifier", "passung-critic"]},
+    {"id": "amb-35", "router": "agent", "text": "independently re-check this one finding and tell me if it's real", "between": ["handbook-verifier", "equivalence-verifier", "andon-verifier", "consistency-critic"]},
     {"id": "amb-36", "router": "agent", "text": "mine the business rules out of this legacy module as Given/When/Then", "between": ["business-rules-miner", "pattern-extractor"]}
   ]
 }

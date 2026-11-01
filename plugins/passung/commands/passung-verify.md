@@ -64,7 +64,7 @@ independently, not in dependency-ordered batches, so carrying over align's
 This fans out one **equivalence-verifier** per aligned module, each
 re-reading its diff against the Pattern Card's canonical form and the
 module's tests. Every `PASS` then goes to **one blind judge** (a
-**passung-critic**, rubric `passung-equivalence@1`: `changed-branches-covered`,
+**consistency-critic**, rubric `passung-equivalence@1`: `changed-branches-covered`,
 `docs-current`, `tests-exercise-change`, `no-behavior-change`, threshold 0.7) that is shown neither the
 first verdict nor its reasoning and runs the tests itself — the signature
 false-negative here is a verifier that only re-runs the tests the aligner

@@ -5,5 +5,13 @@
   "author": {
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
-  }
+  },
+  "keywords": [
+    "doctrine",
+    "code-style",
+    "architecture",
+    "enforcement",
+    "hooks"
+  ],
+  "license": "MIT"
 }

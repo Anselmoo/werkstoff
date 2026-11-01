@@ -1,5 +1,5 @@
 ---
-description: 'Renders an existing divergence inventory (analysis/<area>/consistency.json, written by /passung-scan) as a module × convention consistency matrix — rows are modules, columns are convention dimensions — not a dependency graph. Use after a scan has completed, when the question is how divergence is distributed across modules and which dimension affects most of the area. Not for finding divergence in the first place: "where does this repo do the same thing two different ways" is /passung-scan''s job, and this command has no inventory to render until that has run.'
+description: 'Renders analysis/<area>/consistency.json as a module x convention matrix. Use after /passung-scan has run, to see where divergence concentrates.'
 argument-hint: <area-dir>
 ---
 

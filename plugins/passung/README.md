@@ -303,7 +303,7 @@ Specialist subagents invoked by the commands (or directly):
 - **`pattern-extractor`** — Weighs frequency/maturity/recency and decides
   provenance per dimension; refuses to force a pick on a genuine tie.
   Read-only. *(canonize)*
-- **`passung-critic`** — Adversarial reviewer, skeptical of both
+- **`consistency-critic`** — Adversarial reviewer, skeptical of both
   unresolved divergence and *forced* uniformity where real variation was
   warranted; re-derives PASS verdicts independently rather than
   rubber-stamping them. Read-only. *(canonize's provenance judge, verify's blind PASS judge)*

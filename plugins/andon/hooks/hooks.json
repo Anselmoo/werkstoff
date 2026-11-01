@@ -1,13 +1,14 @@
 {
-  "description": "Denies source edits while the andon ledger holds a stop condition. type:command, never type:prompt — a prompt hook asks a model to decide, which is the model-mediated path this exists to replace.",
+  "description": "Denies source edits while the andon ledger holds a stop condition. type:command, never type:prompt — a prompt hook asks a model to decide, which is the model-mediated path this exists to replace. Inert until the andon ledger directory (analysis/andon/ledger by default) exists, and while .claude/andon.local.md sets enforcement: off.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
         "hooks": [
           {
             "type": "command",
-            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/andon_enforce.py\""
+            "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/andon_enforce.py\"",
+            "timeout": 15
           }
         ]
       }

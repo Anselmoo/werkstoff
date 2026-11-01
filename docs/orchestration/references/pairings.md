@@ -169,11 +169,11 @@ pairings:
     source: "claude-plugins-official"
     beat: "verify"
     why: "Documented rules and undocumented-but-real patterns are audited by different plugins on purpose, and simplifying before the convention is settled means simplifying twice."
-    how: "befund audits the documented half first (befund-lint-audit, then convention-auditor). passung:pattern-extractor then handles the undocumented half, refusing to force a pick when competing variants are genuinely tied, and passung-critic re-derives the verdict as a second judge. pr-review-toolkit:code-simplifier runs last, deliberately, on the now-aligned code only."
+    how: "befund audits the documented half first (befund-lint-audit, then convention-auditor). passung:pattern-extractor then handles the undocumented half, refusing to force a pick when competing variants are genuinely tied, and consistency-critic re-derives the verdict as a second judge. pr-review-toolkit:code-simplifier runs last, deliberately, on the now-aligned code only."
     prompt: "extract the discrete, checkable rules this repo's own documentation states, and audit the code against them"
     dos:
       - "Run code-simplifier last, after both the documented and undocumented halves have settled -- not before."
-      - "Let passung-critic re-derive pattern-extractor's verdict rather than rubber-stamping it."
+      - "Let consistency-critic re-derive pattern-extractor's verdict rather than rubber-stamping it."
     donts:
       - "Don't simplify before the convention is canonized -- the code you'd simplify may get rewritten to the canonical form immediately after."
       - "Don't blur the documented/undocumented boundary -- passung's own README routes documented conventions out to befund by name; running both for the same finding double-reports it."

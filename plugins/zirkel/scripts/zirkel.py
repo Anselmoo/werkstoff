@@ -3,6 +3,7 @@
 
 Usage:
     python3 zirkel.py <check> [--in PAYLOAD.json | -]  [extra args]
+    (the payload may also be given positionally; `-` or omitted reads stdin)
 
 Each <check> reads a JSON payload (from a file, or '-' for stdin), runs the
 corresponding enforcement function in zirkel_lib, and:
@@ -24,6 +25,7 @@ can reuse a prior standalone run instead of always redoing it from scratch.
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -69,12 +71,7 @@ def validate_state(state: dict, where: str = "state") -> dict:
 # Payload loading
 # --------------------------------------------------------------------------- #
 
-def _load_payload(args: list[str]) -> dict:
-    src = None
-    if "--in" in args:
-        src = args[args.index("--in") + 1]
-    elif args and not args[0].startswith("-"):
-        src = args[0]
+def _load_payload(src: str | None) -> dict:
     if src is None or src == "-":
         raw = sys.stdin.read()
     else:
@@ -84,10 +81,6 @@ def _load_payload(args: list[str]) -> dict:
         return json.loads(raw)
     except json.JSONDecodeError as exc:
         raise C.GuardError(f"invalid JSON payload: {exc}")
-
-
-def _opt(args: list[str], name: str, default=None):
-    return args[args.index(name) + 1] if name in args else default
 
 
 # --------------------------------------------------------------------------- #
@@ -129,8 +122,8 @@ def _cli_write_scope(p, a):
 
 def _cli_state_write(p, a):
     """Validate on write, enforce write scope, then persist."""
-    out_dir = _opt(a, "--output-dir", C.DEFAULT_OUTPUT_DIR)
-    target = _opt(a, "--to", "state.json")
+    out_dir = a.output_dir
+    target = a.to
     safe = C.enforce_write_scope(target, out_dir)   # throws before any write
     validate_state(p, "state(write)")
     os.makedirs(os.path.dirname(safe) or ".", exist_ok=True)
@@ -144,7 +137,7 @@ def _cli_state_read(p, a):
     the full validated state (not just a validity flag) — a caller reusing
     a prior run needs the actual `clarify`/`explore`/`dag` content, not
     merely confirmation that the file was well-formed."""
-    path = _opt(a, "--from")
+    path = a.from_path
     if not path:
         raise C.GuardError("state-read requires --from PATH")
     with open(path, "r", encoding="utf-8") as fh:
@@ -164,7 +157,7 @@ def _cli_state_find(p, a):
     validate_state, is skipped rather than treated as fatal — finding
     nothing is the normal, common outcome (first time this exact text has
     gone through this phase), not a violation."""
-    out_dir = _opt(a, "--output-dir", C.DEFAULT_OUTPUT_DIR)
+    out_dir = a.output_dir
     raw_task = p.get("raw_task") if isinstance(p, dict) else None
     if not raw_task:
         raise C.GuardError('state-find requires payload {"raw_task": "..."}')
@@ -201,7 +194,7 @@ def _cli_run_event(p, a):
     The record needs Python >= 3.11 (run_record's floor); below it the call reports
     {"recorded": false, "why": ...} rather than failing the pipeline around it.
     """
-    out_dir = _opt(a, "--output-dir", C.DEFAULT_OUTPUT_DIR)
+    out_dir = a.output_dir
     run_id = p.get("run_id") if isinstance(p, dict) else None
     phase = p.get("phase") if isinstance(p, dict) else None
     status = p.get("status") if isinstance(p, dict) else None
@@ -258,23 +251,44 @@ CHECKS = {
 }
 
 
-def main(argv: list[str]) -> int:
-    if not argv or argv[0] in ("-h", "--help"):
-        sys.stderr.write(
-            "usage: zirkel.py <check> [--in PAYLOAD.json | -] [args]\n"
-            "checks: " + ", ".join(sorted(CHECKS)) + "\n"
-        )
-        return EXIT_USAGE
-    check = argv[0]
-    rest = argv[1:]
-    fn = CHECKS.get(check)
-    if fn is None:
-        sys.stderr.write(f"unknown check: {check}\n")
-        return EXIT_USAGE
+class _Parser(argparse.ArgumentParser):
+    """Usage errors exit 3 (EXIT_USAGE); argparse's default 2 means EXIT_VIOLATION here."""
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        self.exit(EXIT_USAGE, f"{self.prog}: error: {message}\n")
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = _Parser(
+        prog="zirkel.py",
+        description="Guard CLI every zirkel skill invokes. Exit 0 = pass, 2 = violation, 3 = usage error.",
+    )
+    sub = parser.add_subparsers(dest="check", metavar="<check>", required=True)
+    for name in sorted(CHECKS):
+        sp = sub.add_parser(name, help=f"run the {name} check")
+        if name != "state-read":  # state-read needs no stdin payload
+            sp.add_argument("payload", nargs="?", metavar="PAYLOAD.json|-",
+                            help="payload file, or '-' (default) for stdin")
+            sp.add_argument("--in", dest="src", metavar="PAYLOAD.json|-",
+                            help="payload file or '-'; takes precedence over the positional")
+        if name in ("state-write", "state-find", "run-event"):
+            sp.add_argument("--output-dir", default=C.DEFAULT_OUTPUT_DIR)
+        if name == "state-write":
+            sp.add_argument("--to", default="state.json")
+        if name == "state-read":
+            sp.add_argument("--from", dest="from_path")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _build_parser().parse_args(argv)
+    check = args.check
+    fn = CHECKS[check]
     try:
         # state-read needs no stdin payload.
-        payload = {} if check == "state-read" else _load_payload(rest)
-        result = fn(payload, rest)
+        payload = {} if check == "state-read" else _load_payload(args.src or args.payload)
+        result = fn(payload, args)
     except C.GuardError as exc:
         print(json.dumps({"ok": False, "check": check, "violation": str(exc)},
                          ensure_ascii=False))
@@ -288,4 +302,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    raise SystemExit(main())

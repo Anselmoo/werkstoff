@@ -5,5 +5,13 @@
   "author": {
     "name": "Anselm Hahn",
     "email": "anselm.hahn@gmail.com"
-  }
+  },
+  "keywords": [
+    "hardening",
+    "handoffs",
+    "verification",
+    "pipeline",
+    "ledger"
+  ],
+  "license": "MIT"
 }

@@ -11,7 +11,16 @@ Rules enforced (in code, exit non-zero on violation):
 
 This is a repo self-check, run by the plugin's own test/CI, not against a
 generated scaffold.
+
+Usage:
+    check_doctrine_isolation.py [skills_root]
+
+Exit codes:
+    0  all paradigm skills reference (not duplicate) the doctrine
+    1  one or more violations (listed on stderr)
+    2  usage error
 """
+import argparse
 import os
 import re
 import sys
@@ -64,10 +73,15 @@ def check_skill(skills_root, name):
     return problems
 
 
-def main(argv):
+def main(argv=None):
     # skills root defaults to ../skills relative to this file
     here = os.path.dirname(os.path.abspath(__file__))
-    skills_root = argv[1] if len(argv) > 1 else os.path.join(os.path.dirname(here), "skills")
+    parser = argparse.ArgumentParser(
+        description="Fail if a paradigm skill duplicates the cli-architecture doctrine.")
+    parser.add_argument("skills_root", nargs="?",
+                        default=os.path.join(os.path.dirname(here), "skills"),
+                        help="skills directory (default: ../skills relative to this file)")
+    skills_root = parser.parse_args(argv).skills_root
 
     all_problems = []
     for name in PARADIGM_SKILLS:
@@ -85,4 +99,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())

@@ -4,6 +4,13 @@
 Runs the guards and asserts they refuse what they must refuse. Exit 0 = all
 enforcement behaves; non-zero = a guard regressed. Intended for CI / a quick
 `python3 scripts/selftest.py`.
+
+Usage:
+    python3 scripts/selftest.py
+
+Exit codes:
+    0  every guard behaves
+    1  a guard regressed
 """
 import json
 import os

@@ -59,6 +59,10 @@ expression, `\\b` around punctuation, `[^.]` spanning a filename); each looked
 present and enforced nothing. A fail-open hook is that same defect with better
 manners. `enforcement: off` in `.claude/andon.local.md` turns it off explicitly.
 
+Usage: registered in hooks/hooks.json, never run by hand. The runtime pipes the
+PreToolUse payload to stdin; exit 0 allows, exit 2 denies (reason on stderr).
+Manual probe: echo '{"cwd": ".", "tool_name": "Edit", "tool_input": {"file_path": "x"}}' | python3 andon_enforce.py
+
 Contract: reads hook JSON on stdin. Allow: hookSpecificOutput JSON on stdout,
 exit 0. Deny: hookSpecificOutput JSON (with permissionDecisionReason) on
 stdout AND the reason on stderr AND exit 2 -- both mechanisms, belt-and-
@@ -557,6 +561,68 @@ def stop_reason(ledger: Path, authorization: str) -> str | None:
     return None
 
 
+def edit_targets(tool_input: object) -> list[str]:
+    """Every path an edit payload names: file_path, notebook_path, edits[].file_path, file_paths.
+
+    Reading only file_path let a MultiEdit payload carrying its paths elsewhere yield
+    no target at all (nacharbeit H-MULTI-PATH; takt_guard.py's edit_targets is the model).
+    """
+    if not isinstance(tool_input, dict):
+        return []
+    targets: list[str] = []
+    for key in ("file_path", "notebook_path"):
+        value = tool_input.get(key)
+        # isinstance, not truthiness: a str is iterable, and iterating one yields characters.
+        if isinstance(value, str) and value:
+            targets.append(value)
+    edits = tool_input.get("edits")
+    if isinstance(edits, list):
+        for edit in edits:
+            if isinstance(edit, dict) and isinstance(edit.get("file_path"), str) and edit["file_path"]:
+                targets.append(edit["file_path"])
+    paths = tool_input.get("file_paths")
+    if isinstance(paths, list):
+        targets.extend(v for v in paths if isinstance(v, str) and v)
+    return targets
+
+
+def _target_exempt(target: str, cwd: Path, ledger: Path) -> bool:
+    """True if this one target is outside the repo or inside the ledger (never gated)."""
+    try:
+        target_path = Path(target) if Path(target).is_absolute() else (cwd / target)
+
+        # #69: containment, before anything else. This hook's rules
+        # are about the andon ledger under `cwd` -- a write outside
+        # the repository is none of its business, whatever the
+        # ledger's stop conditions say. Lexical containment (normpath,
+        # no filesystem access) is necessary but NOT sufficient: a
+        # symlink inside the tree can point outside it, so a target
+        # that lexically looks contained can still resolve elsewhere.
+        # Reasoning and the double test copied from
+        # plugins/arbeitsplan/hooks/arbeitsplan_guard.py's containment
+        # check -- same shape, opposite direction: that guard DENIES
+        # an escape lexically-inside-but-resolves-outside a worktree;
+        # this one only ALLOWS the "outside cwd" bypass when BOTH the
+        # lexical and the resolved test agree the target is outside,
+        # so a symlink that merely *looks* like an escape still stays
+        # gated (fail closed) rather than silently skipping the rule.
+        lexical = os.path.normpath(str(target_path))
+        cwd_str = str(cwd)
+        lexically_outside = not (
+            lexical == cwd_str or lexical.startswith(cwd_str + os.sep)
+        )
+        resolved = target_path.resolve()
+        really_outside = not (resolved == cwd or cwd in resolved.parents)
+        if lexically_outside and really_outside:
+            return True  # nothing outside this repo is this hook's business
+
+        if resolved == ledger or ledger in resolved.parents:
+            return True  # the loop must always be able to record its halt
+    except OSError:
+        pass
+    return False
+
+
 def main() -> int:
     # #70: checked first, before stdin is even read, matching
     # plugins/nacharbeit/hooks/nacharbeit_guard.py's ESCAPE_HATCH pattern --
@@ -613,40 +679,13 @@ def main() -> int:
                 f"{sys.version.split()[0]} ({sys.executable}). Put a newer python3 first on PATH."
                 "\n\n(andon enforcement hook. " + REMEDIES + ")")
 
-        target = (event.get("tool_input") or {}).get("file_path") or ""
-        if target:
-            try:
-                target_path = Path(target) if Path(target).is_absolute() else (cwd / target)
-
-                # #69: containment, before anything else. This hook's rules
-                # are about the andon ledger under `cwd` -- a write outside
-                # the repository is none of its business, whatever the
-                # ledger's stop conditions say. Lexical containment (normpath,
-                # no filesystem access) is necessary but NOT sufficient: a
-                # symlink inside the tree can point outside it, so a target
-                # that lexically looks contained can still resolve elsewhere.
-                # Reasoning and the double test copied from
-                # plugins/arbeitsplan/hooks/arbeitsplan_guard.py's containment
-                # check -- same shape, opposite direction: that guard DENIES
-                # an escape lexically-inside-but-resolves-outside a worktree;
-                # this one only ALLOWS the "outside cwd" bypass when BOTH the
-                # lexical and the resolved test agree the target is outside,
-                # so a symlink that merely *looks* like an escape still stays
-                # gated (fail closed) rather than silently skipping the rule.
-                lexical = os.path.normpath(str(target_path))
-                cwd_str = str(cwd)
-                lexically_outside = not (
-                    lexical == cwd_str or lexical.startswith(cwd_str + os.sep)
-                )
-                resolved = target_path.resolve()
-                really_outside = not (resolved == cwd or cwd in resolved.parents)
-                if lexically_outside and really_outside:
-                    return allow()  # nothing outside this repo is this hook's business
-
-                if resolved == ledger or ledger in resolved.parents:
-                    return allow()  # the loop must always be able to record its halt
-            except OSError:
-                pass
+        # Every path the payload names (file_path, notebook_path, edits[].file_path,
+        # file_paths). The edit is exempt only if EVERY target is exempt; an edit that
+        # names no readable path is never exempt (H-MULTI-PATH) -- it falls through to
+        # the stop check below, which denies while the ledger holds a stop condition.
+        targets = edit_targets(event.get("tool_input") or {})
+        if targets and all(_target_exempt(t, cwd, ledger) for t in targets):
+            return allow()
 
         reason = stop_reason(ledger, cfg.get("authorization_level") or DEFAULT_AUTHORIZATION)
         if reason:

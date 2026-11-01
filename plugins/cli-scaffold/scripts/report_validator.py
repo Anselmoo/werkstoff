@@ -18,14 +18,22 @@ Gating fields:
 Used on WRITE (verify_scaffold validates before persisting) and on READ (skills
 validate a report/ledger they load before acting on it). Same function both
 ways, so a hand-edited or corrupt artifact is rejected symmetrically.
+
+Usage:
+    report_validator.py <report|ledger> <path>
+
+Exit codes:
+    0  artifact is valid
+    1  artifact unreadable or invalid
+    2  usage error
 """
+import argparse
 import json
 import sys
 
 from constants import (
     EXIT_RUNTIME_ERROR,
     EXIT_SUCCESS,
-    EXIT_USAGE_ERROR,
     LANGUAGE_REGISTRY,
     MAX_FIX_ITERATIONS,
     SHELL,
@@ -132,11 +140,13 @@ def validate_ledger(ledger):
     return True
 
 
-def main(argv):
-    if len(argv) != 3 or argv[1] not in ("report", "ledger"):
-        sys.stderr.write("usage: report_validator.py <report|ledger> <path>\n")
-        return EXIT_USAGE_ERROR
-    kind, path = argv[1], argv[2]
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Validate a verification report or fix-ledger artifact.")
+    parser.add_argument("kind", choices=("report", "ledger"))
+    parser.add_argument("path")
+    args = parser.parse_args(argv)
+    kind, path = args.kind, args.path
     try:
         with open(path, "r", encoding="utf-8") as fh:
             data = json.load(fh)
@@ -156,4 +166,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    sys.exit(main())

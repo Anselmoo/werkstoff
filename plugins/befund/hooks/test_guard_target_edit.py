@@ -126,6 +126,60 @@ class TestInertWithoutAnOpenScope(unittest.TestCase):
             self.assertEqual(decision(r), "allow")
 
 
+def run_input(repo: Repo, tool_input: dict, tool: str = "MultiEdit") -> subprocess.CompletedProcess:
+    payload = json.dumps({"cwd": str(repo.root), "tool_name": tool, "tool_input": tool_input})
+    r = subprocess.run([sys.executable, str(HOOK)], input=payload,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode in (0, 2), f"hook must exit 0 (allow) or 2 (deny), got {r.returncode}: {r.stderr}"
+    return r
+
+
+class TestMultiPathPayloads(unittest.TestCase):
+    """H-MULTI-PATH: a MultiEdit may carry its paths in edits[].file_path or
+    file_paths. Each deny test is paired with an allow test over the same
+    shape, so a guard that denied everything would fail one of the two."""
+
+    def _repo(self):
+        return Repo(settings=IDIOM_FIX_AUTHORIZED, scope=IDIOM_FIX_SCOPE)
+
+    def test_edits_with_out_of_scope_path_denies(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"edits": [{"file_path": "src/api.py"}, {"file_path": "src/other.py"}]})
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("remediator-scope-enforcement", r.stderr)
+
+    def test_edits_with_only_in_scope_path_allows(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"edits": [{"file_path": "src/api.py"}, {"file_path": "src/api.py"}]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_file_paths_with_out_of_scope_path_denies(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"file_paths": ["src/api.py", "src/other.py"]})
+            self.assertEqual(decision(r), "deny")
+
+    def test_file_paths_with_only_in_scope_path_allows(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"file_paths": ["src/api.py"]})
+            self.assertEqual(decision(r), "allow")
+
+    def test_no_readable_path_denies_while_lock_open(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"edits": [{"old_string": "a", "new_string": "b"}]})
+            self.assertEqual(decision(r), "deny")
+            self.assertIn("names no path", r.stderr)
+
+    def test_no_readable_path_is_inert_without_a_lock(self):
+        with Repo(settings=IDIOM_FIX_AUTHORIZED, scope=None) as repo:
+            r = run_input(repo, {"edits": []})
+            self.assertEqual(decision(r), "allow")
+
+    def test_string_file_paths_is_not_iterated_as_characters(self):
+        with self._repo() as repo:
+            r = run_input(repo, {"file_paths": "src/api.py"})
+            self.assertEqual(decision(r), "deny")  # no readable target, lock open
+
+
 class TestScopeFileMembership(unittest.TestCase):
     def test_scope_open_naming_target_and_mode_authorized_allows(self):
         with Repo(settings=IDIOM_FIX_AUTHORIZED, scope=IDIOM_FIX_SCOPE) as repo:

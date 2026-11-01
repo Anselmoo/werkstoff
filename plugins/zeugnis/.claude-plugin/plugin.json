@@ -13,5 +13,6 @@
     "mutation-testing",
     "contract-drift",
     "agentic-reliability"
-  ]
+  ],
+  "license": "MIT"
 }
