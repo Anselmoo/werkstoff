@@ -45,6 +45,17 @@ ROLE_LABELS = {
     "completion": "UX/discoverability (shell completion)",
 }
 
+# The manifest key each role is read from, so the viewer's detail panel can name
+# the exact line a file's badge comes from (verify_scaffold.py gates on the same keys).
+ROLE_KEYS = {
+    "core": "core_files",
+    "entry": "entry_file",
+    "distribution": "distribution_file",
+    "test": "snapshot_test",
+    "help": "help_file",
+    "completion": "completion.file",
+}
+
 # Which of cli-architecture's five pillars each role is evidence for. Only four
 # pillars appear: the fifth, Unix composability, is behavioural (exit codes
 # 0/1/2, data on stdout, diagnostics on stderr) and no file can carry its badge,
@@ -242,6 +253,7 @@ def main(argv=None):
         "tree": tree,
         "roleLabels": ROLE_LABELS,
         "rolePillars": ROLE_PILLARS,
+        "roleKeys": ROLE_KEYS,
         "findings": build_findings(args.scaffold_dir, manifest),
         "surface": build_surface(manifest),
     }

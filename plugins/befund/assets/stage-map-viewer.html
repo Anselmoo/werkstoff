@@ -24,6 +24,7 @@
   #map:focus-visible { outline: 3px solid var(--rk-focus); outline-offset: -3px; }
   .rk-hud { max-width: min(520px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; }
   .rk-hud .verdict { font-size: 0.9rem; line-height: 1.5; }
+  .rk-stage.rk-drawer-open .rk-hint { right: calc(min(400px, 42vw) + var(--space-3)); }
   .panel { background: var(--rk-panel); border: 1px solid var(--rk-border);
     border-radius: var(--radius-panel); padding: var(--space-3); }
   /* R4: a legend a reader gets without clicking anything. Every swatch is a <canvas> painted
@@ -98,7 +99,7 @@
         <li><canvas class="swatch" data-mark="area" aria-hidden="true"></canvas>circle area — files in the stage</li>
       </ul>
     </div>
-    <span class="rk-hint" id="hint">drag a stage to move it · drag empty space to pan · scroll to zoom · click or press Enter on a stage for detail · double-click to focus · Esc to close</span>
+    <span class="rk-hint" id="hint">drag to move or pan · scroll to zoom · click or Enter on a stage for detail · double-click to focus</span>
     <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
   </section>
   <p class="rk-sr" id="kbstatus" role="status" aria-live="polite"></p>
@@ -417,8 +418,15 @@ const simulation = d3.forceSimulation(nodes)
   .force("charge", d3.forceManyBody().strength(d => -60 - d.r * 4))
   .force("collide", d3.forceCollide().radius(d => d.r + 6))
   .force("center", d3.forceCenter())
-  .on("tick", requestDraw)
-  .on("end", fitToNodes);
+  // A weak pull toward the origin keeps an unconnected stage near the cluster instead of letting
+  // it drift off and shrink everything else when the map is fitted to its bounds.
+  .force("x", d3.forceX().strength(0.05))
+  .force("y", d3.forceY().strength(0.05))
+  .on("tick", requestDraw);
+// Settle the layout before the first paint (about 300 ticks to alpha-min), so the map opens
+// framed and still rather than mid-animation; dragging a stage re-heats it as before.
+simulation.stop();
+for (let i = 0, n = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())); i < n; i++) simulation.tick();
 
 // fitToNodes() is wired to the simulation's "end" event, which fires again
 // after every re-heat (e.g. simulation.alphaTarget(...).restart() from the
@@ -673,6 +681,7 @@ const sel = d3.select(canvas).call(zoomB).on("dblclick.zoom", null);
 // "end" event fires (alpha decays below alphaMin, usually well under 2s).
 transform = d3.zoomIdentity.translate(stageEl.clientWidth / 2, stageEl.clientHeight / 2).scale(1);
 sel.call(zoomB.transform, transform);
+fitToNodes();
 
 let flyGen = 0;
 function flyTo(n) {
@@ -730,80 +739,137 @@ canvas.addEventListener("click", e => {
   const h = hit(e.offsetX, e.offsetY);
   selected = h ? h.id : null;
   resultsEl.textContent = "";
-  renderSidebar(); requestDraw();
+  renderDrawer(); requestDraw();
 });
 canvas.addEventListener("dblclick", e => { const h = hit(e.offsetX, e.offsetY); if (h) flyTo(h); });
 addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
   if (e.target === searchEl) return;
   flyGen++; selected = null; resultsEl.textContent = "";
-  flyTo(nodes[0]); renderSidebar();
+  flyTo(nodes[0]); renderDrawer();
 });
-// ── Sidebar: structured drill-down (R7) ───────────────────────────────────
-const sidebar = document.getElementById("sidebar");
+// ── Drawer: structured drill-down (R7), in the kit's drawer beside the map ─────────────
 const FINDINGS = Array.isArray(DATA.findings) ? DATA.findings : [];
 const findingsOf = id => FINDINGS.filter(f => f.stage === id || (f.stages || []).includes(id));
-const pick = n => { selected = n.id; flyTo(n); renderSidebar(); requestDraw(); };
+const pick = n => { selected = n.id; flyTo(n); renderDrawer(); requestDraw(); };
 
+// A neighbour is a kit link-button: it focuses that stage on the map and re-opens the drawer on it.
 function wireList(title, list) {
   if (!list.length) return null;
   return RK.h("div", {}, RK.h("h3", { text: title + " (" + list.length + ")" }),
     RK.h("ul", { class: "links" }, list.slice(0, 60).map(id => {
       const t = byId.get(id);
-      const btn = RK.h("button", { class: "rk-btn", type: "button", title: "Go to " + id }, t ? t.name : id);
-      if (t) btn.addEventListener("click", () => pick(t));
-      return RK.h("li", {}, btn);
+      return RK.h("li", {}, t ? S.link(t.name, () => pick(t)) : RK.h("span", { text: id }));
     })),
     list.length > 60 ? RK.h("p", { class: "why", text: "…and " + (list.length - 60) + " more" }) : null);
 }
 
-function renderSidebar() {
-  sidebar.textContent = "";
-  if (!selected) { sidebar.classList.remove("open"); return; }
+// What the drawer shows when no stage is selected: the question this map answers.
+function renderOverview() {
+  S.open("Which stages can't be changed on their own?", "how to read this map",
+    RK.h("p", { text: "The ones every other stage imports, and the ones that import each other: everything downstream of a god-module has to be re-tested with it, and a dependency cycle cannot be broken from one side." }),
+    RK.h("p", { class: "why", text: "Click a stage on the map, or use the arrow keys and Enter, to read its wires, findings and files." }));
+}
+
+function renderDrawer() {
+  if (!selected) { S.close(); return; }
   const n = byId.get(selected);
   const outgoing = [], incoming = [];
   for (const e of adjacency.get(n.id) || []) {
     if (e.source === n.id) outgoing.push(e.target);
     if (e.target === n.id) incoming.push(e.source);
   }
-  const close = RK.h("button", { class: "rk-btn closebtn", type: "button", "aria-label": "Close the stage panel" }, "×");
-  close.addEventListener("click", () => { selected = null; renderSidebar(); requestDraw(); });
   const badges = RK.h("div", { class: "badges" },
     n.inCycle ? RK.badge("cycle" + (n.cycleId != null ? " #" + (n.cycleId + 1) : ""), "bad") : null,
     n.godModuleFanIn ? RK.badge("god-module", "warn") : null,
     n.deadEnd ? RK.badge("dead-end", "info") : null,
     !n.fanIn && !n.fanOut ? RK.badge("unconnected", "warn") : null);
   const row = (k, v) => RK.h("div", { class: "row" }, RK.h("span", { class: "k", text: k }), RK.h("span", { class: "v", text: String(v) }));
-  sidebar.append(close, RK.h("h2", { text: n.name }), badges,
-    row("Files", n.fileCount), row("Imported by (fan-in)", n.fanIn), row("Imports (fan-out)", n.fanOut));
+  const kids = [badges, row("Files", n.fileCount), row("Imported by (fan-in)", n.fanIn), row("Imports (fan-out)", n.fanOut)];
   if (n.godModuleFanIn) {
-    sidebar.appendChild(RK.h("p", { class: "why", text: "God-module: " + n.godModuleFanIn + " of " + Math.max(0, nodes.length - 1) +
+    kids.push(RK.h("p", { class: "why", text: "God-module: " + n.godModuleFanIn + " of " + Math.max(0, nodes.length - 1) +
       " other stages import it; the threshold for this graph is " + (DATA.godThreshold != null ? DATA.godThreshold : "?") +
       ". A change here has to be re-tested with every importer." }));
   }
   if (n.inCycle) {
     const members = (DATA.cycles || [])[n.cycleId] || [];
-    sidebar.appendChild(RK.h("p", { class: "why", text: "Cycle #" + (n.cycleId + 1) + ": these stages import each other, so none can be changed or tested alone." }));
-    sidebar.appendChild(wireList("Cycle members", members.filter(m => m !== n.id)));
+    kids.push(RK.h("p", { class: "why", text: "Cycle #" + (n.cycleId + 1) + ": these stages import each other, so none can be changed or tested alone." }));
+    kids.push(wireList("Cycle members", members.filter(m => m !== n.id)));
   }
-  sidebar.append(wireList("Imports", outgoing), wireList("Imported by", incoming));
-  if (!outgoing.length && !incoming.length) sidebar.appendChild(RK.h("p", { class: "why", text: "No wires: no stage imports this one and it imports none." }));
+  kids.push(wireList("Imports", outgoing), wireList("Imported by", incoming));
+  if (!outgoing.length && !incoming.length) kids.push(RK.h("p", { class: "why", text: "No wires: no stage imports this one and it imports none." }));
   const found = findingsOf(n.id);
   if (found.length) {
-    sidebar.appendChild(RK.h("h3", { text: "Findings" }));
-    sidebar.appendChild(RK.h("ul", { class: "links" }, found.map(f => {
+    kids.push(RK.h("h3", { text: "Findings" }));
+    kids.push(RK.h("ul", { class: "links" }, found.map(f => {
       const a = RK.h("a", { href: "#finding-" + f.id.replace(/[^A-Za-z0-9_.-]/g, "-"), text: f.claim });
       a.addEventListener("click", () => setTimeout(openHashFinding, 0));
       return RK.h("li", {}, a);
     })));
   }
   if (n.files.length) {
-    sidebar.appendChild(RK.h("details", { class: "files" }, RK.h("summary", { text: "Files in this stage (" + n.files.length + ")" }),
+    kids.push(RK.h("details", { class: "files" }, RK.h("summary", { text: "Files in this stage (" + n.files.length + ")" }),
       n.files.slice(0, 80).map(f => RK.h("code", { text: f })),
       n.files.length > 80 ? RK.h("p", { class: "why", text: "…and " + (n.files.length - 80) + " more" }) : null));
   }
-  sidebar.classList.add("open");
+  S.open(n.name, n.fileCount + " file" + (n.fileCount === 1 ? "" : "s") + " · stage", ...kids);
 }
+// Closing the drawer (the close button, Escape) also clears the selection ring on the map.
+new MutationObserver(() => { if (document.getElementById("rk-drawer").hidden && selected) { selected = null; requestDraw(); } })
+  .observe(document.getElementById("rk-drawer"), { attributes: true, attributeFilter: ["hidden"] });
+
+// The map keeps its centre when the figure resizes (the drawer opening or closing narrows it).
+let lastW = stageEl.clientWidth, lastH = stageEl.clientHeight;
+S.onResize((w, h) => {
+  const dx = w - lastW, dy = h - lastH;
+  lastW = w; lastH = h;
+  if (hasInitialFit && (dx || dy)) sel.call(zoomB.transform, d3.zoomIdentity.translate(transform.x + dx / 2, transform.y + dy / 2).scale(transform.k));
+  requestDraw();
+});
+
+// ── Keyboard: the map is one tab stop; arrows move between stages, Enter opens the drawer ──
+// Canvas marks are not DOM nodes, so each stage is reachable by key instead: the focused stage
+// is rung on the map, summarised in a tooltip, and announced to assistive technology.
+const kbOrder = nodes.slice().sort((a, b) => (b.fanIn + b.fanOut) - (a.fanIn + a.fanOut) || a.name.localeCompare(b.name));
+let kbIndex = -1;
+const kbStatus = document.getElementById("kbstatus");
+function describe(n) {
+  return n.name + ": " + n.fileCount + " files, imported by " + n.fanIn + ", imports " + n.fanOut +
+    (n.godModuleFanIn ? ", god-module" : "") + (n.inCycle ? ", in cycle " + (n.cycleId + 1) : "") +
+    (n.deadEnd ? ", dead-end" : "");
+}
+function showTip(n, evt) {
+  S.tip.show(evt, n.name, RK.h("div", { text: n.fileCount + " files · imported by " + n.fanIn + " · imports " + n.fanOut }),
+    n.godModuleFanIn || n.inCycle || n.deadEnd
+      ? RK.h("div", { text: [n.godModuleFanIn ? "god-module" : "", n.inCycle ? "in cycle #" + (n.cycleId + 1) : "", n.deadEnd ? "dead-end" : ""].filter(Boolean).join(" · ") })
+      : null);
+}
+function nodeEvent(n) {
+  const r = canvas.getBoundingClientRect();
+  return { clientX: r.left + n.x * transform.k + transform.x + n.r * transform.k, clientY: r.top + n.y * transform.k + transform.y };
+}
+canvas.addEventListener("keydown", e => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (step) {
+    e.preventDefault();
+    kbIndex = (kbIndex + step + kbOrder.length) % kbOrder.length;
+    const n = kbOrder[kbIndex];
+    hovered = n.id; requestDraw();
+    showTip(n, nodeEvent(n));
+    kbStatus.textContent = describe(n) + ". Press Enter for detail.";
+  } else if ((e.key === "Enter" || e.key === " ") && kbIndex >= 0) {
+    e.preventDefault();
+    pick(kbOrder[kbIndex]);
+  }
+});
+canvas.addEventListener("blur", () => { S.tip.hide(); if (kbIndex >= 0) { hovered = null; requestDraw(); } });
+// Pointer hover shows the same summary as a tooltip.
+canvas.addEventListener("mousemove", e => {
+  if (dragNode) { S.tip.hide(); return; }
+  const h = hit(e.offsetX, e.offsetY);
+  if (h) showTip(h, e); else S.tip.hide();
+});
+canvas.addEventListener("mouseleave", () => S.tip.hide());
 
 // ── Search ────────────────────────────────────────────────────────────────
 // The kit's #rk-q also filters the findings and the stage table below; here it additionally
@@ -839,22 +905,24 @@ function applyHash() {
   const id = decodeURIComponent(location.hash.slice(1));
   if (id.startsWith("stage-")) {
     const n = byId.get(id.slice(6));
-    if (n) { document.getElementById("sec-map").scrollIntoView(); pick(n); }
+    if (n) pick(n);
   } else openHashFinding();
 }
 addEventListener("hashchange", applyHash);
 
 // ── The kit's sections around the map ─────────────────────────────────────────────────
-const sectionMap = document.getElementById("sec-map");
 const st = DATA.stats || {};
 const nUnconnected = st.unconnectedCount != null ? st.unconnectedCount : isolated.length;
-sectionMap.before(RK.section("glance", "At a glance", RK.glance({ verdict: null, stats: [
-  { label: "God-modules", value: st.godModuleCount || 0, bad: (st.godModuleCount || 0) > 0, note: (st.godModuleCount || 0) > 0 ? "needs action" : "" },
-  { label: "Dependency cycles", value: st.cycleCount || 0, bad: (st.cycleCount || 0) > 0, note: (st.cycleCount || 0) > 0 ? "needs action" : "" },
+const inCycle = nodes.filter(n => n.inCycle).length;
+const topFanIn = nodes.reduce((m, n) => n.fanIn > m.fanIn ? n : m, nodes[0]);
+// R2: the verdict owns the god-module and cycle counts; the numbers here are the ones it does not state.
+S.stats([
+  { label: "Stages in a cycle", value: inCycle, bad: inCycle > 0, note: inCycle > 0 ? "cannot be changed alone" : "" },
+  { label: "Highest fan-in", value: topFanIn.fanIn, note: topFanIn.name + " is imported by this many stages" },
   { label: "Unconnected stages", value: nUnconnected, bad: nUnconnected > 0, note: nUnconnected > 0 ? "wired to nothing" : "" },
   { label: "Dead-end stages", value: st.deadEndCount != null ? st.deadEndCount : deadEnds.length, note: "import nothing outward" },
-] })));
-sectionMap.after(
+]);
+RK.$("#rk-content").append(
   RK.section("findings", "Findings", RK.findings(FINDINGS, {
     facets: ["severity", "kind"], empty: "No god-module, dependency cycle, unconnected stage or dead-end was found.",
   })),
@@ -887,10 +955,10 @@ RK.init();
 // A deep link is honoured once the layout settles; otherwise the worst finding's stage is open
 // from the start, so the side panel shows its drill-down before anything is clicked.
 if (location.hash) {
-  simulation.on("end.open", () => { simulation.on("end.open", null); applyHash(); });
+  applyHash();
 } else {
   const first = FINDINGS.find(f => f.stage && byId.has(f.stage));
-  if (first) { selected = first.stage; renderSidebar(); requestDraw(); }
+  if (first) { selected = first.stage; renderDrawer(); requestDraw(); } else renderOverview();
 }
 })();
 </script>

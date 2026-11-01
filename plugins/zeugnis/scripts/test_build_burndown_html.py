@@ -150,9 +150,13 @@ class ReportConformanceTests(unittest.TestCase):
             html = self.render(repo)
         # R1: a verdict element that exists before any script runs.
         self.assertIn('class="verdict"', html)
+        # R9: the figure-first stage skeleton.
+        self.assertIn('id="rk-stage"', html)
+        self.assertIn("data-rk-figure", html)
+        self.assertIn('id="rk-drawer"', html)
         # R4: every status colour named in an always-visible legend, each with a
         # label and a glyph -- colour is never the only channel.
-        self.assertIn('<ul class="legend rk-card">', html)
+        self.assertIn('<ul class="legend rk-card rk-legend-float" id="ledgerLegend">', html)
         for label in ("closed", "open", "escalated"):
             self.assertIn('<span class="name">' + label + "</span>", html)
 
@@ -169,7 +173,10 @@ class ReportConformanceTests(unittest.TestCase):
             html = self.render(repo)
         # R5: no fixed pixel height for the trend panel, in CSS or in JS.
         self.assertNotIn("height: 300px", html)
-        self.assertIn("const H = Math.max(180, maxCum", html)
+        # The figure is drawn from the stage's measured size, not a constant.
+        self.assertIn("S.onResize(", html)
+        self.assertIn("function drawTrend(W, H)", html)
+        self.assertNotIn("const W = 900", html)
         self.assertNotIn("height: 300px", html)
 
 
@@ -183,7 +190,7 @@ class SplitViewStructureTests(unittest.TestCase):
         # findings are separate sections, and there is no combined chart.
         self.assertIn('id: "grp-ledger"', html)
         self.assertIn('id: "grp-mutation"', html)
-        self.assertIn('section("trend"', html)
+        self.assertIn('section("passes"', html)
         self.assertIn('section("findings"', html)
         self.assertIn("function drawTrend(", html)
         self.assertNotIn("function renderChart(", html)
@@ -254,13 +261,15 @@ class InteractionTests(unittest.TestCase):
         self.assertNotIn("innerHTML", code)
 
     def test_controls_are_buttons_with_state(self):
-        for needle in ('h("button", { class: "rk-btn", type: "button" }, "Unpin")', 'h("details"',
-                       '.attr("role", "button")', '.attr("tabindex", 0)',
+        # R9: a pass point or a module track is a keyboard-reachable button whose
+        # selection opens the drawer (its close button replaces the old Unpin).
+        for needle in ('S.open(', 'h("details"',
+                       'role: "button"', 'tabindex: 0',
                        '"aria-pressed"', '"aria-expanded"'):
             self.assertIn(needle, self.HTML)
 
     def test_keyboard_and_escape(self):
-        self.assertIn('event.key === "Enter" || event.key === " "', self.HTML)
+        self.assertIn('e.key === "Enter" || e.key === " "', self.HTML)
         self.assertIn('event.key === "Escape"', self.HTML)
 
     def test_selection_is_more_than_colour_and_motion_is_optional(self):

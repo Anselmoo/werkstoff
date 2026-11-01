@@ -10,7 +10,7 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  .legend dl { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 2px var(--space-2); margin: 0; font-size: 0.78rem; line-height: 1.3; }
+  .legend dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-3); margin: 0; font-size: 0.78rem; line-height: 1.3; }
   .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
   .legend dd { margin: 0 var(--space-2) 0 0; }
   .rk-drawer-body dl.defs { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: 0; }
@@ -62,10 +62,10 @@
     <div class="rk-figure rk-scroll" id="rk-figure" data-rk-figure></div>
     <div class="legend rk-card rk-muted rk-legend-float">
       <dl>
-        <dt>✗ blocker</dt><dd>ships broken: the plugin does not load, or a guard silently does nothing</dd>
+        <dt>✗ blocker</dt><dd>ships broken: the plugin does not load, or a guard does nothing</dd>
         <dt>! major</dt><dd>a stated contract is not kept; a reader or a tool is misled</dd>
-        <dt>i minor · – nit</dt><dd>real but survivable; fix when the file is open anyway</dd>
-        <dt>haiku · sonnet · opus · human</dt><dd>the cheapest tier that can apply the fix; <strong>human</strong> is a judgement no model should make alone</dd>
+        <dt>i minor · – nit</dt><dd>real but survivable; fix it when the file is open anyway</dd>
+        <dt>haiku · sonnet · opus · human</dt><dd>the cheapest tier that can fix it; <strong>human</strong>: no model alone</dd>
       </dl>
     </div>
     <span class="rk-hint">click a cell to filter the list below · hover for the rules</span>
@@ -192,8 +192,8 @@
   function draw(w, hgt) {
     const fig = S.figure;
     fig.textContent = ""; marks.clear();
-    const labelW = 230, rightPad = 24;
-    const top = 222, bottom = 118;
+    const labelW = 252, rightPad = 24;
+    const top = 222, bottom = 124;
     const nr = fams.length, nc = sevs.length;
     const cw = Math.max(110, Math.min(250, (w - labelW - rightPad) / nc));
     const ch = Math.max(66, Math.min(130, (hgt - top - bottom) / Math.max(nr, 1)));
@@ -275,12 +275,12 @@
       const card = document.getElementById(idOf.get(x));
       if (card) { card.open = true; card.scrollIntoView({ block: "center" }); }
     })));
-    if (sel) kids.push(h("p", {}, S.link("Back to the cell", () => showCell(sel.fam, sel.sev))));
+    if (sel) kids.push(h("p", {}, S.link("Back to the cell", () => showCell(sel.fam, sel.sev, true))));
     else kids.push(h("p", {}, S.link("How to read this", showOverview)));
     S.open(x.rule || "Finding", where || (tag(x, "family") + " · " + x.severity), ...kids);
   }
 
-  function showCell(fa, sv2) {
+  function showCell(fa, sv2, filtered) {
     const list = f.filter((x) => (!fa || tag(x, "family") === fa) && (!sv2 || x.severity === sv2));
     const title = (fa ? "Family " + fa : "All families") + (sv2 ? " · " + sv2 : "");
     const info = fa ? famInfo[fa] : null;
@@ -298,7 +298,7 @@
         h("li", {}, badge(x.severity), " ", h("code", { text: x.rule || "" }), " ", badge(tag(x, "tier") || "unrated", "info"), " ",
           S.link(x.claim || "(no claim recorded)", () => showFinding(x)), " ",
           x.file ? h("small", { class: "rk-muted mono", text: whereOf(x) }) : null))));
-      kids.push(h("p", { class: "rk-muted", text: "The list below is filtered to this selection. Press Escape to clear it." }));
+      kids.push(h("p", { class: "rk-muted", text: filtered ? "The list below is filtered to this selection. Press Escape to clear it." : "Click the cell to filter the list below to it." }));
     }
     S.open(title, sub, ...kids);
   }
@@ -308,19 +308,22 @@
     box.setFilter("severity", sv2 ? [sv2] : []);
   }
 
-  function pick(fa, sv2, opts) {
-    const again = sel && sel.fam === fa && sel.sev === sv2 && !(opts && opts.quiet);
+  let filteredNow = false;
+  function pick(fa, sv2) {
+    const again = sel && sel.fam === fa && sel.sev === sv2 && filteredNow;
     if (again) { S.close(); return; } // the Escape path clears the selection and the filter
     sel = { fam: fa, sev: sv2 };
     paint();
-    if (!(opts && opts.quiet) && list(fa, sv2).length) applyFilter(fa, sv2); else applyFilter(null, null);
-    showCell(fa, sv2);
+    const filtered = list(fa, sv2).length > 0;
+    filteredNow = filtered;
+    if (filtered) applyFilter(fa, sv2); else applyFilter(null, null);
+    showCell(fa, sv2, filtered);
   }
   const list = (fa, sv2) => f.filter((x) => (!fa || tag(x, "family") === fa) && (!sv2 || x.severity === sv2));
 
   // Closing the drawer (Escape, the close button) drops the selection and its filter with it.
   new MutationObserver(() => {
-    if (RK.$("#rk-drawer").hidden) { sel = null; paint(); applyFilter(null, null); }
+    if (RK.$("#rk-drawer").hidden) { sel = null; filteredNow = false; paint(); applyFilter(null, null); }
   }).observe(RK.$("#rk-drawer"), { attributes: true, attributeFilter: ["hidden"] });
 
   // ---- boot ------------------------------------------------------------------------------------------

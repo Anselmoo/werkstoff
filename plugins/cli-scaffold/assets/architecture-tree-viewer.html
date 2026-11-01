@@ -20,35 +20,57 @@
   --role-core: var(--cat-1); --role-entry: var(--cat-2); --role-distribution: var(--cat-3);
   --role-test: var(--cat-4); --role-help: var(--cat-5);
 }
-.q { font-size: 1rem; margin: 0 0 var(--space-2); }
 .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
-#tree-wrap { position: relative; overflow-x: auto; margin: var(--space-2) 0; }
+/* Figure-first (report-viewer-standard.md R9): the tree is the figure. Rows stretch to fill
+   the stage, each role gets its own column so the matrix of file x role reads at a glance,
+   and a row opens its role, manifest key, gap and CLI surface in the drawer. */
+.rk-hud { max-width: min(920px, calc(100% - 2 * var(--space-3))); }
+.rk-figure.rk-scroll { overflow-y: auto; }
+#tree-canvas { position: relative; }
 .guide { stroke: var(--rk-muted); stroke-opacity: .55; }
-#guides { position: absolute; top: 0; left: 0; pointer-events: none; }
-#tree { position: relative; }
-.tree-row { position: absolute; display: flex; align-items: center; gap: var(--space-2);
-  height: 22px; white-space: nowrap; transition: opacity var(--transition-fast); }
+#guides { position: absolute; left: 0; pointer-events: none; }
+.tree-head, .tree-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; white-space: nowrap; }
+.tree-head { font-size: 12px; color: var(--rk-muted); border-bottom: 1px solid var(--rk-border); }
+.tree-row { transition: opacity var(--transition-fast); cursor: pointer; }
+.tree-row:nth-child(odd) { background: color-mix(in srgb, var(--rk-panel-2) 55%, transparent); }
+.tree-row:hover { background: var(--rk-panel-2); }
+.tree-row:focus { outline: none; }
+.tree-row:focus-visible { outline: 2px solid var(--rk-focus); outline-offset: -2px; }
+.tree-row.sel { background: var(--rk-panel-2); box-shadow: inset 4px 0 0 var(--rk-focus); }
 .tree-row.dim { opacity: 0.25; }
-.row-name { font-size: 13px; }
-.row-count { color: var(--rk-muted); font-size: 11px; }
-.row-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.row-main { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-2); overflow: hidden; }
+.row-cell { flex: 0 0 auto; display: flex; justify-content: center; align-items: center; }
+.row-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+.row-count { color: var(--rk-muted); font-size: 12px; }
+.row-dot { color: var(--rk-muted); font-size: 14px; }
 /* Every badge is a neutral chip -- panel fill, text label -- with its categorical identity
    carried as a left-border swatch, so the role NAME is always the text and no per-role text
    colour is ever needed. A border/mark needs WCAG 1.4.11's 3:1, which all five hues clear
    against both grounds (measured with plugins/matrize/scripts/contrast.py). */
 .badge { display: inline-flex; align-items: center; padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm); font-size: 10px; line-height: 1.5; cursor: default;
+  border-radius: var(--radius-sm); font-size: 12px; line-height: 1.5; cursor: inherit;
   background: var(--rk-panel-2); color: var(--rk-text);
   border: 1px solid var(--rk-border); border-left: 4px solid var(--rk-border); }
 .badge[data-role="completion"] { border-left-color: var(--rk-muted); }
 /* A role no file claims is drawn hollow and dashed, so "absent" is legible without colour. */
 .badge.absent { background: transparent; color: var(--rk-muted); border: 1px dashed var(--rk-muted); }
-#legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 12px; flex-wrap: wrap; margin-top: var(--space-3); }
+button.badge { font: inherit; font-size: 12px; cursor: pointer; }
+button.badge:focus-visible { outline: 2px solid var(--rk-focus); }
+#legend { display: flex; gap: var(--space-1) var(--space-3); font-size: 12px; flex-wrap: wrap; align-items: center;
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
+.legend-lead { color: var(--rk-muted); }
 .legend-item { all: unset; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); color: var(--rk-muted);
   padding: var(--space-1); border-radius: var(--radius-sm); }
 .legend-item:focus-visible { outline: 2px solid var(--rk-focus); }
 .legend-item[aria-pressed="true"] { background: var(--rk-panel-2); color: var(--rk-text); }
-.legend-item.absent { color: var(--rk-text); }
+.legend-item.absent { color: var(--rk-text); cursor: default; }
+.rk-drawer-body details.gap { border: 1px solid var(--rk-border); border-left-width: 4px; border-radius: var(--radius-panel); margin: 0 0 var(--space-2); background: var(--rk-panel-2); }
+.rk-drawer-body details.gap > summary { cursor: pointer; padding: var(--space-2); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: baseline; }
+.rk-drawer-body details.gap .gb { padding: 0 var(--space-2) var(--space-2); }
+.rk-drawer-body details.gap .gb h4 { margin: var(--space-2) 0 var(--space-1); font-size: 0.74rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.rk-drawer-body details.gap .gb p { margin: var(--space-1) 0; }
+.rk-drawer-body ul { margin: var(--space-1) 0; padding-left: 1.2em; }
+.rk-drawer-body p { margin: var(--space-1) 0; }
 </style>
 </head>
 <body class="rk">
@@ -62,28 +84,22 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <h2 class="q">Does every pillar the doctrine names have a file behind it?</h2>
-  <p class="verdict" id="verdict"></p>
-  <p class="note">
-    Each badge below is a role the scaffold's own
-    <code>cli-scaffold.manifest.json</code> declares for that file — the same
-    gating keys <code>verify_scaffold.py</code> reads to decide pass/fail, not
-    a guess made from the filename. A role with no file is drawn hollow and
-    dashed in the legend. The fifth pillar, <em>Unix composability</em>, is
-    behavioural — exit codes 0/1/2, data on stdout, diagnostics on stderr — so
-    no file can carry its badge and it is deliberately not counted here.
-  </p>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
-  </div>
-  <div id="stage" hidden>
-    <div id="tree-wrap">
-      <svg id="guides"></svg>
-      <div id="tree"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Does every pillar the doctrine names have a file behind it? The scaffold's file tree with one column per doctrine role">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Each file the scaffold's manifest names plays a doctrine role; this report says which pillars have a file behind them and which have none.</p>
+      <dl class="rk-hud-stats"></dl>
     </div>
-    <div id="legend"></div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float" id="legend"><span class="legend-lead">Role badges, each a word and a swatch (hollow dashed = no file claims it; press one to dim other rows):</span></div>
+    <span class="rk-hint">click a file or directory for its roles · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>

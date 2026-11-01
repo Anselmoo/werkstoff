@@ -257,7 +257,7 @@ linter stops with exit 2 and the remedy, and preflight reports `pyyaml=no`.
 
 ## The review report
 
-![Six findings across three plugins, each with its severity, rule family and the cheapest tier that can fix it, over a calibration block showing every rule planted and blanked](assets/review-viewer-screenshot.jpg)
+![A rule-family by severity heatmap fills the screen, each cell a count with a glyph and the fix tiers inside it, the verdict and tier counts floating over it, and the open cell's finding listed in the side panel](assets/review-viewer-screenshot.jpg)
 
 ```bash
 python3 plugins/nacharbeit/scripts/nacharbeit_lint.py plugins/* --docs-root docs --format json > /tmp/review.json
@@ -267,6 +267,9 @@ python3 plugins/nacharbeit/scripts/build_review_html.py --lint /tmp/review.json 
 Rendered from committed demo data at `scripts/fixtures/review-demo.json`. The fixture carries a
 **blocker** and a **human**-tier finding on purpose: the tier column exists to separate what a
 model can close from what is a judgement call, and a demo without one cannot show that.
+
+The heatmap is the figure: click a cell to filter the findings list below to it and read its
+findings in the side panel, then a finding for its quote and suggested fix.
 
 The page also states plainly that a family at `0/n` is **not** evidence of health — it is
 evidence that nothing in the reviewed plugin exercised that family.
