@@ -190,6 +190,160 @@
   }
   content.append(section("candidates", "Candidates", list));
 
+  // ---- the figure: candidates x acceptance criteria, each cell a glyph AND a word -------------
+  // A criterion's state is the referee's per-criterion record. A measured candidate with no
+  // record for it is "cannot judge" -- never silently "met" -- and so is every cell of a
+  // candidate whose verdict was cannot_judge. An unmeasured candidate has no cells to judge.
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const mk = (tag, attrs, parent, text) => {
+    const n = document.createElementNS(SVGNS, tag);
+    for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+    if (text !== undefined) n.textContent = text;
+    if (parent) parent.appendChild(n);
+    return n;
+  };
+  const critIds = [];
+  c.forEach((x) => (x.criteria || []).forEach((k) => { if (critIds.indexOf(k.id) < 0) critIds.push(k.id); }));
+  const CELL = {
+    met: { tone: "ok", glyph: "✓", word: "met" },
+    notmet: { tone: "bad", glyph: "✗", word: "NOT met" },
+    cannot: { tone: "warn", glyph: "!", word: "cannot judge" },
+    none: { tone: "flat", glyph: "–", word: "not measured" },
+  };
+  const cellOf = (x, id) => {
+    if (x.outcome === "unmeasured") return { st: CELL.none, ev: "never fairly tried" };
+    const k = (x.criteria || []).find((q) => q.id === id);
+    if (x.outcome === "cannot_judge") return { st: CELL.cannot, ev: k && k.evidence ? k.evidence : "the referee could not decide" };
+    if (!k) return { st: CELL.cannot, ev: "no referee record for this criterion" };
+    return { st: k.met ? CELL.met : CELL.notmet, ev: k.evidence || "" };
+  };
+  const wrap = (text, per, lines) => {
+    const out = []; let cur = "";
+    String(text || "").split(/\s+/).filter(Boolean).forEach((w) => {
+      if (cur && (cur + " " + w).length > per) { out.push(cur); cur = w; } else cur = cur ? cur + " " + w : w;
+    });
+    if (cur) out.push(cur);
+    if (out.length > lines) { const keep = out.slice(0, lines); keep[lines - 1] = keep[lines - 1].replace(/.{0,2}$/, "") + "…"; return keep; }
+    return out;
+  };
+  const checksOf = (x) => x.checksTotal ? { ok: x.checksPassed === x.checksTotal, text: x.checksPassed + "/" + x.checksTotal + " checks pass" } : { ok: null, text: "no checks ran" };
+
+  const svg = mk("svg", { class: "mx", role: "group", "aria-label": "Candidates against acceptance criteria" });
+  S.figure.appendChild(svg);
+  let selId = null, markRow = () => {};
+
+  function candDetail(x) {
+    const kids = [];
+    const cr = critIds.length ? critIds : (x.criteria || []).map((k) => k.id);
+    kids.push(h("h3", { text: "Referee, per criterion" }));
+    if (!cr.length) kids.push(h("p", { class: "rk-muted", text: x.outcome === "unmeasured" ? "No referee ran: this candidate was never fairly tried." : "The referee recorded no per-criterion evidence." }));
+    cr.forEach((id) => {
+      const k = cellOf(x, id);
+      kids.push(h("div", { class: "crit" }, h("span", { class: "w " + k.st.tone, text: k.st.glyph + " " + k.st.word }), " · ", h("strong", { text: id }), k.ev ? h("p", { text: k.ev }) : null));
+    });
+    kids.push(h("h3", { text: "Checks, as run" }));
+    kids.push((x.checks || []).length
+      ? h("dl", { class: "rows" }, (x.checks || []).map((k) => [h("dt", { text: (k.exit === 0 ? "✓ " : "✗ ") + (k.id || "check") }), h("dd", { text: (k.command || "") + " → exit " + k.exit })]))
+      : h("p", { class: "rk-muted", text: "none recorded" }));
+    kids.push(h("h3", { text: "Files touched (" + (x.files || []).length + ")" }));
+    kids.push((x.files || []).length ? h("ul", { class: "files" }, x.files.map((f) => h("li", { text: f }))) : h("p", { class: "rk-muted", text: "none" }));
+    kids.push(h("h3", { text: "Writes outside the declared scope" }));
+    kids.push((x.outOfScopeWrites || []).length
+      ? h("ul", { class: "files oos" }, x.outOfScopeWrites.map((f) => h("li", { text: "✗ " + f })))
+      : h("p", { class: "rk-muted", text: "none: every write stayed inside the scope" }));
+    if (x.note) kids.push(h("h3", { text: "Referee note" }), h("p", { text: x.note }));
+    if (x.rationaleLeaked) kids.push(h("p", { class: "oos", text: "! the referee was shown the builder's rationale and reported it" }));
+    const card = "cand-" + String(x.id).replace(/[^A-Za-z0-9_.-]/g, "-");
+    kids.push(h("p", {}, S.link("Open the full finding below", () => {
+      const t = document.getElementById(card);
+      if (t) { if (t.tagName === "DETAILS") t.open = true; t.scrollIntoView({ block: "center" }); }
+    })));
+    const t = TONE[x.outcome] || "flat";
+    return { title: x.id + " · " + x.angle, sub: GL[t] + " " + (WORD[x.outcome] || x.outcome) + (x.evidence ? " — " + x.evidence : ""), kids };
+  }
+  const select = (id) => {
+    const x = c.find((q) => q.id === id);
+    if (!x) return;
+    selId = id;
+    const d = candDetail(x);
+    S.open(d.title, d.sub, ...d.kids);
+    markRow(id);
+  };
+
+  function draw(w, hh) {
+    if (w < 80 || hh < 80) return;
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const fr = S.figure.getBoundingClientRect();
+    const rel = (sel) => { const e = RK.$(sel); return e ? e.getBoundingClientRect() : null; };
+    const hud = rel(".rk-hud"), leg = rel(".rk-legend-float");
+    const top = hud ? Math.ceil(hud.bottom - fr.top) + 16 : 16;
+    const bottom = leg ? Math.ceil(fr.bottom - leg.top) + 12 : 12;
+    const K = Math.max(1, critIds.length), n = Math.max(1, c.length);
+    const HEAD = 34, GAP = 8, TW = 150;
+    const LW = Math.max(210, Math.min(300, Math.floor(w * 0.2)));
+    const CW = Math.max(120, Math.min(250, Math.floor((w - LW - 2 * TW - 32 - GAP * (K + 2)) / K)));
+    const RH = Math.max(76, Math.min(150, Math.floor((hh - top - bottom - HEAD - GAP * n) / n)));
+    const mw = LW + K * (CW + GAP) + 2 * (TW + GAP);
+    const mh = HEAD + n * (RH + GAP);
+    const W = Math.max(w, mw + 32), H = Math.max(hh, top + bottom + mh);
+    svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    const x0 = Math.max(16, Math.floor((W - mw) / 2));
+    const y0 = top + Math.max(0, Math.floor((H - top - bottom - mh) / 2));
+    // column heads
+    critIds.forEach((id, i) => mk("text", { x: x0 + LW + GAP + i * (CW + GAP) + 6, y: y0 + 22, class: "colhead" }, svg, "criterion " + id));
+    if (!critIds.length) mk("text", { x: x0 + LW + GAP + 6, y: y0 + 22, class: "colhead" }, svg, "no per-criterion records");
+    const tx = x0 + LW + GAP + K * (CW + GAP);
+    mk("text", { x: tx + 6, y: y0 + 22, class: "colhead" }, svg, "checks as run");
+    mk("text", { x: tx + TW + GAP + 6, y: y0 + 22, class: "colhead" }, svg, "files touched");
+    const rowEls = {};
+    c.forEach((x, ri) => {
+      const y = y0 + HEAD + ri * (RH + GAP);
+      const t = TONE[x.outcome] || "flat";
+      const wordOut = (WORD[x.outcome] || x.outcome);
+      const g = mk("g", { class: "row" + (x.outcome === "landed" ? " landed" : ""), tabindex: "0", role: "button", "data-id": x.id,
+        "aria-label": "Candidate " + x.id + ", " + x.angle + ", " + wordOut + ". Open the referee's evidence." }, svg);
+      rowEls[x.id] = g;
+      mk("rect", { class: "rowbg", x: x0 - 4, y: y - 4, width: mw + 8, height: RH + 8, rx: 8 }, g);
+      mk("text", { x: x0 + 8, y: y + 22, class: "rowid" }, g, x.id);
+      mk("text", { x: x0 + 8 + 8 * (String(x.id).length + 1), y: y + 22, class: "rowangle" }, g, wrap(x.angle, Math.floor((LW - 40) / 6.2), 1)[0] || "");
+      mk("text", { x: x0 + 8, y: y + 44, class: "word g-" + t }, g, GL[t] + " " + wordOut);
+      if (x.outcome === "landed") mk("text", { x: x0 + 8, y: y + 64, class: "landedtag" }, g, "the one diff applied");
+      else wrap(x.evidence, Math.floor((LW - 16) / 6.2), Math.max(1, Math.floor((RH - 56) / 14))).forEach((ln, li) =>
+        mk("text", { x: x0 + 8, y: y + 62 + li * 14, class: "rowangle" }, g, ln));
+      const cols = critIds.length ? critIds : [];
+      cols.forEach((id, i) => {
+        const cx = x0 + LW + GAP + i * (CW + GAP);
+        const k = cellOf(x, id);
+        const cg = mk("g", { "data-crit": id }, g);
+        mk("rect", { class: "cell t-" + k.st.tone, x: cx, y, width: CW, height: RH, rx: 6 }, cg);
+        mk("text", { x: cx + 10, y: y + 24, class: "word g-" + k.st.tone }, cg, k.st.glyph + " " + k.st.word);
+        wrap(k.ev, Math.floor((CW - 18) / 6.1), Math.max(1, Math.floor((RH - 40) / 14))).forEach((ln, li) =>
+          mk("text", { x: cx + 10, y: y + 44 + li * 14, class: "ev" }, cg, ln));
+        const tip = (e) => S.tip.show(e, x.id + " · criterion " + id, h("div", { text: k.st.glyph + " " + k.st.word }), k.ev ? h("div", { class: "rk-muted", text: k.ev }) : null);
+        cg.addEventListener("mouseenter", tip); cg.addEventListener("mousemove", tip);
+      });
+      const ck = checksOf(x);
+      mk("text", { x: tx + 8, y: y + 24, class: "word g-" + (ck.ok === null ? "flat" : ck.ok ? "ok" : "bad") }, g, (ck.ok === null ? "–" : ck.ok ? "✓" : "✗") + " " + ck.text.split(" ")[0]);
+      mk("text", { x: tx + 8, y: y + 44, class: "ev" }, g, ck.ok === null ? "no checks ran" : ck.text.replace(/^\S+ /, ""));
+      const oos = (x.outOfScopeWrites || []).length;
+      mk("text", { x: tx + TW + GAP + 8, y: y + 24, class: "word" }, g, String(x.filesTouched) + (x.filesTouched === 1 ? " file" : " files"));
+      mk("text", { x: tx + TW + GAP + 8, y: y + 44, class: "ev" + (oos ? " g-bad" : "") }, g, oos ? "✗ " + oos + " out of scope" : "all in scope");
+      g.addEventListener("click", () => select(x.id));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(x.id); } });
+      const sum = (e) => S.tip.show(e, x.id + " · " + x.angle, h("div", { text: GL[t] + " " + wordOut }),
+        h("div", { class: "rk-muted", text: x.evidence || "" }), h("div", { class: "rk-muted", text: "click for the referee's evidence" }));
+      g.addEventListener("mouseenter", sum); g.addEventListener("mousemove", (e) => { if (!e.target.closest || !e.target.closest("[data-crit]")) sum(e); });
+      g.addEventListener("focus", sum); g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
+    });
+    markRow = (id) => Object.keys(rowEls).forEach((k) => rowEls[k].classList.toggle("sel", k === id));
+    if (selId) markRow(selId);
+  }
+  S.onResize(draw);
+  const hashed = decodeURIComponent((location.hash.match(/^#cand-(.+)$/) || [])[1] || "");
+  const worst = c.find((x) => x.outcome === "rejected") || c.find((x) => x.outcome === "cannot_judge" || x.outcome === "unrefereed") || c[0];
+  const start = (c.find((x) => "cand-" + String(x.id).replace(/[^A-Za-z0-9_.-]/g, "-") === "cand-" + hashed) || landed || worst);
+  if (start) select(start.id);
+
   content.append(section("breaker", "The circuit breaker", RK.glance({
     verdict: b.tripped ? "Breaker TRIPPED" : "Breaker held", tone: b.tripped ? "bad" : "ok",
     detail: b.tripped

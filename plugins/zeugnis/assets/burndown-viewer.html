@@ -12,9 +12,14 @@
   .rk-top .tabs { display: flex; gap: var(--space-2); }
   .rk-q { font-size: 1rem; margin: 0 0 var(--space-2); }
   .note { margin: var(--space-2) 0 0; font-size: 0.86rem; color: var(--rk-muted); }
+  /* The verdict, its question and the stats float over the figure (R9); the figure
+     reserves the space they cover (stageInsets). */
+  .rk-hud > div { background: color-mix(in srgb, var(--rk-panel) 92%, transparent); backdrop-filter: blur(4px); border: 1px solid var(--rk-border); border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); }
+  .rk-hud > div .verdict { background: none; backdrop-filter: none; margin: 0; }
   /* R4: every status colour used anywhere in this report is named here, in
-     static markup above both views, each with a swatch AND a glyph AND a word. */
-  .legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 0.82rem; flex-wrap: wrap; list-style: none; padding: var(--space-2) var(--space-3); margin: var(--space-3) 0; }
+     static markup, each with a swatch AND a glyph AND a word. */
+  .legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 0.82rem; flex-wrap: wrap; list-style: none; padding: var(--space-2) var(--space-3); margin: 0; }
+  .legend[hidden] { display: none; }
   .legend li { display: flex; align-items: center; gap: var(--space-1); }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: var(--radius-sm); flex-shrink: 0; }
   .legend .swatch.line { width: 18px; height: 3px; }
@@ -24,25 +29,44 @@
   .legend .swatch.trend { background: var(--rk-link); }
   .legend .glyph { width: 1em; text-align: center; }
   .legend .mut-mark { font-size: 0.9rem; line-height: 1; }
-  #chart { display: block; width: 100%; height: auto; }
-  .readout { margin: var(--space-2) 0 0; font-size: 0.86rem; color: var(--rk-muted); min-height: 1.8em; display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
-  .readout.pinned { color: var(--rk-text); font-weight: 600; }
+  .rk-figure > svg.fig { width: auto; height: auto; }
+  /* Chart marks take their colour from the kit roles, so a theme toggle restyles them. */
+  .fig .t-axis { fill: var(--rk-muted); font-size: 12px; }
+  .fig .t-title { fill: var(--rk-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .fig .t-val { fill: var(--rk-text); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .fig .t-sub { fill: var(--rk-muted); font-size: 12px; }
+  .fig .grid { stroke: var(--rk-border); stroke-width: 1; }
+  .fig .axis { stroke: var(--rk-muted); stroke-width: 1; }
+  .fig .trend-area { fill: var(--rk-link); opacity: 0.12; }
+  .fig .trend-line { fill: none; stroke: var(--rk-link); stroke-width: 3; }
+  .fig .cross { stroke: var(--rk-muted); stroke-dasharray: 4 4; stroke-width: 1; }
   .pass-point { cursor: pointer; outline: none; }
-  .pass-point .ring { fill: none; stroke: transparent; stroke-width: 2; }
+  .pass-point .dot { fill: var(--rk-link); stroke: var(--rk-bg); stroke-width: 2; }
+  .pass-point .ring { fill: none; stroke: transparent; stroke-width: 2.5; }
   .pass-point:hover .ring, .pass-point:focus-visible .ring { stroke: var(--rk-muted); }
   .pass-point:focus-visible .ring { stroke: var(--rk-focus); }
   .pass-point[aria-pressed="true"] .ring { stroke: var(--rk-text); }
-  /* Mutation view. The track runs 0-100 %; the hollow ring is the score
-     before, the filled dot the score after, so shape -- not hue alone --
-     tells them apart (R4). Rows are DOM, so the view grows with the module
-     count (R5). */
+  .pass-point.stalled .dot { fill: var(--rk-warn); }
+  /* Mutation view. The track runs 0-100 %; the hollow ring is the score before, the
+     filled dot the score after, so shape -- not hue alone -- tells them apart (R4). */
+  .mx-row { cursor: pointer; fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1; outline: none; }
+  .mx-row:hover { stroke: var(--rk-muted); }
+  .mx-row:focus-visible { stroke: var(--rk-focus); stroke-width: 3; }
+  .mx-row[aria-pressed="true"] { stroke: var(--rk-text); stroke-width: 2.5; }
+  .fig .t-mod { fill: var(--rk-text); font-family: var(--font-mono); font-size: 13px; pointer-events: none; }
+  .fig .t-hot { fill: var(--rk-warn); font-size: 12px; font-weight: 600; }
+  .fig .track { fill: var(--rk-panel-2); stroke: var(--rk-border); pointer-events: none; }
+  .fig .link-seg { stroke: var(--rk-muted); stroke-width: 2; pointer-events: none; }
+  .fig .m-before { fill: var(--rk-panel); stroke: var(--rk-muted); stroke-width: 3; pointer-events: none; }
+  .fig .m-after { fill: var(--rk-link); stroke: var(--rk-bg); stroke-width: 2; pointer-events: none; }
+  .fig .t-score { fill: var(--rk-text); font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .mut-mark { font-size: 0.95rem; line-height: 1; }
+  .mut-mark.before { color: var(--rk-muted); }
+  .mut-mark.after { color: var(--rk-link); }
   .mut-sum { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: minmax(170px, 1.3fr) minmax(150px, 2fr) minmax(220px, 1.7fr); gap: var(--space-3); align-items: center; width: 100%; }
   .mut-sum .module { font-family: var(--font-mono); font-size: 0.8rem; word-break: break-all; }
   .mut-track { display: block; position: relative; height: 16px; background: var(--rk-panel-2); border-radius: var(--radius-sm); }
   .mut-track .mut-mark { position: absolute; top: 50%; transform: translate(-50%, -50%); }
-  .mut-mark { font-size: 0.95rem; line-height: 1; }
-  .mut-mark.before { color: var(--rk-muted); }
-  .mut-mark.after { color: var(--rk-link); }
   .mut-figures { color: var(--rk-muted); font-size: 0.84rem; }
   .mut-figures .hot { color: var(--rk-warn); font-weight: 600; }
   .mut-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-3); }
@@ -52,6 +76,13 @@
   .mut-list li { margin: var(--space-2) 0; overflow-wrap: anywhere; }
   .mut-list .id { font-family: var(--font-mono); font-size: 0.8rem; }
   .mut-list .more { color: var(--rk-muted); list-style: none; }
+  .rk-drawer-body .meta-row { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); font-size: 0.82rem; }
+  .rk-drawer-body .meta-row .k { color: var(--rk-muted); }
+  .rk-drawer-body .meta-row .v { text-align: right; overflow-wrap: anywhere; }
+  .rk-drawer-body ul.plain { list-style: none; margin: 0; padding: 0; font-size: 0.84rem; }
+  .rk-drawer-body ul.plain li { margin: 0 0 var(--space-1); display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+  .rk-drawer-body .mut-list { padding-left: var(--space-3); }
+  .rk-drawer-body .note { font-size: 0.82rem; }
   @media (max-width: 860px) { .mut-sum { grid-template-columns: 1fr; } }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 </style>
@@ -71,49 +102,49 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <section id="ledgerHead">
-    <h2 class="rk-q">Has this cleanup converged?</h2>
-    <p class="verdict" id="verdict">
-      A zeugnis cycle has converged when every finding it opened is closed and the
-      latest pass had nothing left to close; it has stalled when a pass closes
-      nothing while findings are still open. The exact counts for this run are
-      filled in from the ledger below.
-    </p>
-    <p class="note">
-      <strong>Escalated</strong> is not a worse kind of open. It is a finding zeugnis
-      reopened past its thrash limit and refused to retry — the cycle gave up and
-      handed it back to a human, and it will never close on its own.
-    </p>
-    <ul class="legend rk-card">
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The burndown figure: cumulative findings closed by pass, or per-module mutation score before and after">
+    <div class="rk-hud">
+      <div id="ledgerHead">
+        <h2 class="rk-q">Has this cleanup converged?</h2>
+        <p class="verdict" id="verdict">
+          A zeugnis cycle has converged when every finding it opened is closed and the
+          latest pass had nothing left to close; it has stalled when a pass closes
+          nothing while findings are still open. The exact counts for this run are
+          filled in from the ledger below.
+        </p>
+      </div>
+      <div id="mutationHead" hidden>
+        <h2 class="rk-q">Did the new tests kill what survived?</h2>
+        <p class="verdict" id="mutationVerdict">
+          A mutant counts as killed only when a real mutation tool saw a test fail on
+          it, or when a new test was proven to pass on the original code and to fail
+          with that mutant applied. The modules and their scores are filled in from
+          analysis/zeugnis/mutation_harden_summary.json below.
+        </p>
+      </div>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <ul class="legend rk-card rk-legend-float" id="ledgerLegend">
       <li><span class="swatch closed"></span><span class="glyph">✓</span><span class="name">closed</span> — fixed and re-verified; needs nothing</li>
       <li><span class="swatch open"></span><span class="glyph">●</span><span class="name">open</span> — still queued for a later pass</li>
       <li><span class="swatch escalated"></span><span class="glyph">▲</span><span class="name">escalated</span> — a human must act; the cycle stopped retrying</li>
       <li><span class="swatch line trend"></span><span class="glyph">╱</span><span class="name">cumulative closed</span> — the trend line, findings closed so far</li>
     </ul>
-  </section>
-  <section id="mutationHead" hidden>
-    <h2 class="rk-q">Did the new tests kill what survived?</h2>
-    <p class="verdict" id="mutationVerdict">
-      A mutant counts as killed only when a real mutation tool saw a test fail on
-      it, or when a new test was proven to pass on the original code and to fail
-      with that mutant applied. The modules and their scores are filled in from
-      analysis/zeugnis/mutation_harden_summary.json below.
-    </p>
-    <p class="note">
-      <strong>Untested</strong> mutants sit in code no selected test reaches. They
-      are kept out of the score, so a module can read 100 % while most of it is
-      never exercised: read the untested count before the score.
-    </p>
-    <ul class="legend rk-card">
+    <ul class="legend rk-card rk-legend-float" id="mutationLegend" hidden>
       <li><span class="mut-mark before">○</span><span class="name">before</span> — killed ÷ (killed + survived) with the original tests</li>
       <li><span class="mut-mark after">●</span><span class="name">after</span> — the same ratio with the proven new tests</li>
       <li><span class="glyph">◌</span><span class="name">untested</span> — counted beside the score, never inside it; amber while any remain</li>
     </ul>
+    <span class="rk-hint" id="hint">click a pass point for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
   </section>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
@@ -133,8 +164,6 @@
   const subtitle = RK.$("#subtitle");
   subtitle.textContent = LEDGER_SUB;
 
-  const css = () => getComputedStyle(document.documentElement);
-  const role = (name) => css().getPropertyValue(name).trim();
   const byStatus = D.byStatus || {};
 
   // ---- R1: the ledger verdict, from this run's numbers -------------------------
@@ -164,102 +193,6 @@
   const [vTone, vText] = ledgerVerdict();
   RK.$("#verdict").textContent = vText;
   RK.$("#verdict").classList.add(vTone);
-
-  // ---- ledger: tiles (R3: only the number somebody must act on is "bad") --------
-  const escalated = byStatus.escalated || 0;
-  const glanceBox = RK.glance({ stats: [
-    { label: "Total passes", value: D.totalPasses, note: "context" },
-    { label: "Findings tracked", value: D.totalFindingsEver, note: "context" },
-    { label: "Open", value: byStatus.open || 0, note: "● queued for a later pass" },
-    { label: "Closed", value: byStatus.closed || 0, note: "✓ done" },
-    { label: "Escalated", value: escalated, bad: escalated > 0, note: "▲ needs a human" },
-  ] });
-
-  // ---- ledger: the trend (d3) ---------------------------------------------------
-  // ONE line, cumulative closed vs. pass index. A bar's height (a per-pass
-  // rate) and a line's height (a running total) mean different things, so they
-  // never share an axis. Per-pass detail lives in the readout, once (R2).
-  const passes = D.passes;
-  const chartHost = h("div", { class: "rk-card" });
-  const readout = h("div", { class: "readout", "aria-live": "polite" });
-  let pinned = null;   // a passNumber, kept across theme redraws
-  let showPass = () => {};
-  const describe = (p) => "pass #" + p.passNumber + " (" + p.domain + "): closed " + p.closed + " this pass, "
-    + p.cumulativeClosed + " closed in total, " + p.fixOrDraftOutcomes + " fix/draft outcomes";
-
-  function drawTrend() {
-    const C = { border: role("--rk-border"), muted: role("--rk-muted"), line: role("--rk-link") };
-    chartHost.textContent = "";
-    const W = 900, padL = 44, padR = 20, padT = 16, padB = 34;
-    // R5: the plot's height comes from the data, one 26px band per closed
-    // finding, floored so a one- or two-finding run is still legible.
-    const maxCum = passes.length ? Math.max(1, ...passes.map((p) => p.cumulativeClosed)) : 1;
-    const H = Math.max(180, maxCum * 26 + padT + padB);
-    const plotW = W - padL - padR, plotH = H - padT - padB;
-    const svg = d3.select(chartHost).append("svg").attr("viewBox", "0 0 " + W + " " + H).attr("id", "chart")
-      .attr("role", "img").attr("aria-label", "Cumulative findings closed across " + passes.length + " passes");
-    if (!passes.length) {
-      svg.append("text").attr("x", W / 2).attr("y", H / 2).attr("text-anchor", "middle").attr("fill", C.muted).text("No passes recorded yet.");
-      chartHost.appendChild(readout);
-      return;
-    }
-    const lastPass = passes[passes.length - 1].passNumber;
-    const x = d3.scaleLinear().domain([1, Math.max(1, lastPass)]).range([padL, padL + plotW]);
-    const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
-    svg.append("line").attr("x1", padL).attr("y1", padT + plotH).attr("x2", padL + plotW).attr("y2", padT + plotH).attr("stroke", C.border);
-    svg.append("line").attr("x1", padL).attr("y1", padT).attr("x2", padL).attr("y2", padT + plotH).attr("stroke", C.border);
-    for (const tick of y.ticks(5)) {
-      svg.append("text").attr("x", padL - 8).attr("y", y(tick)).attr("text-anchor", "end").attr("dominant-baseline", "middle")
-        .attr("fill", C.muted).attr("font-size", 11).text(tick);
-    }
-    for (const p of passes) {
-      svg.append("text").attr("x", x(p.passNumber)).attr("y", H - 10).attr("text-anchor", "middle").attr("fill", C.muted).attr("font-size", 11).text("#" + p.passNumber);
-    }
-    // inline-d3 vendors d3-scale + d3-selection but not d3-shape: the path
-    // string is built by hand from the d3 scales.
-    const pathD = passes.map((p, i) => (i === 0 ? "M" : "L") + x(p.passNumber) + "," + y(p.cumulativeClosed)).join(" ");
-    svg.append("path").attr("d", pathD).attr("fill", "none").attr("stroke", C.line).attr("stroke-width", 2);
-    const crosshair = svg.append("line").attr("y1", padT).attr("y2", padT + plotH).attr("visibility", "hidden")
-      .attr("stroke", C.muted).attr("stroke-dasharray", "3 3");
-    const byNumber = (n) => passes.find((p) => p.passNumber === n) || null;
-    const points = svg.selectAll("g.pass-point").data(passes).join("g")
-      .attr("class", "pass-point").attr("tabindex", 0).attr("role", "button")
-      .attr("aria-pressed", (p) => String(p.passNumber === pinned))
-      .attr("aria-label", (p) => describe(p) + ". Press Enter to pin.")
-      .on("mouseenter", (_, p) => showPass(p)).on("focus", (_, p) => showPass(p))
-      .on("mouseleave", () => showPass(byNumber(pinned))).on("blur", () => showPass(byNumber(pinned)))
-      .on("click", (_, p) => setPinned(pinned === p.passNumber ? null : p.passNumber))
-      .on("keydown", (event, p) => {
-        if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPinned(pinned === p.passNumber ? null : p.passNumber); }
-      });
-    points.append("circle").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 14).attr("fill", "transparent");
-    points.append("circle").attr("class", "ring").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 8);
-    points.append("circle").attr("cx", (p) => x(p.passNumber)).attr("cy", (p) => y(p.cumulativeClosed)).attr("r", 3.5).attr("fill", C.line);
-
-    showPass = (p) => {
-      readout.textContent = "";
-      readout.classList.toggle("pinned", !!pinned);
-      if (!p) {
-        crosshair.attr("visibility", "hidden");
-        readout.textContent = "Hover or focus a pass to read it; click it, or press Enter, to pin it. Esc unpins.";
-        return;
-      }
-      crosshair.attr("x1", x(p.passNumber)).attr("x2", x(p.passNumber)).attr("visibility", "visible");
-      readout.appendChild(h("span", {}, (pinned === p.passNumber ? "Pinned — " : "") + describe(p) + "."));
-      if (pinned === p.passNumber) {
-        const unpin = h("button", { class: "rk-btn", type: "button" }, "Unpin");
-        unpin.addEventListener("click", () => setPinned(null));
-        readout.appendChild(unpin);
-      }
-    };
-    chartHost.appendChild(readout);
-    showPass(byNumber(pinned));
-  }
-  function setPinned(n) {
-    pinned = n;
-    RK.$$(".pass-point").forEach((g, i) => g.setAttribute("aria-pressed", String(passes[i].passNumber === n)));
-    showPass(passes.find((p) => p.passNumber === n) || null);
-  }
 
   // ---- ledger: every finding with its evidence (R6) and facets (R8) --------------
   const STATUS_RULE = { closed: "✓ closed", open: "● open", escalated: "▲ escalated" };
@@ -368,11 +301,235 @@
     return [cut.length || alive.length || untested.length ? "warn" : "ok", s];
   }
 
+  // ---- the stage: one figure, redrawn per view and per size (R5, R9) -------------------------------
+  const S = RK.stage();
+  const passes = D.passes;
+  const hud = RK.$(".rk-hud");
+  let view = "ledger";
+  let selectedPass = null;     // a passNumber
+  let selectedModule = null;   // a module name
+  let hoverPass = null;
+  let lastSize = { w: 0, h: 0 };
+  const lastPassNumber = passes.length ? passes[passes.length - 1].passNumber : null;
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const svgEl = (name, attrs, parent) => {
+    const el = document.createElementNS(SVGNS, name);
+    for (const [k, v] of Object.entries(attrs || {})) { if (v !== null && v !== undefined) el.setAttribute(k, String(v)); }
+    if (parent) parent.appendChild(el);
+    return el;
+  };
+  const svgText = (parent, attrs, text) => { const t = svgEl("text", attrs, parent); t.textContent = text; return t; };
+  // Trim `text` to `px` wide on the live element; the full text stays in the title.
+  function fitText(node, text, px) {
+    node.textContent = text;
+    if (node.getComputedTextLength() <= px) return;
+    let n = text.length;
+    while (n > 1 && node.getComputedTextLength() > px) { n -= 1; node.textContent = text.slice(0, n) + "…"; }
+  }
+  // The HUD floats over the figure's top-left and the legend over its foot: the plot sits between.
+  function stageInsets() {
+    const legend = RK.$(view === "mutation" ? "#mutationLegend" : "#ledgerLegend");
+    return { top: hud.offsetTop + hud.offsetHeight + 28, bottom: (legend ? legend.offsetHeight : 0) + 56 };
+  }
+  const describe = (p) => "pass #" + p.passNumber + " (" + p.domain + "): closed " + p.closed + " this pass, "
+    + p.cumulativeClosed + " closed in total, " + p.fixOrDraftOutcomes + " fix/draft outcomes";
+  const meta = (k, v) => h("div", { class: "meta-row" }, h("span", { class: "k", text: k }), h("span", { class: "v", text: String(v) }));
+
+  // ---- ledger figure: cumulative closed, drawn to fill ---------------------------------------------
+  function drawTrend(W, H) {
+    const figure = S.figure;
+    const inset = stageInsets();
+    const padL = 64, padR = 36, padT = inset.top, padB = inset.bottom;
+    const plotW = Math.max(W - padL - padR, 120), plotH = Math.max(H - padT - padB, 120);
+    const svg = svgEl("svg", { class: "fig", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "group",
+      "aria-label": "Cumulative findings closed across " + passes.length + " passes" }, figure);
+    if (!passes.length) { svgText(svg, { x: W / 2, y: H / 2, "text-anchor": "middle", class: "t-axis" }, "No passes recorded yet."); return; }
+    const maxCum = Math.max(1, ...passes.map((p) => p.cumulativeClosed));
+    const x = d3.scaleLinear().domain([1, Math.max(2, lastPassNumber)]).range([padL + 24, padL + plotW - 24]);
+    const y = d3.scaleLinear().domain([0, maxCum]).nice().range([padT + plotH, padT]);
+    for (const tick of y.ticks(6)) {
+      svgEl("line", { class: "grid", x1: padL, x2: padL + plotW, y1: y(tick), y2: y(tick) }, svg);
+      svgText(svg, { class: "t-axis", x: padL - 10, y: y(tick), "text-anchor": "end", "dominant-baseline": "middle" }, tick);
+    }
+    svgEl("line", { class: "axis", x1: padL, x2: padL + plotW, y1: padT + plotH, y2: padT + plotH }, svg);
+    svgEl("line", { class: "axis", x1: padL, x2: padL, y1: padT, y2: padT + plotH }, svg);
+    svgText(svg, { class: "t-title", x: padL, y: padT - 10 }, "findings closed (cumulative) ↑");
+    svgText(svg, { class: "t-title", x: padL + plotW, y: padT + plotH + 44, "text-anchor": "end" }, "pass number →");
+    const spacing = passes.length > 1 ? (x(passes[1].passNumber) - x(passes[0].passNumber)) : plotW;
+    for (const p of passes) {
+      svgText(svg, { class: "t-axis", x: x(p.passNumber), y: padT + plotH + 20, "text-anchor": "middle" }, "#" + p.passNumber);
+      if (spacing > 130) {
+        const t = svgText(svg, { class: "t-sub", x: x(p.passNumber), y: padT + plotH + 36, "text-anchor": "middle" }, "");
+        fitText(t, String(p.domain), spacing - 12);
+      }
+    }
+    const pts = passes.map((p) => [x(p.passNumber), y(p.cumulativeClosed)]);
+    svgEl("path", { class: "trend-area", d: "M" + pts[0][0] + "," + (padT + plotH) + " " + pts.map((q) => "L" + q[0] + "," + q[1]).join(" ") + " L" + pts[pts.length - 1][0] + "," + (padT + plotH) + " Z" }, svg);
+    // inline-d3 vendors d3-scale + d3-selection but not d3-shape: the path is built by hand.
+    svgEl("path", { class: "trend-line", d: pts.map((q, i) => (i === 0 ? "M" : "L") + q[0] + "," + q[1]).join(" ") }, svg);
+    const cross = svgEl("line", { class: "cross", y1: padT, y2: padT + plotH, visibility: "hidden" }, svg);
+    const showCross = (n) => {
+      const p = passes.find((q) => q.passNumber === n);
+      if (!p) { cross.setAttribute("visibility", "hidden"); return; }
+      cross.setAttribute("x1", x(p.passNumber)); cross.setAttribute("x2", x(p.passNumber)); cross.setAttribute("visibility", "visible");
+    };
+    for (const p of passes) {
+      const cx = x(p.passNumber), cy = y(p.cumulativeClosed);
+      svgText(svg, { class: "t-val", x: cx, y: cy - 16, "text-anchor": "middle" }, p.cumulativeClosed + (p.closed ? " (+" + p.closed + ")" : " (+0)"));
+      const g = svgEl("g", { class: "pass-point" + (p.closed === 0 ? " stalled" : ""), tabindex: 0, role: "button",
+        "aria-pressed": String(p.passNumber === selectedPass),
+        "aria-label": describe(p) + ". Press Enter for details." }, svg);
+      svgEl("circle", { cx, cy, r: 20, fill: "transparent" }, g);
+      svgEl("circle", { class: "ring", cx, cy, r: 13 }, g);
+      svgEl("circle", { class: "dot", cx, cy, r: 7 }, g);
+      const tipOn = (evt) => { showCross(p.passNumber); S.tip.show(evt, "Pass #" + p.passNumber + " · " + p.domain,
+        h("div", { text: "closed " + p.closed + " this pass · " + p.cumulativeClosed + " in total · " + p.fixOrDraftOutcomes + " fix/draft outcomes" })); };
+      const tipOff = () => { S.tip.hide(); showCross(selectedPass); };
+      g.addEventListener("mouseenter", tipOn); g.addEventListener("mousemove", tipOn); g.addEventListener("focus", tipOn);
+      g.addEventListener("mouseleave", tipOff); g.addEventListener("blur", tipOff);
+      g.addEventListener("click", () => selectPass(p.passNumber));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectPass(p.passNumber); } });
+    }
+    showCross(selectedPass);
+  }
+
+  // ---- mutation figure: one track per module -------------------------------------------------------
+  const MUT = D.mutation;
+  const moduleFigures = (m) => pct(m.before.score) + " → " + pct(m.after.score);
+  function drawMutation(W, H) {
+    const figure = S.figure;
+    const inset = stageInsets();
+    const svg = svgEl("svg", { class: "fig", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "group",
+      "aria-label": "Mutation score before and after, one track per module" }, figure);
+    if (!MUT || MUT.error || !MUT.modules.length) { svgText(svg, { x: W / 2, y: H / 2, "text-anchor": "middle", class: "t-axis" }, "No mutation modules to draw."); return; }
+    const mods = MUT.modules;
+    const padX = 20;
+    const labelW = Math.min(Math.max(150, Math.ceil(Math.max(...mods.map((m) => m.module.length)) * 7.9) + 16), Math.round(W * 0.3), 300);
+    const figW = Math.min(Math.max(210, Math.round(W * 0.22)), 320);
+    const tx0 = padX + labelW + 14, tx1 = Math.max(tx0 + 120, W - padX - figW - 14);
+    const axisH = 28;
+    const rowH = Math.max(64, Math.min(130, (H - inset.top - inset.bottom - axisH) / mods.length));
+    const rowsY = inset.top + axisH;
+    const trackH = Math.max(18, Math.min(38, Math.round(rowH * 0.34)));
+    const rad = Math.max(8, Math.min(15, Math.round(trackH * 0.55)));
+    const sx = (v) => tx0 + Math.max(0, Math.min(1, v)) * (tx1 - tx0);
+    svgText(svg, { class: "t-title", x: tx0, y: inset.top - 6 }, "mutation score: killed ÷ (killed + survived)");
+    for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+      svgEl("line", { class: "grid", x1: sx(v), x2: sx(v), y1: inset.top + 8, y2: rowsY + mods.length * rowH }, svg);
+      svgText(svg, { class: "t-axis", x: sx(v), y: inset.top + 22, "text-anchor": v === 0 ? "start" : v === 1 ? "end" : "middle" }, Math.round(v * 100) + " %");
+    }
+    mods.forEach((m, i) => {
+      const y0 = rowsY + i * rowH, cy = y0 + rowH / 2;
+      const untested = m.after.noTests || 0;
+      const sel = m.module === selectedModule;
+      const label = m.module + ": score " + moduleFigures(m) + ", untested " + (m.before.noTests || 0) + " to " + untested + ". Press Enter for its mutants.";
+      const row = svgEl("rect", { class: "mx-row", x: padX / 2, y: y0 + 3, width: W - padX, height: rowH - 6, rx: 6, tabindex: 0, role: "button",
+        "aria-pressed": String(sel), "aria-label": label }, svg);
+      const name = svgText(svg, { class: "t-mod", x: padX, y: cy, "dominant-baseline": "middle" }, "");
+      fitText(name, m.module, labelW);
+      svgEl("rect", { class: "track", x: tx0, y: cy - trackH / 2, width: tx1 - tx0, height: trackH, rx: 4 }, svg);
+      const b = m.before.score, a = m.after.score;
+      if (b !== null && b !== undefined && a !== null && a !== undefined && b !== a) svgEl("line", { class: "link-seg", x1: sx(b), x2: sx(a), y1: cy, y2: cy }, svg);
+      // The ring is drawn last, so an unchanged score still shows both marks.
+      if (a !== null && a !== undefined) svgEl("circle", { class: "m-after", cx: sx(a), cy, r: rad }, svg);
+      if (b !== null && b !== undefined) svgEl("circle", { class: "m-before", cx: sx(b), cy, r: rad }, svg);
+      const fx = W - padX - figW;
+      svgText(svg, { class: "t-score", x: fx, y: cy - 8 }, moduleFigures(m));
+      svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, y: cy + 10 }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
+      svgText(svg, { class: "t-sub", x: fx, y: cy + 27 }, "equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+      const tipOn = (evt) => S.tip.show(evt, m.module, h("div", { text: "score " + moduleFigures(m) + " · alive " + (m.after.survived || 0) + " · untested " + untested }));
+      row.addEventListener("mouseenter", tipOn); row.addEventListener("mousemove", tipOn); row.addEventListener("focus", tipOn);
+      row.addEventListener("mouseleave", () => S.tip.hide()); row.addEventListener("blur", () => S.tip.hide());
+      row.addEventListener("click", () => selectModule(m.module));
+      row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectModule(m.module); } });
+    });
+  }
+
+  function draw(force) {
+    const s = S.size();
+    if (!s.width || !s.height) return;
+    if (!force && s.width === lastSize.w && s.height === lastSize.h) return;
+    lastSize = { w: s.width, h: s.height };
+    S.figure.textContent = "";
+    if (view === "mutation") drawMutation(s.width, s.height); else drawTrend(s.width, s.height);
+  }
+
+  // ---- the drawer ------------------------------------------------------------------------------------
+  const READING = {
+    ledger: ["Reading the ledger view", [
+      h("p", { class: "note" }, h("strong", {}, "Escalated"), " is not a worse kind of open. It is a finding zeugnis reopened past its thrash limit and refused to retry — the cycle gave up and handed it back to a human, and it will never close on its own."),
+      h("p", { class: "note" }, "A pass point on the trend line is amber when that pass closed nothing. Click a point to read that pass; its domain's findings link to the evidence below.")]],
+    mutation: ["Reading the mutation view", [
+      h("p", { class: "note" }, h("strong", {}, "Untested"), " mutants sit in code no selected test reaches. They are kept out of the score, so a module can read 100 % while most of it is never exercised: read the untested count before the score."),
+      h("p", { class: "note" }, "Click a module to read the mutants killed, still alive and judged equivalent.")]],
+  };
+  const readingNodes = (key) => READING[key][1].map((n) => n.cloneNode(true));
+  function overview() {
+    S.open(READING[view][0], view === "mutation" ? "zeugnis-mutation-harden" : "zeugnis-cycle", ...readingNodes(view));
+  }
+  const STATUS_TONE = { closed: "ok", open: "warn", escalated: "bad" };
+
+  function selectPass(n) {
+    const i = passes.findIndex((p) => p.passNumber === n);
+    if (i < 0) return;
+    const p = passes[i];
+    selectedPass = n;
+    const kids = [
+      meta("Domain", p.domain), meta("Closed this pass", p.closed), meta("Closed in total", p.cumulativeClosed),
+      meta("Fix/draft outcomes", p.fixOrDraftOutcomes),
+    ];
+    if (p.closed === 0) kids.push(h("p", { class: "note" }, RK.badge("closed nothing", "warn"), " This pass closed no finding, so the trend line is flat across it."));
+    const inDomain = (D.findings || []).filter((f) => f.domain === p.domain);
+    kids.push(h("h3", { text: "Findings in " + p.domain + " (" + inDomain.length + ")" }));
+    kids.push(inDomain.length
+      ? h("ul", { class: "plain" }, inDomain.map((f) => h("li", {},
+        h("a", { href: "#finding-" + f.id, text: f.id }), RK.badge(f.status, STATUS_TONE[f.status] || "info"),
+        h("span", { class: "rk-muted", text: String(f.severity || "unrated") }))))
+      : h("span", { class: "rk-muted", text: "none tracked" }));
+    const nav = [];
+    if (i > 0) nav.push(S.link("← pass #" + passes[i - 1].passNumber, () => selectPass(passes[i - 1].passNumber)));
+    if (i < passes.length - 1) nav.push(S.link("pass #" + passes[i + 1].passNumber + " →", () => selectPass(passes[i + 1].passNumber)));
+    if (nav.length) kids.push(h("h3", { text: "Neighbouring passes" }), h("p", {}, nav.flatMap((l, k) => (k ? [" · ", l] : [l]))));
+    kids.push(h("p", { class: "note" }, S.link("How to read this view", overview)));
+    S.open("Pass #" + p.passNumber, p.domain, ...kids);
+    S.tip.hide();
+    draw(true);
+  }
+
+  function selectModule(name) {
+    const m = (MUT && MUT.modules || []).find((x) => x.module === name);
+    if (!m) return;
+    selectedModule = name;
+    const alive = (MUT.alive || []).filter((a) => a.module === m.module);
+    const kills = (MUT.kills || []).filter((k) => k.module === m.module);
+    const equivalents = (MUT.equivalents || []).filter((e) => e.module === m.module);
+    const untested = m.after.noTests || 0;
+    const kids = [
+      meta("Shard", m.shard || "—"), meta("Score before → after", moduleFigures(m)),
+      m.after.scoreExcludingEquivalent !== undefined ? meta("Score without equivalents", pct(m.after.scoreExcludingEquivalent)) : null,
+      meta("Untested before → after", (m.before.noTests || 0) + " → " + untested), meta("Unreached", m.unreached || 0),
+      h("h3", { text: "Killed (" + kills.length + ")" }),
+      mutantList(kills, (k) => [k.mutantId, [k.test || "killed in the re-measure (no proof recorded)", k.proof ? h("div", {}, "proof: ", h("code", {}, k.proof)) : null]]),
+      h("h3", { text: "Still alive (" + alive.length + ")" }),
+      mutantList(alive, (a) => [a.mutantId, a.evidence + " · " + (a.state || a.category) + (a.fixability ? " · " + a.fixability : "")]),
+      h("h3", { text: "Equivalent — model judgement (" + equivalents.length + ")" }),
+      mutantList(equivalents, (e) => [e.mutantId, e.reason]),
+      h("p", { class: "note" }, h("a", { href: "#" + modSlug(m.module), text: "Open this module's row below" }), " · ", S.link("How to read this view", overview)),
+    ];
+    S.open(m.module, moduleFigures(m) + (untested > 0 ? " · ◌ " + untested + " untested" : ""), ...kids);
+    S.tip.hide();
+    draw(true);
+  }
+
   // ---- compose -------------------------------------------------------------------
   const content = RK.$("#rk-content");
+  const passTable = RK.table({ caption: "cleanup passes", columns: [
+    { key: "pass", label: "Pass", num: true }, { key: "domain", label: "Domain" }, { key: "closed", label: "Closed this pass", num: true },
+    { key: "cumulative", label: "Closed in total", num: true }, { key: "outcomes", label: "Fix/draft outcomes", num: true }],
+    rows: passes.map((p) => ({ pass: p.passNumber, domain: p.domain, closed: p.closed, cumulative: p.cumulativeClosed, outcomes: p.fixOrDraftOutcomes })) });
   const ledgerGroup = h("div", { id: "grp-ledger" },
-    section("glance", "Where it stands", glanceBox),
-    section("trend", "Cumulative findings closed, by pass", chartHost),
+    section("passes", "Passes — the trend, as a table", passTable),
+    section("reading-ledger", READING.ledger[0], ...readingNodes("ledger")),
     section("findings", "Findings and their evidence",
       RK.findings((D.findings || []).map(ledgerFinding), {
         facets: ["status", "domain", "severity"], idPrefix: "finding-",
@@ -381,11 +538,30 @@
   const mutationGroup = h("div", { id: "grp-mutation", hidden: true });
   content.append(ledgerGroup, mutationGroup);
 
+  // ---- HUD numbers per view (R2: the verdict prints none of these) ----------------------------------
+  const escalated = byStatus.escalated || 0;
+  const ledgerStats = [
+    { label: "Total passes", value: D.totalPasses, note: "context" },
+    { label: "Findings tracked", value: D.totalFindingsEver, note: "context" },
+    { label: "Open", value: byStatus.open || 0, note: "● queued for a later pass" },
+    { label: "Closed", value: byStatus.closed || 0, note: "✓ done" },
+    { label: "Escalated", value: escalated, bad: escalated > 0, note: "▲ needs a human" },
+  ];
+  let mutationStats = [];
+
   const mutationHead = RK.$("#mutationHead"), ledgerHead = RK.$("#ledgerHead");
-  if (M) {
+  if (MUT) {
     RK.$("#tabMutationBtn").hidden = false;
-    if (M.error) {
-      RK.$("#mutationVerdict").textContent = M.error + " Re-run mutation_harden.py report to regenerate it.";
+    const sum = (key) => MUT.modules.reduce((s, m) => s + (m.after[key] || 0), 0);
+    mutationStats = [
+      { label: "Modules", value: MUT.modules.length, note: "context" },
+      { label: "Killed", value: sum("killed"), note: "after the proven new tests" },
+      { label: "Still alive", value: sum("survived"), tone: sum("survived") ? "warn" : "", note: "survivors after hardening" },
+      { label: "Untested", value: sum("noTests"), tone: sum("noTests") ? "warn" : "", note: "◌ code no selected test reaches" },
+      { label: "Equivalent", value: (MUT.equivalents || []).length, note: "model judgement" },
+    ];
+    if (MUT.error) {
+      RK.$("#mutationVerdict").textContent = MUT.error + " Re-run mutation_harden.py report to regenerate it.";
       RK.$("#mutationVerdict").classList.add("bad");
     } else {
       const [tone, text] = mutationSentence();
@@ -393,63 +569,92 @@
       RK.$("#mutationVerdict").classList.add(tone);
       const shardCell = (s) => RK.badge(s.baselineState || (s.baselineComplete ? "finished" : "incomplete"), s.baselineComplete ? "ok" : "bad");
       mutationGroup.append(
-        section("mut-modules", "Modules — open one to see its mutants", h("div", {}, M.modules.map(moduleRow))),
+        section("mut-modules", "Modules — open one to see its mutants", h("div", {}, MUT.modules.map(moduleRow))),
+        section("reading-mutation", READING.mutation[0], ...readingNodes("mutation")),
         section("mut-shards", "Shards", RK.table({ caption: "mutation shards", columns: [
           { key: "shard", label: "Shard", mono: true }, { key: "baseline", label: "Baseline" }, { key: "remeasure", label: "Re-measure" },
           { key: "sources", label: "Sources", mono: true }, { key: "tests", label: "Tests", mono: true }, { key: "exclusions", label: "Exclusions" }],
-          rows: M.shards.map((s) => ({
+          rows: MUT.shards.map((s) => ({
             shard: s.shard, baseline: shardCell(s),
             remeasure: RK.badge(s.remeasureComplete === false ? "incomplete" : "complete", s.remeasureComplete === false ? "bad" : "ok"),
             sources: (s.sources || []).join(", "), tests: (s.tests || []).join(", "),
             exclusions: (s.exclusions || []).map((x) => x.glob + " — " + x.reason).join("; ") || "none" })) })),
         section("mut-equivalents", "Equivalent mutants — read every reason",
-          RK.findings(M.equivalents.map((e) => ({ id: "equivalent-" + e.mutantId, severity: "gap", rule: "equivalent", claim: e.mutantId, file: e.module,
+          RK.findings(MUT.equivalents.map((e) => ({ id: "equivalent-" + e.mutantId, severity: "gap", rule: "equivalent", claim: e.mutantId, file: e.module,
             evidence: [{ label: "reason (" + (e.basis || "judgement") + ")", detail: e.reason }], tags: { module: e.module } })),
             { facets: ["module"], empty: "None judged equivalent." })),
         section("mut-rejected", "Rejected kill claims",
-          RK.findings(M.rejected.map((r) => ({ id: "rejected-" + r.mutantId, severity: "fail", rule: r.state, claim: r.mutantId + " — kill claim not counted",
+          RK.findings(MUT.rejected.map((r) => ({ id: "rejected-" + r.mutantId, severity: "fail", rule: r.state, claim: r.mutantId + " — kill claim not counted",
             evidence: [{ label: r.state, detail: r.reason }], tags: { state: r.state } })),
             { empty: "No kill claim was rejected." })));
     }
   }
 
   RK.init();
-  drawTrend();
-  new MutationObserver(drawTrend).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", drawTrend);
+  S.onResize(() => draw(false));
+  // Colours come from kit roles in CSS; a theme change needs no repaint, but a size may follow it.
+  new MutationObserver(() => draw(true)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => draw(true));
 
-  // ---- views: the ledger verdict and tiles answer the other view's question ------
-  function setView(view) {
-    const mut = view === "mutation" && !!M;
+  // ---- views: the ledger verdict and stats answer the other view's question ------
+  function setView(next) {
+    const mut = next === "mutation" && !!MUT;
+    view = mut ? "mutation" : "ledger";
     ledgerHead.hidden = mut; mutationHead.hidden = !mut;
+    RK.$("#ledgerLegend").hidden = mut; RK.$("#mutationLegend").hidden = !mut;
     ledgerGroup.hidden = mut; mutationGroup.hidden = !mut;
     RK.$("#tabLedgerBtn").setAttribute("aria-pressed", String(!mut));
     RK.$("#tabMutationBtn").setAttribute("aria-pressed", String(mut));
+    RK.$("#hint").textContent = mut ? "click a module for its mutants · hover for a summary" : "click a pass point for details · hover for a summary";
     subtitle.textContent = mut
-      ? "zeugnis-mutation-harden run " + M.runId + " · generated from analysis/zeugnis/mutation_harden_summary.json" + (M.generatedAt ? " · " + M.generatedAt : "")
+      ? "zeugnis-mutation-harden run " + MUT.runId + " · generated from analysis/zeugnis/mutation_harden_summary.json" + (MUT.generatedAt ? " · " + MUT.generatedAt : "")
       : LEDGER_SUB;
+    S.stats(mut ? mutationStats : ledgerStats);
     // the section nav was built from every section; keep only the visible view's
     const live = mut ? mutationGroup : ledgerGroup;
     for (const a of RK.$$("#rk-nav a[data-for]")) a.parentNode.hidden = !live.contains(document.getElementById(a.dataset.for));
     for (const o of RK.$$("#rk-nav option")) o.hidden = !live.contains(document.getElementById(o.value));
     const sel = RK.$("#rk-nav select");
     if (sel) { const first = Array.from(sel.options).find((o) => !o.hidden); if (first) sel.value = first.value; }
+    draw(true);
   }
-  RK.$("#tabLedgerBtn").addEventListener("click", () => setView("ledger"));
-  RK.$("#tabMutationBtn").addEventListener("click", () => setView("mutation"));
+  // A view opens with something real in the drawer: the module a #module-… link names, else the
+  // selected or worst one; on the ledger the selected or latest pass.
+  function openDefault() {
+    if (view === "mutation") {
+      if (MUT.error || !MUT.modules.length) { overview(); return; }
+      const hashed = MUT.modules.find((m) => "#" + modSlug(m.module) === decodeURIComponent(location.hash));
+      const worst = MUT.modules.filter((m) => m.after.score !== null && m.after.score !== undefined).sort((a, b) => a.after.score - b.after.score)[0] || MUT.modules[0];
+      selectModule((hashed || MUT.modules.find((m) => m.module === selectedModule) || worst).module);
+    } else if (passes.length) selectPass(selectedPass !== null ? selectedPass : lastPassNumber);
+    else overview();
+  }
+  const switchTo = (next) => { setView(next); openDefault(); };
+  RK.$("#tabLedgerBtn").addEventListener("click", () => switchTo("ledger"));
+  RK.$("#tabMutationBtn").addEventListener("click", () => switchTo("mutation"));
   const wantMutation = new URLSearchParams(location.search).get("view") === "mutation" || /^#(mut-|module-|equivalent-|rejected-)/.test(location.hash);
   setView(wantMutation ? "mutation" : "ledger");
-  // a deep link into the other view opens the finding it names
+  // a deep link into a finding row opens the finding it names; a #module-… link selects the module
+  // in the figure's drawer without scrolling the figure away.
   const openHash = () => {
-    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    const id = decodeURIComponent(location.hash.slice(1));
+    const t = document.getElementById(id);
     if (!t) return;
     if (t.tagName === "DETAILS") t.open = true;
+    if (/^module-/.test(id)) { openDefault(); window.scrollTo(0, 0); return; }
     t.scrollIntoView();
   };
   window.addEventListener("hashchange", openHash);
-  if (location.hash) openHash();
-  // Esc lets go of a pinned pass.
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape" && pinned !== null) setPinned(null); });
+  openDefault();
+  if (location.hash) {
+    const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (t && t.tagName === "DETAILS") t.open = true;
+    if (t && !/^module-/.test(t.id)) t.scrollIntoView();
+  }
+  // Esc lets go of the selected pass or module (the kit closes the drawer itself).
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && (selectedPass !== null || selectedModule !== null)) { selectedPass = null; selectedModule = null; draw(true); }
+  });
 })();
 </script>
 </body>

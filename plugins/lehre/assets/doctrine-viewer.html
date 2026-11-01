@@ -11,52 +11,70 @@
 <!--__REPORT_KIT__-->
 <style>
   /* Page-specific only. Colour comes from the kit's --rk-* roles (light and dark
-     both work) or from the categorical hue tokens, which read on either ground. */
-  .q { font-size: 1rem; margin: 0 0 var(--space-2); }
+     both work) or from the categorical hue tokens, which read on either ground.
+     Figure-first (report-viewer-standard.md R9): the Sankey fills the stage, the
+     build-order graph is its second view, and the rules behind a node, a ribbon or
+     a unit open in the drawer. */
   .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
+  .rk-hud { max-width: min(920px, calc(100% - 2 * var(--space-3))); }
   .legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 0.82rem;
-            margin: 0 0 var(--space-4); }
+            padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
   .legend .key { display: inline-flex; align-items: center; gap: var(--space-2); }
   .swatch { display: inline-block; width: 14px; height: 10px; border-radius: var(--radius-sm); }
   .swatch.denied { background: var(--chromia); }
   .swatch.sweep { background: var(--samaria); }
   .swatch.advisory { background: var(--rk-muted); }
   .swatch.judgement { background: var(--neodymia); }
+  .swatch.validated { background: var(--chromia); }
+  .swatch.ready { background: var(--silica); }
+  .swatch.blocked { background: var(--ferria); }
+  .viewtoggle { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+  .viewtoggle .rk-btn { background: color-mix(in srgb, var(--rk-panel) 92%, transparent); }
+  .viewtoggle .rk-btn[aria-pressed="true"] { background: var(--rk-panel-2); }
 
   /* ---- sankey ---- */
-  svg { display: block; width: 100%; height: auto; }
+  .rk-figure text { font-family: var(--font-sans); }
   .snode rect { stroke: var(--rk-bg); stroke-width: 1; cursor: pointer; }
   /* Middle-stage labels sit over ribbons -- inherent to a Sankey. A halo in the
      page ground colour, painted UNDER the glyph, keeps them readable. */
   /* Labels are deliberately NOT pointer-events:none: SVG hit-testing fires only on
      painted geometry, so a click on a label must still select its node. */
   .snode text {
-    font-size: 12.5px; fill: var(--rk-text); cursor: pointer;
+    font-size: 13px; fill: var(--rk-text); cursor: pointer;
     paint-order: stroke; stroke: var(--rk-bg); stroke-width: 3px; stroke-linejoin: round;
   }
-  .snode .cnt { fill: var(--rk-muted); font-size: 11.5px; }
+  .snode .cnt { fill: var(--rk-muted); font-size: 12px; }
   .snode .hit { fill: transparent; pointer-events: all; cursor: pointer; }
   .snode:focus { outline: none; }
   .snode:focus rect, .snode.sel rect { stroke: var(--rk-focus); stroke-width: 2.5; }
   .snode.sel text:first-of-type { font-weight: 700; }
-  .slink { fill-opacity: 0.38; stroke: none; transition: fill-opacity var(--transition-fast); }
-  .slink:hover { fill-opacity: 0.66; }
+  .slink { fill-opacity: 0.38; stroke: none; cursor: pointer; transition: fill-opacity var(--transition-fast); }
+  .slink:hover, .slink:focus { fill-opacity: 0.7; outline: none; }
+  .slink:focus-visible { stroke: var(--rk-focus); stroke-width: 2; }
   .dim { opacity: 0.1; }
-  .stage-label { font-size: 11px; fill: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stage-label { font-size: 12px; fill: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
   /* ---- build order ---- */
-  .unode text { font-size: 12.5px; fill: var(--rk-text); pointer-events: none; }
-  .unode .st { font-size: 11px; fill: var(--rk-muted); }
+  .unode { cursor: pointer; }
+  .unode .box { rx: var(--radius-panel); }
+  .snode rect { rx: var(--radius-sm); }
+  .unode:focus { outline: none; }
+  .unode text { font-size: 13px; fill: var(--rk-text); pointer-events: none; }
+  .unode .st { font-size: 12px; fill: var(--rk-muted); }
+  .unode:focus .box, .unode.sel .box { stroke-width: 3; }
   .uedge { fill: none; stroke: var(--rk-muted); stroke-width: 1.5; marker-end: url(#arrow); }
+  .uedge.hot { stroke: var(--rk-focus); stroke-width: 2.5; }
   .uedge.blocked { stroke: var(--ferria); stroke-dasharray: 4 3; }
-  .bar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
   .filtermsg { color: var(--rk-muted); font-size: 0.82rem; }
-  #tip {
-    position: fixed; pointer-events: none; opacity: 0; z-index: 9;
-    background: var(--rk-panel-2); color: var(--rk-text); border: 1px solid var(--rk-border);
-    border-radius: var(--radius-sm); padding: var(--space-2) var(--space-3); font-size: 0.78rem;
-    max-width: 340px; white-space: pre-line; transition: opacity var(--transition-fast);
-  }
+  .rulebar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-2); }
+
+  /* ---- drawer ---- */
+  .rk-drawer-body details.rule { border: 1px solid var(--rk-border); border-left-width: 4px; border-radius: var(--radius-panel); margin: 0 0 var(--space-2); background: var(--rk-panel-2); }
+  .rk-drawer-body details.rule > summary { cursor: pointer; padding: var(--space-2); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: baseline; }
+  .rk-drawer-body details.rule .rb { padding: 0 var(--space-2) var(--space-2); }
+  .rk-drawer-body details.rule .rb h4 { margin: var(--space-2) 0 var(--space-1); font-size: 0.74rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .rk-drawer-body details.rule .rb p { margin: var(--space-1) 0; }
+  .rk-drawer-body ul { margin: var(--space-1) 0; padding-left: 1.2em; }
 </style>
 </head>
 <body class="rk">
@@ -70,27 +88,39 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <h2 class="q">Does the doctrine actually bite?</h2>
-  <p class="verdict" id="verdict"></p>
-  <p class="note">
-    Every rule enters at the left and leaves at exactly one outcome on the right.
-    Ribbons are coloured by where they <em>end</em>, not where they start, so a
-    blocking rule whose ribbon drains to amber is one everybody believes blocks
-    and which never denies a write.
-  </p>
-  <div class="legend" aria-label="Ribbon colour by enforcement outcome">
-    <span class="key"><span class="swatch denied"></span>denied at write time (green)</span>
-    <span class="key"><span class="swatch sweep"></span>sweep + CI only (amber)</span>
-    <span class="key"><span class="swatch advisory"></span>advisory only (grey)</span>
-    <span class="key"><span class="swatch judgement"></span>judgement only (purple)</span>
-  </div>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Does the doctrine actually bite? Sankey of every rule from provenance through severity and check kind to enforcement outcome, and the build order of its units">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">Every rule enters at the left and leaves at exactly one outcome on the right; this report says how many of the rules that claim to block actually deny a write.</p>
+      <dl class="rk-hud-stats"></dl>
+      <div class="viewtoggle" role="group" aria-label="Figure view">
+        <button class="rk-btn" type="button" data-view="flow" aria-pressed="true">Enforcement flow</button>
+        <button class="rk-btn" type="button" data-view="order" aria-pressed="false">Build order</button>
+        <button class="rk-btn" type="button" data-about aria-pressed="false">How to read this</button>
+      </div>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float" id="legend" aria-label="Ribbon colour by enforcement outcome">
+      <span class="key"><span class="swatch denied"></span>denied at write time (green)</span>
+      <span class="key"><span class="swatch sweep"></span>sweep + CI only (amber)</span>
+      <span class="key"><span class="swatch advisory"></span>advisory only (grey)</span>
+      <span class="key"><span class="swatch judgement"></span>judgement only (purple)</span>
+    </div>
+    <div class="legend rk-legend-float" id="legend-order" aria-label="Unit border colour by validation state" hidden>
+      <span class="key"><span class="swatch validated"></span>✓ validated (green)</span>
+      <span class="key"><span class="swatch ready"></span>○ ready (blue)</span>
+      <span class="key"><span class="swatch blocked"></span>✗ blocked by an unvalidated dependency (red)</span>
+    </div>
+    <span class="rk-hint">click a node, ribbon or unit for the rules behind it · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
-<div id="tip" role="status"></div>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
 <script type="application/json" id="report-data">@@DATA@@</script>
 <script>
@@ -99,6 +129,7 @@
   const DATA = RK.readData(RERUN_COMMAND);
   if (!DATA) return;
   const { h, section } = RK;
+  const S = RK.stage();
 
   /* Hue by role, always through a design token. */
   const OUTCOME_COLOR = {
@@ -107,6 +138,7 @@
     "advisory only":        "var(--rk-muted)",
     "judgement only":       "var(--neodymia)"
   };
+  const OUTCOME_TONE = { "denied at write time": "ok", "sweep + CI only": "warn", "advisory only": "info", "judgement only": "flat" };
   const NODE_COLOR = {
     "provenance:evidence-backed":    "var(--chromia)",
     "provenance:intent-derived":     "var(--silica)",
@@ -122,6 +154,11 @@
   };
   const STATE_COLOR = { validated: "var(--chromia)", ready: "var(--silica)", blocked: "var(--ferria)" };
   const STATE_TONE = { validated: "ok", ready: "info", blocked: "bad" };
+  const STATE_GLYPH = { validated: "✓", ready: "○", blocked: "✗" };
+  /* The stage key is the node-id prefix; the findings facet carries the same
+     fact under its own name (the kit filters on tags, and "severity" is the
+     finding's own outcome word there, so the declared severity is "declared"). */
+  const FACET = { provenance: "provenance", severity: "declared", kind: "kind", outcome: "outcome" };
 
   const SVGNS = "http://www.w3.org/2000/svg";
   function mk(tag, attrs, parent) {
@@ -131,6 +168,7 @@
     return n;
   }
   const txt = (s) => document.createTextNode(String(s));
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   const t = DATA.totals;
   const leak = t.blocking - t.denied_at_write_time;
@@ -138,8 +176,9 @@
 
   /* ------------------------- verdict (R1) ------------------------- */
   /* The one sentence this report exists to say, built from the same totals the
-     tiles show so the prose and the numbers cannot disagree. */
+     page shows so the prose and the numbers cannot disagree. */
   const verdict = document.getElementById("verdict");
+  verdict.textContent = "";
   if (!t.blocking) {
     verdict.classList.add("flat");
     verdict.textContent = "This doctrine declares no blocking rule, so nothing here denies a write. Every rule is advisory or judgement-only.";
@@ -152,63 +191,182 @@
       " — they are gauge-tier, meaning a sweep or CI decides them rather than the hook, so they are caught long after the write they were believed to stop. "
       + t.denied_at_write_time + " rule(s) actually deny a write, at the moment it is attempted.");
   }
+  const blockedUnits = DATA.units.filter((u) => u.state === "blocked");
+  S.stats([
+    { label: "Rules declared", value: t.rules },
+    { label: "Advisory or judgement", value: t.rules - t.blocking, note: "declared without blocking severity" },
+    { label: "Hook-decidable", value: t.hook_tier, note: "rules whose predicate the PreToolUse hook can decide" },
+    { label: "Units blocked now", value: blockedUnits.length, bad: blockedUnits.length > 0, note: "writes denied right now by an unvalidated dependency" },
+  ]);
+
+  /* ------------------------ rule lookups ------------------------ */
+  const stageKeyOf = (id) => id.split(":")[0];
+  const valueOf = (id) => id.slice(id.indexOf(":") + 1);
+  const nodeLabel = {}, nodeStage = {};
+  DATA.stages.forEach((st) => st.nodes.forEach((n) => { nodeLabel[n.id] = n.label; nodeStage[n.id] = st.label; }));
+  const findingById = {};
+  DATA.findings.forEach((f) => { findingById[f.id] = f; });
+  const rulesThrough = (ids) => DATA.findings.filter((f) => ids.every((id) => f.nodes.indexOf(id) !== -1));
+  const cardId = (f) => "finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-");
+
+  /* One rule, in full: title, location, the quoted predicate, the fix, the
+     authority and the evidence (R6) -- the same record the card below carries. */
+  function ruleDetail(f, open) {
+    const auth = f.evidence.filter((e) => e.label === "authority");
+    const rest = f.evidence.filter((e) => e.label !== "authority");
+    const where = f.file ? f.file + (f.line ? ":" + f.line : "") : "";
+    const oc = f.tags.outcome;
+    const d = h("details", { class: "rule " + (OUTCOME_TONE[oc] || "flat"), open: open ? true : null },
+      h("summary", {}, RK.badge(oc, OUTCOME_TONE[oc]), h("strong", { text: f.claim }), h("code", { text: f.rule })),
+      h("div", { class: "rb" },
+        h("h4", { text: "Declared" }),
+        h("p", {}, f.tags.declared + " · " + f.tags.provenance + " · check kind " + f.tags.kind),
+        where ? [h("h4", { text: "Location" }), h("p", {}, h("code", { text: where }))] : null,
+        h("h4", { text: "Quoted predicate" }), h("pre", { text: f.quote }),
+        f.fix ? [h("h4", { text: "Suggested fix" }), h("p", { text: f.fix })] : null,
+        auth.length ? [h("h4", { text: "Authority" }), h("p", { text: auth[0].detail })] : null,
+        h("h4", { text: "Evidence" }),
+        h("ul", {}, rest.map((e) => h("li", {}, h("strong", { text: e.label }), " — " + e.detail))),
+        h("p", {}, S.link("Open the card below", () => { goToCard(f); }))));
+    return d;
+  }
+
+  function goToCard(f) {
+    const card = document.getElementById(cardId(f));
+    if (!card) return;
+    card.hidden = false; card.removeAttribute("data-rk-filtered");
+    card.open = true;
+    history.replaceState(null, "", "#" + card.id);
+    card.scrollIntoView();
+  }
+
+  function openRules(title, sub, intro, list) {
+    S.open(title, sub, intro ? h("p", { class: "rk-muted", text: intro }) : null,
+      list.length ? list.map((f) => ruleDetail(f, list.length <= 3)) : h("p", { class: "rk-muted", text: "No rule passes through here." }));
+  }
+
+  function openOverview() {
+    const kids = [
+      h("p", { text: "Every rule enters at the left and leaves at exactly one outcome on the right. Ribbons are coloured by where they end, not where they start, so a blocking rule whose ribbon drains to amber is one everybody believes blocks and which never denies a write." }),
+    ];
+    if (DATA.intent) kids.push(h("h3", { text: "Intent" }), h("p", { text: DATA.intent }));
+    const leaking = DATA.findings.filter((f) => f.tags.outcome === "sweep + CI only");
+    if (leaking.length) {
+      kids.push(h("h3", { text: "Blocking, but never a write-time denial" }),
+        h("ul", {}, leaking.map((f) => h("li", {}, S.link(f.claim, () => openRule(f)), " ", h("code", { text: f.rule })))));
+    }
+    kids.push(h("h3", { text: "Reading the figure" }),
+      h("ul", {},
+        h("li", { text: "Click a node to filter the rules below to it and open the rules behind it here." }),
+        h("li", { text: "Click a ribbon for the rules that travel that exact path." }),
+        h("li", { text: "Build order shows which units are denied right now; click a unit for what it owns and must not know." })));
+    S.open("How to read this map", "Does the doctrine actually bite?", ...kids);
+  }
+  function openRule(f) {
+    S.open(f.claim, f.rule, ruleDetail(f, true), h("p", {}, S.link("Back to the overview", openOverview)));
+  }
 
   /* --------------------------- filter state --------------------------- */
-  /* One selection, three ways to change it: a Sankey node, a button in the
-     filter bar, or "clear". Within a stage selections OR; across stages they
-     AND. Ribbons dim and rule cards hide from the same state, so the picture
-     and the list cannot disagree. */
+  /* One selection, three ways to change it: a Sankey node or ribbon, the findings
+     filter bar, or "clear". Within a stage selections OR; across stages they AND.
+     The kit's findings box owns the filtering (setFilter), and its bar is the
+     truth the Sankey reads back, so ribbons dim and rule cards hide from the
+     same state and the picture and the list cannot disagree. */
   const sel = {};
-  const nodeLabel = {};
-  DATA.stages.forEach((st) => st.nodes.forEach((n) => { nodeLabel[n.id] = n.label; }));
-  const stageOf = (id) => id.split(":")[0];
-  const isSel = (id) => !!(sel[stageOf(id)] && sel[stageOf(id)].has(id));
-  const passes = (ids) => Object.keys(sel).every((k) => !sel[k].size || ids.some((i) => sel[k].has(i)));
-  let cards = [];
-  let bar = null;
+  let box = null;
+  const isSel = (id) => !!(sel[stageKeyOf(id)] && sel[stageKeyOf(id)].has(valueOf(id)));
+  const passes = (ids) => Object.keys(sel).every((k) => !sel[k].size || ids.some((i) => stageKeyOf(i) === k && sel[k].has(valueOf(i))));
+  const anySel = () => Object.values(sel).some((s) => s.size);
 
-  function toggleNode(id) {
-    const k = stageOf(id);
-    sel[k] = sel[k] || new Set();
-    if (sel[k].has(id)) sel[k].delete(id); else sel[k].add(id);
-    applyFilter();
+  function syncBar() {
+    const bar = box && box.querySelector(".rk-filters");
+    if (!bar) return;
+    let key = null;
+    for (const el of Array.from(bar.children)) {
+      if (el.classList.contains("rk-label")) { key = el.textContent; continue; }
+      if (!key || el.tagName !== "BUTTON") continue;
+      const stage = Object.keys(FACET).find((k) => FACET[k] === key);
+      const value = el.textContent.replace(/ · \d+$/, "");
+      el.setAttribute("aria-pressed", String(!!(stage && sel[stage] && sel[stage].has(value))));
+    }
   }
-  function clearFilter() { Object.keys(sel).forEach((k) => delete sel[k]); applyFilter(); }
-
-  function applyFilter() {
+  function pullFromBar() {
+    const bar = box && box.querySelector(".rk-filters");
+    if (!bar) return;
+    Object.keys(sel).forEach((k) => delete sel[k]);
+    let key = null;
+    for (const el of Array.from(bar.children)) {
+      if (el.classList.contains("rk-label")) { key = el.textContent; continue; }
+      if (!key || el.tagName !== "BUTTON" || el.getAttribute("aria-pressed") !== "true") continue;
+      const stage = Object.keys(FACET).find((k) => FACET[k] === key);
+      if (!stage) continue;
+      (sel[stage] = sel[stage] || new Set()).add(el.textContent.replace(/ · \d+$/, ""));
+    }
+    paint();
+  }
+  function pushFilter() {
+    for (const stage of Object.keys(FACET)) box.setFilter(FACET[stage], sel[stage] ? Array.from(sel[stage]) : []);
+    syncBar();
+    paint();
+  }
+  function paint() {
     document.querySelectorAll(".slink").forEach((p) => p.classList.toggle("dim", !passes(p._lk.through)));
     document.querySelectorAll(".snode").forEach((g) => {
       g.classList.toggle("sel", isSel(g.dataset.id));
       g.setAttribute("aria-pressed", String(isSel(g.dataset.id)));
     });
-    let shown = 0;
-    for (const { card, nodes } of cards) {
-      const out = !passes(nodes);
-      card.toggleAttribute("data-rk-filtered", out);
-      card.hidden = out || card.hasAttribute("data-rk-nomatch");
-      if (!out) shown += 1;
+    const msg = document.querySelector(".filtermsg");
+    const clear = document.querySelector("[data-clear]");
+    if (msg && box) {
+      const shown = box.querySelectorAll(".rk-finding:not([hidden])").length;
+      msg.textContent = anySel() ? "showing " + shown + " of " + DATA.rules.length + " rules" : "";
     }
-    if (bar) {
-      bar.querySelectorAll("button[data-id]").forEach((b) => b.setAttribute("aria-pressed", String(isSel(b.dataset.id))));
-      bar.querySelector(".filtermsg").textContent = Object.values(sel).some((s) => s.size)
-        ? "showing " + shown + " of " + DATA.rules.length + " rules" : "";
-      bar.querySelector("[data-clear]").hidden = !Object.values(sel).some((s) => s.size);
-    }
+    if (clear) clear.hidden = !anySel();
   }
+  function toggleNode(id) {
+    const k = stageKeyOf(id), v = valueOf(id);
+    sel[k] = sel[k] || new Set();
+    const was = sel[k].has(v);
+    if (was) sel[k].delete(v); else sel[k].add(v);
+    pushFilter();
+    return !was;
+  }
+  function selectLink(lk) {
+    Object.keys(sel).forEach((k) => delete sel[k]);
+    [lk.source, lk.target].forEach((id) => { sel[stageKeyOf(id)] = new Set([valueOf(id)]); });
+    pushFilter();
+  }
+  function clearFilter() { Object.keys(sel).forEach((k) => delete sel[k]); pushFilter(); }
 
   /* ----------------------------- sankey ----------------------------- */
-  function drawSankey(svg) {
+  function hudBottom() {
+    const hud = RK.$(".rk-hud");
+    return hud ? hud.offsetHeight + 20 : 140;
+  }
+  function legendHeight(id) {
+    const lg = document.getElementById(id);
+    return lg && !lg.hidden ? lg.offsetHeight + 20 : 50;
+  }
+
+  function nodeTip(e, n) {
+    const ids = rulesThrough([n.id]).map((f) => f.rule);
+    S.tip.show(e, n.label, h("div", { text: n.count + " rule" + (n.count === 1 ? "" : "s") + " · " + nodeStage[n.id] + (n.note ? " · " + n.note : "") }),
+      h("div", { class: "rk-muted", text: ids.join(", ") }));
+  }
+
+  function drawSankey(w, hh) {
+    const svg = mk("svg", { viewBox: "0 0 " + w + " " + hh, role: "group",
+      "aria-label": "Sankey diagram of rules flowing from provenance through severity and check kind to enforcement outcome" });
     const stages = DATA.stages, links = DATA.links;
-    const NODE_W = 13, GAP = 9, PAD_T = 24, PAD_B = 10, LABEL_W = 190;
-    const W = 1100;
-    const H = Math.max(230, t.rules * 24 + 100);
-    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-    const innerH = H - PAD_T - PAD_B;
-    const colX = (i) => LABEL_W / 2 + i * ((W - LABEL_W) / (stages.length - 1));
+    const NODE_W = 14, PAD_X = 14, PAD_T = hudBottom() + 22, PAD_B = legendHeight("legend") + 8;
+    const maxNodes = Math.max.apply(null, stages.map((s) => s.nodes.length));
+    const GAP = clamp((hh - PAD_T - PAD_B) / (maxNodes * 5), 8, 18);
+    const innerH = hh - PAD_T - PAD_B;
+    const colX = (i) => PAD_X + i * ((w - 2 * PAD_X - NODE_W) / Math.max(1, stages.length - 1));
 
     /* ONE global scale: every rule passes exactly one node per stage, so each
-       stage sums to the same total and band widths compare across stages. */
-    const maxNodes = Math.max.apply(null, stages.map((s) => s.nodes.length));
+       stage sums to the same total and band widths compare across stages. The
+       scale comes from the figure's height, so the diagram fills the stage. */
     const scale = (innerH - (maxNodes - 1) * GAP) / Math.max(1, t.rules);
 
     const pos = {};
@@ -229,51 +387,93 @@
     ordered.forEach((lk) => {
       const s = pos[lk.source], tg = pos[lk.target];
       if (!s || !tg) return;
-      const hh = lk.value * scale;
+      const hgt = lk.value * scale;
       if (outAcc[lk.source] === undefined) outAcc[lk.source] = s.y0;
       if (inAcc[lk.target] === undefined) inAcc[lk.target] = tg.y0;
-      const sy = outAcc[lk.source]; outAcc[lk.source] += hh;
-      const ty = inAcc[lk.target];  inAcc[lk.target]  += hh;
+      const sy = outAcc[lk.source]; outAcc[lk.source] += hgt;
+      const ty = inAcc[lk.target];  inAcc[lk.target]  += hgt;
       const x0 = s.x + NODE_W, x1 = tg.x, xm = (x0 + x1) / 2;
       const d = "M" + x0 + "," + sy + "C" + xm + "," + sy + " " + xm + "," + ty + " " + x1 + "," + ty +
-                "L" + x1 + "," + (ty + hh) + "C" + xm + "," + (ty + hh) + " " + xm + "," + (sy + hh) + " " + x0 + "," + (sy + hh) + "Z";
-      const p = mk("path", { d: d, class: "slink", fill: OUTCOME_COLOR[lk.outcome] || "var(--rk-muted)" }, gLink);
+                "L" + x1 + "," + (ty + hgt) + "C" + xm + "," + (ty + hgt) + " " + xm + "," + (sy + hgt) + " " + x0 + "," + (sy + hgt) + "Z";
+      const p = mk("path", { d: d, class: "slink", fill: OUTCOME_COLOR[lk.outcome] || "var(--rk-muted)",
+        tabindex: "0", role: "button" }, gLink);
+      p.setAttribute("aria-label", lk.value + " rule" + (lk.value === 1 ? "" : "s") + " from " + nodeLabel[lk.source] + " to " + nodeLabel[lk.target] + ", ending " + lk.outcome + ". Press Enter for the rules.");
       p._lk = lk;
-      p.addEventListener("mousemove", (e) => showTip(e,
-        lk.value + " rule" + (lk.value === 1 ? "" : "s") + " -> " + lk.outcome + "\n" + lk.rules.join(", ")));
-      p.addEventListener("mouseleave", hideTip);
+      const tip = (e) => S.tip.show(e, lk.value + " rule" + (lk.value === 1 ? "" : "s") + " → " + lk.outcome,
+        h("div", { text: nodeLabel[lk.source] + " → " + nodeLabel[lk.target] }), h("div", { class: "rk-muted", text: lk.rules.join(", ") }));
+      const act = () => {
+        selectLink(lk);
+        openRules(nodeLabel[lk.source] + " → " + nodeLabel[lk.target], lk.value + " rule" + (lk.value === 1 ? "" : "s") + " · ends " + lk.outcome, "", rulesThrough([lk.source, lk.target]));
+      };
+      p.addEventListener("mouseenter", tip); p.addEventListener("mousemove", tip); p.addEventListener("focus", tip);
+      p.addEventListener("mouseleave", () => S.tip.hide()); p.addEventListener("blur", () => S.tip.hide());
+      p.addEventListener("click", act);
+      p.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
     });
 
     stages.forEach((st, si) => {
       const last = si === stages.length - 1;
-      const lbl = mk("text", { x: colX(si), y: 13, class: "stage-label" }, svg);
+      const lbl = mk("text", { x: last ? colX(si) + NODE_W : colX(si), y: PAD_T - 8, class: "stage-label" }, svg);
       lbl.setAttribute("text-anchor", si === 0 ? "start" : last ? "end" : "middle");
       lbl.appendChild(txt(st.label));
       st.nodes.forEach((n) => {
         const p = pos[n.id];
         const g = mk("g", { class: "snode", tabindex: "0", role: "button", "data-id": n.id, "aria-pressed": "false" }, gNode);
-        g.setAttribute("aria-label", "Filter rules by " + n.label + ", " + n.count + " rules");
+        g.setAttribute("aria-label", "Filter rules by " + n.label + ", " + n.count + " rules. Press Enter for the rules.");
         const barH = Math.max(1, p.y1 - p.y0);
         const hitH = Math.max(18, barH + 4);
         mk("rect", { class: "hit", x: p.x - 3, y: (p.y0 + p.y1) / 2 - hitH / 2, width: NODE_W + 6, height: hitH }, g);
-        mk("rect", { x: p.x, y: p.y0, width: NODE_W, height: barH, rx: 2, fill: NODE_COLOR[n.id] || OUTCOME_COLOR[n.label] || "var(--rk-text)" }, g);
+        mk("rect", { x: p.x, y: p.y0, width: NODE_W, height: barH, fill: NODE_COLOR[n.id] || OUTCOME_COLOR[n.label] || "var(--rk-text)" }, g);
         const tx = last ? p.x - 6 : p.x + NODE_W + 6;
         const anchor = last ? "end" : "start";
         const t1 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 - 1 }, g);
         t1.setAttribute("text-anchor", anchor);
         t1.appendChild(txt(n.label));
-        const t2 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 + 12, class: "cnt" }, g);
+        const t2 = mk("text", { x: tx, y: (p.y0 + p.y1) / 2 + 13, class: "cnt" }, g);
         t2.setAttribute("text-anchor", anchor);
         t2.appendChild(txt(n.count + (n.note ? " · " + n.note : "")));
-        const act = () => toggleNode(n.id);
+        const act = () => {
+          const on = toggleNode(n.id);
+          if (on) openRules(n.label, nodeStage[n.id] + " · " + n.count + " rule" + (n.count === 1 ? "" : "s"), "", rulesThrough([n.id]));
+          else S.close();
+        };
         g.addEventListener("click", act);
         g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+        g.addEventListener("mouseenter", (e) => nodeTip(e, n)); g.addEventListener("mousemove", (e) => nodeTip(e, n));
+        g.addEventListener("focus", (e) => nodeTip(e, n));
+        g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
       });
     });
+    return svg;
   }
 
   /* --------------------------- build order --------------------------- */
-  function drawDag(svg, units) {
+  let selUnit = null;
+  function unitDetail(u) {
+    const needs = DATA.units.filter((x) => x.depends_on.indexOf(u.id) !== -1);
+    const byId = {}; DATA.units.forEach((x) => { byId[x.id] = x; });
+    const link = (x) => S.link(x, () => { if (byId[x]) pickUnit(byId[x]); });
+    const list = (arr) => (arr.length ? h("p", {}, arr.flatMap((x, i) => (i ? [", ", link(x)] : [link(x)]))) : h("p", { class: "rk-muted", text: "none" }));
+    return [
+      h("p", {}, RK.badge(u.state, STATE_TONE[u.state]), u.state === "blocked" ? "  blocked by " : "", u.state === "blocked" ? u.blocked_by.join(", ") : ""),
+      h("h3", { text: "Owns" }), h("p", { text: u.owns || "—" }),
+      h("h3", { text: "Must not know" }),
+      (u.must_not_know || []).length ? h("ul", {}, u.must_not_know.map((x) => h("li", { text: x }))) : h("p", { class: "rk-muted", text: "nothing declared" }),
+      h("h3", { text: "Reason it is built here" }), h("p", { text: u.reason || "—" }),
+      h("h3", { text: "Depends on" }), list(u.depends_on),
+      h("h3", { text: "Needed by" }), list(needs.map((x) => x.id)),
+      h("h3", { text: "Paths it owns" }), h("ul", {}, u.paths.map((x) => h("li", {}, h("code", { text: x })))),
+    ];
+  }
+  function pickUnit(u) {
+    selUnit = u.id;
+    S.open(u.id, "unit · " + u.state, ...unitDetail(u));
+    if (view === "order") draw();
+  }
+
+  function drawDag(w, hh) {
+    const units = DATA.units;
+    const svg = mk("svg", { viewBox: "0 0 " + w + " " + hh, role: "group", "aria-label": "Unit dependency graph coloured by validation state" });
     const byId = {};
     units.forEach((u) => { byId[u.id] = u; });
     const depth = {}, seen = {};
@@ -289,20 +489,22 @@
     const cols = {};
     units.forEach((u) => { (cols[depth[u.id]] = cols[depth[u.id]] || []).push(u); });
     const keys = Object.keys(cols).sort((a, b) => a - b);
-    const BW = 190, BH = 46, HGAP = 64, VGAP = 16;
+    const top = hudBottom() + 10, bottom = legendHeight("legend-order") + 10, side = 28;
+    const iw = w - 2 * side, ih = Math.max(120, hh - top - bottom);
     const rows = Math.max.apply(null, keys.map((k) => cols[k].length));
-    const W = keys.length * BW + (keys.length - 1) * HGAP + 20;
-    const H = rows * BH + (rows - 1) * VGAP + 20;
-    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-    svg.style.maxWidth = W * 1.4 + "px";
+    const HGAP = clamp(iw * 0.09, 56, 150), VGAP = 26;
+    const BW = clamp((iw - (keys.length - 1) * HGAP) / keys.length, 150, 320);
+    const BH = clamp((ih - (rows - 1) * VGAP) / rows, 64, 120);
+    const totalW = keys.length * BW + (keys.length - 1) * HGAP;
+    const left = side + Math.max(0, (iw - totalW) / 2);
     const defs = mk("defs", {}, svg);
-    const m = mk("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "5", markerHeight: "5", orient: "auto-start-reverse" }, defs);
+    const m = mk("marker", { id: "arrow", viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse" }, defs);
     mk("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--rk-muted)" }, m);
     const at = {};
     keys.forEach((k, ci) => {
       const list = cols[k];
-      const off = (H - (list.length * BH + (list.length - 1) * VGAP)) / 2;
-      list.forEach((u, i) => { at[u.id] = { x: 10 + ci * (BW + HGAP), y: off + i * (BH + VGAP) }; });
+      const off = top + (ih - (list.length * BH + (list.length - 1) * VGAP)) / 2;
+      list.forEach((u, i) => { at[u.id] = { x: left + ci * (BW + HGAP), y: off + i * (BH + VGAP) }; });
     });
     const gE = mk("g", {}, svg), gN = mk("g", {}, svg);
     units.forEach((u) => u.depends_on.forEach((d) => {
@@ -310,28 +512,60 @@
       if (!a || !b) return;
       const x0 = a.x + BW, y0 = a.y + BH / 2, x1 = b.x, y1 = b.y + BH / 2, xm = (x0 + x1) / 2;
       mk("path", { d: "M" + x0 + "," + y0 + "C" + xm + "," + y0 + " " + xm + "," + y1 + " " + x1 + "," + y1,
-                   class: "uedge" + (u.state === "blocked" ? " blocked" : "") }, gE);
+                   class: "uedge" + (u.state === "blocked" ? " blocked" : "") + (selUnit === u.id || selUnit === d ? " hot" : "") }, gE);
     }));
+    const wrapText = (s, max) => {
+      const words = String(s).split(/\s+/), lines = [];
+      let cur = "";
+      for (const wd of words) { if (cur && (cur + " " + wd).length > max) { lines.push(cur); cur = wd; } else cur = cur ? cur + " " + wd : wd; }
+      if (cur) lines.push(cur);
+      return lines;
+    };
     units.forEach((u) => {
-      const p = at[u.id], g = mk("g", { class: "unode" }, gN);
-      mk("rect", { x: p.x, y: p.y, width: BW, height: BH, rx: 6, fill: "var(--rk-panel-2)",
-                   stroke: STATE_COLOR[u.state] || "var(--rk-border)", "stroke-width": "1.5" }, g);
-      mk("text", { x: p.x + 10, y: p.y + 20 }, g).appendChild(txt(u.id));
-      const s = mk("text", { x: p.x + 10, y: p.y + 36, class: "st" }, g);
-      s.appendChild(txt(u.state === "blocked" ? "blocked by " + u.blocked_by.join(", ") : u.state));
-      mk("circle", { cx: p.x + BW - 13, cy: p.y + 14, r: 4, fill: STATE_COLOR[u.state] || "var(--rk-muted)", "aria-hidden": "true" }, g);
+      const p = at[u.id];
+      const g = mk("g", { class: "unode" + (selUnit === u.id ? " sel" : ""), tabindex: "0", role: "button" }, gN);
+      g.setAttribute("aria-label", "Unit " + u.id + ", " + u.state + ". Press Enter for what it owns and must not know.");
+      mk("rect", { class: "box", x: p.x, y: p.y, width: BW, height: BH, fill: "var(--rk-panel-2)",
+                   stroke: STATE_COLOR[u.state] || "var(--rk-border)", "stroke-width": "2" }, g);
+      const t1 = mk("text", { x: p.x + 12, y: p.y + 22, "font-weight": "700" }, g); t1.appendChild(txt(u.id));
+      const s = mk("text", { x: p.x + 12, y: p.y + 40, class: "st" }, g);
+      s.appendChild(txt(STATE_GLYPH[u.state] + " " + (u.state === "blocked" ? "blocked by " + u.blocked_by.join(", ") : u.state)));
+      const lines = wrapText(u.owns || "", Math.floor((BW - 24) / 6.6)).slice(0, Math.max(0, Math.floor((BH - 52) / 16)));
+      lines.forEach((ln, i) => { const l = mk("text", { x: p.x + 12, y: p.y + 58 + i * 16, class: "st" }, g); l.appendChild(txt(ln)); });
+      const tipFn = (e) => S.tip.show(e, u.id, h("div", { text: u.state + (u.state === "blocked" ? " by " + u.blocked_by.join(", ") : "") }), h("div", { class: "rk-muted", text: u.owns }));
+      g.addEventListener("click", () => pickUnit(u));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickUnit(u); } });
+      g.addEventListener("mouseenter", tipFn); g.addEventListener("mousemove", tipFn); g.addEventListener("focus", tipFn);
+      g.addEventListener("mouseleave", () => S.tip.hide()); g.addEventListener("blur", () => S.tip.hide());
     });
+    return svg;
   }
 
-  /* ------------------------------ tooltip ------------------------------ */
-  function showTip(e, text) {
-    const tip = document.getElementById("tip");
-    tip.textContent = text;
-    tip.style.opacity = "1";
-    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - 360) + "px";
-    tip.style.top = (e.clientY + 16) + "px";
+  /* ---------------------------- the figure ---------------------------- */
+  let view = "flow", lastW = 0, lastH = 0;
+  function draw(w, hh) {
+    if (w === undefined) { w = lastW; hh = lastH; }
+    lastW = w; lastH = hh;
+    if (!w || !hh) return;
+    S.tip.hide();
+    S.figure.textContent = "";
+    S.figure.appendChild(view === "order" ? drawDag(w, hh) : drawSankey(w, hh));
+    if (view === "flow") paint();
   }
-  function hideTip() { document.getElementById("tip").style.opacity = "0"; }
+  function setView(v) {
+    view = v;
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+    document.getElementById("legend").hidden = v !== "flow";
+    document.getElementById("legend-order").hidden = v !== "order";
+    S.close();
+    draw();
+  }
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  document.querySelector("[data-about]").addEventListener("click", openOverview);
+  if (!DATA.units.length) {
+    const b = document.querySelector('[data-view="order"]');
+    b.disabled = true; b.title = "this doctrine declares no units";
+  }
 
   /* ----------------------------- sections ----------------------------- */
   const drop = (a, b) => (a > b ? "−" + (a - b) + " vs the step before" : "no drop");
@@ -347,19 +581,11 @@
   const glanceKids = [glance];
   if (DATA.intent) glanceKids.push(h("p", { class: "rk-card" }, h("strong", { text: "Intent " }), DATA.intent));
 
-  const flowSvg = mk("svg", { id: "sankey", role: "img",
-    "aria-label": "Sankey diagram of rules flowing from provenance through severity and check kind to enforcement outcome" });
-  drawSankey(flowSvg);
-
-  const flowSection = section("flow", "Enforcement flow", flowSvg);
   const orderKids = [];
-  const blocked = DATA.units.filter((u) => u.state === "blocked");
   if (DATA.units.length) {
-    const dagSvg = mk("svg", { id: "dag", role: "img", "aria-label": "Unit dependency graph coloured by validation state" });
-    drawDag(dagSvg, DATA.units);
-    orderKids.push(dagSvg,
-      h("p", { class: "note", text: blocked.length
-        ? "Denied at write time right now: " + blocked.map((u) => u.paths.join(", ") + " (needs " + u.blocked_by.join(", ") + ")").join(" - ")
+    orderKids.push(
+      h("p", { class: "note", text: blockedUnits.length
+        ? "Denied at write time right now: " + blockedUnits.map((u) => u.paths.join(", ") + " (needs " + u.blocked_by.join(", ") + ")").join(" - ")
         : "No unit is currently blocked by an unvalidated dependency." }),
       RK.table({ caption: "units", columns: [
         { key: "id", label: "Unit", mono: true }, { key: "state", label: "State" },
@@ -372,38 +598,41 @@
           owns: u.owns,
           blind: (u.must_not_know || []).join("; ") || "—",
         })) }));
+  } else {
+    orderKids.push(h("p", { class: "note", text: "This doctrine declares no units, so there is no build order to enforce." }));
   }
 
   /* Rules as findings: the kit renders location, the quoted predicate, the fix
-     and the evidence (R6); the filter bar below is the page's own because the
-     Sankey drives the same selection. */
-  const findings = RK.findings(DATA.findings, { order: { severity: ["gap", "info", "proven"] } });
-  const ruleKids = [];
-  bar = h("div", { class: "rk-filters", role: "group", "aria-label": "Filter rules by flow node" });
-  DATA.stages.forEach((st) => {
-    bar.appendChild(h("span", { class: "rk-label", text: st.label }));
-    st.nodes.forEach((n) => bar.appendChild(h("button", {
-      class: "rk-btn", type: "button", "aria-pressed": "false", "data-id": n.id }, n.label + " · " + n.count)));
+     and the evidence (R6) and its filter bar; the Sankey drives the same filter
+     through box.setFilter, and the bar is read back so the two never disagree. */
+  box = RK.findings(DATA.findings, {
+    order: { severity: ["gap", "info", "proven"] },
+    facets: ["provenance", "declared", "kind", "outcome"],
   });
-  bar.append(h("button", { class: "rk-btn", type: "button", "data-clear": true, hidden: true }, "clear filter"),
+  const ruleBar = h("div", { class: "rulebar" },
+    h("button", { class: "rk-btn", type: "button", "data-clear": true, hidden: true }, "clear filter"),
     h("span", { class: "filtermsg", role: "status" }));
-  bar.addEventListener("click", (e) => {
-    const b = e.target.closest("button");
-    if (!b) return;
-    if (b.hasAttribute("data-clear")) clearFilter(); else if (b.dataset.id) toggleNode(b.dataset.id);
-  });
-  ruleKids.push(bar, findings);
-  cards = DATA.findings.map((f) => ({
-    card: findings.querySelector("#" + CSS.escape("finding-" + String(f.id).replace(/[^A-Za-z0-9_.-]/g, "-"))),
-    nodes: f.nodes,
-  })).filter((c) => c.card);
+  ruleBar.addEventListener("click", (e) => { if (e.target.closest("[data-clear]")) clearFilter(); });
+  const kitBar = box.querySelector(".rk-filters");
+  if (kitBar) kitBar.addEventListener("click", pullFromBar);
 
   RK.$("#rk-content").append(
     section("glance", "At a glance", ...glanceKids),
-    flowSection,
     section("order", "Build order — what is denied right now", ...orderKids),
-    section("rules", "Rules and their evidence", ...ruleKids));
+    section("rules", "Rules and their evidence", ruleBar, box));
   RK.init();
+
+  S.onResize((w, hh) => draw(w, hh));
+
+  /* A deep link to a rule opens it in the drawer too; with none, the drawer opens
+     on the overview, which already names the rules that leak. */
+  function fromHash() {
+    const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+    return DATA.findings.find((f) => cardId(f) === id) || null;
+  }
+  const first = fromHash();
+  if (first) openRule(first); else openOverview();
+  window.addEventListener("hashchange", () => { const f = fromHash(); if (f) openRule(f); });
 })();
 </script>
 </body>

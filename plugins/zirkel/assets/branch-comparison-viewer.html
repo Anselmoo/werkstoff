@@ -23,6 +23,9 @@
   .legend .swatch.tot { background: var(--accent-2); }
   .rk-figure svg text { font-family: var(--font-sans); }
   .rk-figure .branch { cursor: pointer; }
+  .rk-figure .branch .hit { rx: var(--radius-panel); }
+  .rk-figure .branch rect { rx: var(--radius-sm); }
+  .rk-figure .branch .hit { rx: var(--radius-panel); }
   .rk-figure .branch:focus { outline: none; }
   .rk-figure .branch:focus-visible .hit { stroke: var(--rk-focus); stroke-width: 2; }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: var(--space-4); align-items: start; }
@@ -241,11 +244,11 @@
       .on("blur", () => S.tip.hide());
     const labelBottom = ih + 18 + (nameLines + 1) * lineH + 16;
     groups.append("rect").attr("class", "hit").attr("x", -2).attr("y", -6).attr("width", x0.bandwidth() + 4).attr("height", labelBottom + 6)
-      .attr("rx", 6).attr("fill", (b) => (b === selected ? panel2 : "transparent"))
+      .attr("fill", (b) => (b === selected ? panel2 : "transparent"))
       .attr("stroke", (b) => (b.isWinner ? amber : b === selected ? focus : "none")).attr("stroke-width", (b) => (b.isWinner ? 3 : 2));
     for (const a of AXES) {
       const col = role(a.role);
-      groups.append("rect").attr("x", x1(a.key)).attr("width", x1.bandwidth()).attr("y", (b) => y(b[a.key])).attr("height", (b) => ih - y(b[a.key])).attr("rx", 3).attr("fill", col);
+      groups.append("rect").attr("x", x1(a.key)).attr("width", x1.bandwidth()).attr("y", (b) => y(b[a.key])).attr("height", (b) => ih - y(b[a.key])).attr("fill", col);
       groups.append("text").attr("x", x1(a.key) + x1.bandwidth() / 2).attr("y", (b) => y(b[a.key]) - 6).attr("text-anchor", "middle").attr("font-size", 14).attr("font-weight", 600).attr("fill", text).text((b) => b[a.key]);
       groups.append("text").attr("x", x1(a.key) + x1.bandwidth() / 2).attr("y", ih + 16).attr("text-anchor", "middle").attr("font-size", 12).attr("fill", muted).text(a.letter);
     }
