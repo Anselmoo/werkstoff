@@ -311,6 +311,11 @@ def selftest() -> int:
     ok("no network fetches", 'src="http' not in html and 'href="http' not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
     ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
+    ok("the figure-first stage skeleton is in the page (R9)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html
+       and 'class="legend rk-legend-float' in html and 'class="rk-hud-stats"' in html)
+    ok("every node mark is keyboard-reachable and opens the drawer",
+       'tabindex: "0"' in html and 'role: "button"' in html and "S.open(" in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     ok("the demo is labelled synthetic", demo["synthetic"] is True)
 

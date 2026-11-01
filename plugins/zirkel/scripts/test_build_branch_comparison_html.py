@@ -137,6 +137,11 @@ try:
     ok("rendered report centers its content (S1, not a fourth archetype)",
        ".rk-wrap { max-width: 1240px; margin: 0 auto;" in html)
 
+    # report-viewer-standard.md R9: the figure leads. The stage skeleton must be in
+    # STATIC markup so a template that lost it fails here, not in a browser.
+    ok("rendered report carries the R9 stage skeleton (stage, figure, drawer)",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html)
+
     # main() with no --run-id must fall back to find_latest_explore_run.
     rc2 = B.main([
         _tmp2,

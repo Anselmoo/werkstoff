@@ -10,41 +10,22 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  /* Archetype (S1): full-bleed. The matrix needs the width, so the kit's 1240px
-     reading column is lifted for this page only. The header height comes from
-     --header-h, re-pointed at the header's measured box below. */
-  .rk-wrap { max-width: none; }
+  /* Archetype (S1): full-bleed figure-first stage (R9). The matrix fills the stage; the
+     verdict and stats float over it as a HUD, the cell key floats at its foot, and a click
+     on a cell opens the kit drawer beside it. The long-form findings follow below. */
+  .rk-below .rk-wrap, .rk-wrap { max-width: none; }
   .rk-top { min-height: var(--header-h); }
   .rk-tools { flex-wrap: wrap; }
-  .verdict-panel { margin: 0 0 var(--space-4); border-left: 3px solid var(--rk-link); }
-  .verdict-panel h2 { font-size: 0.95rem; margin: 0 0 var(--space-2); }
-  .verdict { font-size: 0.9rem; line-height: 1.5; margin: 0; color: var(--rk-text); }
-  .note { color: var(--rk-muted); font-size: 0.8rem; line-height: 1.5; margin: var(--space-2) 0 0; }
-  .colour-key { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--rk-border); }
+  .verdict { font-size: 0.9rem; line-height: 1.5; margin: 0; padding: var(--space-2) var(--space-3); color: var(--rk-text); border: 1px solid var(--rk-border); border-left: 3px solid var(--rk-link); border-radius: var(--radius-sm); }
+  .note { color: var(--rk-muted); font-size: 0.85rem; line-height: 1.5; margin: var(--space-2) 0 0; }
 
-  .mx-layout { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
-  /* No height: the wrap sizes to its own grid, so a tall matrix grows the page and a
-     short one leaves no dead space (R5). overflow:auto is for the HORIZONTAL case. */
-  .matrix-wrap { flex: 1 1 520px; min-width: 0; overflow: auto; }
-  .matrix-grid { display: grid; }
-  .corner, .col-header, .row-label {
-    background: var(--rk-panel-2); color: var(--rk-text);
-    font-size: 12px; border: 1px solid var(--rk-border);
-    display: flex; align-items: center; padding: 0 var(--space-3);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  /* top:0, not --header-h: these sit inside .matrix-wrap, which is their scrollport. */
-  .corner { position: sticky; top: 0; left: 0; z-index: 4; }
-  /* Dimension labels are long: the column width is measured from the longest real label,
-     the label wraps past the cap, and the full name is in title. */
-  .col-header {
-    position: sticky; top: 0; z-index: 2; cursor: pointer; user-select: none;
-    white-space: normal; overflow-wrap: anywhere; text-overflow: clip; line-height: 1.2;
-    padding: var(--space-1) var(--space-3);
-  }
-  .col-header:hover, .row-label:hover { color: var(--rk-link); }
-  .row-label { position: sticky; left: 0; z-index: 1; font-weight: 500; cursor: pointer; }
-  .cells-svg { grid-column: 2 / -1; grid-row: 2 / -1; display: block; }
+  .rk-figure { overflow: auto; }
+  .rk-figure > svg.mx { width: auto; height: auto; }
+  .mx-label { font-size: 12px; fill: var(--rk-text); }
+  .mx-label.axis-title { font-size: 11px; fill: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mx-axis { cursor: pointer; }
+  .mx-axis:hover text, .mx-axis:focus-visible text { fill: var(--rk-link); text-decoration: underline; }
+  .mx-axis:focus-visible { outline: none; }
   .cell-rect { stroke-width: 1; shape-rendering: crispEdges; cursor: pointer; }
   /* Hover and selection draw in the page background, the one colour that separates from
      every fill the grid uses; the stroke insets the fill rather than recolouring a pixel. */
@@ -53,30 +34,23 @@
   .cell-rect.selected { stroke: var(--rk-bg); stroke-width: 5; }
   .cell-rect.cell-empty, .cell-rect.cell-empty:hover { stroke: var(--rk-muted); stroke-width: 1; cursor: default; }
   /* A cell's words sit on a solid page-background plate, never on the fill, so their
-     contrast does not depend on it (drawCellMark). */
+     contrast does not depend on it (drawCellMark / drawCellText). */
   .cell-plate { fill: var(--rk-bg); pointer-events: none; }
   .cell-text {
     font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
     fill: var(--rk-text); pointer-events: none; text-anchor: middle; dominant-baseline: central;
   }
-  .cell-nodata { font-size: 10px; fill: var(--rk-muted); pointer-events: none; text-anchor: middle; dominant-baseline: central; }
+  .cell-text.sub { font-weight: 400; }
+  .cell-nodata { font-size: 11px; fill: var(--rk-muted); pointer-events: none; text-anchor: middle; dominant-baseline: central; }
 
-  .sidebar {
-    flex: 0 0 320px; max-width: 100%;
-    position: sticky; top: calc(var(--header-h) + var(--space-3));
-    max-height: calc(100vh - var(--header-h) - var(--space-5)); overflow-y: auto;
-  }
-  .sidebar h3 { font-size: 0.95rem; margin: 0 0 var(--space-1); }
-  .sidebar h4 { font-size: 0.78rem; margin: var(--space-3) 0 var(--space-1); color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-  .sidebar .meta-row { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); font-size: 0.8rem; }
-  .sidebar .meta-row .k { color: var(--rk-muted); }
-  .sidebar .meta-row .v { text-align: right; overflow-wrap: anywhere; }
-  .sidebar .where { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; margin-top: var(--space-2); }
-  .sidebar .placeholder { color: var(--rk-muted); font-size: 0.85rem; line-height: 1.5; }
-  .sidebar ul.near { list-style: none; margin: 0; padding: 0; }
-  .sidebar ul.near li { margin: 0 0 var(--space-1); }
-  .sidebar ul.near button { width: 100%; text-align: left; }
-  .legend { display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; font-size: 0.78rem; margin-top: var(--space-3); }
+  .rk-drawer-body .meta-row { display: flex; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) 0; border-bottom: 1px solid var(--rk-border); font-size: 0.82rem; }
+  .rk-drawer-body .meta-row .k { color: var(--rk-muted); }
+  .rk-drawer-body .meta-row .v { text-align: right; overflow-wrap: anywhere; }
+  .rk-drawer-body .where { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; margin-top: var(--space-2); }
+  .rk-drawer-body ul.near { list-style: none; margin: 0; padding: 0; }
+  .rk-drawer-body ul.near li { margin: 0 0 var(--space-1); }
+  .rk-drawer-body .note { font-size: 0.82rem; }
+  .legend { display: flex; gap: var(--space-2) var(--space-4); align-items: center; flex-wrap: wrap; font-size: 0.78rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-sm); }
   .legend-item { display: inline-flex; align-items: center; gap: var(--space-2); }
   .legend .mini { flex: none; overflow: visible; }
 </style>
@@ -99,29 +73,29 @@
   </div>
 </header>
 
-<main class="rk-wrap">
-  <section class="verdict-panel rk-card">
-    <h2>Which module is furthest from the canon?</h2>
-    <p class="verdict" id="verdict">No matrix has been loaded into this template yet, so no module can be named the worst; a rendered report replaces this sentence with the worst module, its worst cell, and what the area's mean conformance implies.</p>
-    <p class="note">A red cell is not "a module with a different style". It is a module whose answer to a convention question an alignment pass has to rewrite at every site counted inside the cell — so a red cell with a large site count is the expensive one, and a red cell with two sites is nearly free.</p>
-    <p class="note colour-key" id="colourKey"><strong>Reading the cells.</strong> Every cell prints its own key on a dark plate, so no cell has to be read by colour alone. Once <code>/passung-canonize</code> has run, the key is the cell's distance from the chosen canon — ✓ aligned (green), ≈ partially aligned (amber), ✗ diverging (red) — followed by its site count, and a cell keyed “–” has no score yet. Before that, the key is a letter naming the variant in that cell: the two most frequent variants also get a hue each (blue and purple — never red, amber or green, which mean conformance here), the rest share one neutral fill, and the letter is what tells two variants apart. A cell with a dashed outline that reads “no data” has nothing recorded for that module × dimension pair.</p>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Consistency matrix: which module is furthest from the canon, one cell per module and convention dimension">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">No matrix has been loaded into this template yet, so no module can be named the worst; a rendered report replaces this sentence with the worst module, its worst cell, and what the area's mean conformance implies.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float" id="legend">Cell key: ✓ aligned with the canon, ≈ partially aligned, ✗ diverging, a letter names the variant before a canon exists, and a dashed outline reading “no data” has nothing recorded.</div>
+    <span class="rk-hint">click a cell for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
   </section>
-
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1">
-      <section class="rk-section" id="sec-matrix">
-        <h2>Matrix</h2>
-        <div class="mx-layout">
-          <div class="matrix-wrap"><div class="matrix-grid" id="matrixGrid"></div></div>
-          <aside class="sidebar rk-card" id="sidebar" aria-label="Selected cell" aria-live="polite">
-            <div id="sidebarDetail">
-              <div class="placeholder">Click a cell to see its detail — module, dimension, variant in use, site count, where an example lives, and the neighbouring cells in the same row and column.</div>
-            </div>
-          </aside>
-        </div>
-        <div class="legend rk-card rk-muted" id="legend"></div>
-      </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1">
+        <section class="rk-section" id="sec-matrix">
+          <h2>Reading the cells</h2>
+          <div id="reading">
+            <p class="note">A red cell is not "a module with a different style". It is a module whose answer to a convention question an alignment pass has to rewrite at every site counted inside the cell — so a red cell with a large site count is the expensive one, and a red cell with two sites is nearly free.</p>
+            <p class="note"><strong>Reading the cells.</strong> Every cell prints its own key on a dark plate, so no cell has to be read by colour alone. Once <code>/passung-canonize</code> has run, the key is the cell's distance from the chosen canon — ✓ aligned (green), ≈ partially aligned (amber), ✗ diverging (red) — followed by its site count, and a cell keyed “–” has no score yet. Before that, the key is a letter naming the variant in that cell: the two most frequent variants also get a hue each (blue and purple — never red, amber or green, which mean conformance here), the rest share one neutral fill, and the letter is what tells two variants apart. A cell with a dashed outline that reads “no data” has nothing recorded for that module × dimension pair.</p>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
 </main>
@@ -145,29 +119,6 @@
   document.getElementById("subtitle").textContent = AREA + " · "
     + MATRIX.modules.length + " modules × " + MATRIX.dimensions.length + " dimensions"
     + " · generated from analysis/" + AREA + "/matrix.json";
-
-  // ---- grid geometry --------------------------------------------------------------
-  const CELL_H = 40;
-  const ROW_LABEL_W = 180;
-  const CELL_W_MIN = 92;
-  const CELL_W_MAX = 200;
-
-  function measureLabelWidth(labels) {
-    const probe = document.createElement("span");
-    probe.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font-size:12px;left:-9999px;top:0;";
-    document.body.appendChild(probe);
-    let max = 0;
-    for (const l of labels) {
-      probe.textContent = String(l);
-      max = Math.max(max, probe.getBoundingClientRect().width);
-    }
-    probe.remove();
-    return Math.ceil(max);
-  }
-  const LABEL_CHROME = 24;
-  const WIDEST_LABEL = measureLabelWidth(MATRIX.dimensions) + LABEL_CHROME;
-  const CELL_W = Math.max(CELL_W_MIN, Math.min(CELL_W_MAX, WIDEST_LABEL));
-  const HEADER_H = WIDEST_LABEL > CELL_W_MAX ? 58 : 40;
 
   // ---- cell marks: ONE decision and ONE painter for the grid and the legend ------------
   // Chart colours are read from the kit's --rk-* roles, so they follow the theme.
@@ -431,11 +382,19 @@
   }
   const FINDINGS = DIVERGENT_CELLS.concat(UNSCORED).map(toFinding).sort((a, b) => b._w - a._w);
 
-  // ---- matrix -------------------------------------------------------------------------------------------
+
+  // ---- matrix: drawn into the stage's figure, sized from it (R5, R9) -------------------------
+  const S = RK.stage();
   let sortMode = "worst-module";
   let filterText = "";
   let selectedKey = null;
+  let lastSize = { w: 0, h: 0 };
   const rectIndex = new Map();
+  const tipLines = (c) => {
+    const bits = [(c.variant || "(unknown)"), (c.sites != null ? c.sites : "?") + " sites"];
+    if (typeof c.conformance === "number") bits.push(pct(c) + " conformance");
+    return bits.join(" · ");
+  };
 
   function computeOrder() {
     let modules = [...MATRIX.modules];
@@ -457,74 +416,148 @@
   function setSort(mode) {
     sortMode = mode;
     document.getElementById("sortMode").value = mode;
-    render();
+    draw(true);
   }
 
-  // Sticky row-label/column-header cells stay plain HTML in a CSS grid so position:sticky works;
-  // only the coloured data cells are one <svg>, populated by a real d3 data-join.
-  function render() {
+  // Greedy wrap at separators, at most `maxLines` lines, the last one ellipsised.
+  function wrapLabel(text, maxChars, maxLines) {
+    const words = String(text).split(/(?<=[\s\-_/.:])/);
+    const lines = [];
+    let cur = "";
+    for (const w of words) {
+      if ((cur + w).length > maxChars && cur) { lines.push(cur.trim()); cur = w; } else cur += w;
+    }
+    if (cur) lines.push(cur.trim());
+    const fitted = lines.flatMap((l) => {
+      const parts = [];
+      for (let i = 0; i < l.length; i += maxChars) parts.push(l.slice(i, i + maxChars));
+      return parts;
+    });
+    if (fitted.length > maxLines) {
+      const keep = fitted.slice(0, maxLines);
+      keep[maxLines - 1] = keep[maxLines - 1].slice(0, Math.max(1, maxChars - 1)) + "…";
+      return keep;
+    }
+    return fitted;
+  }
+
+  // Fit `text` into `px` wide by trimming characters, measured on the live element.
+  function fitText(node, text, px) {
+    node.textContent = text;
+    if (node.getComputedTextLength() <= px) return;
+    let n = text.length;
+    while (n > 1 && node.getComputedTextLength() > px) { n -= 1; node.textContent = text.slice(0, n) + "…"; }
+  }
+
+  // Words on a cell: one plate behind up to three centred lines. The font grows with the
+  // cell (11px floor) so a big cell is not a small label in a big box.
+  function drawCellText(g, x, y, w, h, lines, fs) {
+    const grp = g.append("g").attr("pointer-events", "none");
+    const lh = fs + 4;
+    const y0 = y + h / 2 - ((lines.length - 1) * lh) / 2;
+    lines.forEach((ln, i) => {
+      const t = grp.append("text").attr("class", "cell-text" + (i ? " sub" : ""))
+        .attr("x", x + w / 2).attr("y", y0 + i * lh).style("font-size", fs + "px");
+      fitText(t.node(), ln, w - 18);
+    });
+    const box = grp.node().getBBox();
+    grp.insert("rect", "text").attr("class", "cell-plate")
+      .attr("x", box.x - 5).attr("y", box.y - 3).attr("width", box.width + 10).attr("height", box.height + 6)
+      .attr("rx", RADIUS_SM);
+  }
+
+  // Sticky-free SVG: row labels, column headers and cells are all one drawing, so the cell
+  // size is a single computation from the figure's width and height.
+  function draw(force) {
+    const { w: W, h: H } = S.size().width ? { w: S.size().width, h: S.size().height } : lastSize;
+    if (!W || !H) return;
+    if (!force && W === lastSize.w && H === lastSize.h && !draw.dirty) return;
+    draw.dirty = false;
+    lastSize = { w: W, h: H };
     const { modules, dimensions } = computeOrder();
-    const grid = document.getElementById("matrixGrid");
-    grid.textContent = "";
+    const figure = S.figure;
+    figure.textContent = "";
     rectIndex.clear();
 
-    grid.style.gridTemplateColumns = ROW_LABEL_W + "px repeat(" + dimensions.length + ", " + CELL_W + "px)";
-    grid.style.gridTemplateRows = HEADER_H + "px repeat(" + modules.length + ", " + CELL_H + "px)";
+    const hud = RK.$(".rk-hud"), legendEl = document.getElementById("legend");
+    const padTop = (hud ? hud.offsetTop + hud.offsetHeight : 0) + 10;
+    const padBottom = (legendEl ? legendEl.offsetHeight : 0) + 36;
+    const padX = 16;
+    const rowTitle = "module";
+    const labelW = Math.min(Math.max(120, Math.ceil(Math.max(...modules.map((m) => String(m).length)) * 7.4) + 16), Math.round(W * 0.24), 260);
+    const gridX = padX + labelW;
+    const availW = Math.max(W - gridX - padX, 1), availH = Math.max(H - padTop - padBottom - 60, 1);
+    const CELL_W = Math.max(96, Math.min(340, availW / dimensions.length));
+    const maxChars = Math.max(8, Math.floor((CELL_W - 10) / 7));
+    const headLines = Math.min(3, Math.max(...dimensions.map((d) => wrapLabel(d, maxChars, 3).length)));
+    const headerH = 24 + headLines * 15;
+    const CELL_H = Math.max(40, Math.min(180, (H - padTop - padBottom - headerH) / modules.length));
+    const gridY = padTop + headerH;
+    const svgW = Math.max(W, gridX + dimensions.length * CELL_W + padX);
+    const svgH = Math.max(H, gridY + modules.length * CELL_H + padBottom);
+    const fs = Math.max(11, Math.min(16, Math.round(Math.min(CELL_H / 5, CELL_W / 9))));
 
-    const corner = RK.h("div", { class: "corner", text: MATRIX.area || "module \\ dimension" });
-    corner.style.gridColumn = "1";
-    corner.style.gridRow = "1";
-    grid.appendChild(corner);
+    const svg = d3.select(figure).append("svg")
+      .attr("class", "mx").attr("width", svgW).attr("height", svgH)
+      .attr("viewBox", "0 0 " + svgW + " " + svgH)
+      .attr("role", "group").attr("aria-label", "Consistency matrix, " + modules.length + " modules by " + dimensions.length + " dimensions");
+    svg.append("text").attr("class", "mx-label axis-title").attr("x", gridX).attr("y", padTop + 10).text("convention dimension →");
+    svg.append("text").attr("class", "mx-label axis-title").attr("x", padX).attr("y", padTop + headerH - 6).text(rowTitle + " ↓");
 
     dimensions.forEach((dim, j) => {
-      const hd = RK.h("div", { class: "col-header", text: dim, title: dim + " — click to sort by this dimension", role: "button", tabindex: "0" });
-      hd.style.gridColumn = String(j + 2);
-      hd.style.gridRow = "1";
-      hd.addEventListener("click", () => setSort("worst-dimension"));
-      hd.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSort("worst-dimension"); } });
-      grid.appendChild(hd);
+      const cx = gridX + j * CELL_W + CELL_W / 2;
+      const g = svg.append("g").attr("class", "mx-axis").attr("role", "button").attr("tabindex", "0")
+        .attr("aria-label", dim + " — sort by the worst dimension");
+      g.append("title").text(dim + " — click to sort by this dimension");
+      const lines = wrapLabel(dim, maxChars, 3);
+      const t = g.append("text").attr("class", "mx-label").attr("text-anchor", "middle").attr("x", cx).attr("y", gridY - 6 - (lines.length - 1) * 15);
+      lines.forEach((ln, k) => t.append("tspan").attr("x", cx).attr("dy", k ? 15 : 0).text(ln));
+      g.on("click", () => setSort("worst-dimension"))
+        .on("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSort("worst-dimension"); } });
     });
     modules.forEach((mod, i) => {
-      const label = RK.h("div", { class: "row-label", text: mod, title: mod + " — click to sort by this module", role: "button", tabindex: "0" });
-      label.style.gridColumn = "1";
-      label.style.gridRow = String(i + 2);
-      label.addEventListener("click", () => setSort("worst-module"));
-      label.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSort("worst-module"); } });
-      grid.appendChild(label);
+      const g = svg.append("g").attr("class", "mx-axis").attr("role", "button").attr("tabindex", "0")
+        .attr("aria-label", mod + " — sort by the worst module");
+      g.append("title").text(mod + " — click to sort by this module");
+      const t = g.append("text").attr("class", "mx-label").attr("x", gridX - 10).attr("y", gridY + i * CELL_H + CELL_H / 2)
+        .attr("text-anchor", "end").attr("dominant-baseline", "central");
+      fitText(t.node(), String(mod), labelW - 14);
+      g.on("click", () => setSort("worst-module"))
+        .on("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSort("worst-module"); } });
     });
 
     const flat = [];
     modules.forEach((mod, i) => dimensions.forEach((dim, j) => flat.push({ mod, dim, i, j, c: cellIndex.get(keyOf(mod, dim)) || null })));
-
-    const svg = d3.select(grid).append("svg")
-      .attr("class", "cells-svg")
-      .attr("width", dimensions.length * CELL_W)
-      .attr("height", modules.length * CELL_H)
-      .attr("viewBox", "0 0 " + (dimensions.length * CELL_W) + " " + (modules.length * CELL_H));
-
-    svg.selectAll("g.cell")
-      .data(flat, (d) => keyOf(d.mod, d.dim))
-      .join("g")
-      .attr("class", "cell")
+    svg.selectAll("g.cell").data(flat, (d) => keyOf(d.mod, d.dim)).join("g").attr("class", "cell")
       .each(function (d) {
+        const g = d3.select(this);
         const mark = cellMark(d.c);
-        let text = "no data";
+        const x = gridX + d.j * CELL_W + 1, y = gridY + d.i * CELL_H + 1, w = CELL_W - 2, h = CELL_H - 2;
+        let label = "no data";
         if (d.c) {
           const parts = [];
           if (mark.code != null) parts.push(mark.code);
           if (d.c.sites != null) parts.push(String(d.c.sites));
-          text = parts.join(" · ");
+          label = parts.join(" · ");
         }
-        const rect = drawCellMark(d3.select(this), d.j * CELL_W + 1, d.i * CELL_H + 1, CELL_W - 2, CELL_H - 2, mark, text)
+        const rect = drawCellMark(g, x, y, w, h, mark, d.c ? null : label)
           .attr("class", d.c ? "cell-rect" : "cell-rect cell-empty");
         if (d.c) {
+          const lines = [label];
+          if (h >= 56) lines.push(d.c.variant || "(unknown)");
+          if (h >= 78 && typeof d.c.conformance === "number") lines.push(pct(d.c) + " conformance");
+          drawCellText(g, x, y, w, h, lines, fs);
           rect.attr("tabindex", "0").attr("role", "button")
-            .attr("aria-label", d.mod + " × " + d.dim + ": " + text)
+            .attr("aria-label", d.mod + " × " + d.dim + ": " + tipLines(d.c))
             .on("click", () => selectCell(d.mod, d.dim))
-            .on("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectCell(d.mod, d.dim); } });
+            .on("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); selectCell(d.mod, d.dim); } })
+            .on("mouseenter mousemove", (event) => S.tip.show(event, d.mod + " × " + d.dim, RK.h("div", { text: tipLines(d.c) })))
+            .on("mouseleave blur", () => S.tip.hide())
+            .on("focus", (event) => S.tip.show(event, d.mod + " × " + d.dim, RK.h("div", { text: tipLines(d.c) })));
           rectIndex.set(keyOf(d.mod, d.dim), rect.node());
+        } else {
+          rect.append("title").text("no data for " + d.mod + " × " + d.dim);
         }
-        rect.append("title").text(d.c ? (d.mod + " × " + d.dim) : ("no data for " + d.mod + " × " + d.dim));
       });
 
     const kept = selectedKey && rectIndex.get(selectedKey);
@@ -532,7 +565,14 @@
     renderLegend();
   }
 
-  // ---- side panel: structured drill-down (R7) --------------------------------------------------------------
+  // ---- drawer: the cell's structured drill-down (R7, R9) ------------------------------------------
+  function overview() {
+    const reading = document.getElementById("reading");
+    S.open("Reading the cells", AREA + " · " + MATRIX.modules.length + " modules × " + MATRIX.dimensions.length + " dimensions",
+      ...[...reading.children].map((n) => n.cloneNode(true)),
+      RK.h("p", { class: "note", text: "Click a cell to see its module, dimension, variant in use, site count, where an example lives, and the neighbouring cells in the same row and column." }));
+  }
+
   function selectCell(mod, dim) {
     const cell = cellIndex.get(keyOf(mod, dim));
     if (!cell) return;
@@ -541,9 +581,6 @@
     const rect = rectIndex.get(selectedKey);
     if (rect) rect.classList.add("selected");
 
-    const panel = document.getElementById("sidebarDetail");
-    panel.textContent = "";
-    panel.appendChild(RK.h("h3", { text: dim }));
     const scored = typeof cell.conformance === "number";
     const rows = [
       ["Module", mod],
@@ -554,36 +591,34 @@
     const info = dimInfo.get(dim);
     if (hasConformance && info.canon) rows.push(["Canon (inferred)", info.canon]);
     if (!hasConformance && info.top) rows.push(["Most common here", info.top[0] + " (" + info.top[1] + " of " + info.modules + ")"]);
-    for (const [k, v] of rows) {
-      panel.appendChild(RK.h("div", { class: "meta-row" }, RK.h("span", { class: "k", text: k }), RK.h("span", { class: "v", text: String(v) })));
-    }
+    const kids = rows.map(([k, v]) => RK.h("div", { class: "meta-row" }, RK.h("span", { class: "k", text: k }), RK.h("span", { class: "v", text: String(v) })));
+
     const examples = Array.isArray(cell.examples) && cell.examples.length ? cell.examples : (cell.example ? [cell.example] : []);
     if (examples.length) {
-      panel.appendChild(RK.h("h4", { text: examples.length > 1 ? "Examples (file:line)" : "Example (file:line)" }));
-      for (const e of examples) {
-        panel.appendChild(RK.h("div", { class: "where" }, RK.h("code", { text: String(e) }), RK.copyButton(String(e), "Copy the location")));
-      }
+      kids.push(RK.h("h3", { text: examples.length > 1 ? "Examples (file:line)" : "Example (file:line)" }));
+      for (const e of examples) kids.push(RK.h("div", { class: "where" }, RK.h("code", { text: String(e) }), RK.copyButton(String(e), "Copy the location")));
     }
     const fid = findingId(cell);
     if (document.getElementById(fid)) {
       const link = RK.h("a", { href: "#" + fid, text: "Open this cell's finding" });
       link.addEventListener("click", () => openFinding(fid));
-      panel.appendChild(RK.h("p", {}, link));
+      kids.push(RK.h("p", {}, link));
     }
     const sameDim = MATRIX.modules.map((m) => cellIndex.get(keyOf(m, dim))).filter((c) => c && c !== cell);
     const sameMod = MATRIX.dimensions.map((d) => cellIndex.get(keyOf(mod, d))).filter((c) => c && c !== cell);
     const near = (title, list, label) => {
       if (!list.length) return;
-      panel.appendChild(RK.h("h4", { text: title }));
-      panel.appendChild(RK.h("ul", { class: "near" }, list.map((n) => {
-        const btn = RK.h("button", { class: "rk-btn", type: "button", title: "Open " + n.module + " × " + n.dimension },
-          label(n) + " · " + cellMark(n).code + (n.sites != null ? " · " + n.sites : "") + (typeof n.conformance === "number" ? " · " + pct(n) : ""));
-        btn.addEventListener("click", () => selectCell(n.module, n.dimension));
-        return RK.h("li", {}, btn);
-      })));
+      kids.push(RK.h("h3", { text: title }));
+      kids.push(RK.h("ul", { class: "near" }, list.map((n) =>
+        RK.h("li", {}, S.link(
+          label(n) + " · " + cellMark(n).code + (n.sites != null ? " · " + n.sites : "") + (typeof n.conformance === "number" ? " · " + pct(n) : ""),
+          () => selectCell(n.module, n.dimension))))));
     };
     near("Same dimension, other modules", sameDim, (n) => n.module);
     near("Same module, other dimensions", sameMod, (n) => n.dimension);
+    kids.push(RK.h("p", { class: "note" }, S.link("How to read the cells", overview)));
+    S.open(dim, mod, ...kids);
+    S.tip.hide();
   }
 
   function openFinding(id) {
@@ -594,7 +629,7 @@
 
   // A legend entry: a small key painted by drawCellMark() -- the grid's own painter -- beside
   // its words. It is attached to the document before it is painted: the plate is sized from
-  // the rendered text.
+  // the rendered text. The static sentence in the template is replaced once the data is known.
   function legendItem(mark, code, label) {
     const item = RK.h("span", { class: "legend-item" });
     document.getElementById("legend").appendChild(item);
@@ -625,13 +660,13 @@
 
   // One box drives the matrix axes (exactly the old filter) and, through the kit, the finding
   // and cell lists. The kit's own listener runs on the same input.
-  document.getElementById("rk-q").addEventListener("input", (e) => { filterText = e.target.value.trim(); render(); });
+  document.getElementById("rk-q").addEventListener("input", (e) => { filterText = e.target.value.trim(); draw(true); });
   document.getElementById("sortMode").addEventListener("change", (e) => setSort(e.target.value));
   // Cell colours are read once per paint, so a theme change repaints the grid.
-  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", render);
+  new MutationObserver(() => draw(true)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => draw(true));
 
-  // ---- the kit's sections ---------------------------------------------------------------------------------------
+  // ---- HUD stats and the kit's long-form sections --------------------------------------------------
   const content = RK.$("#rk-content");
   const stats = [
     { label: "Divergent cells", value: DIVERGENT_CELLS.length + " / " + TOTAL_PAIRS, bad: DIVERGENT_CELLS.length > 0, note: DIVERGENT_CELLS.length > 0 ? "needs action" : "" },
@@ -639,7 +674,7 @@
     { label: "Cells with no data", value: NO_DATA_PAIRS },
   ];
   if (AVG_PCT !== null) stats.push({ label: "Avg. conformance", value: AVG_PCT + "%", bad: AVG_PCT < 85, note: AVG_PCT < 85 ? "needs action" : "" });
-  content.prepend(RK.section("glance", "At a glance", RK.glance({ verdict: null, stats })));
+  S.stats(stats);
 
   content.append(
     RK.section("cells", "Divergent cells", RK.findings(FINDINGS, {
@@ -663,13 +698,16 @@
     })),
   );
 
-  render();
   RK.init();
-  // Open the worst cell so the side panel shows its drill-down before anything is clicked.
-  if (FINDINGS.length && !location.hash) {
-    const w = FINDINGS[0].tags;
-    selectCell(w.module, w.dimension);
-  }
+  S.onResize(() => draw(false));
+  draw(true);
+  // Open a drill-down before anything is clicked: the cell a #finding-… link names, else the
+  // worst cell, else (nothing divergent) how to read the cells.
+  const hashId = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+  const hashCell = hashId ? CELLS.find((c) => findingId(c) === hashId) : null;
+  if (hashCell) { selectCell(hashCell.module, hashCell.dimension); openFinding(hashId); }
+  else if (FINDINGS.length) { const w = FINDINGS[0].tags; selectCell(w.module, w.dimension); }
+  else overview();
 })();
 </script>
 </body>

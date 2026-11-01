@@ -9,8 +9,7 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  #pipeline { width: 100%; height: auto; display: block; }
-  .legend { display: flex; gap: var(--space-4); font-size: 0.8rem; flex-wrap: wrap; align-items: center; }
+  .legend { display: flex; gap: var(--space-3); font-size: 0.78rem; flex-wrap: wrap; align-items: center; }
   .legend .key { display: inline-flex; align-items: center; gap: var(--space-1); }
   /* A swatch is a short line segment, not a filled box: the legend shows the
      stroke pattern that carries the meaning (solid vs dashed), and every key
@@ -21,13 +20,18 @@
   .legend .line.warn { border-top-color: var(--rk-warn); }
   .legend .line.dashed { border-top-style: dashed; }
   .legend .dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--rk-bad); display: inline-block; }
-  .stage-node { cursor: pointer; }
-  .stage-node:focus-visible rect, .stage-node:hover rect { stroke: var(--rk-link); }
-  .rk-sd h3 { margin: 0 0 var(--space-2); font-size: 0.95rem; }
-  .rk-sd dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); font-size: 0.86rem; }
-  .rk-sd dt { color: var(--rk-muted); }
-  .rk-sd dd { margin: 0; }
-  .rk-sd ul { margin: var(--space-1) 0 0; padding-left: 1.2em; }
+  .rk-legend-float { max-width: min(1000px, calc(100% - 2 * var(--space-3))); }
+  .vs-hit { cursor: pointer; }
+  .vs-hit:focus { outline: none; }
+  .vs-hit:focus-visible .vs-box, .vs-hit:hover .vs-box, .vs-hit.sel .vs-box { stroke: var(--rk-link); stroke-width: 3; }
+  .vs-hit:focus-visible .vs-line, .vs-hit:hover .vs-line, .vs-hit.sel .vs-line { stroke-width: 6; }
+  .vs-hit text { pointer-events: none; }
+  .vs-lane { fill: var(--rk-muted); font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .rk-sd dl, .rk-dd dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); font-size: 0.86rem; }
+  .rk-dd dt { color: var(--rk-muted); }
+  .rk-dd dd { margin: 0; overflow-wrap: anywhere; }
+  .rk-dd ul { margin: var(--space-1) 0 0; padding-left: 1.2em; }
+  .rk-dd .prose { white-space: pre-line; margin: 0; font-size: 0.85rem; }
   .rk-constraint dt { color: var(--rk-muted); font-size: 0.78rem; text-transform: uppercase; }
   .rk-constraint dd { margin: 0 0 var(--space-2); }
 </style>
@@ -43,33 +47,34 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
+<main>
   <!-- R1 -- the finding, in static markup, before any script runs. The
        sentence below is true of any stopped stream; the script rewrites it via
        textContent with the wire, the counts and the reason this ledger actually
        recorded. If the data block is missing the report still states what it is
        for, rather than only how to click it. -->
-  <h2 class="rk-q">Where is the line stopped, and why?</h2>
-  <p class="verdict" id="verdict">The line is stopped at the first wire whose proof is red, hung, or absent — this board names that wire and refuses to call the stream converged while any gap behind it is still open.</p>
-  <p class="note rk-muted">
-    A wire is one stage's handoff to the next. A wire is green only because a linked evidence doc says so. Amber means
-    verification was attempted and did not settle; a dashed edge means it was
-    never attempted at all — the two are different failures, not degrees of
-    one. Red tagged Tier 1 is the single verdict nobody can override. A tile
-    outlined in red is a number that must reach zero before this stream can
-    converge.
-  </p>
-  <div class="legend rk-card rk-muted" id="legend">
-    <span class="key"><span class="line good"></span>✓ proven green</span>
-    <span class="key"><span class="line bad"></span>✗ proven red — line stopped</span>
-    <span class="key"><span class="line warn"></span>! solid amber: verdict hung — unproven</span>
-    <span class="key"><span class="line warn dashed"></span>? dashed amber: no evidence yet</span>
-    <span class="key"><span class="dot"></span>open gap count — click a stage to read its gaps</span>
-    <span class="key">← current cursor</span>
-  </div>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+  <section class="rk-stage" id="rk-stage" aria-label="The value stream: every stage left to right, the wires between them, each wire's evidence and each stage's open gaps">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">The line is stopped at the first wire whose proof is red, hung, or absent — this board names that wire and refuses to call the stream converged while any gap behind it is still open.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float" id="legend">
+      <span class="key"><span class="line good"></span>✓ proven green</span>
+      <span class="key"><span class="line bad"></span>✗ proven red — line stopped</span>
+      <span class="key"><span class="line warn"></span>! solid amber: verdict hung — unproven</span>
+      <span class="key"><span class="line warn dashed"></span>? dashed amber: no evidence yet</span>
+      <span class="key"><span class="dot"></span>open gap count</span>
+      <span class="key">← current cursor</span>
+    </div>
+    <span class="rk-hint">click a stage, wire, evidence chip or gap for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
@@ -151,39 +156,30 @@
   verdictEl.textContent = v.text;
   verdictEl.classList.add(v.tone);
 
-  // ---- glance: tiles carry findings only (R2/R3) ------------------------------
+  // ---- the stage: HUD numbers (tiles carry findings only, R2/R3) ----------------
   // A tile is "bad" only when its number is non-zero: 0 open gaps is good news.
+  const S = RK.stage();
   const unprovenCount = wires.filter((w) => w.status !== "green").length;
   const MUST_ZERO = "must reach zero to converge";
-  const glanceBox = h("div", {});
-  glanceBox.appendChild(RK.glance({ stats: [
+  S.stats([
     { label: "Open gaps", value: gaps.length, bad: gaps.length > 0, note: gaps.length ? "⛔ " + MUST_ZERO : "none open" },
     { label: "Wires without green proof", value: unprovenCount, bad: unprovenCount > 0, note: unprovenCount ? "⛔ " + MUST_ZERO : "all proven" },
     { label: "Non-overridable holds", value: holds.length, bad: holds.length > 0, note: holds.length ? "⛔ " + MUST_ZERO : "none" },
     { label: "Cycles converged", value: B.counters.cycles_converged, note: "context, not a defect" },
-  ] }));
-  if (holds.length) {
-    glanceBox.appendChild(h("div", { class: "rk-banner bad", role: "alert" },
-      h("strong", {}, "⛔ Non-overridable holds (" + holds.length + ")"),
-      h("ul", {}, holds.map((x) => h("li", {}, x.wire + " — ",
-        h("a", { href: "#finding-evidence-" + x.slug }, x.slug))))));
-  }
-  glanceBox.appendChild(h("div", { class: "rk-card rk-constraint" },
-    h("dl", {},
-      h("dt", {}, "Cursor"), h("dd", {}, B.cursor),
-      h("dt", {}, "Active constraint"), h("dd", {}, B.constraint))));
-
-  // ---- the value stream (d3), colours read from the kit's roles --------------
-  const streamHost = h("div", { class: "rk-card" });
-  const detailHost = h("div", { class: "rk-card rk-sd", "aria-live": "polite" });
+  ]);
 
   const css = () => getComputedStyle(document.documentElement);
   const role = (name) => css().getPropertyValue(name).trim();
+  const evByWire = {};
+  for (const e of evidence) (evByWire[e.wire] = evByWire[e.wire] || []).push(e);
+  const stageHasHold = (name) => holds.some((x) => x.wire.split("->").includes(name));
+  const VERDICT_GLYPH = { red: "✗", unknown: "!", green: "✓" };
+  const VERDICT_WORD = { red: "red", unknown: "hung", green: "green" };
+  const RADIUS_GLYPH = { "shared-state-visible": "⛔ blocker", "hard-to-reverse": "▲ major", "local+reversible": "▽ minor" };
 
-  // Greedy word wrap to a character budget. Deliberately an estimate rather
-  // than getComputedTextLength(): the SVG is built before it is attached, where
-  // every measurement is 0, which would give one line per label.
-  function wrapLabel(text, cols) {
+  // Greedy word wrap to a character budget (an estimate: the SVG is built
+  // before it is attached, where every text measurement is 0).
+  function wrapLabel(text, cols, maxLines) {
     const lines = [];
     let line = "";
     for (const word of String(text).split(" ")) {
@@ -191,97 +187,208 @@
       if (candidate.length > cols && line) { lines.push(line); line = word; } else { line = candidate; }
     }
     if (line) lines.push(line);
+    if (maxLines && lines.length > maxLines) {
+      const keep = lines.slice(0, maxLines);
+      keep[maxLines - 1] = keep[maxLines - 1].replace(/.{0,1}$/, "…");
+      return keep;
+    }
     return lines;
   }
 
-  function drawStream() {
-    const C = {
-      ok: role("--rk-ok"), bad: role("--rk-bad"), warn: role("--rk-warn"), flat: role("--rk-flat"),
-      panel: role("--rk-panel-2"), bg: role("--rk-bg"), border: role("--rk-border"),
-      text: role("--rk-text"), muted: role("--rk-muted"), link: role("--rk-link"),
-    };
-    const wireColor = (s) => (s === "green" ? C.ok : s === "red" ? C.bad : s === "unknown" ? C.warn : C.flat);
-    const stages = B.stages;
-    const nodeW = 130, nodeH = 40;
-    const W = Math.max(nodeW + 20, stages.length * 190);
-    const x = d3.scalePoint().domain(stages).range([nodeW / 2 + 10, W - nodeW / 2 - 10]);
+  // ---- the drawer: structured detail for whatever was clicked -------------------
+  const kv = (rows) => h("dl", {}, rows.filter((r) => r[1] !== null && r[1] !== undefined && r[1] !== "").flatMap(([k, val]) =>
+    [h("dt", { text: k }), h("dd", {}, typeof val === "string" || typeof val === "number" ? document.createTextNode(String(val)) : val)]));
+  const path = (p) => h("code", { text: p });
+  // Ledger prose is hard-wrapped at ~70 columns; keep paragraph breaks, drop the single newlines.
+  const proseBlock = (t) => t ? h("p", { class: "prose", text: t.replace(/([^\n])\n(?!\n)/g, "$1 ") }) : null;
+  const wireTone = (st) => (st === "green" ? "ok" : st === "red" ? "bad" : st === "unknown" ? "warn" : "info");
+  const stageLink = (n) => S.link(n, () => showStage(n));
+  const wireLink = (w) => S.link(w.wireKey, () => showWire(w.wireKey));
+  const gapLink = (g) => S.link(g.title || g.slug, () => showGap(g.slug));
+  const evLink = (e) => S.link((VERDICT_GLYPH[e.verdict] || "?") + " " + (e.title || e.slug), () => showEvidence(e.slug));
+  const anchor = (id, text) => h("a", { href: "#" + id, text });
+  const wrap = (...kids) => h("div", { class: "rk-dd" }, ...kids);
 
-    // R5 -- height derives from the data: every edge carries a wrapped label,
-    // so the band depends on the label text and on how many stages share the width.
-    const CHAR_W = 5.6, LABEL_ROW = 14, LABEL_GAP = 14, PAD_TOP = 18, PAD_BOTTOM = 10;
-    const edgeData = wires.map((d) => {
-      const avail = (x(d.to) - x(d.from)) - 8;
-      return { ...d, lines: wrapLabel(d.wireKey + " · " + wireLabel(d.status), Math.max(8, Math.floor(avail / CHAR_W))) };
-    });
-    const maxLines = edgeData.reduce((m, d) => Math.max(m, d.lines.length), 0);
-    const H = PAD_TOP + nodeH + (maxLines ? LABEL_GAP + maxLines * LABEL_ROW : 0) + PAD_BOTTOM;
-    const rowY = PAD_TOP + nodeH / 2;
-
-    streamHost.textContent = "";
-    const svg = d3.select(streamHost).append("svg").attr("id", "pipeline").attr("viewBox", "0 0 " + W + " " + H)
-      .attr("role", "img").attr("aria-label", "Value stream of " + stages.length + " stages and " + wires.length + " wires");
-
-    const edges = svg.append("g").selectAll("g.edge").data(edgeData, (d) => d.wireKey).join("g").attr("class", "edge");
-    edges.append("line")
-      .attr("x1", (d) => x(d.from) + nodeW / 2).attr("y1", rowY)
-      .attr("x2", (d) => x(d.to) - nodeW / 2).attr("y2", rowY)
-      .attr("stroke", (d) => wireColor(d.status)).attr("stroke-width", 3)
-      .attr("stroke-dasharray", (d) => (d.status ? null : "4,3"));
-    edges.append("polygon")
-      .attr("points", (d) => { const ax = x(d.to) - nodeW / 2; return ax + "," + (rowY - 5) + " " + (ax + 8) + "," + rowY + " " + ax + "," + (rowY + 5); })
-      .attr("fill", (d) => wireColor(d.status));
-    edges.append("title").text((d) => d.wireKey + ": " + wireLabel(d.status));
-    // R4 -- the status the stroke encodes, spelled out under every edge.
-    edges.append("text").attr("text-anchor", "middle").attr("font-size", 11).attr("fill", C.muted)
-      .each(function (d) {
-        const mid = (x(d.from) + x(d.to)) / 2;
-        const t = d3.select(this);
-        d.lines.forEach((ln, i) => t.append("tspan").attr("x", mid).attr("y", PAD_TOP + nodeH + LABEL_GAP + i * LABEL_ROW).text(ln));
-      });
-
-    const nodes = svg.append("g").selectAll("g.stage-node").data(stages, (d) => d).join("g")
-      .attr("class", "stage-node").attr("tabindex", 0).attr("role", "button")
-      .attr("aria-label", (d) => d + ": " + (gapsByStage[d] || []).length + " open gaps. Show detail.")
-      .attr("transform", (d) => "translate(" + (x(d) - nodeW / 2) + "," + PAD_TOP + ")")
-      .on("click", (event, d) => { event.stopPropagation(); showStage(d); })
-      .on("keydown", (event, d) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showStage(d); } });
-    nodes.append("rect").attr("width", nodeW).attr("height", nodeH).attr("rx", 6)
-      .attr("fill", C.panel).attr("stroke", (d) => (d === cursorStage ? C.link : C.border)).attr("stroke-width", (d) => (d === cursorStage ? 2 : 1));
-    nodes.append("text").attr("x", nodeW / 2).attr("y", nodeH / 2 + 4).attr("text-anchor", "middle")
-      .attr("fill", (d) => (d === cursorStage ? C.link : C.text)).attr("font-size", 12)
-      .attr("font-weight", (d) => (d === cursorStage ? 600 : 400)).text((d) => d + (d === cursorStage ? " ←" : ""));
-    // Open-gap badge: an outlined ring with the count in the text colour, so
-    // it reads on either theme without a fixed on-colour.
-    const badged = nodes.filter((d) => (gapsByStage[d] || []).length > 0);
-    const badge = badged.append("g").attr("transform", "translate(" + (nodeW - 10) + ",-6)");
-    badge.append("circle").attr("r", 10).attr("fill", C.bg).attr("stroke", C.bad).attr("stroke-width", 2);
-    badge.append("text").attr("text-anchor", "middle").attr("dy", 3.5).attr("font-size", 10).attr("font-weight", 600)
-      .attr("fill", C.text).text((d) => String((gapsByStage[d] || []).length));
-  }
-
-  // Stage detail replaces the old sidebar: opens in place under the chart.
   function showStage(name) {
+    sel = "stage:" + name; draw();
     const doc = (B.stage_docs || {})[name] || {};
     const mine = gapsByStage[name] || [];
     const inW = wires.find((w) => w.to === name), outW = wires.find((w) => w.from === name);
-    const wireLine = (w, dir) => w ? h("li", {}, dir + " ", h("code", {}, w.wireKey), " — " + wireLabel(w.status)) : null;
-    detailHost.textContent = "";
-    detailHost.append(
-      h("h3", {}, name + " — " + mine.length + " open gap" + (mine.length === 1 ? "" : "s")),
-      h("dl", {},
-        doc.description ? [h("dt", {}, "What it is"), h("dd", {}, doc.description)] : null,
-        doc.confidence ? [h("dt", {}, "Confidence"), h("dd", {}, doc.confidence)] : null,
-        doc.path ? [h("dt", {}, "Ledger doc"), h("dd", {}, h("code", {}, doc.path))] : null),
-      doc.body ? h("p", { class: "rk-muted" }, doc.body) : null,
-      (inW || outW) ? h("ul", {}, wireLine(inW, "in:"), wireLine(outW, "out:")) : null,
-      mine.length
-        ? h("ul", {}, mine.map((g) => h("li", {}, h("a", { href: "#finding-gap-" + g.slug }, g.title || g.slug),
-            " — " + g.kind + ", " + (RADIUS_LABELS[g.blast_radius] || g.blast_radius || "radius unrecorded"))))
-        : h("p", { class: "rk-muted" }, "No open gaps at this stage."));
+    S.open(name + (name === cursorStage ? " ← cursor" : ""), mine.length + " open gap" + (mine.length === 1 ? "" : "s") + " · stage",
+      wrap(
+        kv([["What it is", doc.description], ["Confidence", doc.confidence], ["Ledger doc", doc.path ? path(doc.path) : null]]),
+        doc.body ? h("h3", { text: "Ledger prose" }) : null, proseBlock(doc.body),
+        h("h3", { text: "Wires" }),
+        h("ul", {}, [inW ? h("li", {}, "in: ", wireLink(inW), " — " + wireLabel(inW.status)) : null,
+          outW ? h("li", {}, "out: ", wireLink(outW), " — " + wireLabel(outW.status)) : null].filter(Boolean)),
+        h("h3", { text: "Open gaps" }),
+        mine.length ? h("ul", {}, mine.map((g) => h("li", {}, gapLink(g),
+          " — " + g.kind + ", " + (RADIUS_LABELS[g.blast_radius] || g.blast_radius || "radius unrecorded")))) :
+          h("p", { class: "rk-muted", text: "No open gaps at this stage." })));
   }
-  showStage(cursorStage && B.stages.includes(cursorStage) ? cursorStage : B.stages[0]);
 
-  // ---- gaps and evidence as R6 findings ---------------------------------------
+  function showWire(key) {
+    sel = "wire:" + key; draw();
+    const w = wires.find((x) => x.wireKey === key), evs = evByWire[key] || [];
+    const hold = holds.find((x) => x.wire === key);
+    S.open(key, "wire · " + wireLabel(w.status),
+      wrap(RK.badge(wireLabel(w.status).replace(/^\S+ /, ""), wireTone(w.status)),
+        hold ? h("div", { class: "rk-banner bad", role: "alert" }, "⛔ Non-overridable hold: a Tier 1 structural-evidence contradiction. Nothing in this loop can override it.") : null,
+        kv([["From", stageLink(w.from)], ["To", stageLink(w.to)]]),
+        h("h3", { text: "Evidence (" + evs.length + ")" }),
+        evs.length ? h("ul", {}, evs.map((e) => h("li", {}, evLink(e), " — strategy " + (e.strategy || "?") + (e.tier ? ", tier " + e.tier : "")))) :
+          h("p", { class: "rk-muted", text: "No evidence document links this wire: it was never attempted, which is different from a hung verdict." })));
+  }
+
+  function showGap(slug) {
+    const g = gaps.find((x) => x.slug === slug); if (!g) return;
+    sel = "gap:" + slug; draw();
+    const p = g.proposal || {};
+    S.open(g.title || g.slug, "open gap · " + g.kind + " · " + (RADIUS_LABELS[g.blast_radius] || g.blast_radius || "radius unrecorded"),
+      wrap(RK.badge(RADIUS_GLYPH[g.blast_radius] ? RADIUS_GLYPH[g.blast_radius].replace(/^\S+ /, "") : "unrated",
+          g.blast_radius === "shared-state-visible" ? "bad" : g.blast_radius === "hard-to-reverse" ? "warn" : "info"),
+        kv([["Stage", stageLink(g.stage)], ["Kind", g.kind], ["Blast radius", RADIUS_LABELS[g.blast_radius] || g.blast_radius], ["Ledger doc", g.path ? path(g.path) : null]]),
+        g.body ? h("h3", { text: "Ledger prose" }) : null, proseBlock(g.body),
+        p.summary ? h("h3", { text: "Proposal" }) : null, p.summary ? h("p", { text: p.summary }) : null,
+        p.touches && p.touches.length ? h("p", {}, "Touches: ", ...p.touches.flatMap((t, i) => [i ? ", " : "", path(t)])) : null,
+        h("p", {}, anchor("finding-gap-" + g.slug, "Open in the gap list below"))));
+  }
+
+  function showEvidence(slug) {
+    const e = evidence.find((x) => x.slug === slug); if (!e) return;
+    sel = "ev:" + slug; draw();
+    const w = wires.find((x) => x.wireKey === e.wire);
+    S.open(e.title || e.slug, "evidence · " + (VERDICT_GLYPH[e.verdict] || "?") + " " + (VERDICT_WORD[e.verdict] || e.verdict || "no verdict"),
+      wrap(RK.badge(VERDICT_WORD[e.verdict] || "no verdict", wireTone(e.verdict)),
+        e.non_overridable ? h("div", { class: "rk-banner bad", role: "alert" }, "⛔ Non-overridable: nothing in this loop can override this verdict.") : null,
+        kv([["Wire", w ? wireLink(w) : (e.wire || "unknown")], ["Strategy", e.strategy], ["Tier", e.tier], ["Superseded by", e.superseded_by],
+          ["Valid until", e.valid_until], ["Ledger doc", e.path ? path(e.path) : null]]),
+        e.body ? h("h3", { text: "Ledger prose" }) : null, proseBlock(e.body),
+        h("p", {}, anchor("finding-evidence-" + e.slug, "Open in the evidence list below"))));
+  }
+
+  // The default view: the explanation that used to sit above the chart, and the question the board answers.
+  function showOverview() {
+    S.open("Where is the line stopped, and why?", "how to read this board",
+      wrap(h("p", { text: "A wire is one stage's handoff to the next. A wire is green only because a linked evidence doc says so. Amber means verification was attempted and did not settle; a dashed edge means it was never attempted at all — the two are different failures, not degrees of one. Red tagged Tier 1 is the single verdict nobody can override. A tile outlined in red is a number that must reach zero before this stream can converge." }),
+        kv([["Cursor", B.cursor], ["Active constraint", B.constraint]]),
+        h("p", { class: "rk-muted", text: "Click a stage, a wire, an evidence chip or a gap in the figure." })));
+  }
+
+  // ---- the value stream (d3), filling the figure; colours from the kit's roles ----
+  let sel = null;
+  function draw() {
+    const { width: W, height: Hh } = S.size();
+    if (!W || !Hh) return;
+    const C = {
+      ok: role("--rk-ok"), bad: role("--rk-bad"), warn: role("--rk-warn"), flat: role("--rk-flat"),
+      panel: role("--rk-panel-2") || role("--rk-panel"), bg: role("--rk-bg"), border: role("--rk-border"),
+      text: role("--rk-text"), muted: role("--rk-muted"), link: role("--rk-link"),
+    };
+    const wireColor = (s) => (s === "green" ? C.ok : s === "red" ? C.bad : s === "unknown" ? C.warn : C.flat);
+    const stages = B.stages, n = stages.length;
+    const padX = 28;
+    const colW = (W - 2 * padX) / n;
+    const nodeW = Math.max(90, Math.min(220, colW * 0.62)), nodeH = Math.max(56, Math.min(88, Hh * 0.1));
+    const cx = (i) => padX + colW * i + colW / 2;
+    const rowY = Math.max(215, Math.min(Hh * 0.29, 300));          // below the HUD
+    const nodeTop = rowY - nodeH / 2;
+    const px = 12;                                                   // text px; never below 11
+    const cols = (w) => Math.max(8, Math.floor(w / (px * 0.56)));
+    const gapW = Math.max(60, colW - nodeW - 10);
+
+    // Content below the nodes: gap chips under each stage, evidence chips under each wire.
+    const maxGapRows = Math.max(0, ...stages.map((s) => (gapsByStage[s] || []).length));
+    const maxEvRows = Math.max(0, ...wires.map((w) => (evByWire[w.wireKey] || []).length));
+    const evTop = nodeTop + nodeH + 64;
+    // Chips grow with the figure's height (capped), so a tall screen is used, not left empty.
+    const room = Hh - evTop - 150 - (maxEvRows ? 54 : 0) - (maxGapRows ? 40 : 0);
+    const chipH = Math.max(48, Math.min(64, room / Math.max(1, maxEvRows + maxGapRows) - 8)), chipGap = 8;
+    const gapTop = evTop + (maxEvRows ? maxEvRows * (chipH + chipGap) + 46 : 0);
+    const needH = gapTop + maxGapRows * (chipH + chipGap) + 110;
+    const H = Math.max(Hh, needH);
+    S.figure.classList.toggle("rk-scroll", needH > Hh);
+    S.figure.textContent = "";
+
+    const svg = d3.select(S.figure).append("svg").attr("id", "pipeline").attr("viewBox", "0 0 " + W + " " + H)
+      .attr("width", W).attr("height", H).style("height", H + "px")
+      .attr("role", "group").attr("aria-label", "Value stream of " + n + " stages and " + wires.length + " wires");
+
+    const hover = (g, title, lines) => {
+      g.on("mouseenter", (ev) => S.tip.show(ev, title, ...lines.map((l) => h("div", { text: l }))))
+        .on("mousemove", (ev) => S.tip.show(ev, title, ...lines.map((l) => h("div", { text: l }))))
+        .on("focus", (ev) => S.tip.show(ev, title, ...lines.map((l) => h("div", { text: l }))))
+        .on("mouseleave", S.tip.hide).on("blur", S.tip.hide);
+    };
+    const hit = (parent, id, aria, fn) => {
+      const g = parent.append("g").attr("class", "vs-hit" + (sel === id ? " sel" : "")).attr("tabindex", 0).attr("role", "button").attr("aria-label", aria)
+        .on("click", (ev) => { ev.stopPropagation(); fn(); })
+        .on("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); fn(); } });
+      return g;
+    };
+
+    // lane captions
+    if (maxEvRows) svg.append("text").attr("class", "vs-lane").attr("x", padX).attr("y", evTop - 14).text("evidence documents, under the wire they prove");
+    if (maxGapRows) svg.append("text").attr("class", "vs-lane").attr("x", padX).attr("y", gapTop - 14).text("open gaps, under the stage they block");
+
+    // wires
+    wires.forEach((w, i) => {
+      const x1 = cx(i) + nodeW / 2, x2 = cx(i + 1) - nodeW / 2, mid = (x1 + x2) / 2;
+      const g = hit(svg.append("g"), "wire:" + w.wireKey, w.wireKey + ": " + wireLabel(w.status) + ". Show detail.", () => showWire(w.wireKey));
+      g.append("line").attr("x1", x1 - 2).attr("x2", x2 + 2).attr("y1", rowY).attr("y2", rowY).attr("stroke", "transparent").attr("stroke-width", 28);
+      g.append("line").attr("class", "vs-line").attr("x1", x1).attr("x2", x2 - 6).attr("y1", rowY).attr("y2", rowY)
+        .attr("stroke", wireColor(w.status)).attr("stroke-width", 4).attr("stroke-dasharray", w.status ? null : "6,4");
+      g.append("polygon").attr("points", (x2 - 8) + "," + (rowY - 7) + " " + x2 + "," + rowY + " " + (x2 - 8) + "," + (rowY + 7)).attr("fill", wireColor(w.status));
+      // R4 -- the status the stroke encodes, spelled out under every edge.
+      const lines = wrapLabel(wireLabel(w.status), cols(x2 - x1), 3);
+      const t = g.append("text").attr("text-anchor", "middle").attr("font-size", px).attr("fill", C.muted);
+      lines.forEach((ln, k) => t.append("tspan").attr("x", mid).attr("y", rowY + 24 + k * 14).text(ln));
+      hover(g, w.wireKey, [wireLabel(w.status), (evByWire[w.wireKey] || []).length + " evidence document(s)"]);
+      // evidence chips
+      (evByWire[w.wireKey] || []).forEach((e, k) => {
+        const y = evTop + k * (chipH + chipGap), cw = Math.min(colW - 12, 170), x = mid - cw / 2;
+        const ge = hit(svg.append("g"), "ev:" + e.slug, "Evidence " + (e.title || e.slug) + ", " + (VERDICT_WORD[e.verdict] || "no verdict") + ". Show detail.", () => showEvidence(e.slug));
+        ge.append("rect").attr("class", "vs-box").attr("x", x).attr("y", y).attr("width", cw).attr("height", chipH).attr("rx", 6)
+          .attr("fill", C.panel).attr("stroke", wireColor(e.verdict)).attr("stroke-width", 2).attr("stroke-dasharray", e.superseded_by ? "4,3" : null);
+        ge.append("text").attr("x", x + 10).attr("y", y + chipH / 2 - 3).attr("font-size", 13).attr("font-weight", 600).attr("fill", C.text)
+          .text((VERDICT_GLYPH[e.verdict] || "?") + " " + (VERDICT_WORD[e.verdict] || "none"));
+        ge.append("text").attr("x", x + 10).attr("y", y + chipH / 2 + 14).attr("font-size", 11).attr("fill", C.muted)
+          .text("strategy " + (e.strategy || "?") + (e.tier ? " · T" + e.tier : "") + (e.non_overridable ? " ⛔" : ""));
+        hover(ge, e.title || e.slug, [w.wireKey + " — " + (VERDICT_WORD[e.verdict] || "no verdict"), "strategy " + (e.strategy || "?") + (e.tier ? ", tier " + e.tier : "")]);
+      });
+    });
+
+    // stages
+    stages.forEach((name, i) => {
+      const x = cx(i) - nodeW / 2, cur = name === cursorStage, mine = gapsByStage[name] || [];
+      const g = hit(svg.append("g"), "stage:" + name, name + ": " + mine.length + " open gaps. Show detail.", () => showStage(name));
+      g.append("rect").attr("class", "vs-box").attr("x", x).attr("y", nodeTop).attr("width", nodeW).attr("height", nodeH).attr("rx", 8)
+        .attr("fill", C.panel).attr("stroke", cur ? C.link : stageHasHold(name) ? C.bad : C.border).attr("stroke-width", cur ? 2.5 : 1.5);
+      const nameLines = wrapLabel(name + (cur ? " ←" : ""), cols(nodeW - 16), 2);
+      const t = g.append("text").attr("text-anchor", "middle").attr("font-size", 14).attr("font-weight", cur ? 700 : 600).attr("fill", cur ? C.link : C.text);
+      nameLines.forEach((ln, k) => t.append("tspan").attr("x", x + nodeW / 2).attr("y", nodeTop + nodeH / 2 + 5 - (nameLines.length - 1) * 8 + k * 16).text(ln));
+      if (mine.length) {
+        const bd = g.append("g").attr("transform", "translate(" + (x + nodeW - 8) + "," + (nodeTop - 2) + ")");
+        bd.append("circle").attr("r", 12).attr("fill", C.bg).attr("stroke", C.bad).attr("stroke-width", 2);
+        bd.append("text").attr("text-anchor", "middle").attr("dy", 4).attr("font-size", 11).attr("font-weight", 600).attr("fill", C.text).text(String(mine.length));
+      }
+      hover(g, name, [mine.length + " open gap(s)", (B.stage_docs || {})[name] && (B.stage_docs[name].description || "")].filter(Boolean));
+      // gap chips under the stage
+      mine.forEach((gp, k) => {
+        const y = gapTop + k * (chipH + chipGap);
+        const gg = hit(svg.append("g"), "gap:" + gp.slug, "Open gap " + (gp.title || gp.slug) + ", " + (RADIUS_LABELS[gp.blast_radius] || "radius unrecorded") + ". Show detail.", () => showGap(gp.slug));
+        gg.append("rect").attr("class", "vs-box").attr("x", x).attr("y", y).attr("width", nodeW).attr("height", chipH).attr("rx", 6)
+          .attr("fill", C.panel).attr("stroke", gp.blast_radius === "shared-state-visible" ? C.bad : gp.blast_radius === "hard-to-reverse" ? C.warn : C.border).attr("stroke-width", 2);
+        gg.append("text").attr("x", x + 10).attr("y", y + chipH / 2 - 5).attr("font-size", 11).attr("font-weight", 600).attr("fill", C.muted)
+          .text((RADIUS_GLYPH[gp.blast_radius] || "unrated") + " · " + gp.kind);
+        gg.append("text").attr("x", x + 10).attr("y", y + chipH / 2 + 14).attr("font-size", px).attr("fill", C.text)
+          .text(wrapLabel(gp.title || gp.slug, cols(nodeW - 20), 1)[0]);
+        hover(gg, gp.title || gp.slug, [(RADIUS_GLYPH[gp.blast_radius] || "unrated") + " · " + gp.kind, "stage " + name]);
+      });
+    });
+  }
+
+  // ---- gaps and evidence as R6 findings (the long-form reference) ---------------
   const gapFindings = gaps.map((g) => ({
     id: "gap-" + g.slug,
     severity: RADIUS_SEVERITY[g.blast_radius] || "unrated",
@@ -306,10 +413,22 @@
     tags: { verdict: e.verdict || "none", wire: e.wire || "unknown" },
   }));
 
+  const stand = h("div", {});
+  if (holds.length) {
+    stand.appendChild(h("div", { class: "rk-banner bad", role: "alert" },
+      h("strong", {}, "⛔ Non-overridable holds (" + holds.length + ")"),
+      h("ul", {}, holds.map((x) => h("li", {}, x.wire + " — ",
+        h("a", { href: "#finding-evidence-" + x.slug }, x.slug))))));
+  }
+  stand.appendChild(h("div", { class: "rk-card rk-constraint" },
+    h("dl", {},
+      h("dt", {}, "Cursor"), h("dd", {}, B.cursor),
+      h("dt", {}, "Active constraint"), h("dd", {}, B.constraint))));
+  stand.appendChild(h("p", { class: "rk-muted", text: "A wire is one stage's handoff to the next. It is green only because a linked evidence doc says so. Amber means verification was attempted and did not settle; a dashed edge means it was never attempted — different failures, not degrees of one." }));
+
   const content = RK.$("#rk-content");
   content.append(
-    section("glance", "Where it stands", glanceBox),
-    section("stream", "Value stream", streamHost, detailHost),
+    section("glance", "Where the line is stopped", stand),
     section("gaps", "Open gaps (" + gaps.length + ")",
       h("p", { class: "rk-muted" }, "Severity is the gap's blast radius: shared state visible is a blocker, hard to reverse is major, local and reversible is minor."),
       RK.findings(gapFindings, { facets: ["stage", "kind", "radius"],
@@ -319,17 +438,29 @@
       RK.findings(evidenceFindings, { facets: ["verdict", "wire"], order: { severity: ["fail", "gap", "pass"], verdict: ["red", "unknown", "green"] },
         empty: "No evidence documents have been recorded." })));
 
-  drawStream();
+  // Open on load: the named item if the hash names one, else what stops the line, else the overview.
+  function openFromHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (id.startsWith("finding-gap-")) { showGap(id.slice(12)); return true; }
+    if (id.startsWith("finding-evidence-")) { showEvidence(id.slice(17)); return true; }
+    return false;
+  }
+  S.onResize(() => draw());
+  if (!openFromHash()) {
+    const stop = holds[0] ? holds[0].slug : null;
+    const stopWire = wires.find((w) => w.status !== "green");
+    if (stop) showEvidence(stop); else if (stopWire) showWire(stopWire.wireKey); else showOverview();
+  }
   RK.init();
 
-  // Canvas-free SVG still takes its colours from computed roles, so a theme
-  // change (toggle or OS) has to redraw.
-  new MutationObserver(drawStream).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", drawStream);
-  // A permalink inside the page should open the finding it names.
+  // SVG takes its colours from computed roles, so a theme change (toggle or OS) has to redraw.
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", draw);
+  // A permalink inside the page should open the finding it names, and its drawer.
   window.addEventListener("hashchange", () => {
     const t = document.getElementById(decodeURIComponent(location.hash.slice(1)));
     if (t && t.tagName === "DETAILS") t.open = true;
+    openFromHash();
   });
 })();
 </script>

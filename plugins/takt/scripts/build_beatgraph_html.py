@@ -158,6 +158,9 @@ def selftest() -> int:
     ok("CSP is default-src 'none'", "default-src 'none'" in html)
     ok("no network fetches", "src=\"http" not in html and "href=\"http" not in html)
     ok("a static verdict element exists", 'class="verdict"' in html)
+    ok("the figure-first stage skeleton is present",
+       'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html,
+       "R9: the figure fills the first screen and detail opens in the drawer")
     ok("a static legend exists", 'class="legend ' in html or 'class="legend"' in html)
     ok("no innerHTML assignment", "innerHTML" not in html and "insertAdjacentHTML" not in html)
     # The check that matters: the viewer's beat list is the COMPILER's beat

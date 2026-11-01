@@ -67,6 +67,7 @@ def selftest() -> int:
     ok("d3 inlined", D3_MARKER not in html and "window.d3" in html)
     ok("sample cells reach the island", "return Result" in html and "src/shipping/label.py:22" in html)
     ok("static verdict element kept", 'class="verdict"' in html)
+    ok("figure-first stage skeleton", 'id="rk-stage"' in html and "data-rk-figure" in html and 'id="rk-drawer"' in html)
     bad = render_html(assets / "matrix-viewer.html", assets / "inline-d3.html", assets / "tokens.css", hostile)
     ok("hostile module name cannot close the island", "\\u003c/script\\u003e" in bad)
     with tempfile.TemporaryDirectory() as td:

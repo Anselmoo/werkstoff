@@ -9,31 +9,29 @@
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
 <style>
-  /* Centered-document archetype (report-viewer-standard.md S1): read top to
-     bottom -- verdict, legend, one card per branch. The kit's .rk-wrap supplies
-     max-width and the auto margin; there is no detail pane and nothing pans. */
+  /* Figure-first archetype (report-viewer-standard.md R9): the grouped bars fill
+     the stage, the verdict and three numbers float over them, a branch's "why it
+     ranks here" opens in the drawer, and the per-branch cards follow below as the
+     long-form reference. */
   .rk-q { font-size: 1rem; margin: 0 0 var(--space-2); }
-  .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 0; }
-  .legend { display: flex; gap: var(--space-2) var(--space-4); font-size: 0.82rem; flex-wrap: wrap; margin: var(--space-3) 0; }
+  .note { color: var(--rk-muted); font-size: 0.82rem; margin: var(--space-2) 0 var(--space-3); }
+  .legend { display: flex; gap: var(--space-1) var(--space-4); font-size: 0.82rem; flex-wrap: wrap; padding: var(--space-2) var(--space-3); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
   .legend .swatch { width: 10px; height: 10px; display: inline-block; border-radius: var(--radius-sm); margin-right: var(--space-1); vertical-align: middle; }
   .legend .swatch.feas { background: var(--rk-ok); }
   .legend .swatch.imp { background: var(--rk-link); }
   .legend .swatch.risk { background: var(--rk-bad); }
   .legend .swatch.tot { background: var(--accent-2); }
-  /* Column budget (R5): the description is where a reader spends time and the
-     bars carry the comparison, so both get an fr share; only the Total needs a
-     fixed column. */
-  .row { display: grid; grid-template-columns: minmax(240px, 0.9fr) minmax(320px, 1.4fr) 72px; gap: var(--space-4); align-items: center; }
+  .rk-figure svg text { font-family: var(--font-sans); }
+  .rk-figure .branch { cursor: pointer; }
+  .rk-figure .branch:focus { outline: none; }
+  .rk-figure .branch:focus-visible .hit { stroke: var(--rk-focus); stroke-width: 2; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) 72px; gap: var(--space-4); align-items: start; }
   .row.winner { border-left: 4px solid var(--accent-2); background: var(--rk-panel-2); }
   .row .name { font-weight: 600; }
   .row .rank { color: var(--rk-muted); margin-right: var(--space-1); }
   .row .tag { display: inline-block; margin-left: var(--space-2); font-size: 0.7rem; font-weight: 600; border: 1px solid var(--accent-2); border-radius: var(--radius-sm); padding: 0 var(--space-1); vertical-align: middle; }
   .row .desc { color: var(--rk-muted); font-size: 0.86rem; margin-top: var(--space-1); }
   .row .blocker { font-size: 0.82rem; margin-top: var(--space-2); font-style: italic; }
-  /* The bars' height is constant legitimately: every branch is scored on exactly
-     Feasibility, Impact and Risk (validate_branch_scores accepts no fourth), so
-     the panel can never gain a row. The WIDTH is measured from the container. */
-  .row .bars svg { width: 100%; height: 64px; display: block; }
   .row .total { text-align: right; }
   .row .total .n { font-size: 1.5rem; font-weight: 700; }
   .row .total .k { font-size: 0.7rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.03em; }
@@ -42,6 +40,14 @@
   .row .why dl { margin: var(--space-2) 0 0; display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); font-size: 0.86rem; }
   .row .why dt { color: var(--rk-muted); }
   .row .why dd { margin: 0; overflow-wrap: anywhere; }
+  .rk-drawer-body p { margin: var(--space-1) 0; }
+  .rk-drawer-body .scores { display: grid; grid-template-columns: max-content 1fr max-content; gap: var(--space-1) var(--space-3); align-items: center; margin: var(--space-1) 0; }
+  .rk-drawer-body .scores .bar { height: 10px; border-radius: 2px; }
+  .rk-drawer-body .scores .bar.feas { background: var(--rk-ok); }
+  .rk-drawer-body .scores .bar.imp { background: var(--rk-link); }
+  .rk-drawer-body .scores .bar.risk { background: var(--rk-bad); }
+  .rk-drawer-body .scores .bar.tot { background: var(--accent-2); }
+  .rk-drawer-body .scores .n { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
   @media (max-width: 760px) { .row { grid-template-columns: 1fr; } .row .total { text-align: left; } }
 </style>
 </head>
@@ -56,23 +62,25 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <h2 class="rk-q">Which branch wins, and what does winning cost?</h2>
-  <p class="verdict" id="verdict">The winner is the branch with the highest raw Total of Feasibility + Impact + Risk; this report names it, its margin over the runner-up, and the blocker that margin has to survive.</p>
-  <p class="note">
-    Total is the <em>raw</em> sum of Feasibility + Impact + Risk — Risk is never inverted,
-    so a branch can win on Total while carrying the highest risk on the board, and an
-    exact tie on Total goes to the lower Risk score. The winning row is the one with the
-    amber left border and the WINNER tag, never colour alone.
-  </p>
-  <div class="legend rk-card" id="legend">
-    <span><span class="swatch feas"></span>Feasibility</span>
-    <span><span class="swatch imp"></span>Impact</span>
-    <span><span class="swatch risk"></span>Risk</span>
-    <span><span class="swatch tot"></span>Total / winner</span>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="Which branch wins, and what does winning cost? Grouped bars of Feasibility, Impact and Risk per branch">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">The winner is the branch with the highest raw Total of Feasibility + Impact + Risk; this report names it, its margin over the runner-up, and the blocker that margin has to survive.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-legend-float" id="legend">
+      <span><span class="swatch feas"></span>F Feasibility</span>
+      <span><span class="swatch imp"></span>I Impact</span>
+      <span><span class="swatch risk"></span>R Risk</span>
+      <span><span class="swatch tot"></span>★ Winner (amber outline)</span>
+    </div>
+    <span class="rk-hint">click a branch for why it ranks here · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout"><nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav><div id="rk-content" tabindex="-1"></div></div>
   </div>
-  <div id="rk-content" tabindex="-1"></div>
-  <p id="rk-found" class="rk-found" role="status" aria-live="polite"></p>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
 <script type="application/json" id="report-data">@@DATA@@</script>
@@ -87,11 +95,14 @@
   }
   const { h } = RK;
   const d3 = window.d3;
+  const S = RK.stage();
   RK.$("#subtitle").textContent = DATA.rawTask + " — winner: " + DATA.selected + (DATA.phase ? " · phase " + DATA.phase : "");
 
   const byRank = DATA.branches.slice().sort((a, b) => b.total - a.total || a.risk - b.risk);
   const winner = DATA.branches.find((b) => b.isWinner) || byRank[0];
   const runnerUp = byRank.find((b) => b !== winner);
+  const rankOf = (b) => byRank.indexOf(b) + 1;
+  const idOf = (b) => "branch-" + b.name.replace(/[^A-Za-z0-9_.-]+/g, "-");
 
   // The verdict names the winner, its MARGIN, and the blocker the margin has to
   // survive. The margin is the only integer here: each Total is printed once,
@@ -110,35 +121,24 @@
   verdictEl.textContent = verdictText();
   verdictEl.classList.add(winner.biggestBlocker ? "warn" : "ok");
 
+  const maxRisk = Math.max(...DATA.branches.map((b) => b.risk));
+  const totals = DATA.branches.map((b) => b.total);
+  S.stats([
+    { label: "Branches scored", value: String(DATA.branches.length) },
+    { label: "Totals span", value: Math.min(...totals) + "–" + Math.max(...totals), note: "lowest to highest raw Total on the board" },
+    winner.risk === maxRisk && DATA.branches.length > 1
+      ? { label: "Winner's Risk", value: winner.risk + " of 10", bad: true, note: "the winner also carries the highest Risk on the board" }
+      : { label: "Winner's Risk", value: winner.risk + " of 10", tone: "ok", note: "Risk is added to Total, never inverted" },
+  ]);
+
   const AXES = [
-    { key: "feasibility", label: "Feasibility", role: "--rk-ok" },
-    { key: "impact", label: "Impact", role: "--rk-link" },
-    { key: "risk", label: "Risk", role: "--rk-bad" },
+    { key: "feasibility", label: "Feasibility", letter: "F", role: "--rk-ok" },
+    { key: "impact", label: "Impact", letter: "I", role: "--rk-link" },
+    { key: "risk", label: "Risk", letter: "R", role: "--rk-bad" },
   ];
-  const BAR_H = 64, LABEL_W = 78, VALUE_W = 30, MIN_BAR_TRACK = 80;
-  const rowScale = d3.scaleBand().domain(AXES.map((a) => a.key)).range([4, BAR_H - 4]).padding(0.35);
   const role = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
-  // d3-scale maps every axis's 1-10 score onto the same bar length range, so
-  // bars compare within a row and across rows -- the reason a mark with a real
-  // scale (not a radar's uncalibrated area) was chosen for this data shape.
-  function renderBars(svgEl, branch, width) {
-    const track = Math.max(MIN_BAR_TRACK, width - LABEL_W - VALUE_W);
-    const scoreScale = d3.scaleLinear().domain([0, 10]).range([0, track]);
-    const text = role("--rk-text"), muted = role("--rk-muted");
-    const svg = d3.select(svgEl);
-    svg.attr("viewBox", "0 0 " + width + " " + BAR_H).attr("role", "img")
-      .attr("aria-label", branch.name + ": feasibility " + branch.feasibility + ", impact " + branch.impact + ", risk " + branch.risk);
-    svg.selectAll("g.axis").remove();
-    const groups = svg.selectAll("g.axis").data(AXES).join("g").attr("class", "axis").attr("transform", (a) => "translate(0," + rowScale(a.key) + ")");
-    groups.append("text").attr("x", 0).attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em").attr("font-size", 10).attr("fill", muted).text((a) => a.label);
-    groups.append("rect").attr("x", LABEL_W).attr("y", 0).attr("width", (a) => scoreScale(branch[a.key])).attr("height", rowScale.bandwidth())
-      .attr("rx", 2).attr("fill", (a) => role(a.role));
-    groups.append("text").attr("x", (a) => LABEL_W + scoreScale(branch[a.key]) + 6).attr("y", rowScale.bandwidth() / 2).attr("dy", "0.32em")
-      .attr("font-size", 11).attr("fill", text).text((a) => branch[a.key]);
-  }
-
-  function explain(b, rank) {
+  function explain(b) {
     if (b === winner) {
       if (!runnerUp) return "the only branch scored";
       return winner.total === runnerUp.total
@@ -150,55 +150,155 @@
       : (winner.total - b.total) + " point(s) behind " + winner.name;
   }
 
-  function renderRow(b) {
-    const rank = byRank.indexOf(b) + 1;
-    const id = "branch-" + b.name.replace(/[^A-Za-z0-9_.-]+/g, "-");
-    const svgEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  let selected = null;
+
+  function detail(b) {
     const extra = Object.entries(b.extra || {});
-    const row = h("article", { class: "rk-card row" + (b.isWinner ? " winner" : ""), id, "data-rk-search": true },
+    const scoreRows = AXES.flatMap((a) => [
+      h("span", { text: a.letter + " " + a.label }),
+      h("span", {}, h("div", { class: "bar " + { feasibility: "feas", impact: "imp", risk: "risk" }[a.key], style: "width:" + (b[a.key] * 10) + "%" })),
+      h("span", { class: "n", text: String(b[a.key]) }),
+    ]);
+    const rank = rankOf(b);
+    const kids = [
+      h("p", {}, RK.badge(b.isWinner ? "winner" : "rank #" + rank, b.isWinner ? "ok" : "flat"), " ", h("strong", { text: "Total " + b.total }),
+        h("span", { class: "rk-muted", text: " = feasibility " + b.feasibility + " + impact " + b.impact + " + risk " + b.risk + " (risk is added, not inverted)" })),
+      h("h3", { text: "Why it ranks here" }),
+      h("p", { text: explain(b) }),
+      h("div", { class: "scores" }, scoreRows),
+      h("h3", { text: "Description" }),
+      h("p", { text: b.description || "(no description recorded for this run)" }),
+      h("h3", { text: "Biggest blocker" }),
+      h("p", { text: b.biggestBlocker || "none recorded" }),
+    ];
+    if (extra.length) kids.push(h("h3", { text: "Recorded evidence" }), RK.value(Object.fromEntries(extra)));
+    const nav = [];
+    if (b !== winner) nav.push(S.link("Winner: " + winner.name, () => select(winner)));
+    if (runnerUp && b !== runnerUp && b !== winner) nav.push(S.link("Runner-up: " + runnerUp.name, () => select(runnerUp)));
+    if (runnerUp && b === winner) nav.push(S.link("Runner-up: " + runnerUp.name, () => select(runnerUp)));
+    nav.push(S.link("Branch card below", () => { location.hash = "#" + idOf(b); }));
+    kids.push(h("h3", { text: "Go to" }), h("p", {}, nav.flatMap((n, i) => (i ? [" · ", n] : [n]))));
+    kids.push(h("h3", { text: "How the winner is chosen" }),
+      h("p", { class: "rk-muted", text: "Total is the raw sum of Feasibility + Impact + Risk. Risk is never inverted, so a branch can win while carrying the highest Risk on the board, and an exact tie on Total goes to the lower Risk score." }));
+    return kids;
+  }
+
+  function select(b) {
+    selected = b;
+    draw();
+    S.open(b.name, "#" + rankOf(b) + " by Total" + (b.isWinner ? " · winner" : ""), ...detail(b));
+  }
+
+  function summary(b) {
+    return [h("div", { text: "Total " + b.total + " · rank #" + rankOf(b) + (b.isWinner ? " · winner" : "") }),
+      h("div", { text: "F " + b.feasibility + " · I " + b.impact + " · R " + b.risk }),
+      h("div", { class: "rk-muted", text: explain(b) })];
+  }
+
+  function wrap(text, maxChars, maxLines) {
+    const words = text.split(/\s+/), lines = [];
+    let cur = "";
+    for (const w of words) {
+      if (cur && (cur + " " + w).length > maxChars) { lines.push(cur); cur = w; } else cur = cur ? cur + " " + w : w;
+    }
+    if (cur) lines.push(cur);
+    if (lines.length > maxLines) { lines.length = maxLines; lines[maxLines - 1] = lines[maxLines - 1].replace(/.{1,2}$/, "") + "…"; }
+    return lines;
+  }
+
+  let lastW = 0, lastH = 0;
+  function draw(w, hgt) {
+    if (w === undefined) { w = lastW; hgt = lastH; }
+    lastW = w; lastH = hgt;
+    if (!w || !hgt) return;
+    const text = role("--rk-text"), muted = role("--rk-muted"), border = role("--rk-border"), panel2 = role("--rk-panel-2"), focus = role("--rk-focus"), amber = role("--accent-2");
+    const hud = RK.$(".rk-hud"), legend = RK.$("#legend");
+    const nameLines = 3, lineH = 16;
+    const M = { l: 48, r: 20, t: (hud ? hud.offsetHeight : 120) + 28, b: (legend ? legend.offsetHeight : 40) + 24 + 18 + (nameLines + 1) * lineH + 34 };
+    if (w < 700) M.l = 36;
+    const iw = Math.max(200, w - M.l - M.r), ih = Math.max(120, hgt - M.t - M.b);
+    const x0 = d3.scaleBand().domain(DATA.branches.map((b) => b.name)).range([0, iw]).paddingInner(0.12).paddingOuter(0.04);
+    const x1 = d3.scaleBand().domain(AXES.map((a) => a.key)).range([0, x0.bandwidth()]).padding(0.14);
+    const y = d3.scaleLinear().domain([0, 10]).range([ih, 0]);
+    const svg = d3.select(S.figure).selectAll("svg").data([0]).join("svg")
+      .attr("viewBox", "0 0 " + w + " " + hgt).attr("role", "group").attr("aria-label", "Grouped bars: Feasibility, Impact and Risk per branch");
+    svg.selectAll("*").remove();
+    const g = svg.append("g").attr("transform", "translate(" + M.l + "," + M.t + ")");
+    for (const t of [0, 5, 10]) {
+      g.append("line").attr("x1", 0).attr("x2", iw).attr("y1", y(t)).attr("y2", y(t)).attr("stroke", border).attr("stroke-dasharray", t === 0 ? null : "3 4");
+      g.append("text").attr("x", -8).attr("y", y(t)).attr("dy", "0.32em").attr("text-anchor", "end").attr("font-size", 12).attr("fill", muted).text(t);
+    }
+    const groups = g.selectAll("g.branch").data(DATA.branches).join("g").attr("class", "branch")
+      .attr("transform", (b) => "translate(" + x0(b.name) + ",0)")
+      .attr("tabindex", 0).attr("role", "button")
+      .attr("aria-label", (b) => b.name + ", rank " + rankOf(b) + ", Total " + b.total + (b.isWinner ? ", winner" : "") + ". Press Enter for why it ranks here.")
+      .on("click", (e, b) => select(b))
+      .on("keydown", (e, b) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(b); } })
+      .on("mouseenter", (e, b) => S.tip.show(e, b.name, ...summary(b)))
+      .on("mousemove", (e, b) => S.tip.show(e, b.name, ...summary(b)))
+      .on("mouseleave", () => S.tip.hide())
+      .on("focus", (e, b) => S.tip.show(e, b.name, ...summary(b)))
+      .on("blur", () => S.tip.hide());
+    const labelBottom = ih + 18 + (nameLines + 1) * lineH + 16;
+    groups.append("rect").attr("class", "hit").attr("x", -2).attr("y", -6).attr("width", x0.bandwidth() + 4).attr("height", labelBottom + 6)
+      .attr("rx", 6).attr("fill", (b) => (b === selected ? panel2 : "transparent"))
+      .attr("stroke", (b) => (b.isWinner ? amber : b === selected ? focus : "none")).attr("stroke-width", (b) => (b.isWinner ? 3 : 2));
+    for (const a of AXES) {
+      const col = role(a.role);
+      groups.append("rect").attr("x", x1(a.key)).attr("width", x1.bandwidth()).attr("y", (b) => y(b[a.key])).attr("height", (b) => ih - y(b[a.key])).attr("rx", 3).attr("fill", col);
+      groups.append("text").attr("x", x1(a.key) + x1.bandwidth() / 2).attr("y", (b) => y(b[a.key]) - 6).attr("text-anchor", "middle").attr("font-size", 14).attr("font-weight", 600).attr("fill", text).text((b) => b[a.key]);
+      groups.append("text").attr("x", x1(a.key) + x1.bandwidth() / 2).attr("y", ih + 16).attr("text-anchor", "middle").attr("font-size", 12).attr("fill", muted).text(a.letter);
+    }
+    const maxChars = Math.max(10, Math.floor(x0.bandwidth() / 7.2));
+    groups.each(function (b) {
+      const lbl = d3.select(this).append("text").attr("x", x0.bandwidth() / 2).attr("y", ih + 18 + lineH).attr("text-anchor", "middle").attr("font-size", 13).attr("fill", text);
+      wrap("#" + rankOf(b) + " " + b.name, maxChars, nameLines).forEach((ln, i) => lbl.append("tspan").attr("x", x0.bandwidth() / 2).attr("dy", i ? lineH : 0).attr("font-weight", i ? 400 : 600).text(ln));
+      d3.select(this).append("text").attr("x", x0.bandwidth() / 2).attr("y", ih + 18 + (nameLines + 1) * lineH + 6).attr("text-anchor", "middle").attr("font-size", 13).attr("font-weight", 700)
+        .attr("fill", text).text((b.isWinner ? "★ WINNER · " : "") + "Total " + b.total);
+    });
+  }
+
+  function renderRow(b) {
+    const rank = rankOf(b), id = idOf(b);
+    const toChart = h("button", { class: "rk-btn", type: "button" }, "Open in chart");
+    toChart.addEventListener("click", () => { select(b); window.scrollTo({ top: 0 }); });
+    return h("article", { class: "rk-card row" + (b.isWinner ? " winner" : ""), id, "data-rk-search": true },
       h("div", {},
         h("span", { class: "rank", title: "rank by Total, ties by lower Risk" }, "#" + rank),
         h("span", { class: "name" }, b.name),
         b.isWinner ? h("span", { class: "tag" }, "★ WINNER") : null,
         h("a", { class: "rk-permalink", href: "#" + id, title: "Link to this branch" }, "#"),
         h("div", { class: "desc" }, b.description || "(no description recorded for this run)"),
-        b.biggestBlocker ? h("div", { class: "blocker" }, "Biggest blocker: " + b.biggestBlocker) : null),
-      h("div", { class: "bars" }, svgEl),
+        b.biggestBlocker ? h("div", { class: "blocker" }, "Biggest blocker: " + b.biggestBlocker) : null,
+        h("p", {}, toChart)),
       h("div", { class: "total" }, h("div", { class: "n" }, b.total), h("div", { class: "k" }, "Total")),
       h("details", { class: "why" },
         h("summary", {}, "Why it ranks here"),
         h("dl", {},
-          h("dt", {}, "Against the winner"), h("dd", {}, explain(b, rank)),
+          h("dt", {}, "Against the winner"), h("dd", {}, explain(b)),
           h("dt", {}, "Scores"), h("dd", {}, "feasibility " + b.feasibility + " + impact " + b.impact + " + risk " + b.risk + " (risk is added, not inverted)"),
           h("dt", {}, "Blocker"), h("dd", {}, b.biggestBlocker || "none recorded"),
-          extra.map(([k, v]) => [h("dt", {}, k), h("dd", {}, typeof v === "string" ? v : JSON.stringify(v))]))));
-    return { row, svgEl, branch: b };
+          Object.entries(b.extra || {}).map(([k, v]) => [h("dt", {}, k), h("dd", {}, typeof v === "string" ? v : JSON.stringify(v))]))));
   }
 
-  const rendered = DATA.branches.map(renderRow);
   // Winner-first ordering would hide the tie-break signal (lower risk wins ties),
   // so rows keep the original propose order; the tag, the amber border and the
   // rank number do the "who won" job.
-  RK.$("#rk-content").appendChild(RK.section("branches", "Branches", rendered.map((r) => r.row)));
+  RK.$("#rk-content").appendChild(RK.section("branches", "Branches",
+    h("p", { class: "note" }, "Total is the raw sum of Feasibility + Impact + Risk — Risk is never inverted, so a branch can win on Total while carrying the highest risk on the board, and an exact tie on Total goes to the lower Risk score. The winning row is the one with the amber left border and the WINNER tag, never colour alone."),
+    DATA.branches.map(renderRow)));
   RK.init();
 
-  // Bars are drawn after the rows are in the document because their width is
-  // measured. A container not laid out yet (clientWidth 0) falls back to 320 and
-  // is redrawn the moment a real width exists. -1, never 0, seeds lastWidth: a
-  // hidden pane measures 0 and a 0 seed would make the first call a no-op.
-  let lastWidth = -1;
-  function layoutBars(force) {
-    const width = rendered[0].svgEl.parentNode.clientWidth;
-    if (width === lastWidth && force !== true) return;
-    lastWidth = width;
-    for (const r of rendered) renderBars(r.svgEl, r.branch, r.svgEl.parentNode.clientWidth || 320);
+  S.onResize((w, hgt) => draw(w, hgt));
+  new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => draw());
+
+  function fromHash() {
+    const id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+    return DATA.branches.find((b) => idOf(b) === id) || null;
   }
-  layoutBars(true);
-  window.addEventListener("resize", () => layoutBars());
-  window.addEventListener("load", () => layoutBars());
-  if (window.ResizeObserver) new ResizeObserver(() => layoutBars()).observe(rendered[0].svgEl.parentNode);
-  new MutationObserver(() => layoutBars(true)).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  if (window.matchMedia) matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => layoutBars(true));
+  select(fromHash() || winner);
+  window.addEventListener("hashchange", () => { const b = fromHash(); if (b && b !== selected) select(b); });
 })();
 </script>
 </body>

@@ -235,7 +235,7 @@ takt enforces an order it never authors, and until now the only way to learn wha
 blocking was to trip over a denial. `assets/beatgraph-viewer.html` renders that order: every
 declared beat, whether its marker exists yet, and which plugin produces it.
 
-![Declared beats with their state and evidence path, a table of requirements deliberately not compiled with the reason for each, and every marker a plugin produces tagged by evidence kind](assets/beatgraph-viewer-screenshot.jpg)
+![A layered graph filling the screen: required markers on the left, the beats that check them in the middle (blocked, satisfied, refused, dropped), the gated calls on the right, with the selected beat's requirement, evidence and reason open in the side drawer](assets/beatgraph-viewer-screenshot.jpg)
 
 ```bash
 python3 plugins/takt/scripts/build_beatgraph_html.py --repo . --out /tmp/beatgraph.html
