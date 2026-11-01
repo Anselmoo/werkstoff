@@ -3,6 +3,8 @@
 All notable changes to the `takt` plugin are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_beatgraph_html.py` now renders through `report_kit.render()`, lists every skill a beat gates instead of the first, and reports the optional requirements the compiler dropped and the declarations it could not compile, which it used to discard; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
