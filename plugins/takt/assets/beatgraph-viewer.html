@@ -14,7 +14,8 @@
   .legend dt { font-weight: 600; color: var(--rk-text); white-space: nowrap; }
   .legend dd { margin: 0; }
   .rk-legend-float { max-height: 42vh; overflow: auto; }
-  .rk-legend-float dl { font-size: 0.78rem; gap: 2px var(--space-2); }
+  .lg-row { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin: 0; padding: 0; list-style: none; font-size: 0.76rem; }
+  .lg-row li { white-space: nowrap; color: var(--rk-text); }
   .bg-node { cursor: pointer; }
   .bg-node:focus { outline: none; }
   .bg-node:focus-visible rect.bg-box, .bg-node.sel rect.bg-box { stroke: var(--rk-focus); stroke-width: 3; }
@@ -45,13 +46,13 @@
     </div>
     <div class="rk-figure" id="rk-figure" data-rk-figure></div>
     <div class="legend rk-card rk-muted rk-legend-float">
-      <dl>
-        <dt>✓ satisfied</dt><dd>marker exists; takt allows the call.</dd>
-        <dt>✗ blocked</dt><dd>marker absent; takt denies the call.</dd>
-        <dt>– refused</dt><dd>declared, not compiled (dashed).</dd>
-        <dt>! dropped</dt><dd>optional, producer not installed (dashed).</dd>
-        <dt>red marker</dt><dd>evidence “none”: nothing durable to depend on.</dd>
-      </dl>
+      <ul class="lg-row">
+        <li title="marker exists; takt allows the call.">✓ satisfied</li>
+        <li title="marker absent; takt denies the call.">✗ blocked</li>
+        <li title="declared, not compiled (dashed).">– refused</li>
+        <li title="optional, producer not installed (dashed).">! dropped</li>
+        <li title="evidence “none”: nothing durable to depend on.">red marker = no evidence</li>
+      </ul>
     </div>
     <span class="rk-hint">click a beat, marker or gated call for details · hover for a summary</span>
     <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
@@ -205,7 +206,7 @@
     for (const [k, v] of Object.entries(attrs || {})) if (v !== null && v !== undefined) n.setAttribute(k, v);
     kids.forEach((c) => n.append(c)); return n;
   };
-  const clip = (t, w, px) => { const max = Math.max(4, Math.floor(w / (px * 0.58))); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
+  const clip = (t, w, px) => { const max = Math.max(4, Math.floor(w / (px * 0.52))); return t.length > max ? t.slice(0, max - 1) + "…" : t; };
 
   // --- drawer content ---
   const kv = (rows) => h("dl", { class: "rk-dl" }, rows.filter((r) => r[1] !== null && r[1] !== "").map(([k, v]) =>
@@ -282,12 +283,14 @@
         text: "Nothing to draw: no beats compiled and no plugin declares a marker. See the verdict above." }));
       return;
     }
-    const pad = 28, top = Math.min(190, H * 0.28), bottom = Math.min(160, H * 0.24);
-    const colW = (W - 2 * pad) / 3, nodeW = Math.min(300, colW * 0.76);
+    const ins = S.insets();
+    const pad = 20, top = ins.top + 36, bottom = ins.bottom + 8;
+    const colW = (W - 2 * pad) / 3, nodeW = Math.min(520, colW * 0.84);
     const colX = [0, 1, 2].map((i) => pad + i * colW + (colW - nodeW) / 2);
     const rows = Math.max(markerNodes.length, beatNodes.length, gateNodes.length, 1);
-    const avail = H - top - bottom;
-    const nodeH = Math.max(46, Math.min(84, avail / rows * 0.72));
+    const avail = Math.max(120, H - top - bottom);
+    const nodeH = Math.max(46, Math.min(120, avail / rows * 0.8));
+    const fs = Math.round(Math.max(14, Math.min(19, 14 * nodeH / 62)));
     const place = (list, x) => list.forEach((n, i) => {
       const step = avail / list.length; n.x = x; n.y = top + step * i + (step - nodeH) / 2; n.w = nodeW; n.h = nodeH;
     });
@@ -314,10 +317,10 @@
       g.append(el("rect", { class: "bg-box", x: n.x, y: n.y, width: n.w, height: n.h, rx: 8, fill: css("--rk-panel"),
         stroke: tone ? css(tonePal[tone] || tone) : css("--rk-border"), "stroke-width": tone ? 2 : 1.5,
         "stroke-dasharray": extra && extra.dashed ? "6 4" : null }));
-      g.append(el("text", { x: n.x + 12, y: n.y + n.h / 2 - (lines[1] ? 4 : -5), "font-size": 14, "font-weight": 600 },
-        document.createTextNode(clip(lines[0], n.w - 24, 14))));
-      if (lines[1]) g.append(el("text", { class: "sub", x: n.x + 12, y: n.y + n.h / 2 + 16, "font-size": 12 },
-        document.createTextNode(clip(lines[1], n.w - 24, 12))));
+      g.append(el("text", { x: n.x + 12, y: n.y + n.h / 2 - (lines[1] ? 4 : -fs / 3), "font-size": fs, "font-weight": 600 },
+        document.createTextNode(clip(lines[0], n.w - 24, fs))));
+      if (lines[1]) g.append(el("text", { class: "sub", x: n.x + 12, y: n.y + n.h / 2 + fs + 2, "font-size": Math.max(12, fs - 2) },
+        document.createTextNode(clip(lines[1], n.w - 24, Math.max(12, fs - 2)))));
       const open = () => select(n.id);
       g.addEventListener("click", open);
       g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });

@@ -329,7 +329,9 @@
   // The HUD floats over the figure's top-left and the legend over its foot: the plot sits between.
   function stageInsets() {
     const legend = RK.$(view === "mutation" ? "#mutationLegend" : "#ledgerLegend");
-    return { top: hud.offsetTop + hud.offsetHeight + 28, bottom: (legend ? legend.offsetHeight : 0) + 56 };
+    return view === "mutation"
+      ? { top: hud.offsetTop + hud.offsetHeight + 24, bottom: (legend ? legend.offsetHeight : 0) + 12 }
+      : { top: hud.offsetTop + hud.offsetHeight + 28, bottom: (legend ? legend.offsetHeight : 0) + 56 };
   }
   const describe = (p) => "pass #" + p.passNumber + " (" + p.domain + "): closed " + p.closed + " this pass, "
     + p.cumulativeClosed + " closed in total, " + p.fixOrDraftOutcomes + " fix/draft outcomes";
@@ -403,13 +405,16 @@
     if (!MUT || MUT.error || !MUT.modules.length) { svgText(svg, { x: W / 2, y: H / 2, "text-anchor": "middle", class: "t-axis" }, "No mutation modules to draw."); return; }
     const mods = MUT.modules;
     const padX = 20;
-    const labelW = Math.min(Math.max(150, Math.ceil(Math.max(...mods.map((m) => m.module.length)) * 7.9) + 16), Math.round(W * 0.3), 300);
-    const figW = Math.min(Math.max(210, Math.round(W * 0.22)), 320);
     const axisH = 28;
-    const rowH = Math.max(64, Math.min(130, (H - inset.top - inset.bottom - axisH) / mods.length));
+    // the rows fill the free height; type, track and dots scale with the row (never below the 11-15px base)
+    const rowH = Math.max(64, (H - inset.top - inset.bottom - axisH) / mods.length);
+    const k = Math.max(1, Math.min(1.7, rowH / 120));
+    const px = (n) => Math.round(n * k) + "px";
+    const labelW = Math.min(Math.max(150, Math.ceil(Math.max(...mods.map((m) => m.module.length)) * 7.9 * k) + 16), Math.round(W * 0.3), 420);
+    const figW = Math.min(Math.max(210, Math.round(W * 0.2 * k)), 380);
     const rowsY = inset.top + axisH;
-    const trackH = Math.max(18, Math.min(38, Math.round(rowH * 0.34)));
-    const rad = Math.max(8, Math.min(15, Math.round(trackH * 0.55)));
+    const trackH = Math.max(18, Math.min(120, Math.round(rowH * 0.42)));
+    const rad = Math.max(8, Math.min(44, Math.round(trackH * 0.55)));
     // a mark at 0 % or 100 % overhangs the track by its radius, so the track keeps clear of the text on both sides
     const tx0 = padX + labelW + 14 + rad, tx1 = Math.max(tx0 + 120, W - padX - figW - 14 - rad);
     const sx = (v) => tx0 + Math.max(0, Math.min(1, v)) * (tx1 - tx0);
@@ -425,7 +430,7 @@
       const label = m.module + ": score " + moduleFigures(m) + ", untested " + (m.before.noTests || 0) + " to " + untested + ". Press Enter for its mutants.";
       const row = svgEl("rect", { class: "mx-row", x: padX / 2, y: y0 + 3, width: W - padX, height: rowH - 6, rx: 6, tabindex: 0, role: "button",
         "aria-pressed": String(sel), "aria-label": label }, svg);
-      const name = svgText(svg, { class: "t-mod", x: padX, y: cy, "dominant-baseline": "middle" }, "");
+      const name = svgText(svg, { class: "t-mod", x: padX, y: cy, "dominant-baseline": "middle", style: "font-size:" + px(13) }, "");
       fitText(name, m.module, labelW);
       svgEl("rect", { class: "track", x: tx0, y: cy - trackH / 2, width: tx1 - tx0, height: trackH, rx: 4 }, svg);
       const b = m.before.score, a = m.after.score;
@@ -433,10 +438,10 @@
       // The ring is drawn last, so an unchanged score still shows both marks.
       if (a !== null && a !== undefined) svgEl("circle", { class: "m-after", cx: sx(a), cy, r: rad }, svg);
       if (b !== null && b !== undefined) svgEl("circle", { class: "m-before", cx: sx(b), cy, r: rad }, svg);
-      const fx = W - padX - figW;
-      svgText(svg, { class: "t-score", x: fx, y: cy - 8 }, moduleFigures(m));
-      svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, y: cy + 10 }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
-      svgText(svg, { class: "t-sub", x: fx, y: cy + 27 }, "equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
+      const fx = W - padX;
+      svgText(svg, { class: "t-score", x: fx, "text-anchor": "end", y: cy - 8 * k, style: "font-size:" + px(15) }, moduleFigures(m));
+      svgText(svg, { class: "t-sub" + (untested > 0 ? " t-hot" : ""), x: fx, "text-anchor": "end", y: cy + 10 * k, style: "font-size:" + px(12) }, "◌ untested " + (m.before.noTests || 0) + " → " + untested);
+      svgText(svg, { class: "t-sub", x: fx, "text-anchor": "end", y: cy + 27 * k, style: "font-size:" + px(12) }, "equivalent " + (m.after.equivalent || 0) + " · unreached " + (m.unreached || 0));
       const tipOn = (evt) => S.tip.show(evt, m.module, h("div", { text: "score " + moduleFigures(m) + " · alive " + (m.after.survived || 0) + " · untested " + untested }));
       row.addEventListener("mouseenter", tipOn); row.addEventListener("mousemove", tipOn); row.addEventListener("focus", tipOn);
       row.addEventListener("mouseleave", () => S.tip.hide()); row.addEventListener("blur", () => S.tip.hide());

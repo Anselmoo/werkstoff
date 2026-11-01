@@ -193,20 +193,20 @@
     const edges = buildEdges(stages);
     const ncols = Math.max(...stages.map((s) => s.col)) + 1;
     const rows = laneRows(stages);
-    // Room: under the HUD, above the legend. Measured, not assumed.
-    const f0 = fig.getBoundingClientRect().top;
-    const hud = RK.$(".rk-hud"), leg = RK.$(".rk-legend-float");
-    const topRoom = Math.max(0, (hud ? hud.getBoundingClientRect().bottom - f0 : 0)) + 28;
-    const botRoom = Math.max(0, hgt - (leg ? leg.getBoundingClientRect().top - f0 : hgt)) + 24;
+    // Room: under the HUD, above the legend (S.insets), minus a small margin. The layout fills it.
+    const ins = S.insets();
+    const topRoom = ins.top + 30;   // 30px leaves the fork caption room above its row
+    const botRoom = ins.bottom + 12;
     const W = Math.max(w, ncols * 118 + 40);
     const colW = (W - 40) / ncols;
-    const nodeW = Math.min(colW - 18, 190);
+    const nodeW = Math.min(colW - 22, 250);
     const avail = Math.max(260, hgt - topRoom - botRoom);
-    const nodeH = Math.max(70, Math.min(96, avail / (rows.length * 1.55)));
-    const laneGap = rows.length > 1 ? Math.min(nodeH * 1.75, (avail - nodeH) / (rows.length - 1)) : 0;
+    const nodeH = Math.max(70, Math.min(230, avail / (rows.length + (rows.length - 1) * 0.55)));
+    const laneGap = rows.length > 1 ? (avail - nodeH) / (rows.length - 1) : 0;
     const blockH = nodeH + laneGap * (rows.length - 1);
     const y0 = topRoom + Math.max(0, (avail - blockH) / 2);
     const H = Math.max(hgt, y0 + blockH + botRoom);
+    const fs = Math.max(1, Math.min(1.5, nodeH / 96)); // text scales with the box, never below its 11-15px base
     const rowY = {}; rows.forEach((lane, i) => { rowY[lane] = y0 + i * laneGap; });
     const cx = (s) => 20 + s.col * colW + colW / 2;
     const cy = (s) => rowY[s.lane] + nodeH / 2;
@@ -228,7 +228,7 @@
       });
     const labels = { 1: "fork: runs in parallel", 2: "fork: runs in parallel" };
     const forkLane = stages.find((s) => s.lane === 1);
-    if (forkLane) svg.append("text").attr("class", "rf-lane").attr("x", cx(forkLane) - nodeW / 2).attr("y", rowY[1] - 10).text(labels[1]);
+    if (forkLane) svg.append("text").attr("class", "rf-lane").attr("x", cx(forkLane) - nodeW / 2).attr("y", rowY[1] - 12).text(labels[1]);
 
     const node = svg.selectAll("g.rf-node").data(stages, (d) => d.id).join("g")
       .attr("class", (d) => "rf-node " + d.status)
@@ -242,9 +242,9 @@
       .on("focus", (e, d) => S.tip.show(e, shortLabel(d) + " — " + STATE_WORD[d.status], h("div", { text: brief(d) })))
       .on("blur", () => S.tip.hide());
     node.append("rect").attr("x", -nodeW / 2).attr("y", -nodeH / 2).attr("width", nodeW).attr("height", nodeH).attr("rx", 8);
-    node.append("text").attr("class", "idx").attr("x", -nodeW / 2 + 12).attr("y", -nodeH / 2 + 20).text((d) => "stage " + (FLOW.stages.findIndex((s) => s.id === d.id) + 1));
-    node.append("text").attr("class", "lbl").attr("text-anchor", "middle").attr("dy", 4).text(shortLabel);
-    node.append("text").attr("class", "mute").attr("text-anchor", "middle").attr("y", nodeH / 2 - 14).text((d) => STATE_GLYPH[d.status] + " " + STATE_WORD[d.status]);
+    node.append("text").attr("class", "idx").style("font-size", Math.round(11 * Math.min(fs, 1.2)) + "px").attr("x", -nodeW / 2 + 12).attr("y", -nodeH / 2 + 12 + 14 * fs).text((d) => "stage " + (FLOW.stages.findIndex((s) => s.id === d.id) + 1));
+    node.append("text").attr("class", "lbl").style("font-size", Math.max(12, Math.min(Math.round(15 * fs), Math.floor((nodeW - 14) / 6.5))) + "px").attr("text-anchor", "middle").attr("dy", 4).text(shortLabel);
+    node.append("text").attr("class", "mute").style("font-size", Math.max(11, Math.min(Math.round(12 * fs), Math.floor((nodeW - 14) / 11))) + "px").attr("text-anchor", "middle").attr("y", nodeH / 2 - 10 - 6 * fs).text((d) => STATE_GLYPH[d.status] + " " + STATE_WORD[d.status]);
     node.each(function (d) { nodeEls.set(d.id, this); });
     paint();
   }

@@ -287,25 +287,29 @@
     };
     const wireColor = (s) => (s === "green" ? C.ok : s === "red" ? C.bad : s === "unknown" ? C.warn : C.flat);
     const stages = B.stages, n = stages.length;
-    const padX = 28;
+    const padX = 24;
     const colW = (W - 2 * padX) / n;
-    const nodeW = Math.max(90, Math.min(220, colW * 0.62)), nodeH = Math.max(56, Math.min(88, Hh * 0.1));
+    const nodeW = Math.max(90, Math.min(260, colW * 0.56));
     const cx = (i) => padX + colW * i + colW / 2;
-    const rowY = Math.max(215, Math.min(Hh * 0.29, 300));          // below the HUD
-    const nodeTop = rowY - nodeH / 2;
-    const px = 12;                                                   // text px; never below 11
-    const cols = (w) => Math.max(8, Math.floor(w / (px * 0.56)));
-    const gapW = Math.max(60, colW - nodeW - 10);
-
-    // Content below the nodes: gap chips under each stage, evidence chips under each wire.
+    const ins = S.insets();                                          // what the HUD and legend cover
+    const areaTop = ins.top + 10, areaBot = Hh - ins.bottom - 8;
     const maxGapRows = Math.max(0, ...stages.map((s) => (gapsByStage[s] || []).length));
     const maxEvRows = Math.max(0, ...wires.map((w) => (evByWire[w.wireKey] || []).length));
-    const evTop = nodeTop + nodeH + 64;
-    // Chips grow with the figure's height (capped), so a tall screen is used, not left empty.
-    const room = Hh - evTop - 150 - (maxEvRows ? 54 : 0) - (maxGapRows ? 40 : 0);
-    const chipH = Math.max(62, Math.min(70, room / Math.max(1, maxEvRows + maxGapRows) - 8)), chipGap = 8;
-    const gapTop = evTop + (maxEvRows ? maxEvRows * (chipH + chipGap) + 46 : 0);
-    const needH = gapTop + maxGapRows * (chipH + chipGap) + 110;
+    const chipGap = 8, lanes = (maxEvRows ? 1 : 0) + (maxGapRows ? 1 : 0);
+    // Vertical budget: node row + its edge labels, then the chip rows; the rest is shared out so the stream fills the figure.
+    const fixed = 56 + lanes * 40 + 12;
+    const R = Math.max(200, areaBot - areaTop - fixed);
+    const rows = Math.max(1, maxEvRows + maxGapRows);
+    const nodeH = Math.max(56, Math.min(130, R * (rows > 3 ? 0.2 : 0.3)));
+    const chipH = Math.max(52, Math.min(110, (R - nodeH) / rows - chipGap));
+    const nodeTop = areaTop + 8;
+    const rowY = nodeTop + nodeH / 2;
+    const scale = Math.max(1, Math.min(1.35, chipH / 62));
+    const px = Math.round(12 * scale);                               // text px; never below 11
+    const cols = (w) => Math.max(8, Math.floor(w / (px * 0.56)));
+    const evTop = nodeTop + nodeH + 56 + 22;
+    const gapTop = evTop + (maxEvRows ? maxEvRows * (chipH + chipGap) + 22 : 0);
+    const needH = gapTop + maxGapRows * (chipH + chipGap) + 20;
     const H = Math.max(Hh, needH);
     S.figure.classList.toggle("rk-scroll", needH > Hh);
     S.figure.textContent = "";
@@ -340,17 +344,17 @@
         .attr("stroke", wireColor(w.status)).attr("stroke-width", 4).attr("stroke-dasharray", w.status ? null : "6,4");
       g.append("polygon").attr("points", (x2 - 8) + "," + (rowY - 7) + " " + x2 + "," + rowY + " " + (x2 - 8) + "," + (rowY + 7)).attr("fill", wireColor(w.status));
       // R4 -- the status the stroke encodes, spelled out under every edge.
-      const lines = wrapLabel(wireLabel(w.status), cols(x2 - x1), 3);
+      const lines = wrapLabel(wireLabel(w.status), cols(x2 - x1 + 16), 3);
       const t = g.append("text").attr("text-anchor", "middle").attr("font-size", px).attr("fill", C.muted);
       lines.forEach((ln, k) => t.append("tspan").attr("x", mid).attr("y", rowY + 24 + k * 14).text(ln));
       hover(g, w.wireKey, [wireLabel(w.status), (evByWire[w.wireKey] || []).length + " evidence document(s)"]);
       // evidence chips
       (evByWire[w.wireKey] || []).forEach((e, k) => {
-        const y = evTop + k * (chipH + chipGap), cw = Math.min(colW - 12, 170), x = mid - cw / 2;
+        const y = evTop + k * (chipH + chipGap), cw = Math.min(colW - 12, 260), x = mid - cw / 2;
         const ge = hit(svg.append("g"), "ev:" + e.slug, "Evidence " + (e.title || e.slug) + ", " + (VERDICT_WORD[e.verdict] || "no verdict") + ". Show detail.", () => showEvidence(e.slug));
         ge.append("rect").attr("class", "vs-box").attr("x", x).attr("y", y).attr("width", cw).attr("height", chipH).attr("rx", 6)
           .attr("fill", C.panel).attr("stroke", wireColor(e.verdict)).attr("stroke-width", 2).attr("stroke-dasharray", e.superseded_by ? "4,3" : null);
-        ge.append("text").attr("x", x + 10).attr("y", y + chipH / 2 - 3).attr("font-size", 13).attr("font-weight", 600).attr("fill", C.text)
+        ge.append("text").attr("x", x + 10).attr("y", y + chipH / 2 - 3).attr("font-size", px + 1).attr("font-weight", 600).attr("fill", C.text)
           .text((VERDICT_GLYPH[e.verdict] || "?") + " " + (VERDICT_WORD[e.verdict] || "none"));
         ge.append("text").attr("x", x + 10).attr("y", y + chipH / 2 + 14).attr("font-size", 11).attr("fill", C.muted)
           .text("strategy " + (e.strategy || "?") + (e.tier ? " · T" + e.tier : "") + (e.non_overridable ? " ⛔" : ""));
@@ -365,7 +369,7 @@
       g.append("rect").attr("class", "vs-box").attr("x", x).attr("y", nodeTop).attr("width", nodeW).attr("height", nodeH).attr("rx", 8)
         .attr("fill", C.panel).attr("stroke", cur ? C.link : stageHasHold(name) ? C.bad : C.border).attr("stroke-width", cur ? 2.5 : 1.5);
       const nameLines = wrapLabel(name + (cur ? " ←" : ""), cols(nodeW - 16), 2);
-      const t = g.append("text").attr("text-anchor", "middle").attr("font-size", 14).attr("font-weight", cur ? 700 : 600).attr("fill", cur ? C.link : C.text);
+      const t = g.append("text").attr("text-anchor", "middle").attr("font-size", Math.round(14 * scale)).attr("font-weight", cur ? 700 : 600).attr("fill", cur ? C.link : C.text);
       nameLines.forEach((ln, k) => t.append("tspan").attr("x", x + nodeW / 2).attr("y", nodeTop + nodeH / 2 + 5 - (nameLines.length - 1) * 8 + k * 16).text(ln));
       if (mine.length) {
         const bd = g.append("g").attr("transform", "translate(" + (x + nodeW - 8) + "," + (nodeTop - 2) + ")");
@@ -375,7 +379,7 @@
       hover(g, name, [mine.length + " open gap(s)", (B.stage_docs || {})[name] && (B.stage_docs[name].description || "")].filter(Boolean));
       // gap chips under the stage
       mine.forEach((gp, k) => {
-        const y = gapTop + k * (chipH + chipGap), cwid = Math.min(colW - 14, 240), gx = cx(i) - cwid / 2;
+        const y = gapTop + k * (chipH + chipGap), cwid = Math.min(colW - 14, 320), gx = cx(i) - cwid / 2;
         const gg = hit(svg.append("g"), "gap:" + gp.slug, "Open gap " + (gp.title || gp.slug) + ", " + (RADIUS_LABELS[gp.blast_radius] || "radius unrecorded") + ". Show detail.", () => showGap(gp.slug));
         gg.append("rect").attr("class", "vs-box").attr("x", gx).attr("y", y).attr("width", cwid).attr("height", chipH).attr("rx", 6)
           .attr("fill", C.panel).attr("stroke", gp.blast_radius === "shared-state-visible" ? C.bad : gp.blast_radius === "hard-to-reverse" ? C.warn : C.border).attr("stroke-width", 2);
