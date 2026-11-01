@@ -436,10 +436,10 @@ for (let i = 0, n = Math.ceil(Math.log(simulation.alphaMin()) / Math.log(1 - sim
 // whatever flyTo()/pan/zoom the user just did. Only the initial auto-frame
 // should apply automatically; subsequent settles are expected to leave the
 // camera wherever the user left it.
-let hasInitialFit = false;
+// The frame is refitted whenever the figure resizes (the drawer opening narrows it) until the
+// reader pans, zooms or flies somewhere themselves; after that their camera is left alone.
+let userTouched = false;
 function fitToNodes() {
-  if (hasInitialFit) return;
-  hasInitialFit = true;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of nodes) {
     minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
@@ -447,14 +447,31 @@ function fitToNodes() {
   }
   const w = Math.max(1, maxX - minX), h = Math.max(1, maxY - minY);
   const vw = stageEl.clientWidth, vh = stageEl.clientHeight;
-  // Fit into the part of the figure the floating HUD (top) and legend (bottom) leave free.
+  // Fit as large as the figure allows, then shrink only as far as it takes to keep every circle
+  // clear of the floating HUD (top left) and legend (bottom left).
   const fr = stageEl.getBoundingClientRect();
-  const inTop = Math.max(0, Math.min(vh * 0.4, document.querySelector(".rk-hud").getBoundingClientRect().bottom - fr.top));
-  const inBot = Math.max(0, Math.min(vh * 0.3, fr.bottom - document.getElementById("legendpanel").getBoundingClientRect().top));
-  const fh = Math.max(120, vh - inTop - inBot);
-  const k = Math.min(vw / (w * 1.12), fh / (h * 1.12), MAX_K);
+  const rect = el => { const r = el.getBoundingClientRect(); return { x: r.left - fr.left - 10, y: r.top - fr.top - 10, w: r.width + 20, h: r.height + 20 }; };
+  const floats = [rect(document.querySelector(".rk-hud")), rect(document.getElementById("legendpanel"))];
   const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * k, inTop + fh / 2 - cy * k).scale(k));
+  const k0 = Math.min(vw / (w * 1.08), vh / (h * 1.08), MAX_K);
+  const clear = (k, ox, oy) => nodes.every(n => {
+    const sx = n.x * k + ox, sy = n.y * k + oy, r = n.r * k;
+    return floats.every(f => {
+      const nx = Math.max(f.x, Math.min(sx, f.x + f.w)), ny = Math.max(f.y, Math.min(sy, f.y + f.h));
+      return Math.hypot(sx - nx, sy - ny) > r;
+    });
+  });
+  const free0 = floats[0].y + floats[0].h, free1 = floats[1].y;
+  let best = null;
+  for (let f = 1; f >= 0.35 && !best; f -= 0.03) {
+    const k = k0 * f;
+    // centre in the whole figure first, then in the band between the two floats
+    for (const oy of [vh / 2 - cy * k, (free0 + free1) / 2 - cy * k]) {
+      if (clear(k, vw / 2 - cx * k, oy)) { best = { k, oy }; break; }
+    }
+  }
+  if (!best) { const k = k0 * 0.5; best = { k, oy: (free0 + free1) / 2 - cy * k }; }
+  sel.call(zoomB.transform, d3.zoomIdentity.translate(vw / 2 - cx * best.k, best.oy).scale(best.k));
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
@@ -666,7 +683,7 @@ function hit(mx, my) {
 }
 
 const zoomB = d3.zoom().scaleExtent([0.3, MAX_K]).clickDistance(4)
-  .on("zoom", ev => { transform = ev.transform; requestDraw(); })
+  .on("zoom", ev => { if (ev.sourceEvent) userTouched = true; transform = ev.transform; requestDraw(); })
   .on("start", () => canvas.classList.add("dragging"))
   .on("end", () => canvas.classList.remove("dragging"));
 // Don't let d3.zoom start a pan gesture when the pointer is over a node --
@@ -685,6 +702,7 @@ fitToNodes();
 
 let flyGen = 0;
 function flyTo(n) {
+  userTouched = true;
   const gen = ++flyGen;
   const vw = stageEl.clientWidth, vh = stageEl.clientHeight, cur = transform;
   const from = [(vw / 2 - cur.x) / cur.k, (vh / 2 - cur.y) / cur.k, Math.min(vw, vh) / cur.k];
@@ -823,7 +841,8 @@ let lastW = stageEl.clientWidth, lastH = stageEl.clientHeight;
 S.onResize((w, h) => {
   const dx = w - lastW, dy = h - lastH;
   lastW = w; lastH = h;
-  if (hasInitialFit && (dx || dy)) sel.call(zoomB.transform, d3.zoomIdentity.translate(transform.x + dx / 2, transform.y + dy / 2).scale(transform.k));
+  if (userTouched) { if (dx || dy) sel.call(zoomB.transform, d3.zoomIdentity.translate(transform.x + dx / 2, transform.y + dy / 2).scale(transform.k)); }
+  else fitToNodes();
   requestDraw();
 });
 

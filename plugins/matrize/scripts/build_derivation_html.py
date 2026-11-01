@@ -46,7 +46,6 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import chart as chartlib  # noqa: E402
 import contrast  # noqa: E402
 import vocabulary as vocablib  # noqa: E402
 from report_kit import render as kit_render  # noqa: E402
@@ -62,7 +61,6 @@ DATA_MARKER = "@@DATA@@"
 MARKERS = {
     "verdict": "<!--__VERDICT__-->",
     "scope": "<!--__SCOPE__-->",
-    "chart": "<!--__CONTRAST_CHART__-->",
 }
 
 REQUIRED = ("scope", "verdict", "references", "gradeCOnly", "contrast", "vocabulary")
@@ -210,20 +208,25 @@ def contrast_findings(pairs: list[dict]) -> list[dict]:
     return out
 
 
-def contrast_chart_markup(pairs: list[dict]) -> str:
-    """The chart carries the margin and the printed ratio; the table carries pair and verdicts and
-    NOT the ratio. R2: no number is printed twice, in the report that grades other people's rules."""
-    if not pairs:
-        return '<p class="empty">No colour pairs to check.</p>'
-    return chartlib.render(
-        chartlib.contrast_chart([{"role": p["role"], "ratio": p["ratio"]} for p in pairs]),
-        width=720,
-    )
+def contrast_entry(p: dict) -> dict:
+    """One pair for the page script: the figure draws from it, the drawer prints it. The ratio
+    and the suggested foreground are COMPUTED here (contrast.py), never typed by a person, and
+    the page prints each ratio only in the figure and the drawer -- the table below carries
+    the pair and the verdicts without it (R2)."""
+    suggest = None if p["passesAA"] else suggest_fg(p["fg"], p["bg"])
+    light = contrast.luminance(contrast.parse_hex(p["bg"])) > 0.5
+    return {
+        "role": p["role"], "pair": f"{p['fg']} on {p['bg']}", "mode": p["mode"],
+        "fg": p["fg"], "bg": p["bg"], "ratio": p["ratio"],
+        "aa": p["passesAA"], "aaLarge": p["passesAALarge"],
+        "suggest": suggest,
+        "suggestRatio": round(contrast.ratio(suggest, p["bg"]), 2) if suggest else None,
+        "direction": "darken" if light else "lighten",
+    }
 
 
 def kit_report(payload: dict) -> dict:
-    """The JSON island: everything the page script composes through the report kit.
-    Contrast ratios are deliberately absent -- the chart prints each one once."""
+    """The JSON island: everything the page script composes through the report kit."""
     pairs = payload["contrast"]
     vocab = payload["vocabulary"]
     blocked = payload["gradeCOnly"]
@@ -242,8 +245,8 @@ def kit_report(payload: dict) -> dict:
         "gradeCFindings": grade_c_findings(blocked),
         "concepts": concept_rows(vocab),
         "conceptFindings": concept_findings(vocab),
-        "contrast": [{"role": p["role"], "pair": f"{p['fg']} on {p['bg']}", "mode": p["mode"],
-                      "aa": p["passesAA"], "aaLarge": p["passesAALarge"]} for p in pairs],
+        "thresholds": {"body": contrast.AA_BODY, "large": contrast.AA_LARGE, "aaa": contrast.AAA_BODY},
+        "contrast": [contrast_entry(p) for p in pairs],
         "contrastFindings": contrast_findings(pairs),
     }
 
@@ -268,8 +271,7 @@ def render(payload: dict, tokens_path: Path) -> str:
     # arrives from the input (the verdict, the scope) must never sit in the template while
     # the kit is still searching it for its own markers.
     return (page.replace(MARKERS["scope"], esc(payload["scope"]), 1)
-            .replace(MARKERS["verdict"], esc(payload["verdict"]), 1)
-            .replace(MARKERS["chart"], contrast_chart_markup(payload["contrast"]), 1))
+            .replace(MARKERS["verdict"], esc(payload["verdict"]), 1))
 
 
 def selftest() -> int:
@@ -335,8 +337,20 @@ def selftest() -> int:
                    not any(m in page for m in (*MARKERS.values(), DATA_MARKER))))
     checks.append(("the report kit marker replaced by its css and js",
                    "const RK = (() =>" in page and KIT_MARKER not in page))
-    checks.append(("the chart primitive is embedded, server-rendered",
-                   'class="chart"' in page and "<svg" in page))
+    # The chart used to be server-rendered SVG. It is now the figure that fills the stage, so
+    # the page script draws it from the island's computed ratios; what must still hold is that
+    # the page ships the drawing code and the data it draws from, and no ratio is typed in.
+    checks.append(("the contrast figure is drawn by the page script from computed island data",
+                   'class: "chart"' in page and 'role: "button"' in page and "S.open(" in page
+                   and '"ratio": 3.84' in island.group(1) and "CONTRAST_CHART" not in page))
+    checks.append(("the figure-first stage skeleton is in the page (R9)",
+                   'id="rk-stage"' in page and "data-rk-figure" in page and 'id="rk-drawer"' in page
+                   and 'class="legend rk-legend-float' in page and 'class="rk-hud-stats"' in page))
+    entry = build_payload(sample)["contrast"][0]
+    nearest = contrast_entry(entry)
+    checks.append(("a failing pair carries a computed nearest passing foreground that clears 4.5",
+                   nearest["suggest"] is not None and contrast.ratio(nearest["suggest"], "#FFFFFF") >= contrast.AA_BODY
+                   and nearest["direction"] == "darken"))
     checks.append(("the verdict is static markup",
                    re.search(r'<p class="verdict[ "][^>]*>v</p>', page) is not None))
 
