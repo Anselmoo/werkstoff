@@ -4,7 +4,7 @@ All notable changes to the `andon` plugin are documented here.
 
 ## [Unreleased]
 ### Added
-- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_board_html.py` now adds the ledger documents behind the board's counts (each open gap's body and proposal, every evidence document, each stage's prose) and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
 - **Value-stream board fills the stage**: stages, evidence and gap chips take their extent from the free height (ink 54 % -> 62 %). Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
 

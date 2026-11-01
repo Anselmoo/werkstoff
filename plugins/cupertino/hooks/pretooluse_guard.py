@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import sys
 from typing import NoReturn
 
@@ -90,10 +91,39 @@ DESTRUCTIVE_FS_RE = re.compile(r"\brm\s+-[a-zA-Z]*r[a-zA-Z]*f\b|\brm\s+-[a-zA-Z]
 # These are the shell routes around both. Same caveat as above: a tripwire for a
 # cooperative model, not a sandbox.
 REPAIR_SHELL_WRITE_RE = re.compile(
-    r"\b(?:rm|unlink|shred|truncate|mv|cp|rsync|tee|dd|install)\b|\bgit\s+(?:rm|mv|apply|stash|restore)\b"
-    r"|\bsed\s+(?:-\w*\s+)*-i|\bperl\s+-\w*i|\bfind\b[^|;&]*-delete\b|(?<![0-9&])>{1,2}\s*(?!&|/dev/null)[\w./~\"'$-]",
+    r"\b(?:rm|unlink|shred|truncate|mv|cp|rsync|tee|dd|install|touch|ln|patch)\b"
+    r"|\bgit\s+(?:rm|mv|apply|stash|restore|checkout)\b"
+    # sed/perl in-place anywhere in the command, not only right after the program name:
+    # `sed -e s/a/b/ -i f` and `sed --in-place f` both edit f.
+    r"|\bsed\b[^|;&\n]*\s(?:-[a-zA-Z]*i|--in-place)\b|\bperl\b[^|;&\n]*\s-[a-zA-Z]*i"
+    r"|\bfind\b[^|;&]*-(?:delete|exec)\b"
+    # Any output redirection -- `>`, `>>`, `1>`, `&>`, `>|` -- except to a file descriptor
+    # (`2>&1`) or /dev/null. The old lookbehind excluded a digit or `&` before `>`, which
+    # is exactly what `1>file` and `&>file` are.
+    r"|>{1,2}\|?\s*(?!&\d|/dev/null\b)[^\s&]"
+    # Interpreter one-liners that write: python -c / node -e opening a file for writing,
+    # or calling the usual write and delete APIs.
+    r"|\b(?:open|fopen)\s*\([^)]*['\"][wax]b?\+?['\"]|\.(?:write_text|write_bytes|unlink|rmdir|rename|replace)\s*\("
+    r"|\b(?:os\.(?:remove|unlink|rename|replace)|shutil\.(?:rmtree|move|copy\w*))\s*\("
+    r"|\b(?:(?:write|append)File(?:Sync)?|(?:unlink|rm|rmdir|rename|copyFile|truncate)Sync|createWriteStream)\s*\(",
     re.IGNORECASE,
 )
+# Scripts a model may run during a repair run without the write tripwire: they write only
+# under .cupertino/ (or, for build_repair_html.py, wherever --out points, which the exemption
+# also confines to .cupertino/). repair_state.py approve is NOT among them: approval is the
+# user's (see REPAIR_APPROVE_RE).
+REPAIR_EXEMPT_SCRIPTS = {"preflight_repair.py", "baseline.py", "verify.py", "repair_state.py", "apply_delete.py",
+                         "probes.py", "design_sources.py", "state.py", "build_repair_html.py"}
+# The approval of a changeset is the user's decision, so the model may not record it: run by
+# the model, `repair_state.py approve` is denied, and the user runs it in a terminal or with
+# Claude Code's `!` prefix (which runs the command directly, not as a model tool call).
+REPAIR_APPROVE_RE = re.compile(r"\brepair_state\.py\b[^|;&\n]*\bapprove\b")
+# Inside .cupertino/repair/ a model may write only these two files of the ACTIVE run: the
+# objective until the baseline freezes it, and the changeset while no item is applied.
+# Everything else there -- ACTIVE, other runs' directories, verdicts.jsonl, applied.jsonl,
+# the gates -- is written by the scripts alone; a Write that could create a second, fake
+# "approved" run, or empty the round log the HALT counts, is a Write that forges the check.
+REPAIR_MODEL_WRITABLE = ("objective.json", "changeset.json")
 REPAIR_GATED_SKILLS = {"cupertino-council", "cupertino-elevate", "cupertino-unbox", "cupertino-reveal"}
 
 
@@ -118,11 +148,30 @@ def find_state_root(start, project_dir):
     even when repair_lib cannot be imported. hooks/test_repair_guard.py asserts the two
     agree on every case, so the copy cannot drift silently."""
     here = os.path.abspath(start)
+    # The walk stops at the project: CLAUDE_PROJECT_DIR when `start` is inside it, else the
+    # nearest ancestor holding .git. Unbounded, a stray ~/.cupertino/ governed every repo
+    # below it -- its ACTIVE run denied edits in an unrelated project, its flags satisfied
+    # another project's ordering gates.
+    boundary = None
+    if project_dir:
+        pd = os.path.abspath(project_dir)
+        if here == pd or here.startswith(pd.rstrip(os.sep) + os.sep):
+            boundary = pd
+    if boundary is None:
+        d = here
+        while True:
+            if os.path.exists(os.path.join(d, ".git")):
+                boundary = d
+                break
+            parent = os.path.dirname(d)
+            if parent == d:
+                break
+            d = parent
     while True:
         if os.path.isdir(os.path.join(here, ".cupertino")):
             return here
         parent = os.path.dirname(here)
-        if parent == here:
+        if here == boundary or parent == here:
             break
         here = parent
     return project_dir if project_dir else os.path.abspath(start)
@@ -225,6 +274,79 @@ def _repair_run(cwd):
     return root, run_id
 
 
+def _plugin_script_only(command, session_cwd):
+    """True only when `command` is nothing but `python3 <this plugin's scripts>/<exempt>.py ...`
+    joined by `&&`, `||` or `;`. Parsed, not substring-matched: the old test exempted any segment
+    containing the words "cupertino" and "/scripts/", so `verify.py | tee src/x` or
+    `echo x > src/x # cupertino/scripts/` passed as "only plugin scripts".
+    """
+    if re.search(r"`|\$\(|<\(|>\(", command):
+        return False  # command substitution can run anything
+    scripts_dir = os.path.realpath(os.path.join(PLUGIN_ROOT, "scripts"))
+    state_root = os.path.realpath(os.path.join(find_state_root(session_cwd, os.environ.get("CLAUDE_PROJECT_DIR")),
+                                               ".cupertino"))
+    for line in command.splitlines():
+        try:
+            lex = shlex.shlex(line, posix=True, punctuation_chars=True)
+            lex.whitespace_split = True
+            tokens = list(lex)
+        except ValueError:
+            return False
+        segments, seg = [], []
+        for tok in tokens:
+            if tok in ("&&", "||", ";"):
+                segments.append(seg)
+                seg = []
+            elif tok and set(tok) <= set("|&<>;()"):
+                return False  # a pipe, a redirection, a background job or a subshell
+            else:
+                seg.append(tok)
+        segments.append(seg)
+        for argv in segments:
+            if not argv:
+                continue
+            if not re.fullmatch(r"python(?:3(?:\.\d+)?)?", os.path.basename(argv[0])):
+                return False
+            i = 1
+            while i < len(argv) and argv[i] in ("-B", "-u", "-I", "-E", "-s", "-X", "utf8", "-Xutf8"):
+                i += 1
+            if i >= len(argv):
+                return False
+            script = os.path.realpath(argv[i] if os.path.isabs(argv[i]) else os.path.join(session_cwd, argv[i]))
+            if os.path.dirname(script) != scripts_dir or os.path.basename(script) not in REPAIR_EXEMPT_SCRIPTS:
+                return False
+            rest = argv[i + 1:]
+            for k, tok in enumerate(rest):
+                out = rest[k + 1] if tok == "--out" and k + 1 < len(rest) else (tok[6:] if tok.startswith("--out=") else None)
+                if out is not None:
+                    real = os.path.realpath(out if os.path.isabs(out) else os.path.join(session_cwd, out))
+                    if real != state_root and not real.startswith(state_root + os.sep):
+                        return False
+    return True
+
+
+def check_repair_state_write(cwd, file_path):
+    """Write/Edit inside .cupertino/repair/, whether or not a run is active.
+
+    Only the active run's objective.json (until the baseline freezes it) and changeset.json
+    (while no item is being applied) are the model's to write. Without an active run nothing
+    there is: a model that could write ACTIVE and a run directory could forge an approved run.
+    """
+    root = find_state_root(cwd, os.environ.get("CLAUDE_PROJECT_DIR"))
+    repair_root = os.path.realpath(os.path.join(root, ".cupertino", "repair"))
+    target = os.path.realpath(file_path if os.path.isabs(file_path) else os.path.join(cwd, file_path))
+    if target != repair_root and not target.startswith(repair_root + os.sep):
+        return
+    inner = os.path.relpath(target, repair_root).replace(os.sep, "/")
+    run = _repair_run(cwd)
+    run_id = run[1] if run else None
+    if run_id is None or inner not in {f"{run_id}/{name}" for name in REPAIR_MODEL_WRITABLE}:
+        deny(f"cupertino-repair: .cupertino/repair/{inner} is written only by the repair scripts. A model may "
+             "write the active run's objective.json (until baseline.py freezes it) and changeset.json (while no "
+             "item is applied) -- nothing else: the run marker, other runs, the round log and the gates are what "
+             "the verification rests on. " + ESCAPE_HATCH)
+
+
 def check_repair_write(cwd, file_path):
     """While a repair run is active, a source edit must belong to the active approved item.
 
@@ -285,9 +407,18 @@ def check_repair_write(cwd, file_path):
         deny(f"cupertino-repair: {rel} is not in active item {item_id}'s approved paths {paths}. If it must change, "
              "stop, add an item for it, show the changeset to the user and approve again.")
     exists = (root / rel).exists()
-    if item["op"] == "create" and exists:
-        deny(f"cupertino-repair: item {item_id} is a create, but {rel} already exists -- that is a modify, and "
-             "must be approved as one.")
+    if item["op"] == "create":
+        # A create may write its file as often as it needs to (write, then fix a typo); what it
+        # may not do is overwrite a file that existed before the run. The baseline hashed every
+        # file in scope, so "existed before" is a recorded fact, not today's filesystem -- the
+        # old check denied the item's own second write as "that is a modify".
+        try:
+            before = repair_lib.read_json(rdir / "baseline" / "baseline.json").get("files", {})
+        except repair_lib.RepairError as e:
+            deny(f"cupertino-repair: {e}. Target: {rel}")
+        if rel in before:
+            deny(f"cupertino-repair: item {item_id} is a create, but {rel} existed when the baseline was taken -- "
+                 "that is a modify, and must be approved as one.")
     if item["op"] in ("modify", "add") and not exists:
         deny(f"cupertino-repair: item {item_id} is a {item['op']} of {rel}, which does not exist -- creating a "
              "file needs a create item.")
@@ -322,6 +453,7 @@ def handle_write_or_edit(cwd, tool_input, session_cwd=None):
         deny("cupertino-repair: this edit names no path the guard can read (file_path, edits[].file_path, "
              "file_paths), so it cannot be scoped to the active item; refusing rather than letting it through.")
     for file_path in targets:
+        check_repair_state_write(cwd, file_path)
         check_repair_write(cwd, file_path)
         handle_artifact_write(cwd, file_path, tool_input)
 
@@ -336,17 +468,39 @@ def handle_artifact_write(cwd, file_path, tool_input):
         check_handbook_overwrite(cwd, file_path, content)
 
 
-def handle_bash(cwd, tool_input):
+def handle_bash(cwd, tool_input, session_cwd=None):
     command = tool_input.get("command", "") or ""
+    session_cwd = session_cwd or cwd
+    # CUPERTINO_REPAIR_PREAPPROVED=1 is a human's standing approval, set in the environment
+    # Claude Code (and so this hook) was started with -- a headless test case whose author
+    # approved in advance. A model cannot set it for the hook: `VAR=1 cmd` changes only cmd.
+    if REPAIR_APPROVE_RE.search(command) and os.environ.get("CUPERTINO_REPAIR_PREAPPROVED") != "1":
+        deny("cupertino-repair: approving the changeset is the user's decision, so the model may not run "
+             "`repair_state.py approve`. Show the user the changeset and its hash, and ask them to approve it "
+             "themselves -- in their own terminal, or in Claude Code with the `!` prefix: "
+             f"`! python3 {os.path.join(PLUGIN_ROOT, 'scripts', 'repair_state.py')} approve`. " + ESCAPE_HATCH)
+    # The run's state is the scripts' to write, with or without an active run (see
+    # check_repair_state_write): a shell write naming .cupertino/repair is the same forgery.
+    if ".cupertino/repair" in command.replace(os.sep, "/") and REPAIR_SHELL_WRITE_RE.search(command) \
+            and not _plugin_script_only(command, session_cwd):
+        deny("cupertino-repair: this command could write inside .cupertino/repair/, which only the repair scripts "
+             "write. " + ESCAPE_HATCH)
     run = _repair_run(cwd)
     if run is not None:
         if MUTATING_GIT_RE.search(command):
             deny("cupertino-repair: a repair run is active; no commit, push, reset, checkout, merge or rebase until "
                  "verify.py has written a verdict and `repair_state.py end` closed the run. " + ESCAPE_HATCH)
-        only_plugin_scripts = all(
-            "cupertino" in seg and "/scripts/" in seg
-            for seg in re.split(r"&&|\|\||;|\n", command) if seg.strip()
-        )
+        # A plugin script told to write its output outside .cupertino/ is a source write by
+        # another name (build_repair_html.py --out app/index.html); the write regex sees no
+        # `>` in it, so it is denied here, explicitly.
+        for m in re.finditer(r"--out(?:=|\s+)(\"[^\"]*\"|'[^']*'|\S+)", command):
+            out = m.group(1).strip("\"'")
+            real = os.path.realpath(out if os.path.isabs(out) else os.path.join(session_cwd, out))
+            sdir = os.path.realpath(state_dir(cwd))
+            if real != sdir and not real.startswith(sdir + os.sep):
+                deny(f"cupertino-repair: a repair run is active and --out {out} points outside .cupertino/ -- a "
+                     "script's output is a write like any other. Write reports under .cupertino/. " + ESCAPE_HATCH)
+        only_plugin_scripts = _plugin_script_only(command, session_cwd)
         if not only_plugin_scripts and REPAIR_SHELL_WRITE_RE.search(command):
             deny("cupertino-repair: a repair run is active, and this command can write or delete files outside the "
                  "approved item. Edit with Write/Edit (scoped to the active item); delete only with "
@@ -540,7 +694,7 @@ def main():
         elif tool_name in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
             handle_write_or_edit(cwd, tool_input, session_cwd)
         elif tool_name == "Bash":
-            handle_bash(cwd, tool_input)
+            handle_bash(cwd, tool_input, session_cwd)
     except SystemExit:
         raise
     except Exception as e:

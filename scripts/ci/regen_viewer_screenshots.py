@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Rebuild every viewer screenshot from committed demo data and measure what the figure draws.
 
-usage: regen_viewer_screenshots.py [-h] [--only PLUGIN ...] [--measure-only] [--min-ink-share 0.45]
+usage: regen_viewer_screenshots.py [-h] [--only PLUGIN ...] [--measure-only | --check] [--min-ink-share 0.55]
                                    [--scheme dark|light] [--sheet PATH]
 
 Reads scripts/ci/viewer-screenshots.json: per entry, run `setup`, run `build`, then capture
 `html` with capture_viewer_screenshot.py (first screen, 1600x900, report-viewer-standard C1)
 and write `shot`. --measure-only renders and measures but writes no screenshot (the "before"
-column). --sheet writes a contact sheet of every first screen, because a number is not a
+column). --check renders every viewer into a temp dir, writes nothing under the repo, and fails when a committed
+screenshot is not byte-identical to the fresh render or any viewer is below the floor (dark scheme only;
+about 25 s for all 17 viewers; deliberately not wired into CI). --sheet writes a contact sheet of every first screen, because a number is not a
 verdict: look at it.
 
 Exit: 0 every entry built, captured with no console errors, and at or above the floor;
@@ -46,11 +48,16 @@ def main(argv: list[str]) -> int:
                                      epilog="exit 0 all good, 1 a build/capture/floor failed, 2 bad input, 3 no driver")
     parser.add_argument("--only", nargs="*", default=None, help="plugins to include")
     parser.add_argument("--measure-only", action="store_true", help="measure, do not overwrite screenshots")
+    parser.add_argument("--check", action="store_true",
+                        help="render into a temp dir and fail if a committed screenshot differs or a viewer is below the floor")
     parser.add_argument("--min-ink-share", type=float, default=0.55)
     parser.add_argument("--scheme", choices=("dark", "light"), default="dark")
     parser.add_argument("--sheet", help="write a contact sheet of the first screens here")
     args = parser.parse_args(argv)
 
+    if args.check and (args.measure_only or args.scheme != "dark"):
+        print("--check compares the committed (dark) screenshots; it cannot combine with --measure-only or --scheme light", file=sys.stderr)
+        return 2
     entries = json.loads(MANIFEST.read_text(encoding="utf-8"))["viewers"]
     if args.only:
         entries = [e for e in entries if e["plugin"] in args.only]
@@ -73,7 +80,12 @@ def main(argv: list[str]) -> int:
             print(f"BUILD FAILED {e['shot']}: no HTML at {e['html']}")
             failed += 1
             continue
-        out = tmp / "first.png" if args.measure_only or args.scheme != "dark" else ROOT / e["shot"]
+        if args.check:
+            out = tmp / ("fresh" + Path(e["shot"]).suffix)
+        elif args.measure_only or args.scheme != "dark":
+            out = tmp / "first.png"
+        else:
+            out = ROOT / e["shot"]
         meta_path = tmp / "meta.json"
         cmd = [sys.executable, str(CAPTURE), str(html), str(out), "--scheme", args.scheme, "--console", str(meta_path),
                "--min-ink-share", str(args.min_ink_share)]
@@ -88,6 +100,16 @@ def main(argv: list[str]) -> int:
         meta = json.loads(meta_path.read_text()) if meta_path.is_file() else {}
         ink, box, errs = meta.get("inkShare"), meta.get("figureShare"), meta.get("errors", ["capture failed: " + proc.stderr.strip()[-300:]])
         ok = proc.returncode == 0
+        if args.check and ok:
+            committed = ROOT / e["shot"]
+            if not committed.is_file():
+                ok = False
+                errs = [f"committed screenshot missing: {e['shot']}"]
+            elif not out.is_file() or out.read_bytes() != committed.read_bytes():
+                ok = False
+                errs = [f"STALE: committed {e['shot']} differs from the fresh render "
+                        f"({committed.stat().st_size} vs {out.stat().st_size if out.is_file() else 'no'} bytes); "
+                        "run without --check to regenerate"]
         failed += not ok
         rows.append((e["shot"], ink, box, len(errs), ok))
         print(f"{'ok  ' if ok else 'FAIL'} ink {ink if ink is not None else 'n/a':>5}  box {box if box is not None else 'n/a':>5}  "

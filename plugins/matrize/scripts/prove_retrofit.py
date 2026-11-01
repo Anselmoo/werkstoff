@@ -145,6 +145,18 @@ def png_size(path: Path) -> tuple[int, int]:
     return struct.unpack(">II", d[16:24])
 
 
+def render(chrome: str, html: Path, shot: Path) -> Path | None:
+    """Screenshot `html` to `shot`. Any previous `shot` is deleted first; None when no new file appeared."""
+    shot.unlink(missing_ok=True)
+    subprocess.run(
+        [chrome, "--headless", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
+         "--virtual-time-budget=3000", "--window-size=1600,900",
+         f"--screenshot={shot}", f"file://{html}"],
+        capture_output=True, check=False,
+    )
+    return shot if shot.is_file() else None
+
+
 def arm3_visual(src: str, regen: str, workdir: Path, chrome: str) -> tuple[bool, list[str]]:
     if not Path(chrome).exists():
         # NOT RUN is not a pass. "Zero visual diff" is the claim this script exists to
@@ -158,15 +170,11 @@ def arm3_visual(src: str, regen: str, workdir: Path, chrome: str) -> tuple[bool,
     for label, css in (("before", src), ("after", regen)):
         html = workdir / f"{label}.html"
         html.write_text(build_fixture(css, names), encoding="utf-8")
-        shot = workdir / f"{label}.png"
-        subprocess.run(
-            [chrome, "--headless", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
-             "--virtual-time-budget=3000", "--window-size=1600,900",
-             f"--screenshot={shot}", f"file://{html}"],
-            capture_output=True, check=False,
-        )
-        if not shot.exists():
-            return False, [f"render failed for {label}"]
+        shot = render(chrome, html, workdir / f"{label}.png")
+        if shot is None:
+            # A reused --workdir still holds the previous run's PNGs; render() deleted them, so a
+            # render that produced nothing is a failure here, never a comparison of old files.
+            return False, [f"RENDER FAILED for {label}: Chromium wrote no screenshot -- visual arm NOT RUN, not a pass"]
         shots.append(shot)
 
     a, b = shots[0].read_bytes(), shots[1].read_bytes()
@@ -176,17 +184,15 @@ def arm3_visual(src: str, regen: str, workdir: Path, chrome: str) -> tuple[bool,
     # heavier, it drew nothing and "zero visual diff" would be a vacuous pass.
     blank = workdir / "control.html"
     blank.write_text(FIXTURE.replace("__TOKENS__", "").replace("__CHIPS__", ""), encoding="utf-8")
-    ctrl = workdir / "control.png"
-    subprocess.run(
-        [chrome, "--headless", "--disable-gpu", "--no-sandbox", "--hide-scrollbars",
-         "--virtual-time-budget=3000", "--window-size=1600,900",
-         f"--screenshot={ctrl}", f"file://{blank}"],
-        capture_output=True, check=False,
-    )
+    ctrl = render(chrome, blank, workdir / "control.png")
+    if ctrl is None:
+        # Fail closed: without the control the vacuous-pass check cannot run, and "zero visual diff"
+        # would be claimed on a measurement that was never validated.
+        return False, ["RENDER FAILED for control: the vacuous-pass check could not run -- visual arm NOT RUN, not a pass"]
     # Categorical, not a threshold: the tokenised render must DIFFER from the
     # untokenised one. A byte-size ratio would be a magic number tuned until it passed;
     # "the tokens changed the picture" is the claim itself.
-    if ctrl.exists() and a == ctrl.read_bytes():
+    if a == ctrl.read_bytes():
         return False, [
             "the fixture renders identically with and without the tokens, so it exercises "
             "none of them. Two blank pages also compare equal — this would have been a "
@@ -241,6 +247,18 @@ def verdict_line(failed: int, visual_not_run: bool) -> str:
     if visual_not_run:
         return "STRUCTURE PRESERVED (arms 1 and 2) -- VISUAL DIFF NOT MEASURED: no browser ran arm 3"
     return "ZERO VISUAL DIFF, STRUCTURE PRESERVED"
+
+
+FAKE_CHROME = """#!{py}
+import sys
+mode = {mode!r}
+url = sys.argv[-1]
+shot = next(a for a in sys.argv if a.startswith("--screenshot=")).split("=", 1)[1]
+png = {png!r}
+if mode == "none" or (mode == "no_control" and url.endswith("control.html")):
+    sys.exit(1)
+open(shot, "wb").write(png + (b"CONTROL" if url.endswith("control.html") else b"TOKENS"))
+"""
 
 
 def selftest() -> int:
@@ -304,6 +322,25 @@ def selftest() -> int:
     checks.append(("an allowed skip never claims zero visual diff",
                    "ZERO VISUAL DIFF" not in verdict_line(0, True) and "NOT MEASURED" in verdict_line(0, True)))
     checks.append(("a full pass still says zero visual diff", verdict_line(0, False).startswith("ZERO VISUAL DIFF")))
+
+    # Arm 3 against a fake Chrome, with STALE before/after PNGs left in a reused workdir.
+    png = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR" + struct.pack(">II", 1600, 900)
+    for mode, want_ok, want_text in (("none", False, "RENDER FAILED for before"),
+                                     ("no_control", False, "RENDER FAILED for control"),
+                                     ("good", True, "byte-identical")):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            (work / "before.png").write_bytes(png + b"STALE")
+            (work / "after.png").write_bytes(png + b"STALE")
+            (work / "control.png").write_bytes(png + b"STALE-CONTROL")
+            fake = work / "fakechrome"
+            fake.write_text(FAKE_CHROME.format(py=sys.executable, mode=mode, png=png), encoding="utf-8")
+            fake.chmod(0o755)
+            ok3, notes3 = arm3_visual(src, regen, work, str(fake))
+            checks.append((f"fake chrome '{mode}' over stale PNGs: ok={want_ok}", ok3 is want_ok and want_text in notes3[0]))
+            if mode != "good":
+                checks.append((f"fake chrome '{mode}': verdict never claims zero diff",
+                               not ok3 and "ZERO VISUAL DIFF" not in verdict_line(0 if ok3 else 1, False)))
 
     for label, ok in checks:
         print(f"  {label:<52} {'ok' if ok else 'FAIL'}")

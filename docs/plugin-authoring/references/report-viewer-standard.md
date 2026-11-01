@@ -3,9 +3,9 @@
 Read this before writing or editing any `plugins/*/assets/*-viewer.html` or its
 `plugins/*/scripts/build_*_html.py`.
 
-All 13 plugins ship a self-contained HTML report — 16 files, since `matrize`, `arbeitsplan` and `cupertino` ship two
-(`derivation-viewer.html`, `provenance-viewer.html`) and so does `arbeitsplan`
-(`run-viewer.html`, `design-viewer.html`). They were built independently and shared
+All 13 plugins ship a self-contained HTML report — 16 files, since `matrize`, `arbeitsplan` and `cupertino` ship two each
+(`derivation-viewer.html` and `provenance-viewer.html`; `run-viewer.html` and `design-viewer.html`;
+`review-flow-viewer.html` and `repair-viewer.html`). They were built independently and shared
 exactly one thing — `tools/design-tokens/tokens.css`, vendored per plugin by
 `.rrt.toml`'s `artifact_targets`. Since November 2026 they share a second:
 `tools/report-kit/` (components, behaviour, and the renderer that inlines them), vendored
@@ -54,21 +54,18 @@ a chart-renderer rather than a report.
 Every viewer must contain, in static markup, a sentence naming the finding the report
 exists to surface. Not a noun label, and not interaction help.
 
-`plugins/lehre/assets/doctrine-viewer.html:118` is the reference:
+`plugins/lehre/assets/doctrine-viewer.html` is the reference. Its static
+`<p class="verdict" id="verdict">` sits in the HUD over the Sankey, and its script rewrites
+that sentence from the data ("✓ All N blocking rule(s) are decidable by the hook …", or the
+leak count). The question the report answers, "Does the doctrine actually bite?", is the
+stage's `aria-label` and the subtitle of the drawer's default view, which says what an
+amber ribbon *means* — a blocking rule whose ribbon drains to amber is one everybody
+believes blocks and which never denies a write.
 
-```html
-<h2>Does the doctrine actually bite?</h2>
-```
-
-followed by a `.note` paragraph (`:120-125`) that says what an amber ribbon *means* —
-"a blocking rule whose ribbon drains to amber is one everybody believes blocks and which
-never denies a write."
-
-Compare what the other seven offer in their equivalent slot: "Click a stage … to see that
-stage's open gaps" (`board-viewer.html:105`), "Click a stage to see its full persisted
-result" (`review-flow-viewer.html:62`), "drag a stage to reposition · drag empty space to
-pan" (`stage-map-viewer.html:78`). Those tell a reader how to operate the widget. None
-tells them what was found.
+Before the kit, the other seven offered operating instructions in that slot: "Click a
+stage … to see that stage's open gaps" (andon), "Click a stage to see its full persisted
+result" (cupertino's review flow), "drag a stage to reposition · drag empty space to pan"
+(befund). Those tell a reader how to operate the widget. None tells them what was found.
 
 **The machine-checkable form is an element with `class="verdict"`** in static markup,
 carrying that sentence. A question-heading answered by the panel beneath it is the usual
@@ -81,25 +78,25 @@ artifact fails this rule. That was true of every viewer except lehre.
 
 ### R2 — Never print the same number twice
 
-Four viewers print integers in the subtitle and then restate them as KPI tiles ~200px
-below: `board-viewer.html:129-131` vs `:326-331` (3 of 4 tiles), `burndown-viewer.html:134-135`
-vs `:287-293` (2 of 5), `matrix-viewer.html:244-245` vs `:295-299` (2 of 4).
+Before the kit, andon's board, zeugnis's burndown and passung's matrix printed integers in the
+subtitle and then restated them as KPI tiles ~200px below (3 of andon's 4 tiles, 2 of
+zeugnis's 5, 2 of passung's 4). The kit's HUD sets the numbers once, as a row of chips.
 
 Pick one surface per number. The subtitle carries scope and provenance ("brownfield · 11
 rules · 4 units · generated from `.lehre/ruleset.json`"); tiles carry findings.
 
 ### R3 — An actionable number must not look like an inert one
 
-`.stat`, `.stat .v` and `.stat .k` are byte-identical in three files
-(`board-viewer.html:75-83`, `burndown-viewer.html:31-39`, `matrix-viewer.html:186-191`) —
-a shared component by copy-paste. All three render every number at `22px/600/var(--accent)`.
-So zeugnis's "Escalated" is typographically identical to its "Total passes", and nothing in
-the design distinguishes a number you must act on from one that is context.
+Before the kit, `.stat`, `.stat .v` and `.stat .k` were byte-identical in andon, zeugnis
+and passung — a shared component by copy-paste — and rendered every number at
+`22px/600/var(--accent)`. So zeugnis's "Escalated" was typographically identical to its
+"Total passes", and nothing in the design distinguished a number you must act on from one
+that is context. Only lehre's `.fstep.terminal` and `.fstep.leak` (different outlines, a
+recoloured leak value) did.
 
-`plugins/lehre/assets/doctrine-viewer.html:36-43` is the only counter-example in the
-marketplace: `.fstep.terminal` and `.fstep.leak` carry different outlines, and the leak's
-value is recoloured at `:233`. Adopt that vocabulary — a tile row needs at least one class
-meaning "this is the bad number".
+The kit makes lehre's vocabulary the default: a stat given `bad: true` gets `.rk-stat.bad`,
+a red left rule plus a ⚠ glyph before the value (`report-kit.css`). zeugnis's "Escalated"
+chip passes `bad: escalated > 0`. A tile row needs at least one such number.
 
 ### R4 — Colour is never the only channel
 
@@ -110,9 +107,9 @@ simulation (dE00 5.69): *never color alone, always pair with an icon or a label.
 A viewer therefore needs a legend that is visible **without interaction**. The violation
 this rule was written against:
 
-- `plugins/zeugnis/assets/burndown-viewer.html:61-62` defines `.legend` and `.legend .swatch`
-  and **uses neither**. Its `open`/`closed`/`escalated` status colours (`:280`) are never
-  explained anywhere.
+- Before the kit, `plugins/zeugnis/assets/burndown-viewer.html` defined `.legend` and
+  `.legend .swatch` and **used neither**. Its `open`/`closed`/`escalated` status colours were
+  never explained anywhere. It now carries a static legend.
 
 A legend is necessary, not sufficient: the marks themselves need a second channel, or a
 reader still has to match hues against it. Two viewers show the pattern that satisfies both:
@@ -134,12 +131,10 @@ does), but silence may not.
 
 ### R5 — Height derives from content
 
-Fixed heights that cannot grow with the data: `review-flow-viewer.html:157` `HEIGHT = 190`,
-`burndown-viewer.html:69` `height: 300px`, `board-viewer.html:219` `H = 90`.
-
-Content-derived, and correct: `doctrine-viewer.html:250`
-`const H = Math.max(230, DATA.totals.rules * 24 + 100);` and
-`architecture-tree-viewer.html:130` `const svgHeight = rows.length * ROW_H;`.
+Before the kit, three viewers fixed a height that could not grow with the data: cupertino's
+review flow (`HEIGHT = 190`), zeugnis's burndown (`height: 300px`) and andon's board (`H = 90`);
+lehre and cli-scaffold derived theirs from their row counts. R9 replaces that with a figure laid out from the
+stage's measured size, so the height derives from the viewport as well as the data.
 
 A panel whose height is a constant is a panel that will either clip or float in dead space.
 The seven 1600×1000 screenshots taken in `821a14a` run 55–72% empty for exactly this reason.
@@ -225,36 +220,34 @@ rule-family × severity heatmap for a findings table, rather than leading with a
 4. `nacharbeit_lint.py`'s `A-REPORT-KIT` checks the marker and all three vendored files
    together, so half a migration is a finding.
 
-`tools/report-kit/example-viewer.html` renders every component from
+`tools/report-kit/example-viewer.html` renders every component, and the R9 figure-first stage
+(a small figure, HUD, floating legend, hint, drawer and tooltip), from
 `tools/report-kit/example-data.json`; it is the reference to copy from.
 
 ## The shell rules
 
-### S1 — One page archetype per data shape, declared
+### S1 — One page archetype: the figure-first stage
 
-Three archetypes exist and all three are legitimate:
+Since R9 every one of the 16 viewers has the same page: a header with the title, view
+switch (where there is one), search and theme toggle; the kit's stage (`#rk-stage`) with the
+figure, HUD, floating legend and drawer; and the long-form sections below it (`.rk-below`).
+Before the kit there were three archetypes (a centred document in lehre and cli-scaffold, a
+full-bleed page with a sticky sidebar in andon, zeugnis and cupertino, an absolute canvas in
+befund) and one accident: zirkel's `max-width: 900px` with no `margin: auto`, which hugged
+the left edge. None of them survives; a viewer that wants a different shell has to say why
+in R9's terms.
 
-| archetype | when | current users |
-|---|---|---|
-| centered document | the report is read top-to-bottom | `lehre` (`.wrap`, max-width 1180), `cli-scaffold` |
-| full-bleed + sticky sidebar | a selection drives a detail pane | `andon`, `zeugnis`, `cupertino` |
-| absolute canvas | the view is pannable/zoomable | `befund` |
-
-`zirkel` is currently a fourth thing by accident — `branch-comparison-viewer.html:23`
-sets `max-width: 900px` with no `margin: auto`, so content hugs the left edge. That is a
-bug, not an archetype.
-
-Whichever is chosen, the header height comes from **`var(--header-h)`**. It was a bare
-`61px` literal in three files (`board-viewer.html:38,40`, `matrix-viewer.html:61`,
-`review-flow-viewer.html:30,32`), defined nowhere, so a sticky sidebar's
+The header height comes from **`var(--header-h)`**, which `tokens.css` defines. It was a bare
+`61px` literal in andon, passung and cupertino, defined nowhere, so a sticky sidebar's
 `calc(100vh - 61px)` could silently drift from whatever the header actually measured.
+`check_viewer_conformance.py` fails a `61px` in a viewer.
 
 ### S2 — Required `<head>`
 
 - **CSP meta, `default-src 'none'`** — `.rrt.toml:274-275` already calls this "the same
-  constraint every report-viewer plugin's HTML asset needs". Present in five
-  (`andon`, `cli-scaffold`, `passung`, `zirkel`, `befund`, each at line 6);
-  **absent in `lehre`, `zeugnis`, `cupertino`**.
+  constraint every report-viewer plugin's HTML asset needs". Present in all 16
+  viewers. It was absent in `lehre`, `zeugnis` and `cupertino` until the kit; the
+  conformance check now fails any viewer without it.
 - **`<title>` as `<plugin> — <report noun>`**, lowercase plugin name. `lehre — doctrine map`
   is the model. Current titles are inconsistently cased and prefixed.
 - **The static `<h1>` must carry that same string, and must not be rewritten at run time.**
@@ -268,7 +261,7 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
   `<h1>` (it caught a live one in `cupertino` the first time it ran).
 - **One tokens marker spelling: `<!--__DESIGN_TOKENS__-->`.** `scripts/ci/check_viewer_conformance.py`
   still names two forbidden variants it watches for — `/*__DESIGN_TOKENS__*/` and
-  `/*__TOKENS__*/` — but a grep of all 14 `plugins/*/assets/*-viewer.html` files today
+  `/*__TOKENS__*/` — but a grep of all 16 `plugins/*/assets/*-viewer.html` files today
   shows every one of them already on the canonical comment form; no variant spelling
   remains on disk. The check keeps rejecting the variants anyway, because a marker
   spelling that regresses silently the next time a viewer is copy-pasted from an older
@@ -278,7 +271,9 @@ Whichever is chosen, the header height comes from **`var(--header-h)`**. It was 
 
 The builder escapes `<`, `>`, `&` on the way into the `<script>` block **and** the template
 renders every string through `textContent`, never `innerHTML`.
-`build_doctrine_html.py`'s `render()` and `doctrine-viewer.html:189-192` document the pairing.
+`build_doctrine_html.py`'s `render()` docstring (barrier one, delegated to the kit's
+`render()`) and the template's `textContent` assignments in `doctrine-viewer.html` (barrier
+two) document the pairing.
 Neither barrier is load-bearing alone.
 
 ### S4 — Fail visibly
@@ -359,11 +354,11 @@ legend), so R4 accepts either — it fails only when both are absent. On first r
 reported 36 violations across 8 viewers, independently reproducing findings that had been
 derived by reading — CSP absent in exactly zeugnis/cupertino/lehre, `61px` in exactly
 andon/passung/cupertino, R4 failing in exactly zeugnis/befund. Three prior HTML-grep precedents
-exist — `plugins/cli-scaffold/scripts/selftest.py:166-171`,
-`plugins/zirkel/scripts/test_build_branch_comparison_html.py:106-108`,
-`plugins/zeugnis/scripts/test_build_burndown_html.py:106-113` — and **none of them runs in
-CI**, which puts all three below "a fenced command in a skill" on this repo's own
-enforcement table.
+exist — `plugins/cli-scaffold/scripts/selftest.py`,
+`plugins/zirkel/scripts/test_build_branch_comparison_html.py` and
+`plugins/zeugnis/scripts/test_build_burndown_html.py` — and when this lint was written
+**none of them ran in CI**, which put all three below "a fenced command in a skill" on this
+repo's own enforcement table.
 
 Only S2 and C1 are cheaply greppable. R1 through R4 are editorial and need a human or an
 agent reading the rendered report.

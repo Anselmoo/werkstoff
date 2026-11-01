@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_target_edit.py\"",
-            "timeout": 15
+            "timeout": 60
           }
         ]
       }

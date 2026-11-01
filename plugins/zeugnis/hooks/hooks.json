@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_edit_scope.py\"",
-            "timeout": 15
+            "timeout": 60
           }
         ]
       },
@@ -18,7 +18,7 @@
           {
             "type": "command",
             "command": "python3 -B \"${CLAUDE_PLUGIN_ROOT}/scripts/hooks/guard_bash_scope.py\"",
-            "timeout": 15
+            "timeout": 60
           }
         ]
       }

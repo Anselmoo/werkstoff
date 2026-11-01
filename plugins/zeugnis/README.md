@@ -275,15 +275,15 @@ reads and might still violate:
 
 `scripts/build_burndown_html.py` renders `ledger.json`'s recorded pass
 history into a self-contained HTML report (`analysis/zeugnis/reports/BURNDOWN.html`
-by default) with a Trend tab and a Breakdown tab. The Trend tab is the
-default view — a single honest D3 line chart of cumulative closed
-findings, since `ledger.json`'s `passes` array is the only place
-pass-over-pass history actually exists:
+by default). Its Ledger view is the default: a single honest D3 line chart of
+cumulative closed findings, since `ledger.json`'s `passes` array is the only place
+pass-over-pass history actually exists. Stat chips and the verdict float over the figure,
+and the findings with their evidence sit below it:
 
 ![Zeugnis burndown viewer: the cumulative-closed trend fills the first screen as a single line over a shaded area across five passes, each point labelled with its running total and its gain (2, 5, 7, 8, then 8 with +0 at the last pass, amber because it closed nothing); a "Has this cleanup converged?" panel whose verdict reads that the cleanup has NOT converged — 1 finding escalated, 1 open, the last pass closed 0 — and a row of five numbers (5 total passes, 10 findings tracked, 1 open, 8 closed, 1 escalated outlined red) float over its top-left, a legend naming closed, open, escalated and the trend line floats at its foot; the right-hand drawer is open on pass #5 (code_change_review) showing closed this pass 0, closed in total 8, the findings in that domain with links, and a link to pass #4](assets/burndown-viewer-screenshot.jpg)
 
-The Breakdown tab adds by-status and by-domain bars plus a findings
-sidebar, drawn from `ledger.json`'s current-snapshot `findings` map.
+The findings below the figure are drawn from `ledger.json`'s current-snapshot `findings`
+map; the search box in the header filters them and each expands to its evidence.
 
 That image is reproducible rather than a one-off capture — the ledger it
 shows is committed at `scripts/fixtures/sample_burndown_ledger.json` (5
@@ -303,7 +303,7 @@ python3 plugins/zeugnis/scripts/build_burndown_html.py /tmp/zeugnis-demo \
 ```
 
 When `zeugnis-mutation-harden` has written `analysis/zeugnis/mutation_harden_summary.json`,
-a third **Mutation** tab appears. It answers a different question, "did the new tests
+a second view, **Mutation**, appears next to **Ledger** in the header. It answers a different question, "did the new tests
 kill what survived?", so it hides the ledger's convergence verdict and tiles while open:
 
 ![Zeugnis burndown viewer, Mutation view: the per-module score tracks fill the first screen, three rows (src/scoring/rank.py 76.3 % to 95.0 %, src/runner/conditions.py 100.0 % to 100.0 % with untested 86 to 72 in amber, src/stats/bootstrap.py 76.9 % to 90.4 %), each a 0-100 % track with a hollow ring for the score before and a filled dot for the score after; a "Did the new tests kill what survived?" panel whose verdict reads that the run is INCOMPLETE because shard stats timed out, with a row of five numbers, floats over the top-left and the ring, dot and untested legend over the foot; the right-hand drawer is open on src/runner/conditions.py listing the mutants killed with the test and proof for each, then those still alive and those judged equivalent](assets/burndown-viewer-mutation-screenshot.jpg)
@@ -335,13 +335,12 @@ python3 scripts/ci/capture_viewer_screenshot.py /tmp/zeugnis-demo/analysis/zeugn
 Every number has a control behind it, and every control is a real button
 you can reach with Tab:
 
-- **Trend:** hovering or focusing a pass point shows a crosshair and a
+- **Ledger:** hovering or focusing a pass point shows a crosshair and a
   tooltip of that pass's numbers. Click it, or press Enter or Space, to open
   that pass in the drawer beside the chart (its domain's findings link to
-  their evidence below); Esc closes the drawer and lets go of the point.
-- **Breakdown:** a status or domain bar toggles a filter. The sidebar then
-  shows a chip naming it, a Clear button, and the matching findings, each of
-  which expands to its evidence.
+  their evidence below); Esc lets go of the point and closes the drawer.
+- **Search:** the header's search box narrows the findings (and, in the Mutation
+  view, the mutants and modules) to the ones that match.
 - **Mutation:** a module's track opens the mutants the proven tests killed,
   the ones still alive, and the ones judged equivalent in the drawer; the
   same lists stay expandable in the Modules section below the figure.

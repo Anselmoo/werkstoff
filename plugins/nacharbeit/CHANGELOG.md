@@ -4,7 +4,7 @@ All notable changes to the `nacharbeit` plugin are documented here.
 
 ## [Unreleased]
 ### Added
-- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_review_html.py` now maps each finding to the kit's record (`to_record`), adds per-family rule totals against the rubric (`family_totals`), and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 - **`A-REPORT-KIT`**: a mechanical rule that a viewer template carries the `<!--__REPORT_KIT__-->` slot and the plugin vendors
   `assets/report-kit.css`, `assets/report-kit.js` and `scripts/report_kit.py`; half a migration is a finding.
 - The report-viewer standard gains a content tier (R6-R8) that the rubric references.

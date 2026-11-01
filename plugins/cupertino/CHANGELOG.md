@@ -21,7 +21,7 @@ All notable changes to the `cupertino` plugin are documented here.
 - `cupertino-council` writes `.cupertino/flags/council-done`; `beats.json` now names that marker as evidence.
 ### Changed
 - **Review-flow viewer fills the stage**: the pipeline and its fork scale to the free height (ink 52 % -> 69 %). Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
-- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_review_flow_html.py` now renders through `report_kit.render()`, draws the nine-stage pipeline with its longevity/integrate fork as the figure, and gains `--selftest`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 - **BREAKING -- first-use denial.** The guard used to be inert in a repo with no `.cupertino/` directory and so
   allowed `cupertino-focus`, `-longevity`, `-integrate` and `-council` on first use, defeating the
   backwards-first gate. It now denies them there, and the reason points at `cupertino-repair` for changing
@@ -35,6 +35,8 @@ All notable changes to the `cupertino` plugin are documented here.
   now route "fix an existing X" to `cupertino-repair`.
 - **README**: new Example Prompts entry, a section on the repair route, components, enforcement table and
   verification commands updated.
+### Fixed
+- **cupertino-repair guard closes the routes a review found around it.** The Bash exemption for the plugin's own scripts was a substring test (`verify.py | tee src/x` and `echo x > src/x # cupertino/scripts/` passed); it now parses the command and exempts only `python3 <plugin>/scripts/<name>.py` with no pipe, redirect or substitution, `--out` confined to `.cupertino/`. The shell tripwire now catches `1>`, `&>`, `>|`, `sed -e … -i`, `--in-place`, `touch`, `ln`, `find -exec` and `python -c`/`node -e` write calls. Under `.cupertino/repair/` a Write/Edit may touch only the active run's `objective.json` (until the baseline) and `changeset.json` -- a second, forged "approved" run and an emptied round log (which reset the three-round HALT) are denied, with or without an active run. Approval is the user's: the model may not run `repair_state.py approve` (the user runs it, or `!`-runs it; `CUPERTINO_REPAIR_PREAPPROVED=1` in Claude Code's environment is a standing approval for unattended runs). `.cupertino/` is looked up only as far as `CLAUDE_PROJECT_DIR` or the git root. A `create` item may rewrite the file it created and is denied only over a file that existed at the baseline. Probes: an invalid selector, `selectorsAbsent` without the full driver and a web check with no assertion are no longer passes; a browser timeout is "not run" instead of a crash, and `verify.py` deletes the previous `verdict.json` before probing so a failed round leaves none. 27 new guard and probe cases, each red on the previous code.
 
 ## [1.2.0] - 2026-10-30
 ### Changed

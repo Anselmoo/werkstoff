@@ -74,7 +74,7 @@ ESCAPE_HATCH = (
     "lehre-codify, or remove .lehre/ruleset.json if this repository no longer "
     "declares a doctrine"
 )
-EDIT_TOOLS = ("Write", "Edit", "MultiEdit")
+EDIT_TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 
 #: The declared Python floor (#123), checked past the inert test rather than
 #: assumed. A hook runs under whatever python3 is on PATH, and one that crashes
@@ -114,9 +114,10 @@ def edit_targets(core, cwd: str, tool_input: dict) -> list:
     payload must look empty here, not look full.
     """
     found = []
-    single = tool_input.get("file_path")
-    if isinstance(single, str) and single:
-        found.append(single)
+    for key in ("file_path", "notebook_path"):
+        single = tool_input.get(key)
+        if isinstance(single, str) and single:
+            found.append(single)
     edits = tool_input.get("edits")
     if isinstance(edits, list):
         for entry in edits:
@@ -206,6 +207,11 @@ def resulting_content(cwd: str, tool_name: str, tool_input: dict, rel_path: str)
         if isinstance(content, str):
             return content
         raise ContentUnknown("Write payload carried no string content")
+
+    if tool_name == "NotebookEdit":
+        # One cell's new source is not the module a layering rule judges; say so rather
+        # than guess (a content rule that applies then fails closed, as for any unknown).
+        raise ContentUnknown("a NotebookEdit changes one cell; the resulting file cannot be reconstructed")
 
     abs_path = os.path.join(cwd, rel_path)
     try:

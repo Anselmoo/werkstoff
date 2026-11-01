@@ -53,7 +53,11 @@ def find_state_root(start: str | os.PathLike, project_dir: str | None) -> Path:
     every script -- hooks/pretooluse_guard.py carries a stdlib copy that
     hooks/test_repair_guard.py proves identical on every case.
 
-    1. the nearest of `start` and its ancestors that holds a `.cupertino/` directory;
+    1. the nearest of `start` and its ancestors -- up to the project boundary, no further --
+       that holds a `.cupertino/` directory. The boundary is CLAUDE_PROJECT_DIR when `start`
+       is inside it, else the nearest ancestor holding `.git`, else the filesystem root.
+       Unbounded, a stray ~/.cupertino/ governed every repo below it: its ACTIVE run denied
+       edits in an unrelated project and its flags satisfied that project's gates;
     2. else CLAUDE_PROJECT_DIR, when set;
     3. else `start`.
 
@@ -63,9 +67,19 @@ def find_state_root(start: str | os.PathLike, project_dir: str | None) -> Path:
     written at the root was invisible to a guard looking in the subdirectory.
     """
     here = Path(os.path.abspath(start))
-    for d in (here, *here.parents):
+    chain = (here, *here.parents)
+    boundary = None
+    if project_dir:
+        pd = Path(os.path.abspath(project_dir))
+        if here == pd or pd in here.parents:
+            boundary = pd
+    if boundary is None:
+        boundary = next((d for d in chain if (d / ".git").exists()), None)
+    for d in chain:
         if (d / STATE_DIR_NAME).is_dir():
             return d
+        if d == boundary:
+            break
     return Path(project_dir) if project_dir else here
 
 

@@ -112,12 +112,53 @@ INK_MIN_RUN = 3      # a row/column needs this many ink pixels to count -- stray
 INK_INSET = 6        # px trimmed off the figure box: its own border is a frame, not a mark
 INK_MASK_PAD = 4     # px each overlay's mask is grown by: its edge, shadow and antialiasing are not figure
 INK_CELL = 32        # px; ink is counted per cell of this size
-INK_REACH = 2        # a cell counts only with another ink cell within this many cells -- an isolated
-                     # speck (a stray tick, a badge) cannot stretch the box across the stage. Not a
-                     # mass quantile: that shaves thin rings and arcs, which is what a graph is made of.
+INK_REACH = 2        # two ink cells within this many cells (8-neighbour, one empty cell of gap) belong to
+                     # the same component. Not a mass quantile: that shaves thin rings and arcs, which is
+                     # what a graph is made of.
+INK_SECONDARY_SHARE = 0.15  # a component other than the largest widens the box only when it holds at least
+                     # this share of the largest one's cells ...
+INK_SECONDARY_MIN = 12      # ... AND at least this many cells (~ 150 x 150 px). Two corner labels of ~100 x 30 px
+                     # are at most 5 x 2 = 10 cells however small the graph beside them is, so they can
+                     # never stretch the box; a second real cluster of nodes is larger than that.
 
 
-def ink_share(image, geo: dict) -> float | None:
+def components(ink: set[tuple[int, int]], reach: int = INK_REACH) -> list[set[tuple[int, int]]]:
+    """Connected components of ink cells; cells within `reach` cells of each other are connected."""
+    seen: set[tuple[int, int]] = set()
+    out = []
+    for start in sorted(ink):
+        if start in seen:
+            continue
+        comp, stack = {start}, [start]
+        seen.add(start)
+        while stack:
+            cx, cy = stack.pop()
+            for dx in range(-reach, reach + 1):
+                for dy in range(-reach, reach + 1):
+                    n = (cx + dx, cy + dy)
+                    if n in ink and n not in seen:
+                        seen.add(n)
+                        comp.add(n)
+                        stack.append(n)
+        out.append(comp)
+    return out
+
+
+def main_cells(ink: set[tuple[int, int]]) -> list[tuple[int, int]]:
+    """The cells whose bounding box is the figure: the largest component plus every other component
+    big enough to be a second part of the figure rather than a label, badge or tick."""
+    comps = components(ink)
+    if not comps:
+        return []
+    top = max(len(c) for c in comps)
+    kept: list[tuple[int, int]] = []
+    for c in comps:
+        if len(c) == top or (len(c) >= INK_SECONDARY_SHARE * top and len(c) >= INK_SECONDARY_MIN):
+            kept.extend(c)
+    return kept
+
+
+def ink_share(image, geo: dict, cells_fn=None) -> float | None:
     """Share of the first screen spanned by what is DRAWN in the figure (R9).
 
     The bounding box of pixels inside the figure's box that differ from the stage background,
@@ -166,9 +207,7 @@ def ink_share(image, geo: dict) -> float | None:
             if max(abs(r - bg[0]), abs(g - bg[1]), abs(b - bg[2])) > INK_TOLERANCE:
                 counts[(y - y0) // INK_CELL][(x - x0) // INK_CELL] += 1
     ink = {(cx, cy) for cy in range(ny) for cx in range(nx) if counts[cy][cx] >= INK_MIN_RUN}
-    kept = [(cx, cy) for cx, cy in ink
-            if any((cx + dx, cy + dy) in ink for dx in range(-INK_REACH, INK_REACH + 1)
-                   for dy in range(-INK_REACH, INK_REACH + 1) if dx or dy)]
+    kept = (cells_fn or main_cells)(ink)
     if not kept:
         return 0.0
     xs, ys = [c[0] for c in kept], [c[1] for c in kept]
@@ -177,6 +216,27 @@ def ink_share(image, geo: dict) -> float | None:
     drawer = geo.get("drawer")
     screen = W * H - ((drawer["x1"] - drawer["x0"]) * (drawer["y1"] - drawer["y0"]) if drawer else 0)
     return round(area / screen, 3) if screen > 0 else 0.0
+
+
+def fresh_file(td: str) -> Path:
+    p = Path(td) / "orphan.png"
+    p.write_bytes(b"X")
+    return p
+
+
+def publish(fresh: Path, out: Path, passed: bool) -> bool:
+    """Move a finished capture into place only when it passed; otherwise discard it and leave `out` as it was.
+
+    The image used to be written before the console-error and ink-floor checks ran, so a viewer that threw
+    or fell below the floor still overwrote its committed screenshot with the failing render.
+    """
+    try:
+        if passed:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(fresh), str(out))
+        return passed
+    finally:
+        fresh.unlink(missing_ok=True)
 
 
 def selftest() -> int:
@@ -221,6 +281,62 @@ def selftest() -> int:
     with_drawer = dict(geo, drawer={"x0": 1200, "y0": 60, "x1": 1600, "y1": 900})
     a, b = ink_share(drawn, geo), ink_share(drawn, with_drawer)
     cases.append(("drawer leaves less screen", (a, b), lambda v: v[1] > v[0]))
+    # 9./10. a small centred graph plus two (then three) ~100 x 30 px labels in opposite corners: the
+    # old per-cell neighbour filter kept the labels (each cell has a neighbour) and scored ~0.88.
+    def labels(d, corners):
+        for (lx, ly) in corners:
+            d.rectangle((lx, ly, lx + 100, ly + 30), fill=(230, 230, 230))
+    small = lambda d: [d.ellipse((600 + i * 60, 350, 660 + i * 60, 410), outline=(200, 80, 60), width=4) for i in range(5)]  # noqa: E731
+    two = [(20, 80), (1480, 840)]
+    three = two + [(1480, 80)]
+    img2 = screen(lambda d: (small(d), labels(d, two)))
+    img3 = screen(lambda d: (small(d), labels(d, three)))
+    cases.append(("small graph plus two corner labels", ink_share(img2, geo), lambda v: 0 < v < 0.1))
+    cases.append(("small graph plus three corner labels", ink_share(img3, geo), lambda v: 0 < v < 0.1))
+
+    def legacy_cells(ink):  # the pre-fix filter: any cell with an ink neighbour within INK_REACH survives
+        return [(cx, cy) for cx, cy in ink
+                if any((cx + dx, cy + dy) in ink for dx in range(-INK_REACH, INK_REACH + 1)
+                       for dy in range(-INK_REACH, INK_REACH + 1) if dx or dy)]
+    cases.append(("sabotage: the old filter is fooled by the labels (must be >= 0.5)",
+                  ink_share(img2, geo, legacy_cells), lambda v: v >= 0.5))
+    # 11. a second real cluster of equal size still widens the box.
+    two_clusters = screen(lambda d: ([d.ellipse((100 + i * 60, 200, 160 + i * 60, 260), outline=(200, 80, 60), width=4) for i in range(5)],
+                                     [d.ellipse((1100 + i * 60, 700, 1160 + i * 60, 760), outline=(90, 160, 240), width=4) for i in range(5)]))
+    cases.append(("two equal clusters both count", ink_share(two_clusters, geo), lambda v: v >= 0.45))
+
+    # 12. publish(): a failing capture leaves the committed image byte-unchanged; a passing one replaces it.
+    with tempfile.TemporaryDirectory() as td:
+        committed = Path(td) / "committed.png"
+        committed.write_bytes(b"OLD-COMMITTED")
+        fresh = Path(td) / "fresh.png"
+        fresh.write_bytes(b"NEW-RENDER")
+        publish(fresh, committed, passed=False)
+        kept_old = committed.read_bytes() == b"OLD-COMMITTED" and not fresh.exists()
+        fresh.write_bytes(b"NEW-RENDER")
+        publish(fresh, committed, passed=True)
+        cases.append(("publish: failed capture keeps the old image, passed one replaces it",
+                      (kept_old, committed.read_bytes()), lambda v: v[0] and v[1] == b"NEW-RENDER"))
+        cases.append(("publish: failed capture with no old image writes nothing",
+                      (publish(fresh_file(td), Path(td) / "never.png", passed=False), (Path(td) / "never.png").exists()),
+                      lambda v: v[1] is False))
+
+        # 13. end to end, when a browser exists: a page that logs a console error must not touch OUT.
+        if shutil.which("node"):
+            page = Path(td) / "err.html"
+            page.write_text("<!doctype html><body style='background:#fff'><div data-rk-figure style='width:900px;height:500px'>"
+                            "</div><script>console.error('boom')</script>", encoding="utf-8")
+            out = Path(td) / "out.png"
+            out.write_bytes(b"PRE-EXISTING")
+            proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), str(page), str(out)],
+                                  capture_output=True, text=True, check=False)
+            if proc.returncode == 3:
+                print("skip browser case: no playwright")
+            else:
+                cases.append(("console error: exit 1 and the pre-existing OUT is byte-unchanged",
+                              (proc.returncode, out.read_bytes()), lambda v: v[0] == 1 and v[1] == b"PRE-EXISTING"))
+        else:
+            print("skip browser case: no node")
     bad = 0
     for name, value, ok in cases:
         good = ok(value)
@@ -269,35 +385,45 @@ def main(argv: list[str]) -> int:
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    if out.suffix.lower() in (".jpg", ".jpeg"):
+    # Render into a sibling temp file; it replaces OUT only if every check below passes.
+    staged = Path(tempfile.mkdtemp(prefix=".capture-", dir=out.parent)) / f"staged{out.suffix or '.png'}"
+    try:
+        if out.suffix.lower() in (".jpg", ".jpeg"):
+            try:
+                from PIL import Image
+            except ImportError:
+                print("writing .jpg needs Pillow; pass a .png path instead", file=sys.stderr)
+                return 2
+            with Image.open(png if args.full_page else first) as im:
+                im.convert("RGB").save(staged, "JPEG", quality=args.jpeg_quality, optimize=True)
+        else:
+            shutil.copyfile(png if args.full_page else first, staged)
         try:
             from PIL import Image
         except ImportError:
-            print("writing .jpg needs Pillow; pass a .png path instead", file=sys.stderr)
-            return 2
-        with Image.open(png if args.full_page else first) as im:
-            im.convert("RGB").save(out, "JPEG", quality=args.jpeg_quality, optimize=True)
-    else:
-        shutil.copyfile(png if args.full_page else first, out)
-    try:
-        from PIL import Image
-    except ImportError:
-        Image = None
-    share = None
-    if Image is not None:
-        with Image.open(first) as im:
-            share = ink_share(im, meta["geo"])
-    meta["inkShare"] = share
-    if args.console:
-        Path(args.console).write_text(json.dumps(meta, indent=1), encoding="utf-8")
-    print(f"wrote {out} ({args.width}x{meta['height'] if args.full_page else 900}, {len(meta['errors'])} console error(s), "
-          f"figure draws over {'n/a' if share is None else f'{share:.0%}'} of the first screen)")
+            Image = None
+        share = None
+        if Image is not None:
+            with Image.open(first) as im:
+                share = ink_share(im, meta["geo"])
+        meta["inkShare"] = share
+        if args.console:
+            Path(args.console).write_text(json.dumps(meta, indent=1), encoding="utf-8")
+        low = args.min_ink_share is not None and (share is None or share < args.min_ink_share)
+        passed = not meta["errors"] and not low
+        existed = out.exists()
+        publish(staged, out, passed)
+    finally:
+        shutil.rmtree(staged.parent, ignore_errors=True)
+    shape = f"{args.width}x{meta['height'] if args.full_page else 900}"
+    ink = "n/a" if share is None else f"{share:.0%}"
+    verb = f"wrote {out}" if passed else "NOT WRITTEN " + (f"({out} left untouched)" if existed else f"({out} does not exist)")
+    print(f"{verb} ({shape}, {len(meta['errors'])} console error(s), figure draws over {ink} of the first screen)")
     for e in meta["errors"]:
         print("  " + e)
-    if args.min_ink_share is not None and (share is None or share < args.min_ink_share):
+    if low:
         print(f"  ink share {share} below --min-ink-share {args.min_ink_share} (R9: the figure leads)")
-        return 1
-    return 1 if meta["errors"] else 0
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

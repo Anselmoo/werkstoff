@@ -141,9 +141,14 @@ def _observe_web(root: Path, check: dict, outdir: Path, label: str) -> dict:
     if node:
         work = Path(tempfile.mkdtemp(prefix="cupertino-probe-"))
         (work / "drive.js").write_text(WEB_DRIVER, encoding="utf-8")
-        proc = subprocess.run([node, str(work / "drive.js"), _url(root, page), str(png), str(width), scheme,
-                               json.dumps(_selectors(check))], capture_output=True, text=True, timeout=120,
-                              check=False, env=_node_env())
+        try:
+            proc = subprocess.run([node, str(work / "drive.js"), _url(root, page), str(png), str(width), scheme,
+                                   json.dumps(_selectors(check))], capture_output=True, text=True, timeout=120,
+                                  check=False, env=_node_env())
+        except subprocess.TimeoutExpired:
+            # Not run, never a crash: an uncaught timeout used to abort verify.py and leave the
+            # previous round's verdict.json in place, read afterwards as current.
+            return {"kind": "web", "ran": False, "detail": "browser driver timed out after 120 s"}
         try:
             facts = json.loads(proc.stdout.strip().splitlines()[-1])
         except (IndexError, ValueError):
@@ -161,7 +166,10 @@ def _observe_web(root: Path, check: dict, outdir: Path, label: str) -> dict:
     # console facts are unknowable this way and stay unrecorded (judged "na").
     flags = ["--headless=new", "--no-sandbox", "--hide-scrollbars", f"--window-size={width},1600",
              f"--screenshot={png}", f"--force-prefers-color-scheme={scheme}"]
-    proc = subprocess.run([chrome, *flags, _url(root, page)], capture_output=True, text=True, timeout=120, check=False)
+    try:
+        proc = subprocess.run([chrome, *flags, _url(root, page)], capture_output=True, text=True, timeout=120, check=False)
+    except subprocess.TimeoutExpired:
+        return {"kind": "web", "ran": False, "detail": "chrome screenshot timed out after 120 s"}
     if proc.returncode != 0 or not png.is_file():
         return {"kind": "web", "ran": False, "detail": "chrome screenshot failed: " + proc.stderr[-300:]}
     return {"kind": "web", "ran": True, "driver": "chrome-screenshot-only", "screenshot": png.name,
@@ -217,6 +225,9 @@ def pixel_diff(a: Path, b: Path, diff_out: Path | None = None) -> float | None:
         return round(100.0 * changed / (ia.width * ia.height), 3)
 
 
+WEB_ASSERTS = ("noConsoleErrors", "noHorizontalOverflow", "selectorsExist", "selectorsAbsent", "maxPixelDiff")
+
+
 def judge(check: dict, obs: dict, base: dict | None, obs_dir: Path | None = None, base_dir: Path | None = None) -> dict:
     """{"state": pass|fail|na, "detail": str, "metrics": {...}}."""
     if not obs.get("ran"):
@@ -239,14 +250,27 @@ def judge(check: dict, obs: dict, base: dict | None, obs_dir: Path | None = None
                 nas.append("overflow (screenshot-only driver)")
             elif obs["scrollWidth"] > obs["clientWidth"]:
                 fails.append(f"horizontal overflow: scrollWidth {obs['scrollWidth']} > {obs['clientWidth']}")
+        # present[s] is True, False, or None when querySelector threw (an invalid selector).
+        # None is neither found nor absent -- it is a check that measured nothing, so it fails
+        # loudly; and without the full driver no selector was looked up at all (na, never pass).
         for s in a.get("selectorsExist", []):
+            seen = obs.get("present", {}).get(s)
             if not full:
                 nas.append(f"selector {s}")
-            elif not obs.get("present", {}).get(s):
+            elif seen is None:
+                fails.append(f"selector {s} is invalid or was not looked up")
+            elif not seen:
                 fails.append(f"selector {s} not found")
         for s in a.get("selectorsAbsent", []):
-            if full and obs.get("present", {}).get(s):
+            seen = obs.get("present", {}).get(s)
+            if not full:
+                nas.append(f"selector absence {s}")
+            elif seen is None:
+                fails.append(f"selector {s} is invalid or was not looked up")
+            elif seen:
                 fails.append(f"selector {s} still present")
+        if not any(k in a for k in WEB_ASSERTS):
+            nas.append("no web assertion (a page that loads proves nothing)")
         if "maxPixelDiff" in a:
             if base is None or not base.get("screenshot") or obs_dir is None or base_dir is None:
                 nas.append("pixel diff (no baseline screenshot)")
@@ -324,6 +348,16 @@ def selftest() -> int:
         ok("missing page fails, not na", judge(w, observe(root, w, out, "w0"), None)["state"] == "fail")
         ok("a probe that did not run is na", judge(w, {"ran": False, "detail": "x"}, None)["state"] == "na")
         shot_only = {"kind": "web", "ran": True, "driver": "chrome-screenshot-only", "screenshot": "s.png"}
+        ok("selectorsAbsent on screenshot-only driver is na, never pass",
+           judge({"kind": "web", "page": "p", "assert": {"selectorsAbsent": [".legacy"]}}, shot_only, None)["state"] == "na")
+        full_bad = {"ran": True, "kind": "web", "driver": "playwright", "consoleErrors": [], "failedRequests": [],
+                    "scrollWidth": 10, "clientWidth": 10, "present": {"div[": None}, "screenshot": "s.png"}
+        ok("an invalid selector fails selectorsAbsent instead of passing",
+           judge({"kind": "web", "page": "p", "assert": {"selectorsAbsent": ["div["]}}, full_bad, None)["state"] == "fail")
+        ok("an invalid selector fails selectorsExist",
+           judge({"kind": "web", "page": "p", "assert": {"selectorsExist": ["div["]}}, full_bad, None)["state"] == "fail")
+        ok("a web check with no assertion is na, never pass",
+           judge({"kind": "web", "page": "p"}, full_bad, None)["state"] == "na")
         ok("console assertion on screenshot-only driver is na, never pass",
            judge({"kind": "web", "page": "p", "assert": {"noConsoleErrors": True}}, shot_only, None)["state"] == "na")
         full = {"kind": "web", "ran": True, "driver": "playwright", "consoleErrors": ["boom"], "failedRequests": [],

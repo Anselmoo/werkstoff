@@ -90,6 +90,10 @@ def verify(root: Path, run_id: str) -> dict:
         raise RepairError(f"item {(rdir / 'active-item').read_text(encoding='utf-8').strip()} is still active -- finish-item it first")
     objective = read_json(rdir / "objective.json")
     base = read_json(rdir / "baseline" / "baseline.json")
+    # A run that crashes from here on must leave NO verdict, not the previous round's:
+    # `repair_state.py end` accepts whatever verdict.json it finds, and a stale `done`
+    # read as this round's result is exactly the failed-run trap CLAUDE.md names.
+    (rdir / "verdict.json").unlink(missing_ok=True)
     after = snapshot(root, objective, rdir / "after")
     write_json(rdir / "after" / "after.json", after)
 

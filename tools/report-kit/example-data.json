@@ -145,25 +145,29 @@
    "probe": "web:1280:dark",
    "state": "pass",
    "ms": 812,
-   "detail": "0 console errors"
+   "detail": "0 console errors",
+   "why": "Loaded the page at 1280 px in the dark theme and listened for console errors and failed requests; there were none."
   },
   {
    "probe": "web:390:light",
    "state": "fail",
    "ms": 640,
-   "detail": "horizontal overflow"
+   "detail": "horizontal overflow",
+   "why": "Loaded the page at 390 px in the light theme; the KPI row is 412 px wide in a 390 px viewport, so the page scrolls sideways."
   },
   {
    "probe": "command:npm test",
    "state": "na",
    "ms": 0,
-   "detail": "no test script"
+   "detail": "no test script",
+   "why": "The target declares no test script, so the probe has nothing to run. Not applicable is not a pass."
   },
   {
    "probe": "file:legacy-chart.js",
    "state": "pass",
    "ms": 1,
-   "detail": "absent after delete"
+   "detail": "absent after delete",
+   "why": "The file the changeset deleted is gone from the working tree and present in trash/, so the delete can be undone."
   }
  ],
  "beforeAfter": [

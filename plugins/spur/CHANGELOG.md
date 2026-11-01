@@ -4,7 +4,7 @@ All notable changes to the `spur` plugin are documented here.
 
 ## [Unreleased]
 ### Added
-- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer builder and report data are unchanged; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
+- **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_spur_html.py` now renders through `report_kit.render()` and passes the whole run record into the data island; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
 - **Execution trace fills the stage**: source, step and file rows spread over the free height; the legend is one compact row (ink 52 % -> 69 %). Measured by drawn pixels (`capture_viewer_screenshot.py` ink share), not by the figure's box; the committed screenshot is now the 1600x900 first screen.
 

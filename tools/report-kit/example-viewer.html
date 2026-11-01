@@ -9,6 +9,16 @@
 <title>report kit — example report</title>
 <!--__DESIGN_TOKENS__-->
 <!--__REPORT_KIT__-->
+<style>
+  .lg-row { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin: 0; padding: 0; list-style: none; font-size: 0.76rem; }
+  .lg-row li { white-space: nowrap; color: var(--rk-text); }
+  .ex-row { cursor: pointer; }
+  .ex-row:focus { outline: none; }
+  .ex-row:focus-visible .ex-hit, .ex-row.sel .ex-hit { stroke: var(--rk-focus); stroke-width: 3; }
+  .ex-hit { fill: var(--rk-panel); stroke: var(--rk-border); stroke-width: 1.5; }
+  .ex-row text { font-family: inherit; fill: var(--rk-text); pointer-events: none; }
+  .ex-row text.sub { fill: var(--rk-muted); }
+</style>
 </head>
 <body class="rk">
 <a class="rk-skip" href="#rk-content">Skip to the report</a>
@@ -21,12 +31,29 @@
     <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
   </div>
 </header>
-<main class="rk-wrap">
-  <p class="verdict">The kit renders a verdict in words first; the script replaces this line with the report's own.</p>
-  <div class="legend rk-card rk-muted">Every status is a word plus a glyph — ✓ pass, ✗ fail, ! needs attention, i informational, – not applicable. Colour is the third channel, never the only one.</div>
-  <div class="rk-layout">
-    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
-    <div id="rk-content" tabindex="-1"></div>
+<main>
+  <section class="rk-stage" id="rk-stage" aria-label="The probe checks: one row per probe, its state as a word and a glyph, its bar the time it took">
+    <div class="rk-hud">
+      <p class="verdict" id="verdict">The kit renders a verdict in words first; the script replaces this line with the report's own.</p>
+      <dl class="rk-hud-stats"></dl>
+    </div>
+    <div class="rk-figure" id="rk-figure" data-rk-figure></div>
+    <div class="legend rk-card rk-muted rk-legend-float">
+      <ul class="lg-row">
+        <li title="the probe passed">✓ pass</li>
+        <li title="the probe failed">✗ fail</li>
+        <li title="nothing to run: not applicable is not a pass">– not applicable</li>
+        <li title="bar length is the probe's time, on a square-root scale">bar = time</li>
+      </ul>
+    </div>
+    <span class="rk-hint">click a probe for details · hover for a summary</span>
+    <aside class="rk-drawer" id="rk-drawer" hidden aria-label="Details"></aside>
+  </section>
+  <div class="rk-wrap rk-below">
+    <div class="rk-layout">
+      <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+      <div id="rk-content" tabindex="-1"></div>
+    </div>
   </div>
 </main>
 <noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
@@ -36,7 +63,7 @@
   const D = RK.readData("python3 tools/report-kit/report_kit.py --template tools/report-kit/example-viewer.html --data tools/report-kit/example-data.json");
   if (!D) return;
   const { section } = RK;
-  const verdict = RK.$(".verdict");
+  const verdict = RK.$("#verdict");
   verdict.textContent = D.glance.verdict;
   verdict.classList.add(D.glance.tone || "flat");
   const content = RK.$("#rk-content");
@@ -49,6 +76,62 @@
       { key: "ms", label: "Time (ms)", num: true }, { key: "detail", label: "Detail" }], rows: D.checks })),
     section("before-after", "Before and after", D.beforeAfter.map((b) => RK.beforeAfter(b)))
   );
+  // ---- the figure (R9): one row per probe, drawn from the stage's measured size ----
+  const S = RK.stage();
+  const { h } = RK;
+  const failed = D.checks.filter((c) => c.state === "fail");
+  S.stats([
+    { label: "Probes", value: String(D.checks.length), note: "web, command, file" },
+    { label: "Failed", value: String(failed.length), note: "needs a person", bad: failed.length > 0 },
+    { label: "Slowest", value: Math.max(...D.checks.map((c) => c.ms)) + " ms" },
+  ]);
+  const TONE = { pass: ["ok", "✓ pass", "--rk-ok"], fail: ["bad", "✗ fail", "--rk-bad"], na: ["flat", "– not applicable", "--rk-muted"] };
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const svgEl = (name, attrs, text) => {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", name);
+    for (const [k, v] of Object.entries(attrs || {})) n.setAttribute(k, v);
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  let selected = null;
+  function select(c) {
+    selected = c.probe; draw();
+    S.open(c.probe, TONE[c.state][1] + " · " + c.ms + " ms", RK.badge(TONE[c.state][1].replace(/^\S+ /, ""), TONE[c.state][0]),
+      h("h3", { text: "What the probe did" }), h("p", { text: c.why }),
+      h("h3", { text: "Recorded detail" }), h("p", {}, h("code", { text: c.detail })));
+    S.tip.hide();
+  }
+  function draw() {
+    const { width: W, height: H } = S.size();
+    S.figure.textContent = "";
+    if (!W || !H) return;
+    const ins = S.insets(), pad = 24, top = ins.top + 8, bottom = ins.bottom + 8;
+    const rowH = Math.max(48, (H - top - bottom) / D.checks.length), fs = Math.round(Math.max(14, Math.min(22, rowH / 3.2)));
+    const maxMs = Math.max(...D.checks.map((c) => c.ms), 1), barX = pad + Math.min(360, W * 0.3), barMax = W - barX - pad;
+    const svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: W, height: H, role: "group", "aria-label": "Probe checks" });
+    D.checks.forEach((c, i) => {
+      const y = top + i * rowH, tone = TONE[c.state], color = css(tone[2]);
+      const g = svgEl("g", { class: "ex-row" + (selected === c.probe ? " sel" : ""), tabindex: "0", role: "button",
+        "aria-label": c.probe + ", " + tone[1] + ", " + c.ms + " ms. Open details" });
+      g.append(svgEl("rect", { class: "ex-hit", x: pad / 2, y: y + 4, width: W - pad, height: rowH - 8, rx: 8 }));
+      g.append(svgEl("text", { x: pad, y: y + rowH / 2 - 2, "font-size": fs, "font-weight": 600 }, c.probe));
+      g.append(svgEl("text", { class: "sub", x: pad, y: y + rowH / 2 + fs, "font-size": Math.max(12, fs - 4) }, tone[1]));
+      const w = Math.max(6, Math.sqrt(c.ms / maxMs) * barMax);
+      g.append(svgEl("rect", { x: barX, y: y + rowH * 0.28, width: w, height: rowH * 0.44, rx: 6, fill: color,
+        "stroke-dasharray": c.state === "na" ? "6 4" : "none", stroke: color, "stroke-width": 2, "fill-opacity": c.state === "na" ? 0.25 : 1 }));
+      g.append(svgEl("text", { class: "sub", x: barX + w + 8, y: y + rowH / 2 + fs / 3, "font-size": fs }, c.ms + " ms"));
+      g.addEventListener("click", () => select(c));
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(c); } });
+      const tipFor = (e) => S.tip.show(e, c.probe, h("div", { text: tone[1] + " · " + c.detail }));
+      g.addEventListener("mouseenter", tipFor); g.addEventListener("mousemove", tipFor); g.addEventListener("focus", tipFor);
+      g.addEventListener("mouseleave", S.tip.hide); g.addEventListener("blur", S.tip.hide);
+      svg.append(g);
+    });
+    S.figure.append(svg);
+  }
+  S.onResize(() => draw());
+  S.onClose(() => { selected = null; draw(); });
+  S.onTheme(() => draw());
   RK.init();
 })();
 </script>

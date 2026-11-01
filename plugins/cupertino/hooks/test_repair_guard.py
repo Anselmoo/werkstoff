@@ -98,7 +98,47 @@ def root_agreement() -> None:
         print(f"  {'ok  ' if ok else 'FAIL'} a session in a subdirectory is governed by that run (relative path resolved from the session)")
 
 
+def state_root_boundary() -> None:
+    """A .cupertino/ above the project must not govern it (review finding 5)."""
+    global failures
+    import importlib.util
+    sys.path.insert(0, str(SCRIPTS))
+    import repair_lib
+    spec = importlib.util.spec_from_file_location("guard_mod2", GUARD)
+    guard_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard_mod)
+    print("state root stops at the project")
+    with tempfile.TemporaryDirectory() as td:
+        home = Path(td)
+        (home / ".cupertino" / "repair").mkdir(parents=True)
+        (home / ".cupertino" / "repair" / "ACTIVE").write_text("stale\n", encoding="utf-8")
+        proj = home / "proj"
+        (proj / "src").mkdir(parents=True)
+        (proj / ".git").mkdir()
+        for label, start, pd in (("CLAUDE_PROJECT_DIR set", proj / "src", str(proj)),
+                                 ("no CLAUDE_PROJECT_DIR, .git marks the project", proj / "src", None)):
+            for impl, fn in (("repair_lib", repair_lib.find_state_root), ("guard", guard_mod.find_state_root)):
+                got = Path(fn(start if impl == "repair_lib" else str(start), pd))
+                ok = got != home
+                failures += not ok
+                print(f"  {'ok  ' if ok else 'FAIL'} {impl}: an ancestor's .cupertino/ is ignored ({label}) -> {got}")
+        (proj / ".cupertino").mkdir()
+        got = Path(repair_lib.find_state_root(proj / "src", str(proj)))
+        ok = got == proj
+        failures += not ok
+        print(f"  {'ok  ' if ok else 'FAIL'} the project's own .cupertino/ is still found from a subdirectory")
+        p = subprocess.run([sys.executable, "-B", str(GUARD)], capture_output=True, text=True, check=False,
+                           input=json.dumps({"cwd": str(proj / "src"), "tool_name": "Write",
+                                             "tool_input": {"file_path": "a.py", "content": "x"}}),
+                           env={**{k: v for k, v in os.environ.items() if k != "CUPERTINO_DISABLE_GUARD"},
+                                "CLAUDE_PLUGIN_ROOT": str(PLUGIN), "CLAUDE_PROJECT_DIR": str(proj)})
+        ok = p.returncode == ALLOW
+        failures += not ok
+        print(f"  {'ok  ' if ok else 'FAIL'} a stale ACTIVE in ~/.cupertino/ does not deny an edit in an unrelated project")
+
+
 def main() -> int:
+    global failures
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         (root / "app").mkdir()
@@ -143,11 +183,28 @@ def main() -> int:
             {"id": "I1", "op": "modify", "paths": ["app/styles.css"], "rationale": "wrap"},
             {"id": "I2", "op": "delete", "paths": ["app/legacy.js"], "rationale": "dead", "evidence": "nothing imports it"},
             {"id": "I3", "op": "create", "paths": ["app/new.css"], "rationale": "split"},
+            {"id": "I4", "op": "create", "paths": ["app/chart.js"], "rationale": "a create of a file that already exists"},
         ]}), encoding="utf-8")
         print("objective + baseline + changeset, not approved")
         expect("an edit before approval is denied", root, "Edit", {"file_path": "app/styles.css"}, DENY, "not been approved")
 
-        script(root, "repair_state.py", "approve")
+        print("approval is the user's")
+        expect("the model running `repair_state.py approve` is denied, naming the ! prefix", root, "Bash",
+               {"command": f"python3 {SCRIPTS}/repair_state.py approve"}, DENY, "`!` prefix")
+        expect("... also when chained after another script", root, "Bash",
+               {"command": f"python3 {SCRIPTS}/repair_state.py status && python3 {SCRIPTS}/repair_state.py approve"},
+               DENY, "user's decision")
+        p = subprocess.run([sys.executable, "-B", str(GUARD)], capture_output=True, text=True, check=False,
+                           input=json.dumps({"cwd": str(root), "tool_name": "Bash",
+                                             "tool_input": {"command": f"python3 {SCRIPTS}/repair_state.py approve"}}),
+                           env={**{k: v for k, v in os.environ.items() if k not in ("CUPERTINO_DISABLE_GUARD", "CLAUDE_PROJECT_DIR")},
+                                "CLAUDE_PLUGIN_ROOT": str(PLUGIN), "CUPERTINO_REPAIR_PREAPPROVED": "1"})
+        ok = p.returncode == ALLOW
+        failures += not ok
+        print(f"  {'ok  ' if ok else 'FAIL'} a human's standing approval in the hook's environment allows it")
+        expect("an inline VAR=1 in the command does not count as that approval", root, "Bash",
+               {"command": f"CUPERTINO_REPAIR_PREAPPROVED=1 python3 {SCRIPTS}/repair_state.py approve"}, DENY, "user's decision")
+        script(root, "repair_state.py", "approve")  # the user, outside the hook
         print("approved, no active item")
         expect("an edit with no active item is denied", root, "Edit", {"file_path": "app/styles.css"}, DENY, "no item is active")
 
@@ -176,6 +233,50 @@ def main() -> int:
                {"command": f"python3 {SCRIPTS}/apply_delete.py --item I2"}, ALLOW)
         expect("a building skill is denied during a run", root, "Skill", {"skill": "cupertino:cupertino-reveal"}, DENY, "repair run is active")
 
+        print("shell routes around the scope (review findings 1 and 2)")
+        for name, cmd in (
+            ("a plugin script piped into tee", f"python3 {SCRIPTS}/verify.py | tee app/chart.js"),
+            ("a redirect hidden behind a comment naming the plugin", "echo x > app/chart.js # cupertino/scripts/"),
+            ("rm on a path that merely contains cupertino and /scripts/", "rm -rf /tmp/cupertino-app/scripts/../src"),
+            ("a plugin script then a newline then rm", f"python3 {SCRIPTS}/verify.py\nrm app/chart.js"),
+            ("a plugin script with a command substitution", f"python3 {SCRIPTS}/verify.py --run $(rm app/chart.js)"),
+            ("a script outside the plugin with the same name", "python3 /tmp/cupertino/scripts/verify.py && cp a app/chart.js"),
+            ("build_repair_html --out onto a source file", f"python3 {SCRIPTS}/build_repair_html.py --run t1 --out app/chart.js"),
+            ("1> redirect", "echo x 1>app/chart.js"),
+            ("&> redirect", "echo x &>app/chart.js"),
+            (">| clobber redirect", "echo x >| app/chart.js"),
+            ("sed with -i after a non-flag argument", "sed -e s/a/b/ -i app/chart.js"),
+            ("sed --in-place", "sed --in-place s/a/b/ app/chart.js"),
+            ("python -c opening a file for writing", "python3 -c \"open('app/chart.js','w').write('x')\""),
+            ("python -c Path.write_text", "python3 -c \"import pathlib; pathlib.Path('app/chart.js').write_text('x')\""),
+            ("node -e fs.writeFileSync", "node -e \"require('fs').writeFileSync('app/chart.js','x')\""),
+            ("find -exec", "find app -name '*.js' -exec truncate -s0 {} +"),
+        ):
+            expect(f"denied: {name}", root, "Bash", {"command": cmd}, DENY)
+        expect("allowed: 2>&1 and 2>/dev/null are not writes", root, "Bash",
+               {"command": "grep -rn kpis app 2>&1 | head; ls app 2>/dev/null"}, ALLOW)
+        expect("allowed: build_repair_html --out inside .cupertino/", root, "Bash",
+               {"command": f"python3 {SCRIPTS}/build_repair_html.py --run t1 --out .cupertino/repair/t1/report.html"}, ALLOW)
+        expect("allowed: two plugin scripts chained", root, "Bash",
+               {"command": f"python3 -B {SCRIPTS}/repair_state.py status && python3 {SCRIPTS}/verify.py --no-report"}, ALLOW)
+
+        print("forging the run's state (review findings 3 and 4)")
+        rep_dir = root / ".cupertino" / "repair"
+        for name, target in (
+            ("the ACTIVE marker", rep_dir / "ACTIVE"),
+            ("another run's approval", rep_dir / "fake" / "approved"),
+            ("another run's objective", rep_dir / "fake" / "objective.json"),
+            ("another run's baseline", rep_dir / "fake" / "baseline" / "baseline.json"),
+            ("the round log the HALT counts", rdir / "verdicts.jsonl"),
+            ("the applied log", rdir / "applied.jsonl"),
+        ):
+            expect(f"Write to {name} is denied", root, "Write", {"file_path": str(target), "content": ""}, DENY,
+                   "written only by the repair scripts")
+        expect("a shell write to the ACTIVE marker is denied", root, "Bash",
+               {"command": "echo fake > .cupertino/repair/ACTIVE"}, DENY)
+        expect("emptying the round log from the shell is denied", root, "Bash",
+               {"command": f"truncate -s0 {rdir}/verdicts.jsonl"}, DENY)
+
         script(root, "repair_state.py", "finish-item", "I1")
         script(root, "repair_state.py", "start-item", "I2")
         print("item I2 (delete) active")
@@ -187,10 +288,16 @@ def main() -> int:
         print("item I3 (create app/new.css) active")
         expect("Write of the file a create item names is allowed", root, "Write", {"file_path": "app/new.css", "content": "a{}"}, ALLOW)
         (root / "app" / "new.css").write_text("a{}", encoding="utf-8")
-        expect("a create over an existing file is denied", root, "Write", {"file_path": "app/new.css", "content": "b{}"},
-               DENY, "already exists")
+        expect("a second write to the file the item just created is allowed (review finding 9)", root, "Edit",
+               {"file_path": "app/new.css"}, ALLOW)
 
         script(root, "repair_state.py", "finish-item", "I3")
+        script(root, "repair_state.py", "start-item", "I4")
+        print("item I4 (create app/chart.js, which existed at baseline) active")
+        expect("a create over a file that existed at baseline is denied", root, "Write",
+               {"file_path": "app/chart.js", "content": "x"}, DENY, "existed when the baseline was taken")
+
+        script(root, "repair_state.py", "finish-item", "I4")
         (rdir / "changeset.json").write_text(json.dumps({"items": [
             {"id": "I1", "op": "modify", "paths": ["app/styles.css", "app/chart.js"], "rationale": "sneak"}]}), encoding="utf-8")
         print("changeset edited after approval")
@@ -198,7 +305,6 @@ def main() -> int:
         p = subprocess.run([sys.executable, str(SCRIPTS / "repair_state.py"), "start-item", "I1"], cwd=root, env=script_env,
                            capture_output=True, text=True, check=False)
         ok = p.returncode == 1 and "changed after approval" in p.stderr
-        global failures
         failures += not ok
         print(f"  {'ok  ' if ok else 'FAIL'} start-item refuses a changeset edited after approval")
         (rdir / "active-item").write_text("I1\n", encoding="utf-8")
@@ -226,6 +332,7 @@ def main() -> int:
         print(f"  {'ok  ' if ok else 'FAIL'} CUPERTINO_DISABLE_GUARD=1 allows")
 
     root_agreement()
+    state_root_boundary()
     print()
     print("ALL PASS" if not failures else f"{failures} FAILED")
     return 1 if failures else 0

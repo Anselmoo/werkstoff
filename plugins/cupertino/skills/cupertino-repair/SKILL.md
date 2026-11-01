@@ -17,9 +17,10 @@ page, a command, a file), never the discipline.
 The PreToolUse hook enforces the route while a run is active: no source edit before an
 objective and a baseline exist; none before the changeset is approved; each edit only to
 the paths of the one active item; no `rm`, `mv`, `sed -i` or shell redirect into a file;
-no commit until a verdict exists; and gate files (`preflight.json`, `approved`,
-`active-item`, `baseline/`, `after/`, `trash/`, `verdict.json`) are written only by the
-scripts. A denial is the route working -- read its reason, do not route around it.
+no commit until a verdict exists; nothing under `.cupertino/repair/` but the active run's
+`objective.json` (until the baseline) and `changeset.json` is yours to write; and you may not
+run `repair_state.py approve` -- approval is the user's. A denial is the route working -- read
+its reason, do not route around it.
 
 ## 1. Preflight
 
@@ -118,13 +119,17 @@ Paths are concrete files inside `scope`, never globs. A `delete` carries `eviden
 depends on the file. Delete is a first-class repair, not something to avoid: dead code, a
 superseded chart, a duplicated config are part of "fix it" when the user's objective covers them.
 
-Show the changeset to the user as a table (id, op, paths, why) and ask for a yes. Only after
-they agree:
+Show the changeset to the user as a table (id, op, paths, why) and ask them to approve it
+**themselves**. The hook denies this command when you run it, because a model that can record
+the user's approval can approve its own plan. Give the user the line to run, in their terminal
+or in Claude Code with the `!` prefix (a `!` command runs directly, not as your tool call):
 
 ```bash
-python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/repair_state.py" approve
+! python3 -B "${CLAUDE_PLUGIN_ROOT}/scripts/repair_state.py" approve
 ```
 
+(An unattended run that was started with `CUPERTINO_REPAIR_PREAPPROVED=1` in its environment -- the user's standing approval -- may run it directly.) Write the plugin path out in full when you show it -- `${CLAUDE_PLUGIN_ROOT}` is not set in the
+user's shell. Then wait; `repair_state.py status` shows `approved` once they have run it.
 Approval is bound to the changeset's sha256: editing it afterwards voids the approval, and the
 hook will deny every source edit until the user approves again.
 

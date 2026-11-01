@@ -8,7 +8,7 @@ werkstoff report shows **evidence** for each finding instead of a bare count.
 | `report-kit.css` | the `--rk-*` role layer over `tools/design-tokens/tokens.css`, dark default + light (OS or toggle) + print; header, nav, glance tiles, banners, badges, findings, tables, proof, before/after, failure panel | `plugins/<p>/assets/report-kit.css` |
 | `report-kit.js` | `RK` — `h()`, `safeUrl()`, `readData()`, `fail()`, `glance()`, `proof()`, `findings()`, `table()`, `beforeAfter()`, `section()`, `init()` (theme, nav, search, deep links, print) | `plugins/<p>/assets/report-kit.js` |
 | `report_kit.py` | `render(template, assets, report)` — inlines tokens, kit and the JSON data island; `--selftest` | `plugins/<p>/scripts/report_kit.py` |
-| `example-viewer.html` + `example-data.json` | every component, rendered; the reference to copy from | — |
+| `example-viewer.html` + `example-data.json` | every component, plus the R9 stage (a figure drawn from the stage's size, HUD with verdict and stats, floating legend, hint, a drawer opened by clicking a mark, a tooltip on hover); the reference to copy from | — |
 
 Edit here, never a vendored copy, then `rrt artifacts --regenerate`.
 
