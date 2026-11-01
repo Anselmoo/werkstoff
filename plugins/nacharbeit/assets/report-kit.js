@@ -1,7 +1,7 @@
 /* werkstoff report kit -- shared behaviour for every plugins/<name>/assets/<name>-viewer.html.
  *
  * Source of truth; vendored per plugin as assets/report-kit.js (.rrt.toml
- * artifact_targets) and inlined by the builder at <!--__REPORT_KIT__-->.
+ * artifact_targets) and inlined by the builder at __REPORT_KIT__.
  *
  * Safety contract (report-viewer-standard S3), stated once and kept here:
  *   - data reaches the page only through createTextNode / textContent;
