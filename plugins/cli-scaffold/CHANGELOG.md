@@ -3,6 +3,8 @@
 All notable changes to the `cli-scaffold` plugin are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. The viewer is built by `scripts/build_architecture_tree.py`, which now also takes `--d3` and `--tokens`, derives the doctrine gaps (each with the manifest line that proves it) and the CLI surface from the manifest, and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
