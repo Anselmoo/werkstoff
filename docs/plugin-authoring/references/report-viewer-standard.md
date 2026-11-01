@@ -5,10 +5,12 @@ Read this before writing or editing any `plugins/*/assets/*-viewer.html` or its
 
 All 13 plugins ship a self-contained HTML report — 15 files, since `matrize` ships two
 (`derivation-viewer.html`, `provenance-viewer.html`) and so does `arbeitsplan`
-(`run-viewer.html`, `design-viewer.html`). They were built independently, share
+(`run-viewer.html`, `design-viewer.html`). They were built independently and shared
 exactly one thing — `tools/design-tokens/tokens.css`, vendored per plugin by
-`.rrt.toml`'s `artifact_targets` — and diverge on everything else. This file is the
-shared part that was never written down.
+`.rrt.toml`'s `artifact_targets`. Since November 2026 they share a second:
+`tools/report-kit/` (components, behaviour, and the renderer that inlines them), vendored
+the same way. This file is the shared part that was never written down; the kit is the
+shared part that is now written once.
 
 ## Why this file exists at all
 
@@ -36,7 +38,8 @@ literals are supposed to live — but the viewer HTML that references it is not.
 ## Craft vs content, same split as [`craft-standards.md`](craft-standards.md)
 
 This file governs **how a viewer is built** — page shell, head, injection markers,
-sizing, legend obligations, screenshot capture. It is deliberately silent on **what any
+sizing, legend obligations, screenshot capture — and, since the content tier below, the
+**minimum a report owes its reader about each finding**. It stays silent on **what any
 given viewer charts**: a Sankey vs a matrix vs a force graph is the author's call, made
 from the shape of that plugin's data. `plugins/lehre/scripts/build_doctrine_html.py`'s
 module docstring is the model for arguing such a choice.
@@ -141,6 +144,54 @@ Content-derived, and correct: `doctrine-viewer.html:250`
 A panel whose height is a constant is a panel that will either clip or float in dead space.
 The seven 1600×1000 screenshots taken in `821a14a` run 55–72% empty for exactly this reason.
 
+
+## The content tier
+
+Every rule above governs the shell. Nothing required a report to be *useful*: all fifteen
+viewers passed R1–S4 while none of them let a reader filter a finding, see where it came
+from, or open it, and two builders dropped fields their input already carried
+(nacharbeit's line, quote and suggested fix; cupertino dumped each stage as raw JSON).
+Compared side by side with `code-modernization`'s `report-template.html`, the gap was
+not polish — it was evidence. These three rules close it, and the kit makes them the
+default rather than extra work.
+
+### R6 — Every finding carries its evidence, or says it has none
+
+A finding is `{id, severity, claim, file, line, quote, fix, evidence[]}` — the kit's
+`RK.findings()` record. Location, quoted excerpt and suggested fix are shown when the
+input has them; a finding with none of them renders as **"No evidence was recorded for
+this finding -- treat it as unverified."** rather than as a bare claim. A builder that
+drops a field its input carries is a defect, not a simplification.
+
+### R7 — Drill-down, never a raw dump
+
+Detail opens in place (`<details>`, a side panel) as structured text. `JSON.stringify`
+into a `<pre>` is not drill-down; it hands the reader the builder's job.
+
+### R8 — Navigable at size
+
+More than five findings get a facet filter (severity, tier, rule family — whatever the
+plugin's data is cut by); every finding and section has a deep link (`#finding-<id>`,
+`#sec-<id>`), so a PR comment can point into the report; the page has a text search with
+a live match count; light and dark both work (the kit's dual theme block over the
+`-on-light` tokens); printing opens every drill-down.
+
+### How a viewer adopts the kit
+
+1. The template carries `<!--__DESIGN_TOKENS__-->`, `<!--__REPORT_KIT__-->` and a JSON
+   island `<script type="application/json" id="report-data">@@DATA@@</script>`.
+2. The builder calls the vendored `scripts/report_kit.py`'s `render(template, assets, report)`,
+   which inlines all three and escapes `< > &` (S3's first barrier). A missing marker or
+   asset is an error, never a silent skip.
+3. The page script reads `RK.readData("<rebuild command>")` (S4: a missing island renders
+   a visible failure naming the command) and composes `RK.glance`, `RK.proof`,
+   `RK.findings`, `RK.table`, `RK.beforeAfter`; the bespoke chart stays the author's call.
+4. `nacharbeit_lint.py`'s `A-REPORT-KIT` checks the marker and all three vendored files
+   together, so half a migration is a finding.
+
+`tools/report-kit/example-viewer.html` renders every component from
+`tools/report-kit/example-data.json`; it is the reference to copy from.
+
 ## The shell rules
 
 ### S1 — One page archetype per data shape, declared
@@ -205,7 +256,11 @@ to — check it by hand when you add one.
 
 ### C1 — Capture at content height, not a fixed viewport
 
-Width 1600 for consistency; height = the page's own `scrollHeight`. The seven images from
+Width 1600 for consistency; height = the page's own `scrollHeight`. Capture with
+`python3 scripts/ci/capture_viewer_screenshot.py <rendered.html> <out.jpg>` — it measures
+the height, records console errors (exit 1 if the page logged any, because a screenshot of
+an error panel still "succeeds"), and exits 3 "not run" instead of writing a placeholder
+when no browser driver is available. The seven images from
 `821a14a` are all 1600×1000 and mostly empty. `plugins/lehre/assets/doctrine-viewer-screenshot.jpg`
 is 1600×1728 because that is where its content ends.
 

@@ -1,0 +1,226 @@
+/* werkstoff report kit -- shared components for every plugins/<name>/assets/<name>-viewer.html.
+ *
+ * Source of truth. Vendored per plugin as assets/report-kit.css by .rrt.toml's
+ * artifact_targets; a builder replaces the <!--__REPORT_KIT__--> marker with
+ * this file and report-kit.js inlined. Never edit a vendored copy.
+ *
+ * Every colour comes from tools/design-tokens/tokens.css. The kit adds one
+ * semantic layer (--rk-*) so a viewer styles against roles, and the light theme
+ * is one re-pointing of that layer, never a second stylesheet.
+ *
+ * Theme: dark is the default (the brand is dark-first). Light applies when the
+ * OS asks for it and the reader has not forced dark, or when the reader forces
+ * light. The two light blocks are identical on purpose -- one answers the OS,
+ * one answers the toggle -- and a print block resets to black on white.
+ */
+
+:root {
+  color-scheme: dark;
+  --rk-bg: var(--bg);
+  --rk-panel: var(--panel);
+  --rk-panel-2: var(--panel-2);
+  --rk-text: var(--text);
+  --rk-muted: var(--muted);
+  --rk-border: var(--border);
+  --rk-link: var(--silica-light);
+  --rk-focus: var(--silica-light);
+  --rk-hit: var(--samaria-deep);
+  --rk-ok: var(--status-good);
+  --rk-bad: var(--status-bad);
+  --rk-warn: var(--status-warn);
+  --rk-info: var(--status-unknown);
+  --rk-flat: var(--muted);
+  --rk-nav-w: 220px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+    --rk-bg: var(--bg-on-light);
+    --rk-panel: var(--panel-on-light);
+    --rk-panel-2: var(--panel-2-on-light);
+    --rk-text: var(--text-on-light);
+    --rk-muted: var(--muted-on-light);
+    --rk-border: var(--border-on-light);
+    --rk-link: var(--accent-on-light-strong);
+    --rk-focus: var(--accent-on-light-strong);
+    --rk-hit: var(--samaria-light);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --rk-bg: var(--bg-on-light);
+  --rk-panel: var(--panel-on-light);
+  --rk-panel-2: var(--panel-2-on-light);
+  --rk-text: var(--text-on-light);
+  --rk-muted: var(--muted-on-light);
+  --rk-border: var(--border-on-light);
+  --rk-link: var(--accent-on-light-strong);
+  --rk-focus: var(--accent-on-light-strong);
+  --rk-hit: var(--samaria-light);
+}
+
+/* ---- base ---------------------------------------------------------------- */
+.rk, .rk *, .rk *::before, .rk *::after { box-sizing: border-box; }
+body.rk {
+  margin: 0;
+  background: var(--rk-bg);
+  color: var(--rk-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-base);
+}
+.rk a { color: var(--rk-link); }
+.rk :focus-visible { outline: 2px solid var(--rk-focus); outline-offset: 2px; }
+.rk code, .rk pre, .rk .mono { font-family: var(--font-mono); font-size: 0.86em; }
+.rk pre {
+  background: var(--rk-panel-2); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-2) var(--space-3);
+  overflow-x: auto; white-space: pre-wrap; word-break: break-word; margin: var(--space-2) 0;
+}
+.rk-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.rk-skip { position: absolute; left: -9999px; }
+.rk-skip:focus { left: var(--space-3); top: var(--space-2); z-index: 10; background: var(--rk-panel); padding: var(--space-2); }
+[hidden] { display: none !important; }
+
+/* ---- header -------------------------------------------------------------- */
+.rk-top {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--rk-bg); border-bottom: 1px solid var(--rk-border);
+}
+.rk-top h1 { font-size: 1.25rem; margin: 0; letter-spacing: -0.01em; }
+.rk-top .rk-sub { color: var(--rk-muted); font-size: 0.85rem; margin: 0; flex: 1 1 240px; }
+.rk-tools { display: flex; gap: var(--space-2); align-items: center; }
+.rk-input, .rk-btn, .rk-select {
+  font: inherit; font-size: 0.85rem; color: var(--rk-text);
+  background: var(--rk-panel); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-control); padding: var(--space-1) var(--space-2);
+}
+.rk-input { min-width: 0; width: 14rem; max-width: 100%; }
+.rk-btn { cursor: pointer; }
+.rk-btn[aria-pressed="true"] { background: var(--rk-panel-2); border-color: var(--rk-focus); font-weight: 600; }
+.rk-btn:hover { border-color: var(--rk-muted); }
+
+/* ---- layout: sticky section nav collapsing to a select ------------------- */
+.rk-wrap { max-width: 1240px; margin: 0 auto; padding: var(--space-4); }
+.rk-layout { display: grid; grid-template-columns: var(--rk-nav-w) minmax(0, 1fr); gap: var(--space-4); }
+.rk-nav { position: sticky; top: calc(var(--header-h) + var(--space-3)); align-self: start; font-size: 0.86rem; }
+.rk-nav ul { list-style: none; margin: 0; padding: 0; }
+.rk-nav a { display: block; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); color: var(--rk-text); text-decoration: none; }
+.rk-nav a[aria-current="true"] { background: var(--rk-panel-2); font-weight: 600; }
+.rk-nav .rk-select { display: none; width: 100%; }
+.rk-found { color: var(--rk-muted); font-size: 0.8rem; margin: var(--space-2) 0 0; }
+@media (max-width: 860px) {
+  .rk-layout { display: block; }
+  .rk-nav { position: static; margin-bottom: var(--space-3); }
+  .rk-nav ul { display: none; }
+  .rk-nav .rk-select { display: block; }
+  .rk-input { width: 100%; }
+}
+
+/* ---- sections, cards, verdict -------------------------------------------- */
+.rk-section { margin: 0 0 var(--space-5); scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
+.rk-section > h2 { font-size: 1rem; margin: 0 0 var(--space-2); }
+.rk-card {
+  background: var(--rk-panel); border: 1px solid var(--rk-border);
+  border-radius: var(--radius-panel); padding: var(--space-3); margin: 0 0 var(--space-3);
+}
+.rk-muted { color: var(--rk-muted); }
+
+/* A verdict is words first. The tone class adds a left rule and a glyph, never
+ * meaning on its own (report-viewer-standard R1, R4). */
+.verdict, .rk-banner {
+  border: 1px solid var(--rk-border); border-left-width: 4px;
+  border-radius: var(--radius-panel); background: var(--rk-panel);
+  padding: var(--space-2) var(--space-3); margin: var(--space-2) 0;
+}
+.rk-banner strong { display: block; }
+.ok { border-left-color: var(--rk-ok); }
+.bad { border-left-color: var(--rk-bad); }
+.warn { border-left-color: var(--rk-warn); }
+.info { border-left-color: var(--rk-info); }
+.flat { border-left-color: var(--rk-flat); }
+
+.rk-badge {
+  display: inline-flex; align-items: center; gap: 0.25em; white-space: nowrap;
+  font-size: 0.76rem; font-weight: 600; line-height: 1.3;
+  padding: 0.05em 0.5em; border-radius: var(--radius-sm);
+  border: 1px solid var(--rk-border); border-left-width: 3px; background: var(--rk-panel-2);
+}
+
+/* ---- glance: KPI tiles ---------------------------------------------------- */
+.rk-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: var(--space-2); margin: var(--space-2) 0; }
+.rk-stat { background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2) var(--space-3); margin: 0; }
+.rk-stat dt { font-size: 0.78rem; color: var(--rk-muted); }
+.rk-stat dd { margin: 0; font-size: 1.4rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.rk-stat small { display: block; color: var(--rk-muted); font-size: 0.76rem; }
+/* R3: the number that needs action looks different by shape, not only colour. */
+.rk-stat.bad { border-left: 4px solid var(--rk-bad); }
+.rk-stat.bad dd::before { content: "\26A0\FE0E  "; font-size: 0.8em; }
+.rk-next { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.rk-next code { background: var(--rk-panel-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); }
+
+/* ---- findings ------------------------------------------------------------- */
+.rk-filters { display: flex; flex-wrap: wrap; gap: var(--space-1); margin: 0 0 var(--space-2); align-items: center; }
+.rk-filters .rk-label { font-size: 0.78rem; color: var(--rk-muted); margin-right: var(--space-1); }
+.rk-finding { border: 1px solid var(--rk-border); border-left-width: 4px; border-radius: var(--radius-panel); background: var(--rk-panel); margin: 0 0 var(--space-2); scroll-margin-top: calc(var(--header-h) + var(--space-3)); }
+.rk-finding:target { outline: 2px solid var(--rk-focus); }
+.rk-finding > summary { cursor: pointer; padding: var(--space-2) var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: baseline; list-style: none; }
+.rk-finding > summary::-webkit-details-marker { display: none; }
+.rk-finding > summary::before { content: "\25B8"; color: var(--rk-muted); }
+.rk-finding[open] > summary::before { content: "\25BE"; }
+.rk-finding .rk-claim { flex: 1 1 320px; font-weight: 550; }
+.rk-finding .rk-where { color: var(--rk-muted); font-size: 0.8rem; }
+.rk-finding .rk-body { padding: 0 var(--space-3) var(--space-3); }
+.rk-finding .rk-body h4 { margin: var(--space-2) 0 var(--space-1); font-size: 0.78rem; color: var(--rk-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.rk-permalink { font-size: 0.78rem; margin-left: auto; }
+mark.rk-hit { background: var(--rk-hit); color: inherit; border-radius: 2px; }
+
+/* ---- tables --------------------------------------------------------------- */
+.rk-tw { overflow-x: auto; border: 1px solid var(--rk-border); border-radius: var(--radius-panel); }
+.rk-table { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.rk-table th, .rk-table td { text-align: left; padding: var(--space-2); border-bottom: 1px solid var(--rk-border); vertical-align: top; }
+.rk-table th { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rk-muted); background: var(--rk-panel); position: sticky; top: 0; }
+.rk-table th button { all: unset; cursor: pointer; }
+.rk-table th button:focus-visible { outline: 2px solid var(--rk-focus); }
+.rk-table th[aria-sort="ascending"] button::after { content: " \25B4"; }
+.rk-table th[aria-sort="descending"] button::after { content: " \25BE"; }
+.rk-table tr:last-child td { border-bottom: 0; }
+.rk-table td.r { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- proof ---------------------------------------------------------------- */
+.rk-checklist { list-style: none; padding: 0; margin: var(--space-1) 0; }
+.rk-checklist li { padding: var(--space-1) 0; }
+.rk-checklist li::before { content: "\2610  "; }
+
+/* ---- before / after ------------------------------------------------------- */
+.rk-ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-2); }
+.rk-ba figure { margin: 0; background: var(--rk-panel); border: 1px solid var(--rk-border); border-radius: var(--radius-panel); padding: var(--space-2); }
+.rk-ba figcaption { font-size: 0.8rem; color: var(--rk-muted); margin-top: var(--space-1); }
+.rk-ba img { display: block; max-width: 100%; height: auto; border-radius: var(--radius-sm); }
+.rk-slider { position: relative; overflow: hidden; border-radius: var(--radius-sm); }
+.rk-slider img { display: block; width: 100%; height: auto; }
+.rk-slider .rk-after { position: absolute; inset: 0; clip-path: inset(0 0 0 50%); }
+.rk-slider input[type="range"] { width: 100%; margin-top: var(--space-1); }
+
+/* ---- failure panel -------------------------------------------------------- */
+.rk-fail { border: 1px solid var(--rk-bad); border-left-width: 4px; background: var(--rk-panel); border-radius: var(--radius-panel); padding: var(--space-3); margin: var(--space-3) 0; }
+
+/* ---- print ---------------------------------------------------------------- */
+@media print {
+  :root, :root[data-theme] {
+    --rk-bg: var(--bg-on-light); --rk-panel: var(--bg-on-light); --rk-panel-2: var(--bg-on-light);
+    --rk-text: var(--text-on-light); --rk-muted: var(--muted-on-light);
+    --rk-border: var(--rule-on-light); --rk-link: var(--text-on-light);
+  }
+  .rk-top { position: static; }
+  .rk-nav, .rk-tools, .rk-filters, .rk-copy, .rk-permalink { display: none !important; }
+  .rk-layout { display: block; }
+  .rk-card, .rk-finding, figure, tr { break-inside: avoid; }
+}

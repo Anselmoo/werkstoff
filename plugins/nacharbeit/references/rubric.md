@@ -267,6 +267,7 @@ it is reimplemented. The standard is `docs/plugin-authoring/references/report-vi
 | `A-NO-CDN` | No `<script src=` / `<link href=` to the network. | viewer | major | standard S2 CSP rationale; `tools/d3-subset` |
 | `A-TOKENS-PRESENT` | A plugin with a viewer ships `assets/tokens.css`. | viewer | minor | standard "What is mechanically checked" |
 | `A-BUILDER-EXISTS` | A `scripts/*.py` names the viewer or injects the `__DESIGN_TOKENS__` marker. | viewer | minor | standard (builder + template pairing) |
+| `A-REPORT-KIT` | The template carries `<!--__REPORT_KIT__-->` and the plugin vendors `assets/report-kit.css`, `assets/report-kit.js` and `scripts/report_kit.py`. Half a migration is a finding. | viewer | major | standard R6–R8 (content tier); `tools/report-kit/` |
 | `A-C4-ALT` | The README's screenshot alt text is ≥10 characters and not the plugin name. | readme | nit | standard C4 |
 | `A-VIEWER-REQUIRED` | The plugin ships at least one `assets/*-viewer.html`. Keyed on the manifest, because every other `A-*` rule grades a viewer that exists and so can never report one that does not. | manifest | major | CLAUDE.md "Every plugin ships an HTML report viewer" |
 

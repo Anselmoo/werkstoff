@@ -496,6 +496,209 @@ path = "docs/.vitepress/theme/tokens.css"
 description = "the docs theme's synced copy of tools/design-tokens/tokens.css, imported by theme/index.js ahead of werkstoff.css so the theme's --wk-*/--vp-c-brand-* declarations can reference it with var() instead of restating its values"
 command = ["cp", "tools/design-tokens/tokens.css", "docs/.vitepress/theme/tokens.css"]
 
+# Shared report kit (tools/report-kit/) -- the components every viewer builds on:
+# glance + KPI tiles, filterable findings with evidence, sortable tables, the
+# PROVEN / PARTLY PROVEN / NOT PROVEN proof block, before/after, light and dark.
+# Vendored like tokens.css so each plugin stays installable on its own; the
+# builder inlines all three at the template's <!--__REPORT_KIT__--> marker via
+# its vendored scripts/report_kit.py. Edit tools/report-kit/, never a copy, then
+# `rrt artifacts --regenerate`.
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/andon/assets/report-kit.css"
+description = "andon's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/andon/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/andon/assets/report-kit.js"
+description = "andon's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/andon/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/andon/scripts/report_kit.py"
+description = "andon's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/andon/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/assets/report-kit.css"
+description = "arbeitsplan's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/arbeitsplan/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/assets/report-kit.js"
+description = "arbeitsplan's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/arbeitsplan/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/arbeitsplan/scripts/report_kit.py"
+description = "arbeitsplan's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/arbeitsplan/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/befund/assets/report-kit.css"
+description = "befund's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/befund/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/befund/assets/report-kit.js"
+description = "befund's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/befund/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/befund/scripts/report_kit.py"
+description = "befund's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/befund/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/assets/report-kit.css"
+description = "cli-scaffold's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/cli-scaffold/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/assets/report-kit.js"
+description = "cli-scaffold's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/cli-scaffold/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cli-scaffold/scripts/report_kit.py"
+description = "cli-scaffold's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/cli-scaffold/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cupertino/assets/report-kit.css"
+description = "cupertino's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/cupertino/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cupertino/assets/report-kit.js"
+description = "cupertino's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/cupertino/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/cupertino/scripts/report_kit.py"
+description = "cupertino's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/cupertino/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/lehre/assets/report-kit.css"
+description = "lehre's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/lehre/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/lehre/assets/report-kit.js"
+description = "lehre's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/lehre/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/lehre/scripts/report_kit.py"
+description = "lehre's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/lehre/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/matrize/assets/report-kit.css"
+description = "matrize's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/matrize/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/matrize/assets/report-kit.js"
+description = "matrize's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/matrize/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/matrize/scripts/report_kit.py"
+description = "matrize's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/matrize/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/assets/report-kit.css"
+description = "nacharbeit's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/nacharbeit/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/assets/report-kit.js"
+description = "nacharbeit's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/nacharbeit/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/nacharbeit/scripts/report_kit.py"
+description = "nacharbeit's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/nacharbeit/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/passung/assets/report-kit.css"
+description = "passung's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/passung/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/passung/assets/report-kit.js"
+description = "passung's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/passung/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/passung/scripts/report_kit.py"
+description = "passung's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/passung/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/spur/assets/report-kit.css"
+description = "spur's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/spur/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/spur/assets/report-kit.js"
+description = "spur's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/spur/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/spur/scripts/report_kit.py"
+description = "spur's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/spur/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/takt/assets/report-kit.css"
+description = "takt's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/takt/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/takt/assets/report-kit.js"
+description = "takt's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/takt/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/takt/scripts/report_kit.py"
+description = "takt's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/takt/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zeugnis/assets/report-kit.css"
+description = "zeugnis's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/zeugnis/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zeugnis/assets/report-kit.js"
+description = "zeugnis's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/zeugnis/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zeugnis/scripts/report_kit.py"
+description = "zeugnis's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/zeugnis/scripts/report_kit.py"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zirkel/assets/report-kit.css"
+description = "zirkel's synced copy of tools/report-kit/report-kit.css"
+command = ["cp", "tools/report-kit/report-kit.css", "plugins/zirkel/assets/report-kit.css"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zirkel/assets/report-kit.js"
+description = "zirkel's synced copy of tools/report-kit/report-kit.js"
+command = ["cp", "tools/report-kit/report-kit.js", "plugins/zirkel/assets/report-kit.js"]
+
+[[tool.rrt.artifact_targets]]
+path = "plugins/zirkel/scripts/report_kit.py"
+description = "zirkel's synced copy of tools/report-kit/report_kit.py"
+command = ["cp", "tools/report-kit/report_kit.py", "plugins/zirkel/scripts/report_kit.py"]
+
 [[tool.rrt.artifact_targets]]
 path = ".design/system/tokens.json"
 description = "the DTCG token file matrize derives from tools/design-tokens/tokens.css -- regenerated, never hand-edited"

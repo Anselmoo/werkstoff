@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="dark light">
+<title>report kit — example report</title>
+<!--__DESIGN_TOKENS__-->
+<!--__REPORT_KIT__-->
+</head>
+<body class="rk">
+<a class="rk-skip" href="#rk-content">Skip to the report</a>
+<header class="rk-top">
+  <h1>report kit — example report</h1>
+  <p class="rk-sub">Every component the kit ships, rendered from tools/report-kit/example-data.json.</p>
+  <div class="rk-tools">
+    <label class="rk-sr" for="rk-q">Search the report</label>
+    <input id="rk-q" class="rk-input" type="search" placeholder="Search the report">
+    <button id="rk-theme" class="rk-btn" type="button" aria-label="Toggle light or dark theme">Light</button>
+  </div>
+</header>
+<main class="rk-wrap">
+  <p class="verdict">The kit renders a verdict in words first; the script replaces this line with the report's own.</p>
+  <div class="legend rk-card rk-muted">Every status is a word plus a glyph — ✓ pass, ✗ fail, ! needs attention, i informational, – not applicable. Colour is the third channel, never the only one.</div>
+  <div class="rk-layout">
+    <nav id="rk-nav" class="rk-nav" aria-label="Report sections"><p id="rk-found" class="rk-found" role="status" aria-live="polite"></p></nav>
+    <div id="rk-content" tabindex="-1"></div>
+  </div>
+</main>
+<noscript>This report needs JavaScript. Nothing is fetched from the network; all of its data is inside this file.</noscript>
+<script type="application/json" id="report-data">@@DATA@@</script>
+<script>
+(() => {
+  const D = RK.readData("python3 tools/report-kit/report_kit.py --template tools/report-kit/example-viewer.html --data tools/report-kit/example-data.json");
+  if (!D) return;
+  const { section } = RK;
+  const verdict = RK.$(".verdict");
+  verdict.textContent = D.glance.verdict;
+  verdict.classList.add(D.glance.tone || "flat");
+  const content = RK.$("#rk-content");
+  content.append(
+    section("glance", "At a glance", RK.glance({ ...D.glance, verdict: null })),
+    section("proof", "Proof", RK.proof(D.proof)),
+    section("findings", "Findings", RK.findings(D.findings, { facets: ["severity", "tier"], order: { tier: ["haiku", "sonnet", "opus", "human"] } })),
+    section("checks", "Checks", RK.table({ caption: "probe checks", columns: [
+      { key: "probe", label: "Probe", mono: true }, { key: "state", label: "State", badge: true },
+      { key: "ms", label: "Time (ms)", num: true }, { key: "detail", label: "Detail" }], rows: D.checks })),
+    section("before-after", "Before and after", D.beforeAfter.map((b) => RK.beforeAfter(b)))
+  );
+  RK.init();
+})();
+</script>
+</body>
+</html>
