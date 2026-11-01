@@ -5,6 +5,8 @@ Releases before the rename were published as `self-assess`; tags under that name
 are listed in `test/plugins/retired-groups.txt` and remain valid.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **Report viewer on the shared report kit** (`tools/report-kit/`, vendored into `scripts/` and `assets/` via `.rrt.toml` `artifact_targets`): every finding carries its evidence, with filters, search, deep links, light and dark themes and drill-down. `build_stage_map_html.py` now turns each god-module, cycle, unconnected stage and dead-end into a finding record (claim, evidence, suggested fix), assigns each stage its files, and renders through `report_kit.render()`; its committed screenshot is regenerated with `scripts/ci/capture_viewer_screenshot.py`.
 ### Changed
