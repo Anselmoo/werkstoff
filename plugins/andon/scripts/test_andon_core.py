@@ -509,7 +509,8 @@ class BoardViewerStageTests(unittest.TestCase):
             build_board_html.enrich(board, str(root), ledger))
         for needle in ('id="rk-stage"', "data-rk-figure", 'id="rk-drawer"', 'class="verdict"'):
             self.assertIn(needle, html)
-        self.assertNotIn("innerHTML", html)
+        # the vendored d3 and kit mention innerHTML; the board's own template must not
+        self.assertNotIn("innerHTML", (assets / "board-viewer.html").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
