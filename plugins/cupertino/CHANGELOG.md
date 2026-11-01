@@ -3,6 +3,8 @@
 All notable changes to the `cupertino` plugin are documented here.
 
 ## [Unreleased]
+
+## [2.0.0] - 2026-11-01
 ### Added
 - **`cupertino-repair`** (orchestrator skill + `references/design-sources.md`): change an existing system
   (dashboard, page, CLI, library, build, kernel) with six operations -- read, verify, modify, add, create,
